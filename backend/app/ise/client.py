@@ -5,21 +5,26 @@ from typing import Any
 
 import httpx
 
-from app.core.config import settings
+from app.core import config
 from app.core.exceptions import IseApiError
 
 logger = logging.getLogger(__name__)
 
 
 class IseClient:
-    """Async wrapper around the Cisco ISE 3.4 REST APIs (ERS + Open API)."""
+    """Async wrapper around the Cisco ISE 3.4 REST APIs (ERS + Open API).
+
+    Reads connection settings from `app.core.config.settings` at init time,
+    so recreate the client after settings changes.
+    """
 
     def __init__(self) -> None:
+        s = config.settings
         self._http = httpx.AsyncClient(
-            base_url=settings.ise_base_url.rstrip("/"),
-            auth=(settings.ise_username, settings.ise_password),
-            verify=settings.ise_verify_tls,
-            timeout=settings.ise_timeout,
+            base_url=s.ise_base_url.rstrip("/"),
+            auth=(s.ise_username, s.ise_password),
+            verify=s.ise_verify_tls,
+            timeout=s.ise_timeout,
             headers={
                 "Accept": "application/json",
                 "Content-Type": "application/json",

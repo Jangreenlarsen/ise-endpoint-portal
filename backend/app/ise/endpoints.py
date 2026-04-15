@@ -47,14 +47,20 @@ class IseEndpointRepository:
         }
         await self.client.post(ERS_ENDPOINTS, json=payload)
 
-    async def update_group(self, endpoint_id: str, group_id: str) -> None:
-        payload = {
-            "ERSEndPoint": {
-                "id": endpoint_id,
-                "groupId": group_id,
-                "staticGroupAssignment": True,
-            }
-        }
+    async def update(
+        self,
+        endpoint_id: str,
+        *,
+        description: str | None = None,
+        group_id: str | None = None,
+    ) -> None:
+        fields: dict[str, Any] = {"id": endpoint_id}
+        if description is not None:
+            fields["description"] = description
+        if group_id is not None:
+            fields["groupId"] = group_id
+            fields["staticGroupAssignment"] = True
+        payload = {"ERSEndPoint": fields}
         await self.client.put(f"{ERS_ENDPOINTS}/{endpoint_id}", json=payload)
 
     async def delete(self, endpoint_id: str) -> None:

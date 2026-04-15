@@ -7,39 +7,19 @@
     <link rel="stylesheet" href="css/styles.css" />
   </head>
   <body>
-    <header>
-      <h1>ISE Endpoint Portal</h1>
-      <div id="status" class="status">backend: <span id="status-dot">...</span></div>
-    </header>
-
-    <main>
-      <section>
-        <div class="section-header">
-          <h2>Endpoint Groups</h2>
-          <button id="refresh-groups">Refresh</button>
-        </div>
-        <table id="groups-table">
-          <thead>
-            <tr><th>Name</th><th>ID</th><th>Description</th></tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </section>
-
-      <section>
-        <div class="section-header">
-          <h2>Endpoints</h2>
-          <button id="refresh-endpoints">Refresh</button>
-        </div>
-        <table id="endpoints-table">
-          <thead>
-            <tr><th>Name (MAC)</th><th>ID</th><th>Description</th></tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </section>
-    </main>
-
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand">ISE Portal</div>
+        <nav>
+          <a href="#/create" data-view="create">Opret endpoint</a>
+          <a href="#/import" data-view="import">Import fra CSV</a>
+          <a href="#/browse" data-view="browse">Browse / Edit</a>
+          <a href="#/settings" data-view="settings">Settings</a>
+        </nav>
+        <div class="backend-status">backend: <span id="status-dot">...</span></div>
+      </aside>
+      <main class="content" id="view-container"></main>
+    </div>
     <script type="module" src="js/app.js"></script>
   </body>
 </html>

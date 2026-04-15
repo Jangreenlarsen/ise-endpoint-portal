@@ -1,66 +1,50 @@
 import { api } from "./api.js";
+import { renderCreate } from "./views/create.js";
+import { renderImport } from "./views/import.js";
+import { renderBrowse } from "./views/browse.js";
+import { renderSettings } from "./views/settings.js";
 
 const statusDot = document.getElementById("status-dot");
-const groupsBody = document.querySelector("#groups-table tbody");
-const endpointsBody = document.querySelector("#endpoints-table tbody");
+const container = document.getElementById("view-container");
+
+const routes = {
+  create: renderCreate,
+  import: renderImport,
+  browse: renderBrowse,
+  settings: renderSettings,
+};
 
 async function checkHealth() {
   try {
     await api.health();
     statusDot.textContent = "ok";
     statusDot.className = "ok";
-  } catch (err) {
+  } catch {
     statusDot.textContent = "down";
     statusDot.className = "err";
   }
 }
 
-function renderRows(tbody, rows, cols) {
-  tbody.innerHTML = "";
-  if (!rows.length) {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `<td colspan="${cols.length}" class="empty">No results</td>`;
-    tbody.appendChild(tr);
-    return;
-  }
-  for (const row of rows) {
-    const tr = document.createElement("tr");
-    tr.innerHTML = cols
-      .map((c) => `<td>${(row[c] ?? "").toString().replace(/</g, "&lt;")}</td>`)
-      .join("");
-    tbody.appendChild(tr);
-  }
+function currentRoute() {
+  const hash = (location.hash || "#/create").replace("#/", "");
+  return routes[hash] ? hash : "create";
 }
 
-async function loadGroups() {
+async function renderView() {
+  const route = currentRoute();
+  container.innerHTML = "";
+  document.querySelectorAll(".sidebar nav a").forEach((a) => {
+    a.classList.toggle("active", a.dataset.view === route);
+  });
   try {
-    const data = await api.listGroups();
-    renderRows(groupsBody, data, ["name", "id", "description"]);
+    await routes[route](container);
   } catch (err) {
-    renderRows(groupsBody, [{ name: `error: ${err.message}`, id: "", description: "" }], [
-      "name",
-      "id",
-      "description",
-    ]);
+    container.innerHTML = `<div class="alert error">View error: ${err.message}</div>`;
   }
 }
 
-async function loadEndpoints() {
-  try {
-    const data = await api.listEndpoints();
-    renderRows(endpointsBody, data, ["name", "id", "description"]);
-  } catch (err) {
-    renderRows(
-      endpointsBody,
-      [{ name: `error: ${err.message}`, id: "", description: "" }],
-      ["name", "id", "description"],
-    );
-  }
-}
-
-document.getElementById("refresh-groups").addEventListener("click", loadGroups);
-document.getElementById("refresh-endpoints").addEventListener("click", loadEndpoints);
+window.addEventListener("hashchange", renderView);
 
 checkHealth();
-loadGroups();
-loadEndpoints();
+setInterval(checkHealth, 15000);
+renderView();

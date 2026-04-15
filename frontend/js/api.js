@@ -1,4 +1,4 @@
-const BASE = window.location.origin.includes("file://")
+const BASE = window.location.origin.startsWith("file://")
   ? "http://localhost:8000"
   : "";
 
@@ -8,7 +8,11 @@ async function request(path, options = {}) {
     ...options,
   });
   if (!res.ok) {
-    const detail = await res.text();
+    let detail = await res.text();
+    try {
+      const parsed = JSON.parse(detail);
+      detail = parsed.detail || detail;
+    } catch {}
     throw new Error(`${res.status}: ${detail}`);
   }
   if (res.status === 204) return null;
@@ -22,6 +26,19 @@ export const api = {
   listGroups: () => request("/groups"),
   createEndpoint: (payload) =>
     request("/endpoints", { method: "POST", body: JSON.stringify(payload) }),
+  bulkCreateEndpoints: (items) =>
+    request("/endpoints/bulk", {
+      method: "POST",
+      body: JSON.stringify({ items }),
+    }),
+  updateEndpoint: (id, payload) =>
+    request(`/endpoints/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
   deleteEndpoint: (id) =>
     request(`/endpoints/${id}`, { method: "DELETE" }),
+  getBackendSettings: () => request("/settings/backend"),
+  updateBackendSettings: (payload) =>
+    request("/settings/backend", {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
 };

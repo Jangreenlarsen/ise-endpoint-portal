@@ -2,7 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.deps import get_endpoint_service
 from app.core.exceptions import IseApiError
-from app.schemas.endpoint import CreateEndpointRequest, EndpointSummary
+from app.schemas.endpoint import (
+    BulkCreateRequest,
+    BulkResult,
+    CreateEndpointRequest,
+    EndpointSummary,
+    EndpointUpdate,
+)
 from app.services.endpoint_service import EndpointService
 
 router = APIRouter(prefix="/endpoints", tags=["endpoints"])
@@ -30,6 +36,28 @@ async def create_endpoint(
     except IseApiError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     return {"status": "created"}
+
+
+@router.post("/bulk", response_model=BulkResult)
+async def bulk_create_endpoints(
+    req: BulkCreateRequest,
+    service: EndpointService = Depends(get_endpoint_service),
+) -> BulkResult:
+    # Partial failures are reported in the response; no 502 here.
+    return await service.bulk_create(req)
+
+
+@router.put("/{endpoint_id}")
+async def update_endpoint(
+    endpoint_id: str,
+    req: EndpointUpdate,
+    service: EndpointService = Depends(get_endpoint_service),
+) -> dict[str, str]:
+    try:
+        await service.update_endpoint(endpoint_id, req)
+    except IseApiError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    return {"status": "updated"}
 
 
 @router.delete("/{endpoint_id}", status_code=status.HTTP_204_NO_CONTENT)
