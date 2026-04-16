@@ -1,31 +1,5 @@
 import { api } from "../api.js";
-
-const MAC_RE = /^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$/;
-
-function parseCsv(text) {
-  const lines = text
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter((l) => l && !l.startsWith("#"));
-  if (!lines.length) return [];
-  let startIdx = 0;
-  const firstCell = lines[0].split(",")[0].trim();
-  if (!MAC_RE.test(firstCell) && lines[0].toLowerCase().includes("mac")) {
-    startIdx = 1;
-  }
-  const items = [];
-  for (let i = startIdx; i < lines.length; i++) {
-    const parts = lines[i].split(",").map((p) => p.trim());
-    const mac = parts[0];
-    const groupName = parts[1] || "";
-    const description = parts[2] || "";
-    const owner = parts[3] || "";
-    const location = parts[4] || "";
-    const authzVlan = parts[5] || "";
-    items.push({ mac, groupName, description, owner, location, authzVlan, valid: MAC_RE.test(mac) });
-  }
-  return items;
-}
+import { parseCsv } from "../csv.js";
 
 function escapeHtml(s) {
   return (s || "").replace(/[&<>"']/g, (c) => ({
@@ -38,9 +12,13 @@ export async function renderImport(container) {
     <h2>Import fra CSV</h2>
     <div class="card">
       <p class="hint">
-        CSV format: <code>mac,group,description,owner,lokation,authz_vlan</code>.<br>
-        De tre sidste kolonner (owner, location, authz_vlan) er valgfrie custom attributes.<br>
-        Header-række er valgfri (auto-detekteres). Hvis <code>group</code> mangler bruges fallback-gruppen.
+        Understøtter to formater:<br>
+        <strong>ISE format</strong> — CSV eksporteret fra ISE Context Visibility
+        (kolonner: <code>MACAddress</code>, <code>IdentityGroup</code>, <code>Description</code>,
+        <code>CUSTOM.Owner</code>, <code>CUSTOM.Lokation</code>, <code>CUSTOM.AuthzVlan</code>).<br>
+        <strong>Simpelt format</strong> — <code>mac,group,description,owner,lokation,authz_vlan</code>
+        (header valgfri).<br>
+        Format detekteres automatisk. Hvis <code>group</code> mangler bruges fallback-gruppen.
       </p>
       <div class="field">
         <label for="csv-file">CSV fil</label>
@@ -49,7 +27,7 @@ export async function renderImport(container) {
       <div class="field">
         <label for="csv-text">...eller indsæt CSV indhold direkte</label>
         <textarea id="csv-text" placeholder="mac,group,description,owner,lokation,authz_vlan
-AA:BB:CC:DD:EE:01,Unknown,lab device,IT,BLR-1F,VLAN100
+AA:BB:CC:DD:EE:01,Unknown,lab device,IT,kontor1,VLAN100
 AA:BB:CC:DD:EE:02,Profiled,printer,Facilities,,VLAN200"></textarea>
       </div>
       <div class="field">
@@ -93,7 +71,8 @@ AA:BB:CC:DD:EE:02,Profiled,printer,Facilities,,VLAN200"></textarea>
 
   container.querySelector("#preview-btn").addEventListener("click", () => {
     const text = container.querySelector("#csv-text").value;
-    parsed = parseCsv(text);
+    const { format, items } = parseCsv(text);
+    parsed = items;
     result.innerHTML = "";
     if (!parsed.length) {
       preview.innerHTML = `<div class="alert info">Ingen rækker fundet.</div>`;
@@ -102,16 +81,17 @@ AA:BB:CC:DD:EE:02,Profiled,printer,Facilities,,VLAN200"></textarea>
     }
     const valid = parsed.filter((p) => p.valid).length;
     const invalid = parsed.length - valid;
-    const hasCA = parsed.some((p) => p.owner || p.location || p.authzVlan);
+    const hasCA = parsed.some((p) => p.owner || p.lokation || p.authzVlan);
     preview.innerHTML = `
       <div class="alert info">
-        ${parsed.length} rækker — <strong>${valid}</strong> gyldige, <strong>${invalid}</strong> ugyldige.
+        Detekteret format: <strong>${format === "ise" ? "ISE CSV" : "Simpelt"}</strong> —
+        ${parsed.length} rækker, <strong>${valid}</strong> gyldige, <strong>${invalid}</strong> ugyldige.
       </div>
       <div class="preview-table">
         <table>
           <thead>
             <tr>
-              <th>#</th><th>MAC</th><th>Group (CSV)</th><th>Description</th>
+              <th>#</th><th>MAC</th><th>Group</th><th>Description</th>
               ${hasCA ? "<th>Owner</th><th>Lokation</th><th>AuthzVlan</th>" : ""}
               <th>Status</th>
             </tr>
@@ -125,7 +105,7 @@ AA:BB:CC:DD:EE:02,Profiled,printer,Facilities,,VLAN200"></textarea>
                 <td>${escapeHtml(p.description)}</td>
                 ${hasCA ? `
                   <td>${escapeHtml(p.owner)}</td>
-                  <td>${escapeHtml(p.location)}</td>
+                  <td>${escapeHtml(p.lokation)}</td>
                   <td>${escapeHtml(p.authzVlan)}</td>
                 ` : ""}
                 <td>${p.valid ? "✓" : '<span class="invalid">ugyldig MAC</span>'}</td>
@@ -152,11 +132,10 @@ AA:BB:CC:DD:EE:02,Profiled,printer,Facilities,,VLAN200"></textarea>
             : fallbackId,
           description: p.description,
         };
-        // Add custom attributes if any are present
         const ca = {};
         let hasCA = false;
         if (p.owner) { ca.Owner = p.owner; hasCA = true; }
-        if (p.location) { ca.Lokation = p.location; hasCA = true; }
+        if (p.lokation) { ca.Lokation = p.lokation; hasCA = true; }
         if (p.authzVlan) { ca.AuthzVlan = p.authzVlan; hasCA = true; }
         if (hasCA) item.custom_attributes = ca;
         return item;

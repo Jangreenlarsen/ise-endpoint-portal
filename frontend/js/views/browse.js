@@ -1,4 +1,5 @@
 import { api } from "../api.js";
+import { toIseCsv, downloadCsv } from "../csv.js";
 
 function esc(s) {
   return (s || "").replace(/"/g, "&quot;").replace(/</g, "&lt;");
@@ -10,6 +11,7 @@ export async function renderBrowse(container) {
     <div class="card">
       <div class="toolbar">
         <button id="refresh-btn">Refresh</button>
+        <button id="export-btn" class="secondary">Export CSV</button>
         <input type="text" id="filter" placeholder="Filter (MAC, owner, lokation...)"
                style="padding:0.4rem 0.6rem;border:1px solid #d1d5db;border-radius:3px;min-width:220px;" />
         <div class="spacer"></div>
@@ -174,5 +176,17 @@ export async function renderBrowse(container) {
   });
 
   container.querySelector("#refresh-btn").addEventListener("click", load);
+
+  container.querySelector("#export-btn").addEventListener("click", () => {
+    if (!allRows.length) {
+      msg.innerHTML = `<div class="alert info">Ingen endpoints at eksportere.</div>`;
+      return;
+    }
+    const csv = toIseCsv(allRows);
+    const date = new Date().toISOString().slice(0, 10);
+    downloadCsv(csv, `ise-endpoints-${date}.csv`);
+    msg.innerHTML = `<div class="alert success">Eksporteret ${allRows.length} endpoints.</div>`;
+  });
+
   await load();
 }
