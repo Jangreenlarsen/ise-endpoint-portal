@@ -15,4 +15,5 @@ build/
 backend/logs/*.log
 backend/logs/*.log.*
 backend/config.json
+backend/custom_attr_values.json
 node_modules/

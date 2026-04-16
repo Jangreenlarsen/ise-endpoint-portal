@@ -35,17 +35,20 @@ class IseEndpointRepository:
         *,
         description: str = "",
         static: bool = True,
+        custom_attributes: dict[str, str] | None = None,
     ) -> None:
-        payload = {
-            "ERSEndPoint": {
-                "name": mac,
-                "description": description,
-                "mac": mac,
-                "groupId": group_id,
-                "staticGroupAssignment": static,
-            }
+        ers: dict[str, Any] = {
+            "name": mac,
+            "description": description,
+            "mac": mac,
+            "groupId": group_id,
+            "staticGroupAssignment": static,
         }
-        await self.client.post(ERS_ENDPOINTS, json=payload)
+        if custom_attributes:
+            non_empty = {k: v for k, v in custom_attributes.items() if v}
+            if non_empty:
+                ers["customAttributes"] = {"customAttributes": non_empty}
+        await self.client.post(ERS_ENDPOINTS, json={"ERSEndPoint": ers})
 
     async def update(
         self,
@@ -53,6 +56,7 @@ class IseEndpointRepository:
         *,
         description: str | None = None,
         group_id: str | None = None,
+        custom_attributes: dict[str, str] | None = None,
     ) -> None:
         fields: dict[str, Any] = {"id": endpoint_id}
         if description is not None:
@@ -60,6 +64,10 @@ class IseEndpointRepository:
         if group_id is not None:
             fields["groupId"] = group_id
             fields["staticGroupAssignment"] = True
+        if custom_attributes:
+            non_empty = {k: v for k, v in custom_attributes.items() if v}
+            if non_empty:
+                fields["customAttributes"] = {"customAttributes": non_empty}
         payload = {"ERSEndPoint": fields}
         await self.client.put(f"{ERS_ENDPOINTS}/{endpoint_id}", json=payload)
 

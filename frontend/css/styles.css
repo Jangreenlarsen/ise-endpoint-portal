@@ -215,3 +215,22 @@ td input, td select {
 .result-list .failed { color: #991b1b; }
 
 .invalid { color: #b91c1c; font-weight: 600; }
+
+/* Custom attribute row */
+.ca-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.ca-row select { flex: 1; }
+.ca-add {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+}
+.ca-add input { flex: 1; }
+.ca-add.hidden { display: none; }
+button.small {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.78rem;
+}

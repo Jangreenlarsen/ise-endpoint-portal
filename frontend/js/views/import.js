@@ -19,7 +19,10 @@ function parseCsv(text) {
     const mac = parts[0];
     const groupName = parts[1] || "";
     const description = parts[2] || "";
-    items.push({ mac, groupName, description, valid: MAC_RE.test(mac) });
+    const owner = parts[3] || "";
+    const location = parts[4] || "";
+    const authzVlan = parts[5] || "";
+    items.push({ mac, groupName, description, owner, location, authzVlan, valid: MAC_RE.test(mac) });
   }
   return items;
 }
@@ -35,8 +38,9 @@ export async function renderImport(container) {
     <h2>Import fra CSV</h2>
     <div class="card">
       <p class="hint">
-        CSV format: <code>mac,group,description</code>. Header-række er valgfri (auto-detekteres).
-        Hvis <code>group</code> mangler eller ikke findes, bruges fallback-gruppen.
+        CSV format: <code>mac,group,description,owner,location,authz_vlan</code>.<br>
+        De tre sidste kolonner (owner, location, authz_vlan) er valgfrie custom attributes.<br>
+        Header-række er valgfri (auto-detekteres). Hvis <code>group</code> mangler bruges fallback-gruppen.
       </p>
       <div class="field">
         <label for="csv-file">CSV fil</label>
@@ -44,9 +48,9 @@ export async function renderImport(container) {
       </div>
       <div class="field">
         <label for="csv-text">...eller indsæt CSV indhold direkte</label>
-        <textarea id="csv-text" placeholder="mac,group,description
-AA:BB:CC:DD:EE:01,Unknown,lab device
-AA:BB:CC:DD:EE:02,Profiled,printer"></textarea>
+        <textarea id="csv-text" placeholder="mac,group,description,owner,location,authz_vlan
+AA:BB:CC:DD:EE:01,Unknown,lab device,IT,BLR-1F,VLAN100
+AA:BB:CC:DD:EE:02,Profiled,printer,Facilities,,VLAN200"></textarea>
       </div>
       <div class="field">
         <label for="fallback-group">Fallback endpoint group</label>
@@ -98,6 +102,7 @@ AA:BB:CC:DD:EE:02,Profiled,printer"></textarea>
     }
     const valid = parsed.filter((p) => p.valid).length;
     const invalid = parsed.length - valid;
+    const hasCA = parsed.some((p) => p.owner || p.location || p.authzVlan);
     preview.innerHTML = `
       <div class="alert info">
         ${parsed.length} rækker — <strong>${valid}</strong> gyldige, <strong>${invalid}</strong> ugyldige.
@@ -105,7 +110,11 @@ AA:BB:CC:DD:EE:02,Profiled,printer"></textarea>
       <div class="preview-table">
         <table>
           <thead>
-            <tr><th>#</th><th>MAC</th><th>Group (CSV)</th><th>Description</th><th>Status</th></tr>
+            <tr>
+              <th>#</th><th>MAC</th><th>Group (CSV)</th><th>Description</th>
+              ${hasCA ? "<th>Owner</th><th>Location</th><th>AuthzVlan</th>" : ""}
+              <th>Status</th>
+            </tr>
           </thead>
           <tbody>
             ${parsed.map((p, i) => `
@@ -114,6 +123,11 @@ AA:BB:CC:DD:EE:02,Profiled,printer"></textarea>
                 <td>${escapeHtml(p.mac)}</td>
                 <td>${p.groupName ? escapeHtml(p.groupName) : "<em>fallback</em>"}</td>
                 <td>${escapeHtml(p.description)}</td>
+                ${hasCA ? `
+                  <td>${escapeHtml(p.owner)}</td>
+                  <td>${escapeHtml(p.location)}</td>
+                  <td>${escapeHtml(p.authzVlan)}</td>
+                ` : ""}
                 <td>${p.valid ? "✓" : '<span class="invalid">ugyldig MAC</span>'}</td>
               </tr>`).join("")}
           </tbody>
@@ -130,13 +144,23 @@ AA:BB:CC:DD:EE:02,Profiled,printer"></textarea>
     );
     const items = parsed
       .filter((p) => p.valid)
-      .map((p) => ({
-        mac: p.mac.toUpperCase().replace(/-/g, ":"),
-        group_id: p.groupName
-          ? (groupsByName.get(p.groupName.toLowerCase()) || fallbackId)
-          : fallbackId,
-        description: p.description,
-      }));
+      .map((p) => {
+        const item = {
+          mac: p.mac.toUpperCase().replace(/-/g, ":"),
+          group_id: p.groupName
+            ? (groupsByName.get(p.groupName.toLowerCase()) || fallbackId)
+            : fallbackId,
+          description: p.description,
+        };
+        // Add custom attributes if any are present
+        const ca = {};
+        let hasCA = false;
+        if (p.owner) { ca.Owner = p.owner; hasCA = true; }
+        if (p.location) { ca.Location = p.location; hasCA = true; }
+        if (p.authzVlan) { ca.AuthzVlan = p.authzVlan; hasCA = true; }
+        if (hasCA) item.custom_attributes = ca;
+        return item;
+      });
 
     result.innerHTML = `<div class="alert info">Importerer ${items.length} endpoints...</div>`;
     importBtn.disabled = true;

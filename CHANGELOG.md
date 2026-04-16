@@ -5,6 +5,26 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [1.1.0 build 0002] — 2026-04-16 — feat: custom endpoint attributes (Owner, Location, AuthzVlan)
+
+- **backend**: `app/core/custom_attr_store.py` — lokal registry for tilladte værdier per attribut. Persisterer til `backend/custom_attr_values.json`.
+- **backend**: `app/ise/custom_attributes.py` — `IseCustomAttributeRepository` til at hente/oprette custom attribute definitioner i ISE ERS.
+- **backend**: `app/schemas/custom_attribute.py` — DTOs: `AllCustomAttributes`, `AddValueRequest`, `SyncResult`.
+- **backend**: `app/schemas/endpoint.py` — tilføjet `CustomAttrs` model (Owner, Location, AuthzVlan) og `custom_attributes` felt i `CreateEndpointRequest` og `EndpointUpdate`.
+- **backend**: `app/services/custom_attribute_service.py` — forretningslogik: list/add/remove values, sync fra ISE (scanner endpoints, merger fundne værdier, sikrer attribute definitions).
+- **backend**: `app/api/custom_attributes.py` — nye routes: `GET /api/custom-attributes`, `POST .../values`, `DELETE .../values/{value}`, `POST .../sync`.
+- **backend**: `app/api/deps.py` — tilføjet `get_custom_attribute_service()` dependency.
+- **backend**: `app/ise/endpoints.py` — create/update sender nu `customAttributes` double-nested til ISE.
+- **backend**: `app/services/endpoint_service.py` — videresender `custom_attributes` til ISE-laget.
+- **backend**: `app/main.py` — inkluderer `custom_attrs_api` router.
+- **frontend**: `js/api.js` — tilføjet `listCustomAttributes`, `addCustomAttributeValue`, `removeCustomAttributeValue`, `syncCustomAttributes`.
+- **frontend**: `js/views/create.js` — tre dropdown-selects (Owner, Location, AuthzVlan) med "(+ Tilføj ny…)" inline oprettelse.
+- **frontend**: `js/views/import.js` — CSV format udvidet til `mac,group,description,owner,location,authz_vlan`.
+- **frontend**: `css/styles.css` — `.ca-row`, `.ca-add` styling for custom attribute felter.
+- **docs**: `ISE_API_REFERENCE.md` — tilføjet sektion om Custom Endpoint Attributes (ERS path, payloads, double-nesting).
+- **docs**: `FEATURES.md` — custom attributes feature markeret som done.
+- **.gitignore** — tilføjet `backend/custom_attr_values.json`.
+
 ## [1.0.0 build 0001] — 2026-04-16 — chore: versioneringssystem
 
 - **version**: oprettet `version.json` (`1.0.0` build `0001`) som single source of truth.

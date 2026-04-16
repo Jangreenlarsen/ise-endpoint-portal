@@ -41,4 +41,17 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(payload),
     }),
+  listCustomAttributes: () => request("/custom-attributes"),
+  addCustomAttributeValue: (name, value) =>
+    request(`/custom-attributes/${encodeURIComponent(name)}/values`, {
+      method: "POST",
+      body: JSON.stringify({ value }),
+    }),
+  removeCustomAttributeValue: (name, value) =>
+    request(
+      `/custom-attributes/${encodeURIComponent(name)}/values/${encodeURIComponent(value)}`,
+      { method: "DELETE" },
+    ),
+  syncCustomAttributes: () =>
+    request("/custom-attributes/sync", { method: "POST" }),
 };

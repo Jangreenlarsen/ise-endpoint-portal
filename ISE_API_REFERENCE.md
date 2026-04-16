@@ -290,6 +290,72 @@ Parse `ERSResponse.messages[0].title` for brugervenlig fejlbesked.
 
 ---
 
+## Custom Endpoint Attributes (ERS)
+
+### Path
+
+```
+/ers/config/endpointcustomattribute
+```
+
+Custom endpoint attributes er brugerdefinerede felter der kan knyttes til hvert endpoint. ISE håndhæver **ingen allowed values** — de er free-text String-felter. Portalen holder sine egne tilladte værdier lokalt i `backend/custom_attr_values.json`.
+
+### GET list (definitions)
+
+```
+GET /ers/config/endpointcustomattribute
+```
+
+```json
+{
+  "SearchResult": {
+    "resources": [
+      { "id": "attr-uuid", "name": "Owner" },
+      { "id": "attr-uuid", "name": "Location" }
+    ]
+  }
+}
+```
+
+### POST create definition
+
+```
+POST /ers/config/endpointcustomattribute
+```
+
+```json
+{
+  "ERSEndPointCustomAttribute": {
+    "attributeName": "Owner",
+    "attributeType": "String"
+  }
+}
+```
+
+**Response**: `201 Created`. Hvis attributten allerede eksisterer returneres `400`.
+
+### Brug i endpoints
+
+Custom attributes sættes ved endpoint create/update via den double-nested struktur:
+
+```json
+{
+  "ERSEndPoint": {
+    "customAttributes": {
+      "customAttributes": {
+        "Owner": "IT",
+        "Location": "BLR-1F",
+        "AuthzVlan": "VLAN100"
+      }
+    }
+  }
+}
+```
+
+Kun attributter med en ikke-tom værdi sendes. Tomme strenge udelades.
+
+---
+
 ## Gotchas & tips
 
 1. **`staticGroupAssignment: true`** — uden dette holder gruppetildelingen ikke; ISE re-profiler endpointet.

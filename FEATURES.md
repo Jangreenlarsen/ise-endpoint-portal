@@ -41,7 +41,7 @@ Alle nye features registreres her FØR implementering påbegyndes.
 ## Planlagte — Prioritet 3 (nice to have)
 
 - `[planned] — ANC quarantine actions` — "Quarantine" og "Clear" knapper per endpoint i Browse view. Bruger ERS `/ers/config/ancendpoint/apply` og `/clear`. Lag: backend (ise, services, api), frontend.
-- `[planned] — Custom attributes support` — vis og rediger custom attributes per endpoint (double-nested `customAttributes.customAttributes` objekt). Lag: backend (ise, schemas), frontend.
+- `[done] 2026-04-16 — Custom endpoint attributes (Owner, Location, AuthzVlan)` — dropdown-lister i Opret endpoint view med mulighed for at tilføje nye værdier. CSV import understøtter custom attr kolonner. Backend: lokal registry (`custom_attr_values.json`), ISE sync, attribute definition management. Lag: backend (core, ise, schemas, services, api), frontend (api, create view, import view).
 - `[planned] — SGT (Security Group Tag) tildeling` — vis/ændr `securityGroupId` per endpoint. Kræver lookup mod `/ers/config/sgt`. Lag: backend (ise, services), frontend.
 - `[planned] — Dark mode` — theme toggle i frontend preferences (CSS variabler). Lag: frontend.
 - `[planned] — Export til CSV` — "Download CSV" knap i Browse view der eksporterer nuværende liste. Lag: frontend.

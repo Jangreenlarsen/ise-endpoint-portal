@@ -49,10 +49,12 @@ class EndpointService:
 
     async def create_endpoint(self, req: CreateEndpointRequest) -> None:
         logger.info("creating endpoint mac=%s group=%s", req.mac, req.group_id)
+        ca = req.custom_attributes.model_dump() if req.custom_attributes else None
         await self.endpoints.create(
             mac=req.mac,
             group_id=req.group_id,
             description=req.description,
+            custom_attributes=ca,
         )
 
     async def delete_endpoint(self, endpoint_id: str) -> None:
@@ -65,10 +67,12 @@ class EndpointService:
             endpoint_id,
             update.model_dump(exclude_unset=True),
         )
+        ca = update.custom_attributes.model_dump() if update.custom_attributes else None
         await self.endpoints.update(
             endpoint_id,
             description=update.description,
             group_id=update.group_id,
+            custom_attributes=ca,
         )
 
     async def bulk_create(self, req: BulkCreateRequest) -> BulkResult:
