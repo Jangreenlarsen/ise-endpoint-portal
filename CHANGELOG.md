@@ -1,16 +1,27 @@
 # Changelog
 
 Alle kodeændringer registreres her. Nyeste øverst.
+Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
 ---
 
-## 2026-04-16 — docs: ISE API reference + prioriteret feature-backlog
+## [1.0.0 build 0001] — 2026-04-16 — chore: versioneringssystem
+
+- **version**: oprettet `version.json` (`1.0.0` build `0001`) som single source of truth.
+- **backend**: `app/core/version.py` læser `version.json`. FastAPI `version=` sættes dynamisk. `/api/health` returnerer nu `version`, `build`, `full`.
+- **backend**: `pyproject.toml` version sat til `1.0.0`.
+- **frontend**: sidebar viser version fra `/api/health` response i `#version-info`.
+- **frontend**: `css/styles.css` tilføjet `.version-label` styling.
+- **regler**: `CLAUDE.md` regel 1 (UFRAVIGELIG) definerer versioneringsformat (`MAJOR.MINOR.PATCH` + build), bump-regler, og workflow.
+- **changelog**: alle entries tagget med version + build.
+
+## [pre-release] — 2026-04-16 — docs: ISE API reference + prioriteret feature-backlog
 
 - **docs**: oprettet `ISE_API_REFERENCE.md` — ERS + Open API paths, payloads, filter-syntaks, bulk-throttling, status codes, error format, gotchas. Bruges som design-reference.
 - **docs**: `CLAUDE.md` regel 5 tilføjet — konsulter ISE_API_REFERENCE.md ved al ISE-integration.
 - **planning**: `FEATURES.md` opdateret med prioriteret backlog: P1 (bulk throttling, 409 skipped, server-side filter, Location header parse, ISE connectivity test), P2 (detalje-view, filter-operatorer, gruppevalg, pagination, Open API support), P3 (ANC quarantine, custom attributes, SGT, dark mode, CSV export, audit log).
 
-## 2026-04-15 — feat: sidebar + CRUD views + settings
+## [pre-release] — 2026-04-15 — feat: sidebar + CRUD views + settings
 
 - **backend**: `BulkCreateRequest`, `BulkResult`, `EndpointUpdate`, `BulkFailure` DTOs (`app/schemas/endpoint.py`).
 - **backend**: generisk `IseEndpointRepository.update()` erstatter `update_group()` (`app/ise/endpoints.py`).
@@ -28,9 +39,9 @@ Alle kodeændringer registreres her. Nyeste øverst.
 - **frontend**: `api.js` udvidet med `bulkCreateEndpoints`, `updateEndpoint`, `get/updateBackendSettings`.
 - **frontend**: komplet CSS-omskrivning til sidebar layout (`css/styles.css`).
 
-## 2026-04-15
+## [pre-release] — 2026-04-15 — chore: bootstrap
 
-- **git**: initialiseret git-repo, initial commit med projektstruktur. Versionskontrol og push til GitHub er nu del af workflow (se `CLAUDE.md` regel 7-8).
+- **git**: initialiseret git-repo, initial commit med projektstruktur.
 - **bootstrap**: oprettet projekt-regler og struktur — `CLAUDE.md`, `ARCHITECTURE.md`, `FEATURES.md`, `BUGS.md`, `CHANGELOG.md`, `.claude/settings.local.json`.
 - **backend**: FastAPI skeleton — `app/main.py`, `app/core/config.py`, `app/core/logging.py`, `app/core/exceptions.py`.
 - **backend**: ISE integrationslag — `app/ise/client.py` (async httpx), `app/ise/endpoints.py` (ERS endpoint + endpoint group kald).
@@ -38,5 +49,5 @@ Alle kodeændringer registreres her. Nyeste øverst.
 - **backend**: API-lag — `app/api/health.py`, `app/api/endpoints.py`, `app/api/groups.py`.
 - **backend**: DTOs — `app/schemas/endpoint.py`.
 - **backend**: pyproject.toml med FastAPI, httpx, pydantic, pytest, respx.
-- **frontend**: statisk web UI — `index.html`, `css/styles.css`, `js/api.js`, `js/app.js`. Viser endpoints og endpoint groups fra backend.
+- **frontend**: statisk web UI — `index.html`, `css/styles.css`, `js/api.js`, `js/app.js`.
 - **cleanup**: fjernet tidligere flad struktur (`src/ise_portal/`, rod `pyproject.toml`, `tests/`).

@@ -65,6 +65,13 @@ body {
 .backend-status .ok { color: #6ee7b7; }
 .backend-status .err { color: #fca5a5; }
 
+.version-label {
+  margin-top: 0.35rem;
+  font-size: 0.7rem;
+  color: rgba(203,213,225,0.6);
+  font-family: ui-monospace, "Cascadia Mono", Menlo, monospace;
+}
+
 /* Content */
 .content {
   padding: 2rem 2.5rem;

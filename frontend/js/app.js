@@ -14,11 +14,14 @@ const routes = {
   settings: renderSettings,
 };
 
+const versionEl = document.getElementById("version-info");
+
 async function checkHealth() {
   try {
-    await api.health();
+    const data = await api.health();
     statusDot.textContent = "ok";
     statusDot.className = "ok";
+    if (data?.full && versionEl) versionEl.textContent = `v${data.full}`;
   } catch {
     statusDot.textContent = "down";
     statusDot.className = "err";

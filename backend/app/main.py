@@ -9,6 +9,7 @@ from app.api import endpoints, groups, health
 from app.api import settings as settings_api
 from app.core.config import settings
 from app.core.logging import setup_logging
+from app.core.version import FULL as APP_VERSION, VERSION
 from app.ise.client import close_ise_client
 
 
@@ -21,7 +22,7 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(
     title="ISE Endpoint Portal",
-    version="0.1.0",
+    version=VERSION,
     lifespan=lifespan,
 )
 
