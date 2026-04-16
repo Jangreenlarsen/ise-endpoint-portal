@@ -290,49 +290,43 @@ Parse `ERSResponse.messages[0].title` for brugervenlig fejlbesked.
 
 ---
 
-## Custom Endpoint Attributes (ERS)
-
-### Path
-
-```
-/ers/config/endpointcustomattribute
-```
+## Custom Endpoint Attributes
 
 Custom endpoint attributes er brugerdefinerede felter der kan knyttes til hvert endpoint. ISE håndhæver **ingen allowed values** — de er free-text String-felter. Portalen holder sine egne tilladte værdier lokalt i `backend/custom_attr_values.json`.
 
-### GET list (definitions)
+### Vigtig begrænsning
+
+> **ERS API har INGEN sti til at oprette/administrere custom attribute *definitioner*.** Stien `/ers/config/endpointcustomattribute` returnerer **404**.
+>
+> Definitioner skal oprettes via **Open API** (`/api/v1/endpoint-custom-attribute`) eller manuelt i ISE GUI:
+> **Administration → Identity Management → Settings → Endpoint Custom Attributes**
+
+### Open API — definitioner (ISE 3.1+)
 
 ```
-GET /ers/config/endpointcustomattribute
+GET  /api/v1/endpoint-custom-attribute          — list definitions
+POST /api/v1/endpoint-custom-attribute          — create definition
 ```
 
+**Forudsætning**: Open API skal være aktiveret i ISE: **Administration → System → Settings → API Settings → Enable Open API**
+
+**POST payload** (flat JSON, ingen wrapper):
 ```json
 {
-  "SearchResult": {
-    "resources": [
-      { "id": "attr-uuid", "name": "Owner" },
-      { "id": "attr-uuid", "name": "Location" }
-    ]
-  }
+  "attributeName": "Owner",
+  "attributeType": "String"
 }
 ```
 
-### POST create definition
+**Response**: `201 Created`. Attribut der allerede eksisterer giver `400`.
 
-```
-POST /ers/config/endpointcustomattribute
-```
+### Manuel oprettelse (ISE GUI)
 
-```json
-{
-  "ERSEndPointCustomAttribute": {
-    "attributeName": "Owner",
-    "attributeType": "String"
-  }
-}
-```
-
-**Response**: `201 Created`. Hvis attributten allerede eksisterer returneres `400`.
+1. Log ind på ISE Admin
+2. Navigér til **Administration → Identity Management → Settings → Endpoint Custom Attributes**
+3. Klik **+**
+4. Indtast attribut-navn (f.eks. `Owner`) og vælg type `String`
+5. Gentag for `Location` og `AuthzVlan`
 
 ### Brug i endpoints
 

@@ -36,9 +36,19 @@ class EndpointService:
         global _ca_definitions_ensured
         if _ca_definitions_ensured:
             return
-        logger.info("ensuring custom attribute definitions exist in ISE")
+        logger.info("ensuring custom attribute definitions exist in ISE (via Open API)")
         results = await self.custom_attrs.ensure_definitions(MANAGED_ATTRS)
         logger.info("custom attribute definitions: %s", results)
+        failed = [name for name, ok in results.items() if not ok]
+        if failed:
+            logger.error(
+                "COULD NOT CREATE custom attribute definitions: %s. "
+                "Custom attributes will NOT be saved on endpoints until these "
+                "definitions exist in ISE. Create them manually: "
+                "Administration > Identity Management > Settings > "
+                "Endpoint Custom Attributes (type: String)",
+                failed,
+            )
         _ca_definitions_ensured = True
 
     async def list_endpoints(self, page: int = 1, size: int = 100) -> list[EndpointSummary]:

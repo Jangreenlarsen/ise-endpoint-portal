@@ -17,6 +17,8 @@ from app.ise.client import close_ise_client
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     setup_logging()
+    import logging
+    logging.getLogger(__name__).info("ISE Endpoint Portal %s starting", APP_VERSION)
     yield
     await close_ise_client()
 
