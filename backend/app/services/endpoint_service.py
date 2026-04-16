@@ -67,16 +67,36 @@ class EndpointService:
         """Fetch full endpoint details from ISE including custom attributes."""
         raw = await self.endpoints.get(endpoint_id)
         ca = _extract_custom_attrs(raw)
+        group_id = raw.get("groupId", "")
+        group_name = await self._resolve_group_name(group_id) if group_id else ""
         return EndpointDetail(
             id=raw.get("id", endpoint_id),
             name=raw.get("name", ""),
             mac=raw.get("mac", ""),
             description=raw.get("description"),
-            group_id=raw.get("groupId"),
+            group_id=group_id,
+            group_name=group_name,
             owner=ca.get("Owner", ""),
-            location=ca.get("Location", ""),
+            lokation=ca.get("Lokation", ""),
             authz_vlan=ca.get("AuthzVlan", ""),
         )
+
+    async def _resolve_group_name(self, group_id: str) -> str:
+        """Look up group name by ID. Returns empty string on failure."""
+        if not group_id:
+            return ""
+        if not hasattr(self, "_group_cache"):
+            self._group_cache: dict[str, str] = {}
+        if group_id in self._group_cache:
+            return self._group_cache[group_id]
+        # Populate cache from group list
+        try:
+            raw = await self.groups.list_all()
+            for g in raw:
+                self._group_cache[g.get("id", "")] = g.get("name", "")
+        except IseApiError:
+            pass
+        return self._group_cache.get(group_id, "")
 
     async def list_endpoint_details(
         self, page: int = 1, size: int = 100

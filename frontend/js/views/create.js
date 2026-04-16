@@ -4,7 +4,6 @@ const MAC_RE = /^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$/;
 
 /**
  * Build a <select> + inline "add new" for a custom attribute.
- * Returns the wrapper div element.
  */
 function buildAttrField(label, attrName, values) {
   const wrapper = document.createElement("div");
@@ -57,7 +56,6 @@ function wireAttrField(container, attrName, refreshSelects) {
       input.value = "";
       addDiv.classList.add("hidden");
       await refreshSelects();
-      // auto-select the newly added value
       const sel = container.querySelector(`#ca-${attrName}`);
       sel.value = val;
     } catch (err) {
@@ -79,8 +77,10 @@ export async function renderCreate(container) {
           <div class="hint">Format: <code>AA:BB:CC:DD:EE:FF</code> (kolon eller bindestreg)</div>
         </div>
         <div class="field">
-          <label for="group">Endpoint Group</label>
-          <select id="group" required></select>
+          <label for="group">Endpoint Group (valgfri)</label>
+          <select id="group">
+            <option value="">— ingen (ISE default) —</option>
+          </select>
         </div>
         <div class="field">
           <label for="description">Beskrivelse (valgfri)</label>
@@ -99,27 +99,24 @@ export async function renderCreate(container) {
   const msg = container.querySelector("#msg");
   const caContainer = container.querySelector("#custom-attrs");
 
-  // Load groups
+  // Load groups — add as options after the default empty option
   try {
     const groups = await api.listGroups();
-    if (!groups.length) {
-      msg.innerHTML = `<div class="alert info">Ingen endpoint groups hentet fra ISE.</div>`;
-    }
-    groupSelect.innerHTML = groups
+    const options = groups
       .map((g) => `<option value="${g.id}">${g.name}</option>`)
       .join("");
+    groupSelect.innerHTML = `<option value="">— ingen (ISE default) —</option>${options}`;
   } catch (err) {
     msg.innerHTML = `<div class="alert error">Kunne ikke hente groups: ${err.message}</div>`;
   }
 
-  // Map of attr name → display label
+  // Map of ISE attribute name → display label
   const attrLabels = {
     Owner: "Ejer (Owner)",
-    Location: "Lokation (Location)",
+    Lokation: "Lokation",
     AuthzVlan: "Authz VLAN",
   };
 
-  // Build and refresh custom attribute dropdowns
   async function refreshSelects() {
     try {
       const data = await api.listCustomAttributes();
@@ -141,7 +138,6 @@ export async function renderCreate(container) {
 
   await refreshSelects();
 
-  // Form submit
   container.querySelector("#create-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     msg.innerHTML = "";
@@ -151,7 +147,6 @@ export async function renderCreate(container) {
       return;
     }
 
-    // Collect custom attributes
     const ca = {};
     let hasCA = false;
     for (const name of Object.keys(attrLabels)) {

@@ -98,3 +98,6 @@ async def close_ise_client() -> None:
     if _client is not None:
         await _client.close()
         _client = None
+    # Reset custom attribute definitions flag so they're re-checked with new client
+    from app.services import endpoint_service
+    endpoint_service._ca_definitions_ensured = False

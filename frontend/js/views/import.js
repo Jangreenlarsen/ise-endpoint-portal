@@ -38,7 +38,7 @@ export async function renderImport(container) {
     <h2>Import fra CSV</h2>
     <div class="card">
       <p class="hint">
-        CSV format: <code>mac,group,description,owner,location,authz_vlan</code>.<br>
+        CSV format: <code>mac,group,description,owner,lokation,authz_vlan</code>.<br>
         De tre sidste kolonner (owner, location, authz_vlan) er valgfrie custom attributes.<br>
         Header-række er valgfri (auto-detekteres). Hvis <code>group</code> mangler bruges fallback-gruppen.
       </p>
@@ -48,7 +48,7 @@ export async function renderImport(container) {
       </div>
       <div class="field">
         <label for="csv-text">...eller indsæt CSV indhold direkte</label>
-        <textarea id="csv-text" placeholder="mac,group,description,owner,location,authz_vlan
+        <textarea id="csv-text" placeholder="mac,group,description,owner,lokation,authz_vlan
 AA:BB:CC:DD:EE:01,Unknown,lab device,IT,BLR-1F,VLAN100
 AA:BB:CC:DD:EE:02,Profiled,printer,Facilities,,VLAN200"></textarea>
       </div>
@@ -112,7 +112,7 @@ AA:BB:CC:DD:EE:02,Profiled,printer,Facilities,,VLAN200"></textarea>
           <thead>
             <tr>
               <th>#</th><th>MAC</th><th>Group (CSV)</th><th>Description</th>
-              ${hasCA ? "<th>Owner</th><th>Location</th><th>AuthzVlan</th>" : ""}
+              ${hasCA ? "<th>Owner</th><th>Lokation</th><th>AuthzVlan</th>" : ""}
               <th>Status</th>
             </tr>
           </thead>
@@ -156,7 +156,7 @@ AA:BB:CC:DD:EE:02,Profiled,printer,Facilities,,VLAN200"></textarea>
         const ca = {};
         let hasCA = false;
         if (p.owner) { ca.Owner = p.owner; hasCA = true; }
-        if (p.location) { ca.Location = p.location; hasCA = true; }
+        if (p.location) { ca.Lokation = p.location; hasCA = true; }
         if (p.authzVlan) { ca.AuthzVlan = p.authzVlan; hasCA = true; }
         if (hasCA) item.custom_attributes = ca;
         return item;

@@ -1,6 +1,6 @@
 import { api } from "../api.js";
 
-function escapeAttr(s) {
+function esc(s) {
   return (s || "").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 }
 
@@ -10,7 +10,8 @@ export async function renderBrowse(container) {
     <div class="card">
       <div class="toolbar">
         <button id="refresh-btn">Refresh</button>
-        <input type="text" id="filter" placeholder="Filter MAC..." style="padding: 0.4rem 0.6rem; border: 1px solid #d1d5db; border-radius: 3px;" />
+        <input type="text" id="filter" placeholder="Filter (MAC, owner, lokation...)"
+               style="padding:0.4rem 0.6rem;border:1px solid #d1d5db;border-radius:3px;min-width:220px;" />
         <div class="spacer"></div>
         <span id="count" class="hint"></span>
       </div>
@@ -19,16 +20,17 @@ export async function renderBrowse(container) {
         <table>
           <thead>
             <tr>
-              <th>Name (MAC)</th>
+              <th>MAC</th>
+              <th>Group</th>
               <th>Description</th>
               <th>Owner</th>
-              <th>Location</th>
+              <th>Lokation</th>
               <th>AuthzVlan</th>
-              <th style="width: 130px;">Actions</th>
+              <th style="width:120px;">Actions</th>
             </tr>
           </thead>
           <tbody id="tbody">
-            <tr><td colspan="6" class="empty">Indlæser...</td></tr>
+            <tr><td colspan="7" class="empty">Indlæser...</td></tr>
           </tbody>
         </table>
       </div>
@@ -40,28 +42,39 @@ export async function renderBrowse(container) {
   const count = container.querySelector("#count");
   const filterInput = container.querySelector("#filter");
   let allRows = [];
-  let caValues = { Owner: [], Location: [], AuthzVlan: [] };
+  let groups = [];
+  let caValues = { Owner: [], Lokation: [], AuthzVlan: [] };
 
   function optionsHtml(values, selected) {
     const opts = [`<option value="">—</option>`];
     for (const v of values) {
       const sel = v === selected ? " selected" : "";
-      opts.push(`<option value="${escapeAttr(v)}"${sel}>${escapeAttr(v)}</option>`);
+      opts.push(`<option value="${esc(v)}"${sel}>${esc(v)}</option>`);
+    }
+    return opts.join("");
+  }
+
+  function groupOptionsHtml(selectedId) {
+    const opts = [`<option value="">— ingen —</option>`];
+    for (const g of groups) {
+      const sel = g.id === selectedId ? " selected" : "";
+      opts.push(`<option value="${esc(g.id)}"${sel}>${esc(g.name)}</option>`);
     }
     return opts.join("");
   }
 
   function renderRows(rows) {
     if (!rows.length) {
-      tbody.innerHTML = `<tr><td colspan="6" class="empty">Ingen resultater</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" class="empty">Ingen resultater</td></tr>`;
       return;
     }
     tbody.innerHTML = rows.map((r) => `
-      <tr data-id="${escapeAttr(r.id)}">
-        <td>${escapeAttr(r.name)}</td>
-        <td><input type="text" class="desc-input" value="${escapeAttr(r.description || "")}" /></td>
+      <tr data-id="${esc(r.id)}">
+        <td class="mac-cell">${esc(r.mac || r.name)}</td>
+        <td><select class="grp-select">${groupOptionsHtml(r.group_id)}</select></td>
+        <td><input type="text" class="desc-input" value="${esc(r.description || "")}" /></td>
         <td><select class="ca-owner">${optionsHtml(caValues.Owner, r.owner)}</select></td>
-        <td><select class="ca-location">${optionsHtml(caValues.Location, r.location)}</select></td>
+        <td><select class="ca-lokation">${optionsHtml(caValues.Lokation, r.lokation)}</select></td>
         <td><select class="ca-authzvlan">${optionsHtml(caValues.AuthzVlan, r.authz_vlan)}</select></td>
         <td>
           <button class="save-btn small">Save</button>
@@ -72,16 +85,17 @@ export async function renderBrowse(container) {
   }
 
   async function load() {
-    tbody.innerHTML = `<tr><td colspan="6" class="empty">Indlæser detaljer fra ISE...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="empty">Henter detaljer fra ISE...</td></tr>`;
     msg.innerHTML = "";
     try {
-      // Load custom attribute allowed values and endpoint details in parallel
-      const [caData, details] = await Promise.all([
+      const [caData, grps, details] = await Promise.all([
         api.listCustomAttributes(),
+        api.listGroups(),
         api.listEndpointDetails(1, 100),
       ]);
+      groups = grps;
       for (const a of caData.attributes) {
-        caValues[a.name] = a.values;
+        if (a.name in caValues) caValues[a.name] = a.values;
       }
       allRows = details;
       count.textContent = `${allRows.length} endpoints`;
@@ -96,8 +110,11 @@ export async function renderBrowse(container) {
     const q = filterInput.value.toLowerCase().trim();
     const filtered = allRows.filter((r) =>
       (r.name || "").toLowerCase().includes(q) ||
+      (r.mac || "").toLowerCase().includes(q) ||
       (r.owner || "").toLowerCase().includes(q) ||
-      (r.location || "").toLowerCase().includes(q),
+      (r.lokation || "").toLowerCase().includes(q) ||
+      (r.description || "").toLowerCase().includes(q) ||
+      (r.group_name || "").toLowerCase().includes(q),
     );
     renderRows(filtered);
     count.textContent = `${filtered.length} / ${allRows.length} endpoints`;
@@ -107,43 +124,49 @@ export async function renderBrowse(container) {
     const tr = e.target.closest("tr");
     if (!tr) return;
     const id = tr.dataset.id;
+
     if (e.target.classList.contains("save-btn")) {
       const description = tr.querySelector(".desc-input").value;
+      const group_id = tr.querySelector(".grp-select").value;
       const owner = tr.querySelector(".ca-owner").value;
-      const location = tr.querySelector(".ca-location").value;
+      const lokation = tr.querySelector(".ca-lokation").value;
       const authzVlan = tr.querySelector(".ca-authzvlan").value;
-      const payload = { description };
-      // Include custom attributes if any value is set
-      if (owner || location || authzVlan) {
-        payload.custom_attributes = {
+
+      const payload = {
+        description,
+        group_id: group_id || null,
+        custom_attributes: {
           Owner: owner,
-          Location: location,
+          Lokation: lokation,
           AuthzVlan: authzVlan,
-        };
-      }
+        },
+      };
+
       try {
         await api.updateEndpoint(id, payload);
-        // Update local data
+        const mac = tr.querySelector(".mac-cell").textContent;
+        // Update local cache
         const row = allRows.find((r) => r.id === id);
         if (row) {
           row.description = description;
+          row.group_id = group_id;
           row.owner = owner;
-          row.location = location;
+          row.lokation = lokation;
           row.authz_vlan = authzVlan;
         }
-        msg.innerHTML = `<div class="alert success">Opdateret ${tr.querySelector("td").textContent}</div>`;
+        msg.innerHTML = `<div class="alert success">Opdateret ${mac}</div>`;
       } catch (err) {
         msg.innerHTML = `<div class="alert error">${err.message}</div>`;
       }
     } else if (e.target.classList.contains("del-btn")) {
-      const name = tr.querySelector("td").textContent;
-      if (!confirm(`Slet endpoint ${name}?`)) return;
+      const mac = tr.querySelector(".mac-cell").textContent;
+      if (!confirm(`Slet endpoint ${mac}?`)) return;
       try {
         await api.deleteEndpoint(id);
         tr.remove();
         allRows = allRows.filter((r) => r.id !== id);
         count.textContent = `${allRows.length} endpoints`;
-        msg.innerHTML = `<div class="alert success">Slettet ${name}</div>`;
+        msg.innerHTML = `<div class="alert success">Slettet ${mac}</div>`;
       } catch (err) {
         msg.innerHTML = `<div class="alert error">${err.message}</div>`;
       }

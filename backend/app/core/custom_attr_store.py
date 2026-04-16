@@ -13,7 +13,7 @@ from typing import Any
 STORE_FILE = Path(__file__).resolve().parents[2] / "custom_attr_values.json"
 
 # The three custom attributes this portal manages.
-MANAGED_ATTRS = ["Owner", "Location", "AuthzVlan"]
+MANAGED_ATTRS = ["Owner", "Lokation", "AuthzVlan"]
 
 
 def _default() -> dict[str, list[str]]:

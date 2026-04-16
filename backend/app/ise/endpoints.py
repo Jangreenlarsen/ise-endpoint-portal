@@ -31,7 +31,7 @@ class IseEndpointRepository:
     async def create(
         self,
         mac: str,
-        group_id: str,
+        group_id: str = "",
         *,
         description: str = "",
         static: bool = True,
@@ -41,9 +41,10 @@ class IseEndpointRepository:
             "name": mac,
             "description": description,
             "mac": mac,
-            "groupId": group_id,
-            "staticGroupAssignment": static,
         }
+        if group_id:
+            ers["groupId"] = group_id
+            ers["staticGroupAssignment"] = static
         if custom_attributes:
             non_empty = {k: v for k, v in custom_attributes.items() if v}
             if non_empty:

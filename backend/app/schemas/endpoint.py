@@ -13,8 +13,9 @@ class EndpointDetail(BaseModel):
     mac: str = ""
     description: str | None = None
     group_id: str | None = None
+    group_name: str = ""
     owner: str = ""
-    location: str = ""
+    lokation: str = ""
     authz_vlan: str = ""
 
 
@@ -26,13 +27,13 @@ class EndpointGroupSummary(BaseModel):
 
 class CustomAttrs(BaseModel):
     Owner: str = ""
-    Location: str = ""
+    Lokation: str = ""
     AuthzVlan: str = ""
 
 
 class CreateEndpointRequest(BaseModel):
     mac: str = Field(..., description="MAC address, e.g. AA:BB:CC:DD:EE:FF")
-    group_id: str
+    group_id: str = ""
     description: str = ""
     custom_attributes: CustomAttrs | None = None
 
