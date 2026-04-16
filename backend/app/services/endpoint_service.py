@@ -1,15 +1,19 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
+from app.core.custom_attr_store import MANAGED_ATTRS
 from app.core.exceptions import IseApiError
 from app.ise.client import IseClient
+from app.ise.custom_attributes import IseCustomAttributeRepository
 from app.ise.endpoints import IseEndpointGroupRepository, IseEndpointRepository
 from app.schemas.endpoint import (
     BulkCreateRequest,
     BulkFailure,
     BulkResult,
     CreateEndpointRequest,
+    EndpointDetail,
     EndpointGroupSummary,
     EndpointSummary,
     EndpointUpdate,
@@ -17,11 +21,25 @@ from app.schemas.endpoint import (
 
 logger = logging.getLogger(__name__)
 
+# Module-level flag: have we ensured custom attribute definitions in ISE this session?
+_ca_definitions_ensured = False
+
 
 class EndpointService:
     def __init__(self, client: IseClient) -> None:
         self.endpoints = IseEndpointRepository(client)
         self.groups = IseEndpointGroupRepository(client)
+        self.custom_attrs = IseCustomAttributeRepository(client)
+
+    async def _ensure_ca_definitions(self) -> None:
+        """Ensure Owner/Location/AuthzVlan definitions exist in ISE (once per session)."""
+        global _ca_definitions_ensured
+        if _ca_definitions_ensured:
+            return
+        logger.info("ensuring custom attribute definitions exist in ISE")
+        results = await self.custom_attrs.ensure_definitions(MANAGED_ATTRS)
+        logger.info("custom attribute definitions: %s", results)
+        _ca_definitions_ensured = True
 
     async def list_endpoints(self, page: int = 1, size: int = 100) -> list[EndpointSummary]:
         raw = await self.endpoints.list_page(page=page, size=size)
@@ -34,6 +52,43 @@ class EndpointService:
             )
             for r in raw
         ]
+
+    async def get_endpoint(self, endpoint_id: str) -> EndpointDetail:
+        """Fetch full endpoint details from ISE including custom attributes."""
+        raw = await self.endpoints.get(endpoint_id)
+        ca = _extract_custom_attrs(raw)
+        return EndpointDetail(
+            id=raw.get("id", endpoint_id),
+            name=raw.get("name", ""),
+            mac=raw.get("mac", ""),
+            description=raw.get("description"),
+            group_id=raw.get("groupId"),
+            owner=ca.get("Owner", ""),
+            location=ca.get("Location", ""),
+            authz_vlan=ca.get("AuthzVlan", ""),
+        )
+
+    async def list_endpoint_details(
+        self, page: int = 1, size: int = 100
+    ) -> list[EndpointDetail]:
+        """List endpoints with full details (fetches each individually for custom attrs)."""
+        resources = await self.endpoints.list_page(page=page, size=size)
+        logger.info("fetching details for %d endpoints (page=%d)", len(resources), page)
+        details: list[EndpointDetail] = []
+        for r in resources:
+            try:
+                detail = await self.get_endpoint(r["id"])
+                details.append(detail)
+            except IseApiError:
+                details.append(
+                    EndpointDetail(
+                        id=r.get("id", ""),
+                        name=r.get("name", ""),
+                        mac=r.get("name", ""),
+                        description=r.get("description"),
+                    )
+                )
+        return details
 
     async def list_groups(self) -> list[EndpointGroupSummary]:
         raw = await self.groups.list_all()
@@ -50,6 +105,8 @@ class EndpointService:
     async def create_endpoint(self, req: CreateEndpointRequest) -> None:
         logger.info("creating endpoint mac=%s group=%s", req.mac, req.group_id)
         ca = req.custom_attributes.model_dump() if req.custom_attributes else None
+        if ca:
+            await self._ensure_ca_definitions()
         await self.endpoints.create(
             mac=req.mac,
             group_id=req.group_id,
@@ -68,6 +125,8 @@ class EndpointService:
             update.model_dump(exclude_unset=True),
         )
         ca = update.custom_attributes.model_dump() if update.custom_attributes else None
+        if ca:
+            await self._ensure_ca_definitions()
         await self.endpoints.update(
             endpoint_id,
             description=update.description,
@@ -77,6 +136,9 @@ class EndpointService:
 
     async def bulk_create(self, req: BulkCreateRequest) -> BulkResult:
         logger.info("bulk creating %d endpoints", len(req.items))
+        # Pre-ensure definitions if any item has custom attributes
+        if any(item.custom_attributes for item in req.items):
+            await self._ensure_ca_definitions()
         succeeded: list[str] = []
         failed: list[BulkFailure] = []
         for item in req.items:
@@ -87,3 +149,13 @@ class EndpointService:
                 failed.append(BulkFailure(mac=item.mac, error=str(exc)))
         logger.info("bulk done: %d ok, %d failed", len(succeeded), len(failed))
         return BulkResult(succeeded=succeeded, failed=failed)
+
+
+def _extract_custom_attrs(endpoint: dict[str, Any]) -> dict[str, str]:
+    """Extract custom attributes from an ERSEndPoint response."""
+    ca = endpoint.get("customAttributes", {})
+    if isinstance(ca, dict):
+        inner = ca.get("customAttributes", ca)
+        if isinstance(inner, dict):
+            return {k: str(v) for k, v in inner.items()}
+    return {}

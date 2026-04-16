@@ -6,6 +6,7 @@ from app.schemas.endpoint import (
     BulkCreateRequest,
     BulkResult,
     CreateEndpointRequest,
+    EndpointDetail,
     EndpointSummary,
     EndpointUpdate,
 )
@@ -22,6 +23,30 @@ async def list_endpoints(
 ) -> list[EndpointSummary]:
     try:
         return await service.list_endpoints(page=page, size=size)
+    except IseApiError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+@router.get("/details", response_model=list[EndpointDetail])
+async def list_endpoint_details(
+    page: int = 1,
+    size: int = 100,
+    service: EndpointService = Depends(get_endpoint_service),
+) -> list[EndpointDetail]:
+    """List endpoints with full details including custom attributes."""
+    try:
+        return await service.list_endpoint_details(page=page, size=size)
+    except IseApiError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+@router.get("/{endpoint_id}", response_model=EndpointDetail)
+async def get_endpoint(
+    endpoint_id: str,
+    service: EndpointService = Depends(get_endpoint_service),
+) -> EndpointDetail:
+    try:
+        return await service.get_endpoint(endpoint_id)
     except IseApiError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 

@@ -276,6 +276,8 @@ Backend eksponerer følgende REST API-endpoints under `/api`:
 | Metode | Path | Beskrivelse |
 |--------|------|-------------|
 | GET | `/api/endpoints?page=1&size=100` | Hent liste af endpoints (pagineret) |
+| GET | `/api/endpoints/details?page=1&size=100` | Hent liste med fuld detalje inkl. custom attributes |
+| GET | `/api/endpoints/{id}` | Hent enkelt endpoint med alle felter |
 | POST | `/api/endpoints` | Opret enkelt endpoint |
 | POST | `/api/endpoints/bulk` | Bulk-opret endpoints |
 | PUT | `/api/endpoints/{id}` | Opdater endpoint (description, group, custom attrs) |

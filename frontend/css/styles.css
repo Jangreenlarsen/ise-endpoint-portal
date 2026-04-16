@@ -234,3 +234,15 @@ button.small {
   padding: 0.35rem 0.65rem;
   font-size: 0.78rem;
 }
+
+/* Browse table */
+.browse-table-wrap {
+  overflow-x: auto;
+}
+.browse-table-wrap select {
+  width: 100%;
+  padding: 0.3rem 0.4rem;
+  font-size: 0.82rem;
+  border: 1px solid #d1d5db;
+  border-radius: 3px;
+}

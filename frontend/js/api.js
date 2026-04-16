@@ -23,6 +23,9 @@ export const api = {
   health: () => request("/health"),
   listEndpoints: (page = 1, size = 100) =>
     request(`/endpoints?page=${page}&size=${size}`),
+  listEndpointDetails: (page = 1, size = 100) =>
+    request(`/endpoints/details?page=${page}&size=${size}`),
+  getEndpoint: (id) => request(`/endpoints/${encodeURIComponent(id)}`),
   listGroups: () => request("/groups"),
   createEndpoint: (payload) =>
     request("/endpoints", { method: "POST", body: JSON.stringify(payload) }),

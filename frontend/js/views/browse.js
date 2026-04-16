@@ -15,19 +15,23 @@ export async function renderBrowse(container) {
         <span id="count" class="hint"></span>
       </div>
       <div id="msg"></div>
-      <table>
-        <thead>
-          <tr>
-            <th>Name (MAC)</th>
-            <th style="width: 280px;">ID</th>
-            <th>Description</th>
-            <th style="width: 150px;">Actions</th>
-          </tr>
-        </thead>
-        <tbody id="tbody">
-          <tr><td colspan="4" class="empty">Indlæser...</td></tr>
-        </tbody>
-      </table>
+      <div class="browse-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Name (MAC)</th>
+              <th>Description</th>
+              <th>Owner</th>
+              <th>Location</th>
+              <th>AuthzVlan</th>
+              <th style="width: 130px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tbody">
+            <tr><td colspan="6" class="empty">Indlæser...</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   `;
 
@@ -36,30 +40,50 @@ export async function renderBrowse(container) {
   const count = container.querySelector("#count");
   const filterInput = container.querySelector("#filter");
   let allRows = [];
+  let caValues = { Owner: [], Location: [], AuthzVlan: [] };
+
+  function optionsHtml(values, selected) {
+    const opts = [`<option value="">—</option>`];
+    for (const v of values) {
+      const sel = v === selected ? " selected" : "";
+      opts.push(`<option value="${escapeAttr(v)}"${sel}>${escapeAttr(v)}</option>`);
+    }
+    return opts.join("");
+  }
 
   function renderRows(rows) {
     if (!rows.length) {
-      tbody.innerHTML = `<tr><td colspan="4" class="empty">Ingen resultater</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6" class="empty">Ingen resultater</td></tr>`;
       return;
     }
     tbody.innerHTML = rows.map((r) => `
       <tr data-id="${escapeAttr(r.id)}">
         <td>${escapeAttr(r.name)}</td>
-        <td><code style="font-size: 0.75rem;">${escapeAttr(r.id)}</code></td>
         <td><input type="text" class="desc-input" value="${escapeAttr(r.description || "")}" /></td>
+        <td><select class="ca-owner">${optionsHtml(caValues.Owner, r.owner)}</select></td>
+        <td><select class="ca-location">${optionsHtml(caValues.Location, r.location)}</select></td>
+        <td><select class="ca-authzvlan">${optionsHtml(caValues.AuthzVlan, r.authz_vlan)}</select></td>
         <td>
-          <button class="save-btn">Save</button>
-          <button class="danger del-btn">Del</button>
+          <button class="save-btn small">Save</button>
+          <button class="danger small del-btn">Del</button>
         </td>
       </tr>
     `).join("");
   }
 
   async function load() {
-    tbody.innerHTML = `<tr><td colspan="4" class="empty">Indlæser...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="empty">Indlæser detaljer fra ISE...</td></tr>`;
     msg.innerHTML = "";
     try {
-      allRows = await api.listEndpoints(1, 100);
+      // Load custom attribute allowed values and endpoint details in parallel
+      const [caData, details] = await Promise.all([
+        api.listCustomAttributes(),
+        api.listEndpointDetails(1, 100),
+      ]);
+      for (const a of caData.attributes) {
+        caValues[a.name] = a.values;
+      }
+      allRows = details;
       count.textContent = `${allRows.length} endpoints`;
       renderRows(allRows);
     } catch (err) {
@@ -71,7 +95,9 @@ export async function renderBrowse(container) {
   filterInput.addEventListener("input", () => {
     const q = filterInput.value.toLowerCase().trim();
     const filtered = allRows.filter((r) =>
-      (r.name || "").toLowerCase().includes(q),
+      (r.name || "").toLowerCase().includes(q) ||
+      (r.owner || "").toLowerCase().includes(q) ||
+      (r.location || "").toLowerCase().includes(q),
     );
     renderRows(filtered);
     count.textContent = `${filtered.length} / ${allRows.length} endpoints`;
@@ -83,20 +109,41 @@ export async function renderBrowse(container) {
     const id = tr.dataset.id;
     if (e.target.classList.contains("save-btn")) {
       const description = tr.querySelector(".desc-input").value;
+      const owner = tr.querySelector(".ca-owner").value;
+      const location = tr.querySelector(".ca-location").value;
+      const authzVlan = tr.querySelector(".ca-authzvlan").value;
+      const payload = { description };
+      // Include custom attributes if any value is set
+      if (owner || location || authzVlan) {
+        payload.custom_attributes = {
+          Owner: owner,
+          Location: location,
+          AuthzVlan: authzVlan,
+        };
+      }
       try {
-        await api.updateEndpoint(id, { description });
-        msg.innerHTML = `<div class="alert success">Opdateret ${id}</div>`;
+        await api.updateEndpoint(id, payload);
+        // Update local data
+        const row = allRows.find((r) => r.id === id);
+        if (row) {
+          row.description = description;
+          row.owner = owner;
+          row.location = location;
+          row.authz_vlan = authzVlan;
+        }
+        msg.innerHTML = `<div class="alert success">Opdateret ${tr.querySelector("td").textContent}</div>`;
       } catch (err) {
         msg.innerHTML = `<div class="alert error">${err.message}</div>`;
       }
     } else if (e.target.classList.contains("del-btn")) {
-      if (!confirm(`Slet endpoint ${id}?`)) return;
+      const name = tr.querySelector("td").textContent;
+      if (!confirm(`Slet endpoint ${name}?`)) return;
       try {
         await api.deleteEndpoint(id);
         tr.remove();
         allRows = allRows.filter((r) => r.id !== id);
         count.textContent = `${allRows.length} endpoints`;
-        msg.innerHTML = `<div class="alert success">Slettet ${id}</div>`;
+        msg.innerHTML = `<div class="alert success">Slettet ${name}</div>`;
       } catch (err) {
         msg.innerHTML = `<div class="alert error">${err.message}</div>`;
       }

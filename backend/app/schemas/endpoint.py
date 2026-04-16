@@ -7,6 +7,17 @@ class EndpointSummary(BaseModel):
     description: str | None = None
 
 
+class EndpointDetail(BaseModel):
+    id: str
+    name: str
+    mac: str = ""
+    description: str | None = None
+    group_id: str | None = None
+    owner: str = ""
+    location: str = ""
+    authz_vlan: str = ""
+
+
 class EndpointGroupSummary(BaseModel):
     id: str
     name: str
