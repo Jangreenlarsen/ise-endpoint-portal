@@ -29,6 +29,7 @@ Alle nye features registreres her FØR implementering påbegyndes.
 - `[planned] 2026-04-16 — Server-side filter/search` — brug ERS filter-syntaks (`?filter=mac.CONTAINS.xx`) i `/api/endpoints` så Browse view ikke er begrænset til max 100 endpoints client-side. Tilføj `?search=` query param i backend router der oversættes til ERS filter. Lag: backend (api, ise). Ref: [ISE_API_REFERENCE.md § Filter syntax](ISE_API_REFERENCE.md).
 - `[planned] 2026-04-16 — Parse Location header efter POST` — ERS returnerer `Location: .../endpoint/{uuid}` ved 201 Created. Parse dette for at returnere det nye endpoint-ID direkte, i stedet for en follow-up GET. Lag: backend (ise client, endpoints repository).
 - `[planned] 2026-04-16 — ISE connectivity test` — "Test forbindelse" knap i Settings der prøver en autenticeret GET mod ISE og viser success/fejl uden at gemme. Giver bruger feedback inden save. Lag: backend (api/settings ny route), frontend (settings view).
+- `[done] 2026-04-16 — CSV export template` — erstat hardkodet 100+ kolonner med brugerdefinerbar CSV-template (default: 34 kolonner fra ISE). Template kan importeres fra CSV-fil (header-only) og persisteres i localStorage. Lag: frontend (csv.js, settings view).
 
 ## Planlagte — Prioritet 2 (bør have)
 

@@ -1,4 +1,5 @@
 import { api } from "../api.js";
+import { getCsvTemplate, setCsvTemplate, resetCsvTemplate, parseTemplateHeader } from "../csv.js";
 
 const FRONTEND_PREFS_KEY = "ise_portal_prefs";
 
@@ -63,6 +64,27 @@ export async function renderSettings(container) {
     </div>
 
     <div class="card">
+      <h3>CSV Export Template</h3>
+      <p class="hint">
+        Definerer hvilke kolonner der inkluderes ved CSV-eksport fra Browse view.
+        Importér en CSV-fil (kun header-rækken bruges) for at sætte en ny template.
+      </p>
+      <div id="csv-tpl-msg"></div>
+      <div class="field">
+        <label>Aktiv template (<span id="csv-tpl-count">0</span> kolonner)</label>
+        <textarea id="csv-tpl-preview" rows="3" readonly
+                  style="font-size:0.82rem;background:#f9fafb;"></textarea>
+      </div>
+      <div class="field">
+        <label for="csv-tpl-file">Importér template fra CSV-fil</label>
+        <input type="file" id="csv-tpl-file" accept=".csv,text/csv,text/plain" />
+      </div>
+      <div class="actions">
+        <button type="button" id="csv-tpl-reset">Nulstil til standard</button>
+      </div>
+    </div>
+
+    <div class="card">
       <h3>Frontend — preferences</h3>
       <p class="hint">Gemmes lokalt i browser <code>localStorage</code>.</p>
       <div id="frontend-msg"></div>
@@ -123,6 +145,38 @@ export async function renderSettings(container) {
     } catch (err) {
       backendMsg.innerHTML = `<div class="alert error">${err.message}</div>`;
     }
+  });
+
+  // CSV template
+  const csvTplMsg = container.querySelector("#csv-tpl-msg");
+  const csvTplPreview = container.querySelector("#csv-tpl-preview");
+  const csvTplCount = container.querySelector("#csv-tpl-count");
+
+  function refreshTplPreview() {
+    const tpl = getCsvTemplate();
+    csvTplPreview.value = tpl.join(", ");
+    csvTplCount.textContent = tpl.length;
+  }
+  refreshTplPreview();
+
+  container.querySelector("#csv-tpl-file").addEventListener("change", async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const text = await file.text();
+    const columns = parseTemplateHeader(text);
+    if (!columns.length) {
+      csvTplMsg.innerHTML = `<div class="alert error">Ingen kolonner fundet i filen.</div>`;
+      return;
+    }
+    setCsvTemplate(columns);
+    refreshTplPreview();
+    csvTplMsg.innerHTML = `<div class="alert success">Template importeret — ${columns.length} kolonner. Fremtidige exports bruger denne template.</div>`;
+  });
+
+  container.querySelector("#csv-tpl-reset").addEventListener("click", () => {
+    resetCsvTemplate();
+    refreshTplPreview();
+    csvTplMsg.innerHTML = `<div class="alert success">Template nulstillet til standard (${getCsvTemplate().length} kolonner).</div>`;
   });
 
   // Frontend prefs

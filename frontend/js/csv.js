@@ -5,60 +5,65 @@
  *   - RFC 4180: double-quoted fields, commas inside quotes
  *   - Custom attributes prefixed with CUSTOM. (e.g. CUSTOM.Owner)
  *   - Values sometimes wrapped in single quotes: "'value'"
- *   - 100+ columns — most empty
+ *   - Column template is user-configurable (default: 34 ISE columns)
  */
 
 const MAC_RE = /^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$/;
 
-// Full ISE 3.4 CSV header (from Context Visibility export)
-const ISE_COLUMNS = [
+const CSV_TEMPLATE_KEY = "ise_portal_csv_template";
+
+// Default 34-column ISE template
+const DEFAULT_TEMPLATE = [
   "MACAddress","EndPointPolicy","IdentityGroup",
-  "AuthenticationIdentityStore","AuthenticationMethod",
-  "AllowedProtocolMatchedRule","AuthorizationPolicyMatchedRule",
-  "SelectedAuthorizationProfiles","Description",
-  "DeviceRegistrationStatus","BYODRegistration","Device Type",
-  "EmailAddress","ip","ipv6","FirstName","host-name","LastName",
-  "LogicalProfile","Total Certainty Factor","MDMCompliant",
-  "MDMCompliantFailureReason","MDMDiskEncrypted","MDMJailBroken",
-  "MDMPinLockSet","MDMServerID","MDMServerName","MDMEnrolled",
-  "NADAddress","Location","NAS-IP-Address","NAS-IPv6-Address",
-  "NAS-Port-Id","UserName","NetworkDeviceName","operating-system",
-  "operating-system-result","PostureOS","OS Version","OUI",
-  "PortalUser","PosturePolicyMatched","PostureStatus","User-Name",
-  "StaticAssignment","StaticGroupAssignment","UpdateTime",
-  "MessageCode","FailureReason","UserType","EndpointIdentityGroup",
-  "EndpointOperatingSystem","MDMOSVersion","PortalUser.FirstName",
-  "PortalUser.LastName","PortalUser.EmailAddress",
-  "PortalUser.PhoneNumber","PortalUser.GuestType",
-  "PortalUser.GuestStatus","PortalUser.Location",
-  "PortalUser.GuestSponsor","PortalUser.CreationType","AUPAccepted",
-  "EndPointGroup","EndPointProfilerServer","cts-security-group",
-  "AntiVirusInstalled","AntiSpywareInstalled","Failure_Reason",
-  "PassiveID_Username","DeviceCompliance","AD-Operating-System",
-  "Certificate Expiration Date","Certificate Issue Date",
-  "Certificate Issuer Name","User-Fetch-Department",
-  "User-Fetch-Telephone","User-Fetch-Job-Title",
-  "User-Fetch-Organizational-Unit","User-Fetch-CountryName",
-  "User-Fetch-LocalityName","User-Fetch-StateOrProvinceName",
-  "User-Fetch-StreetAddress","User-Fetch-First-Name",
-  "User-Fetch-Email","User-Fetch-Last-Name","SSID","DTLSSupport",
-  "Portal.Name","RegistrationTimeStamp","AnomalousBehaviour",
-  "PhoneID","posturePassCondition","postureFailCondition","MDM-GUID",
-  "epid","PreviousMACAddress","DEVICE_INFO_MODEL_NAME",
-  "DEVICE_INFO_OS_VERSION","DEVICE_INFO_MANUFACTURER_NAME",
-  "DEVICE_INFO_VENDOR_TYPE","DEVICE_INFO_MODEL_NUM",
-  "DEVICE_INFO_FIRMWARE_VERSION","DEVICE_INFO_HW_MODEL",
-  "MFCInfoHardwareManufacturer","MFCInfoHardwareModel",
-  "MFCInfoOperatingSystem","MFCInfoEndpointType",
-  "MFCInfoEndpointPolicy","CUSTOM.AuthzVlan","CUSTOM.Lokation",
-  "CUSTOM.Owner","EA-deviceType","EA-hardwareManufacturer",
-  "EA-hardwareModel","EA-operatingSystem","EA-trustScore",
-  "EA-groupHierarchy","EA-aiAnomalyResult","EA-natAnomalyResult",
-  "EA-mfcAnomalyResult","EA-cmdbAssetTag","EA-cmdbModelCategory",
-  "EA-cmdbModel","EA-cmdbLocation","EA-cmdbDepartment",
-  "EA-cmdbDisplayName","EA-cmdbManagedBy","EA-cmdbSerialNumber",
-  "EA-concurrentMacAddressResult",
+  "PortalUser.GuestType","Description","PortalUser.Location",
+  "PortalUser.GuestStatus","StaticAssignment","User-Name",
+  "DeviceRegistrationStatus","PortalUser.CreationType","AUPAccepted",
+  "PortalUser.EmailAddress","PortalUser.PhoneNumber","FirstName",
+  "ip","Device Type","host-name","StaticGroupAssignment",
+  "MDMEnrolled","MDMOSVersion","PortalUser.LastName",
+  "PortalUser.GuestSponsor","EmailAddress","PortalUser",
+  "PortalUser.FirstName","BYODRegistration","MDMServerName",
+  "LastName","MDMServerID","Location",
+  "CUSTOM.Owner","CUSTOM.AuthzVlan","CUSTOM.Lokation",
 ];
+
+/**
+ * Get the active CSV export template (from localStorage or default).
+ */
+export function getCsvTemplate() {
+  try {
+    const stored = localStorage.getItem(CSV_TEMPLATE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch { /* ignore */ }
+  return DEFAULT_TEMPLATE;
+}
+
+/**
+ * Save a custom CSV export template to localStorage.
+ */
+export function setCsvTemplate(columns) {
+  localStorage.setItem(CSV_TEMPLATE_KEY, JSON.stringify(columns));
+}
+
+/**
+ * Reset to the built-in default template.
+ */
+export function resetCsvTemplate() {
+  localStorage.removeItem(CSV_TEMPLATE_KEY);
+}
+
+/**
+ * Parse a CSV header line and return the column names as an array.
+ * Useful for importing a template from a file.
+ */
+export function parseTemplateHeader(text) {
+  const lines = text.split(/\r?\n/).filter((l) => l.trim());
+  if (!lines.length) return [];
+  return parseRow(lines[0]).map((h) => h.trim()).filter(Boolean);
+}
 
 /**
  * Parse an RFC 4180 CSV line respecting quoted fields.
@@ -201,26 +206,27 @@ function csvQuote(val) {
 /**
  * Generate ISE-compatible CSV from endpoint detail rows.
  *
- * Fills in: MACAddress, IdentityGroup, Description, StaticAssignment,
- * StaticGroupAssignment, CUSTOM.AuthzVlan, CUSTOM.Lokation, CUSTOM.Owner.
- * All other columns are empty.
+ * Uses the active CSV template (user-configurable, persisted in localStorage).
+ * Fills in known fields; all other columns are empty.
  */
 export function toIseCsv(rows) {
+  const template = getCsvTemplate();
+
   // Build column index for the fields we populate
   const colIdx = {};
-  ISE_COLUMNS.forEach((c, i) => { colIdx[c] = i; });
+  template.forEach((c, i) => { colIdx[c] = i; });
 
-  const headerLine = ISE_COLUMNS.map(csvQuote).join(",");
+  const headerLine = template.map(csvQuote).join(",");
   const dataLines = rows.map((r) => {
-    const cells = new Array(ISE_COLUMNS.length).fill("");
-    cells[colIdx["MACAddress"]] = r.mac || r.name || "";
-    cells[colIdx["IdentityGroup"]] = r.group_name || "";
-    cells[colIdx["Description"]] = r.description || "";
-    cells[colIdx["StaticAssignment"]] = r.group_name ? "true" : "false";
-    cells[colIdx["StaticGroupAssignment"]] = r.group_name ? "true" : "false";
-    cells[colIdx["CUSTOM.AuthzVlan"]] = r.authz_vlan || "";
-    cells[colIdx["CUSTOM.Lokation"]] = r.lokation || "";
-    cells[colIdx["CUSTOM.Owner"]] = r.owner || "";
+    const cells = new Array(template.length).fill("");
+    if ("MACAddress" in colIdx) cells[colIdx["MACAddress"]] = r.mac || r.name || "";
+    if ("IdentityGroup" in colIdx) cells[colIdx["IdentityGroup"]] = r.group_name || "";
+    if ("Description" in colIdx) cells[colIdx["Description"]] = r.description || "";
+    if ("StaticAssignment" in colIdx) cells[colIdx["StaticAssignment"]] = r.group_name ? "true" : "false";
+    if ("StaticGroupAssignment" in colIdx) cells[colIdx["StaticGroupAssignment"]] = r.group_name ? "true" : "false";
+    if ("CUSTOM.AuthzVlan" in colIdx) cells[colIdx["CUSTOM.AuthzVlan"]] = r.authz_vlan || "";
+    if ("CUSTOM.Lokation" in colIdx) cells[colIdx["CUSTOM.Lokation"]] = r.lokation || "";
+    if ("CUSTOM.Owner" in colIdx) cells[colIdx["CUSTOM.Owner"]] = r.owner || "";
     return cells.map(csvQuote).join(",");
   });
 
