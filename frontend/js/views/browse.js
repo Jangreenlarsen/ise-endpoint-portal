@@ -23,7 +23,7 @@ export async function renderBrowse(container) {
           <thead>
             <tr>
               <th>MAC</th>
-              <th>Group</th>
+              <th>Identity Group</th>
               <th>Description</th>
               <th>Owner</th>
               <th>Lokation</th>
@@ -129,14 +129,28 @@ export async function renderBrowse(container) {
 
     if (e.target.classList.contains("save-btn")) {
       const description = tr.querySelector(".desc-input").value;
-      const group_id = tr.querySelector(".grp-select").value;
+      const selectedGroupId = tr.querySelector(".grp-select").value;
       const owner = tr.querySelector(".ca-owner").value;
       const lokation = tr.querySelector(".ca-lokation").value;
       const authzVlan = tr.querySelector(".ca-authzvlan").value;
 
+      // "— ingen —" → move to Unknown group with staticGroupAssignment disabled
+      let group_id = selectedGroupId || null;
+      let static_group_assignment = null;
+      if (!selectedGroupId) {
+        const unknownGroup = groups.find(
+          (g) => g.name.toLowerCase() === "unknown",
+        );
+        if (unknownGroup) {
+          group_id = unknownGroup.id;
+          static_group_assignment = false;
+        }
+      }
+
       const payload = {
         description,
-        group_id: group_id || null,
+        group_id,
+        static_group_assignment,
         custom_attributes: {
           Owner: owner,
           Lokation: lokation,

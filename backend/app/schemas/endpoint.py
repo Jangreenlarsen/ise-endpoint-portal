@@ -55,4 +55,5 @@ class BulkResult(BaseModel):
 class EndpointUpdate(BaseModel):
     description: str | None = None
     group_id: str | None = None
+    static_group_assignment: bool | None = None
     custom_attributes: CustomAttrs | None = None

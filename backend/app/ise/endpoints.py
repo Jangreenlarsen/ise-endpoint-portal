@@ -57,6 +57,7 @@ class IseEndpointRepository:
         *,
         description: str | None = None,
         group_id: str | None = None,
+        static_group_assignment: bool | None = None,
         custom_attributes: dict[str, str] | None = None,
     ) -> None:
         fields: dict[str, Any] = {"id": endpoint_id}
@@ -64,7 +65,11 @@ class IseEndpointRepository:
             fields["description"] = description
         if group_id is not None:
             fields["groupId"] = group_id
-            fields["staticGroupAssignment"] = True
+            fields["staticGroupAssignment"] = (
+                static_group_assignment if static_group_assignment is not None else True
+            )
+        elif static_group_assignment is not None:
+            fields["staticGroupAssignment"] = static_group_assignment
         if custom_attributes:
             non_empty = {k: v for k, v in custom_attributes.items() if v}
             if non_empty:

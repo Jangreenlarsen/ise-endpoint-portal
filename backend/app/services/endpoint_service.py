@@ -161,6 +161,7 @@ class EndpointService:
             endpoint_id,
             description=update.description,
             group_id=update.group_id,
+            static_group_assignment=update.static_group_assignment,
             custom_attributes=ca,
         )
 
