@@ -230,6 +230,35 @@ td input, td select {
 }
 .ca-add input { flex: 1; }
 .ca-add.hidden { display: none; }
+
+/* Attribute tags (Attributter page) */
+.attr-values { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.attr-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: #e8ecf1;
+  border-radius: 3px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.85rem;
+}
+/* Active toggle for portal filter */
+.active-toggle {
+  background: #0b3d91 !important;
+  color: #fff !important;
+  border-color: #0b3d91 !important;
+}
+
+.attr-tag .attr-del {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #e53e3e;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0 0.15rem;
+}
+
 button.small {
   padding: 0.35rem 0.65rem;
   font-size: 0.78rem;

@@ -31,6 +31,8 @@ Alle nye features registreres her FØR implementering påbegyndes.
 - `[planned] 2026-04-16 — ISE connectivity test` — "Test forbindelse" knap i Settings der prøver en autenticeret GET mod ISE og viser success/fejl uden at gemme. Giver bruger feedback inden save. Lag: backend (api/settings ny route), frontend (settings view).
 - `[done] 2026-04-16 — CSV export template` — erstat hardkodet 100+ kolonner med brugerdefinerbar CSV-template (default: 34 kolonner fra ISE). Template kan importeres fra CSV-fil (header-only) og persisteres i localStorage. Lag: frontend (csv.js, settings view).
 - `[done] 2026-04-16 — Identity Group "ingen" → Unknown` — "— ingen —" i Browse/Edit group-dropdown flytter endpoint til Unknown-gruppen og disabler staticGroupAssignment. Kolonne omdøbt til "Identity Group". Lag: backend (schemas, ise, services), frontend (browse view).
+- `[done] 2026-04-17 — Custom attribute "Type" + Attributter-side` — nyt custom attribute "Type". Ny sidebar-side "Attributter" til at administrere værdier for Type, Owner, Lokation, AuthzVlan. Lag: backend (core, schemas, ise, services), frontend (ny view, sidebar, create, browse, import, csv).
+- `[done] 2026-04-17 — HypervisionISEPortal skjult attribut + filter` — usynligt custom attribute "HypervisionISEPortal" sættes automatisk ved oprettelse og redigering. Toggle-knap i Browse/Edit for at vise kun portal-endpoints vs. alle. Lag: backend (core, ise, services), frontend (browse view).
 
 ## Planlagte — Prioritet 2 (bør have)
 

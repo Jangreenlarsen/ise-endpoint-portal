@@ -16,7 +16,7 @@ export async function renderImport(container) {
         <strong>ISE format</strong> — CSV eksporteret fra ISE Context Visibility
         (kolonner: <code>MACAddress</code>, <code>IdentityGroup</code>, <code>Description</code>,
         <code>CUSTOM.Owner</code>, <code>CUSTOM.Lokation</code>, <code>CUSTOM.AuthzVlan</code>).<br>
-        <strong>Simpelt format</strong> — <code>mac,group,description,owner,lokation,authz_vlan</code>
+        <strong>Simpelt format</strong> — <code>mac,group,description,type,owner,lokation,authz_vlan</code>
         (header valgfri).<br>
         Format detekteres automatisk. Hvis <code>group</code> mangler bruges fallback-gruppen.
       </p>
@@ -26,9 +26,9 @@ export async function renderImport(container) {
       </div>
       <div class="field">
         <label for="csv-text">...eller indsæt CSV indhold direkte</label>
-        <textarea id="csv-text" placeholder="mac,group,description,owner,lokation,authz_vlan
-AA:BB:CC:DD:EE:01,Unknown,lab device,IT,kontor1,VLAN100
-AA:BB:CC:DD:EE:02,Profiled,printer,Facilities,,VLAN200"></textarea>
+        <textarea id="csv-text" placeholder="mac,group,description,type,owner,lokation,authz_vlan
+AA:BB:CC:DD:EE:01,Unknown,lab device,Printer,IT,kontor1,VLAN100
+AA:BB:CC:DD:EE:02,Profiled,printer,Camera,Facilities,,VLAN200"></textarea>
       </div>
       <div class="field">
         <label for="fallback-group">Fallback endpoint group</label>
@@ -81,7 +81,7 @@ AA:BB:CC:DD:EE:02,Profiled,printer,Facilities,,VLAN200"></textarea>
     }
     const valid = parsed.filter((p) => p.valid).length;
     const invalid = parsed.length - valid;
-    const hasCA = parsed.some((p) => p.owner || p.lokation || p.authzVlan);
+    const hasCA = parsed.some((p) => p.endpointType || p.owner || p.lokation || p.authzVlan);
     preview.innerHTML = `
       <div class="alert info">
         Detekteret format: <strong>${format === "ise" ? "ISE CSV" : "Simpelt"}</strong> —
@@ -92,7 +92,7 @@ AA:BB:CC:DD:EE:02,Profiled,printer,Facilities,,VLAN200"></textarea>
           <thead>
             <tr>
               <th>#</th><th>MAC</th><th>Group</th><th>Description</th>
-              ${hasCA ? "<th>Owner</th><th>Lokation</th><th>AuthzVlan</th>" : ""}
+              ${hasCA ? "<th>Type</th><th>Owner</th><th>Lokation</th><th>AuthzVlan</th>" : ""}
               <th>Status</th>
             </tr>
           </thead>
@@ -104,6 +104,7 @@ AA:BB:CC:DD:EE:02,Profiled,printer,Facilities,,VLAN200"></textarea>
                 <td>${p.groupName ? escapeHtml(p.groupName) : "<em>fallback</em>"}</td>
                 <td>${escapeHtml(p.description)}</td>
                 ${hasCA ? `
+                  <td>${escapeHtml(p.endpointType)}</td>
                   <td>${escapeHtml(p.owner)}</td>
                   <td>${escapeHtml(p.lokation)}</td>
                   <td>${escapeHtml(p.authzVlan)}</td>
@@ -134,6 +135,7 @@ AA:BB:CC:DD:EE:02,Profiled,printer,Facilities,,VLAN200"></textarea>
         };
         const ca = {};
         let hasCA = false;
+        if (p.endpointType) { ca.Type = p.endpointType; hasCA = true; }
         if (p.owner) { ca.Owner = p.owner; hasCA = true; }
         if (p.lokation) { ca.Lokation = p.lokation; hasCA = true; }
         if (p.authzVlan) { ca.AuthzVlan = p.authzVlan; hasCA = true; }

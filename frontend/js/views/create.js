@@ -112,6 +112,7 @@ export async function renderCreate(container) {
 
   // Map of ISE attribute name → display label
   const attrLabels = {
+    Type: "Type",
     Owner: "Ejer (Owner)",
     Lokation: "Lokation",
     AuthzVlan: "Authz VLAN",

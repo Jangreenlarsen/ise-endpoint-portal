@@ -12,8 +12,14 @@ from typing import Any
 
 STORE_FILE = Path(__file__).resolve().parents[2] / "custom_attr_values.json"
 
-# The three custom attributes this portal manages.
-MANAGED_ATTRS = ["Owner", "Lokation", "AuthzVlan"]
+# Custom attributes this portal manages (user-editable).
+MANAGED_ATTRS = ["Type", "Owner", "Lokation", "AuthzVlan"]
+
+# Hidden attribute — set automatically, not shown in UI dropdowns.
+HIDDEN_ATTR = "HypervisionISEPortal"
+
+# All attributes that need ISE definitions (managed + hidden).
+ALL_ATTRS = MANAGED_ATTRS + [HIDDEN_ATTR]
 
 
 def _default() -> dict[str, list[str]]:

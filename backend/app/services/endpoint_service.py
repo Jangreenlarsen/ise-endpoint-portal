@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from app.core.custom_attr_store import MANAGED_ATTRS
+from app.core.custom_attr_store import ALL_ATTRS, HIDDEN_ATTR
 from app.core.exceptions import IseApiError
 from app.ise.client import IseClient
 from app.ise.custom_attributes import IseCustomAttributeRepository
@@ -32,12 +32,12 @@ class EndpointService:
         self.custom_attrs = IseCustomAttributeRepository(client)
 
     async def _ensure_ca_definitions(self) -> None:
-        """Ensure Owner/Location/AuthzVlan definitions exist in ISE (once per session)."""
+        """Ensure all custom attribute definitions exist in ISE (once per session)."""
         global _ca_definitions_ensured
         if _ca_definitions_ensured:
             return
         logger.info("ensuring custom attribute definitions exist in ISE (via Open API)")
-        results = await self.custom_attrs.ensure_definitions(MANAGED_ATTRS)
+        results = await self.custom_attrs.ensure_definitions(ALL_ATTRS)
         logger.info("custom attribute definitions: %s", results)
         failed = [name for name, ok in results.items() if not ok]
         if failed:
@@ -76,9 +76,11 @@ class EndpointService:
             description=raw.get("description"),
             group_id=group_id,
             group_name=group_name,
+            endpoint_type=ca.get("Type", ""),
             owner=ca.get("Owner", ""),
             lokation=ca.get("Lokation", ""),
             authz_vlan=ca.get("AuthzVlan", ""),
+            hypervision=ca.get("HypervisionISEPortal", ""),
         )
 
     async def _resolve_group_name(self, group_id: str) -> str:
@@ -134,9 +136,10 @@ class EndpointService:
 
     async def create_endpoint(self, req: CreateEndpointRequest) -> None:
         logger.info("creating endpoint mac=%s group=%s", req.mac, req.group_id)
-        ca = req.custom_attributes.model_dump() if req.custom_attributes else None
-        if ca:
-            await self._ensure_ca_definitions()
+        ca = req.custom_attributes.model_dump() if req.custom_attributes else {}
+        # Always stamp endpoints created by this portal
+        ca[HIDDEN_ATTR] = "true"
+        await self._ensure_ca_definitions()
         await self.endpoints.create(
             mac=req.mac,
             group_id=req.group_id,
@@ -154,9 +157,10 @@ class EndpointService:
             endpoint_id,
             update.model_dump(exclude_unset=True),
         )
-        ca = update.custom_attributes.model_dump() if update.custom_attributes else None
-        if ca:
-            await self._ensure_ca_definitions()
+        ca = update.custom_attributes.model_dump() if update.custom_attributes else {}
+        # Always stamp endpoints edited through this portal
+        ca[HIDDEN_ATTR] = "true"
+        await self._ensure_ca_definitions()
         await self.endpoints.update(
             endpoint_id,
             description=update.description,

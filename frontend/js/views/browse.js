@@ -12,7 +12,8 @@ export async function renderBrowse(container) {
       <div class="toolbar">
         <button id="refresh-btn">Refresh</button>
         <button id="export-btn" class="secondary">Export CSV</button>
-        <input type="text" id="filter" placeholder="Filter (MAC, owner, lokation...)"
+        <button id="portal-filter-btn" class="secondary" title="Vis kun endpoints oprettet af Hypervision ISE Portal">Kun portal</button>
+        <input type="text" id="filter" placeholder="Filter (MAC, type, owner, lokation...)"
                style="padding:0.4rem 0.6rem;border:1px solid #d1d5db;border-radius:3px;min-width:220px;" />
         <div class="spacer"></div>
         <span id="count" class="hint"></span>
@@ -25,6 +26,7 @@ export async function renderBrowse(container) {
               <th>MAC</th>
               <th>Identity Group</th>
               <th>Description</th>
+              <th>Type</th>
               <th>Owner</th>
               <th>Lokation</th>
               <th>AuthzVlan</th>
@@ -32,7 +34,7 @@ export async function renderBrowse(container) {
             </tr>
           </thead>
           <tbody id="tbody">
-            <tr><td colspan="7" class="empty">Indlæser...</td></tr>
+            <tr><td colspan="8" class="empty">Indlæser...</td></tr>
           </tbody>
         </table>
       </div>
@@ -43,9 +45,11 @@ export async function renderBrowse(container) {
   const msg = container.querySelector("#msg");
   const count = container.querySelector("#count");
   const filterInput = container.querySelector("#filter");
+  const portalFilterBtn = container.querySelector("#portal-filter-btn");
   let allRows = [];
   let groups = [];
-  let caValues = { Owner: [], Lokation: [], AuthzVlan: [] };
+  let caValues = { Type: [], Owner: [], Lokation: [], AuthzVlan: [] };
+  let portalOnly = false;
 
   function optionsHtml(values, selected) {
     const opts = [`<option value="">—</option>`];
@@ -65,9 +69,29 @@ export async function renderBrowse(container) {
     return opts.join("");
   }
 
+  function getVisibleRows() {
+    let rows = allRows;
+    if (portalOnly) {
+      rows = rows.filter((r) => r.hypervision === "true");
+    }
+    const q = filterInput.value.toLowerCase().trim();
+    if (q) {
+      rows = rows.filter((r) =>
+        (r.name || "").toLowerCase().includes(q) ||
+        (r.mac || "").toLowerCase().includes(q) ||
+        (r.endpoint_type || "").toLowerCase().includes(q) ||
+        (r.owner || "").toLowerCase().includes(q) ||
+        (r.lokation || "").toLowerCase().includes(q) ||
+        (r.description || "").toLowerCase().includes(q) ||
+        (r.group_name || "").toLowerCase().includes(q),
+      );
+    }
+    return rows;
+  }
+
   function renderRows(rows) {
     if (!rows.length) {
-      tbody.innerHTML = `<tr><td colspan="7" class="empty">Ingen resultater</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8" class="empty">Ingen resultater</td></tr>`;
       return;
     }
     tbody.innerHTML = rows.map((r) => `
@@ -75,6 +99,7 @@ export async function renderBrowse(container) {
         <td class="mac-cell">${esc(r.mac || r.name)}</td>
         <td><select class="grp-select">${groupOptionsHtml(r.group_id)}</select></td>
         <td><input type="text" class="desc-input" value="${esc(r.description || "")}" /></td>
+        <td><select class="ca-type">${optionsHtml(caValues.Type, r.endpoint_type)}</select></td>
         <td><select class="ca-owner">${optionsHtml(caValues.Owner, r.owner)}</select></td>
         <td><select class="ca-lokation">${optionsHtml(caValues.Lokation, r.lokation)}</select></td>
         <td><select class="ca-authzvlan">${optionsHtml(caValues.AuthzVlan, r.authz_vlan)}</select></td>
@@ -86,8 +111,21 @@ export async function renderBrowse(container) {
     `).join("");
   }
 
+  function applyFilter() {
+    const visible = getVisibleRows();
+    renderRows(visible);
+    const total = portalOnly
+      ? allRows.filter((r) => r.hypervision === "true").length
+      : allRows.length;
+    if (filterInput.value.trim()) {
+      count.textContent = `${visible.length} / ${total} endpoints`;
+    } else {
+      count.textContent = `${visible.length} endpoints`;
+    }
+  }
+
   async function load() {
-    tbody.innerHTML = `<tr><td colspan="7" class="empty">Henter detaljer fra ISE...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="empty">Henter detaljer fra ISE...</td></tr>`;
     msg.innerHTML = "";
     try {
       const [caData, grps, details] = await Promise.all([
@@ -100,26 +138,21 @@ export async function renderBrowse(container) {
         if (a.name in caValues) caValues[a.name] = a.values;
       }
       allRows = details;
-      count.textContent = `${allRows.length} endpoints`;
-      renderRows(allRows);
+      applyFilter();
     } catch (err) {
       msg.innerHTML = `<div class="alert error">${err.message}</div>`;
       tbody.innerHTML = "";
     }
   }
 
-  filterInput.addEventListener("input", () => {
-    const q = filterInput.value.toLowerCase().trim();
-    const filtered = allRows.filter((r) =>
-      (r.name || "").toLowerCase().includes(q) ||
-      (r.mac || "").toLowerCase().includes(q) ||
-      (r.owner || "").toLowerCase().includes(q) ||
-      (r.lokation || "").toLowerCase().includes(q) ||
-      (r.description || "").toLowerCase().includes(q) ||
-      (r.group_name || "").toLowerCase().includes(q),
-    );
-    renderRows(filtered);
-    count.textContent = `${filtered.length} / ${allRows.length} endpoints`;
+  filterInput.addEventListener("input", applyFilter);
+
+  // Portal-only toggle
+  portalFilterBtn.addEventListener("click", () => {
+    portalOnly = !portalOnly;
+    portalFilterBtn.textContent = portalOnly ? "Vis alle" : "Kun portal";
+    portalFilterBtn.classList.toggle("active-toggle", portalOnly);
+    applyFilter();
   });
 
   tbody.addEventListener("click", async (e) => {
@@ -130,6 +163,7 @@ export async function renderBrowse(container) {
     if (e.target.classList.contains("save-btn")) {
       const description = tr.querySelector(".desc-input").value;
       const selectedGroupId = tr.querySelector(".grp-select").value;
+      const endpointType = tr.querySelector(".ca-type").value;
       const owner = tr.querySelector(".ca-owner").value;
       const lokation = tr.querySelector(".ca-lokation").value;
       const authzVlan = tr.querySelector(".ca-authzvlan").value;
@@ -152,6 +186,7 @@ export async function renderBrowse(container) {
         group_id,
         static_group_assignment,
         custom_attributes: {
+          Type: endpointType,
           Owner: owner,
           Lokation: lokation,
           AuthzVlan: authzVlan,
@@ -166,6 +201,7 @@ export async function renderBrowse(container) {
         if (row) {
           row.description = description;
           row.group_id = group_id;
+          row.endpoint_type = endpointType;
           row.owner = owner;
           row.lokation = lokation;
           row.authz_vlan = authzVlan;
@@ -181,7 +217,7 @@ export async function renderBrowse(container) {
         await api.deleteEndpoint(id);
         tr.remove();
         allRows = allRows.filter((r) => r.id !== id);
-        count.textContent = `${allRows.length} endpoints`;
+        applyFilter();
         msg.innerHTML = `<div class="alert success">Slettet ${mac}</div>`;
       } catch (err) {
         msg.innerHTML = `<div class="alert error">${err.message}</div>`;
@@ -192,14 +228,15 @@ export async function renderBrowse(container) {
   container.querySelector("#refresh-btn").addEventListener("click", load);
 
   container.querySelector("#export-btn").addEventListener("click", () => {
-    if (!allRows.length) {
+    const visible = getVisibleRows();
+    if (!visible.length) {
       msg.innerHTML = `<div class="alert info">Ingen endpoints at eksportere.</div>`;
       return;
     }
-    const csv = toIseCsv(allRows);
+    const csv = toIseCsv(visible);
     const date = new Date().toISOString().slice(0, 10);
     downloadCsv(csv, `ise-endpoints-${date}.csv`);
-    msg.innerHTML = `<div class="alert success">Eksporteret ${allRows.length} endpoints.</div>`;
+    msg.innerHTML = `<div class="alert success">Eksporteret ${visible.length} endpoints.</div>`;
   });
 
   await load();

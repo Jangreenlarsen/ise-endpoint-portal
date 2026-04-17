@@ -4,6 +4,7 @@ import logging
 from typing import Any
 
 from app.core.custom_attr_store import (
+    ALL_ATTRS,
     MANAGED_ATTRS,
     add_value,
     load_values,
@@ -56,8 +57,8 @@ class CustomAttributeService:
         and ensure attribute definitions exist in ISE."""
         logger.info("syncing custom attributes from ISE")
 
-        # 1. Ensure attribute definitions exist in ISE
-        defs = await self.attrs.ensure_definitions(MANAGED_ATTRS)
+        # 1. Ensure attribute definitions exist in ISE (including hidden)
+        defs = await self.attrs.ensure_definitions(ALL_ATTRS)
 
         # 2. Scan endpoint pages to discover used values
         discovered: dict[str, set[str]] = {a: set() for a in MANAGED_ATTRS}

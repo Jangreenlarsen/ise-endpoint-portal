@@ -24,7 +24,8 @@ const DEFAULT_TEMPLATE = [
   "PortalUser.GuestSponsor","EmailAddress","PortalUser",
   "PortalUser.FirstName","BYODRegistration","MDMServerName",
   "LastName","MDMServerID","Location",
-  "CUSTOM.Owner","CUSTOM.AuthzVlan","CUSTOM.Lokation",
+  "CUSTOM.Type","CUSTOM.Owner","CUSTOM.AuthzVlan","CUSTOM.Lokation",
+  "CUSTOM.HypervisionISEPortal",
 ];
 
 /**
@@ -153,6 +154,7 @@ function parseIseFormat(headerLower, headerRaw, lines) {
   const macCol = idx["macaddress"];
   const groupCol = idx["identitygroup"];
   const descCol = idx["description"];
+  const customType = idx["custom.type"];
   const customAuthz = idx["custom.authzvlan"];
   const customLok = idx["custom.lokation"];
   const customOwner = idx["custom.owner"];
@@ -164,11 +166,12 @@ function parseIseFormat(headerLower, headerRaw, lines) {
     if (!mac) continue;
     const groupName = stripQuotes((fields[groupCol] || "").trim());
     const description = stripQuotes((fields[descCol] || "").trim());
+    const endpointType = stripQuotes((fields[customType] != null ? fields[customType] : "").trim());
     const authzVlan = stripQuotes((fields[customAuthz] != null ? fields[customAuthz] : "").trim());
     const lokation = stripQuotes((fields[customLok] != null ? fields[customLok] : "").trim());
     const owner = stripQuotes((fields[customOwner] != null ? fields[customOwner] : "").trim());
     items.push({
-      mac, groupName, description, owner, lokation, authzVlan,
+      mac, groupName, description, endpointType, owner, lokation, authzVlan,
       valid: MAC_RE.test(mac),
     });
   }
@@ -183,9 +186,10 @@ function parseSimpleFormat(lines, startIdx) {
       mac: parts[0] || "",
       groupName: parts[1] || "",
       description: parts[2] || "",
-      owner: parts[3] || "",
-      lokation: parts[4] || "",
-      authzVlan: parts[5] || "",
+      endpointType: parts[3] || "",
+      owner: parts[4] || "",
+      lokation: parts[5] || "",
+      authzVlan: parts[6] || "",
       valid: MAC_RE.test((parts[0] || "").trim()),
     });
   }
@@ -224,9 +228,11 @@ export function toIseCsv(rows) {
     if ("Description" in colIdx) cells[colIdx["Description"]] = r.description || "";
     if ("StaticAssignment" in colIdx) cells[colIdx["StaticAssignment"]] = r.group_name ? "true" : "false";
     if ("StaticGroupAssignment" in colIdx) cells[colIdx["StaticGroupAssignment"]] = r.group_name ? "true" : "false";
+    if ("CUSTOM.Type" in colIdx) cells[colIdx["CUSTOM.Type"]] = r.endpoint_type || "";
     if ("CUSTOM.AuthzVlan" in colIdx) cells[colIdx["CUSTOM.AuthzVlan"]] = r.authz_vlan || "";
     if ("CUSTOM.Lokation" in colIdx) cells[colIdx["CUSTOM.Lokation"]] = r.lokation || "";
     if ("CUSTOM.Owner" in colIdx) cells[colIdx["CUSTOM.Owner"]] = r.owner || "";
+    if ("CUSTOM.HypervisionISEPortal" in colIdx) cells[colIdx["CUSTOM.HypervisionISEPortal"]] = r.hypervision || "";
     return cells.map(csvQuote).join(",");
   });
 

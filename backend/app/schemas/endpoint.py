@@ -14,9 +14,11 @@ class EndpointDetail(BaseModel):
     description: str | None = None
     group_id: str | None = None
     group_name: str = ""
+    endpoint_type: str = ""
     owner: str = ""
     lokation: str = ""
     authz_vlan: str = ""
+    hypervision: str = ""
 
 
 class EndpointGroupSummary(BaseModel):
@@ -26,6 +28,7 @@ class EndpointGroupSummary(BaseModel):
 
 
 class CustomAttrs(BaseModel):
+    Type: str = ""
     Owner: str = ""
     Lokation: str = ""
     AuthzVlan: str = ""

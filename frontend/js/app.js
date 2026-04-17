@@ -2,6 +2,7 @@ import { api } from "./api.js";
 import { renderCreate } from "./views/create.js";
 import { renderImport } from "./views/import.js";
 import { renderBrowse } from "./views/browse.js";
+import { renderAttributes } from "./views/attributes.js";
 import { renderSettings } from "./views/settings.js";
 
 const statusDot = document.getElementById("status-dot");
@@ -11,6 +12,7 @@ const routes = {
   create: renderCreate,
   import: renderImport,
   browse: renderBrowse,
+  attributes: renderAttributes,
   settings: renderSettings,
 };
 
