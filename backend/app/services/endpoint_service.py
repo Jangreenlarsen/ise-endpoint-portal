@@ -76,6 +76,7 @@ class EndpointService:
             description=raw.get("description"),
             group_id=group_id,
             group_name=group_name,
+            static_group=bool(raw.get("staticGroupAssignment", False)),
             endpoint_type=ca.get("Type", ""),
             owner=ca.get("Owner", ""),
             lokation=ca.get("Lokation", ""),

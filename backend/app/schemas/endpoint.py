@@ -14,6 +14,7 @@ class EndpointDetail(BaseModel):
     description: str | None = None
     group_id: str | None = None
     group_name: str = ""
+    static_group: bool = False
     endpoint_type: str = ""
     owner: str = ""
     lokation: str = ""

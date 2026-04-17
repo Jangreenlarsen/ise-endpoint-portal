@@ -25,6 +25,7 @@ export async function renderBrowse(container) {
             <tr>
               <th>MAC</th>
               <th>Identity Group</th>
+              <th>Tilknytning</th>
               <th>Description</th>
               <th>Type</th>
               <th>Owner</th>
@@ -34,7 +35,7 @@ export async function renderBrowse(container) {
             </tr>
           </thead>
           <tbody id="tbody">
-            <tr><td colspan="8" class="empty">Indlæser...</td></tr>
+            <tr><td colspan="9" class="empty">Indlæser...</td></tr>
           </tbody>
         </table>
       </div>
@@ -91,13 +92,14 @@ export async function renderBrowse(container) {
 
   function renderRows(rows) {
     if (!rows.length) {
-      tbody.innerHTML = `<tr><td colspan="8" class="empty">Ingen resultater</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="9" class="empty">Ingen resultater</td></tr>`;
       return;
     }
     tbody.innerHTML = rows.map((r) => `
       <tr data-id="${esc(r.id)}">
         <td class="mac-cell">${esc(r.mac || r.name)}</td>
         <td><select class="grp-select">${groupOptionsHtml(r.group_id)}</select></td>
+        <td class="assign-cell">${r.static_group ? "Statisk" : "Dynamisk"}</td>
         <td><input type="text" class="desc-input" value="${esc(r.description || "")}" /></td>
         <td><select class="ca-type">${optionsHtml(caValues.Type, r.endpoint_type)}</select></td>
         <td><select class="ca-owner">${optionsHtml(caValues.Owner, r.owner)}</select></td>
@@ -125,7 +127,7 @@ export async function renderBrowse(container) {
   }
 
   async function load() {
-    tbody.innerHTML = `<tr><td colspan="8" class="empty">Henter detaljer fra ISE...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="empty">Henter detaljer fra ISE...</td></tr>`;
     msg.innerHTML = "";
     try {
       const [caData, grps, details] = await Promise.all([
