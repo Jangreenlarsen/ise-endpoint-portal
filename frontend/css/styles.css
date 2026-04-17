@@ -264,6 +264,35 @@ button.small {
   font-size: 0.78rem;
 }
 
+/* Column filter row */
+.filter-row th {
+  padding: 0.2rem 0.3rem;
+  background: #f0f2f5;
+}
+.col-filter {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.col-filter-toggle {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+.col-filter-toggle input { margin: 0; }
+.col-filter-input {
+  width: 100%;
+  padding: 0.2rem 0.35rem;
+  font-size: 0.78rem;
+  border: 1px solid #d1d5db;
+  border-radius: 3px;
+  font-family: monospace;
+}
+.col-filter-input:disabled {
+  background: #e9ecef;
+  color: #999;
+}
+
 /* Browse table */
 .browse-table-wrap {
   overflow-x: auto;

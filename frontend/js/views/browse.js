@@ -5,6 +5,18 @@ function esc(s) {
   return (s || "").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 }
 
+// Column definitions: key = data field accessor, label = header text
+const COLUMNS = [
+  { key: "mac",            label: "MAC",            field: (r) => r.mac || r.name },
+  { key: "group_name",     label: "Identity Group", field: (r) => r.group_name },
+  { key: "static_group",   label: "Tilknytning",    field: (r) => r.static_group ? "Statisk" : "Dynamisk" },
+  { key: "description",    label: "Description",    field: (r) => r.description },
+  { key: "endpoint_type",  label: "Type",           field: (r) => r.endpoint_type },
+  { key: "owner",          label: "Owner",          field: (r) => r.owner },
+  { key: "lokation",       label: "Lokation",       field: (r) => r.lokation },
+  { key: "authz_vlan",     label: "AuthzVlan",      field: (r) => r.authz_vlan },
+];
+
 export async function renderBrowse(container) {
   container.innerHTML = `
     <h2>Browse / Edit endpoints</h2>
@@ -12,9 +24,7 @@ export async function renderBrowse(container) {
       <div class="toolbar">
         <button id="refresh-btn">Refresh</button>
         <button id="export-btn" class="secondary">Export CSV</button>
-        <button id="portal-filter-btn" class="secondary" title="Vis kun endpoints oprettet af Hypervision ISE Portal">Kun portal</button>
-        <input type="text" id="filter" placeholder="Filter (MAC, type, owner, lokation...)"
-               style="padding:0.4rem 0.6rem;border:1px solid #d1d5db;border-radius:3px;min-width:220px;" />
+        <button id="portal-filter-btn" class="secondary" title="Vis kun endpoints oprettet af HyperVision ISE Portal">Kun portal</button>
         <div class="spacer"></div>
         <span id="count" class="hint"></span>
       </div>
@@ -23,19 +33,25 @@ export async function renderBrowse(container) {
         <table>
           <thead>
             <tr>
-              <th>MAC</th>
-              <th>Identity Group</th>
-              <th>Tilknytning</th>
-              <th>Description</th>
-              <th>Type</th>
-              <th>Owner</th>
-              <th>Lokation</th>
-              <th>AuthzVlan</th>
+              ${COLUMNS.map((c) => `<th>${c.label}</th>`).join("")}
               <th style="width:120px;">Actions</th>
+            </tr>
+            <tr class="filter-row">
+              ${COLUMNS.map((c) => `
+                <th>
+                  <div class="col-filter">
+                    <label class="col-filter-toggle" title="Aktivér filter for ${c.label}">
+                      <input type="checkbox" class="col-filter-cb" data-col="${c.key}" />
+                    </label>
+                    <input type="text" class="col-filter-input" data-col="${c.key}"
+                           placeholder="regex..." disabled />
+                  </div>
+                </th>`).join("")}
+              <th></th>
             </tr>
           </thead>
           <tbody id="tbody">
-            <tr><td colspan="9" class="empty">Indlæser...</td></tr>
+            <tr><td colspan="${COLUMNS.length + 1}" class="empty">Indlæser...</td></tr>
           </tbody>
         </table>
       </div>
@@ -45,12 +61,26 @@ export async function renderBrowse(container) {
   const tbody = container.querySelector("#tbody");
   const msg = container.querySelector("#msg");
   const count = container.querySelector("#count");
-  const filterInput = container.querySelector("#filter");
   const portalFilterBtn = container.querySelector("#portal-filter-btn");
+  const filterRow = container.querySelector(".filter-row");
   let allRows = [];
   let groups = [];
   let caValues = { Type: [], Owner: [], Lokation: [], AuthzVlan: [] };
   let portalOnly = false;
+
+  // Wire up filter checkboxes: enable/disable the corresponding input
+  filterRow.querySelectorAll(".col-filter-cb").forEach((cb) => {
+    const input = filterRow.querySelector(`.col-filter-input[data-col="${cb.dataset.col}"]`);
+    cb.addEventListener("change", () => {
+      input.disabled = !cb.checked;
+      if (!cb.checked) input.value = "";
+      applyFilter();
+      if (cb.checked) input.focus();
+    });
+  });
+  filterRow.querySelectorAll(".col-filter-input").forEach((input) => {
+    input.addEventListener("input", applyFilter);
+  });
 
   function optionsHtml(values, selected) {
     const opts = [`<option value="">—</option>`];
@@ -75,24 +105,45 @@ export async function renderBrowse(container) {
     if (portalOnly) {
       rows = rows.filter((r) => r.hypervision === "true");
     }
-    const q = filterInput.value.toLowerCase().trim();
-    if (q) {
+
+    // Per-column filters (regex)
+    const activeFilters = [];
+    filterRow.querySelectorAll(".col-filter-cb:checked").forEach((cb) => {
+      const col = cb.dataset.col;
+      const input = filterRow.querySelector(`.col-filter-input[data-col="${col}"]`);
+      const q = (input.value || "").trim();
+      if (q) {
+        const colDef = COLUMNS.find((c) => c.key === col);
+        if (colDef) {
+          try {
+            const re = new RegExp(q, "i");
+            activeFilters.push({ field: colDef.field, re });
+          } catch {
+            // Invalid regex — fall back to literal substring
+            const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            activeFilters.push({ field: colDef.field, re: new RegExp(escaped, "i") });
+          }
+        }
+      }
+    });
+
+    if (activeFilters.length) {
       rows = rows.filter((r) =>
-        (r.name || "").toLowerCase().includes(q) ||
-        (r.mac || "").toLowerCase().includes(q) ||
-        (r.endpoint_type || "").toLowerCase().includes(q) ||
-        (r.owner || "").toLowerCase().includes(q) ||
-        (r.lokation || "").toLowerCase().includes(q) ||
-        (r.description || "").toLowerCase().includes(q) ||
-        (r.group_name || "").toLowerCase().includes(q),
+        activeFilters.every((f) => f.re.test(f.field(r) || "")),
       );
     }
     return rows;
   }
 
+  function hasActiveFilters() {
+    return filterRow.querySelector(".col-filter-cb:checked") !== null &&
+      Array.from(filterRow.querySelectorAll(".col-filter-input")).some((i) => !i.disabled && i.value.trim());
+  }
+
   function renderRows(rows) {
+    const cols = COLUMNS.length + 1;
     if (!rows.length) {
-      tbody.innerHTML = `<tr><td colspan="9" class="empty">Ingen resultater</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="${cols}" class="empty">Ingen resultater</td></tr>`;
       return;
     }
     tbody.innerHTML = rows.map((r) => `
@@ -119,7 +170,7 @@ export async function renderBrowse(container) {
     const total = portalOnly
       ? allRows.filter((r) => r.hypervision === "true").length
       : allRows.length;
-    if (filterInput.value.trim()) {
+    if (hasActiveFilters()) {
       count.textContent = `${visible.length} / ${total} endpoints`;
     } else {
       count.textContent = `${visible.length} endpoints`;
@@ -127,7 +178,8 @@ export async function renderBrowse(container) {
   }
 
   async function load() {
-    tbody.innerHTML = `<tr><td colspan="9" class="empty">Henter detaljer fra ISE...</td></tr>`;
+    const cols = COLUMNS.length + 1;
+    tbody.innerHTML = `<tr><td colspan="${cols}" class="empty">Henter detaljer fra ISE...</td></tr>`;
     msg.innerHTML = "";
     try {
       const [caData, grps, details] = await Promise.all([
@@ -146,8 +198,6 @@ export async function renderBrowse(container) {
       tbody.innerHTML = "";
     }
   }
-
-  filterInput.addEventListener("input", applyFilter);
 
   // Portal-only toggle
   portalFilterBtn.addEventListener("click", () => {
@@ -179,7 +229,6 @@ export async function renderBrowse(container) {
       let static_group_assignment = null;
       if (groupChanged) {
         if (!selectedGroupId) {
-          // "— ingen —" → move to Unknown with static=false
           const unknownGroup = groups.find(
             (g) => g.name.toLowerCase() === "unknown",
           );
@@ -189,7 +238,6 @@ export async function renderBrowse(container) {
           }
         } else {
           group_id = selectedGroupId;
-          // Explicitly choosing a group → static
         }
       }
 
@@ -208,7 +256,6 @@ export async function renderBrowse(container) {
       try {
         await api.updateEndpoint(id, payload);
         const mac = tr.querySelector(".mac-cell").textContent;
-        // Update local cache
         if (row) {
           row.description = description;
           if (groupChanged) {
