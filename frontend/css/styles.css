@@ -304,3 +304,18 @@ button.small {
   border: 1px solid #d1d5db;
   border-radius: 3px;
 }
+.select-cell {
+  text-align: center;
+  width: 36px;
+}
+.select-cell input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
+}
+#select-all {
+  cursor: pointer;
+}
+#selection-count {
+  margin-right: 0.5rem;
+  font-weight: 600;
+}

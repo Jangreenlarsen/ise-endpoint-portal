@@ -26,6 +26,9 @@ export async function renderBrowse(container) {
         <button id="export-btn" class="secondary">Export CSV</button>
         <button id="portal-filter-btn" class="secondary" title="Vis kun endpoints oprettet af HyperVision ISE Portal">Kun portal</button>
         <div class="spacer"></div>
+        <button id="bulk-save-btn" class="small" disabled>Gem valgte</button>
+        <button id="bulk-del-btn" class="danger small" disabled>Slet valgte</button>
+        <span id="selection-count" class="hint"></span>
         <span id="count" class="hint"></span>
       </div>
       <div id="msg"></div>
@@ -33,10 +36,11 @@ export async function renderBrowse(container) {
         <table>
           <thead>
             <tr>
+              <th style="width:36px;"><input type="checkbox" id="select-all" title="Vælg alle" /></th>
               ${COLUMNS.map((c) => `<th>${c.label}</th>`).join("")}
-              <th style="width:120px;">Actions</th>
             </tr>
             <tr class="filter-row">
+              <th></th>
               ${COLUMNS.map((c) => `
                 <th>
                   <div class="col-filter">
@@ -47,11 +51,10 @@ export async function renderBrowse(container) {
                            placeholder="regex..." disabled />
                   </div>
                 </th>`).join("")}
-              <th></th>
             </tr>
           </thead>
           <tbody id="tbody">
-            <tr><td colspan="${COLUMNS.length + 1}" class="empty">Indlæser...</td></tr>
+            <tr><td colspan="${COLUMNS.length + 2}" class="empty">Indlæser...</td></tr>
           </tbody>
         </table>
       </div>
@@ -61,8 +64,12 @@ export async function renderBrowse(container) {
   const tbody = container.querySelector("#tbody");
   const msg = container.querySelector("#msg");
   const count = container.querySelector("#count");
+  const selectionCount = container.querySelector("#selection-count");
   const portalFilterBtn = container.querySelector("#portal-filter-btn");
   const filterRow = container.querySelector(".filter-row");
+  const selectAllCb = container.querySelector("#select-all");
+  const bulkSaveBtn = container.querySelector("#bulk-save-btn");
+  const bulkDelBtn = container.querySelector("#bulk-del-btn");
   let allRows = [];
   let groups = [];
   let caValues = { Type: [], Owner: [], Lokation: [], AuthzVlan: [] };
@@ -140,14 +147,44 @@ export async function renderBrowse(container) {
       Array.from(filterRow.querySelectorAll(".col-filter-input")).some((i) => !i.disabled && i.value.trim());
   }
 
+  function getSelectedIds() {
+    return Array.from(tbody.querySelectorAll(".row-select:checked")).map(
+      (cb) => cb.closest("tr").dataset.id,
+    );
+  }
+
+  function updateSelectionUI() {
+    const selected = getSelectedIds();
+    const hasSelection = selected.length > 0;
+    bulkSaveBtn.disabled = !hasSelection;
+    bulkDelBtn.disabled = !hasSelection;
+    selectionCount.textContent = hasSelection ? `${selected.length} valgt` : "";
+
+    // sync select-all state
+    const allCbs = tbody.querySelectorAll(".row-select");
+    if (allCbs.length && selected.length === allCbs.length) {
+      selectAllCb.checked = true;
+      selectAllCb.indeterminate = false;
+    } else if (selected.length > 0) {
+      selectAllCb.checked = false;
+      selectAllCb.indeterminate = true;
+    } else {
+      selectAllCb.checked = false;
+      selectAllCb.indeterminate = false;
+    }
+  }
+
   function renderRows(rows) {
-    const cols = COLUMNS.length + 1;
+    const cols = COLUMNS.length + 2;
     if (!rows.length) {
       tbody.innerHTML = `<tr><td colspan="${cols}" class="empty">Ingen resultater</td></tr>`;
+      selectAllCb.checked = false;
+      selectAllCb.indeterminate = false;
       return;
     }
     tbody.innerHTML = rows.map((r) => `
       <tr data-id="${esc(r.id)}">
+        <td class="select-cell"><input type="checkbox" class="row-select" /></td>
         <td class="mac-cell">${esc(r.mac || r.name)}</td>
         <td><select class="grp-select">${groupOptionsHtml(r.group_id)}</select></td>
         <td class="assign-cell">${r.static_group ? "Statisk" : "Dynamisk"}</td>
@@ -156,12 +193,9 @@ export async function renderBrowse(container) {
         <td><select class="ca-owner">${optionsHtml(caValues.Owner, r.owner)}</select></td>
         <td><select class="ca-lokation">${optionsHtml(caValues.Lokation, r.lokation)}</select></td>
         <td><select class="ca-authzvlan">${optionsHtml(caValues.AuthzVlan, r.authz_vlan)}</select></td>
-        <td>
-          <button class="save-btn small">Save</button>
-          <button class="danger small del-btn">Del</button>
-        </td>
       </tr>
     `).join("");
+    updateSelectionUI();
   }
 
   function applyFilter() {
@@ -178,7 +212,7 @@ export async function renderBrowse(container) {
   }
 
   async function load() {
-    const cols = COLUMNS.length + 1;
+    const cols = COLUMNS.length + 2;
     tbody.innerHTML = `<tr><td colspan="${cols}" class="empty">Henter detaljer fra ISE...</td></tr>`;
     msg.innerHTML = "";
     try {
@@ -202,46 +236,56 @@ export async function renderBrowse(container) {
   // Portal-only toggle
   portalFilterBtn.addEventListener("click", () => {
     portalOnly = !portalOnly;
-    portalFilterBtn.textContent = portalOnly ? "Vis alle" : "Kun portal";
     portalFilterBtn.classList.toggle("active-toggle", portalOnly);
     applyFilter();
   });
 
-  tbody.addEventListener("click", async (e) => {
-    const tr = e.target.closest("tr");
-    if (!tr) return;
+  // Checkbox: select-all toggle
+  selectAllCb.addEventListener("change", () => {
+    const checked = selectAllCb.checked;
+    tbody.querySelectorAll(".row-select").forEach((cb) => { cb.checked = checked; });
+    updateSelectionUI();
+  });
+
+  // Checkbox: individual row toggle
+  tbody.addEventListener("change", (e) => {
+    if (e.target.classList.contains("row-select")) updateSelectionUI();
+  });
+
+  // Build save payload for a single table row
+  function buildSavePayload(tr) {
     const id = tr.dataset.id;
+    const description = tr.querySelector(".desc-input").value;
+    const selectedGroupId = tr.querySelector(".grp-select").value;
+    const endpointType = tr.querySelector(".ca-type").value;
+    const owner = tr.querySelector(".ca-owner").value;
+    const lokation = tr.querySelector(".ca-lokation").value;
+    const authzVlan = tr.querySelector(".ca-authzvlan").value;
 
-    if (e.target.classList.contains("save-btn")) {
-      const description = tr.querySelector(".desc-input").value;
-      const selectedGroupId = tr.querySelector(".grp-select").value;
-      const endpointType = tr.querySelector(".ca-type").value;
-      const owner = tr.querySelector(".ca-owner").value;
-      const lokation = tr.querySelector(".ca-lokation").value;
-      const authzVlan = tr.querySelector(".ca-authzvlan").value;
+    const row = allRows.find((r) => r.id === id);
+    const originalGroupId = row ? (row.group_id || "") : "";
+    const groupChanged = selectedGroupId !== originalGroupId;
 
-      // Only send group_id if it actually changed
-      const row = allRows.find((r) => r.id === id);
-      const originalGroupId = row ? (row.group_id || "") : "";
-      const groupChanged = selectedGroupId !== originalGroupId;
-
-      let group_id = null;
-      let static_group_assignment = null;
-      if (groupChanged) {
-        if (!selectedGroupId) {
-          const unknownGroup = groups.find(
-            (g) => g.name.toLowerCase() === "unknown",
-          );
-          if (unknownGroup) {
-            group_id = unknownGroup.id;
-            static_group_assignment = false;
-          }
-        } else {
-          group_id = selectedGroupId;
+    let group_id = null;
+    let static_group_assignment = null;
+    if (groupChanged) {
+      if (!selectedGroupId) {
+        const unknownGroup = groups.find(
+          (g) => g.name.toLowerCase() === "unknown",
+        );
+        if (unknownGroup) {
+          group_id = unknownGroup.id;
+          static_group_assignment = false;
         }
+      } else {
+        group_id = selectedGroupId;
       }
+    }
 
-      const payload = {
+    return {
+      id,
+      mac: tr.querySelector(".mac-cell").textContent,
+      payload: {
         description,
         group_id,
         static_group_assignment,
@@ -251,39 +295,79 @@ export async function renderBrowse(container) {
           Lokation: lokation,
           AuthzVlan: authzVlan,
         },
-      };
+      },
+      localUpdate: { description, group_id, static_group_assignment, groupChanged, endpointType, owner, lokation, authzVlan },
+    };
+  }
 
+  // Bulk save
+  bulkSaveBtn.addEventListener("click", async () => {
+    const ids = getSelectedIds();
+    if (!ids.length) return;
+    bulkSaveBtn.disabled = true;
+    msg.innerHTML = `<div class="alert info">Gemmer ${ids.length} endpoints...</div>`;
+    let ok = 0;
+    let fail = 0;
+    for (const id of ids) {
+      const tr = tbody.querySelector(`tr[data-id="${id}"]`);
+      if (!tr) continue;
+      const { mac, payload, localUpdate } = buildSavePayload(tr);
       try {
         await api.updateEndpoint(id, payload);
-        const mac = tr.querySelector(".mac-cell").textContent;
+        const row = allRows.find((r) => r.id === id);
         if (row) {
-          row.description = description;
-          if (groupChanged) {
-            row.group_id = group_id;
-            row.static_group = static_group_assignment !== false;
+          row.description = localUpdate.description;
+          if (localUpdate.groupChanged) {
+            row.group_id = localUpdate.group_id;
+            row.static_group = localUpdate.static_group_assignment !== false;
           }
-          row.endpoint_type = endpointType;
-          row.owner = owner;
-          row.lokation = lokation;
-          row.authz_vlan = authzVlan;
+          row.endpoint_type = localUpdate.endpointType;
+          row.owner = localUpdate.owner;
+          row.lokation = localUpdate.lokation;
+          row.authz_vlan = localUpdate.authzVlan;
         }
-        msg.innerHTML = `<div class="alert success">Opdateret ${mac}</div>`;
-      } catch (err) {
-        msg.innerHTML = `<div class="alert error">${err.message}</div>`;
-      }
-    } else if (e.target.classList.contains("del-btn")) {
-      const mac = tr.querySelector(".mac-cell").textContent;
-      if (!confirm(`Slet endpoint ${mac}?`)) return;
-      try {
-        await api.deleteEndpoint(id);
-        tr.remove();
-        allRows = allRows.filter((r) => r.id !== id);
-        applyFilter();
-        msg.innerHTML = `<div class="alert success">Slettet ${mac}</div>`;
-      } catch (err) {
-        msg.innerHTML = `<div class="alert error">${err.message}</div>`;
+        ok++;
+      } catch {
+        fail++;
       }
     }
+    const parts = [];
+    if (ok) parts.push(`${ok} gemt`);
+    if (fail) parts.push(`${fail} fejlede`);
+    const cls = fail ? "error" : "success";
+    msg.innerHTML = `<div class="alert ${cls}">${parts.join(", ")}</div>`;
+    bulkSaveBtn.disabled = false;
+  });
+
+  // Bulk delete
+  bulkDelBtn.addEventListener("click", async () => {
+    const ids = getSelectedIds();
+    if (!ids.length) return;
+    const macs = ids.map((id) => {
+      const tr = tbody.querySelector(`tr[data-id="${id}"]`);
+      return tr ? tr.querySelector(".mac-cell").textContent : id;
+    });
+    if (!confirm(`Slet ${ids.length} endpoints?\n\n${macs.join("\n")}`)) return;
+    bulkDelBtn.disabled = true;
+    msg.innerHTML = `<div class="alert info">Sletter ${ids.length} endpoints...</div>`;
+    let ok = 0;
+    let fail = 0;
+    for (const id of ids) {
+      try {
+        await api.deleteEndpoint(id);
+        allRows = allRows.filter((r) => r.id !== id);
+        ok++;
+      } catch {
+        fail++;
+      }
+    }
+    applyFilter();
+    const parts = [];
+    if (ok) parts.push(`${ok} slettet`);
+    if (fail) parts.push(`${fail} fejlede`);
+    const cls = fail ? "error" : "success";
+    msg.innerHTML = `<div class="alert ${cls}">${parts.join(", ")}</div>`;
+    bulkDelBtn.disabled = false;
   });
 
   container.querySelector("#refresh-btn").addEventListener("click", load);

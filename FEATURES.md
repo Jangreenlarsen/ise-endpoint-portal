@@ -33,6 +33,7 @@ Alle nye features registreres her FØR implementering påbegyndes.
 - `[done] 2026-04-16 — Identity Group "ingen" → Unknown` — "— ingen —" i Browse/Edit group-dropdown flytter endpoint til Unknown-gruppen og disabler staticGroupAssignment. Kolonne omdøbt til "Identity Group". Lag: backend (schemas, ise, services), frontend (browse view).
 - `[done] 2026-04-17 — Custom attribute "Type" + Attributter-side` — nyt custom attribute "Type". Ny sidebar-side "Attributter" til at administrere værdier for Type, Owner, Lokation, AuthzVlan. Lag: backend (core, schemas, ise, services), frontend (ny view, sidebar, create, browse, import, csv).
 - `[done] 2026-04-17 — HypervisionISEPortal skjult attribut + filter` — usynligt custom attribute "HypervisionISEPortal" sættes automatisk ved oprettelse og redigering. Toggle-knap i Browse/Edit for at vise kun portal-endpoints vs. alle. Lag: backend (core, ise, services), frontend (browse view).
+- `[done] 2026-04-17 — Bulk select + bulk actions i Browse/Edit` — fjern individuelle Save/Del knapper per række. Tilføj checkbox per række + global select-all i header. Bulk-handlinger (Gem valgte / Slet valgte) i toolbar. Lag: frontend (browse view, css).
 
 ## Planlagte — Prioritet 2 (bør have)
 
