@@ -170,16 +170,26 @@ export async function renderBrowse(container) {
       const lokation = tr.querySelector(".ca-lokation").value;
       const authzVlan = tr.querySelector(".ca-authzvlan").value;
 
-      // "— ingen —" → move to Unknown group with staticGroupAssignment disabled
-      let group_id = selectedGroupId || null;
+      // Only send group_id if it actually changed
+      const row = allRows.find((r) => r.id === id);
+      const originalGroupId = row ? (row.group_id || "") : "";
+      const groupChanged = selectedGroupId !== originalGroupId;
+
+      let group_id = null;
       let static_group_assignment = null;
-      if (!selectedGroupId) {
-        const unknownGroup = groups.find(
-          (g) => g.name.toLowerCase() === "unknown",
-        );
-        if (unknownGroup) {
-          group_id = unknownGroup.id;
-          static_group_assignment = false;
+      if (groupChanged) {
+        if (!selectedGroupId) {
+          // "— ingen —" → move to Unknown with static=false
+          const unknownGroup = groups.find(
+            (g) => g.name.toLowerCase() === "unknown",
+          );
+          if (unknownGroup) {
+            group_id = unknownGroup.id;
+            static_group_assignment = false;
+          }
+        } else {
+          group_id = selectedGroupId;
+          // Explicitly choosing a group → static
         }
       }
 
@@ -199,10 +209,12 @@ export async function renderBrowse(container) {
         await api.updateEndpoint(id, payload);
         const mac = tr.querySelector(".mac-cell").textContent;
         // Update local cache
-        const row = allRows.find((r) => r.id === id);
         if (row) {
           row.description = description;
-          row.group_id = group_id;
+          if (groupChanged) {
+            row.group_id = group_id;
+            row.static_group = static_group_assignment !== false;
+          }
           row.endpoint_type = endpointType;
           row.owner = owner;
           row.lokation = lokation;
