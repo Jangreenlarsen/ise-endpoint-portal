@@ -5,6 +5,11 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [1.6.0 build 0013] — 2026-04-17 — docs: opdateret README + GitHub beskrivelse
+
+- **docs**: `README.md` — komplet omskrivning med alle aktuelle features: custom attributes (Type, Owner, Lokation, AuthzVlan, HypervisionISEPortal), Attributter-side, CSV template-system, "Kun portal" toggle, sidebar-oversigt. Danske tegn rettet.
+- **github**: repo-beskrivelse opdateret til "hyperVision ISE Portal — web-baseret endpoint-administration for Cisco ISE 3.1+".
+
 ## [1.6.0 build 0012] — 2026-04-17 — chore: omdøbt til hyperVision ISE Portal
 
 - **frontend**: `index.html` — `<title>` og sidebar-brand ændret til "hyperVision ISE Portal".
