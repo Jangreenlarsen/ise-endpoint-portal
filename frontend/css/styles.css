@@ -319,3 +319,64 @@ button.small {
   margin-right: 0.5rem;
   font-weight: 600;
 }
+
+/* Dirty row highlight */
+tr.dirty {
+  background: #fef9c3 !important;
+}
+tr.dirty td {
+  border-bottom-color: #fde68a;
+}
+
+/* Modal overlay */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal-overlay.hidden { display: none; }
+.modal {
+  background: #fff;
+  border-radius: 8px;
+  padding: 1.5rem;
+  width: 420px;
+  max-width: 90vw;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+.modal h3 { margin: 0 0 0.25rem; }
+.modal-body {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.5rem 0.75rem;
+  align-items: center;
+  margin: 1rem 0;
+}
+.modal-body label {
+  white-space: nowrap;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.modal-body input[type="text"],
+.modal-body select {
+  width: 100%;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.85rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+}
+.modal-body input:disabled,
+.modal-body select:disabled {
+  background: #f3f4f6;
+  color: #9ca3af;
+}
+.modal-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}

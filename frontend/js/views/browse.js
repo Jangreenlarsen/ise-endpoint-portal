@@ -25,7 +25,9 @@ export async function renderBrowse(container) {
         <button id="refresh-btn">Refresh</button>
         <button id="export-btn" class="secondary">Export CSV</button>
         <button id="portal-filter-btn" class="secondary" title="Vis kun endpoints oprettet af HyperVision ISE Portal">Kun portal</button>
+        <button id="save-all-btn" disabled title="Gem alle ændrede endpoints">Gem alle</button>
         <div class="spacer"></div>
+        <button id="bulk-edit-btn" class="secondary small" disabled>Rediger valgte</button>
         <button id="bulk-save-btn" class="small" disabled>Gem valgte</button>
         <button id="bulk-del-btn" class="danger small" disabled>Slet valgte</button>
         <span id="selection-count" class="hint"></span>
@@ -59,6 +61,30 @@ export async function renderBrowse(container) {
         </table>
       </div>
     </div>
+    <div id="bulk-edit-overlay" class="modal-overlay hidden">
+      <div class="modal">
+        <h3>Rediger valgte endpoints</h3>
+        <p class="hint" id="bulk-edit-count"></p>
+        <div class="modal-body">
+          <label><input type="checkbox" class="be-cb" data-field="group" /> Identity Group</label>
+          <select id="be-group" disabled></select>
+          <label><input type="checkbox" class="be-cb" data-field="description" /> Description</label>
+          <input type="text" id="be-description" disabled />
+          <label><input type="checkbox" class="be-cb" data-field="type" /> Type</label>
+          <select id="be-type" disabled></select>
+          <label><input type="checkbox" class="be-cb" data-field="owner" /> Owner</label>
+          <select id="be-owner" disabled></select>
+          <label><input type="checkbox" class="be-cb" data-field="lokation" /> Lokation</label>
+          <select id="be-lokation" disabled></select>
+          <label><input type="checkbox" class="be-cb" data-field="authzvlan" /> AuthzVlan</label>
+          <select id="be-authzvlan" disabled></select>
+        </div>
+        <div class="modal-actions">
+          <button id="be-apply">Anvend</button>
+          <button id="be-cancel" class="secondary">Annuller</button>
+        </div>
+      </div>
+    </div>
   `;
 
   const tbody = container.querySelector("#tbody");
@@ -70,10 +96,14 @@ export async function renderBrowse(container) {
   const selectAllCb = container.querySelector("#select-all");
   const bulkSaveBtn = container.querySelector("#bulk-save-btn");
   const bulkDelBtn = container.querySelector("#bulk-del-btn");
+  const saveAllBtn = container.querySelector("#save-all-btn");
+  const bulkEditBtn = container.querySelector("#bulk-edit-btn");
+  const bulkEditOverlay = container.querySelector("#bulk-edit-overlay");
   let allRows = [];
   let groups = [];
   let caValues = { Type: [], Owner: [], Lokation: [], AuthzVlan: [] };
   let portalOnly = false;
+  const dirtyIds = new Set();
 
   // Wire up filter checkboxes: enable/disable the corresponding input
   filterRow.querySelectorAll(".col-filter-cb").forEach((cb) => {
@@ -153,11 +183,26 @@ export async function renderBrowse(container) {
     );
   }
 
+  function updateDirtyUI() {
+    saveAllBtn.disabled = dirtyIds.size === 0;
+    const label = dirtyIds.size ? `Gem alle (${dirtyIds.size})` : "Gem alle";
+    saveAllBtn.textContent = label;
+  }
+
+  function markDirty(tr) {
+    const id = tr.dataset.id;
+    if (!id) return;
+    dirtyIds.add(id);
+    tr.classList.add("dirty");
+    updateDirtyUI();
+  }
+
   function updateSelectionUI() {
     const selected = getSelectedIds();
     const hasSelection = selected.length > 0;
     bulkSaveBtn.disabled = !hasSelection;
     bulkDelBtn.disabled = !hasSelection;
+    bulkEditBtn.disabled = !hasSelection;
     selectionCount.textContent = hasSelection ? `${selected.length} valgt` : "";
 
     // sync select-all state
@@ -183,7 +228,7 @@ export async function renderBrowse(container) {
       return;
     }
     tbody.innerHTML = rows.map((r) => `
-      <tr data-id="${esc(r.id)}">
+      <tr data-id="${esc(r.id)}"${dirtyIds.has(r.id) ? ' class="dirty"' : ''}>
         <td class="select-cell"><input type="checkbox" class="row-select" /></td>
         <td class="mac-cell">${esc(r.mac || r.name)}</td>
         <td><select class="grp-select">${groupOptionsHtml(r.group_id)}</select></td>
@@ -196,6 +241,7 @@ export async function renderBrowse(container) {
       </tr>
     `).join("");
     updateSelectionUI();
+    updateDirtyUI();
   }
 
   function applyFilter() {
@@ -215,6 +261,8 @@ export async function renderBrowse(container) {
     const cols = COLUMNS.length + 2;
     tbody.innerHTML = `<tr><td colspan="${cols}" class="empty">Henter detaljer fra ISE...</td></tr>`;
     msg.innerHTML = "";
+    dirtyIds.clear();
+    updateDirtyUI();
     try {
       const [caData, grps, details] = await Promise.all([
         api.listCustomAttributes(),
@@ -249,7 +297,23 @@ export async function renderBrowse(container) {
 
   // Checkbox: individual row toggle
   tbody.addEventListener("change", (e) => {
-    if (e.target.classList.contains("row-select")) updateSelectionUI();
+    if (e.target.classList.contains("row-select")) {
+      updateSelectionUI();
+      return;
+    }
+    // Mark row dirty on select/dropdown change
+    const tr = e.target.closest("tr");
+    if (tr && (e.target.matches("select") || e.target.matches("input:not(.row-select)"))) {
+      markDirty(tr);
+    }
+  });
+
+  // Mark row dirty on text input
+  tbody.addEventListener("input", (e) => {
+    const tr = e.target.closest("tr");
+    if (tr && e.target.matches("input:not(.row-select)")) {
+      markDirty(tr);
+    }
   });
 
   // Build save payload for a single table row
@@ -300,7 +364,49 @@ export async function renderBrowse(container) {
     };
   }
 
-  // Bulk save
+  // Save all dirty rows
+  saveAllBtn.addEventListener("click", async () => {
+    if (!dirtyIds.size) return;
+    saveAllBtn.disabled = true;
+    const ids = [...dirtyIds];
+    msg.innerHTML = `<div class="alert info">Gemmer ${ids.length} ændrede endpoints...</div>`;
+    let ok = 0;
+    let fail = 0;
+    for (const id of ids) {
+      const tr = tbody.querySelector(`tr[data-id="${id}"]`);
+      if (!tr) continue;
+      const { mac, payload, localUpdate } = buildSavePayload(tr);
+      try {
+        await api.updateEndpoint(id, payload);
+        const row = allRows.find((r) => r.id === id);
+        if (row) {
+          row.description = localUpdate.description;
+          if (localUpdate.groupChanged) {
+            row.group_id = localUpdate.group_id;
+            row.static_group = localUpdate.static_group_assignment !== false;
+          }
+          row.endpoint_type = localUpdate.endpointType;
+          row.owner = localUpdate.owner;
+          row.lokation = localUpdate.lokation;
+          row.authz_vlan = localUpdate.authzVlan;
+        }
+        dirtyIds.delete(id);
+        tr.classList.remove("dirty");
+        ok++;
+      } catch {
+        fail++;
+      }
+    }
+    updateDirtyUI();
+    const parts = [];
+    if (ok) parts.push(`${ok} gemt`);
+    if (fail) parts.push(`${fail} fejlede`);
+    const cls = fail ? "error" : "success";
+    msg.innerHTML = `<div class="alert ${cls}">${parts.join(", ")}</div>`;
+    saveAllBtn.disabled = false;
+  });
+
+  // Bulk save selected
   bulkSaveBtn.addEventListener("click", async () => {
     const ids = getSelectedIds();
     if (!ids.length) return;
@@ -326,11 +432,14 @@ export async function renderBrowse(container) {
           row.lokation = localUpdate.lokation;
           row.authz_vlan = localUpdate.authzVlan;
         }
+        dirtyIds.delete(id);
+        tr.classList.remove("dirty");
         ok++;
       } catch {
         fail++;
       }
     }
+    updateDirtyUI();
     const parts = [];
     if (ok) parts.push(`${ok} gemt`);
     if (fail) parts.push(`${fail} fejlede`);
@@ -368,6 +477,69 @@ export async function renderBrowse(container) {
     const cls = fail ? "error" : "success";
     msg.innerHTML = `<div class="alert ${cls}">${parts.join(", ")}</div>`;
     bulkDelBtn.disabled = false;
+  });
+
+  // Bulk edit modal
+  bulkEditBtn.addEventListener("click", () => {
+    const ids = getSelectedIds();
+    if (!ids.length) return;
+    container.querySelector("#bulk-edit-count").textContent = `${ids.length} endpoints valgt`;
+    // Populate dropdowns
+    container.querySelector("#be-group").innerHTML = groupOptionsHtml("");
+    container.querySelector("#be-type").innerHTML = optionsHtml(caValues.Type, "");
+    container.querySelector("#be-owner").innerHTML = optionsHtml(caValues.Owner, "");
+    container.querySelector("#be-lokation").innerHTML = optionsHtml(caValues.Lokation, "");
+    container.querySelector("#be-authzvlan").innerHTML = optionsHtml(caValues.AuthzVlan, "");
+    container.querySelector("#be-description").value = "";
+    // Reset checkboxes
+    bulkEditOverlay.querySelectorAll(".be-cb").forEach((cb) => {
+      cb.checked = false;
+      const field = cb.dataset.field;
+      const ctrl = bulkEditOverlay.querySelector(`#be-${field}`);
+      if (ctrl) ctrl.disabled = true;
+    });
+    bulkEditOverlay.classList.remove("hidden");
+  });
+
+  // Toggle enable/disable per field in bulk edit
+  bulkEditOverlay.querySelectorAll(".be-cb").forEach((cb) => {
+    cb.addEventListener("change", () => {
+      const ctrl = bulkEditOverlay.querySelector(`#be-${cb.dataset.field}`);
+      if (ctrl) ctrl.disabled = !cb.checked;
+    });
+  });
+
+  container.querySelector("#be-cancel").addEventListener("click", () => {
+    bulkEditOverlay.classList.add("hidden");
+  });
+
+  container.querySelector("#be-apply").addEventListener("click", () => {
+    const ids = getSelectedIds();
+    if (!ids.length) return;
+    const fields = {};
+    bulkEditOverlay.querySelectorAll(".be-cb:checked").forEach((cb) => {
+      const field = cb.dataset.field;
+      const ctrl = bulkEditOverlay.querySelector(`#be-${field}`);
+      if (ctrl) fields[field] = ctrl.value;
+    });
+    if (!Object.keys(fields).length) {
+      bulkEditOverlay.classList.add("hidden");
+      return;
+    }
+    // Apply values to selected rows in the table
+    for (const id of ids) {
+      const tr = tbody.querySelector(`tr[data-id="${id}"]`);
+      if (!tr) continue;
+      if ("group" in fields) tr.querySelector(".grp-select").value = fields.group;
+      if ("description" in fields) tr.querySelector(".desc-input").value = fields.description;
+      if ("type" in fields) tr.querySelector(".ca-type").value = fields.type;
+      if ("owner" in fields) tr.querySelector(".ca-owner").value = fields.owner;
+      if ("lokation" in fields) tr.querySelector(".ca-lokation").value = fields.lokation;
+      if ("authzvlan" in fields) tr.querySelector(".ca-authzvlan").value = fields.authzvlan;
+      markDirty(tr);
+    }
+    bulkEditOverlay.classList.add("hidden");
+    msg.innerHTML = `<div class="alert info">${ids.length} endpoints opdateret lokalt — tryk "Gem alle" eller "Gem valgte" for at gemme til ISE.</div>`;
   });
 
   container.querySelector("#refresh-btn").addEventListener("click", load);
