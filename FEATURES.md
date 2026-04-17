@@ -24,7 +24,7 @@ Alle nye features registreres her FØR implementering påbegyndes.
 
 ## Planlagte — Prioritet 1 (vigtigt nu)
 
-- `[planned] 2026-04-16 — Bulk throttling` — tilføj 100–200ms delay mellem ISE-kald i `bulk_create` for at overholde Ciscos 5–10 req/sec grænse. Forhindrer ERS overload ved store CSV imports. Lag: backend (services). Ref: [ISE_API_REFERENCE.md § Bulk](ISE_API_REFERENCE.md).
+- `[done] 2026-04-17 — Bulk throttling` — 150ms delay mellem ISE-kald i `bulk_create` for at overholde Ciscos 5–10 req/sec grænse. Forhindrer ERS overload ved store CSV imports. Lag: backend (services). Ref: [ISE_API_REFERENCE.md § Bulk](ISE_API_REFERENCE.md).
 - `[planned] 2026-04-16 — 409 Conflict → "skipped"` — ISE returnerer HTTP 409 når endpoint allerede eksisterer. Mappér til en `skipped` liste i `BulkResult` i stedet for `failed`, så bruger kan skelne fejl fra dubletter. Lag: backend (services, schemas), frontend (import view). Ref: ISE status code 409.
 - `[planned] 2026-04-16 — Server-side filter/search` — brug ERS filter-syntaks (`?filter=mac.CONTAINS.xx`) i `/api/endpoints` så Browse view ikke er begrænset til max 100 endpoints client-side. Tilføj `?search=` query param i backend router der oversættes til ERS filter. Lag: backend (api, ise). Ref: [ISE_API_REFERENCE.md § Filter syntax](ISE_API_REFERENCE.md).
 - `[planned] 2026-04-16 — Parse Location header efter POST` — ERS returnerer `Location: .../endpoint/{uuid}` ved 201 Created. Parse dette for at returnere det nye endpoint-ID direkte, i stedet for en follow-up GET. Lag: backend (ise client, endpoints repository).

@@ -203,12 +203,15 @@ class EndpointService:
             await self._ensure_ca_definitions()
         succeeded: list[str] = []
         failed: list[BulkFailure] = []
-        for item in req.items:
+        for idx, item in enumerate(req.items):
             try:
                 await self.create_endpoint(item)
                 succeeded.append(item.mac)
             except IseApiError as exc:
                 failed.append(BulkFailure(mac=item.mac, error=str(exc)))
+            # Throttle: 150ms between ISE calls to stay within Cisco's 5-10 req/sec limit
+            if idx < len(req.items) - 1:
+                await asyncio.sleep(0.15)
         logger.info("bulk done: %d ok, %d failed", len(succeeded), len(failed))
         return BulkResult(succeeded=succeeded, failed=failed)
 

@@ -5,6 +5,10 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [1.12.0 build 0026] — 2026-04-17 — feat: bulk throttling — 150ms delay mellem ISE-kald
+
+- **backend**: `app/services/endpoint_service.py` — tilføjet 150ms `asyncio.sleep` mellem hvert ISE-kald i `bulk_create` for at overholde Ciscos 5–10 req/sec grænse og forhindre ERS overload ved store CSV-imports.
+
 ## [1.11.1 build 0025] — 2026-04-17 — chore: oprydning BUGS.md — flyt fixed bugs til Fixed sektion
 
 - **docs**: `BUGS.md` — alle 7 fixed bugs flyttet fra "Åbne" til "Fixed" sektion, sorteret nyeste først.
