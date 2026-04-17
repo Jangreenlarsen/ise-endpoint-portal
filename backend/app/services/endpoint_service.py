@@ -128,6 +128,27 @@ class EndpointService:
             items=list(details), total=total, page=page, size=size
         )
 
+    async def list_all_endpoint_details(self) -> list[EndpointDetail]:
+        """Fetch ALL endpoints with full details (all ISE pages, concurrent)."""
+        resources = await self.endpoints.list_all()
+        logger.info("fetching details for ALL %d endpoints concurrently", len(resources))
+        sem = asyncio.Semaphore(5)
+
+        async def fetch_one(r: dict[str, Any]) -> EndpointDetail:
+            async with sem:
+                try:
+                    return await self.get_endpoint(r["id"])
+                except IseApiError:
+                    return EndpointDetail(
+                        id=r.get("id", ""),
+                        name=r.get("name", ""),
+                        mac=r.get("name", ""),
+                        description=r.get("description"),
+                    )
+
+        details = await asyncio.gather(*(fetch_one(r) for r in resources))
+        return list(details)
+
     async def list_groups(self) -> list[EndpointGroupSummary]:
         raw = await self.groups.list_all()
         logger.info("listed %d endpoint groups", len(raw))

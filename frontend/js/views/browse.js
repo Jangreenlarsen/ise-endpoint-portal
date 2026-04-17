@@ -129,7 +129,8 @@ export async function renderBrowse(container) {
   const saveAllBtn = container.querySelector("#save-all-btn");
   const bulkEditBtn = container.querySelector("#bulk-edit-btn");
   const bulkEditOverlay = container.querySelector("#bulk-edit-overlay");
-  let allRows = [];
+  let allRows = [];           // rows on current page (paged mode) or ALL rows (filtered mode)
+  let allRowsCache = null;    // cached full dataset when filters have been used
   let groups = [];
   let caValues = { Type: [], Owner: [], Lokation: [], AuthzVlan: [] };
   let portalOnly = false;
@@ -137,6 +138,8 @@ export async function renderBrowse(container) {
   let currentPage = 1;
   let currentSize = getPageSize();
   let totalEndpoints = 0;
+  let filterMode = false;     // true = all data loaded, client-side filter+pagination
+  let loadingAll = false;
   const pageSizeSelect = container.querySelector("#page-size-select");
   const pagePrev = container.querySelector("#page-prev");
   const pageNext = container.querySelector("#page-next");
@@ -154,18 +157,66 @@ export async function renderBrowse(container) {
     pageInfo.textContent = `Side ${currentPage} af ${tp} (${totalEndpoints} total)`;
   }
 
+  async function enterFilterMode() {
+    if (filterMode) return;  // already in filter mode
+    if (loadingAll) return;  // already loading
+    if (allRowsCache) {
+      // Use cached full dataset
+      allRows = allRowsCache;
+      filterMode = true;
+      currentPage = 1;
+      return;
+    }
+    // Need to fetch all endpoints from backend
+    loadingAll = true;
+    const cols = COLUMNS.length + 2;
+    tbody.innerHTML = `<tr><td colspan="${cols}" class="empty">Henter alle endpoints fra ISE...</td></tr>`;
+    msg.innerHTML = `<div class="alert info">Henter alle endpoints for at kunne filtrere på tværs af sider...</div>`;
+    try {
+      const all = await api.listAllEndpointDetails();
+      allRowsCache = all;
+      allRows = all;
+      filterMode = true;
+      currentPage = 1;
+      msg.innerHTML = "";
+    } catch (err) {
+      msg.innerHTML = `<div class="alert error">Kunne ikke hente alle endpoints: ${err.message}</div>`;
+    } finally {
+      loadingAll = false;
+    }
+  }
+
+  function exitFilterMode() {
+    if (!filterMode) return;
+    filterMode = false;
+    currentPage = 1;
+    load();
+  }
+
+  async function onFilterChange() {
+    if (needsFilterMode()) {
+      await enterFilterMode();
+      applyFilter();
+    } else {
+      // No filters active — go back to server-side pagination
+      exitFilterMode();
+    }
+  }
+
   // Wire up filter checkboxes: enable/disable the corresponding input
   filterRow.querySelectorAll(".col-filter-cb").forEach((cb) => {
     const input = filterRow.querySelector(`.col-filter-input[data-col="${cb.dataset.col}"]`);
-    cb.addEventListener("change", () => {
+    cb.addEventListener("change", async () => {
       input.disabled = !cb.checked;
       if (!cb.checked) input.value = "";
-      applyFilter();
+      await onFilterChange();
       if (cb.checked) input.focus();
     });
   });
   filterRow.querySelectorAll(".col-filter-input").forEach((input) => {
-    input.addEventListener("input", applyFilter);
+    input.addEventListener("input", () => {
+      if (filterMode) applyFilter();
+    });
   });
 
   function optionsHtml(values, selected) {
@@ -186,13 +237,7 @@ export async function renderBrowse(container) {
     return opts.join("");
   }
 
-  function getVisibleRows() {
-    let rows = allRows;
-    if (portalOnly) {
-      rows = rows.filter((r) => r.hypervision === "true");
-    }
-
-    // Per-column filters (regex)
+  function getColumnFilters() {
     const activeFilters = [];
     filterRow.querySelectorAll(".col-filter-cb:checked").forEach((cb) => {
       const col = cb.dataset.col;
@@ -205,25 +250,35 @@ export async function renderBrowse(container) {
             const re = new RegExp(q, "i");
             activeFilters.push({ field: colDef.field, re });
           } catch {
-            // Invalid regex — fall back to literal substring
             const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
             activeFilters.push({ field: colDef.field, re: new RegExp(escaped, "i") });
           }
         }
       }
     });
+    return activeFilters;
+  }
 
-    if (activeFilters.length) {
-      rows = rows.filter((r) =>
-        activeFilters.every((f) => f.re.test(f.field(r) || "")),
-      );
+  function needsFilterMode() {
+    // Any column filter checkbox checked (even without text yet) or portal toggle on
+    return portalOnly || filterRow.querySelector(".col-filter-cb:checked") !== null;
+  }
+
+  function applyFiltersToRows(rows) {
+    if (portalOnly) {
+      rows = rows.filter((r) => r.hypervision === "true");
+    }
+    const filters = getColumnFilters();
+    if (filters.length) {
+      rows = rows.filter((r) => filters.every((f) => f.re.test(f.field(r) || "")));
     }
     return rows;
   }
 
-  function hasActiveFilters() {
-    return filterRow.querySelector(".col-filter-cb:checked") !== null &&
-      Array.from(filterRow.querySelectorAll(".col-filter-input")).some((i) => !i.disabled && i.value.trim());
+  function hasActiveFilterText() {
+    return Array.from(filterRow.querySelectorAll(".col-filter-input")).some(
+      (i) => !i.disabled && i.value.trim(),
+    );
   }
 
   function getSelectedIds() {
@@ -294,15 +349,28 @@ export async function renderBrowse(container) {
   }
 
   function applyFilter() {
-    const visible = getVisibleRows();
-    renderRows(visible);
-    const total = portalOnly
-      ? allRows.filter((r) => r.hypervision === "true").length
-      : allRows.length;
-    if (hasActiveFilters()) {
-      count.textContent = `${visible.length} / ${total} endpoints`;
+    if (filterMode) {
+      // Client-side filter + pagination on full dataset
+      const filtered = applyFiltersToRows(allRows);
+      totalEndpoints = filtered.length;
+      // Clamp currentPage
+      const tp = totalPages();
+      if (currentPage > tp) currentPage = tp;
+      // Slice for current page
+      const start = (currentPage - 1) * currentSize;
+      const pageRows = filtered.slice(start, start + currentSize);
+      renderRows(pageRows);
+      updatePaginationUI();
+      if (hasActiveFilterText() || portalOnly) {
+        count.textContent = `${filtered.length} / ${allRows.length} endpoints (filtreret)`;
+      } else {
+        count.textContent = `${allRows.length} endpoints`;
+      }
     } else {
-      count.textContent = `${visible.length} endpoints`;
+      // Server-side pagination — allRows is already just one page
+      renderRows(allRows);
+      updatePaginationUI();
+      count.textContent = `${allRows.length} endpoints`;
     }
   }
 
@@ -312,6 +380,9 @@ export async function renderBrowse(container) {
     msg.innerHTML = "";
     dirtyIds.clear();
     updateDirtyUI();
+    // Reset filter mode — Refresh always starts fresh
+    filterMode = false;
+    allRowsCache = null;
     try {
       const [caData, grps, result] = await Promise.all([
         api.listCustomAttributes(),
@@ -324,7 +395,12 @@ export async function renderBrowse(container) {
       }
       allRows = result.items;
       totalEndpoints = result.total;
-      updatePaginationUI();
+
+      // If filters are active, immediately switch to filter mode
+      if (needsFilterMode()) {
+        await enterFilterMode();
+      }
+
       applyFilter();
     } catch (err) {
       msg.innerHTML = `<div class="alert error">${err.message}</div>`;
@@ -333,10 +409,10 @@ export async function renderBrowse(container) {
   }
 
   // Portal-only toggle
-  portalFilterBtn.addEventListener("click", () => {
+  portalFilterBtn.addEventListener("click", async () => {
     portalOnly = !portalOnly;
     portalFilterBtn.classList.toggle("active-toggle", portalOnly);
-    applyFilter();
+    await onFilterChange();
   });
 
   // Checkbox: select-all toggle
@@ -516,6 +592,7 @@ export async function renderBrowse(container) {
       try {
         await api.deleteEndpoint(id);
         allRows = allRows.filter((r) => r.id !== id);
+        if (allRowsCache) allRowsCache = allRowsCache.filter((r) => r.id !== id);
         ok++;
       } catch {
         fail++;
@@ -594,30 +671,37 @@ export async function renderBrowse(container) {
   });
 
   pagePrev.addEventListener("click", () => {
-    if (currentPage > 1) { currentPage--; load(); }
+    if (currentPage > 1) {
+      currentPage--;
+      if (filterMode) { applyFilter(); } else { load(); }
+    }
   });
   pageNext.addEventListener("click", () => {
-    if (currentPage < totalPages()) { currentPage++; load(); }
+    if (currentPage < totalPages()) {
+      currentPage++;
+      if (filterMode) { applyFilter(); } else { load(); }
+    }
   });
   pageSizeSelect.addEventListener("change", () => {
     currentSize = parseInt(pageSizeSelect.value, 10);
     savePageSize(currentSize);
     currentPage = 1;
-    load();
+    if (filterMode) { applyFilter(); } else { load(); }
   });
 
   container.querySelector("#refresh-btn").addEventListener("click", load);
 
   container.querySelector("#export-btn").addEventListener("click", () => {
-    const visible = getVisibleRows();
-    if (!visible.length) {
+    // Export all filtered rows (not just current page)
+    const exportRows = filterMode ? applyFiltersToRows(allRows) : allRows;
+    if (!exportRows.length) {
       msg.innerHTML = `<div class="alert info">Ingen endpoints at eksportere.</div>`;
       return;
     }
-    const csv = toIseCsv(visible);
+    const csv = toIseCsv(exportRows);
     const date = new Date().toISOString().slice(0, 10);
     downloadCsv(csv, `ise-endpoints-${date}.csv`);
-    msg.innerHTML = `<div class="alert success">Eksporteret ${visible.length} endpoints.</div>`;
+    msg.innerHTML = `<div class="alert success">Eksporteret ${exportRows.length} endpoints.</div>`;
   });
 
   await load();

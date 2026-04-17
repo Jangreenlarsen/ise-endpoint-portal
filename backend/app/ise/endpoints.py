@@ -26,6 +26,18 @@ class IseEndpointRepository:
         total = sr.get("total", len(resources))
         return resources, total
 
+    async def list_all(self) -> list[dict[str, Any]]:
+        """Fetch all endpoints across all ISE pages (ERS max 100 per page)."""
+        all_resources: list[dict[str, Any]] = []
+        page = 1
+        while True:
+            resources, total = await self.list_page(page=page, size=100)
+            all_resources.extend(resources)
+            if len(all_resources) >= total or not resources:
+                break
+            page += 1
+        return all_resources
+
     async def get(self, endpoint_id: str) -> dict[str, Any]:
         data = await self.client.get(f"{ERS_ENDPOINTS}/{endpoint_id}")
         return data.get("ERSEndPoint", {}) if data else {}

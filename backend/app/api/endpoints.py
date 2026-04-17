@@ -41,6 +41,17 @@ async def list_endpoint_details(
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
+@router.get("/details/all", response_model=list[EndpointDetail])
+async def list_all_endpoint_details(
+    service: EndpointService = Depends(get_endpoint_service),
+) -> list[EndpointDetail]:
+    """Fetch ALL endpoints with full details across all ISE pages."""
+    try:
+        return await service.list_all_endpoint_details()
+    except IseApiError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
 @router.get("/{endpoint_id}", response_model=EndpointDetail)
 async def get_endpoint(
     endpoint_id: str,

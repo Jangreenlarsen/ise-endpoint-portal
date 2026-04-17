@@ -25,6 +25,7 @@ export const api = {
     request(`/endpoints?page=${page}&size=${size}`),
   listEndpointDetails: (page = 1, size = 100) =>
     request(`/endpoints/details?page=${page}&size=${size}`),
+  listAllEndpointDetails: () => request("/endpoints/details/all"),
   getEndpoint: (id) => request(`/endpoints/${encodeURIComponent(id)}`),
   listGroups: () => request("/groups"),
   createEndpoint: (payload) =>

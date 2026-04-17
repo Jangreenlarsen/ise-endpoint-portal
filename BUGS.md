@@ -18,6 +18,8 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 - `[fixed] 2026-04-17 — Browse/Edit ignorerer "Default page size" preference` — Indstillingen "Default page size (browse view)" under Frontend preferences gemmes korrekt i localStorage, men Browse/Edit view brugte altid hardkodet `100` i `api.listEndpointDetails(1, 100)`. **Løsning** (build 0022): `browse.js` læser nu `pageSize` fra localStorage via `getPageSize()`.
 - `[fixed] 2026-04-17 — Tema-valg slår ikke igennem` — Valg af tema under Frontend preferences gemt i localStorage men blev aldrig anvendt på DOM. **Løsning** (build 0022): tilføjet `applyTheme()`/`initTheme()` i `settings.js`, kaldt ved app-start i `app.js`, og komplet dark mode CSS i `styles.css` via `[data-theme="dark"]` selektorer.
 
+- `[fixed] 2026-04-17 — Filter søger kun i aktuel side, ikke alle endpoints` — Alle kolonnefiltre (MAC, Identity Group, Tilknytning, Description, Type, Owner, Lokation, AuthzVlan) og "Kun portal"-toggle filtrerede kun i den aktuelle sides data. **Løsning** (build 0024): ny backend-route `GET /endpoints/details/all` henter alle endpoints på tværs af ISE-sider. Frontend skifter automatisk til filter-mode (henter alle, client-side filter + paginering) når et filter aktiveres, og tilbage til server-side paginering når alle filtre deaktiveres. Cache sikrer at gentagne filter-ændringer ikke re-fetcher.
+
 ## Fixed
 
 (ingen)
