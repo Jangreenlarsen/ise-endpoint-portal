@@ -18,13 +18,13 @@ from app.ise.client import close_ise_client
 async def lifespan(_: FastAPI):
     setup_logging()
     import logging
-    logging.getLogger(__name__).info("hyperVision ISE Portal %s starting", APP_VERSION)
+    logging.getLogger(__name__).info("HyperVision ISE Portal %s starting", APP_VERSION)
     yield
     await close_ise_client()
 
 
 app = FastAPI(
-    title="hyperVision ISE Portal",
+    title="HyperVision ISE Portal",
     version=VERSION,
     lifespan=lifespan,
 )

@@ -1,4 +1,4 @@
-# Projekt: hyperVision ISE Portal
+# Projekt: HyperVision ISE Portal
 
 Dette er Claudes system-prompt for dette projekt. Den læses altid først og følges uden undtagelser.
 

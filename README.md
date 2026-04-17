@@ -1,8 +1,8 @@
-# hyperVision ISE Portal
+# HyperVision ISE Portal
 
 Web-baseret portal til administration af endpoint-enheder i **Cisco ISE 3.1+** via REST API (ERS + Open API).
 
-hyperVision ISE Portal giver netværksadministratorer en hurtig og overskuelig brugerflade til at oprette, importere, browse og redigere endpoints — med fuldt custom attribute workflow og ISE-kompatibel CSV import/export — uden at navigere ISE's tunge admin-GUI.
+HyperVision ISE Portal giver netværksadministratorer en hurtig og overskuelig brugerflade til at oprette, importere, browse og redigere endpoints — med fuldt custom attribute workflow og ISE-kompatibel CSV import/export — uden at navigere ISE's tunge admin-GUI.
 
 ---
 
