@@ -5,6 +5,12 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [1.6.0 build 0012] — 2026-04-17 — chore: omdøbt til hyperVision ISE Portal
+
+- **frontend**: `index.html` — `<title>` og sidebar-brand ændret til "hyperVision ISE Portal".
+- **backend**: `main.py` — FastAPI title og opstartslog ændret til "hyperVision ISE Portal".
+- **docs**: `README.md`, `INSTALL.md`, `CLAUDE.md` — alle overskrifter/referencer omdøbt.
+
 ## [1.6.0 build 0011] — 2026-04-17 — feat: Type attribut, Attributter-side, HypervisionISEPortal + bugfix
 
 ### Nye features

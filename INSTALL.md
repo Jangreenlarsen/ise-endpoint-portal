@@ -1,6 +1,6 @@
-# ISE Endpoint Portal — Installation og drift
+# hyperVision ISE Portal — Installation og drift
 
-Guide til opsætning, konfiguration og daglig brug af ISE Endpoint Portal.
+Guide til opsætning, konfiguration og daglig brug af hyperVision ISE Portal.
 
 ---
 
@@ -167,7 +167,7 @@ Opret `/etc/systemd/system/ise-portal.service`:
 
 ```ini
 [Unit]
-Description=ISE Endpoint Portal
+Description=hyperVision ISE Portal
 After=network.target
 
 [Service]

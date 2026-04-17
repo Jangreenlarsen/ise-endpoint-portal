@@ -1,4 +1,4 @@
-# Projekt: ISE REST API Endpoint Portal
+# Projekt: hyperVision ISE Portal
 
 Dette er Claudes system-prompt for dette projekt. Den læses altid først og følges uden undtagelser.
 
