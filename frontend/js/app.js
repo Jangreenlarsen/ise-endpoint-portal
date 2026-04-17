@@ -3,7 +3,7 @@ import { renderCreate } from "./views/create.js";
 import { renderImport } from "./views/import.js";
 import { renderBrowse } from "./views/browse.js";
 import { renderAttributes } from "./views/attributes.js";
-import { renderSettings } from "./views/settings.js";
+import { renderSettings, initTheme } from "./views/settings.js";
 
 const statusDot = document.getElementById("status-dot");
 const container = document.getElementById("view-container");
@@ -50,6 +50,7 @@ async function renderView() {
 
 window.addEventListener("hashchange", renderView);
 
+initTheme();
 checkHealth();
 setInterval(checkHealth, 15000);
 renderView();

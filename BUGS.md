@@ -15,6 +15,9 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 - `[fixed] 2026-04-17 — Save i Browse/Edit sætter altid staticGroupAssignment=true` — Når man redigerede attributter (description, owner osv.) uden at ændre Identity Group, blev tilknytning sat til Statisk fordi group_id altid blev sendt i payload. **Løsning** (build 0015): frontend sender kun `group_id` når gruppen faktisk blev ændret.
 - `[fixed] 2026-04-17 — Browse/Edit refresh nulstiller filter` — Hvis man har sat et filter i Browse/Edit og trykker Refresh, vises alle endpoints i stedet for kun dem der matcher filteret. **Løsning** (build 0011): `load()` kalder nu `applyFilter()` i stedet for direkte `renderRows(allRows)`, så filter og portal-toggle bevares efter refresh.
 
+- `[fixed] 2026-04-17 — Browse/Edit ignorerer "Default page size" preference` — Indstillingen "Default page size (browse view)" under Frontend preferences gemmes korrekt i localStorage, men Browse/Edit view brugte altid hardkodet `100` i `api.listEndpointDetails(1, 100)`. **Løsning** (build 0022): `browse.js` læser nu `pageSize` fra localStorage via `getPageSize()`.
+- `[fixed] 2026-04-17 — Tema-valg slår ikke igennem` — Valg af tema under Frontend preferences gemt i localStorage men blev aldrig anvendt på DOM. **Løsning** (build 0022): tilføjet `applyTheme()`/`initTheme()` i `settings.js`, kaldt ved app-start i `app.js`, og komplet dark mode CSS i `styles.css` via `[data-theme="dark"]` selektorer.
+
 ## Fixed
 
 (ingen)

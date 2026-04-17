@@ -15,6 +15,15 @@ function saveFrontendPrefs(prefs) {
   localStorage.setItem(FRONTEND_PREFS_KEY, JSON.stringify(prefs));
 }
 
+export function applyTheme(theme) {
+  document.documentElement.setAttribute("data-theme", theme || "light");
+}
+
+export function initTheme() {
+  const prefs = loadFrontendPrefs();
+  applyTheme(prefs.theme);
+}
+
 export async function renderSettings(container) {
   container.innerHTML = `
     <h2>Settings</h2>
@@ -97,7 +106,7 @@ export async function renderSettings(container) {
           <label for="theme">Tema</label>
           <select id="theme">
             <option value="light">Light</option>
-            <option value="dark">Dark (ikke implementeret endnu)</option>
+            <option value="dark">Dark</option>
           </select>
         </div>
         <div class="actions">
@@ -186,10 +195,12 @@ export async function renderSettings(container) {
   const frontendMsg = container.querySelector("#frontend-msg");
   container.querySelector("#frontend-form").addEventListener("submit", (e) => {
     e.preventDefault();
-    saveFrontendPrefs({
+    const newPrefs = {
       pageSize: parseInt(container.querySelector("#page_size").value, 10),
       theme: container.querySelector("#theme").value,
-    });
+    };
+    saveFrontendPrefs(newPrefs);
+    applyTheme(newPrefs.theme);
     frontendMsg.innerHTML = `<div class="alert success">Frontend preferences gemt.</div>`;
   });
 }

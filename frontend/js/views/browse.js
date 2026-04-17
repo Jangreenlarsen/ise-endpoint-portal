@@ -1,6 +1,14 @@
 import { api } from "../api.js";
 import { toIseCsv, downloadCsv } from "../csv.js";
 
+const FRONTEND_PREFS_KEY = "ise_portal_prefs";
+function getPageSize() {
+  try {
+    const prefs = JSON.parse(localStorage.getItem(FRONTEND_PREFS_KEY) || "{}");
+    return prefs.pageSize || 100;
+  } catch { return 100; }
+}
+
 function esc(s) {
   return (s || "").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 }
@@ -267,7 +275,7 @@ export async function renderBrowse(container) {
       const [caData, grps, details] = await Promise.all([
         api.listCustomAttributes(),
         api.listGroups(),
-        api.listEndpointDetails(1, 100),
+        api.listEndpointDetails(1, getPageSize()),
       ]);
       groups = grps;
       for (const a of caData.attributes) {
