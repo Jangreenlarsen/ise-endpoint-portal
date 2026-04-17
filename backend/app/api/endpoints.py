@@ -9,6 +9,7 @@ from app.schemas.endpoint import (
     EndpointDetail,
     EndpointSummary,
     EndpointUpdate,
+    PaginatedEndpointDetails,
 )
 from app.services.endpoint_service import EndpointService
 
@@ -27,12 +28,12 @@ async def list_endpoints(
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
-@router.get("/details", response_model=list[EndpointDetail])
+@router.get("/details", response_model=PaginatedEndpointDetails)
 async def list_endpoint_details(
     page: int = 1,
     size: int = 100,
     service: EndpointService = Depends(get_endpoint_service),
-) -> list[EndpointDetail]:
+) -> PaginatedEndpointDetails:
     """List endpoints with full details including custom attributes."""
     try:
         return await service.list_endpoint_details(page=page, size=size)

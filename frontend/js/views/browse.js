@@ -8,6 +8,13 @@ function getPageSize() {
     return prefs.pageSize || 100;
   } catch { return 100; }
 }
+function savePageSize(size) {
+  try {
+    const prefs = JSON.parse(localStorage.getItem(FRONTEND_PREFS_KEY) || "{}");
+    prefs.pageSize = size;
+    localStorage.setItem(FRONTEND_PREFS_KEY, JSON.stringify(prefs));
+  } catch { /* ignore */ }
+}
 
 function esc(s) {
   return (s || "").replace(/"/g, "&quot;").replace(/</g, "&lt;");
@@ -39,6 +46,16 @@ export async function renderBrowse(container) {
         <button id="bulk-save-btn" class="small" disabled>Gem valgte</button>
         <button id="bulk-del-btn" class="danger small" disabled>Slet valgte</button>
         <span id="selection-count" class="hint"></span>
+        <label class="hint page-size-label">Vis
+          <select id="page-size-select">
+            <option value="10">10</option>
+            <option value="25">25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+            <option value="200">200</option>
+            <option value="500">500</option>
+          </select>
+        </label>
         <span id="count" class="hint"></span>
       </div>
       <div id="msg"></div>
@@ -67,6 +84,11 @@ export async function renderBrowse(container) {
             <tr><td colspan="${COLUMNS.length + 2}" class="empty">Indlæser...</td></tr>
           </tbody>
         </table>
+      </div>
+      <div class="pagination-bar" id="pagination-bar">
+        <button id="page-prev" class="secondary small" disabled>&laquo; Forrige</button>
+        <span id="page-info" class="hint"></span>
+        <button id="page-next" class="secondary small" disabled>N\u00e6ste &raquo;</button>
       </div>
     </div>
     <div id="bulk-edit-overlay" class="modal-overlay hidden">
@@ -112,6 +134,25 @@ export async function renderBrowse(container) {
   let caValues = { Type: [], Owner: [], Lokation: [], AuthzVlan: [] };
   let portalOnly = false;
   const dirtyIds = new Set();
+  let currentPage = 1;
+  let currentSize = getPageSize();
+  let totalEndpoints = 0;
+  const pageSizeSelect = container.querySelector("#page-size-select");
+  const pagePrev = container.querySelector("#page-prev");
+  const pageNext = container.querySelector("#page-next");
+  const pageInfo = container.querySelector("#page-info");
+  pageSizeSelect.value = String(currentSize);
+
+  function totalPages() {
+    return Math.max(1, Math.ceil(totalEndpoints / currentSize));
+  }
+
+  function updatePaginationUI() {
+    const tp = totalPages();
+    pagePrev.disabled = currentPage <= 1;
+    pageNext.disabled = currentPage >= tp;
+    pageInfo.textContent = `Side ${currentPage} af ${tp} (${totalEndpoints} total)`;
+  }
 
   // Wire up filter checkboxes: enable/disable the corresponding input
   filterRow.querySelectorAll(".col-filter-cb").forEach((cb) => {
@@ -272,16 +313,18 @@ export async function renderBrowse(container) {
     dirtyIds.clear();
     updateDirtyUI();
     try {
-      const [caData, grps, details] = await Promise.all([
+      const [caData, grps, result] = await Promise.all([
         api.listCustomAttributes(),
         api.listGroups(),
-        api.listEndpointDetails(1, getPageSize()),
+        api.listEndpointDetails(currentPage, currentSize),
       ]);
       groups = grps;
       for (const a of caData.attributes) {
         if (a.name in caValues) caValues[a.name] = a.values;
       }
-      allRows = details;
+      allRows = result.items;
+      totalEndpoints = result.total;
+      updatePaginationUI();
       applyFilter();
     } catch (err) {
       msg.innerHTML = `<div class="alert error">${err.message}</div>`;
@@ -548,6 +591,19 @@ export async function renderBrowse(container) {
     }
     bulkEditOverlay.classList.add("hidden");
     msg.innerHTML = `<div class="alert info">${ids.length} endpoints opdateret lokalt — tryk "Gem alle" eller "Gem valgte" for at gemme til ISE.</div>`;
+  });
+
+  pagePrev.addEventListener("click", () => {
+    if (currentPage > 1) { currentPage--; load(); }
+  });
+  pageNext.addEventListener("click", () => {
+    if (currentPage < totalPages()) { currentPage++; load(); }
+  });
+  pageSizeSelect.addEventListener("change", () => {
+    currentSize = parseInt(pageSizeSelect.value, 10);
+    savePageSize(currentSize);
+    currentPage = 1;
+    load();
   });
 
   container.querySelector("#refresh-btn").addEventListener("click", load);

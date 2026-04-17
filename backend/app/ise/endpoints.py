@@ -14,11 +14,17 @@ class IseEndpointRepository:
     def __init__(self, client: IseClient) -> None:
         self.client = client
 
-    async def list_page(self, page: int = 1, size: int = 100) -> list[dict[str, Any]]:
+    async def list_page(
+        self, page: int = 1, size: int = 100
+    ) -> tuple[list[dict[str, Any]], int]:
+        """Return (resources, total_count) for the requested page."""
         data = await self.client.get(
             ERS_ENDPOINTS, params={"page": page, "size": size}
         )
-        return data.get("SearchResult", {}).get("resources", []) if data else []
+        sr = data.get("SearchResult", {}) if data else {}
+        resources = sr.get("resources", [])
+        total = sr.get("total", len(resources))
+        return resources, total
 
     async def get(self, endpoint_id: str) -> dict[str, Any]:
         data = await self.client.get(f"{ERS_ENDPOINTS}/{endpoint_id}")

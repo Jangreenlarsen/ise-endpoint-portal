@@ -43,7 +43,7 @@ Alle nye features registreres her FØR implementering påbegyndes.
 - `[planned] — Endpoint detalje-view` — klik på et endpoint i Browse for at se alle felter (groupId, profileId, customAttributes) via individual GET. Inline edit af alle felter. Lag: frontend, backend (api, services).
 - `[planned] — ERS filter-operatorer i Browse` — dropdown i UI for felt (mac, name, description) + operator (EQ, CONTAINS, STARTSW) til at bygge server-side filter. Lag: frontend, backend.
 - `[planned] — Gruppevalg i Browse/edit` — tilføj dropdown i rækken så bruger kan flytte endpoint til en anden gruppe direkte. Lag: frontend (browse view), bruger allerede PUT /api/endpoints/{id}.
-- `[planned] — Multi-page pagination` — Browse view viser kun side 1 (max 100). Tilføj paginering (forrige/næste) der bruger `?page=N`. Lag: frontend, backend (returnér total count).
+- `[done] 2026-04-17 — Multi-page pagination` — Browse view med forrige/næste paginering + page size selector direkte i toolbar. Backend returnerer total count via `PaginatedEndpointDetails`. Lag: frontend, backend.
 - `[planned] — Open API support` — implementer parallel integration mod `/api/v1/endpoint` (ISE 3.4 default). Payload og response shapes afviger fra ERS. Bruger vælger api_type i Settings. Lag: backend (ny `app/ise/openapi_endpoints.py`), service-lag dispatcher baseret på `config.settings.ise_api_type`. Ref: [ISE_API_REFERENCE.md § Open API](ISE_API_REFERENCE.md).
 
 ## Planlagte — Prioritet 3 (nice to have)

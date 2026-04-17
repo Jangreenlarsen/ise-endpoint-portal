@@ -18,6 +18,7 @@ from app.schemas.endpoint import (
     EndpointGroupSummary,
     EndpointSummary,
     EndpointUpdate,
+    PaginatedEndpointDetails,
 )
 
 logger = logging.getLogger(__name__)
@@ -53,7 +54,7 @@ class EndpointService:
         _ca_definitions_ensured = True
 
     async def list_endpoints(self, page: int = 1, size: int = 100) -> list[EndpointSummary]:
-        raw = await self.endpoints.list_page(page=page, size=size)
+        raw, _ = await self.endpoints.list_page(page=page, size=size)
         logger.info("listed %d endpoints (page=%d)", len(raw), page)
         return [
             EndpointSummary(
@@ -104,10 +105,10 @@ class EndpointService:
 
     async def list_endpoint_details(
         self, page: int = 1, size: int = 100
-    ) -> list[EndpointDetail]:
+    ) -> PaginatedEndpointDetails:
         """List endpoints with full details (concurrent fetches, max 5 parallel)."""
-        resources = await self.endpoints.list_page(page=page, size=size)
-        logger.info("fetching details for %d endpoints concurrently (page=%d)", len(resources), page)
+        resources, total = await self.endpoints.list_page(page=page, size=size)
+        logger.info("fetching details for %d endpoints concurrently (page=%d, total=%d)", len(resources), page, total)
         sem = asyncio.Semaphore(5)
 
         async def fetch_one(r: dict[str, Any]) -> EndpointDetail:
@@ -123,7 +124,9 @@ class EndpointService:
                     )
 
         details = await asyncio.gather(*(fetch_one(r) for r in resources))
-        return list(details)
+        return PaginatedEndpointDetails(
+            items=list(details), total=total, page=page, size=size
+        )
 
     async def list_groups(self) -> list[EndpointGroupSummary]:
         raw = await self.groups.list_all()

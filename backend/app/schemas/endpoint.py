@@ -61,3 +61,10 @@ class EndpointUpdate(BaseModel):
     group_id: str | None = None
     static_group_assignment: bool | None = None
     custom_attributes: CustomAttrs | None = None
+
+
+class PaginatedEndpointDetails(BaseModel):
+    items: list[EndpointDetail] = Field(default_factory=list)
+    total: int = 0
+    page: int = 1
+    size: int = 100
