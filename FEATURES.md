@@ -36,6 +36,7 @@ Alle nye features registreres her FØR implementering påbegyndes.
 - `[done] 2026-04-17 — Bulk select + bulk actions i Browse/Edit` — fjern individuelle Save/Del knapper per række. Tilføj checkbox per række + global select-all i header. Bulk-handlinger (Gem valgte / Slet valgte) i toolbar. Lag: frontend (browse view, css).
 - `[done] 2026-04-17 — Global Gem alle-knap i Browse/Edit` — global save-knap i toolbar ved siden af Refresh/Export/Kun portal. Tracker dirty-state per række og gemmer alle ændrede endpoints med ét klik. Lag: frontend (browse view, css).
 - `[done] 2026-04-17 — Bulk Rediger valgte i Browse/Edit` — "Rediger valgte" knap der åbner en modal til at sætte værdier (group, description, type, owner, lokation, authzvlan) på alle valgte endpoints på én gang. Lag: frontend (browse view, css).
+- `[done] 2026-04-17 — Concurrent endpoint detail fetch` — parallelisér GET af individuelle endpoints med asyncio.gather + semaphore (max 5 samtidige). Reducerer load-tid markant. Lag: backend (services).
 
 ## Planlagte — Prioritet 2 (bør have)
 

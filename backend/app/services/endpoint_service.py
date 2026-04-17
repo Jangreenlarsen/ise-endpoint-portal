@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -104,24 +105,25 @@ class EndpointService:
     async def list_endpoint_details(
         self, page: int = 1, size: int = 100
     ) -> list[EndpointDetail]:
-        """List endpoints with full details (fetches each individually for custom attrs)."""
+        """List endpoints with full details (concurrent fetches, max 5 parallel)."""
         resources = await self.endpoints.list_page(page=page, size=size)
-        logger.info("fetching details for %d endpoints (page=%d)", len(resources), page)
-        details: list[EndpointDetail] = []
-        for r in resources:
-            try:
-                detail = await self.get_endpoint(r["id"])
-                details.append(detail)
-            except IseApiError:
-                details.append(
-                    EndpointDetail(
+        logger.info("fetching details for %d endpoints concurrently (page=%d)", len(resources), page)
+        sem = asyncio.Semaphore(5)
+
+        async def fetch_one(r: dict[str, Any]) -> EndpointDetail:
+            async with sem:
+                try:
+                    return await self.get_endpoint(r["id"])
+                except IseApiError:
+                    return EndpointDetail(
                         id=r.get("id", ""),
                         name=r.get("name", ""),
                         mac=r.get("name", ""),
                         description=r.get("description"),
                     )
-                )
-        return details
+
+        details = await asyncio.gather(*(fetch_one(r) for r in resources))
+        return list(details)
 
     async def list_groups(self) -> list[EndpointGroupSummary]:
         raw = await self.groups.list_all()
