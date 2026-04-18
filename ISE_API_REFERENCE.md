@@ -47,7 +47,13 @@ GET /ers/config/endpoint?page=1&size=100&filter=mac.CONTAINS.AA:BB
 
 **Filter-operatorer**: `EQ`, `NEQ`, `CONTAINS`, `STARTSW`, `ENDSW`, `GT`, `LT`
 
-**Filtrerbare felter**: `mac`, `name`, `description`, `groupId`, `profileId`, `portalUser`, `staticGroupAssignment`
+**Filtrerbare felter** (empirisk bekræftet på ISE 3.4, build 0033):
+- ✅ `mac` — virker med alle operatorer
+- ❌ `name` — ISE returnerer `400 The filter field 'name' is not supported` (selvom SDK-docs angiver det)
+- ❌ `description` — ISE returnerer `400 The filter field 'description' is not supported`
+- `groupId`, `profileId`, `portalUser`, `staticGroupAssignment` — ikke verificeret, men kræver UUIDs
+
+Konklusion: Server-side filtrering er i praksis begrænset til `mac.*`. Alle andre felter skal filtreres client-side efter at have hentet endpoints (via `GET /endpoints/details/all`).
 
 ### GET list — response
 

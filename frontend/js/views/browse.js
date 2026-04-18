@@ -41,11 +41,10 @@ export async function renderBrowse(container) {
         <button id="export-btn" class="secondary">Export CSV</button>
         <button id="portal-filter-btn" class="secondary" title="Vis kun endpoints oprettet af HyperVision ISE Portal">Kun portal</button>
         <button id="save-all-btn" disabled title="Gem alle ændrede endpoints">Gem alle</button>
-        <div class="server-filter" title="Server-side ERS filter">
+        <div class="server-filter"
+             title="Server-side ERS filter på MAC — for Name/Description brug kolonnefilter-rækken nedenfor">
           <select id="filter-field" class="filter-field">
             <option value="mac">MAC</option>
-            <option value="name">Name</option>
-            <option value="description">Description</option>
           </select>
           <select id="filter-op" class="filter-op">
             <option value="CONTAINS">CONTAINS</option>
@@ -55,7 +54,7 @@ export async function renderBrowse(container) {
             <option value="ENDSW">ENDSW</option>
           </select>
           <input type="search" id="filter-value" class="mac-search filter-value"
-                 placeholder="Værdi (server-side)" autocomplete="off" />
+                 placeholder="Værdi (server-side MAC)" autocomplete="off" />
         </div>
         <div class="spacer"></div>
         <button id="bulk-edit-btn" class="secondary small" disabled>Rediger valgte</button>

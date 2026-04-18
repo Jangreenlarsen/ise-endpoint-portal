@@ -5,6 +5,11 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [1.16.1 build 0033] — 2026-04-18 — fix: ERS filter-dropdown begrænset til 'mac' (name/description ikke understøttet)
+
+- **frontend**: `js/views/browse.js` — server-side filter-felt-dropdown reduceret til kun `MAC`. ISE 3.4 returnerer `400 The filter field 'name'/'description' is not supported` for de to andre felter på trods af hvad ERS SDK-docs siger. Name/Description kan stadig filtreres client-side via kolonnefilter-rækken.
+- **docs**: `ISE_API_REFERENCE.md` — filtrerbare felter opdateret med empirisk verifikation: `mac` virker, `name`/`description` returnerer 400. Konklusion: server-side filter er i praksis begrænset til MAC.
+
 ## [1.16.0 build 0032] — 2026-04-18 — feat: Prioritet 2-batch (detalje-view, ERS filter-operatorer, Open API support)
 
 - **backend**: `app/schemas/endpoint.py` — `EndpointDetail` udvidet med `profile_id`, `static_profile`, `portal_user`, `identity_store`, `identity_store_id`.
