@@ -5,6 +5,11 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [1.14.0 build 0029] — 2026-04-18 — feat: Portal-default CSV template + auto-extend ved ISE import
+
+- **frontend**: `js/csv.js` — `DEFAULT_TEMPLATE` reduceret fra 34 ISE-kolonner til kun portalens egne 9 kolonner (MAC, IdentityGroup, Description, StaticGroupAssignment, CUSTOM.Type/Owner/Lokation/AuthzVlan/HypervisionISEPortal). Ny `extendTemplateWithPortalColumns()` der appender manglende portal-kolonner til en importeret template.
+- **frontend**: `js/views/settings.js` — ved import af template fra CSV-fil udvides den automatisk med portal-kolonner, så export aldrig taber portal-data. Success-beskeden viser hvor mange kolonner der blev tilføjet. "Nulstil"-knap giver nu det rene portal-template i stedet for det gamle ISE-template.
+
 ## [1.13.0 build 0028] — 2026-04-18 — feat: Export CSV eksporterer kun valgte endpoints
 
 - **frontend**: `js/views/browse.js` — Export CSV-knappen eksporterer nu kun de valgte endpoints hvis nogle rækker er markeret. Hvis ingen er valgt, eksporteres alle (filtrerede) endpoints som før. Success-besked viser "valgte" når selektion er brugt.

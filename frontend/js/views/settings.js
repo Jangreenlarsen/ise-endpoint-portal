@@ -1,5 +1,5 @@
 import { api } from "../api.js";
-import { getCsvTemplate, setCsvTemplate, resetCsvTemplate, parseTemplateHeader } from "../csv.js";
+import { getCsvTemplate, setCsvTemplate, resetCsvTemplate, parseTemplateHeader, extendTemplateWithPortalColumns } from "../csv.js";
 
 const FRONTEND_PREFS_KEY = "ise_portal_prefs";
 
@@ -177,9 +177,12 @@ export async function renderSettings(container) {
       csvTplMsg.innerHTML = `<div class="alert error">Ingen kolonner fundet i filen.</div>`;
       return;
     }
-    setCsvTemplate(columns);
+    const extended = extendTemplateWithPortalColumns(columns);
+    setCsvTemplate(extended);
     refreshTplPreview();
-    csvTplMsg.innerHTML = `<div class="alert success">Template importeret — ${columns.length} kolonner. Fremtidige exports bruger denne template.</div>`;
+    const added = extended.length - columns.length;
+    const addedNote = added ? ` (+${added} portal-kolonner tilføjet)` : "";
+    csvTplMsg.innerHTML = `<div class="alert success">Template importeret — ${extended.length} kolonner${addedNote}. Fremtidige exports bruger denne template.</div>`;
   });
 
   container.querySelector("#csv-tpl-reset").addEventListener("click", () => {

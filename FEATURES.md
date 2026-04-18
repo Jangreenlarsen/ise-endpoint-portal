@@ -38,6 +38,7 @@ Alle nye features registreres her FØR implementering påbegyndes.
 - `[done] 2026-04-17 — Bulk Rediger valgte i Browse/Edit` — "Rediger valgte" knap der åbner en modal til at sætte værdier (group, description, type, owner, lokation, authzvlan) på alle valgte endpoints på én gang. Lag: frontend (browse view, css).
 - `[done] 2026-04-17 — Concurrent endpoint detail fetch` — parallelisér GET af individuelle endpoints med asyncio.gather + semaphore (max 5 samtidige). Reducerer load-tid markant. Lag: backend (services).
 - `[done] 2026-04-18 — Export kun valgte endpoints` — Export CSV i Browse/Edit eksporterer nu kun de valgte endpoints hvis noget er selekteret. Hvis ingen er valgt, eksporteres alle (filtrerede) som før. Lag: frontend (browse view).
+- `[done] 2026-04-18 — Portal-default CSV template + auto-extend ved ISE import` — "Nulstil"-knap i CSV Export Template giver nu kun portalens egne kolonner (MAC, IdentityGroup, Description, StaticGroupAssignment, CUSTOM.Type/Owner/Lokation/AuthzVlan/HypervisionISEPortal) i stedet for det store 34-kolonne ISE-template. Når en ISE-template importeres, udvides den automatisk med portal-kolonner der mangler, så export aldrig taber portal-data. Lag: frontend (csv.js, settings view).
 
 ## Planlagte — Prioritet 2 (bør have)
 

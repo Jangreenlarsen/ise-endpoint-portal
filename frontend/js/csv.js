@@ -12,19 +12,10 @@ const MAC_RE = /^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$/;
 
 const CSV_TEMPLATE_KEY = "ise_portal_csv_template";
 
-// Default 34-column ISE template
+// Portal-only default template — kun kolonner portalen selv udfylder.
 const DEFAULT_TEMPLATE = [
-  "MACAddress","EndPointPolicy","IdentityGroup",
-  "PortalUser.GuestType","Description","PortalUser.Location",
-  "PortalUser.GuestStatus","StaticAssignment","User-Name",
-  "DeviceRegistrationStatus","PortalUser.CreationType","AUPAccepted",
-  "PortalUser.EmailAddress","PortalUser.PhoneNumber","FirstName",
-  "ip","Device Type","host-name","StaticGroupAssignment",
-  "MDMEnrolled","MDMOSVersion","PortalUser.LastName",
-  "PortalUser.GuestSponsor","EmailAddress","PortalUser",
-  "PortalUser.FirstName","BYODRegistration","MDMServerName",
-  "LastName","MDMServerID","Location",
-  "CUSTOM.Type","CUSTOM.Owner","CUSTOM.AuthzVlan","CUSTOM.Lokation",
+  "MACAddress","IdentityGroup","Description","StaticGroupAssignment",
+  "CUSTOM.Type","CUSTOM.Owner","CUSTOM.Lokation","CUSTOM.AuthzVlan",
   "CUSTOM.HypervisionISEPortal",
 ];
 
@@ -47,6 +38,16 @@ export function getCsvTemplate() {
  */
 export function setCsvTemplate(columns) {
   localStorage.setItem(CSV_TEMPLATE_KEY, JSON.stringify(columns));
+}
+
+/**
+ * Extend an imported template with any portal-default columns it is missing.
+ * Imported order is preserved; missing portal columns are appended.
+ */
+export function extendTemplateWithPortalColumns(columns) {
+  const existing = new Set(columns);
+  const extra = DEFAULT_TEMPLATE.filter((c) => !existing.has(c));
+  return [...columns, ...extra];
 }
 
 /**
