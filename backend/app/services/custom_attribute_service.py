@@ -65,7 +65,7 @@ class CustomAttributeService:
         scanned = 0
         page = 1
         while True:
-            resources = await self.endpoints.list_page(page=page, size=100)
+            resources, total = await self.endpoints.list_page(page=page, size=100)
             if not resources:
                 break
             for r in resources:
@@ -76,7 +76,7 @@ class CustomAttributeService:
                     if val:
                         discovered[attr].add(val)
                 scanned += 1
-            if len(resources) < 100:
+            if scanned >= total or len(resources) < 100:
                 break
             page += 1
 

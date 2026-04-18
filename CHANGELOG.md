@@ -5,6 +5,10 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [1.12.1 build 0027] — 2026-04-18 — fix: sync custom attributes fejlede med TypeError
+
+- **backend**: `app/services/custom_attribute_service.py` — `sync_from_ise()` forventede at `list_page()` returnerede en liste, men siden build 0024 returnerer den `(resources, total)`-tuple. Unpack tuplen korrekt og brug `total` til at stoppe pagineringen. Fikser 500 Internal Server Error ved `POST /api/custom-attributes/sync`.
+
 ## [1.12.0 build 0026] — 2026-04-17 — feat: bulk throttling — 150ms delay mellem ISE-kald
 
 - **backend**: `app/services/endpoint_service.py` — tilføjet 150ms `asyncio.sleep` mellem hvert ISE-kald i `bulk_create` for at overholde Ciscos 5–10 req/sec grænse og forhindre ERS overload ved store CSV-imports.
