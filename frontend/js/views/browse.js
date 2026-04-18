@@ -893,14 +893,34 @@ export async function renderBrowse(container) {
     }
   });
 
-  container.querySelector("#export-btn").addEventListener("click", () => {
+  const exportBtn = container.querySelector("#export-btn");
+  exportBtn.addEventListener("click", async () => {
     const selectedIds = getSelectedIds();
     let exportRows;
+    let allLabel = "";
     if (selectedIds.length) {
       const selSet = new Set(selectedIds);
       exportRows = allRows.filter((r) => selSet.has(r.id));
+    } else if (filterMode) {
+      exportRows = applyFiltersToRows(allRows);
     } else {
-      exportRows = filterMode ? applyFiltersToRows(allRows) : allRows;
+      // Ingen selektion + ingen client-side filter: hent alle endpoints på tværs af sider.
+      exportBtn.disabled = true;
+      msg.innerHTML = `<div class="alert info">Henter alle endpoints fra ISE for export...</div>`;
+      try {
+        if (allRowsCache) {
+          exportRows = allRowsCache;
+        } else {
+          exportRows = await api.listAllEndpointDetails("", currentFilters);
+          allRowsCache = exportRows;
+        }
+        allLabel = " (alle)";
+      } catch (err) {
+        msg.innerHTML = `<div class="alert error">Kunne ikke hente alle endpoints: ${err.message}</div>`;
+        exportBtn.disabled = false;
+        return;
+      }
+      exportBtn.disabled = false;
     }
     if (!exportRows.length) {
       msg.innerHTML = `<div class="alert info">Ingen endpoints at eksportere.</div>`;
@@ -909,7 +929,7 @@ export async function renderBrowse(container) {
     const csv = toIseCsv(exportRows);
     const date = new Date().toISOString().slice(0, 10);
     downloadCsv(csv, `ise-endpoints-${date}.csv`);
-    const label = selectedIds.length ? `${exportRows.length} valgte` : `${exportRows.length}`;
+    const label = selectedIds.length ? `${exportRows.length} valgte` : `${exportRows.length}${allLabel}`;
     msg.innerHTML = `<div class="alert success">Eksporteret ${label} endpoints.</div>`;
   });
 

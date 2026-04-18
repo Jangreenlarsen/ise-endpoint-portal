@@ -5,6 +5,10 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [1.16.2 build 0034] — 2026-04-18 — fix: Export CSV uden selektion eksporterer nu alle endpoints
+
+- **frontend**: `js/views/browse.js` — Export CSV-knappen eksporterer ved ingen selektion og ingen aktivt filter nu **alle** endpoints på tværs af ISE-sider (via `listAllEndpointDetails()`, bruger `allRowsCache` hvis tilgængelig), ikke kun den aktuelle pagination-side. Filter-mode og selektion-baseret export uændret. Knappen disables under hentning og resultat-labelen indikerer "(alle)".
+
 ## [1.16.1 build 0033] — 2026-04-18 — fix: ERS filter-dropdown begrænset til 'mac' (name/description ikke understøttet)
 
 - **frontend**: `js/views/browse.js` — server-side filter-felt-dropdown reduceret til kun `MAC`. ISE 3.4 returnerer `400 The filter field 'name'/'description' is not supported` for de to andre felter på trods af hvad ERS SDK-docs siger. Name/Description kan stadig filtreres client-side via kolonnefilter-rækken.
