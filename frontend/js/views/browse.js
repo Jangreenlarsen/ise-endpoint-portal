@@ -692,8 +692,14 @@ export async function renderBrowse(container) {
   container.querySelector("#refresh-btn").addEventListener("click", load);
 
   container.querySelector("#export-btn").addEventListener("click", () => {
-    // Export all filtered rows (not just current page)
-    const exportRows = filterMode ? applyFiltersToRows(allRows) : allRows;
+    const selectedIds = getSelectedIds();
+    let exportRows;
+    if (selectedIds.length) {
+      const selSet = new Set(selectedIds);
+      exportRows = allRows.filter((r) => selSet.has(r.id));
+    } else {
+      exportRows = filterMode ? applyFiltersToRows(allRows) : allRows;
+    }
     if (!exportRows.length) {
       msg.innerHTML = `<div class="alert info">Ingen endpoints at eksportere.</div>`;
       return;
@@ -701,7 +707,8 @@ export async function renderBrowse(container) {
     const csv = toIseCsv(exportRows);
     const date = new Date().toISOString().slice(0, 10);
     downloadCsv(csv, `ise-endpoints-${date}.csv`);
-    msg.innerHTML = `<div class="alert success">Eksporteret ${exportRows.length} endpoints.</div>`;
+    const label = selectedIds.length ? `${exportRows.length} valgte` : `${exportRows.length}`;
+    msg.innerHTML = `<div class="alert success">Eksporteret ${label} endpoints.</div>`;
   });
 
   await load();
