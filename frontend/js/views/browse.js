@@ -376,7 +376,7 @@ export async function renderBrowse(container) {
       // Server-side pagination — allRows is already just one page
       renderRows(allRows);
       updatePaginationUI();
-      count.textContent = `${allRows.length} endpoints`;
+      count.textContent = `${allRows.length} / ${totalEndpoints} endpoints`;
     }
   }
 

@@ -5,6 +5,10 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [1.15.1 build 0031] — 2026-04-18 — fix: Browse/Edit count viser page/total i server-side mode
+
+- **frontend**: `js/views/browse.js` — i server-side pagination viste toolbaren kun `${allRows.length} endpoints` (antal rækker på aktuel side) selvom pagination-baren allerede viste totalen. Ændret til `${allRows.length} / ${totalEndpoints} endpoints` så forholdet mellem viste rækker og total er konsistent med filter-mode visningen.
+
 ## [1.15.0 build 0030] — 2026-04-18 — feat: Prioritet 1-batch (409 skipped, server-side søg, Location-header, test forbindelse)
 
 - **backend**: `app/schemas/endpoint.py` — tilføjet `skipped: list[str]` til `BulkResult`.
