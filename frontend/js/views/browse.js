@@ -41,9 +41,22 @@ export async function renderBrowse(container) {
         <button id="export-btn" class="secondary">Export CSV</button>
         <button id="portal-filter-btn" class="secondary" title="Vis kun endpoints oprettet af HyperVision ISE Portal">Kun portal</button>
         <button id="save-all-btn" disabled title="Gem alle ændrede endpoints">Gem alle</button>
-        <input type="search" id="mac-search" class="mac-search"
-               placeholder="Søg MAC på serveren (ERS filter)" autocomplete="off"
-               title="Server-side søgning — mac.CONTAINS" />
+        <div class="server-filter" title="Server-side ERS filter">
+          <select id="filter-field" class="filter-field">
+            <option value="mac">MAC</option>
+            <option value="name">Name</option>
+            <option value="description">Description</option>
+          </select>
+          <select id="filter-op" class="filter-op">
+            <option value="CONTAINS">CONTAINS</option>
+            <option value="EQ">EQ</option>
+            <option value="NEQ">NEQ</option>
+            <option value="STARTSW">STARTSW</option>
+            <option value="ENDSW">ENDSW</option>
+          </select>
+          <input type="search" id="filter-value" class="mac-search filter-value"
+                 placeholder="Værdi (server-side)" autocomplete="off" />
+        </div>
         <div class="spacer"></div>
         <button id="bulk-edit-btn" class="secondary small" disabled>Rediger valgte</button>
         <button id="bulk-save-btn" class="small" disabled>Gem valgte</button>
@@ -92,6 +105,45 @@ export async function renderBrowse(container) {
         <button id="page-prev" class="secondary small" disabled>&laquo; Forrige</button>
         <span id="page-info" class="hint"></span>
         <button id="page-next" class="secondary small" disabled>N\u00e6ste &raquo;</button>
+      </div>
+    </div>
+    <div id="detail-overlay" class="modal-overlay hidden">
+      <div class="modal detail-modal">
+        <h3>Endpoint detaljer</h3>
+        <div id="detail-msg"></div>
+        <div class="detail-grid">
+          <label>MAC</label><div class="detail-value" id="d-mac"></div>
+          <label>Name</label><div class="detail-value" id="d-name"></div>
+          <label>ID</label><div class="detail-value mono" id="d-id"></div>
+          <label>Identity Group</label>
+          <select id="d-group"></select>
+          <label>Tilknytning</label>
+          <label class="inline-cb"><input type="checkbox" id="d-static-group" /> Statisk gruppetildeling</label>
+          <label>Description</label>
+          <input type="text" id="d-description" />
+          <label>Type</label>
+          <select id="d-type"></select>
+          <label>Owner</label>
+          <select id="d-owner"></select>
+          <label>Lokation</label>
+          <select id="d-lokation"></select>
+          <label>AuthzVlan</label>
+          <select id="d-authzvlan"></select>
+          <label>HypervisionISEPortal</label>
+          <div class="detail-value mono" id="d-hypervision"></div>
+          <label>Profile ID</label>
+          <div class="detail-value mono" id="d-profile-id"></div>
+          <label>Static profile</label>
+          <div class="detail-value" id="d-static-profile"></div>
+          <label>Portal user</label>
+          <div class="detail-value" id="d-portal-user"></div>
+          <label>Identity store</label>
+          <div class="detail-value" id="d-identity-store"></div>
+        </div>
+        <div class="modal-actions">
+          <button id="d-save">Gem ændringer</button>
+          <button id="d-close" class="secondary">Luk</button>
+        </div>
       </div>
     </div>
     <div id="bulk-edit-overlay" class="modal-overlay hidden">
@@ -147,9 +199,19 @@ export async function renderBrowse(container) {
   const pagePrev = container.querySelector("#page-prev");
   const pageNext = container.querySelector("#page-next");
   const pageInfo = container.querySelector("#page-info");
-  const macSearchInput = container.querySelector("#mac-search");
-  let currentSearch = "";
+  const filterFieldSelect = container.querySelector("#filter-field");
+  const filterOpSelect = container.querySelector("#filter-op");
+  const filterValueInput = container.querySelector("#filter-value");
+  let currentFilters = [];
   let searchDebounce = null;
+
+  function buildServerFilters() {
+    const value = filterValueInput.value.trim();
+    if (!value) return [];
+    const field = filterFieldSelect.value;
+    const op = filterOpSelect.value;
+    return [`${field}.${op}.${value}`];
+  }
   pageSizeSelect.value = String(currentSize);
 
   function totalPages() {
@@ -179,7 +241,7 @@ export async function renderBrowse(container) {
     tbody.innerHTML = `<tr><td colspan="${cols}" class="empty">Henter alle endpoints fra ISE...</td></tr>`;
     msg.innerHTML = `<div class="alert info">Henter alle endpoints for at kunne filtrere på tværs af sider...</div>`;
     try {
-      const all = await api.listAllEndpointDetails(currentSearch);
+      const all = await api.listAllEndpointDetails("", currentFilters);
       allRowsCache = all;
       allRows = all;
       filterMode = true;
@@ -340,7 +402,7 @@ export async function renderBrowse(container) {
     tbody.innerHTML = rows.map((r) => `
       <tr data-id="${esc(r.id)}"${dirtyIds.has(r.id) ? ' class="dirty"' : ''}>
         <td class="select-cell"><input type="checkbox" class="row-select" /></td>
-        <td class="mac-cell">${esc(r.mac || r.name)}</td>
+        <td class="mac-cell"><a href="#" class="mac-link" title="Vis detaljer">${esc(r.mac || r.name)}</a></td>
         <td><select class="grp-select">${groupOptionsHtml(r.group_id)}</select></td>
         <td class="assign-cell">${r.static_group ? "Statisk" : "Dynamisk"}</td>
         <td><input type="text" class="desc-input" value="${esc(r.description || "")}" /></td>
@@ -393,7 +455,7 @@ export async function renderBrowse(container) {
       const [caData, grps, result] = await Promise.all([
         api.listCustomAttributes(),
         api.listGroups(),
-        api.listEndpointDetails(currentPage, currentSize, currentSearch),
+        api.listEndpointDetails(currentPage, currentSize, "", currentFilters),
       ]);
       groups = grps;
       for (const a of caData.attributes) {
@@ -697,16 +759,139 @@ export async function renderBrowse(container) {
 
   container.querySelector("#refresh-btn").addEventListener("click", load);
 
-  macSearchInput.addEventListener("input", () => {
-    // Debounce: only trigger after 400ms of no typing
+  function triggerFilterChange(immediate = false) {
     if (searchDebounce) clearTimeout(searchDebounce);
-    searchDebounce = setTimeout(() => {
-      const newSearch = macSearchInput.value.trim();
-      if (newSearch === currentSearch) return;
-      currentSearch = newSearch;
+    const fire = () => {
+      const next = buildServerFilters();
+      const nextKey = next.join("|");
+      const curKey = currentFilters.join("|");
+      if (nextKey === curKey) return;
+      currentFilters = next;
       currentPage = 1;
       load();
-    }, 400);
+    };
+    if (immediate) fire();
+    else searchDebounce = setTimeout(fire, 400);
+  }
+  filterValueInput.addEventListener("input", () => triggerFilterChange(false));
+  filterFieldSelect.addEventListener("change", () => triggerFilterChange(true));
+  filterOpSelect.addEventListener("change", () => triggerFilterChange(true));
+
+  // Endpoint detail modal
+  const detailOverlay = container.querySelector("#detail-overlay");
+  const detailMsg = container.querySelector("#detail-msg");
+  let detailCurrentId = null;
+  let detailOriginalGroupId = "";
+
+  async function openDetail(id) {
+    detailCurrentId = id;
+    detailMsg.innerHTML = `<div class="alert info">Henter fra ISE...</div>`;
+    detailOverlay.classList.remove("hidden");
+    try {
+      const d = await api.getEndpoint(id);
+      detailOriginalGroupId = d.group_id || "";
+      container.querySelector("#d-mac").textContent = d.mac || d.name || "";
+      container.querySelector("#d-name").textContent = d.name || "";
+      container.querySelector("#d-id").textContent = d.id || "";
+      container.querySelector("#d-group").innerHTML = groupOptionsHtml(d.group_id);
+      container.querySelector("#d-static-group").checked = !!d.static_group;
+      container.querySelector("#d-description").value = d.description || "";
+      container.querySelector("#d-type").innerHTML = optionsHtml(caValues.Type, d.endpoint_type);
+      container.querySelector("#d-owner").innerHTML = optionsHtml(caValues.Owner, d.owner);
+      container.querySelector("#d-lokation").innerHTML = optionsHtml(caValues.Lokation, d.lokation);
+      container.querySelector("#d-authzvlan").innerHTML = optionsHtml(caValues.AuthzVlan, d.authz_vlan);
+      container.querySelector("#d-hypervision").textContent = d.hypervision || "—";
+      container.querySelector("#d-profile-id").textContent = d.profile_id || "—";
+      container.querySelector("#d-static-profile").textContent = d.static_profile ? "Ja" : "Nej";
+      container.querySelector("#d-portal-user").textContent = d.portal_user || "—";
+      const store = [d.identity_store, d.identity_store_id].filter(Boolean).join(" / ");
+      container.querySelector("#d-identity-store").textContent = store || "—";
+      detailMsg.innerHTML = "";
+    } catch (err) {
+      detailMsg.innerHTML = `<div class="alert error">Kunne ikke hente: ${err.message}</div>`;
+    }
+  }
+
+  function closeDetail() {
+    detailOverlay.classList.add("hidden");
+    detailCurrentId = null;
+    detailMsg.innerHTML = "";
+  }
+
+  tbody.addEventListener("click", (e) => {
+    const link = e.target.closest(".mac-link");
+    if (!link) return;
+    e.preventDefault();
+    const tr = link.closest("tr");
+    if (tr && tr.dataset.id) openDetail(tr.dataset.id);
+  });
+
+  container.querySelector("#d-close").addEventListener("click", closeDetail);
+  detailOverlay.addEventListener("click", (e) => {
+    if (e.target === detailOverlay) closeDetail();
+  });
+
+  container.querySelector("#d-save").addEventListener("click", async () => {
+    if (!detailCurrentId) return;
+    const saveBtn = container.querySelector("#d-save");
+    saveBtn.disabled = true;
+    detailMsg.innerHTML = `<div class="alert info">Gemmer...</div>`;
+    const selectedGroupId = container.querySelector("#d-group").value;
+    const staticGroup = container.querySelector("#d-static-group").checked;
+    const groupChanged = selectedGroupId !== detailOriginalGroupId;
+    let group_id = null;
+    let static_group_assignment = null;
+    if (groupChanged) {
+      if (!selectedGroupId) {
+        const unknownGroup = groups.find((g) => g.name.toLowerCase() === "unknown");
+        if (unknownGroup) {
+          group_id = unknownGroup.id;
+          static_group_assignment = false;
+        }
+      } else {
+        group_id = selectedGroupId;
+        static_group_assignment = staticGroup;
+      }
+    } else if (selectedGroupId) {
+      static_group_assignment = staticGroup;
+    }
+    const payload = {
+      description: container.querySelector("#d-description").value,
+      group_id,
+      static_group_assignment,
+      custom_attributes: {
+        Type: container.querySelector("#d-type").value,
+        Owner: container.querySelector("#d-owner").value,
+        Lokation: container.querySelector("#d-lokation").value,
+        AuthzVlan: container.querySelector("#d-authzvlan").value,
+      },
+    };
+    try {
+      await api.updateEndpoint(detailCurrentId, payload);
+      // Update local row too
+      const row = allRows.find((r) => r.id === detailCurrentId);
+      if (row) {
+        row.description = payload.description;
+        if (groupChanged) {
+          row.group_id = group_id;
+          row.static_group = static_group_assignment !== false;
+        }
+        row.endpoint_type = payload.custom_attributes.Type;
+        row.owner = payload.custom_attributes.Owner;
+        row.lokation = payload.custom_attributes.Lokation;
+        row.authz_vlan = payload.custom_attributes.AuthzVlan;
+      }
+      dirtyIds.delete(detailCurrentId);
+      const tr = tbody.querySelector(`tr[data-id="${detailCurrentId}"]`);
+      if (tr) tr.classList.remove("dirty");
+      updateDirtyUI();
+      applyFilter();
+      detailMsg.innerHTML = `<div class="alert success">Gemt.</div>`;
+    } catch (err) {
+      detailMsg.innerHTML = `<div class="alert error">${err.message}</div>`;
+    } finally {
+      saveBtn.disabled = false;
+    }
   });
 
   container.querySelector("#export-btn").addEventListener("click", () => {

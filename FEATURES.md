@@ -42,11 +42,11 @@ Alle nye features registreres her FØR implementering påbegyndes.
 
 ## Planlagte — Prioritet 2 (bør have)
 
-- `[planned] — Endpoint detalje-view` — klik på et endpoint i Browse for at se alle felter (groupId, profileId, customAttributes) via individual GET. Inline edit af alle felter. Lag: frontend, backend (api, services).
-- `[planned] — ERS filter-operatorer i Browse` — dropdown i UI for felt (mac, name, description) + operator (EQ, CONTAINS, STARTSW) til at bygge server-side filter. Lag: frontend, backend.
-- `[planned] — Gruppevalg i Browse/edit` — tilføj dropdown i rækken så bruger kan flytte endpoint til en anden gruppe direkte. Lag: frontend (browse view), bruger allerede PUT /api/endpoints/{id}.
+- `[done] 2026-04-18 — Endpoint detalje-view` — klik på MAC-linket i Browse åbner en modal der henter fuld `GET /api/endpoints/{id}` med alle felter (groupId, profileId, portalUser, identityStore, customAttributes). Inline edit af description/group/type/owner/lokation/authzvlan + Gem-knap. Lag: frontend (browse view, css), backend (schemas, services).
+- `[done] 2026-04-18 — ERS filter-operatorer i Browse` — felt-dropdown (MAC/Name/Description) + operator-dropdown (CONTAINS/EQ/NEQ/STARTSW/ENDSW) + værdi-input (debounced) bygger ERS filter-expression og sender den til backend som gentagelig `?filter=` query. Backend tager filter-liste videre til ISE. Lag: frontend (browse view, css, api), backend (api, services).
+- `[done] 2026-04-17 — Gruppevalg i Browse/edit` — dropdown per række flytter endpoint til en anden gruppe via PUT /api/endpoints/{id}. Inkluderet i fuld Browse/Edit + bulk-save. Lag: frontend (browse view).
 - `[done] 2026-04-17 — Multi-page pagination` — Browse view med forrige/næste paginering + page size selector direkte i toolbar. Backend returnerer total count via `PaginatedEndpointDetails`. Lag: frontend, backend.
-- `[planned] — Open API support` — implementer parallel integration mod `/api/v1/endpoint` (ISE 3.4 default). Payload og response shapes afviger fra ERS. Bruger vælger api_type i Settings. Lag: backend (ny `app/ise/openapi_endpoints.py`), service-lag dispatcher baseret på `config.settings.ise_api_type`. Ref: [ISE_API_REFERENCE.md § Open API](ISE_API_REFERENCE.md).
+- `[done] 2026-04-18 — Open API support` — parallel integration mod `/api/v1/endpoint` implementeret i `app/ise/openapi_endpoints.py` (list/get/create/update/delete + `endpoint-identity-group`). Response-shapes normaliseres til ERS-form så service-laget deler kode. `EndpointService.__init__` dispatcher baseret på `config.settings.ise_api_type`. `/api/settings/test` prober korrekt endpoint pr. api_type. Lag: backend (ise, services, settings). Ref: [ISE_API_REFERENCE.md § Open API](ISE_API_REFERENCE.md).
 
 ## Planlagte — Prioritet 3 (nice to have)
 

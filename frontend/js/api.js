@@ -21,17 +21,30 @@ async function request(path, options = {}) {
 
 export const api = {
   health: () => request("/health"),
-  listEndpoints: (page = 1, size = 100, search = "") => {
-    const q = search ? `&search=${encodeURIComponent(search)}` : "";
-    return request(`/endpoints?page=${page}&size=${size}${q}`);
+  listEndpoints: (page = 1, size = 100, search = "", filters = []) => {
+    const parts = [`page=${page}`, `size=${size}`];
+    if (search) parts.push(`search=${encodeURIComponent(search)}`);
+    for (const f of filters || []) {
+      if (f) parts.push(`filter=${encodeURIComponent(f)}`);
+    }
+    return request(`/endpoints?${parts.join("&")}`);
   },
-  listEndpointDetails: (page = 1, size = 100, search = "") => {
-    const q = search ? `&search=${encodeURIComponent(search)}` : "";
-    return request(`/endpoints/details?page=${page}&size=${size}${q}`);
+  listEndpointDetails: (page = 1, size = 100, search = "", filters = []) => {
+    const parts = [`page=${page}`, `size=${size}`];
+    if (search) parts.push(`search=${encodeURIComponent(search)}`);
+    for (const f of filters || []) {
+      if (f) parts.push(`filter=${encodeURIComponent(f)}`);
+    }
+    return request(`/endpoints/details?${parts.join("&")}`);
   },
-  listAllEndpointDetails: (search = "") => {
-    const q = search ? `?search=${encodeURIComponent(search)}` : "";
-    return request(`/endpoints/details/all${q}`);
+  listAllEndpointDetails: (search = "", filters = []) => {
+    const parts = [];
+    if (search) parts.push(`search=${encodeURIComponent(search)}`);
+    for (const f of filters || []) {
+      if (f) parts.push(`filter=${encodeURIComponent(f)}`);
+    }
+    const qs = parts.length ? `?${parts.join("&")}` : "";
+    return request(`/endpoints/details/all${qs}`);
   },
   getEndpoint: (id) => request(`/endpoints/${encodeURIComponent(id)}`),
   listGroups: () => request("/groups"),

@@ -20,6 +20,11 @@ class EndpointDetail(BaseModel):
     lokation: str = ""
     authz_vlan: str = ""
     hypervision: str = ""
+    profile_id: str = ""
+    static_profile: bool = False
+    portal_user: str = ""
+    identity_store: str = ""
+    identity_store_id: str = ""
 
 
 class EndpointGroupSummary(BaseModel):

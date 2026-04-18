@@ -68,7 +68,12 @@ async def test_connection(req: TestConnectionRequest) -> TestConnectionResponse:
     password = req.ise_password or s.ise_password
     verify = s.ise_verify_tls if req.ise_verify_tls is None else req.ise_verify_tls
     timeout = s.ise_timeout if req.ise_timeout is None else req.ise_timeout
-    # api_type not used yet — ERS groups endpoint is our reachability probe.
+    api_type = (req.ise_api_type or s.ise_api_type or "ers").lower()
+    probe_path = (
+        "/api/v1/endpoint-identity-group"
+        if api_type == "openapi"
+        else "/ers/config/endpointgroup"
+    )
 
     if not base_url or not username or not password:
         return TestConnectionResponse(
@@ -87,7 +92,7 @@ async def test_connection(req: TestConnectionRequest) -> TestConnectionResponse:
             headers={"Accept": "application/json"},
         ) as http:
             # Lightweight probe: group list (1 resource is enough to verify auth).
-            response = await http.get("/ers/config/endpointgroup", params={"size": 1})
+            response = await http.get(probe_path, params={"size": 1})
     except httpx.HTTPError as exc:
         logger.warning("ISE connection test transport error: %s", exc)
         return TestConnectionResponse(
@@ -106,18 +111,22 @@ async def test_connection(req: TestConnectionRequest) -> TestConnectionResponse:
             latency_ms=latency_ms,
         )
     if status_code in (401, 403):
+        role_hint = (
+            "ERS Admin-rollen" if api_type == "ers" else "Open API-adgang"
+        )
         return TestConnectionResponse(
             ok=False,
             status_code=status_code,
             message=(
                 f"Auth-fejl ({status_code}). Tjek brugernavn/password "
-                "og at brugeren har ERS Admin-rollen."
+                f"og at brugeren har {role_hint}."
             ),
             latency_ms=latency_ms,
         )
+    api_hint = "ERS API" if api_type == "ers" else "Open API"
     return TestConnectionResponse(
         ok=False,
         status_code=status_code,
-        message=f"ISE svarede {status_code}. Tjek URL og at ERS API er enabled.",
+        message=f"ISE svarede {status_code}. Tjek URL og at {api_hint} er enabled.",
         latency_ms=latency_ms,
     )

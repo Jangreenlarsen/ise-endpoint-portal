@@ -5,6 +5,17 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [1.16.0 build 0032] — 2026-04-18 — feat: Prioritet 2-batch (detalje-view, ERS filter-operatorer, Open API support)
+
+- **backend**: `app/schemas/endpoint.py` — `EndpointDetail` udvidet med `profile_id`, `static_profile`, `portal_user`, `identity_store`, `identity_store_id`.
+- **backend**: `app/services/endpoint_service.py` — dispatcher på `config.settings.ise_api_type`: bruger `OpenApiEndpointRepository`/`OpenApiEndpointGroupRepository` når `openapi` er valgt, ellers ERS. `list_endpoints`/`list_endpoint_details`/`list_all_endpoint_details` accepterer ny `filters`-parameter (liste af ERS-ekspressioner som `mac.STARTSW.AA`). Ny `_combine_filters()` merger eksplicitte filters med legacy `search`-shortcut. `get_endpoint` udfylder nu profile/portal/identity felter.
+- **backend**: `app/api/endpoints.py` — tre GET-routes (`/endpoints`, `/endpoints/details`, `/endpoints/details/all`) tager nu gentagelig `?filter=<field>.<OP>.<value>` query param.
+- **backend**: `app/ise/openapi_endpoints.py` — **ny fil**. `OpenApiEndpointRepository` + `OpenApiEndpointGroupRepository` med samme interface som ERS-repoene. Normaliserer Open API responses til ERS-shape (bl.a. wrap af flat `customAttributes` til double-nested) så service-laget kan dele kode. Parse id fra response-body eller Location-header ved create.
+- **backend**: `app/services/settings_service.py` — `/api/settings/test` prober nu den korrekte API (ERS `/ers/config/endpointgroup` eller Open API `/api/v1/endpoint-identity-group`) afhængig af `ise_api_type`. Auth-fejl-besked tilpasses (ERS Admin-rolle vs. Open API-adgang).
+- **frontend**: `js/api.js` — `listEndpoints`/`listEndpointDetails`/`listAllEndpointDetails` accepterer ny `filters`-array og sender dem som gentagelige `?filter=...` query params.
+- **frontend**: `js/views/browse.js` — MAC-søgeboksen erstattet med kombineret felt-dropdown (MAC/Name/Description) + operator-dropdown (CONTAINS/EQ/NEQ/STARTSW/ENDSW) + værdi-input (debounced). Nyt endpoint detalje-modal: klik på MAC-linket i en række for at hente fuld `GET /api/endpoints/{id}` med alle felter (profile_id, portal_user, identity_store) og inline edit af description/group/type/owner/lokation/authzvlan med Gem-knap der kalder PUT og opdaterer lokal række.
+- **frontend**: `css/styles.css` — styling for `.server-filter` (field+op+value), `.detail-modal` + `.detail-grid`, `a.mac-link` og dark-mode varianter.
+
 ## [1.15.1 build 0031] — 2026-04-18 — fix: Browse/Edit count viser page/total i server-side mode
 
 - **frontend**: `js/views/browse.js` — i server-side pagination viste toolbaren kun `${allRows.length} endpoints` (antal rækker på aktuel side) selvom pagination-baren allerede viste totalen. Ændret til `${allRows.length} / ${totalEndpoints} endpoints` så forholdet mellem viste rækker og total er konsistent med filter-mode visningen.

@@ -194,6 +194,22 @@ td input, td select {
   font-size: 0.85rem;
   min-width: 240px;
 }
+.toolbar .server-filter {
+  display: inline-flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+.toolbar .server-filter .filter-field,
+.toolbar .server-filter .filter-op {
+  padding: 0.3rem 0.4rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  background: #fff;
+}
+.toolbar .server-filter .filter-value {
+  min-width: 200px;
+}
 
 .preview-table {
   max-height: 320px;
@@ -387,6 +403,56 @@ tr.dirty td {
   gap: 0.5rem;
   justify-content: flex-end;
 }
+.modal.detail-modal {
+  width: 560px;
+  max-width: 95vw;
+}
+.detail-grid {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 0.5rem 0.75rem;
+  align-items: center;
+  margin: 1rem 0;
+}
+.detail-grid label {
+  white-space: nowrap;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #374151;
+}
+.detail-grid .detail-value {
+  font-size: 0.85rem;
+  color: #1a2330;
+  word-break: break-all;
+}
+.detail-grid .detail-value.mono {
+  font-family: ui-monospace, "Cascadia Mono", Menlo, monospace;
+  font-size: 0.78rem;
+  color: #4b5563;
+}
+.detail-grid input[type="text"],
+.detail-grid select {
+  width: 100%;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.85rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+}
+.detail-grid label.inline-cb {
+  font-weight: 400;
+  font-size: 0.85rem;
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+}
+a.mac-link {
+  color: #0b3d91;
+  text-decoration: none;
+  font-family: ui-monospace, "Cascadia Mono", Menlo, monospace;
+}
+a.mac-link:hover {
+  text-decoration: underline;
+}
 
 /* Pagination bar */
 .pagination-bar {
@@ -500,6 +566,16 @@ tr.dirty td {
   background: #12122a;
   color: #666;
 }
+[data-theme="dark"] .detail-grid label { color: #cbd5e1; }
+[data-theme="dark"] .detail-grid .detail-value { color: #e0e0e0; }
+[data-theme="dark"] .detail-grid .detail-value.mono { color: #9ca3af; }
+[data-theme="dark"] .detail-grid input[type="text"],
+[data-theme="dark"] .detail-grid select {
+  background: #1a1a2e;
+  color: #e0e0e0;
+  border-color: #3a3a5c;
+}
+[data-theme="dark"] a.mac-link { color: #93c5fd; }
 [data-theme="dark"] .active-toggle {
   background: #1a56db !important;
   border-color: #1a56db !important;

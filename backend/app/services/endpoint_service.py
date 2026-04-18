@@ -4,11 +4,16 @@ import asyncio
 import logging
 from typing import Any
 
+from app.core import config
 from app.core.custom_attr_store import ALL_ATTRS, HIDDEN_ATTR
 from app.core.exceptions import IseApiError
 from app.ise.client import IseClient
 from app.ise.custom_attributes import IseCustomAttributeRepository
 from app.ise.endpoints import IseEndpointGroupRepository, IseEndpointRepository
+from app.ise.openapi_endpoints import (
+    OpenApiEndpointGroupRepository,
+    OpenApiEndpointRepository,
+)
 from app.schemas.endpoint import (
     BulkCreateRequest,
     BulkFailure,
@@ -29,8 +34,16 @@ _ca_definitions_ensured = False
 
 class EndpointService:
     def __init__(self, client: IseClient) -> None:
-        self.endpoints = IseEndpointRepository(client)
-        self.groups = IseEndpointGroupRepository(client)
+        api_type = (config.settings.ise_api_type or "ers").lower()
+        if api_type == "openapi":
+            logger.info("EndpointService using Open API (/api/v1/endpoint)")
+            self.endpoints = OpenApiEndpointRepository(client)
+            self.groups = OpenApiEndpointGroupRepository(client)
+        else:
+            logger.info("EndpointService using ERS (/ers/config/endpoint)")
+            self.endpoints = IseEndpointRepository(client)
+            self.groups = IseEndpointGroupRepository(client)
+        self.api_type = api_type
         self.custom_attrs = IseCustomAttributeRepository(client)
 
     async def _ensure_ca_definitions(self) -> None:
@@ -58,8 +71,9 @@ class EndpointService:
         page: int = 1,
         size: int = 100,
         search: str | None = None,
+        filters: list[str] | None = None,
     ) -> list[EndpointSummary]:
-        filters = _build_search_filters(search)
+        filters = _combine_filters(search, filters)
         raw, _ = await self.endpoints.list_page(page=page, size=size, filters=filters)
         logger.info(
             "listed %d endpoints (page=%d, search=%s)",
@@ -93,6 +107,11 @@ class EndpointService:
             lokation=ca.get("Lokation", ""),
             authz_vlan=ca.get("AuthzVlan", ""),
             hypervision=ca.get("HypervisionISEPortal", ""),
+            profile_id=raw.get("profileId", "") or "",
+            static_profile=bool(raw.get("staticProfileAssignment", False)),
+            portal_user=raw.get("portalUser", "") or "",
+            identity_store=raw.get("identityStore", "") or "",
+            identity_store_id=raw.get("identityStoreId", "") or "",
         )
 
     async def _resolve_group_name(self, group_id: str) -> str:
@@ -117,9 +136,10 @@ class EndpointService:
         page: int = 1,
         size: int = 100,
         search: str | None = None,
+        filters: list[str] | None = None,
     ) -> PaginatedEndpointDetails:
         """List endpoints with full details (concurrent fetches, max 5 parallel)."""
-        filters = _build_search_filters(search)
+        filters = _combine_filters(search, filters)
         resources, total = await self.endpoints.list_page(
             page=page, size=size, filters=filters
         )
@@ -148,10 +168,12 @@ class EndpointService:
         )
 
     async def list_all_endpoint_details(
-        self, search: str | None = None
+        self,
+        search: str | None = None,
+        filters: list[str] | None = None,
     ) -> list[EndpointDetail]:
         """Fetch ALL endpoints with full details (all ISE pages, concurrent)."""
-        filters = _build_search_filters(search)
+        filters = _combine_filters(search, filters)
         resources = await self.endpoints.list_all(filters=filters)
         logger.info(
             "fetching details for ALL %d endpoints concurrently (search=%s)",
@@ -274,3 +296,21 @@ def _build_search_filters(search: str | None) -> list[str] | None:
         return None
     value = search.strip()
     return [f"mac.CONTAINS.{value}"]
+
+
+def _combine_filters(
+    search: str | None, explicit: list[str] | None
+) -> list[str] | None:
+    """Merge explicit ERS filter expressions with a free-text search shortcut.
+
+    Explicit filters take precedence. If only `search` is provided, it is
+    expanded via `_build_search_filters` (mac.CONTAINS). Both can be used
+    together — they're ANDed by ERS.
+    """
+    filters: list[str] = []
+    if explicit:
+        filters.extend(f for f in explicit if f and f.strip())
+    search_filters = _build_search_filters(search)
+    if search_filters:
+        filters.extend(search_filters)
+    return filters or None
