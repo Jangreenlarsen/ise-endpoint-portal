@@ -39,9 +39,11 @@ class IseClient:
         method: str,
         path: str,
         *,
-        params: dict[str, Any] | None = None,
+        params: Any = None,
         json: Any | None = None,
+        return_response: bool = False,
     ) -> Any:
+        """Make an ISE request. If `return_response` is True, return (data, response)."""
         logger.info("ISE %s %s params=%s", method, path, params)
         try:
             response = await self._http.request(method, path, params=params, json=json)
@@ -66,9 +68,10 @@ class IseClient:
             )
             raise IseApiError(response.status_code, message, payload)
 
-        if response.status_code == 204 or not response.content:
-            return None
-        return response.json()
+        data = None if response.status_code == 204 or not response.content else response.json()
+        if return_response:
+            return data, response
+        return data
 
     async def get(self, path: str, **kwargs: Any) -> Any:
         return await self.request("GET", path, **kwargs)

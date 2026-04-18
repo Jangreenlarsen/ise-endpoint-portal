@@ -1,11 +1,24 @@
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from app.ise.client import IseClient
 
+logger = logging.getLogger(__name__)
+
 ERS_ENDPOINTS = "/ers/config/endpoint"
 ERS_ENDPOINT_GROUPS = "/ers/config/endpointgroup"
+
+
+def _id_from_location(location: str) -> str:
+    """Extract the trailing UUID from an ERS `Location` header.
+
+    Example: `https://ise:9060/ers/config/endpoint/abc-123` -> `abc-123`.
+    """
+    if not location:
+        return ""
+    return location.rstrip("/").rsplit("/", 1)[-1]
 
 
 class IseEndpointRepository:
@@ -15,23 +28,36 @@ class IseEndpointRepository:
         self.client = client
 
     async def list_page(
-        self, page: int = 1, size: int = 100
+        self,
+        page: int = 1,
+        size: int = 100,
+        filters: list[str] | None = None,
     ) -> tuple[list[dict[str, Any]], int]:
-        """Return (resources, total_count) for the requested page."""
-        data = await self.client.get(
-            ERS_ENDPOINTS, params={"page": page, "size": size}
-        )
+        """Return (resources, total_count) for the requested page.
+
+        filters: list of ERS filter strings like "mac.CONTAINS.AA:BB"
+                 (multiple = AND).
+        """
+        params: list[tuple[str, Any]] = [("page", page), ("size", size)]
+        if filters:
+            for f in filters:
+                params.append(("filter", f))
+        data = await self.client.get(ERS_ENDPOINTS, params=params)
         sr = data.get("SearchResult", {}) if data else {}
         resources = sr.get("resources", [])
         total = sr.get("total", len(resources))
         return resources, total
 
-    async def list_all(self) -> list[dict[str, Any]]:
+    async def list_all(
+        self, filters: list[str] | None = None
+    ) -> list[dict[str, Any]]:
         """Fetch all endpoints across all ISE pages (ERS max 100 per page)."""
         all_resources: list[dict[str, Any]] = []
         page = 1
         while True:
-            resources, total = await self.list_page(page=page, size=100)
+            resources, total = await self.list_page(
+                page=page, size=100, filters=filters
+            )
             all_resources.extend(resources)
             if len(all_resources) >= total or not resources:
                 break
@@ -54,7 +80,8 @@ class IseEndpointRepository:
         description: str = "",
         static: bool = True,
         custom_attributes: dict[str, str] | None = None,
-    ) -> None:
+    ) -> str:
+        """Create an endpoint. Returns the new endpoint id (parsed from Location header)."""
         ers: dict[str, Any] = {
             "name": mac,
             "description": description,
@@ -67,7 +94,16 @@ class IseEndpointRepository:
             non_empty = {k: v for k, v in custom_attributes.items() if v}
             if non_empty:
                 ers["customAttributes"] = {"customAttributes": non_empty}
-        await self.client.post(ERS_ENDPOINTS, json={"ERSEndPoint": ers})
+        _, response = await self.client.request(
+            "POST",
+            ERS_ENDPOINTS,
+            json={"ERSEndPoint": ers},
+            return_response=True,
+        )
+        new_id = _id_from_location(response.headers.get("Location", ""))
+        if not new_id:
+            logger.warning("create endpoint returned no Location header")
+        return new_id
 
     async def update(
         self,

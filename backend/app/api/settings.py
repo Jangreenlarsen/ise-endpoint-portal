@@ -1,6 +1,11 @@
 from fastapi import APIRouter
 
-from app.schemas.settings import BackendSettingsResponse, BackendSettingsUpdate
+from app.schemas.settings import (
+    BackendSettingsResponse,
+    BackendSettingsUpdate,
+    TestConnectionRequest,
+    TestConnectionResponse,
+)
 from app.services import settings_service
 
 router = APIRouter(prefix="/settings", tags=["settings"])
@@ -16,3 +21,11 @@ async def update_backend_settings(
     req: BackendSettingsUpdate,
 ) -> BackendSettingsResponse:
     return await settings_service.update_backend_settings(req)
+
+
+@router.post("/test", response_model=TestConnectionResponse)
+async def test_backend_connection(
+    req: TestConnectionRequest,
+) -> TestConnectionResponse:
+    """Verify ISE reachability + credentials without saving."""
+    return await settings_service.test_connection(req)

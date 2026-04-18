@@ -21,11 +21,18 @@ async function request(path, options = {}) {
 
 export const api = {
   health: () => request("/health"),
-  listEndpoints: (page = 1, size = 100) =>
-    request(`/endpoints?page=${page}&size=${size}`),
-  listEndpointDetails: (page = 1, size = 100) =>
-    request(`/endpoints/details?page=${page}&size=${size}`),
-  listAllEndpointDetails: () => request("/endpoints/details/all"),
+  listEndpoints: (page = 1, size = 100, search = "") => {
+    const q = search ? `&search=${encodeURIComponent(search)}` : "";
+    return request(`/endpoints?page=${page}&size=${size}${q}`);
+  },
+  listEndpointDetails: (page = 1, size = 100, search = "") => {
+    const q = search ? `&search=${encodeURIComponent(search)}` : "";
+    return request(`/endpoints/details?page=${page}&size=${size}${q}`);
+  },
+  listAllEndpointDetails: (search = "") => {
+    const q = search ? `?search=${encodeURIComponent(search)}` : "";
+    return request(`/endpoints/details/all${q}`);
+  },
   getEndpoint: (id) => request(`/endpoints/${encodeURIComponent(id)}`),
   listGroups: () => request("/groups"),
   createEndpoint: (payload) =>
@@ -44,6 +51,11 @@ export const api = {
     request("/settings/backend", {
       method: "PUT",
       body: JSON.stringify(payload),
+    }),
+  testBackendConnection: (payload) =>
+    request("/settings/test", {
+      method: "POST",
+      body: JSON.stringify(payload || {}),
     }),
   listCustomAttributes: () => request("/custom-attributes"),
   addCustomAttributeValue: (name, value) =>

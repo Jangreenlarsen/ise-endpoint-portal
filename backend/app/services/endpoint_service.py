@@ -53,9 +53,18 @@ class EndpointService:
             )
         _ca_definitions_ensured = True
 
-    async def list_endpoints(self, page: int = 1, size: int = 100) -> list[EndpointSummary]:
-        raw, _ = await self.endpoints.list_page(page=page, size=size)
-        logger.info("listed %d endpoints (page=%d)", len(raw), page)
+    async def list_endpoints(
+        self,
+        page: int = 1,
+        size: int = 100,
+        search: str | None = None,
+    ) -> list[EndpointSummary]:
+        filters = _build_search_filters(search)
+        raw, _ = await self.endpoints.list_page(page=page, size=size, filters=filters)
+        logger.info(
+            "listed %d endpoints (page=%d, search=%s)",
+            len(raw), page, search or "",
+        )
         return [
             EndpointSummary(
                 id=r.get("id", ""),
@@ -104,11 +113,21 @@ class EndpointService:
         return self._group_cache.get(group_id, "")
 
     async def list_endpoint_details(
-        self, page: int = 1, size: int = 100
+        self,
+        page: int = 1,
+        size: int = 100,
+        search: str | None = None,
     ) -> PaginatedEndpointDetails:
         """List endpoints with full details (concurrent fetches, max 5 parallel)."""
-        resources, total = await self.endpoints.list_page(page=page, size=size)
-        logger.info("fetching details for %d endpoints concurrently (page=%d, total=%d)", len(resources), page, total)
+        filters = _build_search_filters(search)
+        resources, total = await self.endpoints.list_page(
+            page=page, size=size, filters=filters
+        )
+        logger.info(
+            "fetching details for %d endpoints concurrently "
+            "(page=%d, total=%d, search=%s)",
+            len(resources), page, total, search or "",
+        )
         sem = asyncio.Semaphore(5)
 
         async def fetch_one(r: dict[str, Any]) -> EndpointDetail:
@@ -128,10 +147,16 @@ class EndpointService:
             items=list(details), total=total, page=page, size=size
         )
 
-    async def list_all_endpoint_details(self) -> list[EndpointDetail]:
+    async def list_all_endpoint_details(
+        self, search: str | None = None
+    ) -> list[EndpointDetail]:
         """Fetch ALL endpoints with full details (all ISE pages, concurrent)."""
-        resources = await self.endpoints.list_all()
-        logger.info("fetching details for ALL %d endpoints concurrently", len(resources))
+        filters = _build_search_filters(search)
+        resources = await self.endpoints.list_all(filters=filters)
+        logger.info(
+            "fetching details for ALL %d endpoints concurrently (search=%s)",
+            len(resources), search or "",
+        )
         sem = asyncio.Semaphore(5)
 
         async def fetch_one(r: dict[str, Any]) -> EndpointDetail:
@@ -161,18 +186,21 @@ class EndpointService:
             for r in raw
         ]
 
-    async def create_endpoint(self, req: CreateEndpointRequest) -> None:
+    async def create_endpoint(self, req: CreateEndpointRequest) -> str:
+        """Create an endpoint and return the new ISE endpoint id."""
         logger.info("creating endpoint mac=%s group=%s", req.mac, req.group_id)
         ca = req.custom_attributes.model_dump() if req.custom_attributes else {}
         # Always stamp endpoints created by this portal
         ca[HIDDEN_ATTR] = "true"
         await self._ensure_ca_definitions()
-        await self.endpoints.create(
+        new_id = await self.endpoints.create(
             mac=req.mac,
             group_id=req.group_id,
             description=req.description,
             custom_attributes=ca,
         )
+        logger.info("created endpoint mac=%s id=%s", req.mac, new_id)
+        return new_id
 
     async def delete_endpoint(self, endpoint_id: str) -> None:
         logger.info("deleting endpoint id=%s", endpoint_id)
@@ -202,18 +230,25 @@ class EndpointService:
         if any(item.custom_attributes for item in req.items):
             await self._ensure_ca_definitions()
         succeeded: list[str] = []
+        skipped: list[str] = []
         failed: list[BulkFailure] = []
         for idx, item in enumerate(req.items):
             try:
                 await self.create_endpoint(item)
                 succeeded.append(item.mac)
             except IseApiError as exc:
-                failed.append(BulkFailure(mac=item.mac, error=str(exc)))
+                if exc.status_code == 409:
+                    skipped.append(item.mac)
+                else:
+                    failed.append(BulkFailure(mac=item.mac, error=str(exc)))
             # Throttle: 150ms between ISE calls to stay within Cisco's 5-10 req/sec limit
             if idx < len(req.items) - 1:
                 await asyncio.sleep(0.15)
-        logger.info("bulk done: %d ok, %d failed", len(succeeded), len(failed))
-        return BulkResult(succeeded=succeeded, failed=failed)
+        logger.info(
+            "bulk done: %d ok, %d skipped, %d failed",
+            len(succeeded), len(skipped), len(failed),
+        )
+        return BulkResult(succeeded=succeeded, skipped=skipped, failed=failed)
 
 
 def _extract_custom_attrs(endpoint: dict[str, Any]) -> dict[str, str]:
@@ -224,3 +259,18 @@ def _extract_custom_attrs(endpoint: dict[str, Any]) -> dict[str, str]:
         if isinstance(inner, dict):
             return {k: str(v) for k, v in inner.items()}
     return {}
+
+
+def _build_search_filters(search: str | None) -> list[str] | None:
+    """Convert a free-text search string into ERS filter expressions.
+
+    A non-empty search is mapped to `mac.CONTAINS.<value>` which is the
+    most common lookup. ERS only supports filtering on a fixed set of
+    fields (mac, name, description, groupId, profileId, ...); any richer
+    multi-field OR needs to be handled with multiple calls — out of scope
+    here.
+    """
+    if not search or not search.strip():
+        return None
+    value = search.strip()
+    return [f"mac.CONTAINS.{value}"]

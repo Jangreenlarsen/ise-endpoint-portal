@@ -20,10 +20,11 @@ router = APIRouter(prefix="/endpoints", tags=["endpoints"])
 async def list_endpoints(
     page: int = 1,
     size: int = 100,
+    search: str | None = None,
     service: EndpointService = Depends(get_endpoint_service),
 ) -> list[EndpointSummary]:
     try:
-        return await service.list_endpoints(page=page, size=size)
+        return await service.list_endpoints(page=page, size=size, search=search)
     except IseApiError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
@@ -32,22 +33,26 @@ async def list_endpoints(
 async def list_endpoint_details(
     page: int = 1,
     size: int = 100,
+    search: str | None = None,
     service: EndpointService = Depends(get_endpoint_service),
 ) -> PaginatedEndpointDetails:
     """List endpoints with full details including custom attributes."""
     try:
-        return await service.list_endpoint_details(page=page, size=size)
+        return await service.list_endpoint_details(
+            page=page, size=size, search=search
+        )
     except IseApiError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
 @router.get("/details/all", response_model=list[EndpointDetail])
 async def list_all_endpoint_details(
+    search: str | None = None,
     service: EndpointService = Depends(get_endpoint_service),
 ) -> list[EndpointDetail]:
     """Fetch ALL endpoints with full details across all ISE pages."""
     try:
-        return await service.list_all_endpoint_details()
+        return await service.list_all_endpoint_details(search=search)
     except IseApiError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
@@ -69,10 +74,10 @@ async def create_endpoint(
     service: EndpointService = Depends(get_endpoint_service),
 ) -> dict[str, str]:
     try:
-        await service.create_endpoint(req)
+        new_id = await service.create_endpoint(req)
     except IseApiError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
-    return {"status": "created"}
+    return {"status": "created", "id": new_id}
 
 
 @router.post("/bulk", response_model=BulkResult)

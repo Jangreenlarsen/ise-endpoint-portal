@@ -41,6 +41,9 @@ export async function renderBrowse(container) {
         <button id="export-btn" class="secondary">Export CSV</button>
         <button id="portal-filter-btn" class="secondary" title="Vis kun endpoints oprettet af HyperVision ISE Portal">Kun portal</button>
         <button id="save-all-btn" disabled title="Gem alle ændrede endpoints">Gem alle</button>
+        <input type="search" id="mac-search" class="mac-search"
+               placeholder="Søg MAC på serveren (ERS filter)" autocomplete="off"
+               title="Server-side søgning — mac.CONTAINS" />
         <div class="spacer"></div>
         <button id="bulk-edit-btn" class="secondary small" disabled>Rediger valgte</button>
         <button id="bulk-save-btn" class="small" disabled>Gem valgte</button>
@@ -144,6 +147,9 @@ export async function renderBrowse(container) {
   const pagePrev = container.querySelector("#page-prev");
   const pageNext = container.querySelector("#page-next");
   const pageInfo = container.querySelector("#page-info");
+  const macSearchInput = container.querySelector("#mac-search");
+  let currentSearch = "";
+  let searchDebounce = null;
   pageSizeSelect.value = String(currentSize);
 
   function totalPages() {
@@ -173,7 +179,7 @@ export async function renderBrowse(container) {
     tbody.innerHTML = `<tr><td colspan="${cols}" class="empty">Henter alle endpoints fra ISE...</td></tr>`;
     msg.innerHTML = `<div class="alert info">Henter alle endpoints for at kunne filtrere på tværs af sider...</div>`;
     try {
-      const all = await api.listAllEndpointDetails();
+      const all = await api.listAllEndpointDetails(currentSearch);
       allRowsCache = all;
       allRows = all;
       filterMode = true;
@@ -387,7 +393,7 @@ export async function renderBrowse(container) {
       const [caData, grps, result] = await Promise.all([
         api.listCustomAttributes(),
         api.listGroups(),
-        api.listEndpointDetails(currentPage, currentSize),
+        api.listEndpointDetails(currentPage, currentSize, currentSearch),
       ]);
       groups = grps;
       for (const a of caData.attributes) {
@@ -690,6 +696,18 @@ export async function renderBrowse(container) {
   });
 
   container.querySelector("#refresh-btn").addEventListener("click", load);
+
+  macSearchInput.addEventListener("input", () => {
+    // Debounce: only trigger after 400ms of no typing
+    if (searchDebounce) clearTimeout(searchDebounce);
+    searchDebounce = setTimeout(() => {
+      const newSearch = macSearchInput.value.trim();
+      if (newSearch === currentSearch) return;
+      currentSearch = newSearch;
+      currentPage = 1;
+      load();
+    }, 400);
+  });
 
   container.querySelector("#export-btn").addEventListener("click", () => {
     const selectedIds = getSelectedIds();

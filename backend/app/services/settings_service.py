@@ -1,11 +1,19 @@
 from __future__ import annotations
 
 import logging
+import time
+
+import httpx
 
 from app.core import config
 from app.core.settings_store import load_overrides, save_overrides
 from app.ise.client import close_ise_client
-from app.schemas.settings import BackendSettingsResponse, BackendSettingsUpdate
+from app.schemas.settings import (
+    BackendSettingsResponse,
+    BackendSettingsUpdate,
+    TestConnectionRequest,
+    TestConnectionResponse,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -47,3 +55,69 @@ async def update_backend_settings(
         new.ise_api_type,
     )
     return get_backend_settings()
+
+
+async def test_connection(req: TestConnectionRequest) -> TestConnectionResponse:
+    """Verify ISE reachability + credentials without persisting any settings.
+
+    Udeladte felter bruger aktive settings; hvis password er tom bruges det gemte.
+    """
+    s = config.settings
+    base_url = (req.ise_base_url or s.ise_base_url).rstrip("/")
+    username = req.ise_username or s.ise_username
+    password = req.ise_password or s.ise_password
+    verify = s.ise_verify_tls if req.ise_verify_tls is None else req.ise_verify_tls
+    timeout = s.ise_timeout if req.ise_timeout is None else req.ise_timeout
+    # api_type not used yet — ERS groups endpoint is our reachability probe.
+
+    if not base_url or not username or not password:
+        return TestConnectionResponse(
+            ok=False,
+            message="Manglende felter: base_url, username og password er påkrævet.",
+        )
+
+    logger.info("testing ISE connection to %s as %s", base_url, username)
+    start = time.perf_counter()
+    try:
+        async with httpx.AsyncClient(
+            base_url=base_url,
+            auth=(username, password),
+            verify=verify,
+            timeout=timeout,
+            headers={"Accept": "application/json"},
+        ) as http:
+            # Lightweight probe: group list (1 resource is enough to verify auth).
+            response = await http.get("/ers/config/endpointgroup", params={"size": 1})
+    except httpx.HTTPError as exc:
+        logger.warning("ISE connection test transport error: %s", exc)
+        return TestConnectionResponse(
+            ok=False,
+            message=f"Kunne ikke kontakte ISE: {exc}",
+        )
+
+    latency_ms = int((time.perf_counter() - start) * 1000)
+    status_code = response.status_code
+
+    if 200 <= status_code < 300:
+        return TestConnectionResponse(
+            ok=True,
+            status_code=status_code,
+            message=f"OK — ISE svarede {status_code} på {latency_ms} ms.",
+            latency_ms=latency_ms,
+        )
+    if status_code in (401, 403):
+        return TestConnectionResponse(
+            ok=False,
+            status_code=status_code,
+            message=(
+                f"Auth-fejl ({status_code}). Tjek brugernavn/password "
+                "og at brugeren har ERS Admin-rollen."
+            ),
+            latency_ms=latency_ms,
+        )
+    return TestConnectionResponse(
+        ok=False,
+        status_code=status_code,
+        message=f"ISE svarede {status_code}. Tjek URL og at ERS API er enabled.",
+        latency_ms=latency_ms,
+    )

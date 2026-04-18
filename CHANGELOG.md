@@ -5,6 +5,20 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [1.15.0 build 0030] — 2026-04-18 — feat: Prioritet 1-batch (409 skipped, server-side søg, Location-header, test forbindelse)
+
+- **backend**: `app/schemas/endpoint.py` — tilføjet `skipped: list[str]` til `BulkResult`.
+- **backend**: `app/services/endpoint_service.py` — `bulk_create` mapper `IseApiError(409)` til `skipped` i stedet for `failed`, så brugeren kan skelne dubletter fra reelle fejl. `create_endpoint` returnerer nu endpoint-id. Ny `_build_search_filters()` der oversætter `?search=` til ERS filter-syntaks `mac.CONTAINS.xxx`.
+- **backend**: `app/ise/endpoints.py` — `list_page`/`list_all` accepterer valgfri `filters`-liste (flere = AND). `create()` læser `Location`-headeren og returnerer det nye UUID i stedet for at kræve follow-up GET. Ny helper `_id_from_location()`.
+- **backend**: `app/ise/client.py` — `request()` har fået valgfri `return_response=True` der returnerer `(data, response)` så kaldere kan læse response-headers (Location m.fl.). `params` accepterer nu både dict og list-of-tuples (multi-value filter).
+- **backend**: `app/api/endpoints.py` — `GET /api/endpoints`, `/endpoints/details`, `/endpoints/details/all` har alle fået `?search=` query parameter. `POST /api/endpoints` returnerer `{"status": "created", "id": "<uuid>"}`.
+- **backend**: `app/schemas/settings.py` + `app/services/settings_service.py` + `app/api/settings.py` — ny `POST /api/settings/test` der laver en autenticeret GET mod ISE (endpoint groups, size=1) med enten de medsendte settings eller de aktive. Returnerer `{ok, status_code, message, latency_ms}` og særskilt fejltekst ved 401/403 (auth) vs. 5xx/transport (network).
+- **frontend**: `js/api.js` — `listEndpoints/listEndpointDetails/listAllEndpointDetails` accepterer valgfri `search`-parameter. Ny `testBackendConnection()`.
+- **frontend**: `js/views/import.js` — viser nu tre spande (Succeeded / Skipped / Failed) i import-resultatet.
+- **frontend**: `js/views/browse.js` — ny MAC-søgeboks i toolbaren (debounced 400ms) der bruger server-side ERS-filter. Gør det muligt at finde endpoints uden at hente alle ISE-sider.
+- **frontend**: `js/views/settings.js` — ny "Test forbindelse"-knap der kalder `/api/settings/test` og viser success/fejl uden at gemme.
+- **frontend**: `css/styles.css` — styling for `.mac-search` inputtet.
+
 ## [1.14.0 build 0029] — 2026-04-18 — feat: Portal-default CSV template + auto-extend ved ISE import
 
 - **frontend**: `js/csv.js` — `DEFAULT_TEMPLATE` reduceret fra 34 ISE-kolonner til kun portalens egne 9 kolonner (MAC, IdentityGroup, Description, StaticGroupAssignment, CUSTOM.Type/Owner/Lokation/AuthzVlan/HypervisionISEPortal). Ny `extendTemplateWithPortalColumns()` der appender manglende portal-kolonner til en importeret template.

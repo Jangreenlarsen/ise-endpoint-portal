@@ -187,6 +187,13 @@ td input, td select {
   margin-bottom: 1rem;
 }
 .toolbar .spacer { flex: 1; }
+.toolbar .mac-search {
+  padding: 0.35rem 0.55rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  min-width: 240px;
+}
 
 .preview-table {
   max-height: 320px;

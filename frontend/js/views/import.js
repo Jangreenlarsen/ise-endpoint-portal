@@ -147,14 +147,22 @@ AA:BB:CC:DD:EE:02,Profiled,printer,Camera,Facilities,,VLAN200"></textarea>
     importBtn.disabled = true;
     try {
       const res = await api.bulkCreateEndpoints(items);
+      const skipped = res.skipped || [];
+      const alertClass = res.failed.length ? "info" : "success";
       result.innerHTML = `
-        <div class="alert ${res.failed.length ? "info" : "success"}">
-          Oprettet: <strong>${res.succeeded.length}</strong> — fejlet: <strong>${res.failed.length}</strong>
+        <div class="alert ${alertClass}">
+          Oprettet: <strong>${res.succeeded.length}</strong> —
+          skipped (findes allerede): <strong>${skipped.length}</strong> —
+          fejlet: <strong>${res.failed.length}</strong>
         </div>
         <div class="result-list">
           <div>
             <h4 class="succeeded">Succeeded (${res.succeeded.length})</h4>
             <ul>${res.succeeded.map((m) => `<li>${escapeHtml(m)}</li>`).join("") || "<li>(ingen)</li>"}</ul>
+          </div>
+          <div>
+            <h4 class="skipped">Skipped (${skipped.length})</h4>
+            <ul>${skipped.map((m) => `<li>${escapeHtml(m)}</li>`).join("") || "<li>(ingen)</li>"}</ul>
           </div>
           <div>
             <h4 class="failed">Failed (${res.failed.length})</h4>

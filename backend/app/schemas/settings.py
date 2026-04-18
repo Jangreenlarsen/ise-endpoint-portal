@@ -26,3 +26,25 @@ class BackendSettingsResponse(BaseModel):
     ise_verify_tls: bool
     ise_timeout: float
     ise_api_type: Literal["ers", "openapi"]
+
+
+class TestConnectionRequest(BaseModel):
+    """Optional payload for POST /api/settings/test.
+
+    Alle felter er valgfri — udeladte felter fallback til de aktive settings.
+    Hvis `ise_password` er tom, bruges det gemte password.
+    """
+
+    ise_base_url: str | None = None
+    ise_username: str | None = None
+    ise_password: str = ""
+    ise_verify_tls: bool | None = None
+    ise_timeout: float | None = None
+    ise_api_type: Literal["ers", "openapi"] | None = None
+
+
+class TestConnectionResponse(BaseModel):
+    ok: bool
+    status_code: int | None = None
+    message: str
+    latency_ms: int | None = None

@@ -68,6 +68,8 @@ export async function renderSettings(container) {
         </div>
         <div class="actions">
           <button type="submit">Gem backend settings</button>
+          <button type="button" id="test-conn-btn" class="secondary"
+                  title="Test ISE-forbindelsen uden at gemme">Test forbindelse</button>
         </div>
       </form>
     </div>
@@ -132,6 +134,25 @@ export async function renderSettings(container) {
   } catch (err) {
     backendMsg.innerHTML = `<div class="alert error">Kunne ikke hente backend settings: ${err.message}</div>`;
   }
+
+  container.querySelector("#test-conn-btn").addEventListener("click", async () => {
+    backendMsg.innerHTML = `<div class="alert info">Tester forbindelse til ISE...</div>`;
+    const payload = {
+      ise_base_url: container.querySelector("#base_url").value.trim(),
+      ise_username: container.querySelector("#username").value.trim(),
+      ise_password: container.querySelector("#password").value,
+      ise_verify_tls: container.querySelector("#verify_tls").checked,
+      ise_timeout: parseFloat(container.querySelector("#timeout").value),
+      ise_api_type: container.querySelector("#api_type").value,
+    };
+    try {
+      const res = await api.testBackendConnection(payload);
+      const cls = res.ok ? "success" : "error";
+      backendMsg.innerHTML = `<div class="alert ${cls}">${res.message}</div>`;
+    } catch (err) {
+      backendMsg.innerHTML = `<div class="alert error">Test fejlede: ${err.message}</div>`;
+    }
+  });
 
   container.querySelector("#backend-form").addEventListener("submit", async (e) => {
     e.preventDefault();
