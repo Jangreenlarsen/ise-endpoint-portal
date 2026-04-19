@@ -5,6 +5,7 @@ from app.core.exceptions import IseApiError
 from app.schemas.endpoint import (
     BulkCreateRequest,
     BulkResult,
+    CoaReauthResponse,
     CreateEndpointRequest,
     EndpointDetail,
     EndpointSummary,
@@ -118,3 +119,16 @@ async def delete_endpoint(
         await service.delete_endpoint(endpoint_id)
     except IseApiError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+@router.post("/{endpoint_id}/coa-reauth", response_model=CoaReauthResponse, dependencies=[Depends(require_editor)])
+async def coa_reauth(
+    endpoint_id: str,
+    service: EndpointService = Depends(get_endpoint_service),
+) -> CoaReauthResponse:
+    """Trigger CoA reauth on ISE for the given endpoint's MAC."""
+    try:
+        ok, mac, msg = await service.coa_reauth(endpoint_id)
+    except IseApiError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    return CoaReauthResponse(ok=ok, mac=mac, message=msg)

@@ -15,6 +15,19 @@ function savePageSize(size) {
     localStorage.setItem(FRONTEND_PREFS_KEY, JSON.stringify(prefs));
   } catch { /* ignore */ }
 }
+function getCoaReauthOnSave() {
+  try {
+    const prefs = JSON.parse(localStorage.getItem(FRONTEND_PREFS_KEY) || "{}");
+    return !!prefs.coaReauthOnSave;
+  } catch { return false; }
+}
+function setCoaReauthOnSave(enabled) {
+  try {
+    const prefs = JSON.parse(localStorage.getItem(FRONTEND_PREFS_KEY) || "{}");
+    prefs.coaReauthOnSave = !!enabled;
+    localStorage.setItem(FRONTEND_PREFS_KEY, JSON.stringify(prefs));
+  } catch { /* ignore */ }
+}
 
 function esc(s) {
   return (s || "").replace(/"/g, "&quot;").replace(/</g, "&lt;");
@@ -40,6 +53,7 @@ export async function renderBrowse(container) {
         <button id="refresh-btn">Refresh</button>
         <button id="export-btn" class="secondary">Export CSV</button>
         <button id="portal-filter-btn" class="secondary" title="Vis kun endpoints oprettet af HyperVision ISE Portal">Kun portal</button>
+        <button id="coa-toggle-btn" class="secondary" title="Udløs CoA reauth på ISE efter hver gemt ændring">CoA reauth: FRA</button>
         <button id="save-all-btn" disabled title="Gem alle ændrede endpoints">Gem alle</button>
         <div class="server-filter"
              title="Server-side ERS filter på MAC — for Name/Description brug kolonnefilter-rækken nedenfor">
@@ -183,6 +197,39 @@ export async function renderBrowse(container) {
   const saveAllBtn = container.querySelector("#save-all-btn");
   const bulkEditBtn = container.querySelector("#bulk-edit-btn");
   const bulkEditOverlay = container.querySelector("#bulk-edit-overlay");
+  const coaToggleBtn = container.querySelector("#coa-toggle-btn");
+  let coaOnSave = getCoaReauthOnSave();
+  function renderCoaToggle() {
+    coaToggleBtn.textContent = `CoA reauth: ${coaOnSave ? "TIL" : "FRA"}`;
+    coaToggleBtn.classList.toggle("active-toggle", coaOnSave);
+  }
+  renderCoaToggle();
+  coaToggleBtn.addEventListener("click", () => {
+    coaOnSave = !coaOnSave;
+    setCoaReauthOnSave(coaOnSave);
+    renderCoaToggle();
+  });
+
+  async function runCoaForIds(ids) {
+    if (!coaOnSave || !ids.length) return { ok: 0, fail: 0, failures: [] };
+    let ok = 0;
+    let fail = 0;
+    const failures = [];
+    for (const id of ids) {
+      try {
+        const res = await api.coaReauth(id);
+        if (res?.ok) ok++;
+        else {
+          fail++;
+          failures.push({ mac: res?.mac || id, msg: res?.message || "CoA fejlede" });
+        }
+      } catch (err) {
+        fail++;
+        failures.push({ mac: id, msg: err.message });
+      }
+    }
+    return { ok, fail, failures };
+  }
   let allRows = [];           // rows on current page (paged mode) or ALL rows (filtered mode)
   let allRowsCache = null;    // cached full dataset when filters have been used
   let groups = [];
@@ -566,38 +613,32 @@ export async function renderBrowse(container) {
     msg.innerHTML = `<div class="alert info">Gemmer ${ids.length} ændrede endpoints...</div>`;
     let ok = 0;
     let fail = 0;
+    const savedIds = [];
     for (const id of ids) {
       const tr = tbody.querySelector(`tr[data-id="${id}"]`);
       if (!tr) continue;
-      const { mac, payload, localUpdate } = buildSavePayload(tr);
+      const { payload } = buildSavePayload(tr);
       try {
         await api.updateEndpoint(id, payload);
-        const row = allRows.find((r) => r.id === id);
-        if (row) {
-          row.description = localUpdate.description;
-          if (localUpdate.groupChanged) {
-            row.group_id = localUpdate.group_id;
-            row.static_group = localUpdate.static_group_assignment !== false;
-          }
-          row.endpoint_type = localUpdate.endpointType;
-          row.owner = localUpdate.owner;
-          row.lokation = localUpdate.lokation;
-          row.authz_vlan = localUpdate.authzVlan;
-        }
         dirtyIds.delete(id);
-        tr.classList.remove("dirty");
+        savedIds.push(id);
         ok++;
       } catch {
         fail++;
       }
     }
-    updateDirtyUI();
+    let coaSummary = "";
+    if (coaOnSave && savedIds.length) {
+      msg.innerHTML = `<div class="alert info">Udløser CoA reauth for ${savedIds.length} endpoints...</div>`;
+      const coa = await runCoaForIds(savedIds);
+      coaSummary = `, CoA: ${coa.ok} ok${coa.fail ? `, ${coa.fail} fejl` : ""}`;
+    }
+    await load();
     const parts = [];
     if (ok) parts.push(`${ok} gemt`);
     if (fail) parts.push(`${fail} fejlede`);
     const cls = fail ? "error" : "success";
-    msg.innerHTML = `<div class="alert ${cls}">${parts.join(", ")}</div>`;
-    saveAllBtn.disabled = false;
+    msg.innerHTML = `<div class="alert ${cls}">${parts.join(", ")}${coaSummary}</div>`;
   });
 
   // Bulk save selected
@@ -608,38 +649,32 @@ export async function renderBrowse(container) {
     msg.innerHTML = `<div class="alert info">Gemmer ${ids.length} endpoints...</div>`;
     let ok = 0;
     let fail = 0;
+    const savedIds = [];
     for (const id of ids) {
       const tr = tbody.querySelector(`tr[data-id="${id}"]`);
       if (!tr) continue;
-      const { mac, payload, localUpdate } = buildSavePayload(tr);
+      const { payload } = buildSavePayload(tr);
       try {
         await api.updateEndpoint(id, payload);
-        const row = allRows.find((r) => r.id === id);
-        if (row) {
-          row.description = localUpdate.description;
-          if (localUpdate.groupChanged) {
-            row.group_id = localUpdate.group_id;
-            row.static_group = localUpdate.static_group_assignment !== false;
-          }
-          row.endpoint_type = localUpdate.endpointType;
-          row.owner = localUpdate.owner;
-          row.lokation = localUpdate.lokation;
-          row.authz_vlan = localUpdate.authzVlan;
-        }
         dirtyIds.delete(id);
-        tr.classList.remove("dirty");
+        savedIds.push(id);
         ok++;
       } catch {
         fail++;
       }
     }
-    updateDirtyUI();
+    let coaSummary = "";
+    if (coaOnSave && savedIds.length) {
+      msg.innerHTML = `<div class="alert info">Udløser CoA reauth for ${savedIds.length} endpoints...</div>`;
+      const coa = await runCoaForIds(savedIds);
+      coaSummary = `, CoA: ${coa.ok} ok${coa.fail ? `, ${coa.fail} fejl` : ""}`;
+    }
+    await load();
     const parts = [];
     if (ok) parts.push(`${ok} gemt`);
     if (fail) parts.push(`${fail} fejlede`);
     const cls = fail ? "error" : "success";
-    msg.innerHTML = `<div class="alert ${cls}">${parts.join(", ")}</div>`;
-    bulkSaveBtn.disabled = false;
+    msg.innerHTML = `<div class="alert ${cls}">${parts.join(", ")}${coaSummary}</div>`;
   });
 
   // Bulk delete
@@ -867,25 +902,20 @@ export async function renderBrowse(container) {
     };
     try {
       await api.updateEndpoint(detailCurrentId, payload);
-      // Update local row too
-      const row = allRows.find((r) => r.id === detailCurrentId);
-      if (row) {
-        row.description = payload.description;
-        if (groupChanged) {
-          row.group_id = group_id;
-          row.static_group = static_group_assignment !== false;
+      const savedId = detailCurrentId;
+      let coaSummary = "";
+      if (coaOnSave) {
+        detailMsg.innerHTML = `<div class="alert info">Gemt — udløser CoA reauth...</div>`;
+        const coa = await runCoaForIds([savedId]);
+        if (coa.ok) {
+          coaSummary = " CoA reauth sendt.";
+        } else if (coa.failures.length) {
+          coaSummary = ` CoA fejlede: ${coa.failures[0].msg}`;
         }
-        row.endpoint_type = payload.custom_attributes.Type;
-        row.owner = payload.custom_attributes.Owner;
-        row.lokation = payload.custom_attributes.Lokation;
-        row.authz_vlan = payload.custom_attributes.AuthzVlan;
       }
-      dirtyIds.delete(detailCurrentId);
-      const tr = tbody.querySelector(`tr[data-id="${detailCurrentId}"]`);
-      if (tr) tr.classList.remove("dirty");
-      updateDirtyUI();
-      applyFilter();
-      detailMsg.innerHTML = `<div class="alert success">Gemt.</div>`;
+      closeDetail();
+      await load();
+      msg.innerHTML = `<div class="alert success">Endpoint gemt.${coaSummary}</div>`;
     } catch (err) {
       detailMsg.innerHTML = `<div class="alert error">${err.message}</div>`;
     } finally {

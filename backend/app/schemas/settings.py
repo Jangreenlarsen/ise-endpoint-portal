@@ -15,6 +15,8 @@ class BackendSettingsUpdate(BaseModel):
     ise_verify_tls: bool = False
     ise_timeout: float = 30.0
     ise_api_type: Literal["ers", "openapi"] = "ers"
+    coa_psn_name: str = ""
+    coa_reauth_type: int = 1
 
 
 class BackendSettingsResponse(BaseModel):
@@ -26,6 +28,8 @@ class BackendSettingsResponse(BaseModel):
     ise_verify_tls: bool
     ise_timeout: float
     ise_api_type: Literal["ers", "openapi"]
+    coa_psn_name: str = ""
+    coa_reauth_type: int = 1
 
 
 class TestConnectionRequest(BaseModel):

@@ -356,6 +356,41 @@ Kun attributter med en ikke-tom værdi sendes. Tomme strenge udelades.
 
 ---
 
+## MnT — Change of Authorization (CoA)
+
+MnT (Monitoring & Troubleshooting) eksponerer et separat API-surface til at
+udløse CoA på aktive sessions. Dette bruges i portalen til at tvinge
+reauth efter endpoint-ændringer så attribut-ændringer slår igennem uden at
+brugeren skal genforbinde.
+
+### Paths
+
+```
+GET /admin/API/mnt/CoA/Reauth/{psnName}/{macAddress}/{reauthType}
+GET /admin/API/mnt/CoA/Disconnect/{psnName}/{macAddress}/{disconnectType}
+```
+
+- `psnName` — hostnavn på den PSN der skal udstede CoA (typisk samme host som MnT)
+- `macAddress` — kolon-separeret upper-case (`AA:BB:CC:DD:EE:FF`)
+- `reauthType` — `0` = DEFAULT, `1` = RERUN, `2` = LAST
+  - **RERUN** (1) er standard ved attribut-ændringer: ISE genvurderer hele
+    policy-sættet fra bunden.
+
+### Auth og response
+
+- Basic auth med samme ERS Admin credentials som ERS.
+- `Accept: application/xml` — response er XML, **ikke JSON**.
+- Status 200 + XML-payload med status-tag (f.eks. `<remoteCoA><results>...</results></remoteCoA>`).
+- 401/403 ved manglende rettigheder; 5xx hvis sessionen ikke findes eller MnT er nede.
+
+### Gotchas
+
+- Kræver at endpointet har en aktiv session — ellers fejler CoA'en.
+- Hvis `psnName` ikke matcher hostname på sessionens PSN, kan CoA afvises.
+- PxGrid er alternativ for store deployments, men MnT-pathen er simpler at integrere og ikke certifikat-afhængig.
+
+---
+
 ## Gotchas & tips
 
 1. **`staticGroupAssignment: true`** — uden dette holder gruppetildelingen ikke; ISE re-profiler endpointet.

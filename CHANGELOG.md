@@ -5,6 +5,14 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [1.20.0 build 0039] — 2026-04-19 — feat: Refresh efter save + global CoA reauth toggle
+
+- **frontend (browse/edit)**: Detail-modal save lukker nu modalen og kalder `load()` så tabellen genindlæses fra ISE efter ændring. Samme for "Gem alle" og "Gem valgte" — efter PUT reloades hele viewet så server-ændringer (staticGroupAssignment, profile re-match, m.m.) afspejles korrekt. Filter- og portal-toggle-state bevares (load() re-enterer filter-mode via `needsFilterMode()`).
+- **frontend (browse/edit)**: Ny toolbar-knap "CoA reauth: TIL/FRA" (persisteret i `localStorage.coaReauthOnSave`). Når TIL: efter hver succesful endpoint-save (detail-modal, Gem alle, Gem valgte) kaldes `POST /api/endpoints/{id}/coa-reauth` for hvert gemt endpoint, og resultatet vises i success-beskeden (f.eks. "2 gemt, CoA: 2 ok").
+- **backend**: Ny `POST /api/endpoints/{id}/coa-reauth` route (require_editor). Finder endpointets MAC via eksisterende `get()` og kalder nyt [coa.py](backend/app/ise/coa.py) modul der rammer ISE MnT: `GET /admin/API/mnt/CoA/Reauth/{psn}/{mac}/{reauth_type}`. Response er XML — status-besked ekstraheres løst og returneres som `CoaReauthResponse {ok, mac, message}`.
+- **backend**: Nye config-felter `coa_psn_name` (tomt = afledes fra `ise_base_url`) og `coa_reauth_type` (default 1 = RERUN). Persisteres i `backend/config.json` via Settings. Admin-UI i Settings udvidet med to felter til at konfigurere disse.
+- **backend**: `config.py`, `schemas/settings.py`, `services/settings_service.py`, `services/endpoint_service.py`, `api/endpoints.py`, `schemas/endpoint.py` opdateret.
+
 ## [1.19.0 build 0038] — 2026-04-19 — feat: Slet attribut-værdi rydder også værdien i ISE
 
 - **backend**: `app/ise/endpoints.py` — ny `IseEndpointRepository.set_custom_attributes(endpoint_id, attrs)` der altid sender hele `customAttributes`-blokken (modsat `update()` der springer feltet over når blokken er tom), så udeladte nøgler ryddes på ISE.

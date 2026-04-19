@@ -7,6 +7,7 @@ from typing import Any
 from app.core import config
 from app.core.custom_attr_store import ALL_ATTRS, HIDDEN_ATTR
 from app.core.exceptions import IseApiError
+from app.ise import coa as coa_module
 from app.ise.client import IseClient
 from app.ise.custom_attributes import IseCustomAttributeRepository
 from app.ise.endpoints import IseEndpointGroupRepository, IseEndpointRepository
@@ -227,6 +228,15 @@ class EndpointService:
     async def delete_endpoint(self, endpoint_id: str) -> None:
         logger.info("deleting endpoint id=%s", endpoint_id)
         await self.endpoints.delete(endpoint_id)
+
+    async def coa_reauth(self, endpoint_id: str) -> tuple[bool, str, str]:
+        """Trigger CoA reauth for an endpoint. Returns (ok, mac, message)."""
+        raw = await self.endpoints.get(endpoint_id)
+        mac = raw.get("mac") or raw.get("name") or ""
+        if not mac:
+            return False, "", "Endpoint har ingen MAC-adresse"
+        ok, msg = await coa_module.reauth(mac)
+        return ok, mac, msg
 
     async def update_endpoint(self, endpoint_id: str, update: EndpointUpdate) -> None:
         logger.info(

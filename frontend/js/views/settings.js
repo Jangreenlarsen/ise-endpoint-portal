@@ -77,6 +77,19 @@ export async function renderSettings(container) {
           <label for="timeout">Timeout (sekunder)</label>
           <input type="number" id="timeout" min="1" max="300" step="1" />
         </div>
+        <div class="field">
+          <label for="coa_psn_name">CoA PSN-hostnavn (MnT)</label>
+          <input type="text" id="coa_psn_name" placeholder="(tomt = brug host fra Base URL)" autocomplete="off" />
+          <div class="hint">Hostnavn på den PSN der skal udstede CoA via <code>/admin/API/mnt/CoA/Reauth</code>. Tomt = afledes af Base URL.</div>
+        </div>
+        <div class="field">
+          <label for="coa_reauth_type">CoA reauth type</label>
+          <select id="coa_reauth_type">
+            <option value="0">0 — DEFAULT</option>
+            <option value="1">1 — RERUN (anbefalet ved attribut-ændringer)</option>
+            <option value="2">2 — LAST</option>
+          </select>
+        </div>
         <div class="actions">
           <button type="submit">Gem backend settings</button>
           <button type="button" id="test-conn-btn" class="secondary"
@@ -205,6 +218,8 @@ async function initBackendSection(container) {
     container.querySelector("#api_type").value = s.ise_api_type;
     container.querySelector("#verify_tls").checked = s.ise_verify_tls;
     container.querySelector("#timeout").value = s.ise_timeout;
+    container.querySelector("#coa_psn_name").value = s.coa_psn_name || "";
+    container.querySelector("#coa_reauth_type").value = String(s.coa_reauth_type ?? 1);
     passwordHint.textContent = s.ise_password_set
       ? "Password er sat. Lad tomt for at beholde det, eller skriv nyt for at overskrive."
       : "Intet password sat endnu.";
@@ -221,6 +236,8 @@ async function initBackendSection(container) {
       ise_verify_tls: container.querySelector("#verify_tls").checked,
       ise_timeout: parseFloat(container.querySelector("#timeout").value),
       ise_api_type: container.querySelector("#api_type").value,
+      coa_psn_name: container.querySelector("#coa_psn_name").value.trim(),
+      coa_reauth_type: parseInt(container.querySelector("#coa_reauth_type").value, 10),
     };
     try {
       const res = await api.testBackendConnection(payload);
@@ -241,6 +258,8 @@ async function initBackendSection(container) {
       ise_verify_tls: container.querySelector("#verify_tls").checked,
       ise_timeout: parseFloat(container.querySelector("#timeout").value),
       ise_api_type: container.querySelector("#api_type").value,
+      coa_psn_name: container.querySelector("#coa_psn_name").value.trim(),
+      coa_reauth_type: parseInt(container.querySelector("#coa_reauth_type").value, 10),
     };
     try {
       const s = await api.updateBackendSettings(payload);

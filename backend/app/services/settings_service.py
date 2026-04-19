@@ -27,6 +27,8 @@ def get_backend_settings() -> BackendSettingsResponse:
         ise_verify_tls=s.ise_verify_tls,
         ise_timeout=s.ise_timeout,
         ise_api_type=s.ise_api_type,  # type: ignore[arg-type]
+        coa_psn_name=s.coa_psn_name,
+        coa_reauth_type=s.coa_reauth_type,
     )
 
 
@@ -41,6 +43,8 @@ async def update_backend_settings(
             "ise_verify_tls": new.ise_verify_tls,
             "ise_timeout": new.ise_timeout,
             "ise_api_type": new.ise_api_type,
+            "coa_psn_name": new.coa_psn_name,
+            "coa_reauth_type": new.coa_reauth_type,
         }
     )
     if new.ise_password:
@@ -49,10 +53,12 @@ async def update_backend_settings(
     config.refresh_settings()
     await close_ise_client()
     logger.info(
-        "backend settings updated: url=%s user=%s api=%s",
+        "backend settings updated: url=%s user=%s api=%s coa_psn=%s coa_type=%d",
         new.ise_base_url,
         new.ise_username,
         new.ise_api_type,
+        new.coa_psn_name or "(auto)",
+        new.coa_reauth_type,
     )
     return get_backend_settings()
 

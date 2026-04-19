@@ -74,3 +74,9 @@ class PaginatedEndpointDetails(BaseModel):
     total: int = 0
     page: int = 1
     size: int = 100
+
+
+class CoaReauthResponse(BaseModel):
+    ok: bool
+    mac: str
+    message: str = ""

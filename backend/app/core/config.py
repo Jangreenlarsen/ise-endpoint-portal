@@ -18,6 +18,20 @@ class Settings(BaseSettings):
     ise_timeout: float = 30.0
     ise_api_type: str = Field(default="ers", description="'ers' or 'openapi'")
 
+    # Change of Authorization (CoA) via MnT API
+    # GET /admin/API/mnt/CoA/Reauth/{psn_name}/{mac}/{reauth_type}
+    coa_psn_name: str = Field(
+        default="",
+        description=(
+            "PSN hostname that issues the CoA. If empty, the host portion of "
+            "ise_base_url is used as fallback."
+        ),
+    )
+    coa_reauth_type: int = Field(
+        default=1,
+        description="0=DEFAULT, 1=RERUN, 2=LAST — 1 is standard for attribute changes.",
+    )
+
     backend_cors_origins: list[str] = Field(
         default_factory=lambda: ["http://localhost:5173", "http://localhost:8000"]
     )
