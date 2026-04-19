@@ -5,6 +5,10 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [1.21.1 build 0042] — 2026-04-19 — fix: Browser-reload tvang nyt login selvom token stadig gyldigt
+
+- **frontend (`js/api.js`)**: `/auth/status` lå i `UNAUTH_PATHS`, hvilket gjorde at frontend ikke sendte Authorization-headeren med ved statuscheck. Backend returnerede så altid `authenticated: false` → `app.js` ryddede tokenen. Konsekvens: hver browser-reload tvang nyt login. Fjernet `/auth/status` fra listen; route'n er stadig public men læser nu tokenen når den er sendt.
+
 ## [1.21.0 build 0041] — 2026-04-19 — feat: CoA Disconnect (deauthenticate)
 
 - **backend (`app/ise/coa.py`)**: Refaktoreret fælles MnT-kald ud i `_call_mnt(action, mac, type)`. Tilføjet `disconnect(mac)` der rammer `GET /admin/API/mnt/CoA/Disconnect/{psn}/{mac}/{disconnectType}`. Forcerer WLC/switch til at fjerne sessionen så klienten skal gen-associere og køre fresh DHCP DORA — nyttigt ved VLAN-skift hvor ny IP skal tvinges.

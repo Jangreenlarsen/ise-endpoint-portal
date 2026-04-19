@@ -4,9 +4,11 @@ const BASE = window.location.origin.startsWith("file://")
   ? "http://localhost:8000"
   : "";
 
+// Paths that don't require a Bearer token. /auth/status is NOT in this list:
+// it must forward the token so the backend can verify it — otherwise every
+// page reload reports authenticated=false and wipes the user's session.
 const UNAUTH_PATHS = new Set([
   "/health",
-  "/auth/status",
   "/auth/login",
   "/auth/setup",
 ]);
