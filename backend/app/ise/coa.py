@@ -67,8 +67,10 @@ async def reauth(mac: str) -> tuple[bool, str]:
     mac_n = _normalize_mac(mac)
     base = s.ise_base_url.rstrip("/")
     path = f"/admin/API/mnt/CoA/Reauth/{psn}/{mac_n}/{s.coa_reauth_type}"
+    full_url = f"{base}{path}"
     logger.info(
-        "CoA reauth mac=%s psn=%s type=%d", mac_n, psn, s.coa_reauth_type
+        "CoA reauth mac=%s psn=%s type=%d url=%s",
+        mac_n, psn, s.coa_reauth_type, full_url,
     )
     try:
         async with httpx.AsyncClient(
@@ -77,6 +79,7 @@ async def reauth(mac: str) -> tuple[bool, str]:
             verify=s.ise_verify_tls,
             timeout=s.ise_timeout,
             headers={"Accept": "application/xml"},
+            follow_redirects=False,
         ) as http:
             response = await http.get(path)
     except httpx.HTTPError as exc:
@@ -84,12 +87,48 @@ async def reauth(mac: str) -> tuple[bool, str]:
         raise IseApiError(0, f"CoA transport error: {exc}") from exc
 
     text = response.text or ""
+    ctype = response.headers.get("content-type", "")
     status_msg = _extract_status(text) or f"HTTP {response.status_code}"
+    # Detect HTML login-redirect (MnT rejects basic auth → HTML login page)
+    looks_like_html_login = (
+        "text/html" in ctype.lower()
+        or "<html" in text[:200].lower()
+        or "login.jsp" in text[:400].lower()
+    )
+    if response.status_code in (301, 302, 303, 307, 308):
+        target = response.headers.get("location", "")
+        logger.warning(
+            "CoA redirected: mac=%s status=%d -> %s (brugeren mangler formentlig MnT Admin-rolle)",
+            mac_n, response.status_code, target,
+        )
+        return False, (
+            f"HTTP {response.status_code} redirect til {target or '?'} — "
+            "brugeren har formentlig ikke MnT Admin-rolle. "
+            "Tildel rollen 'MnT Admin' eller 'Super Admin' til ISE-brugeren."
+        )
+    if looks_like_html_login and response.status_code < 400:
+        logger.warning(
+            "CoA svar er HTML login-side mac=%s status=%d (forkert auth/rolle)",
+            mac_n, response.status_code,
+        )
+        return False, (
+            "ISE returnerede HTML login-side — brugeren har ikke MnT API-adgang. "
+            "Tildel rollen 'MnT Admin' eller 'Super Admin'."
+        )
     if response.status_code >= 400:
         logger.warning(
-            "CoA reauth failed mac=%s status=%d body=%s",
-            mac_n, response.status_code, text[:400],
+            "CoA reauth failed mac=%s status=%d ctype=%s body=%s",
+            mac_n, response.status_code, ctype, text[:400],
         )
-        return False, status_msg
-    logger.info("CoA reauth ok mac=%s status=%s", mac_n, status_msg)
+        hint = ""
+        if response.status_code in (401, 403):
+            hint = (
+                " — brugeren mangler formentlig MnT Admin-rolle "
+                "(tildel 'MnT Admin' eller 'Super Admin' i ISE)"
+            )
+        return False, f"HTTP {response.status_code}: {status_msg[:200]}{hint}"
+    logger.info(
+        "CoA reauth ok mac=%s status=%s ctype=%s body-preview=%s",
+        mac_n, status_msg, ctype, text[:200],
+    )
     return True, status_msg

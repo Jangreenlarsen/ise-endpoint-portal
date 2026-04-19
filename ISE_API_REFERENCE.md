@@ -378,15 +378,21 @@ GET /admin/API/mnt/CoA/Disconnect/{psnName}/{macAddress}/{disconnectType}
 
 ### Auth og response
 
-- Basic auth med samme ERS Admin credentials som ERS.
+- Basic auth. **Vigtigt:** MnT REST API kræver rollen `MnT Admin` eller `Super Admin`
+  — `ERS Admin` alene giver 401 Unauthorized (HTML login-side). ERS og MnT er
+  separate admin-grupper i ISE RBAC. Tildel rollen i ISE under
+  *Administration → System → Admin Access → Administrators → Admin Users*.
 - `Accept: application/xml` — response er XML, **ikke JSON**.
 - Status 200 + XML-payload med status-tag (f.eks. `<remoteCoA><results>...</results></remoteCoA>`).
-- 401/403 ved manglende rettigheder; 5xx hvis sessionen ikke findes eller MnT er nede.
+- 401/403 ved manglende rettigheder (typisk manglende MnT Admin-rolle);
+  5xx hvis sessionen ikke findes eller MnT er nede.
 
 ### Gotchas
 
 - Kræver at endpointet har en aktiv session — ellers fejler CoA'en.
 - Hvis `psnName` ikke matcher hostname på sessionens PSN, kan CoA afvises.
+- 401 med HTML-body (`<html>...login.jsp...`) betyder næsten altid manglende
+  MnT Admin-rolle, ikke forkert password.
 - PxGrid er alternativ for store deployments, men MnT-pathen er simpler at integrere og ikke certifikat-afhængig.
 
 ---

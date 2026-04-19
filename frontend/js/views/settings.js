@@ -90,6 +90,12 @@ export async function renderSettings(container) {
             <option value="2">2 — LAST</option>
           </select>
         </div>
+        <div class="hint" style="border-left:3px solid #e6a23c;padding:8px 12px;background:rgba(230,162,60,0.08);margin:8px 0;">
+          <strong>Vigtigt:</strong> MnT CoA kræver at ISE-brugeren har rollen
+          <code>MnT Admin</code> eller <code>Super Admin</code>. <code>ERS Admin</code>
+          alene giver <strong>401 Unauthorized</strong>. Tildel rollen i ISE under
+          <em>Administration → System → Admin Access → Administrators → Admin Users</em>.
+        </div>
         <div class="actions">
           <button type="submit">Gem backend settings</button>
           <button type="button" id="test-conn-btn" class="secondary"

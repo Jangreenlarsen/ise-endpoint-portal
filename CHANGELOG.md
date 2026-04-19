@@ -5,6 +5,15 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [1.20.1 build 0040] — 2026-04-19 — fix: CoA 401 — manglende MnT Admin-rolle + bedre diagnostik
+
+- **backend**: `app/ise/coa.py` — MnT CoA-kaldet fejlede med HTTP 401 (HTML login-side) selvom credentials var korrekte. Rodårsag: ERS Admin-rollen giver ikke adgang til MnT REST API — MnT Admin eller Super Admin er nødvendig. Koden fanger nu eksplicit:
+  - 3xx redirects (`follow_redirects=False`) → rolle-hint med lokation
+  - HTML login-sider (`text/html` / `<html` / `login.jsp` i body) → rolle-hint
+  - 401/403 → dansk besked "brugeren mangler formentlig MnT Admin-rolle (tildel 'MnT Admin' eller 'Super Admin' i ISE)"
+- **frontend (settings)**: Advarselsboks ved CoA-felterne forklarer at MnT Admin / Super Admin er krav, og hvor i ISE rollen tildeles (Administration → System → Admin Access → Administrators → Admin Users).
+- **docs**: `ISE_API_REFERENCE.md` — MnT CoA-sektion opdateret med rolle-kravet eksplicit. `BUGS.md` — bug registreret og markeret som fixed.
+
 ## [1.20.0 build 0039] — 2026-04-19 — feat: Refresh efter save + global CoA reauth toggle
 
 - **frontend (browse/edit)**: Detail-modal save lukker nu modalen og kalder `load()` så tabellen genindlæses fra ISE efter ændring. Samme for "Gem alle" og "Gem valgte" — efter PUT reloades hele viewet så server-ændringer (staticGroupAssignment, profile re-match, m.m.) afspejles korrekt. Filter- og portal-toggle-state bevares (load() re-enterer filter-mode via `needsFilterMode()`).
