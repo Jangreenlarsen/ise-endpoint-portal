@@ -4,6 +4,7 @@ from app.api.deps import get_custom_attribute_service, require_any, require_edit
 from app.schemas.custom_attribute import (
     AddValueRequest,
     AllCustomAttributes,
+    RemoveValueResult,
     SyncResult,
 )
 from app.services.custom_attribute_service import CustomAttributeService
@@ -30,14 +31,14 @@ async def add_value(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.delete("/{attr_name}/values/{value}", response_model=AllCustomAttributes, dependencies=[Depends(require_editor)])
+@router.delete("/{attr_name}/values/{value}", response_model=RemoveValueResult, dependencies=[Depends(require_editor)])
 async def remove_value(
     attr_name: str,
     value: str,
     service: CustomAttributeService = Depends(get_custom_attribute_service),
-) -> AllCustomAttributes:
+) -> RemoveValueResult:
     try:
-        return service.remove_value(attr_name, value)
+        return await service.remove_value(attr_name, value)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

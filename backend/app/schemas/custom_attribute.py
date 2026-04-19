@@ -20,3 +20,11 @@ class SyncResult(BaseModel):
     scanned_endpoints: int = 0
     new_values_found: dict[str, list[str]] = Field(default_factory=dict)
     definitions_ensured: dict[str, bool] = Field(default_factory=dict)
+
+
+class RemoveValueResult(BaseModel):
+    """Result of removing a value: the updated attribute list plus the
+    number of ISE endpoints where the value was cleared."""
+    attributes: list[CustomAttributeValues]
+    scanned_endpoints: int = 0
+    cleared_endpoints: int = 0

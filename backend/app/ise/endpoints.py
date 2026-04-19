@@ -134,6 +134,24 @@ class IseEndpointRepository:
     async def delete(self, endpoint_id: str) -> None:
         await self.client.delete(f"{ERS_ENDPOINTS}/{endpoint_id}")
 
+    async def set_custom_attributes(
+        self, endpoint_id: str, attrs: dict[str, str]
+    ) -> None:
+        """Replace the full customAttributes block on an endpoint.
+
+        Unlike `update()`, this always sends the customAttributes field (even
+        when the resulting block is empty) so that omitted keys are cleared
+        on ISE. Keys with empty-string values are still dropped before send.
+        """
+        non_empty = {k: v for k, v in attrs.items() if v}
+        payload = {
+            "ERSEndPoint": {
+                "id": endpoint_id,
+                "customAttributes": {"customAttributes": non_empty},
+            }
+        }
+        await self.client.put(f"{ERS_ENDPOINTS}/{endpoint_id}", json=payload)
+
 
 class IseEndpointGroupRepository:
     """ERS calls for endpoint identity groups."""

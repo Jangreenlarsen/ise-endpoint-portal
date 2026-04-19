@@ -18,6 +18,7 @@ from app.schemas.custom_attribute import (
     AddValueRequest,
     AllCustomAttributes,
     CustomAttributeValues,
+    RemoveValueResult,
     SyncResult,
 )
 
@@ -45,12 +46,52 @@ class CustomAttributeService:
         add_value(attr_name, req.value)
         return self.list_all()
 
-    def remove_value(self, attr_name: str, value: str) -> AllCustomAttributes:
+    async def remove_value(self, attr_name: str, value: str) -> RemoveValueResult:
+        """Remove an allowed value locally AND clear it on every ISE endpoint
+        that currently holds it. Endpoints using the value are updated so the
+        attribute becomes empty; other custom attributes on those endpoints
+        are preserved."""
         if attr_name not in MANAGED_ATTRS:
             raise ValueError(f"Unknown attribute: {attr_name}")
-        logger.info("removing value '%s' from attribute '%s'", value, attr_name)
+        logger.info(
+            "removing value '%s' from attribute '%s' — scanning ISE for usages",
+            value, attr_name,
+        )
+
+        scanned = 0
+        cleared = 0
+        page = 1
+        while True:
+            resources, total = await self.endpoints.list_page(page=page, size=100)
+            if not resources:
+                break
+            for r in resources:
+                ep = await self.endpoints.get(r["id"])
+                ca = _extract_custom_attrs(ep)
+                if ca.get(attr_name) == value:
+                    new_attrs = {k: v for k, v in ca.items() if k != attr_name}
+                    await self.endpoints.set_custom_attributes(r["id"], new_attrs)
+                    cleared += 1
+                    logger.info(
+                        "cleared %s='%s' on endpoint id=%s mac=%s",
+                        attr_name, value, r["id"], r.get("name", ""),
+                    )
+                scanned += 1
+            if scanned >= total or len(resources) < 100:
+                break
+            page += 1
+
         remove_value(attr_name, value)
-        return self.list_all()
+        logger.info(
+            "remove_value done: attr=%s value='%s' scanned=%d cleared=%d",
+            attr_name, value, scanned, cleared,
+        )
+        all_attrs = self.list_all()
+        return RemoveValueResult(
+            attributes=all_attrs.attributes,
+            scanned_endpoints=scanned,
+            cleared_endpoints=cleared,
+        )
 
     async def sync_from_ise(self) -> SyncResult:
         """Scan ISE endpoints to discover custom attribute values in use,

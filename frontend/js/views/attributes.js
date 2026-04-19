@@ -69,10 +69,22 @@ export async function renderAttributes(container) {
     if (e.target.classList.contains("attr-del")) {
       const attr = e.target.dataset.attr;
       const value = e.target.dataset.value;
-      if (!confirm(`Fjern "${value}" fra ${attr}?`)) return;
+      const msg =
+        `Fjern "${value}" fra ${attr}?\n\n` +
+        `Alle ISE-endpoints der har denne værdi i ${attr} ` +
+        `vil også få feltet ryddet (sat til tomt). ` +
+        `Dette kan tage et stykke tid ved mange endpoints.`;
+      if (!confirm(msg)) return;
+      attrMsg.innerHTML = `<div class="alert info">Sletter "${esc(value)}" og rydder feltet på berørte ISE-endpoints...</div>`;
       try {
-        await api.removeCustomAttributeValue(attr, value);
+        const res = await api.removeCustomAttributeValue(attr, value);
+        const scanned = res?.scanned_endpoints ?? 0;
+        const cleared = res?.cleared_endpoints ?? 0;
         await render();
+        attrMsg.innerHTML = `<div class="alert success">
+          Fjernet "${esc(value)}" fra ${esc(attr)}.
+          Scannet ${scanned} endpoints, ryddet ${cleared} i ISE.
+        </div>`;
       } catch (err) {
         attrMsg.innerHTML = `<div class="alert error">${err.message}</div>`;
       }

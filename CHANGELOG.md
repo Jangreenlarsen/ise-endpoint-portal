@@ -5,6 +5,14 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [1.19.0 build 0038] — 2026-04-19 — feat: Slet attribut-værdi rydder også værdien i ISE
+
+- **backend**: `app/ise/endpoints.py` — ny `IseEndpointRepository.set_custom_attributes(endpoint_id, attrs)` der altid sender hele `customAttributes`-blokken (modsat `update()` der springer feltet over når blokken er tom), så udeladte nøgler ryddes på ISE.
+- **backend**: `app/services/custom_attribute_service.py` — `remove_value()` er nu `async` og scanner samtlige ISE-endpoints via `list_page` + `get`. For hvert endpoint hvor `customAttributes[attr] == value` bygges en ny dict uden den nøgle (øvrige attributter inkl. skjult `HypervisionISEPortal` bevares) og PUT'es tilbage. Returnerer nu `RemoveValueResult` med `scanned_endpoints` og `cleared_endpoints`.
+- **backend**: `app/schemas/custom_attribute.py` — ny `RemoveValueResult` (attributes + scanned_endpoints + cleared_endpoints).
+- **backend**: `app/api/custom_attributes.py` — `DELETE /custom-attributes/{attr}/values/{value}` awaiter nu service-kaldet og returnerer `RemoveValueResult`.
+- **frontend**: `js/views/attributes.js` — confirm-dialog advarer nu om at alle ISE-endpoints med den værdi får feltet ryddet. Info-besked vises mens scan/PUT kører; success-besked viser antal scannede og ryddede endpoints.
+
 ## [1.18.1 build 0037] — 2026-04-19 — fix: Login-kort for smalt pga. grid-kolonne
 
 - **frontend**: `css/styles.css` — `.app` bruger `grid-template-columns: 240px 1fr`, så selv når sidebar skjules med `display:none` reserveres de 240px stadig. Tilføjet `body.auth-mode .app { grid-template-columns: 1fr }` + `body.auth-mode .sidebar { display: none }` + `body.auth-mode .content { padding: 0 }` så login-siden får fuld bredde. Login-card justeret til `width: 380px` med `box-sizing: border-box` og `min-height: 100vh` på wrap for centrering.
