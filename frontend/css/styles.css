@@ -557,21 +557,31 @@ a.mac-link:hover {
 .log-level-critical { background: #7f1d1d; color: #fff; }
 
 /* ── Login view ── */
+body.auth-mode .sidebar { display: none; }
+body.auth-mode .app {
+  grid-template-columns: 1fr;
+}
+body.auth-mode .content {
+  padding: 0;
+}
 .login-wrap {
-  min-height: 80vh;
+  min-height: 100vh;
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 2rem;
+  box-sizing: border-box;
 }
 .login-card {
   background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 6px;
   padding: 2rem;
-  width: 360px;
+  width: 380px;
   max-width: 100%;
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  box-sizing: border-box;
 }
 .login-card h2 { margin: 0 0 0.75rem 0; }
 .login-card label {

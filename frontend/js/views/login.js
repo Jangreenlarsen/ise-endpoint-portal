@@ -10,8 +10,6 @@ function esc(s) {
 export async function renderLogin(onSuccess) {
   document.body.classList.add("auth-mode");
   const root = document.getElementById("view-container");
-  const sidebar = document.querySelector(".sidebar");
-  if (sidebar) sidebar.style.display = "none";
 
   let status;
   try {
@@ -72,7 +70,6 @@ export async function renderLogin(onSuccess) {
         : await api.login(username, password);
       auth.save(result.token, result.user);
       document.body.classList.remove("auth-mode");
-      if (sidebar) sidebar.style.display = "";
       onSuccess(result.user);
     } catch (err) {
       msg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;

@@ -10,7 +10,6 @@ import { renderSettings, initTheme } from "./views/settings.js";
 
 const statusDot = document.getElementById("status-dot");
 const container = document.getElementById("view-container");
-const sidebar = document.querySelector(".sidebar");
 
 const routes = {
   create: { render: renderCreate, roles: ["admin", "editor"] },
@@ -91,7 +90,6 @@ function showLogin() {
   renderLogin((user) => {
     updateUserBadge(user);
     updateNavVisibility(user);
-    if (sidebar) sidebar.style.display = "";
     if (!location.hash || location.hash === "#/") location.hash = "#/browse";
     renderView();
   });
