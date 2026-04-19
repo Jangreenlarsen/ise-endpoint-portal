@@ -4,11 +4,12 @@ MnT exposes a CoA trigger path that does NOT share the ERS/Open API base path
 surface, so this module talks to MnT directly via httpx (same credentials as
 the main IseClient). Response is XML and parsed loosely for the status message.
 
-Reference path:
+Reference paths:
     GET /admin/API/mnt/CoA/Reauth/{psn_name}/{mac}/{reauth_type}
-    - psn_name: hostname of the PSN that should issue the CoA
-    - mac: colon-separated upper-case MAC
-    - reauth_type: 0=DEFAULT, 1=RERUN, 2=LAST
+        - reauth_type: 0=DEFAULT, 1=RERUN, 2=LAST
+    GET /admin/API/mnt/CoA/Disconnect/{psn_name}/{mac}/{disconnect_type}
+        - disconnect_type: 0=DEFAULT (deauth — wireless), 1=PORT BOUNCE (wired),
+          2=PORT SHUTDOWN (wired)
 """
 from __future__ import annotations
 
@@ -34,7 +35,6 @@ def _derive_psn(configured: str, base_url: str) -> str:
     if configured:
         return configured
     host = urlparse(base_url).hostname or ""
-    # MnT sometimes needs the short name, sometimes FQDN — we keep what's in the URL.
     return host
 
 
@@ -48,13 +48,12 @@ def _extract_status(text: str) -> str:
     m = _STATUS_RE.search(text)
     if m:
         return m.group(1).strip()
-    # Fallback: strip tags, collapse whitespace
     stripped = re.sub(r"<[^>]+>", " ", text)
     return re.sub(r"\s+", " ", stripped).strip()
 
 
-async def reauth(mac: str) -> tuple[bool, str]:
-    """Trigger a CoA reauth for a MAC. Returns (ok, status_message)."""
+async def _call_mnt(action: str, mac: str, type_code: int) -> tuple[bool, str]:
+    """Shared MnT CoA call. `action` is 'Reauth' or 'Disconnect'."""
     s = config.settings
     psn = _derive_psn(s.coa_psn_name, s.ise_base_url)
     if not psn:
@@ -66,11 +65,11 @@ async def reauth(mac: str) -> tuple[bool, str]:
         raise IseApiError(0, "ISE password ikke sat — kan ikke kalde MnT.")
     mac_n = _normalize_mac(mac)
     base = s.ise_base_url.rstrip("/")
-    path = f"/admin/API/mnt/CoA/Reauth/{psn}/{mac_n}/{s.coa_reauth_type}"
+    path = f"/admin/API/mnt/CoA/{action}/{psn}/{mac_n}/{type_code}"
     full_url = f"{base}{path}"
     logger.info(
-        "CoA reauth mac=%s psn=%s type=%d url=%s",
-        mac_n, psn, s.coa_reauth_type, full_url,
+        "CoA %s mac=%s psn=%s type=%d url=%s",
+        action, mac_n, psn, type_code, full_url,
     )
     try:
         async with httpx.AsyncClient(
@@ -83,13 +82,12 @@ async def reauth(mac: str) -> tuple[bool, str]:
         ) as http:
             response = await http.get(path)
     except httpx.HTTPError as exc:
-        logger.error("CoA transport error: %s", exc)
+        logger.error("CoA %s transport error: %s", action, exc)
         raise IseApiError(0, f"CoA transport error: {exc}") from exc
 
     text = response.text or ""
     ctype = response.headers.get("content-type", "")
     status_msg = _extract_status(text) or f"HTTP {response.status_code}"
-    # Detect HTML login-redirect (MnT rejects basic auth → HTML login page)
     looks_like_html_login = (
         "text/html" in ctype.lower()
         or "<html" in text[:200].lower()
@@ -98,8 +96,8 @@ async def reauth(mac: str) -> tuple[bool, str]:
     if response.status_code in (301, 302, 303, 307, 308):
         target = response.headers.get("location", "")
         logger.warning(
-            "CoA redirected: mac=%s status=%d -> %s (brugeren mangler formentlig MnT Admin-rolle)",
-            mac_n, response.status_code, target,
+            "CoA %s redirected: mac=%s status=%d -> %s",
+            action, mac_n, response.status_code, target,
         )
         return False, (
             f"HTTP {response.status_code} redirect til {target or '?'} — "
@@ -108,8 +106,8 @@ async def reauth(mac: str) -> tuple[bool, str]:
         )
     if looks_like_html_login and response.status_code < 400:
         logger.warning(
-            "CoA svar er HTML login-side mac=%s status=%d (forkert auth/rolle)",
-            mac_n, response.status_code,
+            "CoA %s svar er HTML login-side mac=%s status=%d",
+            action, mac_n, response.status_code,
         )
         return False, (
             "ISE returnerede HTML login-side — brugeren har ikke MnT API-adgang. "
@@ -117,8 +115,8 @@ async def reauth(mac: str) -> tuple[bool, str]:
         )
     if response.status_code >= 400:
         logger.warning(
-            "CoA reauth failed mac=%s status=%d ctype=%s body=%s",
-            mac_n, response.status_code, ctype, text[:400],
+            "CoA %s failed mac=%s status=%d ctype=%s body=%s",
+            action, mac_n, response.status_code, ctype, text[:400],
         )
         hint = ""
         if response.status_code in (401, 403):
@@ -128,7 +126,17 @@ async def reauth(mac: str) -> tuple[bool, str]:
             )
         return False, f"HTTP {response.status_code}: {status_msg[:200]}{hint}"
     logger.info(
-        "CoA reauth ok mac=%s status=%s ctype=%s body-preview=%s",
-        mac_n, status_msg, ctype, text[:200],
+        "CoA %s ok mac=%s status=%s ctype=%s body-preview=%s",
+        action, mac_n, status_msg, ctype, text[:200],
     )
     return True, status_msg
+
+
+async def reauth(mac: str) -> tuple[bool, str]:
+    """Trigger a CoA reauth for a MAC. Returns (ok, status_message)."""
+    return await _call_mnt("Reauth", mac, config.settings.coa_reauth_type)
+
+
+async def disconnect(mac: str) -> tuple[bool, str]:
+    """Trigger a CoA disconnect (deauth) for a MAC. Returns (ok, status_message)."""
+    return await _call_mnt("Disconnect", mac, config.settings.coa_disconnect_type)

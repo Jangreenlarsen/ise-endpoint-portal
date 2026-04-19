@@ -17,6 +17,7 @@ class BackendSettingsUpdate(BaseModel):
     ise_api_type: Literal["ers", "openapi"] = "ers"
     coa_psn_name: str = ""
     coa_reauth_type: int = 1
+    coa_disconnect_type: int = 0
 
 
 class BackendSettingsResponse(BaseModel):
@@ -30,6 +31,7 @@ class BackendSettingsResponse(BaseModel):
     ise_api_type: Literal["ers", "openapi"]
     coa_psn_name: str = ""
     coa_reauth_type: int = 1
+    coa_disconnect_type: int = 0
 
 
 class TestConnectionRequest(BaseModel):

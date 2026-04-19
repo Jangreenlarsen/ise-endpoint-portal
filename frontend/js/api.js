@@ -82,6 +82,8 @@ export const api = {
     request(`/endpoints/${id}`, { method: "DELETE" }),
   coaReauth: (id) =>
     request(`/endpoints/${encodeURIComponent(id)}/coa-reauth`, { method: "POST" }),
+  coaDisconnect: (id) =>
+    request(`/endpoints/${encodeURIComponent(id)}/coa-disconnect`, { method: "POST" }),
   getBackendSettings: () => request("/settings/backend"),
   updateBackendSettings: (payload) =>
     request("/settings/backend", {

@@ -73,6 +73,8 @@ export async function renderBrowse(container) {
         <div class="spacer"></div>
         <button id="bulk-edit-btn" class="secondary small" disabled>Rediger valgte</button>
         <button id="bulk-save-btn" class="small" disabled>Gem valgte</button>
+        <button id="bulk-disconnect-btn" class="danger small" disabled
+                title="CoA Disconnect — deautentificér valgte klienter på WLC/switch (tvinger ny DHCP ved re-associate)">Disconnect valgte</button>
         <button id="bulk-del-btn" class="danger small" disabled>Slet valgte</button>
         <span id="selection-count" class="hint"></span>
         <label class="hint page-size-label">Vis
@@ -155,6 +157,8 @@ export async function renderBrowse(container) {
         </div>
         <div class="modal-actions">
           <button id="d-save">Gem ændringer</button>
+          <button id="d-disconnect" class="danger"
+                  title="CoA Disconnect — deautentificér klienten på WLC/switch (tvinger ny DHCP ved re-associate)">Disconnect</button>
           <button id="d-close" class="secondary">Luk</button>
         </div>
       </div>
@@ -194,6 +198,7 @@ export async function renderBrowse(container) {
   const selectAllCb = container.querySelector("#select-all");
   const bulkSaveBtn = container.querySelector("#bulk-save-btn");
   const bulkDelBtn = container.querySelector("#bulk-del-btn");
+  const bulkDisconnectBtn = container.querySelector("#bulk-disconnect-btn");
   const saveAllBtn = container.querySelector("#save-all-btn");
   const bulkEditBtn = container.querySelector("#bulk-edit-btn");
   const bulkEditOverlay = container.querySelector("#bulk-edit-overlay");
@@ -420,6 +425,7 @@ export async function renderBrowse(container) {
     const hasSelection = selected.length > 0;
     bulkSaveBtn.disabled = !hasSelection;
     bulkDelBtn.disabled = !hasSelection;
+    bulkDisconnectBtn.disabled = !hasSelection;
     bulkEditBtn.disabled = !hasSelection;
     selectionCount.textContent = hasSelection ? `${selected.length} valgt` : "";
 
@@ -709,6 +715,46 @@ export async function renderBrowse(container) {
     bulkDelBtn.disabled = false;
   });
 
+  bulkDisconnectBtn.addEventListener("click", async () => {
+    const ids = getSelectedIds();
+    if (!ids.length) return;
+    const macs = ids.map((id) => {
+      const tr = tbody.querySelector(`tr[data-id="${id}"]`);
+      return tr ? tr.querySelector(".mac-cell").textContent : id;
+    });
+    if (!confirm(
+      `CoA Disconnect ${ids.length} klient(er)?\n\n` +
+      `${macs.join("\n")}\n\n` +
+      `De bliver deautentificeret på WLC/switch og skal gen-associere. ` +
+      `Ny IP kun hvis VLAN/subnet er ændret eller DHCP-lease er udløbet.`,
+    )) return;
+    bulkDisconnectBtn.disabled = true;
+    msg.innerHTML = `<div class="alert info">Sender CoA Disconnect til ${ids.length} klient(er)...</div>`;
+    let ok = 0;
+    let fail = 0;
+    const failures = [];
+    for (const id of ids) {
+      try {
+        const res = await api.coaDisconnect(id);
+        if (res?.ok) ok++;
+        else {
+          fail++;
+          failures.push(`${res?.mac || id}: ${res?.message || "fejlede"}`);
+        }
+      } catch (err) {
+        fail++;
+        failures.push(`${id}: ${err.message}`);
+      }
+    }
+    const parts = [];
+    if (ok) parts.push(`${ok} disconnected`);
+    if (fail) parts.push(`${fail} fejlede`);
+    const cls = fail ? (ok ? "info" : "error") : "success";
+    const detail = failures.length ? `<br><small>${failures.slice(0, 5).map(esc).join("<br>")}</small>` : "";
+    msg.innerHTML = `<div class="alert ${cls}">${parts.join(", ")}${detail}</div>`;
+    bulkDisconnectBtn.disabled = false;
+  });
+
   // Bulk edit modal
   bulkEditBtn.addEventListener("click", () => {
     const ids = getSelectedIds();
@@ -863,6 +909,31 @@ export async function renderBrowse(container) {
   container.querySelector("#d-close").addEventListener("click", closeDetail);
   detailOverlay.addEventListener("click", (e) => {
     if (e.target === detailOverlay) closeDetail();
+  });
+
+  container.querySelector("#d-disconnect").addEventListener("click", async () => {
+    if (!detailCurrentId) return;
+    const mac = container.querySelector("#d-mac").textContent || "";
+    if (!confirm(
+      `CoA Disconnect ${mac}?\n\n` +
+      `Klienten bliver deautentificeret på WLC/switch og skal gen-associere. ` +
+      `Ny IP kun hvis VLAN/subnet er ændret eller DHCP-lease er udløbet.`,
+    )) return;
+    const btn = container.querySelector("#d-disconnect");
+    btn.disabled = true;
+    detailMsg.innerHTML = `<div class="alert info">Sender CoA Disconnect...</div>`;
+    try {
+      const res = await api.coaDisconnect(detailCurrentId);
+      if (res?.ok) {
+        detailMsg.innerHTML = `<div class="alert success">Disconnect sendt: ${esc(res.message || "OK")}</div>`;
+      } else {
+        detailMsg.innerHTML = `<div class="alert error">Disconnect fejlede: ${esc(res?.message || "ukendt fejl")}</div>`;
+      }
+    } catch (err) {
+      detailMsg.innerHTML = `<div class="alert error">Disconnect fejlede: ${esc(err.message)}</div>`;
+    } finally {
+      btn.disabled = false;
+    }
   });
 
   container.querySelector("#d-save").addEventListener("click", async () => {

@@ -31,6 +31,13 @@ class Settings(BaseSettings):
         default=1,
         description="0=DEFAULT, 1=RERUN, 2=LAST — 1 is standard for attribute changes.",
     )
+    coa_disconnect_type: int = Field(
+        default=0,
+        description=(
+            "0=DEFAULT (deauth — wireless), 1=PORT BOUNCE (wired), "
+            "2=PORT SHUTDOWN (wired). Default 0 works for WLC deauth."
+        ),
+    )
 
     backend_cors_origins: list[str] = Field(
         default_factory=lambda: ["http://localhost:5173", "http://localhost:8000"]

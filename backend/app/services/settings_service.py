@@ -29,6 +29,7 @@ def get_backend_settings() -> BackendSettingsResponse:
         ise_api_type=s.ise_api_type,  # type: ignore[arg-type]
         coa_psn_name=s.coa_psn_name,
         coa_reauth_type=s.coa_reauth_type,
+        coa_disconnect_type=s.coa_disconnect_type,
     )
 
 
@@ -45,6 +46,7 @@ async def update_backend_settings(
             "ise_api_type": new.ise_api_type,
             "coa_psn_name": new.coa_psn_name,
             "coa_reauth_type": new.coa_reauth_type,
+            "coa_disconnect_type": new.coa_disconnect_type,
         }
     )
     if new.ise_password:

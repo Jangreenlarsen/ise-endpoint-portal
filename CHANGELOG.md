@@ -5,6 +5,15 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [1.21.0 build 0041] — 2026-04-19 — feat: CoA Disconnect (deauthenticate)
+
+- **backend (`app/ise/coa.py`)**: Refaktoreret fælles MnT-kald ud i `_call_mnt(action, mac, type)`. Tilføjet `disconnect(mac)` der rammer `GET /admin/API/mnt/CoA/Disconnect/{psn}/{mac}/{disconnectType}`. Forcerer WLC/switch til at fjerne sessionen så klienten skal gen-associere og køre fresh DHCP DORA — nyttigt ved VLAN-skift hvor ny IP skal tvinges.
+- **backend**: Ny config `coa_disconnect_type` (default 0 = DEFAULT deauth — rigtig for wireless/WLC; 1 = PORT BOUNCE og 2 = PORT SHUTDOWN er for wired). Persisteres i `backend/config.json` og eksponeres i Settings.
+- **backend**: Ny route `POST /api/endpoints/{id}/coa-disconnect` (require_editor) der returnerer samme shape som reauth (`CoaReauthResponse`).
+- **frontend (browse)**: Ny `Disconnect`-knap i detail-modal (destruktiv style, med confirm-dialog der advarer om at ny IP kun opnås ved VLAN-skift eller DHCP-lease udløb). Ny bulk-knap "Disconnect valgte" i toolbar der kører disconnect på alle valgte endpoints og viser sammenfatning.
+- **frontend (settings)**: Nyt select til `coa_disconnect_type` med beskrivende labels og hint om at 0 er rigtig for trådløse klienter.
+- **docs**: `FEATURES.md` — feature registreret som done.
+
 ## [1.20.1 build 0040] — 2026-04-19 — fix: CoA 401 — manglende MnT Admin-rolle + bedre diagnostik
 
 - **backend**: `app/ise/coa.py` — MnT CoA-kaldet fejlede med HTTP 401 (HTML login-side) selvom credentials var korrekte. Rodårsag: ERS Admin-rollen giver ikke adgang til MnT REST API — MnT Admin eller Super Admin er nødvendig. Koden fanger nu eksplicit:

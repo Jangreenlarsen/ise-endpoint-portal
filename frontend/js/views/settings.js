@@ -90,6 +90,15 @@ export async function renderSettings(container) {
             <option value="2">2 — LAST</option>
           </select>
         </div>
+        <div class="field">
+          <label for="coa_disconnect_type">CoA disconnect type</label>
+          <select id="coa_disconnect_type">
+            <option value="0">0 — DEFAULT (deauth — wireless/WLC)</option>
+            <option value="1">1 — PORT BOUNCE (kun wired)</option>
+            <option value="2">2 — PORT SHUTDOWN (kun wired)</option>
+          </select>
+          <div class="hint">Bruges når klienten skal deautentificeres (tvinger ny DHCP). <strong>0</strong> er rigtig for trådløse klienter.</div>
+        </div>
         <div class="hint" style="border-left:3px solid #e6a23c;padding:8px 12px;background:rgba(230,162,60,0.08);margin:8px 0;">
           <strong>Vigtigt:</strong> MnT CoA kræver at ISE-brugeren har rollen
           <code>MnT Admin</code> eller <code>Super Admin</code>. <code>ERS Admin</code>
@@ -226,6 +235,7 @@ async function initBackendSection(container) {
     container.querySelector("#timeout").value = s.ise_timeout;
     container.querySelector("#coa_psn_name").value = s.coa_psn_name || "";
     container.querySelector("#coa_reauth_type").value = String(s.coa_reauth_type ?? 1);
+    container.querySelector("#coa_disconnect_type").value = String(s.coa_disconnect_type ?? 0);
     passwordHint.textContent = s.ise_password_set
       ? "Password er sat. Lad tomt for at beholde det, eller skriv nyt for at overskrive."
       : "Intet password sat endnu.";
@@ -244,6 +254,7 @@ async function initBackendSection(container) {
       ise_api_type: container.querySelector("#api_type").value,
       coa_psn_name: container.querySelector("#coa_psn_name").value.trim(),
       coa_reauth_type: parseInt(container.querySelector("#coa_reauth_type").value, 10),
+      coa_disconnect_type: parseInt(container.querySelector("#coa_disconnect_type").value, 10),
     };
     try {
       const res = await api.testBackendConnection(payload);
@@ -266,6 +277,7 @@ async function initBackendSection(container) {
       ise_api_type: container.querySelector("#api_type").value,
       coa_psn_name: container.querySelector("#coa_psn_name").value.trim(),
       coa_reauth_type: parseInt(container.querySelector("#coa_reauth_type").value, 10),
+      coa_disconnect_type: parseInt(container.querySelector("#coa_disconnect_type").value, 10),
     };
     try {
       const s = await api.updateBackendSettings(payload);

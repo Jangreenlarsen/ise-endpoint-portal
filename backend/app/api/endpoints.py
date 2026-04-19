@@ -132,3 +132,20 @@ async def coa_reauth(
     except IseApiError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     return CoaReauthResponse(ok=ok, mac=mac, message=msg)
+
+
+@router.post("/{endpoint_id}/coa-disconnect", response_model=CoaReauthResponse, dependencies=[Depends(require_editor)])
+async def coa_disconnect(
+    endpoint_id: str,
+    service: EndpointService = Depends(get_endpoint_service),
+) -> CoaReauthResponse:
+    """Trigger CoA disconnect (deauth) on ISE for the given endpoint's MAC.
+
+    Forces the WLC/switch to remove the session so the client must re-associate
+    and run a fresh DHCP DORA — useful when a VLAN change requires a new IP.
+    """
+    try:
+        ok, mac, msg = await service.coa_disconnect(endpoint_id)
+    except IseApiError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    return CoaReauthResponse(ok=ok, mac=mac, message=msg)

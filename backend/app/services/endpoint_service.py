@@ -238,6 +238,15 @@ class EndpointService:
         ok, msg = await coa_module.reauth(mac)
         return ok, mac, msg
 
+    async def coa_disconnect(self, endpoint_id: str) -> tuple[bool, str, str]:
+        """Trigger CoA disconnect (deauth) for an endpoint. Returns (ok, mac, message)."""
+        raw = await self.endpoints.get(endpoint_id)
+        mac = raw.get("mac") or raw.get("name") or ""
+        if not mac:
+            return False, "", "Endpoint har ingen MAC-adresse"
+        ok, msg = await coa_module.disconnect(mac)
+        return ok, mac, msg
+
     async def update_endpoint(self, endpoint_id: str, update: EndpointUpdate) -> None:
         logger.info(
             "updating endpoint id=%s fields=%s",
