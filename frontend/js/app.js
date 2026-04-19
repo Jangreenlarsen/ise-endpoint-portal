@@ -3,6 +3,7 @@ import { renderCreate } from "./views/create.js";
 import { renderImport } from "./views/import.js";
 import { renderBrowse } from "./views/browse.js";
 import { renderAttributes } from "./views/attributes.js";
+import { renderLogs } from "./views/logs.js";
 import { renderSettings, initTheme } from "./views/settings.js";
 
 const statusDot = document.getElementById("status-dot");
@@ -13,6 +14,7 @@ const routes = {
   import: renderImport,
   browse: renderBrowse,
   attributes: renderAttributes,
+  logs: renderLogs,
   settings: renderSettings,
 };
 

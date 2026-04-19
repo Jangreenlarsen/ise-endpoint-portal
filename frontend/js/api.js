@@ -83,4 +83,10 @@ export const api = {
     ),
   syncCustomAttributes: () =>
     request("/custom-attributes/sync", { method: "POST" }),
+  getLogs: (lines = 500, level = "", search = "") => {
+    const parts = [`lines=${lines}`];
+    if (level) parts.push(`level=${encodeURIComponent(level)}`);
+    if (search) parts.push(`search=${encodeURIComponent(search)}`);
+    return request(`/logs?${parts.join("&")}`);
+  },
 };

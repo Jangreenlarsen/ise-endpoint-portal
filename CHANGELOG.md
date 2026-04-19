@@ -5,6 +5,16 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [1.17.0 build 0035] — 2026-04-19 — feat: Audit log view (Prioritet 3-batch afslutning)
+
+- **backend**: `app/api/logs.py` — **ny fil**. `GET /api/logs?lines=&level=&search=` læser `settings.log_file` (default `logs/app.log`), parser hver linje mod formatet `%(asctime)s | %(levelname)-8s | %(name)s | %(message)s`, understøtter niveau-filter (DEBUG/INFO/WARNING/ERROR/CRITICAL) og fritekst-søgning. Returnerer nyeste øverst. Uparselige linjer appendes som fortsættelse på foregående entry (multi-line tracebacks).
+- **backend**: `app/main.py` — registrerer `logs.router` under `/api`.
+- **frontend**: `js/api.js` — ny `getLogs(lines, level, search)` helper.
+- **frontend**: `js/views/logs.js` — **ny fil**. Renderer log-tabel (tidspunkt, niveau, logger, besked) med niveau-dropdown, linje-antal-dropdown (100–5000), debounced fritekst-søgefelt og refresh-knap. Farvekodede niveau-badges.
+- **frontend**: `index.html`, `js/app.js` — ny "Log" sidebar-link og route (`#/logs`).
+- **frontend**: `css/styles.css` — `.logs-toolbar`, `.log-table`, `.log-level-*` badge-styling + dark-mode varianter.
+- **features**: `FEATURES.md` — markerer `Dark mode`, `Export til CSV` og `Audit log view` som `done` (de to første var allerede implementeret men ikke registreret).
+
 ## [1.16.2 build 0034] — 2026-04-18 — fix: Export CSV uden selektion eksporterer nu alle endpoints
 
 - **frontend**: `js/views/browse.js` — Export CSV-knappen eksporterer ved ingen selektion og ingen aktivt filter nu **alle** endpoints på tværs af ISE-sider (via `listAllEndpointDetails()`, bruger `allRowsCache` hvis tilgængelig), ikke kun den aktuelle pagination-side. Filter-mode og selektion-baseret export uændret. Knappen disables under hentning og resultat-labelen indikerer "(alle)".

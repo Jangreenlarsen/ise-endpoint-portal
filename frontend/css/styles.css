@@ -477,6 +477,85 @@ a.mac-link:hover {
   border-radius: 3px;
 }
 
+/* ── Log view ── */
+.logs-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+  margin-bottom: 0.75rem;
+}
+.logs-toolbar label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.75rem;
+  color: #4b5563;
+  gap: 0.2rem;
+}
+.logs-toolbar select,
+.logs-toolbar input[type="text"] {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 3px;
+  font-size: 0.85rem;
+}
+.logs-toolbar .log-search-label {
+  flex: 1;
+  min-width: 18rem;
+}
+.logs-toolbar .log-search-label input {
+  width: 100%;
+}
+.log-table-wrap {
+  max-height: 70vh;
+  overflow: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 3px;
+}
+.log-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+.log-table th {
+  position: sticky;
+  top: 0;
+  background: #f3f4f6;
+  z-index: 1;
+  text-align: left;
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid #d1d5db;
+}
+.log-table td {
+  padding: 0.3rem 0.5rem;
+  border-bottom: 1px solid #eef0f3;
+  vertical-align: top;
+}
+.log-table .mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+  color: #374151;
+}
+.log-msg-cell {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+}
+.log-level {
+  display: inline-block;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.log-level-debug    { background: #e5e7eb; color: #374151; }
+.log-level-info     { background: #dbeafe; color: #1e40af; }
+.log-level-warning  { background: #fef3c7; color: #92400e; }
+.log-level-error    { background: #fee2e2; color: #991b1b; }
+.log-level-critical { background: #7f1d1d; color: #fff; }
+
 /* ── Dark theme ── */
 [data-theme="dark"] body {
   background: #1a1a2e;
@@ -585,3 +664,23 @@ a.mac-link:hover {
   color: #e0e0e0;
   border-color: #3a3a5c;
 }
+[data-theme="dark"] .logs-toolbar label { color: #cbd5e1; }
+[data-theme="dark"] .logs-toolbar select,
+[data-theme="dark"] .logs-toolbar input[type="text"] {
+  background: #1a1a2e;
+  color: #e0e0e0;
+  border-color: #3a3a5c;
+}
+[data-theme="dark"] .log-table-wrap { border-color: #2a2a4a; }
+[data-theme="dark"] .log-table th {
+  background: #12122a;
+  border-bottom-color: #2a2a4a;
+  color: #cbd5e1;
+}
+[data-theme="dark"] .log-table td { border-bottom-color: #2a2a4a; }
+[data-theme="dark"] .log-table .mono { color: #cbd5e1; }
+[data-theme="dark"] .log-level-debug    { background: #2a2a4a; color: #cbd5e1; }
+[data-theme="dark"] .log-level-info     { background: #1e3a5f; color: #93c5fd; }
+[data-theme="dark"] .log-level-warning  { background: #78350f; color: #fde68a; }
+[data-theme="dark"] .log-level-error    { background: #7f1d1d; color: #fecaca; }
+[data-theme="dark"] .log-level-critical { background: #450a0a; color: #fecaca; }
