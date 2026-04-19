@@ -556,6 +556,128 @@ a.mac-link:hover {
 .log-level-error    { background: #fee2e2; color: #991b1b; }
 .log-level-critical { background: #7f1d1d; color: #fff; }
 
+/* ── Login view ── */
+.login-wrap {
+  min-height: 80vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+.login-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 2rem;
+  width: 360px;
+  max-width: 100%;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.login-card h2 { margin: 0 0 0.75rem 0; }
+.login-card label {
+  display: block;
+  font-size: 0.8rem;
+  color: #4b5563;
+  margin-top: 0.7rem;
+  margin-bottom: 0.2rem;
+}
+.login-card input[type="text"],
+.login-card input[type="password"] {
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid #d1d5db;
+  border-radius: 3px;
+  font-size: 0.95rem;
+  box-sizing: border-box;
+}
+.login-card button[type="submit"] {
+  margin-top: 1rem;
+  width: 100%;
+  padding: 0.55rem;
+  font-size: 0.95rem;
+}
+.login-card #login-msg { margin-top: 0.8rem; }
+
+/* ── User badge + logout ── */
+.user-info {
+  margin-top: 0.4rem;
+  font-size: 0.78rem;
+  color: #cbd5e1;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+.role-badge {
+  display: inline-block;
+  padding: 0.05rem 0.35rem;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.role-admin  { background: #7f1d1d; color: #fecaca; }
+.role-editor { background: #1e40af; color: #bfdbfe; }
+.role-viewer { background: #374151; color: #d1d5db; }
+.linkish {
+  background: none !important;
+  border: none !important;
+  color: #93c5fd !important;
+  padding: 0 !important;
+  cursor: pointer;
+  text-decoration: underline;
+  font-size: 0.78rem !important;
+}
+.linkish:hover { color: #bfdbfe !important; }
+
+/* ── Users table ── */
+.users-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+.users-table th {
+  text-align: left;
+  padding: 0.35rem 0.5rem;
+  background: #f3f4f6;
+  border-bottom: 1px solid #d1d5db;
+}
+.users-table td {
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid #eef0f3;
+  vertical-align: middle;
+}
+.users-table .user-role-select { padding: 0.25rem 0.4rem; }
+.users-table button.small {
+  padding: 0.2rem 0.5rem;
+  font-size: 0.78rem;
+  margin-right: 0.3rem;
+}
+.users-table button.danger {
+  background: #dc2626;
+}
+.users-table button.danger:hover:not(:disabled) {
+  background: #b91c1c;
+}
+.user-create-row {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  align-items: center;
+  padding-top: 0.5rem;
+  border-top: 1px dashed #e5e7eb;
+}
+.user-create-row input, .user-create-row select {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 3px;
+  font-size: 0.85rem;
+}
+.user-create-row input { flex: 1; min-width: 8rem; }
+.pw-form .field { max-width: 320px; }
+
 /* ── Dark theme ── */
 [data-theme="dark"] body {
   background: #1a1a2e;
@@ -684,3 +806,28 @@ a.mac-link:hover {
 [data-theme="dark"] .log-level-warning  { background: #78350f; color: #fde68a; }
 [data-theme="dark"] .log-level-error    { background: #7f1d1d; color: #fecaca; }
 [data-theme="dark"] .log-level-critical { background: #450a0a; color: #fecaca; }
+[data-theme="dark"] .login-card {
+  background: #16213e;
+  border-color: #2a2a4a;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+}
+[data-theme="dark"] .login-card label { color: #cbd5e1; }
+[data-theme="dark"] .login-card input[type="text"],
+[data-theme="dark"] .login-card input[type="password"] {
+  background: #1a1a2e;
+  color: #e0e0e0;
+  border-color: #3a3a5c;
+}
+[data-theme="dark"] .users-table th {
+  background: #12122a;
+  color: #cbd5e1;
+  border-bottom-color: #2a2a4a;
+}
+[data-theme="dark"] .users-table td { border-bottom-color: #2a2a4a; }
+[data-theme="dark"] .user-create-row { border-top-color: #2a2a4a; }
+[data-theme="dark"] .user-create-row input,
+[data-theme="dark"] .user-create-row select {
+  background: #1a1a2e;
+  color: #e0e0e0;
+  border-color: #3a3a5c;
+}

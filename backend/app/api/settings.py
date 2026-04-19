@@ -1,5 +1,6 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from app.api.deps import require_admin
 from app.schemas.settings import (
     BackendSettingsResponse,
     BackendSettingsUpdate,
@@ -8,7 +9,9 @@ from app.schemas.settings import (
 )
 from app.services import settings_service
 
-router = APIRouter(prefix="/settings", tags=["settings"])
+router = APIRouter(
+    prefix="/settings", tags=["settings"], dependencies=[Depends(require_admin)]
+)
 
 
 @router.get("/backend", response_model=BackendSettingsResponse)

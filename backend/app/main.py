@@ -5,8 +5,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from app.api import auth as auth_api
 from app.api import custom_attributes as custom_attrs_api
-from app.api import endpoints, groups, health, logs
+from app.api import endpoints, groups, health, logs, users
 from app.api import settings as settings_api
 from app.core.config import settings
 from app.core.logging import setup_logging
@@ -38,6 +39,8 @@ app.add_middleware(
 )
 
 app.include_router(health.router, prefix="/api")
+app.include_router(auth_api.router, prefix="/api")
+app.include_router(users.router, prefix="/api")
 app.include_router(endpoints.router, prefix="/api")
 app.include_router(groups.router, prefix="/api")
 app.include_router(settings_api.router, prefix="/api")

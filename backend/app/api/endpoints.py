@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.api.deps import get_endpoint_service
+from app.api.deps import get_endpoint_service, require_any, require_editor
 from app.core.exceptions import IseApiError
 from app.schemas.endpoint import (
     BulkCreateRequest,
@@ -16,7 +16,7 @@ from app.services.endpoint_service import EndpointService
 router = APIRouter(prefix="/endpoints", tags=["endpoints"])
 
 
-@router.get("", response_model=list[EndpointSummary])
+@router.get("", response_model=list[EndpointSummary], dependencies=[Depends(require_any)])
 async def list_endpoints(
     page: int = 1,
     size: int = 100,
@@ -32,7 +32,7 @@ async def list_endpoints(
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
-@router.get("/details", response_model=PaginatedEndpointDetails)
+@router.get("/details", response_model=PaginatedEndpointDetails, dependencies=[Depends(require_any)])
 async def list_endpoint_details(
     page: int = 1,
     size: int = 100,
@@ -49,7 +49,7 @@ async def list_endpoint_details(
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
-@router.get("/details/all", response_model=list[EndpointDetail])
+@router.get("/details/all", response_model=list[EndpointDetail], dependencies=[Depends(require_any)])
 async def list_all_endpoint_details(
     search: str | None = None,
     filter: list[str] | None = Query(default=None),
@@ -64,7 +64,7 @@ async def list_all_endpoint_details(
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
-@router.get("/{endpoint_id}", response_model=EndpointDetail)
+@router.get("/{endpoint_id}", response_model=EndpointDetail, dependencies=[Depends(require_any)])
 async def get_endpoint(
     endpoint_id: str,
     service: EndpointService = Depends(get_endpoint_service),
@@ -75,7 +75,7 @@ async def get_endpoint(
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
-@router.post("", status_code=status.HTTP_201_CREATED)
+@router.post("", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_editor)])
 async def create_endpoint(
     req: CreateEndpointRequest,
     service: EndpointService = Depends(get_endpoint_service),
@@ -87,7 +87,7 @@ async def create_endpoint(
     return {"status": "created", "id": new_id}
 
 
-@router.post("/bulk", response_model=BulkResult)
+@router.post("/bulk", response_model=BulkResult, dependencies=[Depends(require_editor)])
 async def bulk_create_endpoints(
     req: BulkCreateRequest,
     service: EndpointService = Depends(get_endpoint_service),
@@ -96,7 +96,7 @@ async def bulk_create_endpoints(
     return await service.bulk_create(req)
 
 
-@router.put("/{endpoint_id}")
+@router.put("/{endpoint_id}", dependencies=[Depends(require_editor)])
 async def update_endpoint(
     endpoint_id: str,
     req: EndpointUpdate,
@@ -109,7 +109,7 @@ async def update_endpoint(
     return {"status": "updated"}
 
 
-@router.delete("/{endpoint_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{endpoint_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_editor)])
 async def delete_endpoint(
     endpoint_id: str,
     service: EndpointService = Depends(get_endpoint_service),

@@ -5,6 +5,30 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [1.18.0 build 0036] — 2026-04-19 — feat: Authentication + rollebaseret adgangskontrol
+
+**BREAKING**: Alle `/api/*` ruter (undtagen `/api/health` og `/api/auth/*`) kræver nu gyldig Bearer-token. Klienter uden auth vil få 401.
+
+- **backend**: `app/core/auth.py` — **ny fil**. PBKDF2-SHA256 password hashing (600k iter), stateless signerede tokens (HMAC-SHA256, 24h TTL). Auto-genereret secret i `backend/auth_secret.key` (gitignored).
+- **backend**: `app/core/user_store.py` — **ny fil**. Persistens af brugerkonti i `backend/users.json` (gitignored).
+- **backend**: `app/schemas/user.py` — **ny fil**. `User`, `UserCreate`, `UserUpdate`, `LoginRequest/Response`, `AuthStatus`, `SetupRequest`, `ChangePasswordRequest`. Roller: `Literal["admin","editor","viewer"]`.
+- **backend**: `app/services/user_service.py` — **ny fil**. CRUD, login (opdaterer `last_login`), first-run setup, change-password, beskyttelse mod at slette sig selv eller sidste admin.
+- **backend**: `app/api/auth.py` — **ny fil**. `/auth/status`, `/login`, `/logout`, `/setup`, `/me`, `/change-password`.
+- **backend**: `app/api/users.py` — **ny fil**. CRUD på `/users` (admin only).
+- **backend**: `app/api/deps.py` — `get_current_user` (parser Bearer-token, validerer signatur+expiry+rolle-match mod DB), `require_roles(*roles)` factory, færdige deps: `require_admin`, `require_editor`, `require_any`.
+- **backend**: `app/api/endpoints.py` — GET-ruter kræver `require_any`; POST/PUT/DELETE kræver `require_editor`.
+- **backend**: `app/api/groups.py`, `app/api/custom_attributes.py` — GET kræver `require_any`, mutationer kræver `require_editor`.
+- **backend**: `app/api/settings.py`, `app/api/logs.py` — hele routeren kræver `require_admin`.
+- **backend**: `app/main.py` — registrerer `auth_api.router` og `users.router`.
+- **frontend**: `js/auth.js` — **ny fil**. Token + user persistens i localStorage, `isAdmin()`, `isEditor()`, `hasRole()`.
+- **frontend**: `js/api.js` — sender `Authorization: Bearer <token>` automatisk; 401-svar clearer token og kalder `onUnauthorized`-handler. Nye endpoints: `authStatus`, `login`, `logout`, `setupAdmin`, `changePassword`, `listUsers`, `createUser`, `updateUser`, `deleteUser`.
+- **frontend**: `js/views/login.js` — **ny fil**. Login-form; detekterer `setup_required` og viser "Første-gangs opsætning"-form i stedet, der opretter admin-bruger.
+- **frontend**: `js/app.js` — auth-aware routing: viser login hvis ikke logget ind, filtrerer sidebar-nav efter rolle, blokerer views hvor brugerens rolle ikke matcher. Rute-roller: `create`/`import`/`attributes` → admin+editor; `browse`/`settings` → alle; `logs` → admin.
+- **frontend**: `js/views/settings.js` — ny "Brugere & roller"-card (admin-only) med tabel, rolle-dropdown, reset-password, slet, og opret-bruger-form. Ny "Skift dit password"-card for alle. Backend-card vises kun for admins.
+- **frontend**: `index.html` — bruger-info-blok i sidebar-footer (brugernavn, rolle-badge, log-ud-knap).
+- **frontend**: `css/styles.css` — login-card, role-badges (`.role-admin`, `.role-editor`, `.role-viewer`), `.users-table`, `.user-create-row`, `.linkish`-knap + dark-mode varianter.
+- **ops**: `.gitignore` — tilføjet `backend/users.json` og `backend/auth_secret.key`.
+
 ## [1.17.0 build 0035] — 2026-04-19 — feat: Audit log view (Prioritet 3-batch afslutning)
 
 - **backend**: `app/api/logs.py` — **ny fil**. `GET /api/logs?lines=&level=&search=` læser `settings.log_file` (default `logs/app.log`), parser hver linje mod formatet `%(asctime)s | %(levelname)-8s | %(name)s | %(message)s`, understøtter niveau-filter (DEBUG/INFO/WARNING/ERROR/CRITICAL) og fritekst-søgning. Returnerer nyeste øverst. Uparselige linjer appendes som fortsættelse på foregående entry (multi-line tracebacks).

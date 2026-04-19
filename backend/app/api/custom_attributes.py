@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.api.deps import get_custom_attribute_service
+from app.api.deps import get_custom_attribute_service, require_any, require_editor
 from app.schemas.custom_attribute import (
     AddValueRequest,
     AllCustomAttributes,
@@ -11,14 +11,14 @@ from app.services.custom_attribute_service import CustomAttributeService
 router = APIRouter(prefix="/custom-attributes", tags=["custom-attributes"])
 
 
-@router.get("", response_model=AllCustomAttributes)
+@router.get("", response_model=AllCustomAttributes, dependencies=[Depends(require_any)])
 async def list_custom_attributes(
     service: CustomAttributeService = Depends(get_custom_attribute_service),
 ) -> AllCustomAttributes:
     return service.list_all()
 
 
-@router.post("/{attr_name}/values", response_model=AllCustomAttributes)
+@router.post("/{attr_name}/values", response_model=AllCustomAttributes, dependencies=[Depends(require_editor)])
 async def add_value(
     attr_name: str,
     req: AddValueRequest,
@@ -30,7 +30,7 @@ async def add_value(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.delete("/{attr_name}/values/{value}", response_model=AllCustomAttributes)
+@router.delete("/{attr_name}/values/{value}", response_model=AllCustomAttributes, dependencies=[Depends(require_editor)])
 async def remove_value(
     attr_name: str,
     value: str,
@@ -42,7 +42,7 @@ async def remove_value(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.post("/sync", response_model=SyncResult)
+@router.post("/sync", response_model=SyncResult, dependencies=[Depends(require_editor)])
 async def sync_from_ise(
     service: CustomAttributeService = Depends(get_custom_attribute_service),
 ) -> SyncResult:

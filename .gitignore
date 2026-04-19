@@ -16,4 +16,6 @@ backend/logs/*.log
 backend/logs/*.log.*
 backend/config.json
 backend/custom_attr_values.json
+backend/users.json
+backend/auth_secret.key
 node_modules/

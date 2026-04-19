@@ -1,5 +1,12 @@
 import { api } from "../api.js";
+import { auth } from "../auth.js";
 import { getCsvTemplate, setCsvTemplate, resetCsvTemplate, parseTemplateHeader, extendTemplateWithPortalColumns } from "../csv.js";
+
+function esc(s) {
+  return (s || "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }[c]));
+}
 
 const FRONTEND_PREFS_KEY = "ise_portal_prefs";
 
@@ -25,9 +32,13 @@ export function initTheme() {
 }
 
 export async function renderSettings(container) {
+  const isAdmin = auth.isAdmin();
+  const currentUser = auth.getUser();
+
   container.innerHTML = `
     <h2>Settings</h2>
 
+    ${isAdmin ? `
     <div class="card">
       <h3>Backend — Cisco ISE connection</h3>
       <p class="hint">
@@ -70,6 +81,63 @@ export async function renderSettings(container) {
           <button type="submit">Gem backend settings</button>
           <button type="button" id="test-conn-btn" class="secondary"
                   title="Test ISE-forbindelsen uden at gemme">Test forbindelse</button>
+        </div>
+      </form>
+    </div>
+    ` : ""}
+
+    ${isAdmin ? `
+    <div class="card">
+      <h3>Brugere &amp; roller</h3>
+      <p class="hint">
+        Administrer lokale brugerkonti og deres roller.
+        <b>admin</b> har fuld adgang. <b>editor</b> kan oprette/redigere endpoints. <b>viewer</b> kan kun læse.
+      </p>
+      <div id="users-msg"></div>
+      <table class="users-table">
+        <thead>
+          <tr>
+            <th>Brugernavn</th>
+            <th style="width:9rem;">Rolle</th>
+            <th style="width:11rem;">Sidst logget ind</th>
+            <th style="width:9rem;">Oprettet</th>
+            <th style="width:10rem;">Handlinger</th>
+          </tr>
+        </thead>
+        <tbody id="users-tbody"></tbody>
+      </table>
+      <form id="user-create-form" class="user-create-row">
+        <input type="text" id="new-username" placeholder="brugernavn" minlength="3" required />
+        <input type="password" id="new-password" placeholder="password (min. 8 tegn)" minlength="8" required />
+        <select id="new-role">
+          <option value="viewer">viewer</option>
+          <option value="editor">editor</option>
+          <option value="admin">admin</option>
+        </select>
+        <button type="submit">Opret bruger</button>
+      </form>
+    </div>
+    ` : ""}
+
+    <div class="card">
+      <h3>Skift dit password</h3>
+      <p class="hint">Logget ind som <b>${esc(currentUser?.username || "")}</b> (rolle: ${esc(currentUser?.role || "")}).</p>
+      <div id="pw-msg"></div>
+      <form id="pw-form" class="pw-form">
+        <div class="field">
+          <label for="pw-current">Nuværende password</label>
+          <input type="password" id="pw-current" autocomplete="current-password" required />
+        </div>
+        <div class="field">
+          <label for="pw-new">Nyt password (min. 8 tegn)</label>
+          <input type="password" id="pw-new" autocomplete="new-password" minlength="8" required />
+        </div>
+        <div class="field">
+          <label for="pw-new2">Bekræft nyt password</label>
+          <input type="password" id="pw-new2" autocomplete="new-password" minlength="8" required />
+        </div>
+        <div class="actions">
+          <button type="submit">Skift password</button>
         </div>
       </form>
     </div>
@@ -118,6 +186,15 @@ export async function renderSettings(container) {
     </div>
   `;
 
+  if (isAdmin) {
+    await initBackendSection(container);
+    await initUsersSection(container, currentUser);
+  }
+  initPasswordSection(container);
+  initCsvAndPrefsSections(container);
+}
+
+async function initBackendSection(container) {
   const backendMsg = container.querySelector("#backend-msg");
   const passwordHint = container.querySelector("#password-hint");
 
@@ -176,7 +253,131 @@ export async function renderSettings(container) {
       backendMsg.innerHTML = `<div class="alert error">${err.message}</div>`;
     }
   });
+}
 
+async function initUsersSection(container, currentUser) {
+  const tbody = container.querySelector("#users-tbody");
+  const msg = container.querySelector("#users-msg");
+
+  async function reload() {
+    msg.innerHTML = "";
+    try {
+      const users = await api.listUsers();
+      tbody.innerHTML = users
+        .map((u) => {
+          const isSelf = u.id === currentUser.id;
+          return `
+            <tr data-user-id="${esc(u.id)}">
+              <td>${esc(u.username)}</td>
+              <td>
+                <select class="user-role-select" ${isSelf ? "disabled title='Du kan ikke ændre din egen rolle her'" : ""}>
+                  ${["admin", "editor", "viewer"]
+                    .map((r) => `<option value="${r}"${r === u.role ? " selected" : ""}>${r}</option>`)
+                    .join("")}
+                </select>
+              </td>
+              <td class="mono" style="font-size:0.78rem;">${esc(u.last_login || "—")}</td>
+              <td class="mono" style="font-size:0.78rem;">${esc((u.created_at || "").slice(0, 10))}</td>
+              <td>
+                <button class="small user-reset-pw" ${isSelf ? "disabled" : ""}>Nyt password</button>
+                <button class="small danger user-del" ${isSelf ? "disabled" : ""}>Slet</button>
+              </td>
+            </tr>`;
+        })
+        .join("");
+    } catch (err) {
+      msg.innerHTML = `<div class="alert error">Kunne ikke hente brugere: ${esc(err.message)}</div>`;
+    }
+  }
+
+  tbody.addEventListener("change", async (e) => {
+    if (!e.target.classList.contains("user-role-select")) return;
+    const row = e.target.closest("tr");
+    const id = row.dataset.userId;
+    try {
+      await api.updateUser(id, { role: e.target.value });
+      msg.innerHTML = `<div class="alert success">Rolle opdateret.</div>`;
+    } catch (err) {
+      msg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
+      await reload();
+    }
+  });
+
+  tbody.addEventListener("click", async (e) => {
+    const row = e.target.closest("tr");
+    if (!row) return;
+    const id = row.dataset.userId;
+    const username = row.querySelector("td").textContent;
+    if (e.target.classList.contains("user-del")) {
+      if (!confirm(`Slet brugeren "${username}"?`)) return;
+      try {
+        await api.deleteUser(id);
+        msg.innerHTML = `<div class="alert success">Bruger slettet.</div>`;
+        await reload();
+      } catch (err) {
+        msg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
+      }
+    }
+    if (e.target.classList.contains("user-reset-pw")) {
+      const pw = prompt(`Nyt password for "${username}" (min. 8 tegn):`);
+      if (!pw) return;
+      if (pw.length < 8) {
+        msg.innerHTML = `<div class="alert error">Password skal være mindst 8 tegn.</div>`;
+        return;
+      }
+      try {
+        await api.updateUser(id, { password: pw });
+        msg.innerHTML = `<div class="alert success">Password opdateret for ${esc(username)}.</div>`;
+      } catch (err) {
+        msg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
+      }
+    }
+  });
+
+  container.querySelector("#user-create-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const payload = {
+      username: container.querySelector("#new-username").value.trim(),
+      password: container.querySelector("#new-password").value,
+      role: container.querySelector("#new-role").value,
+    };
+    try {
+      await api.createUser(payload);
+      container.querySelector("#new-username").value = "";
+      container.querySelector("#new-password").value = "";
+      msg.innerHTML = `<div class="alert success">Bruger oprettet.</div>`;
+      await reload();
+    } catch (err) {
+      msg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
+    }
+  });
+
+  await reload();
+}
+
+function initPasswordSection(container) {
+  const msg = container.querySelector("#pw-msg");
+  container.querySelector("#pw-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    msg.innerHTML = "";
+    const current = container.querySelector("#pw-current").value;
+    const newPw = container.querySelector("#pw-new").value;
+    const newPw2 = container.querySelector("#pw-new2").value;
+    if (newPw !== newPw2) {
+      msg.innerHTML = `<div class="alert error">De to nye passwords matcher ikke.</div>`;
+      return;
+    }
+    try {
+      await api.changePassword(current, newPw);
+      container.querySelector("#pw-form").reset();
+      msg.innerHTML = `<div class="alert success">Password skiftet.</div>`;
+    } catch (err) {
+      msg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
+    }
+  });
+}
+
+function initCsvAndPrefsSections(container) {
   // CSV template
   const csvTplMsg = container.querySelector("#csv-tpl-msg");
   const csvTplPreview = container.querySelector("#csv-tpl-preview");

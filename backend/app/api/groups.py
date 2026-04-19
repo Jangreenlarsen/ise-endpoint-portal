@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.api.deps import get_endpoint_service
+from app.api.deps import get_endpoint_service, require_any
 from app.core.exceptions import IseApiError
 from app.schemas.endpoint import EndpointGroupSummary
 from app.services.endpoint_service import EndpointService
 
-router = APIRouter(prefix="/groups", tags=["groups"])
+router = APIRouter(prefix="/groups", tags=["groups"], dependencies=[Depends(require_any)])
 
 
 @router.get("", response_model=list[EndpointGroupSummary])

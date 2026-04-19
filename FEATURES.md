@@ -22,6 +22,8 @@ Alle nye features registreres her FØR implementering påbegyndes.
 - `[done] 2026-04-15 — Backend settings persistence` — `backend/config.json` override-fil. `GET/PUT /api/settings/backend` eksponerer ISE connection settings (url, user, password, api_type, verify_tls, timeout). Refresh af settings + reset af ISE client efter save. Lag: backend (core, schemas, services, api).
 - `[done] 2026-04-15 — Settings view` — frontend form for backend ISE connection (password write-only) + frontend preferences (localStorage). Lag: frontend.
 
+- `[done] 2026-04-19 — Authentication + rollebaseret adgangskontrol` — lokal brugerbase i `backend/users.json` (PBKDF2-SHA256 med 600k iterations), stateless signerede tokens (HMAC-SHA256, 24h TTL, auto-genereret secret i `backend/auth_secret.key`). Tre roller: `admin` (alt), `editor` (CRUD på endpoints), `viewer` (kun GET). Første-gangs opsætning via login-siden når ingen brugere eksisterer. Ny "Brugere & roller"-sektion i Settings (admin-only) til CRUD på brugere. "Skift password"-sektion for alle. Sidebar viser kun ruter brugeren har adgang til. Lag: backend (core, schemas, services, api), frontend (auth.js, login view, app.js, api.js, settings view, index.html, css).
+
 ## Planlagte — Prioritet 1 (vigtigt nu)
 
 - `[done] 2026-04-17 — Bulk throttling` — 150ms delay mellem ISE-kald i `bulk_create` for at overholde Ciscos 5–10 req/sec grænse. Forhindrer ERS overload ved store CSV imports. Lag: backend (services). Ref: [ISE_API_REFERENCE.md § Bulk](ISE_API_REFERENCE.md).

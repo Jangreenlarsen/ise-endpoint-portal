@@ -1,12 +1,33 @@
+import { auth } from "./auth.js";
+
 const BASE = window.location.origin.startsWith("file://")
   ? "http://localhost:8000"
   : "";
 
+const UNAUTH_PATHS = new Set([
+  "/health",
+  "/auth/status",
+  "/auth/login",
+  "/auth/setup",
+]);
+
+let onUnauthorized = null;
+export function setUnauthorizedHandler(fn) {
+  onUnauthorized = fn;
+}
+
 async function request(path, options = {}) {
-  const res = await fetch(`${BASE}/api${path}`, {
-    headers: { "Content-Type": "application/json" },
-    ...options,
-  });
+  const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
+  const token = auth.getToken();
+  if (token && !UNAUTH_PATHS.has(path.split("?")[0])) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  const res = await fetch(`${BASE}/api${path}`, { ...options, headers });
+  if (res.status === 401) {
+    auth.clear();
+    if (onUnauthorized) onUnauthorized();
+    throw new Error("401: ikke logget ind");
+  }
   if (!res.ok) {
     let detail = await res.text();
     try {
@@ -89,4 +110,31 @@ export const api = {
     if (search) parts.push(`search=${encodeURIComponent(search)}`);
     return request(`/logs?${parts.join("&")}`);
   },
+  authStatus: () => request("/auth/status"),
+  login: (username, password) =>
+    request("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    }),
+  logout: () => request("/auth/logout", { method: "POST" }),
+  setupAdmin: (username, password) =>
+    request("/auth/setup", {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    }),
+  changePassword: (current_password, new_password) =>
+    request("/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify({ current_password, new_password }),
+    }),
+  listUsers: () => request("/users"),
+  createUser: (payload) =>
+    request("/users", { method: "POST", body: JSON.stringify(payload) }),
+  updateUser: (id, payload) =>
+    request(`/users/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+  deleteUser: (id) =>
+    request(`/users/${encodeURIComponent(id)}`, { method: "DELETE" }),
 };

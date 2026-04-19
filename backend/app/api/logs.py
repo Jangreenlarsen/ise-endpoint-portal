@@ -2,11 +2,12 @@ import re
 from collections import deque
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
+from app.api.deps import require_admin
 from app.core.config import settings
 
-router = APIRouter(tags=["logs"])
+router = APIRouter(tags=["logs"], dependencies=[Depends(require_admin)])
 
 LINE_RE = re.compile(
     r"^(?P<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| "
