@@ -5,6 +5,14 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.1.0 build 0045] — 2026-04-20 — feat: Persistente filtre i Browse/Edit
+
+Filtre i Browse/Edit nulstilles ikke længere når man skifter rundt i portalen.
+Alle aktive filtre gemmes i `localStorage` og restoreres ved næste render af
+siden — de skal aktivt fjernes for at forsvinde.
+
+- **frontend (`js/views/browse.js`)**: Nyt `BROWSE_FILTERS_KEY` + `loadBrowseFilters()`/`saveBrowseFilters()` helpers. `snapshotFilters()` opsamler portalOnly-toggle, server-side filter (field/op/value) og alle aktive kolonnefiltre (col + value). `persistFilters()` kaldes på enhver filter-ændring (toggle, checkbox, input, dropdown). `restoreFilters()` køres lige før første `load()`: sætter knap-tilstand, dropdowns, kolonne-checkboxes og deres input — `load()` ser herefter de restorede filtre via det eksisterende `needsFilterMode()`-flow og henter fuldt datasæt hvis nødvendigt.
+
 ## [2.0.1 build 0044] — 2026-04-20 — fix: Update af eksisterende DACL fejlede med "Mandatory fields missing: [Name,]"
 
 ISE's ERS PUT på `/ers/config/downloadableacl/{id}` kræver `Name` i body som

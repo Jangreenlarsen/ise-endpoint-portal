@@ -29,6 +29,18 @@ function setCoaReauthOnSave(enabled) {
   } catch { /* ignore */ }
 }
 
+const BROWSE_FILTERS_KEY = "ise_portal_browse_filters";
+function loadBrowseFilters() {
+  try {
+    return JSON.parse(localStorage.getItem(BROWSE_FILTERS_KEY) || "null");
+  } catch { return null; }
+}
+function saveBrowseFilters(state) {
+  try {
+    localStorage.setItem(BROWSE_FILTERS_KEY, JSON.stringify(state));
+  } catch { /* ignore */ }
+}
+
 function esc(s) {
   return (s || "").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 }
@@ -270,6 +282,51 @@ export async function renderBrowse(container) {
   }
   pageSizeSelect.value = String(currentSize);
 
+  function snapshotFilters() {
+    const cols = [];
+    filterRow.querySelectorAll(".col-filter-cb:checked").forEach((cb) => {
+      const input = filterRow.querySelector(`.col-filter-input[data-col="${cb.dataset.col}"]`);
+      cols.push({ col: cb.dataset.col, value: input ? input.value : "" });
+    });
+    return {
+      portalOnly,
+      server: {
+        field: filterFieldSelect.value,
+        op: filterOpSelect.value,
+        value: filterValueInput.value,
+      },
+      cols,
+    };
+  }
+  function persistFilters() {
+    saveBrowseFilters(snapshotFilters());
+  }
+  function restoreFilters() {
+    const s = loadBrowseFilters();
+    if (!s) return;
+    if (s.portalOnly) {
+      portalOnly = true;
+      portalFilterBtn.classList.add("active-toggle");
+    }
+    if (s.server) {
+      if (s.server.field) filterFieldSelect.value = s.server.field;
+      if (s.server.op) filterOpSelect.value = s.server.op;
+      if (s.server.value) filterValueInput.value = s.server.value;
+      currentFilters = buildServerFilters();
+    }
+    if (Array.isArray(s.cols)) {
+      for (const { col, value } of s.cols) {
+        const cb = filterRow.querySelector(`.col-filter-cb[data-col="${col}"]`);
+        const input = filterRow.querySelector(`.col-filter-input[data-col="${col}"]`);
+        if (cb && input) {
+          cb.checked = true;
+          input.disabled = false;
+          input.value = value || "";
+        }
+      }
+    }
+  }
+
   function totalPages() {
     return Math.max(1, Math.ceil(totalEndpoints / currentSize));
   }
@@ -333,12 +390,14 @@ export async function renderBrowse(container) {
     cb.addEventListener("change", async () => {
       input.disabled = !cb.checked;
       if (!cb.checked) input.value = "";
+      persistFilters();
       await onFilterChange();
       if (cb.checked) input.focus();
     });
   });
   filterRow.querySelectorAll(".col-filter-input").forEach((input) => {
     input.addEventListener("input", () => {
+      persistFilters();
       if (filterMode) applyFilter();
     });
   });
@@ -541,6 +600,7 @@ export async function renderBrowse(container) {
   portalFilterBtn.addEventListener("click", async () => {
     portalOnly = !portalOnly;
     portalFilterBtn.classList.toggle("active-toggle", portalOnly);
+    persistFilters();
     await onFilterChange();
   });
 
@@ -866,9 +926,9 @@ export async function renderBrowse(container) {
     if (immediate) fire();
     else searchDebounce = setTimeout(fire, 400);
   }
-  filterValueInput.addEventListener("input", () => triggerFilterChange(false));
-  filterFieldSelect.addEventListener("change", () => triggerFilterChange(true));
-  filterOpSelect.addEventListener("change", () => triggerFilterChange(true));
+  filterValueInput.addEventListener("input", () => { persistFilters(); triggerFilterChange(false); });
+  filterFieldSelect.addEventListener("change", () => { persistFilters(); triggerFilterChange(true); });
+  filterOpSelect.addEventListener("change", () => { persistFilters(); triggerFilterChange(true); });
 
   // Endpoint detail modal
   const detailOverlay = container.querySelector("#detail-overlay");
@@ -1049,5 +1109,6 @@ export async function renderBrowse(container) {
     msg.innerHTML = `<div class="alert success">Eksporteret ${label} endpoints.</div>`;
   });
 
+  restoreFilters();
   await load();
 }
