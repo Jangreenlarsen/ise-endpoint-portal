@@ -254,9 +254,15 @@ class DaclService:
     async def update(self, dacl_id: str, req: UpdateDaclRequest) -> DaclDetail:
         if req.dacl_type is not None:
             _check_type(req.dacl_type)
+        # ISE kræver Name i PUT-body som mandatory field, også selv om navnet
+        # ikke ændres. Hent eksisterende navn hvis frontend ikke sendte et.
+        name = req.name
+        if name is None:
+            current = await self.repo.get(dacl_id)
+            name = current.get("name", "") or None
         await self.repo.update(
             dacl_id,
-            name=req.name,
+            name=name,
             description=req.description,
             dacl=req.dacl,
             dacl_type=req.dacl_type,

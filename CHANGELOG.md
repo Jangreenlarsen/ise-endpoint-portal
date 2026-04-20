@@ -5,6 +5,15 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.0.1 build 0044] — 2026-04-20 — fix: Update af eksisterende DACL fejlede med "Mandatory fields missing: [Name,]"
+
+ISE's ERS PUT på `/ers/config/downloadableacl/{id}` kræver `Name` i body som
+mandatory field — også selv om navnet ikke ændres. Frontend har name-feltet
+read-only efter oprettelse og sendte derfor kun description/dacl/dacl_type i
+PUT-requesten, hvilket gav HTTP 400 fra ISE.
+
+- **backend (`app/services/dacl_service.py`)**: `DaclService.update` henter nu det eksisterende DACL-navn via `repo.get(id)` og inkluderer det altid i PUT-bodyen, hvis frontend ikke sender et nyt navn.
+
 ## [2.0.0 build 0043] — 2026-04-20 — feat: AuthzACL attribut + Cisco IOS access-list editor
 
 Major bump pga. ny top-level feature: portalen administrerer nu Cisco ISE
