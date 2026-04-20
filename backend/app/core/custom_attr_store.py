@@ -13,7 +13,7 @@ from typing import Any
 STORE_FILE = Path(__file__).resolve().parents[2] / "custom_attr_values.json"
 
 # Custom attributes this portal manages (user-editable).
-MANAGED_ATTRS = ["Type", "Owner", "Lokation", "AuthzVlan", "AuthzACL"]
+MANAGED_ATTRS = ["Type", "Owner", "Lokation", "AuthzVlan", "AuthzACL", "PlatformType"]
 
 # Hidden attribute — set automatically, not shown in UI dropdowns.
 HIDDEN_ATTR = "HypervisionISEPortal"

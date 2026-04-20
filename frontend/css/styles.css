@@ -964,3 +964,50 @@ body.auth-mode .content {
 [data-theme="dark"] .dacl-issue code { background: rgba(255,255,255,0.05); color: #cbd5e1; }
 [data-theme="dark"] .dacl-issue-error { background: #3b1414; color: #fecaca; }
 [data-theme="dark"] .dacl-issue-warning { background: #3b2a14; color: #fde68a; }
+
+/* Column visibility menu (Browse/Edit) */
+.col-vis-wrap { position: relative; display: inline-block; }
+.col-vis-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 50;
+  min-width: 200px;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+  padding: 0.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.col-vis-menu.hidden { display: none; }
+.col-vis-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.4rem;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: #1a2330;
+}
+.col-vis-item:hover { background: #f1f5f9; }
+.col-vis-item input { margin: 0; }
+.col-vis-actions {
+  border-top: 1px solid #e5e7eb;
+  margin-top: 0.3rem;
+  padding-top: 0.4rem;
+  display: flex;
+  justify-content: flex-end;
+}
+.col-hidden { display: none !important; }
+
+[data-theme="dark"] .col-vis-menu {
+  background: #16213e;
+  border-color: #3a3a5c;
+}
+[data-theme="dark"] .col-vis-item { color: #e0e0e0; }
+[data-theme="dark"] .col-vis-item:hover { background: #1f2a44; }
+[data-theme="dark"] .col-vis-actions { border-top-color: #3a3a5c; }

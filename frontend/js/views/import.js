@@ -81,7 +81,7 @@ AA:BB:CC:DD:EE:02,Profiled,printer,Camera,Facilities,,VLAN200"></textarea>
     }
     const valid = parsed.filter((p) => p.valid).length;
     const invalid = parsed.length - valid;
-    const hasCA = parsed.some((p) => p.endpointType || p.owner || p.lokation || p.authzVlan || p.authzAcl);
+    const hasCA = parsed.some((p) => p.endpointType || p.owner || p.lokation || p.authzVlan || p.authzAcl || p.platformType);
     preview.innerHTML = `
       <div class="alert info">
         Detekteret format: <strong>${format === "ise" ? "ISE CSV" : "Simpelt"}</strong> —
@@ -92,7 +92,7 @@ AA:BB:CC:DD:EE:02,Profiled,printer,Camera,Facilities,,VLAN200"></textarea>
           <thead>
             <tr>
               <th>#</th><th>MAC</th><th>Group</th><th>Description</th>
-              ${hasCA ? "<th>Type</th><th>Owner</th><th>Lokation</th><th>AuthzVlan</th><th>AuthzACL</th>" : ""}
+              ${hasCA ? "<th>Type</th><th>Owner</th><th>Lokation</th><th>AuthzVlan</th><th>AuthzACL</th><th>PlatformType</th>" : ""}
               <th>Status</th>
             </tr>
           </thead>
@@ -109,6 +109,7 @@ AA:BB:CC:DD:EE:02,Profiled,printer,Camera,Facilities,,VLAN200"></textarea>
                   <td>${escapeHtml(p.lokation)}</td>
                   <td>${escapeHtml(p.authzVlan)}</td>
                   <td>${escapeHtml(p.authzAcl)}</td>
+                  <td>${escapeHtml(p.platformType)}</td>
                 ` : ""}
                 <td>${p.valid ? "✓" : '<span class="invalid">ugyldig MAC</span>'}</td>
               </tr>`).join("")}
@@ -141,6 +142,7 @@ AA:BB:CC:DD:EE:02,Profiled,printer,Camera,Facilities,,VLAN200"></textarea>
         if (p.lokation) { ca.Lokation = p.lokation; hasCA = true; }
         if (p.authzVlan) { ca.AuthzVlan = p.authzVlan; hasCA = true; }
         if (p.authzAcl) { ca.AuthzACL = p.authzAcl; hasCA = true; }
+        if (p.platformType) { ca.PlatformType = p.platformType; hasCA = true; }
         if (hasCA) item.custom_attributes = ca;
         return item;
       });

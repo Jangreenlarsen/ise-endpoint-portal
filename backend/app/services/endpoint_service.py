@@ -108,6 +108,7 @@ class EndpointService:
             lokation=ca.get("Lokation", ""),
             authz_vlan=ca.get("AuthzVlan", ""),
             authz_acl=ca.get("AuthzACL", ""),
+            platform_type=ca.get("PlatformType", ""),
             hypervision=ca.get("HypervisionISEPortal", ""),
             profile_id=raw.get("profileId", "") or "",
             static_profile=bool(raw.get("staticProfileAssignment", False)),

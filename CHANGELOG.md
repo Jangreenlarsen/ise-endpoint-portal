@@ -5,6 +5,28 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.2.0 build 0046] — 2026-04-20 — feat: PlatformType attribut + AireOS-aware CoA + kolonne hide/unhide
+
+Nyt managed custom attribute "PlatformType" på endpoints (frie værdier:
+airos, iosxe, iossw, nxos, ...). Vises som ny "Platform"-kolonne i Browse/Edit
+og kan redigeres inline, i detail-modal, i bulk-edit, via Opret og via CSV
+import/export. Når global "CoA reauth"-toggle er TIL og et endpoint har
+`platformType == "airos"` sender portalen en CoA-Disconnect i stedet for
+CoA-Reauth — AireOS WLC honorerer ikke reauth pålideligt for policy-skift,
+mens disconnect tvinger re-association og dermed fuld policy-genberegning.
+Samtidig nyt toolbar-menu "Kolonner ▾" der lader brugeren skjule/vise
+enkelte kolonner i Browse/Edit (persisteret pr. kolonne i `localStorage`).
+
+- **backend (`app/core/custom_attr_store.py`)**: `PlatformType` tilføjet til `MANAGED_ATTRS` så definitionen auto-oprettes i ISE og dukker op i Attributter-view + sync.
+- **backend (`app/schemas/endpoint.py`)**: `EndpointDetail.platform_type` og `CustomAttrs.PlatformType` felter tilføjet.
+- **backend (`app/services/endpoint_service.py`)**: `get_endpoint()` mapper `ca.get("PlatformType", "")` ind i DTO'en.
+- **frontend (`js/views/browse.js`)**: Ny kolonne `platform_type` i `COLUMNS`. `caValues.PlatformType` indlæses via `listCustomAttributes`. Ny `<select class="ca-platformtype">` i tabel-rækker, `<select id="d-platformtype">` i detail-modal og `<select id="be-platformtype">` i bulk-edit modal. `buildSavePayload()` returnerer nu `{ id, mac, payload, localUpdate, platformType }` så CoA-dispatcher kender platform per endpoint. `runCoaForIds(entries)` accepterer array af `{id, platformType}` og kalder `api.coaDisconnect(id)` hvis `platformType.toLowerCase() === "airos"`, ellers `api.coaReauth(id)`. Tæller separate `disconnects` og `reauths` i resultatet og viser dem i success-besked via `coaSummaryText()`. Detail-modal d-save passer `[{id, platformType}]` videre. Nyt `COLVIS_KEY` med `loadColVis()`/`saveColVis()`. Toolbar har `#col-vis-btn` ("Kolonner ▾") + `#col-vis-menu` med checkbox pr. kolonne + "Vis alle"-knap. `applyColVis()` toggler `.col-hidden` klasse på `<th>` og `<td>` for hver skjult kolonne (kaldes efter hver `renderRows()` så nye rækker også respekterer state).
+- **frontend (`js/views/create.js`)**: `attrLabels` tilføjet `PlatformType: "Platform-type"` så feltet vises i Opret-formularen.
+- **frontend (`js/views/import.js`)**: `hasCA` checker nu også `p.platformType`. Ny `<th>PlatformType</th>` kolonne + `<td>${escapeHtml(p.platformType)}</td>` i preview-tabellen. ImportBtn-payload mapper `if (p.platformType) { ca.PlatformType = p.platformType; hasCA = true; }`.
+- **frontend (`js/views/attributes.js`)**: `ATTR_LABELS` tilføjet `PlatformType: "Platform-type (airos, iosxe, iossw, nxos, ...)"` så værdier kan administreres på Attributter-siden.
+- **frontend (`js/csv.js`)**: `DEFAULT_TEMPLATE` udvidet med `CUSTOM.PlatformType`. `parseIseFormat()` læser `custom.platformtype`-kolonnen og udfylder `platformType` på items. `parseSimpleFormat()` læser `parts[8]` som `platformType`. `toIseCsv()` skriver `r.platform_type` til `CUSTOM.PlatformType`-kolonnen ved export.
+- **frontend (`css/styles.css`)**: Nye styles for `.col-vis-wrap`, `.col-vis-menu`, `.col-vis-item`, `.col-vis-actions` (popup med checkboxes + "Vis alle"-knap) og en `.col-hidden { display: none !important; }` regel. Dark-mode varianter for menuen.
+
 ## [2.1.0 build 0045] — 2026-04-20 — feat: Persistente filtre i Browse/Edit
 
 Filtre i Browse/Edit nulstilles ikke længere når man skifter rundt i portalen.

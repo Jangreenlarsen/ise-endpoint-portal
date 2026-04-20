@@ -56,7 +56,20 @@ const COLUMNS = [
   { key: "lokation",       label: "Lokation",       field: (r) => r.lokation },
   { key: "authz_vlan",     label: "AuthzVlan",      field: (r) => r.authz_vlan },
   { key: "authz_acl",      label: "AuthzACL",       field: (r) => r.authz_acl },
+  { key: "platform_type",  label: "Platform",       field: (r) => r.platform_type },
 ];
+
+const COLVIS_KEY = "ise_portal_browse_colvis";
+function loadColVis() {
+  try {
+    const raw = localStorage.getItem(COLVIS_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch { return null; }
+}
+function saveColVis(state) {
+  try { localStorage.setItem(COLVIS_KEY, JSON.stringify(state)); } catch { /* ignore */ }
+}
 
 export async function renderBrowse(container) {
   container.innerHTML = `
@@ -84,6 +97,11 @@ export async function renderBrowse(container) {
                  placeholder="Værdi (server-side MAC)" autocomplete="off" />
         </div>
         <div class="spacer"></div>
+        <div class="col-vis-wrap">
+          <button id="col-vis-btn" class="secondary small" type="button"
+                  title="Vis/skjul kolonner">Kolonner ▾</button>
+          <div id="col-vis-menu" class="col-vis-menu hidden"></div>
+        </div>
         <button id="bulk-edit-btn" class="secondary small" disabled>Rediger valgte</button>
         <button id="bulk-save-btn" class="small" disabled>Gem valgte</button>
         <button id="bulk-disconnect-btn" class="danger small" disabled
@@ -159,6 +177,8 @@ export async function renderBrowse(container) {
           <select id="d-authzvlan"></select>
           <label>AuthzACL</label>
           <select id="d-authzacl"></select>
+          <label>Platform</label>
+          <select id="d-platformtype"></select>
           <label>HypervisionISEPortal</label>
           <div class="detail-value mono" id="d-hypervision"></div>
           <label>Profile ID</label>
@@ -197,6 +217,8 @@ export async function renderBrowse(container) {
           <select id="be-authzvlan" disabled></select>
           <label><input type="checkbox" class="be-cb" data-field="authzacl" /> AuthzACL</label>
           <select id="be-authzacl" disabled></select>
+          <label><input type="checkbox" class="be-cb" data-field="platformtype" /> Platform</label>
+          <select id="be-platformtype" disabled></select>
         </div>
         <div class="modal-actions">
           <button id="be-apply">Anvend</button>
@@ -232,30 +254,44 @@ export async function renderBrowse(container) {
     renderCoaToggle();
   });
 
-  async function runCoaForIds(ids) {
-    if (!coaOnSave || !ids.length) return { ok: 0, fail: 0, failures: [] };
+  // entries: [{ id, platformType }]. AireOS WLC honorerer ikke CoA-Reauth
+  // pålideligt (klienten holder ofte fast i den gamle policy), så for
+  // platformType == "airos" sender vi en CoA-Disconnect i stedet — det tvinger
+  // re-association og dermed fuld policy-genberegning.
+  async function runCoaForIds(entries) {
+    if (!coaOnSave || !entries.length) return { ok: 0, fail: 0, failures: [], disconnects: 0, reauths: 0 };
     let ok = 0;
     let fail = 0;
+    let disconnects = 0;
+    let reauths = 0;
     const failures = [];
-    for (const id of ids) {
+    for (const e of entries) {
+      const id = typeof e === "string" ? e : e.id;
+      const platformType = (typeof e === "object" && e.platformType ? e.platformType : "").toLowerCase();
+      const useDisconnect = platformType === "airos";
       try {
-        const res = await api.coaReauth(id);
-        if (res?.ok) ok++;
-        else {
+        const res = useDisconnect ? await api.coaDisconnect(id) : await api.coaReauth(id);
+        if (res?.ok) {
+          ok++;
+          if (useDisconnect) disconnects++; else reauths++;
+        } else {
           fail++;
-          failures.push({ mac: res?.mac || id, msg: res?.message || "CoA fejlede" });
+          failures.push({
+            mac: res?.mac || id,
+            msg: `${useDisconnect ? "disconnect" : "reauth"}: ${res?.message || "fejlede"}`,
+          });
         }
       } catch (err) {
         fail++;
         failures.push({ mac: id, msg: err.message });
       }
     }
-    return { ok, fail, failures };
+    return { ok, fail, failures, disconnects, reauths };
   }
   let allRows = [];           // rows on current page (paged mode) or ALL rows (filtered mode)
   let allRowsCache = null;    // cached full dataset when filters have been used
   let groups = [];
-  let caValues = { Type: [], Owner: [], Lokation: [], AuthzVlan: [], AuthzACL: [] };
+  let caValues = { Type: [], Owner: [], Lokation: [], AuthzVlan: [], AuthzACL: [], PlatformType: [] };
   let portalOnly = false;
   const dirtyIds = new Set();
   let currentPage = 1;
@@ -281,6 +317,73 @@ export async function renderBrowse(container) {
     return [`${field}.${op}.${value}`];
   }
   pageSizeSelect.value = String(currentSize);
+
+  // Column visibility — persistede pr. kolonne, default vis alt.
+  const colVisBtn = container.querySelector("#col-vis-btn");
+  const colVisMenu = container.querySelector("#col-vis-menu");
+  let colVis = (() => {
+    const saved = loadColVis() || {};
+    const out = {};
+    for (const c of COLUMNS) out[c.key] = saved[c.key] !== false;
+    return out;
+  })();
+
+  function applyColVis() {
+    const table = container.querySelector(".browse-table-wrap table");
+    if (!table) return;
+    COLUMNS.forEach((c, i) => {
+      const visible = colVis[c.key] !== false;
+      // +2 fordi første kolonne er checkbox (index 1 i nth-child)
+      const nth = i + 2;
+      table.querySelectorAll(`thead tr > th:nth-child(${nth})`).forEach((el) => {
+        el.classList.toggle("col-hidden", !visible);
+      });
+      table.querySelectorAll(`tbody tr > td:nth-child(${nth})`).forEach((el) => {
+        el.classList.toggle("col-hidden", !visible);
+      });
+    });
+  }
+
+  function renderColVisMenu() {
+    colVisMenu.innerHTML = COLUMNS.map((c) => `
+      <label class="col-vis-item">
+        <input type="checkbox" class="col-vis-cb" data-col="${c.key}"
+               ${colVis[c.key] !== false ? "checked" : ""} />
+        ${esc(c.label)}
+      </label>
+    `).join("") + `
+      <div class="col-vis-actions">
+        <button type="button" class="small secondary" id="col-vis-all">Vis alle</button>
+      </div>
+    `;
+    colVisMenu.querySelectorAll(".col-vis-cb").forEach((cb) => {
+      cb.addEventListener("change", () => {
+        colVis[cb.dataset.col] = cb.checked;
+        saveColVis(colVis);
+        applyColVis();
+      });
+    });
+    const allBtn = colVisMenu.querySelector("#col-vis-all");
+    if (allBtn) {
+      allBtn.addEventListener("click", () => {
+        for (const c of COLUMNS) colVis[c.key] = true;
+        saveColVis(colVis);
+        renderColVisMenu();
+        applyColVis();
+      });
+    }
+  }
+  renderColVisMenu();
+
+  colVisBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    colVisMenu.classList.toggle("hidden");
+  });
+  document.addEventListener("click", (e) => {
+    if (!colVisMenu.contains(e.target) && e.target !== colVisBtn) {
+      colVisMenu.classList.add("hidden");
+    }
+  });
 
   function snapshotFilters() {
     const cols = [];
@@ -527,10 +630,12 @@ export async function renderBrowse(container) {
         <td><select class="ca-lokation">${optionsHtml(caValues.Lokation, r.lokation)}</select></td>
         <td><select class="ca-authzvlan">${optionsHtml(caValues.AuthzVlan, r.authz_vlan)}</select></td>
         <td><select class="ca-authzacl">${optionsHtml(caValues.AuthzACL, r.authz_acl)}</select></td>
+        <td><select class="ca-platformtype">${optionsHtml(caValues.PlatformType, r.platform_type)}</select></td>
       </tr>
     `).join("");
     updateSelectionUI();
     updateDirtyUI();
+    applyColVis();
   }
 
   function applyFilter() {
@@ -642,6 +747,7 @@ export async function renderBrowse(container) {
     const lokation = tr.querySelector(".ca-lokation").value;
     const authzVlan = tr.querySelector(".ca-authzvlan").value;
     const authzAcl = tr.querySelector(".ca-authzacl").value;
+    const platformType = tr.querySelector(".ca-platformtype").value;
 
     const row = allRows.find((r) => r.id === id);
     const originalGroupId = row ? (row.group_id || "") : "";
@@ -676,10 +782,20 @@ export async function renderBrowse(container) {
           Lokation: lokation,
           AuthzVlan: authzVlan,
           AuthzACL: authzAcl,
+          PlatformType: platformType,
         },
       },
-      localUpdate: { description, group_id, static_group_assignment, groupChanged, endpointType, owner, lokation, authzVlan, authzAcl },
+      localUpdate: { description, group_id, static_group_assignment, groupChanged, endpointType, owner, lokation, authzVlan, authzAcl, platformType },
+      platformType,
     };
+  }
+
+  function coaSummaryText(coa) {
+    const bits = [];
+    if (coa.reauths) bits.push(`${coa.reauths} reauth`);
+    if (coa.disconnects) bits.push(`${coa.disconnects} disconnect (AireOS)`);
+    const okPart = bits.length ? bits.join(" + ") : `${coa.ok} ok`;
+    return `, CoA: ${okPart}${coa.fail ? `, ${coa.fail} fejl` : ""}`;
   }
 
   // Save all dirty rows
@@ -690,25 +806,25 @@ export async function renderBrowse(container) {
     msg.innerHTML = `<div class="alert info">Gemmer ${ids.length} ændrede endpoints...</div>`;
     let ok = 0;
     let fail = 0;
-    const savedIds = [];
+    const savedEntries = [];
     for (const id of ids) {
       const tr = tbody.querySelector(`tr[data-id="${id}"]`);
       if (!tr) continue;
-      const { payload } = buildSavePayload(tr);
+      const { payload, platformType } = buildSavePayload(tr);
       try {
         await api.updateEndpoint(id, payload);
         dirtyIds.delete(id);
-        savedIds.push(id);
+        savedEntries.push({ id, platformType });
         ok++;
       } catch {
         fail++;
       }
     }
     let coaSummary = "";
-    if (coaOnSave && savedIds.length) {
-      msg.innerHTML = `<div class="alert info">Udløser CoA reauth for ${savedIds.length} endpoints...</div>`;
-      const coa = await runCoaForIds(savedIds);
-      coaSummary = `, CoA: ${coa.ok} ok${coa.fail ? `, ${coa.fail} fejl` : ""}`;
+    if (coaOnSave && savedEntries.length) {
+      msg.innerHTML = `<div class="alert info">Udløser CoA for ${savedEntries.length} endpoints...</div>`;
+      const coa = await runCoaForIds(savedEntries);
+      coaSummary = coaSummaryText(coa);
     }
     await load();
     const parts = [];
@@ -726,25 +842,25 @@ export async function renderBrowse(container) {
     msg.innerHTML = `<div class="alert info">Gemmer ${ids.length} endpoints...</div>`;
     let ok = 0;
     let fail = 0;
-    const savedIds = [];
+    const savedEntries = [];
     for (const id of ids) {
       const tr = tbody.querySelector(`tr[data-id="${id}"]`);
       if (!tr) continue;
-      const { payload } = buildSavePayload(tr);
+      const { payload, platformType } = buildSavePayload(tr);
       try {
         await api.updateEndpoint(id, payload);
         dirtyIds.delete(id);
-        savedIds.push(id);
+        savedEntries.push({ id, platformType });
         ok++;
       } catch {
         fail++;
       }
     }
     let coaSummary = "";
-    if (coaOnSave && savedIds.length) {
-      msg.innerHTML = `<div class="alert info">Udløser CoA reauth for ${savedIds.length} endpoints...</div>`;
-      const coa = await runCoaForIds(savedIds);
-      coaSummary = `, CoA: ${coa.ok} ok${coa.fail ? `, ${coa.fail} fejl` : ""}`;
+    if (coaOnSave && savedEntries.length) {
+      msg.innerHTML = `<div class="alert info">Udløser CoA for ${savedEntries.length} endpoints...</div>`;
+      const coa = await runCoaForIds(savedEntries);
+      coaSummary = coaSummaryText(coa);
     }
     await load();
     const parts = [];
@@ -838,6 +954,7 @@ export async function renderBrowse(container) {
     container.querySelector("#be-lokation").innerHTML = optionsHtml(caValues.Lokation, "");
     container.querySelector("#be-authzvlan").innerHTML = optionsHtml(caValues.AuthzVlan, "");
     container.querySelector("#be-authzacl").innerHTML = optionsHtml(caValues.AuthzACL, "");
+    container.querySelector("#be-platformtype").innerHTML = optionsHtml(caValues.PlatformType, "");
     container.querySelector("#be-description").value = "";
     // Reset checkboxes
     bulkEditOverlay.querySelectorAll(".be-cb").forEach((cb) => {
@@ -885,6 +1002,7 @@ export async function renderBrowse(container) {
       if ("lokation" in fields) tr.querySelector(".ca-lokation").value = fields.lokation;
       if ("authzvlan" in fields) tr.querySelector(".ca-authzvlan").value = fields.authzvlan;
       if ("authzacl" in fields) tr.querySelector(".ca-authzacl").value = fields.authzacl;
+      if ("platformtype" in fields) tr.querySelector(".ca-platformtype").value = fields.platformtype;
       markDirty(tr);
     }
     bulkEditOverlay.classList.add("hidden");
@@ -954,6 +1072,7 @@ export async function renderBrowse(container) {
       container.querySelector("#d-lokation").innerHTML = optionsHtml(caValues.Lokation, d.lokation);
       container.querySelector("#d-authzvlan").innerHTML = optionsHtml(caValues.AuthzVlan, d.authz_vlan);
       container.querySelector("#d-authzacl").innerHTML = optionsHtml(caValues.AuthzACL, d.authz_acl);
+      container.querySelector("#d-platformtype").innerHTML = optionsHtml(caValues.PlatformType, d.platform_type);
       container.querySelector("#d-hypervision").textContent = d.hypervision || "—";
       container.querySelector("#d-profile-id").textContent = d.profile_id || "—";
       container.querySelector("#d-static-profile").textContent = d.static_profile ? "Ja" : "Nej";
@@ -1044,17 +1163,20 @@ export async function renderBrowse(container) {
         Lokation: container.querySelector("#d-lokation").value,
         AuthzVlan: container.querySelector("#d-authzvlan").value,
         AuthzACL: container.querySelector("#d-authzacl").value,
+        PlatformType: container.querySelector("#d-platformtype").value,
       },
     };
     try {
       await api.updateEndpoint(detailCurrentId, payload);
       const savedId = detailCurrentId;
+      const platformType = container.querySelector("#d-platformtype").value;
       let coaSummary = "";
       if (coaOnSave) {
-        detailMsg.innerHTML = `<div class="alert info">Gemt — udløser CoA reauth...</div>`;
-        const coa = await runCoaForIds([savedId]);
+        const action = (platformType || "").toLowerCase() === "airos" ? "disconnect (AireOS)" : "reauth";
+        detailMsg.innerHTML = `<div class="alert info">Gemt — udløser CoA ${action}...</div>`;
+        const coa = await runCoaForIds([{ id: savedId, platformType }]);
         if (coa.ok) {
-          coaSummary = " CoA reauth sendt.";
+          coaSummary = ` CoA ${action} sendt.`;
         } else if (coa.failures.length) {
           coaSummary = ` CoA fejlede: ${coa.failures[0].msg}`;
         }
@@ -1110,5 +1232,6 @@ export async function renderBrowse(container) {
   });
 
   restoreFilters();
+  applyColVis();
   await load();
 }

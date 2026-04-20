@@ -123,6 +123,7 @@ export async function renderCreate(container) {
     Lokation: "Lokation",
     AuthzVlan: "Authz VLAN",
     AuthzACL: "Authz ACL",
+    PlatformType: "Platform-type",
   };
 
   async function refreshSelects() {

@@ -16,7 +16,7 @@ const CSV_TEMPLATE_KEY = "ise_portal_csv_template";
 const DEFAULT_TEMPLATE = [
   "MACAddress","IdentityGroup","Description","StaticGroupAssignment",
   "CUSTOM.Type","CUSTOM.Owner","CUSTOM.Lokation","CUSTOM.AuthzVlan",
-  "CUSTOM.AuthzACL","CUSTOM.HypervisionISEPortal",
+  "CUSTOM.AuthzACL","CUSTOM.PlatformType","CUSTOM.HypervisionISEPortal",
 ];
 
 /**
@@ -160,6 +160,7 @@ function parseIseFormat(headerLower, headerRaw, lines) {
   const customAuthzAcl = idx["custom.authzacl"];
   const customLok = idx["custom.lokation"];
   const customOwner = idx["custom.owner"];
+  const customPlatform = idx["custom.platformtype"];
 
   const items = [];
   for (let i = 1; i < lines.length; i++) {
@@ -173,8 +174,9 @@ function parseIseFormat(headerLower, headerRaw, lines) {
     const authzAcl = stripQuotes((fields[customAuthzAcl] != null ? fields[customAuthzAcl] : "").trim());
     const lokation = stripQuotes((fields[customLok] != null ? fields[customLok] : "").trim());
     const owner = stripQuotes((fields[customOwner] != null ? fields[customOwner] : "").trim());
+    const platformType = stripQuotes((fields[customPlatform] != null ? fields[customPlatform] : "").trim());
     items.push({
-      mac, groupName, description, endpointType, owner, lokation, authzVlan, authzAcl,
+      mac, groupName, description, endpointType, owner, lokation, authzVlan, authzAcl, platformType,
       valid: MAC_RE.test(mac),
     });
   }
@@ -194,6 +196,7 @@ function parseSimpleFormat(lines, startIdx) {
       lokation: parts[5] || "",
       authzVlan: parts[6] || "",
       authzAcl: parts[7] || "",
+      platformType: parts[8] || "",
       valid: MAC_RE.test((parts[0] || "").trim()),
     });
   }
@@ -237,6 +240,7 @@ export function toIseCsv(rows) {
     if ("CUSTOM.AuthzACL" in colIdx) cells[colIdx["CUSTOM.AuthzACL"]] = r.authz_acl || "";
     if ("CUSTOM.Lokation" in colIdx) cells[colIdx["CUSTOM.Lokation"]] = r.lokation || "";
     if ("CUSTOM.Owner" in colIdx) cells[colIdx["CUSTOM.Owner"]] = r.owner || "";
+    if ("CUSTOM.PlatformType" in colIdx) cells[colIdx["CUSTOM.PlatformType"]] = r.platform_type || "";
     if ("CUSTOM.HypervisionISEPortal" in colIdx) cells[colIdx["CUSTOM.HypervisionISEPortal"]] = r.hypervision || "";
     return cells.map(csvQuote).join(",");
   });

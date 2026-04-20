@@ -11,6 +11,7 @@ const ATTR_LABELS = {
   Owner: "Ejer (Owner)",
   Lokation: "Lokation",
   AuthzVlan: "Authz VLAN",
+  PlatformType: "Platform-type (airos, iosxe, iossw, nxos, ...)",
 };
 // AuthzACL is also a managed attribute, but its values mirror the DACLs in ISE
 // rather than a free-text store. It is administered on its own page (ACL).
