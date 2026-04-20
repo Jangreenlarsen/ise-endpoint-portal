@@ -584,6 +584,13 @@ export async function renderBrowse(container) {
     if (!id) return;
     dirtyIds.add(id);
     tr.classList.add("dirty");
+    // Auto-select the row så bulk-handlinger (Gem valgte / Disconnect valgte)
+    // automatisk inkluderer den ændrede række — sparer brugeren et klik.
+    const cb = tr.querySelector(".row-select");
+    if (cb && !cb.checked) {
+      cb.checked = true;
+      updateSelectionUI();
+    }
     updateDirtyUI();
   }
 

@@ -5,6 +5,15 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.3.1 build 0048] — 2026-04-20 — feat: Auto-select dirty row i Browse/Edit
+
+Når man ændrer et felt i Browse/Edit (rækken bliver gul / dirty) bliver
+rækkens checkbox nu automatisk markeret. Det betyder at "Gem valgte" /
+"Disconnect valgte" / "Slet valgte" og bulk-edit øjeblikkeligt inkluderer
+de ændrede rækker uden ekstra klik.
+
+- **frontend (`js/views/browse.js`)**: `markDirty(tr)` sætter nu også `tr.querySelector(".row-select").checked = true` (kun hvis ikke allerede valgt) og kalder `updateSelectionUI()` så selection-count + bulk-knapper opdateres med det samme.
+
 ## [2.3.0 build 0047] — 2026-04-20 — feat: PlatformType auto-sync fra ISE MnT + kanonisk værdiliste
 
 PlatformType er ikke længere fri tekst. Værdilisten er lukket og kanonisk
