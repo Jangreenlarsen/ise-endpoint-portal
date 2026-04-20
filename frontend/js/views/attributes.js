@@ -11,10 +11,16 @@ const ATTR_LABELS = {
   Owner: "Ejer (Owner)",
   Lokation: "Lokation",
   AuthzVlan: "Authz VLAN",
-  PlatformType: "Platform-type (airos, iosxe, iossw, nxos, ...)",
+  PlatformType: "Platform-type (airos, iosxe, iossw, nxos, meraki)",
 };
 // AuthzACL is also a managed attribute, but its values mirror the DACLs in ISE
 // rather than a free-text store. It is administered on its own page (ACL).
+
+// PlatformType-værdier kommer fra ISE MnT-sync — der er ingen "+ Tilføj"-input
+// i UI'et, og den globale "Sync fra ISE"-knap canonicaliserer eksisterende
+// værdier (ukendte ryddes på endpoints). En separat per-sektion "Sync fra MnT"-knap
+// scanner aktive RADIUS-sessions og udfylder PlatformType pr. endpoint.
+const SYNC_ONLY_ATTRS = new Set(["PlatformType"]);
 
 export async function renderAttributes(container) {
   container.innerHTML = `
@@ -44,25 +50,71 @@ export async function renderAttributes(container) {
 
       sections.innerHTML = Object.entries(ATTR_LABELS).map(([name, label]) => {
         const values = attrMap[name] || [];
-        return `
-          <div class="card" style="margin-bottom:0.75rem;">
-            <h3>${esc(label)}</h3>
-            <div class="attr-values" data-attr="${esc(name)}">
-              ${values.length
-                ? values.map((v) => `
-                    <span class="attr-tag">
-                      ${esc(v)}
-                      <button class="attr-del" data-attr="${esc(name)}" data-value="${esc(v)}" title="Fjern">&times;</button>
-                    </span>`).join("")
-                : '<span class="hint">Ingen vaerdier endnu.</span>'}
-            </div>
+        const syncOnly = SYNC_ONLY_ATTRS.has(name);
+        const tags = values.length
+          ? values.map((v) => `
+              <span class="attr-tag">
+                ${esc(v)}
+                <button class="attr-del" data-attr="${esc(name)}" data-value="${esc(v)}" title="Fjern">&times;</button>
+              </span>`).join("")
+          : '<span class="hint">Ingen vaerdier endnu.</span>';
+        const addRow = syncOnly
+          ? ""
+          : `
             <div class="attr-add-row" style="margin-top:0.5rem;display:flex;gap:0.4rem;align-items:center;">
               <input type="text" class="attr-new-input" data-attr="${esc(name)}"
                      placeholder="Ny vaerdi..." style="padding:0.3rem 0.5rem;border:1px solid #d1d5db;border-radius:3px;flex:1;max-width:250px;" />
               <button class="attr-add-btn small" data-attr="${esc(name)}">Tilfoej</button>
+            </div>`;
+        const syncRow = name === "PlatformType"
+          ? `
+            <div class="attr-sync-row" style="margin-top:0.6rem;display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+              <button class="small platform-sync-btn" type="button">Sync platform fra MnT</button>
+              <label class="hint" style="display:flex;align-items:center;gap:0.3rem;">
+                <input type="checkbox" class="platform-sync-overwrite" />
+                Overskriv eksisterende
+              </label>
+              <span class="hint">Vaerdier opdateres fra ISE MnT aktive sessions. Frie tekst-tilfoejelser er deaktiveret.</span>
+              <div class="platform-sync-result" style="flex-basis:100%;"></div>
+            </div>`
+          : "";
+        return `
+          <div class="card" style="margin-bottom:0.75rem;">
+            <h3>${esc(label)}</h3>
+            <div class="attr-values" data-attr="${esc(name)}">
+              ${tags}
             </div>
+            ${addRow}
+            ${syncRow}
           </div>`;
       }).join("");
+
+      // Wire per-section MnT sync button(s) — currently only PlatformType.
+      sections.querySelectorAll(".platform-sync-btn").forEach((btn) => {
+        const card = btn.closest(".card");
+        const overwriteCb = card?.querySelector(".platform-sync-overwrite");
+        const resultDiv = card?.querySelector(".platform-sync-result");
+        btn.addEventListener("click", async () => {
+          if (!resultDiv) return;
+          btn.disabled = true;
+          resultDiv.innerHTML = `<div class="alert info">Henter aktive sessions fra MnT og deriverer platform...</div>`;
+          try {
+            const res = await api.syncPlatformFromMnt(!!overwriteCb?.checked);
+            const newVals = (res.new_values_found || []).join(", ") || "ingen";
+            resultDiv.innerHTML = `<div class="alert success">
+              ${res.active_sessions} aktive sessions, ${res.matched_endpoints} matchede endpoints,
+              <strong>${res.updated_endpoints}</strong> opdateret,
+              ${res.skipped_existing} sprunget over, ${res.unmatched_macs} MAC uden endpoint.
+              Nye vaerdier: ${esc(newVals)}.
+            </div>`;
+            await render();
+          } catch (err) {
+            resultDiv.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
+          } finally {
+            btn.disabled = false;
+          }
+        });
+      });
     } catch (err) {
       attrMsg.innerHTML = `<div class="alert error">${err.message}</div>`;
     }

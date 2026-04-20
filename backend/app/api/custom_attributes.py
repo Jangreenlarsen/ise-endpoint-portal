@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.deps import get_custom_attribute_service, require_any, require_editor
+from app.core.exceptions import IseApiError
 from app.schemas.custom_attribute import (
     AddValueRequest,
     AllCustomAttributes,
+    PlatformSyncResult,
     RemoveValueResult,
     SyncResult,
 )
@@ -48,3 +50,26 @@ async def sync_from_ise(
     service: CustomAttributeService = Depends(get_custom_attribute_service),
 ) -> SyncResult:
     return await service.sync_from_ise()
+
+
+@router.post(
+    "/PlatformType/sync-mnt",
+    response_model=PlatformSyncResult,
+    dependencies=[Depends(require_editor)],
+)
+async def sync_platform_from_mnt(
+    overwrite: bool = False,
+    service: CustomAttributeService = Depends(get_custom_attribute_service),
+) -> PlatformSyncResult:
+    """Pull active sessions from ISE MnT and derive PlatformType per endpoint.
+
+    Default ``overwrite=false`` only fills empty PlatformType (manual values
+    win). Pass ``?overwrite=true`` to force re-derivation on every match.
+    """
+    try:
+        return await service.sync_platform_from_mnt(overwrite=overwrite)
+    except IseApiError as exc:
+        raise HTTPException(
+            status_code=502 if exc.status_code == 0 else exc.status_code,
+            detail=str(exc),
+        ) from exc

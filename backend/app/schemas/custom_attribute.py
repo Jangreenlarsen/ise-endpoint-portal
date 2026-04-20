@@ -28,3 +28,13 @@ class RemoveValueResult(BaseModel):
     attributes: list[CustomAttributeValues]
     scanned_endpoints: int = 0
     cleared_endpoints: int = 0
+
+
+class PlatformSyncResult(BaseModel):
+    """Outcome of a MnT-based PlatformType sync."""
+    active_sessions: int = 0
+    matched_endpoints: int = 0
+    updated_endpoints: int = 0
+    skipped_existing: int = 0
+    new_values_found: list[str] = Field(default_factory=list)
+    unmatched_macs: int = 0

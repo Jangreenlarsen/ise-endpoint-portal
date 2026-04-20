@@ -110,6 +110,11 @@ export const api = {
     ),
   syncCustomAttributes: () =>
     request("/custom-attributes/sync", { method: "POST" }),
+  syncPlatformFromMnt: (overwrite = false) =>
+    request(
+      `/custom-attributes/PlatformType/sync-mnt${overwrite ? "?overwrite=true" : ""}`,
+      { method: "POST" },
+    ),
   listDacls: () => request("/dacls"),
   getDacl: (id) => request(`/dacls/${encodeURIComponent(id)}`),
   createDacl: (payload) =>

@@ -5,6 +5,25 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.3.0 build 0047] — 2026-04-20 — feat: PlatformType auto-sync fra ISE MnT + kanonisk værdiliste
+
+PlatformType er ikke længere fri tekst. Værdilisten er lukket og kanonisk
+(`airos`, `iosxe`, `iossw`, `nxos`, `meraki`) og kan kun udvides via to
+syncs: en ny per-sektion "Sync platform fra MnT"-knap (henter aktive
+RADIUS-sessions og deriverer platform pr. endpoint) og den eksisterende
+globale "Sync fra ISE"-knap (canonicaliserer eksisterende værdier på
+endpoints — synonymer normaliseres, ukendte ryddes). Manuel "+ Tilføj"-input
+for PlatformType er fjernet på Attributter-siden.
+
+- **backend (`app/core/platform_types.py` ny)**: `KNOWN_PLATFORM_TYPES = ["airos", "iosxe", "iossw", "nxos", "meraki"]` + `normalize(value)` der mapper case-insensitivt mod den kanoniske liste plus en synonym-tabel (catalyst9800/9800/c9800/ios-xe → iosxe, wlc/aireos/aire-os → airos, nexus/nx-os → nxos, ios → iossw, ...). Ikke-genkendte værdier returnerer `None`.
+- **backend (`app/ise/mnt_sessions.py` ny)**: `fetch_active_sessions()` rammer `GET /admin/API/mnt/Session/ActiveList` (samme auth-mønster som `coa.py`), parser XML defensivt og returnerer en liste af dicts. `derive_platform(session)` søger efter vendor-markører (Airespace, Meraki, 9800/c9800/ios-xe, nx-os/nexus, ios-classic) i Cisco-AVPair/NAS-Identifier/device_type-felterne; falder tilbage på NAS-Port-Type (19=wireless → airos, 15=ethernet → iossw). `index_by_mac(sessions)` bygger `{NORMALIZED_MAC: canonical_platform}`.
+- **backend (`app/schemas/custom_attribute.py`)**: Nyt `PlatformSyncResult` schema (active_sessions, matched_endpoints, updated_endpoints, skipped_existing, new_values_found, unmatched_macs).
+- **backend (`app/services/custom_attribute_service.py`)**: `sync_from_ise()` special-caser nu PlatformType — pr. endpoint canonicaliserer eller rydder værdien direkte i ISE (logget med før/efter), og store'ets PlatformType-liste *erstattes* (ikke merges) med set af canonicalized værdier set under scan så stale entries ikke hænger fast. Ny `sync_platform_from_mnt(overwrite=False)`: henter MnT sessions, bygger MAC→endpoint mapping, opdaterer PlatformType pr. match (springer over hvis værdi findes og overwrite=False), opdaterer store, returnerer `PlatformSyncResult`.
+- **backend (`app/core/custom_attr_store.py`)**: `save_values` exporteres så servicen kan skrive direkte (PlatformType-listen erstattes i stedet for merges).
+- **backend (`app/api/custom_attributes.py`)**: Ny `POST /custom-attributes/PlatformType/sync-mnt?overwrite=<bool>` (require_editor). Mapper `IseApiError` til 502/HTTP-status.
+- **frontend (`js/api.js`)**: `syncPlatformFromMnt(overwrite=false)` POST'er til ny endpoint.
+- **frontend (`js/views/attributes.js`)**: `SYNC_ONLY_ATTRS = new Set(["PlatformType"])` skjuler "+ Tilføj"-input for sync-only attributter. PlatformType-sektionen får en `attr-sync-row` med "Sync platform fra MnT"-knap, "Overskriv eksisterende"-checkbox og resultat-output. Tags har stadig ×-knap så stale entries kan ryddes manuelt.
+
 ## [2.2.0 build 0046] — 2026-04-20 — feat: PlatformType attribut + AireOS-aware CoA + kolonne hide/unhide
 
 Nyt managed custom attribute "PlatformType" på endpoints (frie værdier:
