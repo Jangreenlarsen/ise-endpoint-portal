@@ -19,6 +19,7 @@ class EndpointDetail(BaseModel):
     owner: str = ""
     lokation: str = ""
     authz_vlan: str = ""
+    authz_acl: str = ""
     hypervision: str = ""
     profile_id: str = ""
     static_profile: bool = False
@@ -38,6 +39,7 @@ class CustomAttrs(BaseModel):
     Owner: str = ""
     Lokation: str = ""
     AuthzVlan: str = ""
+    AuthzACL: str = ""
 
 
 class CreateEndpointRequest(BaseModel):

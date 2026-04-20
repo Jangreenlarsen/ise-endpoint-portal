@@ -5,23 +5,29 @@ const MAC_RE = /^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$/;
 /**
  * Build a <select> + inline "add new" for a custom attribute.
  */
-function buildAttrField(label, attrName, values) {
+function buildAttrField(label, attrName, values, opts = {}) {
   const wrapper = document.createElement("div");
   wrapper.className = "field";
+  const allowAdd = opts.allowAdd !== false;
+  const hint = opts.hint
+    ? `<div class="hint">${opts.hint}</div>`
+    : "";
   wrapper.innerHTML = `
     <label for="ca-${attrName}">${label} (valgfri)</label>
     <div class="ca-row">
       <select id="ca-${attrName}">
         <option value="">— ingen —</option>
         ${values.map((v) => `<option value="${v}">${v}</option>`).join("")}
-        <option value="__add__">+ Tilføj ny…</option>
+        ${allowAdd ? '<option value="__add__">+ Tilføj ny…</option>' : ""}
       </select>
+      ${allowAdd ? `
       <div class="ca-add hidden" id="ca-add-${attrName}">
         <input type="text" placeholder="Ny værdi" id="ca-new-${attrName}" />
         <button type="button" class="small" id="ca-save-${attrName}">Gem</button>
         <button type="button" class="small secondary" id="ca-cancel-${attrName}">Annuller</button>
-      </div>
+      </div>` : ""}
     </div>
+    ${hint}
   `;
   return wrapper;
 }
@@ -116,21 +122,34 @@ export async function renderCreate(container) {
     Owner: "Ejer (Owner)",
     Lokation: "Lokation",
     AuthzVlan: "Authz VLAN",
+    AuthzACL: "Authz ACL",
   };
 
   async function refreshSelects() {
     try {
-      const data = await api.listCustomAttributes();
+      const [data, dacls] = await Promise.all([
+        api.listCustomAttributes(),
+        api.listDacls().catch(() => []),
+      ]);
       const attrMap = {};
       for (const a of data.attributes) {
         attrMap[a.name] = a.values;
       }
+      // AuthzACL options come from ISE DACLs, not the local store
+      attrMap.AuthzACL = (dacls || []).map((d) => d.name).filter(Boolean).sort();
       caContainer.innerHTML = "";
       for (const [name, label] of Object.entries(attrLabels)) {
         const values = attrMap[name] || [];
-        const field = buildAttrField(label, name, values);
+        // AuthzACL values come from real DACLs in ISE — opret/rediger via ACL-siden
+        const isAcl = name === "AuthzACL";
+        const field = buildAttrField(label, name, values, {
+          allowAdd: !isAcl,
+          hint: isAcl
+            ? 'Værdier hentes fra Cisco ISE downloadable ACLs. Opret/rediger via siden <a href="#/dacls">ACL</a>.'
+            : "",
+        });
         caContainer.appendChild(field);
-        wireAttrField(container, name, refreshSelects);
+        if (!isAcl) wireAttrField(container, name, refreshSelects);
       }
     } catch (err) {
       caContainer.innerHTML = `<div class="alert error">Kunne ikke hente custom attributes: ${err.message}</div>`;

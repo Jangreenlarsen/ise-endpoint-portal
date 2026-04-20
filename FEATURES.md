@@ -9,6 +9,8 @@ Alle nye features registreres her FØR implementering påbegyndes.
 
 ## Aktive / færdige
 
+- `[done] 2026-04-20 — AuthzACL attribut + Cisco IOS access-list editor` — nyt custom attribute "AuthzACL" på endpoints (dropdown med navne på DACL'er fra ISE; navngivet i samme stil som AuthzVlan). Ny sidebar-side "ACL" med editor for Cisco IOS-style access-list (DACL): liste over alle DACL'er fra ISE (både portal-oprettede og admin-oprettede), opret/rediger/slet, real-time syntaks-validering i backend (permit/deny + protocol + src/dst), endelig validering i ISE ved gem. Lag: backend (ise/dacls, services/dacl_service, schemas/dacl, api/dacls, schemas/endpoint, services/endpoint_service, custom_attr_store), frontend (api.js, app.js, views/dacls.js, views/browse.js, views/create.js, views/import.js, csv.js, index.html, css/styles.css).
+
 - `[done] 2026-04-15 — Projekt bootstrap` — oprettet regel-filer, backend FastAPI skeleton, frontend skeleton. Lag: alle.
 - `[done] 2026-04-15 — ISE endpoint listning` — hent liste af endpoints fra ISE 3.4 ERS API og vis i frontend tabel. Lag: backend (api, services, ise), frontend.
 - `[done] 2026-04-15 — ISE endpoint group listning` — hent endpoint groups. Lag: backend (api, services, ise), frontend.

@@ -16,7 +16,7 @@ const CSV_TEMPLATE_KEY = "ise_portal_csv_template";
 const DEFAULT_TEMPLATE = [
   "MACAddress","IdentityGroup","Description","StaticGroupAssignment",
   "CUSTOM.Type","CUSTOM.Owner","CUSTOM.Lokation","CUSTOM.AuthzVlan",
-  "CUSTOM.HypervisionISEPortal",
+  "CUSTOM.AuthzACL","CUSTOM.HypervisionISEPortal",
 ];
 
 /**
@@ -157,6 +157,7 @@ function parseIseFormat(headerLower, headerRaw, lines) {
   const descCol = idx["description"];
   const customType = idx["custom.type"];
   const customAuthz = idx["custom.authzvlan"];
+  const customAuthzAcl = idx["custom.authzacl"];
   const customLok = idx["custom.lokation"];
   const customOwner = idx["custom.owner"];
 
@@ -169,10 +170,11 @@ function parseIseFormat(headerLower, headerRaw, lines) {
     const description = stripQuotes((fields[descCol] || "").trim());
     const endpointType = stripQuotes((fields[customType] != null ? fields[customType] : "").trim());
     const authzVlan = stripQuotes((fields[customAuthz] != null ? fields[customAuthz] : "").trim());
+    const authzAcl = stripQuotes((fields[customAuthzAcl] != null ? fields[customAuthzAcl] : "").trim());
     const lokation = stripQuotes((fields[customLok] != null ? fields[customLok] : "").trim());
     const owner = stripQuotes((fields[customOwner] != null ? fields[customOwner] : "").trim());
     items.push({
-      mac, groupName, description, endpointType, owner, lokation, authzVlan,
+      mac, groupName, description, endpointType, owner, lokation, authzVlan, authzAcl,
       valid: MAC_RE.test(mac),
     });
   }
@@ -191,6 +193,7 @@ function parseSimpleFormat(lines, startIdx) {
       owner: parts[4] || "",
       lokation: parts[5] || "",
       authzVlan: parts[6] || "",
+      authzAcl: parts[7] || "",
       valid: MAC_RE.test((parts[0] || "").trim()),
     });
   }
@@ -231,6 +234,7 @@ export function toIseCsv(rows) {
     if ("StaticGroupAssignment" in colIdx) cells[colIdx["StaticGroupAssignment"]] = r.group_name ? "true" : "false";
     if ("CUSTOM.Type" in colIdx) cells[colIdx["CUSTOM.Type"]] = r.endpoint_type || "";
     if ("CUSTOM.AuthzVlan" in colIdx) cells[colIdx["CUSTOM.AuthzVlan"]] = r.authz_vlan || "";
+    if ("CUSTOM.AuthzACL" in colIdx) cells[colIdx["CUSTOM.AuthzACL"]] = r.authz_acl || "";
     if ("CUSTOM.Lokation" in colIdx) cells[colIdx["CUSTOM.Lokation"]] = r.lokation || "";
     if ("CUSTOM.Owner" in colIdx) cells[colIdx["CUSTOM.Owner"]] = r.owner || "";
     if ("CUSTOM.HypervisionISEPortal" in colIdx) cells[colIdx["CUSTOM.HypervisionISEPortal"]] = r.hypervision || "";

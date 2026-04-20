@@ -43,6 +43,7 @@ const COLUMNS = [
   { key: "owner",          label: "Owner",          field: (r) => r.owner },
   { key: "lokation",       label: "Lokation",       field: (r) => r.lokation },
   { key: "authz_vlan",     label: "AuthzVlan",      field: (r) => r.authz_vlan },
+  { key: "authz_acl",      label: "AuthzACL",       field: (r) => r.authz_acl },
 ];
 
 export async function renderBrowse(container) {
@@ -144,6 +145,8 @@ export async function renderBrowse(container) {
           <select id="d-lokation"></select>
           <label>AuthzVlan</label>
           <select id="d-authzvlan"></select>
+          <label>AuthzACL</label>
+          <select id="d-authzacl"></select>
           <label>HypervisionISEPortal</label>
           <div class="detail-value mono" id="d-hypervision"></div>
           <label>Profile ID</label>
@@ -180,6 +183,8 @@ export async function renderBrowse(container) {
           <select id="be-lokation" disabled></select>
           <label><input type="checkbox" class="be-cb" data-field="authzvlan" /> AuthzVlan</label>
           <select id="be-authzvlan" disabled></select>
+          <label><input type="checkbox" class="be-cb" data-field="authzacl" /> AuthzACL</label>
+          <select id="be-authzacl" disabled></select>
         </div>
         <div class="modal-actions">
           <button id="be-apply">Anvend</button>
@@ -238,7 +243,7 @@ export async function renderBrowse(container) {
   let allRows = [];           // rows on current page (paged mode) or ALL rows (filtered mode)
   let allRowsCache = null;    // cached full dataset when filters have been used
   let groups = [];
-  let caValues = { Type: [], Owner: [], Lokation: [], AuthzVlan: [] };
+  let caValues = { Type: [], Owner: [], Lokation: [], AuthzVlan: [], AuthzACL: [] };
   let portalOnly = false;
   const dirtyIds = new Set();
   let currentPage = 1;
@@ -462,6 +467,7 @@ export async function renderBrowse(container) {
         <td><select class="ca-owner">${optionsHtml(caValues.Owner, r.owner)}</select></td>
         <td><select class="ca-lokation">${optionsHtml(caValues.Lokation, r.lokation)}</select></td>
         <td><select class="ca-authzvlan">${optionsHtml(caValues.AuthzVlan, r.authz_vlan)}</select></td>
+        <td><select class="ca-authzacl">${optionsHtml(caValues.AuthzACL, r.authz_acl)}</select></td>
       </tr>
     `).join("");
     updateSelectionUI();
@@ -504,15 +510,18 @@ export async function renderBrowse(container) {
     filterMode = false;
     allRowsCache = null;
     try {
-      const [caData, grps, result] = await Promise.all([
+      const [caData, grps, result, dacls] = await Promise.all([
         api.listCustomAttributes(),
         api.listGroups(),
         api.listEndpointDetails(currentPage, currentSize, "", currentFilters),
+        api.listDacls().catch(() => []),
       ]);
       groups = grps;
       for (const a of caData.attributes) {
         if (a.name in caValues) caValues[a.name] = a.values;
       }
+      // AuthzACL dropdown is sourced live from ISE DACLs (not the local store)
+      caValues.AuthzACL = (dacls || []).map((d) => d.name).filter(Boolean).sort();
       allRows = result.items;
       totalEndpoints = result.total;
 
@@ -572,6 +581,7 @@ export async function renderBrowse(container) {
     const owner = tr.querySelector(".ca-owner").value;
     const lokation = tr.querySelector(".ca-lokation").value;
     const authzVlan = tr.querySelector(".ca-authzvlan").value;
+    const authzAcl = tr.querySelector(".ca-authzacl").value;
 
     const row = allRows.find((r) => r.id === id);
     const originalGroupId = row ? (row.group_id || "") : "";
@@ -605,9 +615,10 @@ export async function renderBrowse(container) {
           Owner: owner,
           Lokation: lokation,
           AuthzVlan: authzVlan,
+          AuthzACL: authzAcl,
         },
       },
-      localUpdate: { description, group_id, static_group_assignment, groupChanged, endpointType, owner, lokation, authzVlan },
+      localUpdate: { description, group_id, static_group_assignment, groupChanged, endpointType, owner, lokation, authzVlan, authzAcl },
     };
   }
 
@@ -766,6 +777,7 @@ export async function renderBrowse(container) {
     container.querySelector("#be-owner").innerHTML = optionsHtml(caValues.Owner, "");
     container.querySelector("#be-lokation").innerHTML = optionsHtml(caValues.Lokation, "");
     container.querySelector("#be-authzvlan").innerHTML = optionsHtml(caValues.AuthzVlan, "");
+    container.querySelector("#be-authzacl").innerHTML = optionsHtml(caValues.AuthzACL, "");
     container.querySelector("#be-description").value = "";
     // Reset checkboxes
     bulkEditOverlay.querySelectorAll(".be-cb").forEach((cb) => {
@@ -812,6 +824,7 @@ export async function renderBrowse(container) {
       if ("owner" in fields) tr.querySelector(".ca-owner").value = fields.owner;
       if ("lokation" in fields) tr.querySelector(".ca-lokation").value = fields.lokation;
       if ("authzvlan" in fields) tr.querySelector(".ca-authzvlan").value = fields.authzvlan;
+      if ("authzacl" in fields) tr.querySelector(".ca-authzacl").value = fields.authzacl;
       markDirty(tr);
     }
     bulkEditOverlay.classList.add("hidden");
@@ -880,6 +893,7 @@ export async function renderBrowse(container) {
       container.querySelector("#d-owner").innerHTML = optionsHtml(caValues.Owner, d.owner);
       container.querySelector("#d-lokation").innerHTML = optionsHtml(caValues.Lokation, d.lokation);
       container.querySelector("#d-authzvlan").innerHTML = optionsHtml(caValues.AuthzVlan, d.authz_vlan);
+      container.querySelector("#d-authzacl").innerHTML = optionsHtml(caValues.AuthzACL, d.authz_acl);
       container.querySelector("#d-hypervision").textContent = d.hypervision || "—";
       container.querySelector("#d-profile-id").textContent = d.profile_id || "—";
       container.querySelector("#d-static-profile").textContent = d.static_profile ? "Ja" : "Nej";
@@ -969,6 +983,7 @@ export async function renderBrowse(container) {
         Owner: container.querySelector("#d-owner").value,
         Lokation: container.querySelector("#d-lokation").value,
         AuthzVlan: container.querySelector("#d-authzvlan").value,
+        AuthzACL: container.querySelector("#d-authzacl").value,
       },
     };
     try {

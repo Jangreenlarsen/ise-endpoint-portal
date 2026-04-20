@@ -4,6 +4,7 @@ import { renderCreate } from "./views/create.js";
 import { renderImport } from "./views/import.js";
 import { renderBrowse } from "./views/browse.js";
 import { renderAttributes } from "./views/attributes.js";
+import { renderDacls } from "./views/dacls.js";
 import { renderLogs } from "./views/logs.js";
 import { renderLogin } from "./views/login.js";
 import { renderSettings, initTheme } from "./views/settings.js";
@@ -16,6 +17,7 @@ const routes = {
   import: { render: renderImport, roles: ["admin", "editor"] },
   browse: { render: renderBrowse, roles: ["admin", "editor", "viewer"] },
   attributes: { render: renderAttributes, roles: ["admin", "editor"] },
+  dacls: { render: renderDacls, roles: ["admin", "editor"] },
   logs: { render: renderLogs, roles: ["admin"] },
   settings: { render: renderSettings, roles: ["admin", "editor", "viewer"] },
 };

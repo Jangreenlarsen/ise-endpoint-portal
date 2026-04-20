@@ -12,6 +12,8 @@ const ATTR_LABELS = {
   Lokation: "Lokation",
   AuthzVlan: "Authz VLAN",
 };
+// AuthzACL is also a managed attribute, but its values mirror the DACLs in ISE
+// rather than a free-text store. It is administered on its own page (ACL).
 
 export async function renderAttributes(container) {
   container.innerHTML = `

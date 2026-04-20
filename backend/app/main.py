@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api import auth as auth_api
 from app.api import custom_attributes as custom_attrs_api
+from app.api import dacls as dacls_api
 from app.api import endpoints, groups, health, logs, users
 from app.api import settings as settings_api
 from app.core.config import settings
@@ -45,6 +46,7 @@ app.include_router(endpoints.router, prefix="/api")
 app.include_router(groups.router, prefix="/api")
 app.include_router(settings_api.router, prefix="/api")
 app.include_router(custom_attrs_api.router, prefix="/api")
+app.include_router(dacls_api.router, prefix="/api")
 app.include_router(logs.router, prefix="/api")
 
 frontend_dir = Path(__file__).resolve().parents[2] / "frontend"

@@ -110,6 +110,22 @@ export const api = {
     ),
   syncCustomAttributes: () =>
     request("/custom-attributes/sync", { method: "POST" }),
+  listDacls: () => request("/dacls"),
+  getDacl: (id) => request(`/dacls/${encodeURIComponent(id)}`),
+  createDacl: (payload) =>
+    request("/dacls", { method: "POST", body: JSON.stringify(payload) }),
+  updateDacl: (id, payload) =>
+    request(`/dacls/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+  deleteDacl: (id) =>
+    request(`/dacls/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  validateDacl: (dacl, dacl_type = "IPV4") =>
+    request("/dacls/validate", {
+      method: "POST",
+      body: JSON.stringify({ dacl, dacl_type }),
+    }),
   getLogs: (lines = 500, level = "", search = "") => {
     const parts = [`lines=${lines}`];
     if (level) parts.push(`level=${encodeURIComponent(level)}`);

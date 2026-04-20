@@ -7,6 +7,7 @@ from app.core.user_store import find_by_id, load_users
 from app.ise.client import get_ise_client
 from app.schemas.user import ROLE_VALUES, Role, User
 from app.services.custom_attribute_service import CustomAttributeService
+from app.services.dacl_service import DaclService
 from app.services.endpoint_service import EndpointService
 
 
@@ -16,6 +17,10 @@ def get_endpoint_service() -> EndpointService:
 
 def get_custom_attribute_service() -> CustomAttributeService:
     return CustomAttributeService(get_ise_client())
+
+
+def get_dacl_service() -> DaclService:
+    return DaclService(get_ise_client())
 
 
 def _extract_token(request: Request) -> str | None:

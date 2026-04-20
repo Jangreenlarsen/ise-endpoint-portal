@@ -5,6 +5,33 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.0.0 build 0043] — 2026-04-20 — feat: AuthzACL attribut + Cisco IOS access-list editor
+
+Major bump pga. ny top-level feature: portalen administrerer nu Cisco ISE
+Downloadable ACLs (DACLs) direkte og knytter dem til endpoints via et nyt
+custom attribute "AuthzACL" (samme navngivningsstil som AuthzVlan).
+
+- **backend (`app/ise/dacls.py`)**: Nyt integrationsmodul med `IseDaclRepository` (ERS `/ers/config/downloadableacl`) og `OpenApiDaclRepository` (`/api/v1/downloadable-acl`). Begge eksponerer `list_all`, `get`, `get_by_name`, `create`, `update`, `delete` med samme signatur så service-laget kan dispatche på `ise_api_type`.
+- **backend (`app/services/dacl_service.py`)**: Ny `DaclService` der vælger ERS- eller Open-API-repo baseret på settings, plus en `validate_dacl(text, type)` der parser hver linje som en Cisco IOS ACE: action (permit/deny/remark), valgfri sequence, protocol (ip/tcp/udp/icmp/…/numerisk), src/dst (any | host A.B.C.D | A.B.C.D wildcard | object-group <n> | IPv6 prefix), valgfri port-operator (eq/neq/gt/lt/range). Lenient — advarer fremfor at fejle på ukendte protokoller; ISE laver det endelige tjek ved gem.
+- **backend (`app/schemas/dacl.py`)**: Nye DTOs `DaclSummary`, `DaclDetail`, `CreateDaclRequest`, `UpdateDaclRequest`, `ValidateDaclRequest`, `DaclLineIssue`, `DaclValidationResult`.
+- **backend (`app/api/dacls.py`)**: Nye routes under `/api/dacls`: `GET` (list), `GET /{id}`, `POST`, `PUT /{id}`, `DELETE /{id}`, `POST /validate`. Read-only routes kræver `require_any`; mutationer kræver `require_editor`.
+- **backend (`app/main.py`, `app/api/deps.py`)**: Registrér `dacls`-router og DI-funktion `get_dacl_service`.
+- **backend (`app/core/custom_attr_store.py`)**: Tilføjet `AuthzACL` til `MANAGED_ATTRS`, så definitionen auto-oprettes i ISE ved første endpoint-write (sammen med eksisterende Type/Owner/Lokation/AuthzVlan).
+- **backend (`app/schemas/endpoint.py`)**: `CustomAttrs` udvidet med `AuthzACL`. `EndpointDetail` udvidet med `authz_acl`-felt.
+- **backend (`app/services/endpoint_service.py`)**: `get_endpoint` mapper `customAttributes.AuthzACL` ind i `EndpointDetail.authz_acl`.
+
+- **frontend (`js/api.js`)**: Nye client-metoder `listDacls`, `getDacl`, `createDacl`, `updateDacl`, `deleteDacl`, `validateDacl`.
+- **frontend (`js/views/dacls.js`)**: Helt ny side under `#/dacls` med to-spalte layout — DACL-liste (filtrerbar) til venstre, editor til højre. Navn/beskrivelse/type-felter + monospaced textarea med Cisco IOS access-list syntaks. Real-time backend-validering (debounced 350ms) viser inline fejl/advarsler per linje med kildelinje-citat. Opret/Gem/Slet med ISE som autoritativ validator. Dirty-tracking advarer ved afbrudt arbejde.
+- **frontend (`index.html`, `js/app.js`)**: Ny sidebar-link "ACL" + route. Synlig for admin/editor.
+- **frontend (`js/views/browse.js`)**: Ny kolonne "AuthzACL" i Browse/Edit-tabellen, dropdown-værdier hentet live fra `/api/dacls` (ikke fra det lokale value-store). Tilføjet i detail-modal, bulk-edit-modal og save-payload.
+- **frontend (`js/views/create.js`)**: AuthzACL-dropdown i Opret endpoint, men uden "+ Tilføj ny..." — feltet henter sine værdier fra ISE's DACL-katalog. Inline hint linker til ACL-siden.
+- **frontend (`js/views/import.js`)**: AuthzACL-kolonne i CSV-preview og inkluderet i bulk-create payload.
+- **frontend (`js/csv.js`)**: `CUSTOM.AuthzACL` tilføjet til default CSV-template; parses fra ISE-format og fyldes ved export.
+- **frontend (`js/views/attributes.js`)**: AuthzACL bevidst udeladt fra Attributter-siden — værdierne styres på ACL-siden, ikke i den lokale tilladte-værdier-store.
+- **frontend (`css/styles.css`)**: Styling til `.dacl-layout`, `.dacl-list`, `.dacl-body` (monospaced editor), `.dacl-issue-list` med farvekodning af severity, plus dark-theme-varianter.
+
+- **docs**: `FEATURES.md` — feature registreret. `version.json` bumpet til 2.0.0 build 0043.
+
 ## [1.21.1 build 0042] — 2026-04-19 — fix: Browser-reload tvang nyt login selvom token stadig gyldigt
 
 - **frontend (`js/api.js`)**: `/auth/status` lå i `UNAUTH_PATHS`, hvilket gjorde at frontend ikke sendte Authorization-headeren med ved statuscheck. Backend returnerede så altid `authenticated: false` → `app.js` ryddede tokenen. Konsekvens: hver browser-reload tvang nyt login. Fjernet `/auth/status` fra listen; route'n er stadig public men læser nu tokenen når den er sendt.

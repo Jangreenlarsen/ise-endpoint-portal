@@ -841,3 +841,126 @@ body.auth-mode .content {
   color: #e0e0e0;
   border-color: #3a3a5c;
 }
+
+/* DACL view */
+.dacl-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+.dacl-list-pane {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 80vh;
+}
+.dacl-list-toolbar {
+  display: flex;
+  gap: 0.4rem;
+}
+.dacl-filter {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+.dacl-list {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.dacl-item {
+  padding: 0.45rem 0.6rem;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.dacl-item:hover {
+  background: #f0f4fa;
+}
+.dacl-item.selected {
+  background: #e0ecff;
+  border-color: #93c5fd;
+}
+.dacl-item-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.dacl-item-desc {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 0.15rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dacl-editor-pane { min-width: 0; }
+.empty-editor { padding: 2rem; text-align: center; }
+.dacl-form { display: flex; flex-direction: column; gap: 0.75rem; }
+.dacl-body {
+  font-family: ui-monospace, "Cascadia Mono", Menlo, monospace;
+  font-size: 0.85rem;
+  min-height: 240px;
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: #fafbfc;
+}
+.dacl-validation { min-height: 1rem; }
+.alert.small { padding: 0.4rem 0.6rem; font-size: 0.85rem; margin: 0.25rem 0; }
+.dacl-issue-list {
+  list-style: none;
+  margin: 0.4rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.dacl-issue {
+  display: grid;
+  grid-template-columns: 70px 1fr;
+  gap: 0.5rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: 3px;
+  font-size: 0.85rem;
+  align-items: start;
+}
+.dacl-issue code {
+  grid-column: 1 / -1;
+  font-size: 0.75rem;
+  color: #475569;
+  background: rgba(0,0,0,0.04);
+  padding: 0.15rem 0.35rem;
+  border-radius: 3px;
+  white-space: pre-wrap;
+}
+.dacl-issue-error { background: #fef2f2; color: #991b1b; }
+.dacl-issue-warning { background: #fffbeb; color: #92400e; }
+.dacl-issue-line { font-family: ui-monospace, "Cascadia Mono", Menlo, monospace; font-size: 0.75rem; }
+
+[data-theme="dark"] .dacl-list-pane { background: #16213e; }
+[data-theme="dark"] .dacl-item:hover { background: #1f2a44; }
+[data-theme="dark"] .dacl-item.selected { background: #233452; border-color: #3b82f6; }
+[data-theme="dark"] .dacl-item-desc { color: #94a3b8; }
+[data-theme="dark"] .dacl-body {
+  background: #1a1a2e;
+  color: #e0e0e0;
+  border-color: #3a3a5c;
+}
+[data-theme="dark"] .dacl-filter {
+  background: #1a1a2e;
+  color: #e0e0e0;
+  border-color: #3a3a5c;
+}
+[data-theme="dark"] .dacl-issue code { background: rgba(255,255,255,0.05); color: #cbd5e1; }
+[data-theme="dark"] .dacl-issue-error { background: #3b1414; color: #fecaca; }
+[data-theme="dark"] .dacl-issue-warning { background: #3b2a14; color: #fde68a; }
