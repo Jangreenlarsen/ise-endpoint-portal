@@ -5,6 +5,22 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.7.0 build 0059] — 2026-04-21 — feat: ACL-editor afviser ACE hvor src ≠ any
+
+ACL-editorens real-time syntaks-check fanger nu den ISE-specifikke regel
+om at *source* skal være `any` i alle ACE'er i en DACL. ISE afviser
+ellers hele DACL'en med 400 `"Validation Error — While creating DACL,
+the keyword 'Any' must be the source in all ACE in DACL"` fordi ISE
+selv substituerer klient-IP'en for `any` ved push. Tidligere så
+brugeren først fejlen når Gem-knappen blev trykket.
+
+- **backend (`services/dacl_service.py`)**: `_validate_line` tjekker
+  nu at første source-token er `any` før den kalder `_consume_address`.
+  Alt andet (host X, prefix, object-group, eksplicit IP+wildcard) giver
+  et `error`-issue med dansk besked der forklarer substitutionen.
+  Destinations-reglen er uændret.
+- **docs (`FEATURES.md`)**: Feature-entry tilføjet øverst.
+
 ## [2.6.5 build 0058] — 2026-04-21 — fix: Slettet attribut-værdi kommer tilbage efter sync
 
 Når en værdi blev fjernet i Attribut-administrationen (f.eks. "hønsehus"

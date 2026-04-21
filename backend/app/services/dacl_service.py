@@ -155,6 +155,21 @@ def _validate_line(line_no: int, raw: str, ipv6: bool) -> DaclLineIssue | None:
                 message=f"ukendt protocol '{tokens[1]}' (accepterer ISE evt. alligevel)",
             )
     i = 2
+    # DACL-specific constraint: ISE kræver at source-feltet er "any" i alle
+    # ACE'er. Ved push til switchen erstatter ISE selv "any" med klientens
+    # IP. Enhver anden source (host X, prefix, object-group, ...) får ISE
+    # til at afvise hele DACL'en med 400 "Validation Error — While creating
+    # DACL, the keyword 'Any' must be the source in all ACE in DACL". Vi
+    # fanger det her så brugeren ser fejlen mens vedkommende skriver.
+    src_first = tokens[i].lower() if i < len(tokens) else ""
+    if src_first and src_first != "any":
+        return DaclLineIssue(
+            line=line_no, text=raw, severity="error",
+            message=(
+                "src skal være 'any' i DACL — ISE erstatter selv med "
+                "klient-IP'en ved push (ISE afviser ellers hele DACL'en)"
+            ),
+        )
     i, err = _consume_address(tokens, i, ipv6)
     if err:
         return DaclLineIssue(
