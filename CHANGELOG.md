@@ -5,6 +5,22 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.6.0 build 0052] — 2026-04-21 — feat: Sticky sidebar — menu og status altid synlig
+
+Sidebar (venstre) står nu fast uanset hvor langt man scroller i content-området
+til højre. Menu øverst, backend-status / version / user-info / "Log ud"
+nederst — alt altid synligt.
+
+- **frontend (`css/styles.css`)**: `.app` ændret fra `min-height: 100vh` til
+  `height: 100vh` så grid-cellerne får fast højde. `.sidebar` får
+  `height: 100vh` + `overflow-y: auto` (så en evt. meget lang menu kan
+  scrolle internt uden at forstyrre content). `.content` får
+  `overflow-y: auto` + `height: 100vh` så scroll sker inde i content-området
+  i stedet for på hele siden.
+- Ingen HTML- eller JS-ændringer — layoutet bevarer den eksisterende
+  flex-column struktur hvor `nav` har `flex: 1` og skubber
+  `.backend-status` til bunden.
+
 ## [2.5.1 build 0051] — 2026-04-21 — fix: CSV Export Template import/reset virker nu
 
 Template-import i Settings → CSV Export Template opdaterede ikke templaten

@@ -10,7 +10,7 @@ body {
 .app {
   display: grid;
   grid-template-columns: 240px 1fr;
-  min-height: 100vh;
+  height: 100vh;
 }
 
 /* Sidebar */
@@ -20,6 +20,8 @@ body {
   display: flex;
   flex-direction: column;
   padding: 1.5rem 0;
+  height: 100vh;
+  overflow-y: auto;
 }
 
 .sidebar .brand {
@@ -76,6 +78,8 @@ body {
 .content {
   padding: 2rem 2.5rem;
   overflow-x: auto;
+  overflow-y: auto;
+  height: 100vh;
 }
 
 .content h2 {
