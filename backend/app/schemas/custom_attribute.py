@@ -36,5 +36,19 @@ class PlatformSyncResult(BaseModel):
     matched_endpoints: int = 0
     updated_endpoints: int = 0
     skipped_existing: int = 0
+    skipped_unmapped: int = 0
     new_values_found: list[str] = Field(default_factory=list)
+    unmapped_raw: list[str] = Field(default_factory=list)
     unmatched_macs: int = 0
+
+
+class PlatformMappingRow(BaseModel):
+    """One mapping from an ISE raw value to a local label + CoA action."""
+    raw: str
+    local: str = ""
+    coa: str = "reauth"
+
+
+class PlatformMapping(BaseModel):
+    """Full PlatformType mapping (one row per known raw value)."""
+    mappings: list[PlatformMappingRow] = Field(default_factory=list)

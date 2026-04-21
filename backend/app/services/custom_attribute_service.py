@@ -12,8 +12,12 @@ from app.core.custom_attr_store import (
     remove_value,
     save_values,
 )
+from app.core.platform_mapping_store import (
+    load_mapping as load_platform_mapping,
+    raw_to_local as platform_raw_to_local,
+    save_mapping as save_platform_mapping,
+)
 from app.core.platform_types import KNOWN_PLATFORM_TYPES
-from app.core.platform_types import normalize as normalize_platform
 from app.ise import mnt_sessions
 from app.ise.client import IseClient
 from app.ise.custom_attributes import IseCustomAttributeRepository
@@ -22,6 +26,8 @@ from app.schemas.custom_attribute import (
     AddValueRequest,
     AllCustomAttributes,
     CustomAttributeValues,
+    PlatformMapping,
+    PlatformMappingRow,
     PlatformSyncResult,
     RemoveValueResult,
     SyncResult,
@@ -102,10 +108,11 @@ class CustomAttributeService:
         """Scan ISE endpoints to discover custom attribute values in use,
         and ensure attribute definitions exist in ISE.
 
-        ``PlatformType`` is special-cased: only canonical values
-        (:data:`KNOWN_PLATFORM_TYPES`) are accepted. Endpoints that hold a
-        non-canonical value get ``PlatformType`` cleared on ISE during the
-        same scan, and only canonical values land in the local store.
+        For ``PlatformType`` this means discovering whatever local labels
+        are already on endpoints (no canonicalisation, no clearing) — the
+        canonical raw values live in :data:`KNOWN_PLATFORM_TYPES` and are
+        only used by the MnT sync, which translates raw → local via the
+        platform mapping store.
         """
         logger.info("syncing custom attributes from ISE")
 
@@ -115,8 +122,6 @@ class CustomAttributeService:
         # 2. Scan endpoint pages to discover used values
         discovered: dict[str, set[str]] = {a: set() for a in MANAGED_ATTRS}
         scanned = 0
-        cleared_platform = 0
-        normalised_platform = 0
         page = 1
         while True:
             resources, total = await self.endpoints.list_page(page=page, size=100)
@@ -125,35 +130,7 @@ class CustomAttributeService:
             for r in resources:
                 ep = await self.endpoints.get(r["id"])
                 ca = _extract_custom_attrs(ep)
-                # PlatformType: canonicalise or clear on ISE.
-                raw_pt = ca.get("PlatformType", "")
-                if raw_pt:
-                    canonical = normalize_platform(raw_pt)
-                    if canonical is None:
-                        # Clear non-canonical value from the endpoint.
-                        new_attrs = {k: v for k, v in ca.items() if k != "PlatformType"}
-                        await self.endpoints.set_custom_attributes(r["id"], new_attrs)
-                        cleared_platform += 1
-                        logger.info(
-                            "PlatformType: cleared non-canonical '%s' on endpoint mac=%s",
-                            raw_pt, r.get("name", ""),
-                        )
-                    else:
-                        if canonical != raw_pt:
-                            # Rewrite endpoint with canonical form (e.g. "9800" → "iosxe").
-                            new_attrs = dict(ca)
-                            new_attrs["PlatformType"] = canonical
-                            await self.endpoints.set_custom_attributes(r["id"], new_attrs)
-                            normalised_platform += 1
-                            logger.info(
-                                "PlatformType: normalised '%s' -> '%s' on endpoint mac=%s",
-                                raw_pt, canonical, r.get("name", ""),
-                            )
-                        discovered["PlatformType"].add(canonical)
-                # Other managed attributes: free-text, just record values.
                 for attr in MANAGED_ATTRS:
-                    if attr == "PlatformType":
-                        continue
                     val = ca.get(attr, "")
                     if val:
                         discovered[attr].add(val)
@@ -162,21 +139,10 @@ class CustomAttributeService:
                 break
             page += 1
 
-        # 3. Replace PlatformType store with canonical-only set.
-        # Other attributes: merge as before.
+        # 3. Merge discovered values into local store
         discovered_lists = {k: sorted(v) for k, v in discovered.items()}
         old = load_values()
-        # PlatformType: replace, never accumulate stale values
-        current = load_values()
-        canonical_seen = discovered["PlatformType"]
-        # Keep only canonical entries that are also in KNOWN_PLATFORM_TYPES.
-        current["PlatformType"] = sorted(
-            v for v in canonical_seen if v in KNOWN_PLATFORM_TYPES
-        )
-        save_values(current)
-        # Merge non-PlatformType discoveries.
-        non_pt = {k: v for k, v in discovered_lists.items() if k != "PlatformType"}
-        merge_values(non_pt)
+        merge_values(discovered_lists)
         new_vals: dict[str, list[str]] = {}
         updated = load_values()
         for attr in MANAGED_ATTRS:
@@ -185,9 +151,7 @@ class CustomAttributeService:
                 new_vals[attr] = sorted(diff)
 
         logger.info(
-            "sync done: scanned=%d, new_values=%s, "
-            "platform_cleared=%d, platform_normalised=%d",
-            scanned, new_vals, cleared_platform, normalised_platform,
+            "sync done: scanned=%d, new_values=%s", scanned, new_vals,
         )
         return SyncResult(
             scanned_endpoints=scanned,
@@ -198,19 +162,24 @@ class CustomAttributeService:
     async def sync_platform_from_mnt(
         self, *, overwrite: bool = False
     ) -> PlatformSyncResult:
-        """Pull active sessions from MnT, derive PlatformType per endpoint
-        and store it. Default: only fill empty PlatformType — manual values
-        win. Set ``overwrite=True`` to force.
+        """Pull active sessions from MnT, derive raw PlatformType per endpoint,
+        translate raw → local via the platform mapping store, and write the
+        *local* label to the endpoint.
+
+        Default: only fill empty PlatformType — manual values win. Set
+        ``overwrite=True`` to force. Endpoints whose derived raw has no
+        mapping row (or maps to an empty local label) are skipped and
+        reported in ``unmapped_raw``.
         """
         logger.info(
             "PlatformType MnT sync starting (overwrite=%s)", overwrite,
         )
         # 1. Pull MnT sessions.
         sessions = await mnt_sessions.fetch_active_sessions()
-        mac_to_platform = mnt_sessions.index_by_mac(sessions)
+        mac_to_raw = mnt_sessions.index_by_mac(sessions)
         logger.info(
             "MnT sync: %d sessions, %d with derivable platform",
-            len(sessions), len(mac_to_platform),
+            len(sessions), len(mac_to_raw),
         )
 
         # 2. Build {MAC: endpoint_id} from ERS endpoint list.
@@ -229,57 +198,92 @@ class CustomAttributeService:
                 break
             page += 1
 
-        # 3. Update endpoints whose MnT-derived platform differs.
+        # 3. Load raw → local mapping (skips rows with empty local).
+        mapping = platform_raw_to_local()
+        logger.info("PlatformType mapping: %d raw values mapped", len(mapping))
+
+        # 4. Update endpoints whose MnT-derived platform translates to a
+        # mapped local label. Unmapped raws are tracked but not written.
         matched = 0
         updated = 0
         skipped = 0
+        skipped_unmapped = 0
         unmatched = 0
         new_values: set[str] = set()
-        for mac, canonical in mac_to_platform.items():
+        unmapped_raw: set[str] = set()
+        for mac, raw in mac_to_raw.items():
             ep_meta = mac_to_endpoint.get(mac)
             if not ep_meta:
                 unmatched += 1
                 continue
             matched += 1
+            local = mapping.get(raw, "")
+            if not local:
+                skipped_unmapped += 1
+                unmapped_raw.add(raw)
+                continue
             ep = await self.endpoints.get(ep_meta["id"])
             ca = _extract_custom_attrs(ep)
             existing = ca.get("PlatformType", "")
             if existing and not overwrite:
                 skipped += 1
                 continue
-            if existing == canonical:
+            if existing == local:
                 skipped += 1
                 continue
             new_attrs = dict(ca)
-            new_attrs["PlatformType"] = canonical
+            new_attrs["PlatformType"] = local
             await self.endpoints.set_custom_attributes(ep_meta["id"], new_attrs)
             updated += 1
-            new_values.add(canonical)
+            new_values.add(local)
             logger.info(
-                "PlatformType: set '%s' (was '%s') on endpoint mac=%s",
-                canonical, existing or "—", mac,
+                "PlatformType: set '%s' (raw=%s, was '%s') on endpoint mac=%s",
+                local, raw, existing or "—", mac,
             )
 
-        # 4. Refresh PlatformType store: keep only canonical values seen now
-        # plus any canonical values already on endpoints we didn't touch.
-        # Simplest: union the new_values with any canonical values already
-        # known from a prior sync_from_ise.
-        current = load_values()
-        existing_pt = set(current.get("PlatformType", []))
-        merged = {v for v in (existing_pt | new_values) if v in KNOWN_PLATFORM_TYPES}
-        current["PlatformType"] = sorted(merged)
-        save_values(current)
+        # 5. Merge any newly written local labels into the local PlatformType
+        # value store so they show up in the dropdown without needing a
+        # separate sync_from_ise pass.
+        if new_values:
+            current = load_values()
+            existing_pt = set(current.get("PlatformType", []))
+            current["PlatformType"] = sorted(existing_pt | new_values)
+            save_values(current)
 
         result = PlatformSyncResult(
             active_sessions=len(sessions),
             matched_endpoints=matched,
             updated_endpoints=updated,
             skipped_existing=skipped,
+            skipped_unmapped=skipped_unmapped,
             new_values_found=sorted(new_values),
+            unmapped_raw=sorted(unmapped_raw),
             unmatched_macs=unmatched,
         )
         logger.info("PlatformType MnT sync done: %s", result.model_dump())
         return result
+
+    def get_platform_mapping(self) -> PlatformMapping:
+        """Return the current raw→local PlatformType mapping, padded with
+        empty rows for any KNOWN raw value the user hasn't bound yet so the
+        editor always shows one row per known raw."""
+        rows = {r["raw"]: r for r in load_platform_mapping()}
+        out: list[PlatformMappingRow] = []
+        for raw in KNOWN_PLATFORM_TYPES:
+            r = rows.get(raw, {"raw": raw, "local": "", "coa": "reauth"})
+            out.append(PlatformMappingRow(
+                raw=r["raw"], local=r.get("local", ""),
+                coa=r.get("coa", "reauth"),
+            ))
+        return PlatformMapping(mappings=out)
+
+    def set_platform_mapping(self, payload: PlatformMapping) -> PlatformMapping:
+        """Persist a new raw→local mapping. Validates raws against
+        KNOWN_PLATFORM_TYPES and CoA against (reauth, disconnect)."""
+        rows = [r.model_dump() for r in payload.mappings]
+        saved = save_platform_mapping(rows)
+        logger.info("PlatformType mapping saved: %d rows", len(saved))
+        return self.get_platform_mapping()
 
 
 def _extract_custom_attrs(endpoint: dict[str, Any]) -> dict[str, str]:

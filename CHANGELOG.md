@@ -5,6 +5,56 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.4.0 build 0049] — 2026-04-21 — feat: PlatformType 1-til-1 raw→lokal mapping + CoA-binding
+
+PlatformType-strategien er ændret fra "lukket kanonisk værdiliste" til en **1-til-1
+mapping** mellem ISE's raw-platformtyper (airos, iosxe, iossw, nxos, meraki) og
+brugerens lokale labels. Det giver to ting:
+
+1. **Lokale labels igen frie**: Brugeren kan oprette platform-labels manuelt
+   på Attributter-siden (fx "Wireless-AireOS-3504", "Cat9k-Office") — fri-tekst
+   "+ Tilføj"-input er genskabt på PlatformType-sektionen.
+2. **CoA-metoden bindes pr. mapping**: Hver mapping-række har en CoA-dropdown
+   (Reauth / Disconnect). Når CoA-on-save trigger i Browse/Edit, slås det
+   gemte endpoints lokale label op i mappingen og dispatcheres derefter.
+   Hardcoded `platformType === "airos"` er erstattet med dette opslag.
+
+MnT-sync'en oversætter nu raw → lokal label via mappingen før den skriver til
+endpoint. Endpoints med en raw-værdi der ikke har en mapping-række (eller
+hvor lokal-feltet er tomt) springes over og rapporteres i `unmapped_raw` +
+`skipped_unmapped` i sync-resultatet, så brugeren ved hvilke labels der mangler.
+
+Mappingen gemmes i `backend/platform_mapping.json` (gitignored).
+
+- **backend (`core/platform_mapping_store.py` ny)**: Persisterer `{raw, local, coa}`-rækker
+  som JSON. `load_mapping()` validerer raw mod `KNOWN_PLATFORM_TYPES` og CoA mod
+  `("reauth", "disconnect")`. `save_mapping()` enforce'r 1-til-1 på raw.
+  `raw_to_local()` returnerer `{raw: local}` for mappingens skyld; `local_to_coa()`
+  giver det omvendte opslag CoA-dispatcheren bruger.
+- **backend (`schemas/custom_attribute.py`)**: Nye DTO'er `PlatformMappingRow`
+  (`raw`, `local`, `coa`) og `PlatformMapping` (liste). `PlatformSyncResult` udvidet
+  med `skipped_unmapped` + `unmapped_raw`.
+- **backend (`services/custom_attribute_service.py`)**: `sync_from_ise()`'s tidligere
+  PlatformType-special-case (canonicalisering + clearing af ukendte) er fjernet
+  — PlatformType behandles nu som de øvrige attributter (fri-tekst opdagelse).
+  `sync_platform_from_mnt()` rewrite'et: bruger `platform_raw_to_local()` til at
+  oversætte hver derived raw → lokal label, springer over og logger unmapped raws.
+  Nye metoder `get_platform_mapping()` (returnerer altid én række pr. KNOWN raw,
+  padded med tomme rækker for raws brugeren ikke har bundet) og `set_platform_mapping()`.
+- **backend (`api/custom_attributes.py`)**: `GET /custom-attributes/PlatformType/mapping`
+  (require_any) og `PUT /custom-attributes/PlatformType/mapping` (require_editor).
+- **frontend (`js/api.js`)**: `getPlatformMapping()`, `setPlatformMapping(mappings)`.
+- **frontend (`js/views/attributes.js`)**: `SYNC_ONLY_ATTRS` fjernet — fri-tekst
+  "+ Tilføj"-input igen tilgængelig for PlatformType. Ny mapping-editor
+  rendres i PlatformType-sektionen: en tabel med én række pr. KNOWN raw,
+  hver med dropdown over de lokale labels + CoA-dropdown + Gem-knap. MnT-sync
+  result-panelet viser også "ikke-mappede raws sprunget over" når relevant.
+- **frontend (`js/views/browse.js`)**: Henter mappingen ved load og bygger et
+  `Map<localLabel, coa>` (`coaByLocal`). `runCoaForIds()` bruger nu opslaget
+  i stedet for `platformType.toLowerCase() === "airos"`. Detail-modalens
+  CoA-statusbesked er ligeledes opdateret.
+- **`.gitignore`**: `backend/platform_mapping.json` tilføjet.
+
 ## [2.3.1 build 0048] — 2026-04-20 — feat: Auto-select dirty row i Browse/Edit
 
 Når man ændrer et felt i Browse/Edit (rækken bliver gul / dirty) bliver

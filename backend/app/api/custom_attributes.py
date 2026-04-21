@@ -5,6 +5,7 @@ from app.core.exceptions import IseApiError
 from app.schemas.custom_attribute import (
     AddValueRequest,
     AllCustomAttributes,
+    PlatformMapping,
     PlatformSyncResult,
     RemoveValueResult,
     SyncResult,
@@ -73,3 +74,29 @@ async def sync_platform_from_mnt(
             status_code=502 if exc.status_code == 0 else exc.status_code,
             detail=str(exc),
         ) from exc
+
+
+@router.get(
+    "/PlatformType/mapping",
+    response_model=PlatformMapping,
+    dependencies=[Depends(require_any)],
+)
+async def get_platform_mapping(
+    service: CustomAttributeService = Depends(get_custom_attribute_service),
+) -> PlatformMapping:
+    """Return the raw→local PlatformType mapping (one row per known raw)."""
+    return service.get_platform_mapping()
+
+
+@router.put(
+    "/PlatformType/mapping",
+    response_model=PlatformMapping,
+    dependencies=[Depends(require_editor)],
+)
+async def set_platform_mapping(
+    payload: PlatformMapping,
+    service: CustomAttributeService = Depends(get_custom_attribute_service),
+) -> PlatformMapping:
+    """Replace the raw→local PlatformType mapping. Each row binds an ISE
+    raw value to a local label and a CoA action (reauth | disconnect)."""
+    return service.set_platform_mapping(payload)

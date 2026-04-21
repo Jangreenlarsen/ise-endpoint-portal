@@ -254,10 +254,14 @@ export async function renderBrowse(container) {
     renderCoaToggle();
   });
 
-  // entries: [{ id, platformType }]. AireOS WLC honorerer ikke CoA-Reauth
-  // pålideligt (klienten holder ofte fast i den gamle policy), så for
-  // platformType == "airos" sender vi en CoA-Disconnect i stedet — det tvinger
-  // re-association og dermed fuld policy-genberegning.
+  // {localLabel: "reauth"|"disconnect"} — hentes fra PlatformType-mappingen.
+  // Tomt fallback => alle CoA bliver reauth.
+  let coaByLocal = new Map();
+
+  // entries: [{ id, platformType }]. CoA-metoden vælges ud fra
+  // platformType-labelens mapping (reauth eller disconnect). AireOS WLC
+  // honorerer fx ikke CoA-Reauth pålideligt — der binder brugeren typisk
+  // sit AireOS-label til "disconnect" i mapping-editoren.
   async function runCoaForIds(entries) {
     if (!coaOnSave || !entries.length) return { ok: 0, fail: 0, failures: [], disconnects: 0, reauths: 0 };
     let ok = 0;
@@ -267,8 +271,8 @@ export async function renderBrowse(container) {
     const failures = [];
     for (const e of entries) {
       const id = typeof e === "string" ? e : e.id;
-      const platformType = (typeof e === "object" && e.platformType ? e.platformType : "").toLowerCase();
-      const useDisconnect = platformType === "airos";
+      const platformType = (typeof e === "object" && e.platformType ? e.platformType : "");
+      const useDisconnect = coaByLocal.get(platformType) === "disconnect";
       try {
         const res = useDisconnect ? await api.coaDisconnect(id) : await api.coaReauth(id);
         if (res?.ok) {
@@ -681,11 +685,12 @@ export async function renderBrowse(container) {
     filterMode = false;
     allRowsCache = null;
     try {
-      const [caData, grps, result, dacls] = await Promise.all([
+      const [caData, grps, result, dacls, mapping] = await Promise.all([
         api.listCustomAttributes(),
         api.listGroups(),
         api.listEndpointDetails(currentPage, currentSize, "", currentFilters),
         api.listDacls().catch(() => []),
+        api.getPlatformMapping().catch(() => ({ mappings: [] })),
       ]);
       groups = grps;
       for (const a of caData.attributes) {
@@ -693,6 +698,12 @@ export async function renderBrowse(container) {
       }
       // AuthzACL dropdown is sourced live from ISE DACLs (not the local store)
       caValues.AuthzACL = (dacls || []).map((d) => d.name).filter(Boolean).sort();
+      // Build {local: coa} lookup for CoA dispatch (disconnect vs reauth)
+      coaByLocal = new Map(
+        (mapping.mappings || [])
+          .filter((m) => m.local)
+          .map((m) => [m.local, m.coa || "reauth"]),
+      );
       allRows = result.items;
       totalEndpoints = result.total;
 
@@ -1179,7 +1190,7 @@ export async function renderBrowse(container) {
       const platformType = container.querySelector("#d-platformtype").value;
       let coaSummary = "";
       if (coaOnSave) {
-        const action = (platformType || "").toLowerCase() === "airos" ? "disconnect (AireOS)" : "reauth";
+        const action = coaByLocal.get(platformType) === "disconnect" ? "disconnect" : "reauth";
         detailMsg.innerHTML = `<div class="alert info">Gemt — udløser CoA ${action}...</div>`;
         const coa = await runCoaForIds([{ id: savedId, platformType }]);
         if (coa.ok) {

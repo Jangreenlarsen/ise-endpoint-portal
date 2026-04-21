@@ -115,6 +115,13 @@ export const api = {
       `/custom-attributes/PlatformType/sync-mnt${overwrite ? "?overwrite=true" : ""}`,
       { method: "POST" },
     ),
+  getPlatformMapping: () =>
+    request("/custom-attributes/PlatformType/mapping"),
+  setPlatformMapping: (mappings) =>
+    request("/custom-attributes/PlatformType/mapping", {
+      method: "PUT",
+      body: JSON.stringify({ mappings }),
+    }),
   listDacls: () => request("/dacls"),
   getDacl: (id) => request(`/dacls/${encodeURIComponent(id)}`),
   createDacl: (payload) =>
