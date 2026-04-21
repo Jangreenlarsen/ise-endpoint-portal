@@ -5,6 +5,13 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.6.4 build 0057] — 2026-04-21 — docs: Reklassificer Tilknytning-roundtrip som bug
+
+Entry flyttet fra `FEATURES.md` til `BUGS.md` (fixed-sektion) — det
+var en bug ikke et feature (CSV-roundtrip ændrede tilstand for
+endpoints uforventet), så den hører hjemme under BUGS.md per regel 2
+i CLAUDE.md. Ingen kodeændringer.
+
 ## [2.6.4 build 0056] — 2026-04-21 — fix: Tilknytning bevares ved export + re-import
 
 StaticGroupAssignment (Tilknytning: Statisk/Dynamisk) kunne ændre sig
