@@ -188,7 +188,14 @@ td input, td select {
   display: flex;
   gap: 0.5rem;
   align-items: center;
-  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 20;
+  padding: 0.75rem 1.5rem;
+  margin: -1.5rem -1.5rem 1rem;
+  border-bottom: 1px solid #e5e7eb;
 }
 .toolbar .spacer { flex: 1; }
 .toolbar .mac-search {
@@ -718,6 +725,10 @@ body.auth-mode .content {
 [data-theme="dark"] .card {
   background: #16213e;
   box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+[data-theme="dark"] .toolbar {
+  background: #16213e;
+  border-bottom-color: #2a2a4a;
 }
 [data-theme="dark"] .card h3 { color: #e0e0e0; }
 [data-theme="dark"] th {

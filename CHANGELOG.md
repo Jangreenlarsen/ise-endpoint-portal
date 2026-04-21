@@ -5,6 +5,22 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.6.1 build 0053] — 2026-04-21 — feat: Sticky toolbar i Browse/Edit
+
+Toolbar'en øverst i Browse/Edit (Refresh / Export CSV / Kun portal / CoA
+toggle / Gem alle / server-filter / Kolonner / bulk-actions / page-size /
+count) er nu sticky — den bliver klæbet til toppen når man scroller ned
+i endpoint-listen, så alle tools altid er tilgængelige.
+
+- **frontend (`css/styles.css`)**: `.toolbar` fik `position: sticky;
+  top: 0`, solid hvid baggrund, `z-index: 20`, `flex-wrap: wrap` og en
+  subtil bottom-border. Negative margins (`margin: -1.5rem -1.5rem 1rem`
+  + kompenserende padding) trækker toolbaren ud til card-kanterne så den
+  lukker indholdet af nedenfor uden gap i sticky-mode.
+- Dark mode: matching baggrundsfarve (`#16213e`) og border-farve.
+- Ingen JS-ændringer. Virker kun fordi `.content` fik
+  `overflow-y: auto` i 2.6.0 — sticky kræver en scrollende ancestor.
+
 ## [2.6.0 build 0052] — 2026-04-21 — feat: Sticky sidebar — menu og status altid synlig
 
 Sidebar (venstre) står nu fast uanset hvor langt man scroller i content-området

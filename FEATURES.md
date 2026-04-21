@@ -9,6 +9,8 @@ Alle nye features registreres her FØR implementering påbegyndes.
 
 ## Aktive / færdige
 
+- `[done] 2026-04-21 — Sticky toolbar i Browse/Edit` — toolbar'en (Refresh, Export CSV, Kun portal, CoA reauth, Gem alle, server-filter, Kolonner, bulk-actions, page-size, count) i Browse/Edit er nu sticky øverst i content-området. Når man scroller ned i endpoint-tabellen bliver toolbar'en øverst så alle tools altid er tilgængelige uden scroll-op. Implementeret via `position: sticky; top: 0` på `.toolbar` + solid baggrund og `z-index: 20`. Negative margins lader toolbaren gå til kant-til-kant i card'et med en subtil bottom-border. Dark mode har matching baggrund. Lag: frontend (css).
+
 - `[done] 2026-04-21 — Sticky sidebar — menu og status altid synlig` — Sidebar (menu + backend-status + user-info + logout) står nu fast og er altid synlig uanset hvor man scroller i content-området til højre. Implementeret ved at give `.app` `height: 100vh` og `.content` `overflow-y: auto`, så kun content-området scroller mens sidebar har fast højde. Menu fortsat øverst, status/user/logout nederst. Lag: frontend (css).
 
 - `[done] 2026-04-21 — Auth-status farvning af række-checkbox i Browse/Edit` — når mindst ét filter er aktivt (portalOnly, kolonnefilter eller server-side MAC-filter), henter Browse/Edit en liste over MAC-adresser med aktiv RADIUS-session fra MnT (`/admin/API/mnt/Session/ActiveList` via nyt backend-endpoint `GET /api/endpoints/session-macs`) og farver række-checkboxen grøn (aktiv session = auth i access) eller rød (ingen aktiv session). Uden filter foretages ingen MnT-kald — farver vises kun når antallet af rækker er begrænset. Lag: backend (api/endpoints, services/endpoint_service), frontend (api.js, browse view, css).
