@@ -5,6 +5,27 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.5.1 build 0051] — 2026-04-21 — fix: CSV Export Template import/reset virker nu
+
+Template-import i Settings → CSV Export Template opdaterede ikke templaten
+korrekt når CSV-filen indeholdt en UTF-8 BOM (som Excel altid tilføjer),
+og "Nulstil til standard" virkede ikke hvis man efterfølgende ville
+re-importere den samme fil.
+
+- **frontend (`js/csv.js`)**: `parseTemplateHeader` stripper nu BOM
+  (`\uFEFF`) fra filens start, og kører `stripQuotes` på hver header-celle
+  så kolonner som `"MACAddress"` normaliseres til `MACAddress`. Uden
+  dette fik første kolonne et skjult BOM-prefix, så
+  `extendTemplateWithPortalColumns` så den som "manglende" og tilføjede
+  en duplikat.
+- **frontend (`js/views/settings.js`)**: File-change handler wrapper nu
+  læsning i try/catch så fejl bliver vist (før: silent crash). I
+  `finally` sættes `e.target.value = ""` så brugeren kan vælge samme fil
+  igen efter en fejl eller efter reset — ellers fyrer `change`-eventen
+  ikke anden gang.
+- Reset-knappen nulstiller også selve file-input'ets value så der ikke
+  er en stale filreference efter nulstilling.
+
 ## [2.5.0 build 0050] — 2026-04-21 — feat: Auth-status farvning af række-checkbox i Browse/Edit
 
 Række-checkboxen i Browse/Edit farves nu **grøn** (aktiv RADIUS session —

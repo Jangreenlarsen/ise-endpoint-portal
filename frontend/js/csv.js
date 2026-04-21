@@ -62,9 +62,14 @@ export function resetCsvTemplate() {
  * Useful for importing a template from a file.
  */
 export function parseTemplateHeader(text) {
-  const lines = text.split(/\r?\n/).filter((l) => l.trim());
+  // Strip UTF-8 BOM (common in Excel-exported CSVs) so the first column
+  // name doesn't get prefixed with \uFEFF.
+  const clean = text.replace(/^\uFEFF/, "");
+  const lines = clean.split(/\r?\n/).filter((l) => l.trim());
   if (!lines.length) return [];
-  return parseRow(lines[0]).map((h) => h.trim()).filter(Boolean);
+  return parseRow(lines[0])
+    .map((h) => stripQuotes(h.trim()).trim())
+    .filter(Boolean);
 }
 
 /**

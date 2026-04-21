@@ -427,25 +427,34 @@ function initCsvAndPrefsSections(container) {
   }
   refreshTplPreview();
 
-  container.querySelector("#csv-tpl-file").addEventListener("change", async (e) => {
+  const csvTplFile = container.querySelector("#csv-tpl-file");
+  csvTplFile.addEventListener("change", async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    const text = await file.text();
-    const columns = parseTemplateHeader(text);
-    if (!columns.length) {
-      csvTplMsg.innerHTML = `<div class="alert error">Ingen kolonner fundet i filen.</div>`;
-      return;
+    try {
+      const text = await file.text();
+      const columns = parseTemplateHeader(text);
+      if (!columns.length) {
+        csvTplMsg.innerHTML = `<div class="alert error">Ingen kolonner fundet i filen — kontrollér at første linje er en header-række.</div>`;
+        return;
+      }
+      const extended = extendTemplateWithPortalColumns(columns);
+      setCsvTemplate(extended);
+      refreshTplPreview();
+      const added = extended.length - columns.length;
+      const addedNote = added ? ` (+${added} portal-kolonner tilføjet)` : "";
+      csvTplMsg.innerHTML = `<div class="alert success">Template importeret — ${extended.length} kolonner${addedNote}. Fremtidige exports bruger denne template.</div>`;
+    } catch (err) {
+      csvTplMsg.innerHTML = `<div class="alert error">Kunne ikke læse filen: ${esc(err.message)}</div>`;
+    } finally {
+      // Nulstil input så samme fil kan vælges igen efter fejl/reset.
+      e.target.value = "";
     }
-    const extended = extendTemplateWithPortalColumns(columns);
-    setCsvTemplate(extended);
-    refreshTplPreview();
-    const added = extended.length - columns.length;
-    const addedNote = added ? ` (+${added} portal-kolonner tilføjet)` : "";
-    csvTplMsg.innerHTML = `<div class="alert success">Template importeret — ${extended.length} kolonner${addedNote}. Fremtidige exports bruger denne template.</div>`;
   });
 
   container.querySelector("#csv-tpl-reset").addEventListener("click", () => {
     resetCsvTemplate();
+    csvTplFile.value = "";
     refreshTplPreview();
     csvTplMsg.innerHTML = `<div class="alert success">Template nulstillet til standard (${getCsvTemplate().length} kolonner).</div>`;
   });
