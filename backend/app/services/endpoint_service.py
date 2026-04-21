@@ -8,6 +8,7 @@ from app.core import config
 from app.core.custom_attr_store import ALL_ATTRS, HIDDEN_ATTR
 from app.core.exceptions import IseApiError
 from app.ise import coa as coa_module
+from app.ise import mnt_sessions
 from app.ise.client import IseClient
 from app.ise.custom_attributes import IseCustomAttributeRepository
 from app.ise.endpoints import IseEndpointGroupRepository, IseEndpointRepository
@@ -239,6 +240,26 @@ class EndpointService:
             return False, "", "Endpoint har ingen MAC-adresse"
         ok, msg = await coa_module.reauth(mac)
         return ok, mac, msg
+
+    async def list_active_session_macs(self) -> list[str]:
+        """Return normalised MAC list for all endpoints with an active RADIUS
+        session in ISE MnT. Used by Browse/Edit to color row checkboxes
+        green (active session / auth in access) vs red (no active session).
+        """
+        sessions = await mnt_sessions.fetch_active_sessions()
+        macs: set[str] = set()
+        for sess in sessions:
+            raw = (
+                sess.get("calling_station_id", "")
+                or sess.get("callingstationid", "")
+                or sess.get("user_name", "")
+                or sess.get("username", "")
+                or ""
+            )
+            mac = raw.replace("-", ":").strip().upper()
+            if len(mac) == 17 and mac.count(":") == 5:
+                macs.add(mac)
+        return sorted(macs)
 
     async def coa_disconnect(self, endpoint_id: str) -> tuple[bool, str, str]:
         """Trigger CoA disconnect (deauth) for an endpoint. Returns (ok, mac, message)."""

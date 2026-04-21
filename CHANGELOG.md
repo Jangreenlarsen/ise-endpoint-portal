@@ -5,6 +5,38 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.5.0 build 0050] — 2026-04-21 — feat: Auth-status farvning af række-checkbox i Browse/Edit
+
+Række-checkboxen i Browse/Edit farves nu **grøn** (aktiv RADIUS session —
+auth i access) eller **rød** (ingen aktiv session) baseret på ISE MnT
+ActiveList. For at undgå unødige MnT-kald på sider med mange endpoints
+hentes status **kun** når mindst ét filter er aktivt — portalOnly-toggle,
+et kolonnefilter-checkbox, eller server-side MAC-filter. Uden filter vises
+ingen farver.
+
+- **backend (`api/endpoints.py`, `services/endpoint_service.py`)**: Nyt endpoint
+  `GET /api/endpoints/session-macs` kalder `mnt_sessions.fetch_active_sessions()`,
+  normaliserer MAC-feltet (calling_station_id / user_name) og returnerer
+  en sorteret liste af MAC-adresser med aktiv session. Routet placeret før
+  `/{endpoint_id}` for at undgå path-konflikt.
+- **frontend (`api.js`)**: `listActiveSessionMacs()` wrapper.
+- **frontend (`views/browse.js`)**: Nye helpers `anyFilterActive()`,
+  `refreshActiveSessionMacs()`, `applyAuthStatusColors()`. `load()` og
+  `onFilterChange()` kalder refresh efter filter-state ændres; når alle
+  filtre fjernes ryddes farvningen. `renderRows()` kalder
+  `applyAuthStatusColors()` efter hver re-render.
+- **frontend (`css/styles.css`)**: `.row-select.auth-active` giver grøn
+  accent-color + outline (#16a34a); `.auth-failed` tilsvarende rød (#dc2626).
+
+**Berørte filer**:
+- [backend/app/api/endpoints.py](backend/app/api/endpoints.py)
+- [backend/app/services/endpoint_service.py](backend/app/services/endpoint_service.py)
+- [frontend/js/api.js](frontend/js/api.js)
+- [frontend/js/views/browse.js](frontend/js/views/browse.js)
+- [frontend/css/styles.css](frontend/css/styles.css)
+
+---
+
 ## [2.4.0 build 0049] — 2026-04-21 — feat: PlatformType 1-til-1 raw→lokal mapping + CoA-binding
 
 PlatformType-strategien er ændret fra "lukket kanonisk værdiliste" til en **1-til-1

@@ -294,6 +294,10 @@ export async function renderBrowse(container) {
   }
   let allRows = [];           // rows on current page (paged mode) or ALL rows (filtered mode)
   let allRowsCache = null;    // cached full dataset when filters have been used
+  // {MAC → "active"} hentet fra MnT når mindst ét filter er aktivt. Bruges
+  // til at farve række-checkboxen grøn (aktiv session) eller rød (ingen).
+  // Null = ikke hentet (intet filter / load ikke kørt endnu) → ingen farve.
+  let activeSessionMacs = null;
   let groups = [];
   let caValues = { Type: [], Owner: [], Lokation: [], AuthzVlan: [], AuthzACL: [], PlatformType: [] };
   let portalOnly = false;
@@ -484,9 +488,11 @@ export async function renderBrowse(container) {
   async function onFilterChange() {
     if (needsFilterMode()) {
       await enterFilterMode();
+      await refreshActiveSessionMacs();
       applyFilter();
     } else {
-      // No filters active — go back to server-side pagination
+      // No filters active — ryd auth-status og gå tilbage til server-side pagination
+      activeSessionMacs = null;
       exitFilterMode();
     }
   }
@@ -552,6 +558,50 @@ export async function renderBrowse(container) {
   function needsFilterMode() {
     // Any column filter checkbox checked (even without text yet) or portal toggle on
     return portalOnly || filterRow.querySelector(".col-filter-cb:checked") !== null;
+  }
+
+  function anyFilterActive() {
+    // Server-side MAC-filter tæller også — uden for filterMode betyder det
+    // at antallet af rækker er begrænset, så auth-status må gerne hentes.
+    return needsFilterMode() || currentFilters.length > 0;
+  }
+
+  function normalizeMac(s) {
+    return (s || "").replace(/-/g, ":").trim().toUpperCase();
+  }
+
+  async function refreshActiveSessionMacs() {
+    if (!anyFilterActive()) {
+      activeSessionMacs = null;
+      return;
+    }
+    try {
+      const list = await api.listActiveSessionMacs();
+      activeSessionMacs = new Set((list || []).map(normalizeMac));
+    } catch (err) {
+      // MnT kald kan fejle hvis brugeren ikke har MnT Admin-rolle — vi
+      // viser blot ingen farver i så fald og logger i console.
+      console.warn("Kunne ikke hente aktive sessioner fra MnT:", err.message);
+      activeSessionMacs = null;
+    }
+  }
+
+  function applyAuthStatusColors() {
+    const rows = tbody.querySelectorAll("tr[data-id]");
+    rows.forEach((tr) => {
+      const cb = tr.querySelector(".row-select");
+      if (!cb) return;
+      cb.classList.remove("auth-active", "auth-failed");
+      if (!activeSessionMacs) return;
+      const macCell = tr.querySelector(".mac-cell");
+      const mac = normalizeMac(macCell ? macCell.textContent : "");
+      if (!mac) return;
+      if (activeSessionMacs.has(mac)) {
+        cb.classList.add("auth-active");
+      } else {
+        cb.classList.add("auth-failed");
+      }
+    });
   }
 
   function applyFiltersToRows(rows) {
@@ -647,6 +697,7 @@ export async function renderBrowse(container) {
     updateSelectionUI();
     updateDirtyUI();
     applyColVis();
+    applyAuthStatusColors();
   }
 
   function applyFilter() {
@@ -711,6 +762,10 @@ export async function renderBrowse(container) {
       if (needsFilterMode()) {
         await enterFilterMode();
       }
+
+      // Hent MnT auth-status kun når et filter er aktivt — undgår et MnT-kald
+      // pr. load når man browser alle endpoints uden filter.
+      await refreshActiveSessionMacs();
 
       applyFilter();
     } catch (err) {

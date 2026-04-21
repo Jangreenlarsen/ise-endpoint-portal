@@ -65,6 +65,20 @@ async def list_all_endpoint_details(
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
+@router.get("/session-macs", response_model=list[str], dependencies=[Depends(require_any)])
+async def list_session_macs(
+    service: EndpointService = Depends(get_endpoint_service),
+) -> list[str]:
+    """Return MAC-addresses that currently have an active RADIUS session in
+    ISE MnT. Used by the Browse/Edit view to color the row selector green
+    (authenticated in access) or red (no active session).
+    """
+    try:
+        return await service.list_active_session_macs()
+    except IseApiError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
 @router.get("/{endpoint_id}", response_model=EndpointDetail, dependencies=[Depends(require_any)])
 async def get_endpoint(
     endpoint_id: str,

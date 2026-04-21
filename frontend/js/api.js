@@ -82,6 +82,7 @@ export const api = {
     request(`/endpoints/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
   deleteEndpoint: (id) =>
     request(`/endpoints/${id}`, { method: "DELETE" }),
+  listActiveSessionMacs: () => request("/endpoints/session-macs"),
   coaReauth: (id) =>
     request(`/endpoints/${encodeURIComponent(id)}/coa-reauth`, { method: "POST" }),
   coaDisconnect: (id) =>
