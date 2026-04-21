@@ -9,6 +9,8 @@ Alle nye features registreres her FØR implementering påbegyndes.
 
 ## Aktive / færdige
 
+- `[done] 2026-04-21 — Import fra CSV: valg for overskriv-vs-skip ved eksisterende endpoints` — Ny toggle "Ved eksisterende endpoint" i Import-view med to valg: **Skip** (default, samme som før — 409 fra ISE giver `skipped`) og **Overskriv** (bulk-import kalder `get_by_mac` + update for eksisterende i stedet for skip). Result-boksen viser nu også "Overwritten: N" sektion med MAC-liste. Backend: `BulkCreateRequest` fik `overwrite: bool = False`, `BulkResult` fik `overwritten: list[str]`, `bulk_create` forgrener på 409 baseret på flag. Lag: backend (schemas/endpoint, services/endpoint_service), frontend (api.js, views/import.js).
+
 - `[done] 2026-04-21 — Sticky toolbar i Browse/Edit` — toolbar'en (Refresh, Export CSV, Kun portal, CoA reauth, Gem alle, server-filter, Kolonner, bulk-actions, page-size, count) i Browse/Edit er nu sticky øverst i content-området. Når man scroller ned i endpoint-tabellen bliver toolbar'en øverst så alle tools altid er tilgængelige uden scroll-op. Implementeret via `position: sticky; top: 0` på `.toolbar` + solid baggrund og `z-index: 20`. Negative margins lader toolbaren gå til kant-til-kant i card'et med en subtil bottom-border. Dark mode har matching baggrund. Lag: frontend (css).
 
 - `[done] 2026-04-21 — Sticky sidebar — menu og status altid synlig` — Sidebar (menu + backend-status + user-info + logout) står nu fast og er altid synlig uanset hvor man scroller i content-området til højre. Implementeret ved at give `.app` `height: 100vh` og `.content` `overflow-y: auto`, så kun content-området scroller mens sidebar har fast højde. Menu fortsat øverst, status/user/logout nederst. Lag: frontend (css).

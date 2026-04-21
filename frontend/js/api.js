@@ -73,10 +73,10 @@ export const api = {
   listGroups: () => request("/groups"),
   createEndpoint: (payload) =>
     request("/endpoints", { method: "POST", body: JSON.stringify(payload) }),
-  bulkCreateEndpoints: (items) =>
+  bulkCreateEndpoints: (items, overwrite = false) =>
     request("/endpoints/bulk", {
       method: "POST",
-      body: JSON.stringify({ items }),
+      body: JSON.stringify({ items, overwrite }),
     }),
   updateEndpoint: (id, payload) =>
     request(`/endpoints/${id}`, { method: "PUT", body: JSON.stringify(payload) }),

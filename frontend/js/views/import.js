@@ -34,6 +34,13 @@ AA:BB:CC:DD:EE:02,Profiled,printer,Camera,Facilities,,VLAN200"></textarea>
         <label for="fallback-group">Fallback endpoint group</label>
         <select id="fallback-group"></select>
       </div>
+      <div class="field">
+        <label>Ved eksisterende endpoint</label>
+        <div class="radio-row">
+          <label><input type="radio" name="on-conflict" value="skip" checked /> Skip (behold på ISE som det er)</label>
+          <label><input type="radio" name="on-conflict" value="overwrite" /> Overskriv (erstat beskrivelse, gruppe og custom attributes)</label>
+        </div>
+      </div>
       <div class="actions">
         <button id="preview-btn" type="button">Preview</button>
         <button id="import-btn" type="button" disabled>Import</button>
@@ -147,22 +154,31 @@ AA:BB:CC:DD:EE:02,Profiled,printer,Camera,Facilities,,VLAN200"></textarea>
         return item;
       });
 
-    result.innerHTML = `<div class="alert info">Importerer ${items.length} endpoints...</div>`;
+    const onConflict = container.querySelector("input[name='on-conflict']:checked")?.value || "skip";
+    const overwrite = onConflict === "overwrite";
+    const modeLabel = overwrite ? "overskriver eksisterende" : "skipper eksisterende";
+    result.innerHTML = `<div class="alert info">Importerer ${items.length} endpoints (${modeLabel})...</div>`;
     importBtn.disabled = true;
     try {
-      const res = await api.bulkCreateEndpoints(items);
+      const res = await api.bulkCreateEndpoints(items, overwrite);
       const skipped = res.skipped || [];
+      const overwritten = res.overwritten || [];
       const alertClass = res.failed.length ? "info" : "success";
       result.innerHTML = `
         <div class="alert ${alertClass}">
           Oprettet: <strong>${res.succeeded.length}</strong> —
-          skipped (findes allerede): <strong>${skipped.length}</strong> —
+          overskrevet: <strong>${overwritten.length}</strong> —
+          skipped (fandtes allerede): <strong>${skipped.length}</strong> —
           fejlet: <strong>${res.failed.length}</strong>
         </div>
         <div class="result-list">
           <div>
             <h4 class="succeeded">Succeeded (${res.succeeded.length})</h4>
             <ul>${res.succeeded.map((m) => `<li>${escapeHtml(m)}</li>`).join("") || "<li>(ingen)</li>"}</ul>
+          </div>
+          <div>
+            <h4 class="overwritten">Overwritten (${overwritten.length})</h4>
+            <ul>${overwritten.map((m) => `<li>${escapeHtml(m)}</li>`).join("") || "<li>(ingen)</li>"}</ul>
           </div>
           <div>
             <h4 class="skipped">Skipped (${skipped.length})</h4>

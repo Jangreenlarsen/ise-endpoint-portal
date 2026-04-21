@@ -5,6 +5,32 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.6.3 build 0055] — 2026-04-21 — feat: Import CSV — valg mellem skip og overskriv eksisterende endpoints
+
+I Import-view kan man nu vælge om eksisterende endpoints skal beholdes
+som de er (skip, default) eller overskrives med værdierne fra CSV-filen
+(description, gruppe, custom attributes).
+
+- **backend (`schemas/endpoint.py`)**: `BulkCreateRequest` fik feltet
+  `overwrite: bool = False`. `BulkResult` fik `overwritten: list[str]`
+  så klienten kan vise en separat sektion.
+- **backend (`services/endpoint_service.py`)**: `bulk_create` detekterer
+  nu både `409 Conflict` OG `500 "already exists"` (ERS i ISE 3.4 giver
+  500 for create på eksisterende MAC) som conflict. Ved conflict +
+  `overwrite=True` kaldes ny `_overwrite_existing()`-metode der finder
+  endpoint via `get_by_mac`, konverterer item til `EndpointUpdate` og
+  kalder `update_endpoint`. Ved `overwrite=False` (default) går conflict
+  som hidtil til `skipped`.
+- **frontend (`api.js`)**: `bulkCreateEndpoints(items, overwrite=false)`
+  — ny flag sendes med i body.
+- **frontend (`views/import.js`)**: Ny radio-gruppe "Ved eksisterende
+  endpoint" med Skip (default) og Overskriv. Result-panelet viser nu 4
+  kolonner: Succeeded / Overwritten / Skipped / Failed, med antal-badge
+  øverst.
+- **frontend (`css/styles.css`)**: `.result-list` bruger `auto-fit` grid
+  så 4 kolonner fitter pænt. Farver for `.overwritten` (blå) og
+  `.skipped` (grå). Ny `.radio-row` styling.
+
 ## [2.6.2 build 0054] — 2026-04-21 — fix: Sticky toolbar klæber helt til top
 
 Toolbaren i Browse/Edit havde et 2rem synligt gap over sig når man

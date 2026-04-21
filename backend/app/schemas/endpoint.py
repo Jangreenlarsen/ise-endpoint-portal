@@ -53,6 +53,7 @@ class CreateEndpointRequest(BaseModel):
 
 class BulkCreateRequest(BaseModel):
     items: list[CreateEndpointRequest]
+    overwrite: bool = False
 
 
 class BulkFailure(BaseModel):
@@ -63,6 +64,7 @@ class BulkFailure(BaseModel):
 class BulkResult(BaseModel):
     succeeded: list[str] = Field(default_factory=list)
     skipped: list[str] = Field(default_factory=list)
+    overwritten: list[str] = Field(default_factory=list)
     failed: list[BulkFailure] = Field(default_factory=list)
 
 

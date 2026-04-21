@@ -234,7 +234,7 @@ td input, td select {
 
 .result-list {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1rem;
   margin-top: 0.75rem;
 }
@@ -248,7 +248,22 @@ td input, td select {
   overflow-y: auto;
 }
 .result-list .succeeded { color: #065f46; }
+.result-list .overwritten { color: #1d4ed8; }
+.result-list .skipped { color: #6b7280; }
 .result-list .failed { color: #991b1b; }
+
+.radio-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.88rem;
+}
+.radio-row label {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  cursor: pointer;
+}
 
 .invalid { color: #b91c1c; font-weight: 600; }
 

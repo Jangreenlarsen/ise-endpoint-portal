@@ -289,30 +289,82 @@ class EndpointService:
         )
 
     async def bulk_create(self, req: BulkCreateRequest) -> BulkResult:
-        logger.info("bulk creating %d endpoints", len(req.items))
+        logger.info(
+            "bulk creating %d endpoints (overwrite=%s)",
+            len(req.items), req.overwrite,
+        )
         # Pre-ensure definitions if any item has custom attributes
         if any(item.custom_attributes for item in req.items):
             await self._ensure_ca_definitions()
         succeeded: list[str] = []
         skipped: list[str] = []
+        overwritten: list[str] = []
         failed: list[BulkFailure] = []
         for idx, item in enumerate(req.items):
             try:
                 await self.create_endpoint(item)
                 succeeded.append(item.mac)
             except IseApiError as exc:
-                if exc.status_code == 409:
-                    skipped.append(item.mac)
+                # ISE signalerer "findes allerede" som 409 ELLER som 500
+                # med "already exists" i fejlteksten (ERS-adfærd i 3.4).
+                is_conflict = exc.status_code == 409 or (
+                    exc.status_code == 500
+                    and "already exist" in str(exc).lower()
+                )
+                if is_conflict:
+                    if req.overwrite:
+                        try:
+                            await self._overwrite_existing(item)
+                            overwritten.append(item.mac)
+                        except IseApiError as update_exc:
+                            failed.append(
+                                BulkFailure(
+                                    mac=item.mac,
+                                    error=f"overwrite fejlede: {update_exc}",
+                                )
+                            )
+                        except ValueError as not_found_exc:
+                            failed.append(
+                                BulkFailure(mac=item.mac, error=str(not_found_exc))
+                            )
+                    else:
+                        skipped.append(item.mac)
                 else:
                     failed.append(BulkFailure(mac=item.mac, error=str(exc)))
             # Throttle: 150ms between ISE calls to stay within Cisco's 5-10 req/sec limit
             if idx < len(req.items) - 1:
                 await asyncio.sleep(0.15)
         logger.info(
-            "bulk done: %d ok, %d skipped, %d failed",
-            len(succeeded), len(skipped), len(failed),
+            "bulk done: %d ok, %d skipped, %d overwritten, %d failed",
+            len(succeeded), len(skipped), len(overwritten), len(failed),
         )
-        return BulkResult(succeeded=succeeded, skipped=skipped, failed=failed)
+        return BulkResult(
+            succeeded=succeeded,
+            skipped=skipped,
+            overwritten=overwritten,
+            failed=failed,
+        )
+
+    async def _overwrite_existing(self, item: CreateEndpointRequest) -> None:
+        """Locate an existing endpoint by MAC and overwrite its fields with
+        the values from the import item. Raises ValueError if not found."""
+        existing = await self.endpoints.get_by_mac(item.mac)
+        if not existing:
+            raise ValueError(
+                f"409 ved create, men endpoint med MAC {item.mac} blev ikke fundet"
+            )
+        endpoint_id = existing.get("id", "") or ""
+        if not endpoint_id:
+            raise ValueError(
+                f"eksisterende endpoint for {item.mac} har intet id"
+            )
+        update = EndpointUpdate(
+            description=item.description,
+            group_id=item.group_id or None,
+            static_group_assignment=bool(item.group_id),
+            custom_attributes=item.custom_attributes,
+        )
+        await self.update_endpoint(endpoint_id, update)
 
 
 def _extract_custom_attrs(endpoint: dict[str, Any]) -> dict[str, str]:
