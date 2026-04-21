@@ -80,7 +80,11 @@ class CustomAttributeService:
                 ep = await self.endpoints.get(r["id"])
                 ca = _extract_custom_attrs(ep)
                 if ca.get(attr_name) == value:
-                    new_attrs = {k: v for k, v in ca.items() if k != attr_name}
+                    # ISE ERS merges customAttributes on PUT — omitting the
+                    # key leaves the old value in place, so next sync re-adds
+                    # the "deleted" value. Explicitly send it as empty string.
+                    new_attrs = dict(ca)
+                    new_attrs[attr_name] = ""
                     await self.endpoints.set_custom_attributes(r["id"], new_attrs)
                     cleared += 1
                     logger.info(

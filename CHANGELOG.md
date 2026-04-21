@@ -5,6 +5,30 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.6.5 build 0058] — 2026-04-21 — fix: Slettet attribut-værdi kommer tilbage efter sync
+
+Når en værdi blev fjernet i Attribut-administrationen (f.eks. "hønsehus"
+fra Owner) rapporterede UI'en korrekt "ryddet 1 i ISE", men en
+efterfølgende "Sync fra ISE" gendannede værdien i den lokale liste.
+
+Rodårsag: ISE ERS **merger** `customAttributes`-blokken på PUT frem for
+at erstatte den. `set_custom_attributes` droppede den fjernede nøgle fra
+payloaden (og filtrerede desuden empty-string-værdier væk), så ISE
+beholdt den gamle værdi på endpointet. Ved næste scan af alle endpoints
+blev værdien derfor "opdaget" igen og mergede tilbage i det lokale
+value-store.
+
+- **backend (`ise/endpoints.py`)**: `set_custom_attributes` sender nu
+  payload uden at strippe empty strings, så empty-string-nøgler faktisk
+  når ISE og rydder feltet. Docstring rettet — den gamle påstand om at
+  "omitted keys are cleared" var direkte forkert.
+- **backend (`services/custom_attribute_service.py`)**: `remove_value`
+  sætter eksplicit `new_attrs[attr_name] = ""` i stedet for at droppe
+  nøglen, så ISE får "clear"-signalet.
+- **docs (`ISE_API_REFERENCE.md`)**: Tilføjet gotcha om merge-adfærden
+  og den eksplicitte empty-string-konvention for at rydde et felt.
+- **docs (`BUGS.md`)**: Bug-entry flyttet til Fixed.
+
 ## [2.6.4 build 0057] — 2026-04-21 — docs: Reklassificer Tilknytning-roundtrip som bug
 
 Entry flyttet fra `FEATURES.md` til `BUGS.md` (fixed-sektion) — det

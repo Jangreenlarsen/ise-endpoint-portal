@@ -401,7 +401,8 @@ GET /admin/API/mnt/CoA/Disconnect/{psnName}/{macAddress}/{disconnectType}
 
 1. **`staticGroupAssignment: true`** — uden dette holder gruppetildelingen ikke; ISE re-profiler endpointet.
 2. **Double-nested custom attributes** — `{ customAttributes: { customAttributes: { ... } } }` — mærkelig, men det er ERS.
-3. **ERS list returnerer kun id+name+link** — for alle andre felter (groupId, description, profileId, customAttributes) skal du GET individuelt.
+3. **ERS `customAttributes` PUT merger — den erstatter ikke blokken.** Hvis du udelader en nøgle i PUT-payloaden bevarer ISE den gamle værdi. For at *rydde* et custom attribute skal nøglen sendes eksplicit med tom streng (`"Owner": ""`). Empirisk verificeret i ISE 3.4: blev opdaget da "Sync fra ISE" gendannede en værdi der netop var blevet slettet via attribut-administrationen.
+4. **ERS list returnerer kun id+name+link** — for alle andre felter (groupId, description, profileId, customAttributes) skal du GET individuelt.
 4. **MAC format** — ISE accepterer `AA:BB:CC:DD:EE:FF` og `AA-BB-CC-DD-EE-FF`. Normér altid til kolon-separeret uppercase.
 5. **Port 9060 vs 443** — begge virker. Siden ISE 3.1 anbefales 443 via API gateway.
 6. **ERS SDK** — `https://<ise>:9060/ers/sdk` giver auto-genereret doku med schema-filer, Java/Python eksempler, og cURL use cases. Kun tilgængelig for ERS Admin.

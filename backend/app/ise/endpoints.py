@@ -139,15 +139,15 @@ class IseEndpointRepository:
     ) -> None:
         """Replace the full customAttributes block on an endpoint.
 
-        Unlike `update()`, this always sends the customAttributes field (even
-        when the resulting block is empty) so that omitted keys are cleared
-        on ISE. Keys with empty-string values are still dropped before send.
+        Empty-string values are preserved in the payload: ISE ERS merges
+        the customAttributes block on PUT, so to clear a specific attribute
+        the caller must include it with an empty string. Omitting the key
+        leaves the previous value in place.
         """
-        non_empty = {k: v for k, v in attrs.items() if v}
         payload = {
             "ERSEndPoint": {
                 "id": endpoint_id,
-                "customAttributes": {"customAttributes": non_empty},
+                "customAttributes": {"customAttributes": attrs},
             }
         }
         await self.client.put(f"{ERS_ENDPOINTS}/{endpoint_id}", json=payload)
