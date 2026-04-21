@@ -5,6 +5,19 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.6.2 build 0054] — 2026-04-21 — fix: Sticky toolbar klæber helt til top
+
+Toolbaren i Browse/Edit havde et 2rem synligt gap over sig når man
+scrollede, så endpoint-rækker kunne lige akkurat ses over toolbaren.
+
+- **frontend (`css/styles.css`)**: `.content` padding flyttet fra
+  `2rem 2.5rem` til `0 2.5rem` så scroll-viewportens top er flush med
+  toolbar-sticky-position. Top-bufferen flyttet til `.content h2
+  { margin-top: 1.25rem }` så man stadig ser lidt luft i toppen ved
+  scroll=0 men rækkerne ikke scroller op "under" toolbaren.
+- Toolbar fik `border-top-left-radius: 8px` + `border-top-right-radius:
+  8px` så den matcher card'ets runde hjørner når den klæber til toppen.
+
 ## [2.6.1 build 0053] — 2026-04-21 — feat: Sticky toolbar i Browse/Edit
 
 Toolbar'en øverst i Browse/Edit (Refresh / Export CSV / Kun portal / CoA
