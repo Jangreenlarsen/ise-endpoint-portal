@@ -152,6 +152,16 @@ export function parseCsv(text) {
   return { format: "simple", items: parseSimpleFormat(lines, 0) };
 }
 
+function parseBoolCell(raw) {
+  // Parse "true"/"false"/"1"/"0" (case-insensitive, with/without quotes).
+  // Returns null hvis cellen er tom/mangler så den kan bevare nuværende ISE-state.
+  const v = stripQuotes((raw == null ? "" : String(raw)).trim()).toLowerCase();
+  if (v === "") return null;
+  if (v === "true" || v === "1" || v === "yes") return true;
+  if (v === "false" || v === "0" || v === "no") return false;
+  return null;
+}
+
 function parseIseFormat(headerLower, headerRaw, lines) {
   // Build column index map
   const idx = {};
@@ -160,6 +170,7 @@ function parseIseFormat(headerLower, headerRaw, lines) {
   const macCol = idx["macaddress"];
   const groupCol = idx["identitygroup"];
   const descCol = idx["description"];
+  const staticCol = idx["staticgroupassignment"] ?? idx["staticassignment"];
   const customType = idx["custom.type"];
   const customAuthz = idx["custom.authzvlan"];
   const customAuthzAcl = idx["custom.authzacl"];
@@ -174,6 +185,7 @@ function parseIseFormat(headerLower, headerRaw, lines) {
     if (!mac) continue;
     const groupName = stripQuotes((fields[groupCol] || "").trim());
     const description = stripQuotes((fields[descCol] || "").trim());
+    const staticGroup = staticCol != null ? parseBoolCell(fields[staticCol]) : null;
     const endpointType = stripQuotes((fields[customType] != null ? fields[customType] : "").trim());
     const authzVlan = stripQuotes((fields[customAuthz] != null ? fields[customAuthz] : "").trim());
     const authzAcl = stripQuotes((fields[customAuthzAcl] != null ? fields[customAuthzAcl] : "").trim());
@@ -181,7 +193,8 @@ function parseIseFormat(headerLower, headerRaw, lines) {
     const owner = stripQuotes((fields[customOwner] != null ? fields[customOwner] : "").trim());
     const platformType = stripQuotes((fields[customPlatform] != null ? fields[customPlatform] : "").trim());
     items.push({
-      mac, groupName, description, endpointType, owner, lokation, authzVlan, authzAcl, platformType,
+      mac, groupName, description, staticGroup,
+      endpointType, owner, lokation, authzVlan, authzAcl, platformType,
       valid: MAC_RE.test(mac),
     });
   }
@@ -196,6 +209,7 @@ function parseSimpleFormat(lines, startIdx) {
       mac: parts[0] || "",
       groupName: parts[1] || "",
       description: parts[2] || "",
+      staticGroup: null,
       endpointType: parts[3] || "",
       owner: parts[4] || "",
       lokation: parts[5] || "",
@@ -238,8 +252,11 @@ export function toIseCsv(rows) {
     if ("MACAddress" in colIdx) cells[colIdx["MACAddress"]] = r.mac || r.name || "";
     if ("IdentityGroup" in colIdx) cells[colIdx["IdentityGroup"]] = r.group_name || "";
     if ("Description" in colIdx) cells[colIdx["Description"]] = r.description || "";
-    if ("StaticAssignment" in colIdx) cells[colIdx["StaticAssignment"]] = r.group_name ? "true" : "false";
-    if ("StaticGroupAssignment" in colIdx) cells[colIdx["StaticGroupAssignment"]] = r.group_name ? "true" : "false";
+    // Bevar den faktiske staticGroupAssignment-tilstand fra ISE — ikke afled
+    // den af om gruppen er sat. Det sikrer at re-import via denne CSV ikke
+    // ændrer Tilknytning (Statisk/Dynamisk) for endpointet.
+    if ("StaticAssignment" in colIdx) cells[colIdx["StaticAssignment"]] = r.static_group ? "true" : "false";
+    if ("StaticGroupAssignment" in colIdx) cells[colIdx["StaticGroupAssignment"]] = r.static_group ? "true" : "false";
     if ("CUSTOM.Type" in colIdx) cells[colIdx["CUSTOM.Type"]] = r.endpoint_type || "";
     if ("CUSTOM.AuthzVlan" in colIdx) cells[colIdx["CUSTOM.AuthzVlan"]] = r.authz_vlan || "";
     if ("CUSTOM.AuthzACL" in colIdx) cells[colIdx["CUSTOM.AuthzACL"]] = r.authz_acl || "";

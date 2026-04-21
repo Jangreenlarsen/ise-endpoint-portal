@@ -5,6 +5,31 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.6.4 build 0056] — 2026-04-21 — fix: Tilknytning bevares ved export + re-import
+
+StaticGroupAssignment (Tilknytning: Statisk/Dynamisk) kunne ændre sig
+uforventet når man eksporterede et endpoint og importerede det igen:
+export hardkodede "true" hvis der var en gruppe (uanset faktisk tilstand),
+og import læste slet ikke feltet.
+
+- **frontend (`csv.js`)**: `toIseCsv` skriver nu `r.static_group` i
+  stedet for `r.group_name ? true : false`. `parseIseFormat` læser
+  `StaticGroupAssignment` / `StaticAssignment` (ISE har historisk brugt
+  begge) og parser true/false/1/0/yes/no case-insensitive via ny helper
+  `parseBoolCell`. `parseSimpleFormat` returnerer `staticGroup: null`
+  (ikke specificeret).
+- **frontend (`views/import.js`)**: Sender `static_group_assignment` i
+  bulk-create payload når kolonnen var til stede i CSV. `null` =
+  backend bestemmer (bevar eksisterende ved overwrite, default true
+  ved create).
+- **backend (`schemas/endpoint.py`)**: `CreateEndpointRequest` fik
+  `static_group_assignment: bool | None = None`.
+- **backend (`services/endpoint_service.py`)**: `create_endpoint`
+  sender `static=req.static_group_assignment` videre til ISE (fallback
+  til True hvis None). `_overwrite_existing` bruger
+  `item.static_group_assignment` hvis sat, ellers `bool(item.group_id)`
+  — så roundtrip via CSV bevarer tilstanden.
+
 ## [2.6.3 build 0055] — 2026-04-21 — feat: Import CSV — valg mellem skip og overskriv eksisterende endpoints
 
 I Import-view kan man nu vælge om eksisterende endpoints skal beholdes

@@ -142,6 +142,12 @@ AA:BB:CC:DD:EE:02,Profiled,printer,Camera,Facilities,,VLAN200"></textarea>
             : fallbackId,
           description: p.description,
         };
+        // Bevar StaticGroupAssignment fra CSV hvis kolonnen var med.
+        // null/undefined = backend bestemmer → bevar nuværende ISE-state ved
+        // overwrite, default til static=true ved create.
+        if (p.staticGroup !== null && p.staticGroup !== undefined) {
+          item.static_group_assignment = p.staticGroup;
+        }
         const ca = {};
         let hasCA = false;
         if (p.endpointType) { ca.Type = p.endpointType; hasCA = true; }

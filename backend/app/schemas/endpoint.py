@@ -48,6 +48,7 @@ class CreateEndpointRequest(BaseModel):
     mac: str = Field(..., description="MAC address, e.g. AA:BB:CC:DD:EE:FF")
     group_id: str = ""
     description: str = ""
+    static_group_assignment: bool | None = None
     custom_attributes: CustomAttrs | None = None
 
 

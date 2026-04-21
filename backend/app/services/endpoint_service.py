@@ -214,15 +214,26 @@ class EndpointService:
 
     async def create_endpoint(self, req: CreateEndpointRequest) -> str:
         """Create an endpoint and return the new ISE endpoint id."""
-        logger.info("creating endpoint mac=%s group=%s", req.mac, req.group_id)
+        logger.info(
+            "creating endpoint mac=%s group=%s static=%s",
+            req.mac, req.group_id, req.static_group_assignment,
+        )
         ca = req.custom_attributes.model_dump() if req.custom_attributes else {}
         # Always stamp endpoints created by this portal
         ca[HIDDEN_ATTR] = "true"
         await self._ensure_ca_definitions()
+        # Bevar eksplicit staticGroupAssignment hvis angivet (fx fra CSV-import),
+        # ellers default til True som ISE forventer når groupId er sat.
+        static_flag = (
+            req.static_group_assignment
+            if req.static_group_assignment is not None
+            else True
+        )
         new_id = await self.endpoints.create(
             mac=req.mac,
             group_id=req.group_id,
             description=req.description,
+            static=static_flag,
             custom_attributes=ca,
         )
         logger.info("created endpoint mac=%s id=%s", req.mac, new_id)
@@ -358,10 +369,18 @@ class EndpointService:
             raise ValueError(
                 f"eksisterende endpoint for {item.mac} har intet id"
             )
+        # Bevar eksplicit staticGroupAssignment hvis angivet (fx fra CSV),
+        # ellers afled af om gruppen er sat — så vi ikke utilsigtet skifter
+        # Statisk↔Dynamisk ved re-import.
+        static_flag = (
+            item.static_group_assignment
+            if item.static_group_assignment is not None
+            else bool(item.group_id)
+        )
         update = EndpointUpdate(
             description=item.description,
             group_id=item.group_id or None,
-            static_group_assignment=bool(item.group_id),
+            static_group_assignment=static_flag,
             custom_attributes=item.custom_attributes,
         )
         await self.update_endpoint(endpoint_id, update)
