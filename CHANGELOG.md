@@ -5,6 +5,16 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.7.0 build 0060] — 2026-04-22 — docs: Planlæg PxGrid server-push (3.0.0)
+
+FEATURES.md har fået en `[planned 3.0.0]`-entry for server-push af
+session/auth-status via Cisco PxGrid 2.0 (WebSocket+STOMP). Erstatter
+den nuværende poll-baserede MnT-session-liste med ægte event-push.
+Planen har 4 faser (infrastructure, session subscription, frontend SSE,
+topic-udvidelse) og beskriver præ-krav (PxGrid enabled i ISE, approved
+client-konto, X.509 cert-onboarding), nye settings-felter og lag.
+Ingen kodeændringer endnu.
+
 ## [2.7.0 build 0059] — 2026-04-21 — feat: ACL-editor afviser ACE hvor src ≠ any
 
 ACL-editorens real-time syntaks-check fanger nu den ISE-specifikke regel
