@@ -5,6 +5,22 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.7.0 build 0061] — 2026-04-22 — docs: Planlæg endpoint-cache (2.8.0) + PxGrid-invalidering (3.0.0)
+
+FEATURES.md har fået to nye `[planned]`-entries:
+
+- **2.8.0 — Endpoint-cache + background sync**: 5-fase plan for stale-
+  while-revalidate cache der eliminerer N+1 ISE-kald ved filter/refresh.
+  In-memory dict + TTL + bg-sync-worker + delta-fetch via ERS
+  `lastUpdateTime`-filter + frontend row-diff-render. Non-breaking MINOR.
+- **3.0.0 — PxGrid event-invalidering af endpoint-cache**: Bygger videre
+  på 2.8.0's cache. `com.cisco.ise.endpoint`-topic invaliderer cache-
+  entries i real-time ved admin-ændringer i ISE-GUI. Kombineret med den
+  allerede planlagte session-push giver det en cache der er altid
+  aktuel uden periodisk poll; bg-sync-interval kan hæves eller slås fra.
+
+Ingen kodeændringer endnu — rene planer.
+
 ## [2.7.0 build 0060] — 2026-04-22 — docs: Planlæg PxGrid server-push (3.0.0)
 
 FEATURES.md har fået en `[planned 3.0.0]`-entry for server-push af
