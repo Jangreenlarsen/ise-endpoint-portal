@@ -5,6 +5,29 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.7.0 build 0062] — 2026-04-22 — docs: Planlæg 5 nye features (2.9.0 – 2.13.0)
+
+FEATURES.md har fået fem nye `[planned]`-entries:
+
+- **2.9.0 — Audit log + rollback**: append-only SQLite-historik over alle
+  writes med aktør/før/efter; én-klik rollback; ny Audit-side +
+  per-endpoint historik-knap. 4 faser.
+- **2.10.0 — Ny RBAC-rolle "registrar" + mobile onboarding**: fjerde
+  rolle (admin/editor/viewer/**registrar**) der kun må oprette endpoints.
+  Mobile-optimeret PWA-installerbar view med MAC-QR-scan og NFC-read.
+  5 faser.
+- **2.11.0 — MAC OUI → vendor lookup**: offline IEEE OUI-database i
+  backend, vendor-badge i Browse, auto-suggest Type/PlatformType i
+  Create. 5 faser.
+- **2.12.0 — Webhooks til ServiceNow CMDB**: HTTP POST på endpoint-events
+  med retry-kø, HMAC-signatur, SNOW-template + generisk JSON. 6 faser;
+  afhænger af 2.9.0 til delivery-log.
+- **2.13.0 — Saved filter views + endpoint-templates**: gem filter-
+  kombinationer per bruger + delte endpoint-skabeloner til Create +
+  registrar-flow. 5 faser.
+
+Ingen kodeændringer endnu — rene planer.
+
 ## [2.7.0 build 0061] — 2026-04-22 — docs: Planlæg endpoint-cache (2.8.0) + PxGrid-invalidering (3.0.0)
 
 FEATURES.md har fået to nye `[planned]`-entries:
