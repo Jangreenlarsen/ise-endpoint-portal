@@ -179,9 +179,11 @@ class OpenApiEndpointRepository:
         elif static_group_assignment is not None:
             body["staticGroupAssignment"] = static_group_assignment
         if custom_attributes:
-            non_empty = {k: v for k, v in custom_attributes.items() if v}
-            if non_empty:
-                body["customAttributes"] = non_empty
+            # Preserve empty-string values: ISE merges the customAttributes
+            # block on PUT (same behavior as ERS), so to clear an attribute we
+            # must include the key with an empty string. Filtering empty
+            # strings would silently keep the previous value.
+            body["customAttributes"] = custom_attributes
         await self.client.put(f"{OPENAPI_ENDPOINTS}/{endpoint_id}", json=body)
 
     async def delete(self, endpoint_id: str) -> None:

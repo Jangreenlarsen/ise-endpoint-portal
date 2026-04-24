@@ -5,6 +5,32 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.7.1 build 0064] — 2026-04-24 — fix: Browse/Edit kan rydde custom attributes til tom
+
+I Browse/Edit detail-modal kunne man ikke sætte nogen af custom attribute-
+dropdowns (Type, Owner, Lokation, AuthzVlan, AuthzACL, PlatformType) til "—"
+(tom): efter Gem vendte den forrige værdi tilbage, så endpoint endte i
+authz-policyens fallback/"bypass"-regel. Rodårsag: `update`-metoderne i
+[backend/app/ise/endpoints.py](backend/app/ise/endpoints.py) og
+[backend/app/ise/openapi_endpoints.py](backend/app/ise/openapi_endpoints.py)
+filtrerede empty-string-værdier fra `custom_attributes` før PUT-payloaden
+blev sendt. ISE merger `customAttributes`-blokken på PUT, så en droppet
+nøgle = forrige værdi beholdes (samme problem vi tidligere fik lukket i
+`set_custom_attributes` i build 0058).
+
+Fix: begge `update`-metoder sender nu hele `custom_attributes`-dict'et
+uden at strippe empty strings. Kommentar tilføjet der forklarer ISE-merge-
+adfærden for næste person der redigerer koden. `create`-stierne beholder
+filteret — tomme felter skal ikke skrives ved oprettelse.
+
+Berørte filer:
+- [backend/app/ise/endpoints.py](backend/app/ise/endpoints.py)
+- [backend/app/ise/openapi_endpoints.py](backend/app/ise/openapi_endpoints.py)
+- [BUGS.md](BUGS.md) — ny fixed-entry
+- [version.json](version.json) — 2.7.0-b0063 → 2.7.1-b0064 (patch-bump: bugfix)
+
+---
+
 ## [2.7.0 build 0063] — 2026-04-24 — docs: Opdatér README til nuværende system
 
 README.md afspejlede ikke længere det aktuelle system. Fuld opdatering:

@@ -125,9 +125,11 @@ class IseEndpointRepository:
         elif static_group_assignment is not None:
             fields["staticGroupAssignment"] = static_group_assignment
         if custom_attributes:
-            non_empty = {k: v for k, v in custom_attributes.items() if v}
-            if non_empty:
-                fields["customAttributes"] = {"customAttributes": non_empty}
+            # Preserve empty-string values: ISE ERS merges the customAttributes
+            # block on PUT, so to clear a specific attribute we must include the
+            # key with an empty string. Filtering empty strings would leave the
+            # previous ISE value in place.
+            fields["customAttributes"] = {"customAttributes": custom_attributes}
         payload = {"ERSEndPoint": fields}
         await self.client.put(f"{ERS_ENDPOINTS}/{endpoint_id}", json=payload)
 
