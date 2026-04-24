@@ -5,6 +5,34 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.7.0 build 0063] — 2026-04-24 — docs: Opdatér README til nuværende system
+
+README.md afspejlede ikke længere det aktuelle system. Fuld opdatering:
+
+- **Features**: tilføjet DACL editor, MnT session-status (grøn/rød), CoA
+  reauth/disconnect, PlatformType-mapping, brugerstyring+RBAC (admin/editor/
+  viewer), logs-side, dark mode, sticky toolbar, bulk-edit, skip/overskriv
+  ved CSV-import, Tilknytning-roundtrip i CSV.
+- **Custom attributes**: fra 4 til 6 managed attrs (tilføjet AuthzACL,
+  PlatformType).
+- **Sidebar-sider**: tilføjet ACL, Logs, Users — med rolle-kolonne.
+- **REST API**: fuld liste med rolle-kolonne; tilføjet /auth/*, /users/*,
+  /dacls/* (+validate), /endpoints/{id}/coa-*, /session-macs, /details/all,
+  /logs, PlatformType sync-mnt + mapping, /settings/test.
+- **Sikkerhed**: "ingen bruger-autentificering" erstattet med JWT + bcrypt
+  + first-run setup + RBAC.
+- **Forudsætninger**: ISE-krav opdateret fra 3.1+ til 3.4; tilføjet MnT
+  Admin rolle til CoA/session-status.
+- **Teknologier**: tilføjet PyJWT, bcrypt; MnT + CoA til ISE-integration.
+- **Projektstruktur**: opdateret med nye moduler (auth, users, dacls, logs,
+  coa, mnt_sessions, openapi_endpoints; login/logs/dacls views).
+
+Rene docs — ingen kodeændringer.
+
+**Filer**: `README.md`, `version.json`, `CHANGELOG.md`.
+
+---
+
 ## [2.7.0 build 0062] — 2026-04-22 — docs: Planlæg 5 nye features (2.9.0 – 2.13.0)
 
 FEATURES.md har fået fem nye `[planned]`-entries:
