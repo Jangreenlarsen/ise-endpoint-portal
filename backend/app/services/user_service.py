@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
 
+from app.core import audit_store
 from app.core import auth as auth_core
 from app.core.user_store import (
     find_by_id,
@@ -52,7 +53,7 @@ def get_user(user_id: str) -> User:
     return _to_public(record)
 
 
-def create_user(payload: UserCreate) -> User:
+async def create_user(payload: UserCreate) -> User:
     users = load_users()
     if find_by_username(users, payload.username):
         raise HTTPException(status.HTTP_409_CONFLICT, "Brugernavn findes allerede")
@@ -67,24 +68,43 @@ def create_user(payload: UserCreate) -> User:
     users.append(record)
     save_users(users)
     logger.info("user created: %s role=%s", payload.username, payload.role)
+    await audit_store.record(
+        "created",
+        "user",
+        record["id"],
+        after={"username": payload.username, "role": payload.role},
+    )
     return _to_public(record)
 
 
-def update_user(user_id: str, payload: UserUpdate) -> User:
+async def update_user(user_id: str, payload: UserUpdate) -> User:
     users = load_users()
     record = find_by_id(users, user_id)
     if not record:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Bruger ikke fundet")
+    before = {"username": record["username"], "role": record["role"]}
     if payload.role is not None:
         record["role"] = payload.role
-    if payload.password:
+    pw_changed = bool(payload.password)
+    if pw_changed:
         record["password_hash"] = auth_core.hash_password(payload.password)
     save_users(users)
     logger.info("user updated: %s", record["username"])
+    await audit_store.record(
+        "updated",
+        "user",
+        user_id,
+        before=before,
+        after={
+            "username": record["username"],
+            "role": record["role"],
+            "password_changed": pw_changed,
+        },
+    )
     return _to_public(record)
 
 
-def delete_user(user_id: str, requester_id: str) -> None:
+async def delete_user(user_id: str, requester_id: str) -> None:
     if user_id == requester_id:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Du kan ikke slette dig selv")
     users = load_users()
@@ -97,12 +117,19 @@ def delete_user(user_id: str, requester_id: str) -> None:
             status.HTTP_400_BAD_REQUEST,
             "Kan ikke slette sidste admin — opret en ny admin først",
         )
+    before = {"username": record["username"], "role": record["role"]}
     users = [u for u in users if u["id"] != user_id]
     save_users(users)
     logger.info("user deleted: %s", record["username"])
+    await audit_store.record(
+        "deleted",
+        "user",
+        user_id,
+        before=before,
+    )
 
 
-def change_password(user_id: str, payload: ChangePasswordRequest) -> None:
+async def change_password(user_id: str, payload: ChangePasswordRequest) -> None:
     users = load_users()
     record = find_by_id(users, user_id)
     if not record:
@@ -112,6 +139,12 @@ def change_password(user_id: str, payload: ChangePasswordRequest) -> None:
     record["password_hash"] = auth_core.hash_password(payload.new_password)
     save_users(users)
     logger.info("password changed for %s", record["username"])
+    await audit_store.record(
+        "password_changed",
+        "user",
+        user_id,
+        after={"username": record["username"]},
+    )
 
 
 def setup_required() -> bool:

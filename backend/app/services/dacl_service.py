@@ -15,7 +15,7 @@ import logging
 import re
 from typing import Iterable
 
-from app.core import config
+from app.core import audit_store, config
 from app.ise.client import IseClient
 from app.ise.dacls import IseDaclRepository, OpenApiDaclRepository
 from app.schemas.dacl import (
@@ -259,6 +259,18 @@ class DaclService:
             dacl=req.dacl,
             dacl_type=req.dacl_type,
         )
+        after_payload = {
+            "name": req.name,
+            "description": req.description,
+            "dacl": req.dacl,
+            "dacl_type": req.dacl_type,
+        }
+        await audit_store.record(
+            "created",
+            "dacl",
+            new_id or req.name,
+            after=after_payload,
+        )
         if not new_id:
             return DaclDetail(
                 id="", name=req.name, description=req.description,
@@ -269,12 +281,12 @@ class DaclService:
     async def update(self, dacl_id: str, req: UpdateDaclRequest) -> DaclDetail:
         if req.dacl_type is not None:
             _check_type(req.dacl_type)
+        before_detail = await self.get(dacl_id)
         # ISE kræver Name i PUT-body som mandatory field, også selv om navnet
         # ikke ændres. Hent eksisterende navn hvis frontend ikke sendte et.
         name = req.name
         if name is None:
-            current = await self.repo.get(dacl_id)
-            name = current.get("name", "") or None
+            name = before_detail.name or None
         await self.repo.update(
             dacl_id,
             name=name,
@@ -282,10 +294,30 @@ class DaclService:
             dacl=req.dacl,
             dacl_type=req.dacl_type,
         )
-        return await self.get(dacl_id)
+        after_detail = await self.get(dacl_id)
+        await audit_store.record(
+            "updated",
+            "dacl",
+            dacl_id,
+            before=before_detail.model_dump(),
+            after=after_detail.model_dump(),
+        )
+        return after_detail
 
     async def delete(self, dacl_id: str) -> None:
+        before = None
+        try:
+            before = (await self.get(dacl_id)).model_dump()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("audit: could not snapshot DACL %s before delete: %s",
+                           dacl_id, exc)
         await self.repo.delete(dacl_id)
+        await audit_store.record(
+            "deleted",
+            "dacl",
+            dacl_id,
+            before=before,
+        )
 
 
 def _to_detail(raw: dict) -> DaclDetail:

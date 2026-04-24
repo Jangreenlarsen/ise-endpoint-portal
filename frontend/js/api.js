@@ -164,6 +164,18 @@ export const api = {
     }),
   getCacheStats: () => request("/cache/stats"),
   invalidateCache: () => request("/cache/invalidate", { method: "POST" }),
+  listAuditEvents: (params = {}) => {
+    const parts = [];
+    for (const [k, v] of Object.entries(params)) {
+      if (v === undefined || v === null || v === "") continue;
+      parts.push(`${k}=${encodeURIComponent(v)}`);
+    }
+    const qs = parts.length ? `?${parts.join("&")}` : "";
+    return request(`/audit${qs}`);
+  },
+  getAuditEvent: (id) => request(`/audit/${encodeURIComponent(id)}`),
+  rollbackAuditEvent: (id) =>
+    request(`/audit/${encodeURIComponent(id)}/rollback`, { method: "POST" }),
   listUsers: () => request("/users"),
   createUser: (payload) =>
     request("/users", { method: "POST", body: JSON.stringify(payload) }),

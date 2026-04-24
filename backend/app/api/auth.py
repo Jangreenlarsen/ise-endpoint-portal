@@ -60,5 +60,5 @@ async def change_password(
     req: ChangePasswordRequest,
     user: User = Depends(get_current_user),
 ) -> dict[str, str]:
-    user_service.change_password(user.id, req)
+    await user_service.change_password(user.id, req)
     return {"status": "ok"}

@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from app.core import audit_store
 from app.core.custom_attr_store import (
     ALL_ATTRS,
     MANAGED_ATTRS,
@@ -51,11 +52,22 @@ class CustomAttributeService:
             ]
         )
 
-    def add_value(self, attr_name: str, req: AddValueRequest) -> AllCustomAttributes:
+    async def add_value(
+        self, attr_name: str, req: AddValueRequest
+    ) -> AllCustomAttributes:
         if attr_name not in MANAGED_ATTRS:
             raise ValueError(f"Unknown attribute: {attr_name}")
         logger.info("adding value '%s' to attribute '%s'", req.value, attr_name)
+        before = load_values().get(attr_name, [])
         add_value(attr_name, req.value)
+        after = load_values().get(attr_name, [])
+        await audit_store.record(
+            "value_added",
+            "custom_attribute",
+            attr_name,
+            before={"values": before},
+            after={"values": after, "added": req.value},
+        )
         return self.list_all()
 
     async def remove_value(self, attr_name: str, value: str) -> RemoveValueResult:
@@ -98,10 +110,24 @@ class CustomAttributeService:
                 break
             page += 1
 
+        before_vals = load_values().get(attr_name, [])
         remove_value(attr_name, value)
+        after_vals = load_values().get(attr_name, [])
         logger.info(
             "remove_value done: attr=%s value='%s' scanned=%d cleared=%d",
             attr_name, value, scanned, cleared,
+        )
+        await audit_store.record(
+            "value_removed",
+            "custom_attribute",
+            attr_name,
+            before={"values": before_vals},
+            after={
+                "values": after_vals,
+                "removed": value,
+                "scanned_endpoints": scanned,
+                "cleared_endpoints": cleared,
+            },
         )
         all_attrs = self.list_all()
         return RemoveValueResult(
@@ -284,12 +310,22 @@ class CustomAttributeService:
             ))
         return PlatformMapping(mappings=out)
 
-    def set_platform_mapping(self, payload: PlatformMapping) -> PlatformMapping:
+    async def set_platform_mapping(
+        self, payload: PlatformMapping
+    ) -> PlatformMapping:
         """Persist a new raw→local mapping. Validates raws against
         KNOWN_PLATFORM_TYPES and CoA against (reauth, disconnect)."""
+        before = load_platform_mapping()
         rows = [r.model_dump() for r in payload.mappings]
         saved = save_platform_mapping(rows)
         logger.info("PlatformType mapping saved: %d rows", len(saved))
+        await audit_store.record(
+            "mapping_updated",
+            "platform_mapping",
+            None,
+            before={"rows": before},
+            after={"rows": saved},
+        )
         return self.get_platform_mapping()
 
 

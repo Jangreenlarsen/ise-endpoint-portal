@@ -5,7 +5,7 @@ import time
 
 import httpx
 
-from app.core import config
+from app.core import audit_store, config
 from app.core.endpoint_cache import get_cache
 from app.core.settings_store import load_overrides, save_overrides
 from app.ise.client import close_ise_client
@@ -41,6 +41,7 @@ def get_backend_settings() -> BackendSettingsResponse:
 async def update_backend_settings(
     new: BackendSettingsUpdate,
 ) -> BackendSettingsResponse:
+    before = get_backend_settings().model_dump()
     overrides = load_overrides()
     overrides.update(
         {
@@ -72,6 +73,14 @@ async def update_backend_settings(
         new.ise_api_type,
         new.coa_psn_name or "(auto)",
         new.coa_reauth_type,
+    )
+    after = get_backend_settings().model_dump()
+    await audit_store.record(
+        "updated",
+        "backend_settings",
+        None,
+        before=before,
+        after={**after, "ise_password_changed": bool(new.ise_password)},
     )
     return get_backend_settings()
 

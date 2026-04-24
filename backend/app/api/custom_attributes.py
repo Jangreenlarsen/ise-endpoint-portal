@@ -29,7 +29,7 @@ async def add_value(
     service: CustomAttributeService = Depends(get_custom_attribute_service),
 ) -> AllCustomAttributes:
     try:
-        return service.add_value(attr_name, req)
+        return await service.add_value(attr_name, req)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -99,4 +99,4 @@ async def set_platform_mapping(
 ) -> PlatformMapping:
     """Replace the raw→local PlatformType mapping. Each row binds an ISE
     raw value to a local label and a CoA action (reauth | disconnect)."""
-    return service.set_platform_mapping(payload)
+    return await service.set_platform_mapping(payload)

@@ -5,6 +5,93 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.9.0 build 0068] — 2026-04-24 — feat: Audit log M4 (API + rollback + view + retention)
+
+Andet og afsluttende milestone af 2.9.0 — markerer feature `done`. Bygger
+oven på M3's audit-kerne med en komplet REST-API, frontend-viewer med
+diff-visning, en-klik rollback for Endpoints og DACL'er samt daglig
+retention-prune.
+
+**Phase 3 — Audit API** ([backend/app/api/audit.py](backend/app/api/audit.py),
+[backend/app/schemas/audit.py](backend/app/schemas/audit.py)):
+
+- `GET /api/audit` — pagineret event-liste med filtre (`actor`,
+  `resource_type`, `resource_id`, `from_ts`, `to_ts`, `limit`, `offset`).
+  Tilgængelig for alle roller (admin/editor/viewer) så viewers kan
+  auditere uden at kunne ændre.
+- `GET /api/audit/{id}` — enkelt-event med parsed before/after-JSON.
+- `POST /api/audit/{id}/rollback` — admin-only; understøtter rollback af
+  `created` (→ delete) og `updated` (→ restore before-state) for resource
+  types `endpoint` og `dacl`. Sletninger kan ikke rulles tilbage
+  automatisk (ISE kan ikke garantere re-create med samme interne id).
+  Rollback recorder selv et nyt `rolled_back`-event så historikken
+  forbliver append-only.
+
+**Phase 2 — Resterende services instrumenteret**:
+
+- [backend/app/services/custom_attribute_service.py](backend/app/services/custom_attribute_service.py):
+  `add_value` (→ async, audits `value_added`), `remove_value` (audits
+  `value_removed` med scanned/cleared counts), `set_platform_mapping`
+  (→ async, audits `mapping_updated` med hele row-diffen).
+- [backend/app/services/dacl_service.py](backend/app/services/dacl_service.py):
+  `create` (audits `created`), `update` (snapshotter before via `get()`,
+  audits `updated`), `delete` (snapshotter før sletning, audits
+  `deleted`).
+- [backend/app/services/user_service.py](backend/app/services/user_service.py):
+  `create_user`/`update_user`/`delete_user`/`change_password` → alle async
+  med audit-record; password-ændringer registreres som separat event så
+  man kan spore credential-udskiftninger uden at lagre hashen selv.
+- [backend/app/services/settings_service.py](backend/app/services/settings_service.py):
+  `update_backend_settings` snapshotter hele before-dict og audits
+  `updated` med `ise_password_changed`-bool (password værdi lagres aldrig).
+
+Konsekvensrettelser i API-laget for signatur-ændringerne:
+[backend/app/api/users.py](backend/app/api/users.py),
+[backend/app/api/auth.py](backend/app/api/auth.py),
+[backend/app/api/custom_attributes.py](backend/app/api/custom_attributes.py).
+
+**Retention-prune**
+([backend/app/services/audit_retention.py](backend/app/services/audit_retention.py)):
+baggrunds-worker kører `prune_older_than(audit_retention_days)` én gang
+ved startup og derefter hver 24. time. Interval=0 eller
+`audit_enabled=False` deaktiverer prune. Fejler graceful — prune-fejl
+logges men stopper ikke workeren.
+
+**Phase 4 — Frontend audit-view**
+([frontend/js/views/audit.js](frontend/js/views/audit.js),
+[frontend/index.html](frontend/index.html),
+[frontend/js/app.js](frontend/js/app.js),
+[frontend/js/api.js](frontend/js/api.js),
+[frontend/css/styles.css](frontend/css/styles.css)):
+
+- Ny "Audit"-post i sidebaren, tilgængelig for alle roller.
+- Tabel med tidspunkt, aktør, handling (farvekodet badge), ressource-
+  type/-id, summary og actions (Vis / Rollback).
+- Filter-toolbar: resource-type, actor, resource_id, antal.
+- Klik på "Vis" åbner en side-drawer med full before/after-JSON i
+  side-ved-side-paneler. Rollback-knappen bag confirm-dialog, kun
+  synlig for admins og for events hvor rollback er supporteret.
+- CSS med light+dark theme + farve-kodede action-badges
+  (created=grøn, updated=blå, deleted=rød, rolled_back=gul, osv.).
+
+**Bump**: build 0067 → 0068 (samme MINOR 2.9.0 — sidste milestone af
+in-progress-featuren).
+
+**Berørte filer**:
+- backend: `app/api/audit.py` (ny), `app/schemas/audit.py` (ny),
+  `app/services/audit_retention.py` (ny),
+  `app/services/custom_attribute_service.py`,
+  `app/services/dacl_service.py`,
+  `app/services/user_service.py`,
+  `app/services/settings_service.py`,
+  `app/api/users.py`, `app/api/auth.py`, `app/api/custom_attributes.py`,
+  `app/main.py`.
+- frontend: `js/views/audit.js` (ny), `js/app.js`, `js/api.js`,
+  `index.html`, `css/styles.css`.
+- top-level: `FEATURES.md`, `CHANGELOG.md`, `version.json`.
+
+---
+
 ## [2.9.0 build 0067] — 2026-04-24 — feat: Audit log M3 (store + endpoint_service instrumentering)
 
 Første milestone af 2.9.0 (`planned` → `in-progress`). Lægger audit-
