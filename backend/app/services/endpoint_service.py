@@ -6,6 +6,7 @@ from typing import Any
 
 from app.core import config
 from app.core.custom_attr_store import ALL_ATTRS, HIDDEN_ATTR
+from app.core.endpoint_cache import get_cache
 from app.core.exceptions import IseApiError
 from app.ise import coa as coa_module
 from app.ise import mnt_sessions
@@ -91,7 +92,17 @@ class EndpointService:
         ]
 
     async def get_endpoint(self, endpoint_id: str) -> EndpointDetail:
-        """Fetch full endpoint details from ISE including custom attributes."""
+        """Fetch full endpoint details from ISE including custom attributes.
+
+        Cache-backed: repeated reads within TTL return from memory; stale
+        entries can be served while a background refresh runs (see
+        ``endpoint_cache``).
+        """
+        return await get_cache().get_detail(
+            endpoint_id, lambda: self._fetch_endpoint_detail(endpoint_id)
+        )
+
+    async def _fetch_endpoint_detail(self, endpoint_id: str) -> EndpointDetail:
         raw = await self.endpoints.get(endpoint_id)
         ca = _extract_custom_attrs(raw)
         group_id = raw.get("groupId", "")
@@ -201,6 +212,9 @@ class EndpointService:
         return list(details)
 
     async def list_groups(self) -> list[EndpointGroupSummary]:
+        return await get_cache().get_groups(self._fetch_groups)
+
+    async def _fetch_groups(self) -> list[EndpointGroupSummary]:
         raw = await self.groups.list_all()
         logger.info("listed %d endpoint groups", len(raw))
         return [
@@ -237,11 +251,14 @@ class EndpointService:
             custom_attributes=ca,
         )
         logger.info("created endpoint mac=%s id=%s", req.mac, new_id)
+        # New endpoint → any cached list-snapshot (future M2) would be stale;
+        # detail cache is empty for this id so nothing to invalidate there.
         return new_id
 
     async def delete_endpoint(self, endpoint_id: str) -> None:
         logger.info("deleting endpoint id=%s", endpoint_id)
         await self.endpoints.delete(endpoint_id)
+        get_cache().invalidate_detail(endpoint_id)
 
     async def coa_reauth(self, endpoint_id: str) -> tuple[bool, str, str]:
         """Trigger CoA reauth for an endpoint. Returns (ok, mac, message)."""
@@ -298,6 +315,8 @@ class EndpointService:
             static_group_assignment=update.static_group_assignment,
             custom_attributes=ca,
         )
+        # Invalidate cache so the next read reflects the new ISE state.
+        get_cache().invalidate_detail(endpoint_id)
 
     async def bulk_create(self, req: BulkCreateRequest) -> BulkResult:
         logger.info(
@@ -349,6 +368,10 @@ class EndpointService:
             "bulk done: %d ok, %d skipped, %d overwritten, %d failed",
             len(succeeded), len(skipped), len(overwritten), len(failed),
         )
+        if succeeded or overwritten:
+            # Bulk ops can touch many ids — clear everything rather than
+            # tracking per-id invalidation.
+            get_cache().invalidate_all()
         return BulkResult(
             succeeded=succeeded,
             skipped=skipped,

@@ -12,6 +12,7 @@ from app.core.custom_attr_store import (
     remove_value,
     save_values,
 )
+from app.core.endpoint_cache import get_cache
 from app.core.platform_mapping_store import (
     load_mapping as load_platform_mapping,
     raw_to_local as platform_raw_to_local,
@@ -86,6 +87,7 @@ class CustomAttributeService:
                     new_attrs = dict(ca)
                     new_attrs[attr_name] = ""
                     await self.endpoints.set_custom_attributes(r["id"], new_attrs)
+                    get_cache().invalidate_detail(r["id"])
                     cleared += 1
                     logger.info(
                         "cleared %s='%s' on endpoint id=%s mac=%s",
@@ -238,6 +240,7 @@ class CustomAttributeService:
             new_attrs = dict(ca)
             new_attrs["PlatformType"] = local
             await self.endpoints.set_custom_attributes(ep_meta["id"], new_attrs)
+            get_cache().invalidate_detail(ep_meta["id"])
             updated += 1
             new_values.add(local)
             logger.info(

@@ -39,6 +39,24 @@ class Settings(BaseSettings):
         ),
     )
 
+    # Endpoint-cache (2.8.0) — serve repeat reads from memory and let
+    # write-paths invalidate synchronously so next read is fresh.
+    cache_enabled: bool = Field(
+        default=True,
+        description="Master switch for in-memory endpoint/group cache.",
+    )
+    cache_ttl_seconds: float = Field(
+        default=60.0,
+        description="Max age of a fresh cache entry before it needs revalidation.",
+    )
+    cache_stale_while_revalidate: bool = Field(
+        default=True,
+        description=(
+            "If true, serve stale entries (up to 10x TTL) and spawn a background "
+            "refresh instead of blocking the request."
+        ),
+    )
+
     backend_cors_origins: list[str] = Field(
         default_factory=lambda: ["http://localhost:5173", "http://localhost:8000"]
     )

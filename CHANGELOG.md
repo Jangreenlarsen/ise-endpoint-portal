@@ -5,6 +5,57 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.8.0 build 0065] — 2026-04-24 — feat: Endpoint-cache M1 (core + write-invalidering)
+
+Første milestone af 2.8.0 (`planned` → `in-progress`). Sigter mod N+1-ISE-
+kald-problemet i Browse/Edit: hver filter-toggle / Refresh / tab-skift
+udløste tidligere 1 list + N per-endpoint GET'er, hvilket ved 100+
+endpoints giver mærkbar latency.
+
+**Phase 1 — Cache-kerne** ([backend/app/core/endpoint_cache.py](backend/app/core/endpoint_cache.py)):
+in-memory singleton med per-id detail-cache + groups-cache, TTL +
+stale-while-revalidate (stale entries serveres op til 10× TTL mens en
+baggrunds-refresh genopfrisker), in-flight-dedup så samtidige SWR-
+refreshes for samme id ikke multiplicerer ISE-kald, stats
+(hits/misses/stale-serves/bg-refreshes/invalidations).
+
+**Phase 3 — Write-invalidering**:
+- [backend/app/services/endpoint_service.py](backend/app/services/endpoint_service.py):
+  `get_endpoint` læser nu via cache; `update_endpoint` og `delete_endpoint`
+  invaliderer detail-entry synkront efter vellykket ISE-kald; `bulk_create`
+  kører `invalidate_all` når noget lykkedes / blev overskrevet.
+- [backend/app/services/custom_attribute_service.py](backend/app/services/custom_attribute_service.py):
+  `remove_value`'s ISE-scan og `sync_platform_from_mnt` invaliderer per-id
+  efter `set_custom_attributes`, så Browse/Edit ikke viser forældet custom-
+  attr efter værdi-slet eller platform-sync.
+- [backend/app/services/settings_service.py](backend/app/services/settings_service.py):
+  `update_backend_settings` kører `invalidate_all` (URL/api-type kan være
+  skiftet, cachede entries er potentielt fra en anden ISE).
+
+**Settings** ([backend/app/core/config.py](backend/app/core/config.py)): nye felter
+`cache_enabled` (default true), `cache_ttl_seconds` (60), `cache_stale_while_revalidate`
+(true). Læses live pr. kald, så ændring i `config.json` slår igennem uden
+restart. UI-toggles kommer i M2.
+
+**Admin-API** ([backend/app/api/cache.py](backend/app/api/cache.py)):
+`GET /api/cache/stats` viser hit-rate + entry-count; `POST /api/cache/invalidate`
+manuel clear. Begge admin-only.
+
+Berørte filer:
+- [backend/app/core/endpoint_cache.py](backend/app/core/endpoint_cache.py) — ny
+- [backend/app/core/config.py](backend/app/core/config.py)
+- [backend/app/services/endpoint_service.py](backend/app/services/endpoint_service.py)
+- [backend/app/services/custom_attribute_service.py](backend/app/services/custom_attribute_service.py)
+- [backend/app/services/settings_service.py](backend/app/services/settings_service.py)
+- [backend/app/api/cache.py](backend/app/api/cache.py) — ny
+- [backend/app/main.py](backend/app/main.py) — registrér cache-router
+- [FEATURES.md](FEATURES.md) — 2.8.0 status `planned` → `in-progress`
+- [version.json](version.json) — 2.7.1-b0064 → 2.8.0-b0065 (minor-bump: ny feature)
+
+M2 (bg-sync worker + frontend SWR-headers) kommer som næste commit.
+
+---
+
 ## [2.7.1 build 0064] — 2026-04-24 — fix: Browse/Edit kan rydde custom attributes til tom
 
 I Browse/Edit detail-modal kunne man ikke sætte nogen af custom attribute-

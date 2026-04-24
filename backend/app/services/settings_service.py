@@ -6,6 +6,7 @@ import time
 import httpx
 
 from app.core import config
+from app.core.endpoint_cache import get_cache
 from app.core.settings_store import load_overrides, save_overrides
 from app.ise.client import close_ise_client
 from app.schemas.settings import (
@@ -54,6 +55,8 @@ async def update_backend_settings(
     save_overrides(overrides)
     config.refresh_settings()
     await close_ise_client()
+    # Drop cached ISE reads — URL or api-type may have changed under us.
+    get_cache().invalidate_all()
     logger.info(
         "backend settings updated: url=%s user=%s api=%s coa_psn=%s coa_type=%d",
         new.ise_base_url,

@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.api import auth as auth_api
+from app.api import cache as cache_api
 from app.api import custom_attributes as custom_attrs_api
 from app.api import dacls as dacls_api
 from app.api import endpoints, groups, health, logs, users
@@ -48,6 +49,7 @@ app.include_router(settings_api.router, prefix="/api")
 app.include_router(custom_attrs_api.router, prefix="/api")
 app.include_router(dacls_api.router, prefix="/api")
 app.include_router(logs.router, prefix="/api")
+app.include_router(cache_api.router, prefix="/api")
 
 frontend_dir = Path(__file__).resolve().parents[2] / "frontend"
 if frontend_dir.exists():
