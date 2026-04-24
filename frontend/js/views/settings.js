@@ -116,6 +116,55 @@ export async function renderSettings(container) {
 
     ${isAdmin ? `
     <div class="card">
+      <h3>Endpoint-cache</h3>
+      <p class="hint">
+        In-memory cache for endpoint- og gruppe-opslag. Reducerer ISE-kald ved filter-skift og refresh i Browse.
+        Cachen invalideres automatisk når du gemmer/sletter et endpoint.
+      </p>
+      <div id="cache-msg"></div>
+      <form id="cache-form">
+        <div class="field">
+          <label>
+            <input type="checkbox" id="cache_enabled" />
+            Cache aktiveret
+          </label>
+          <div class="hint">Slå fra for at debugge — alle reads rammer så ISE direkte.</div>
+        </div>
+        <div class="field">
+          <label for="cache_ttl_seconds">TTL (sekunder)</label>
+          <input type="number" id="cache_ttl_seconds" min="5" max="3600" step="5" />
+          <div class="hint">Hvor længe en entry regnes som fresh før den skal revalideres.</div>
+        </div>
+        <div class="field">
+          <label>
+            <input type="checkbox" id="cache_stale_while_revalidate" />
+            Stale-while-revalidate
+          </label>
+          <div class="hint">Server stale entries op til 10× TTL og hent ny data i baggrunden.</div>
+        </div>
+        <div class="field">
+          <label for="cache_sync_interval_seconds">Baggrund-sync interval (sekunder)</label>
+          <input type="number" id="cache_sync_interval_seconds" min="0" max="3600" step="30" />
+          <div class="hint">0 = slå baggrund-sync fra. Workeren refresh'er cachede entries der er ældre end halv TTL.</div>
+        </div>
+        <div class="actions">
+          <button type="submit">Gem cache-indstillinger</button>
+        </div>
+      </form>
+
+      <h4 style="margin-top:1.5rem;margin-bottom:0.5rem;">Live status</h4>
+      <div id="cache-stats" class="cache-stats">
+        <div class="hint">Henter…</div>
+      </div>
+      <div class="actions">
+        <button type="button" id="cache-refresh-btn" class="secondary">Opdatér stats</button>
+        <button type="button" id="cache-invalidate-btn" class="danger">Ryd cache</button>
+      </div>
+    </div>
+    ` : ""}
+
+    ${isAdmin ? `
+    <div class="card">
       <h3>Brugere &amp; roller</h3>
       <p class="hint">
         Administrer lokale brugerkonti og deres roller.
@@ -216,10 +265,128 @@ export async function renderSettings(container) {
 
   if (isAdmin) {
     await initBackendSection(container);
+    await initCacheSection(container);
     await initUsersSection(container, currentUser);
   }
   initPasswordSection(container);
   initCsvAndPrefsSections(container);
+}
+
+function fmtAge(seconds) {
+  if (seconds === null || seconds === undefined) return "—";
+  if (seconds < 60) return `${Math.round(seconds)}s`;
+  if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
+  return `${(seconds / 3600).toFixed(1)}h`;
+}
+
+function fmtTimestamp(unixSeconds) {
+  if (!unixSeconds) return "—";
+  const d = new Date(unixSeconds * 1000);
+  const age = (Date.now() / 1000) - unixSeconds;
+  return `${d.toLocaleTimeString()} (${fmtAge(age)} siden)`;
+}
+
+function renderCacheStats(container, stats) {
+  const hits = stats.hits || 0;
+  const misses = stats.misses || 0;
+  const staleServes = stats.stale_serves || 0;
+  const total = hits + misses + staleServes;
+  const hitRate = total > 0 ? ((hits + staleServes) / total * 100).toFixed(1) : "—";
+  container.innerHTML = `
+    <table class="cache-stats-table">
+      <tbody>
+        <tr><td>Status</td><td>${stats.enabled ? "Aktiveret" : "Deaktiveret"}</td></tr>
+        <tr><td>TTL</td><td>${stats.ttl_seconds}s</td></tr>
+        <tr><td>Stale-while-revalidate</td><td>${stats.stale_while_revalidate ? "TIL" : "FRA"}</td></tr>
+        <tr><td>Detail-entries</td><td>${stats.detail_entries}</td></tr>
+        <tr><td>Groups cached</td><td>${stats.groups_cached ? "Ja" : "Nej"}</td></tr>
+        <tr><td>Hit-rate</td><td>${hitRate === "—" ? "—" : hitRate + "%"} (hits: ${hits}, stale: ${staleServes}, misses: ${misses})</td></tr>
+        <tr><td>Baggrund-refreshes</td><td>${stats.bg_refreshes || 0} (${stats.inflight_detail_refreshes || 0} inflight)</td></tr>
+        <tr><td>Invalideringer</td><td>${stats.invalidations || 0}</td></tr>
+        <tr><td>Seneste sync</td><td>${fmtTimestamp(stats.last_sync_at)}</td></tr>
+        <tr><td>Sync-fejl</td><td>${stats.last_sync_error ? `<span style="color:#c0392b;">${esc(stats.last_sync_error)}</span>` : "(ingen)"}</td></tr>
+      </tbody>
+    </table>
+  `;
+}
+
+async function initCacheSection(container) {
+  const msg = container.querySelector("#cache-msg");
+  const statsBox = container.querySelector("#cache-stats");
+  const refreshBtn = container.querySelector("#cache-refresh-btn");
+  const invalidateBtn = container.querySelector("#cache-invalidate-btn");
+
+  async function loadSettings() {
+    try {
+      const s = await api.getBackendSettings();
+      container.querySelector("#cache_enabled").checked = !!s.cache_enabled;
+      container.querySelector("#cache_ttl_seconds").value = s.cache_ttl_seconds ?? 60;
+      container.querySelector("#cache_stale_while_revalidate").checked = !!s.cache_stale_while_revalidate;
+      container.querySelector("#cache_sync_interval_seconds").value = s.cache_sync_interval_seconds ?? 300;
+    } catch (err) {
+      msg.innerHTML = `<div class="alert error">Kunne ikke hente cache-indstillinger: ${esc(err.message)}</div>`;
+    }
+  }
+
+  async function loadStats() {
+    try {
+      const stats = await api.getCacheStats();
+      renderCacheStats(statsBox, stats);
+    } catch (err) {
+      statsBox.innerHTML = `<div class="alert error">Kunne ikke hente stats: ${esc(err.message)}</div>`;
+    }
+  }
+
+  await loadSettings();
+  await loadStats();
+
+  container.querySelector("#cache-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    msg.innerHTML = "";
+    // Preserve all other backend settings — cache updates go through the same endpoint.
+    let current;
+    try {
+      current = await api.getBackendSettings();
+    } catch (err) {
+      msg.innerHTML = `<div class="alert error">Kunne ikke læse aktuelle settings: ${esc(err.message)}</div>`;
+      return;
+    }
+    const payload = {
+      ise_base_url: current.ise_base_url,
+      ise_username: current.ise_username,
+      ise_password: "",  // keep existing
+      ise_verify_tls: current.ise_verify_tls,
+      ise_timeout: current.ise_timeout,
+      ise_api_type: current.ise_api_type,
+      coa_psn_name: current.coa_psn_name,
+      coa_reauth_type: current.coa_reauth_type,
+      coa_disconnect_type: current.coa_disconnect_type,
+      cache_enabled: container.querySelector("#cache_enabled").checked,
+      cache_ttl_seconds: parseFloat(container.querySelector("#cache_ttl_seconds").value),
+      cache_stale_while_revalidate: container.querySelector("#cache_stale_while_revalidate").checked,
+      cache_sync_interval_seconds: parseFloat(container.querySelector("#cache_sync_interval_seconds").value),
+    };
+    try {
+      await api.updateBackendSettings(payload);
+      msg.innerHTML = `<div class="alert success">Cache-indstillinger gemt. Ændringer træder i kraft straks.</div>`;
+      await loadStats();
+    } catch (err) {
+      msg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
+    }
+  });
+
+  refreshBtn.addEventListener("click", loadStats);
+
+  invalidateBtn.addEventListener("click", async () => {
+    if (!confirm("Ryd hele cachen? Næste opslag vil ramme ISE.")) return;
+    try {
+      await api.invalidateCache();
+      msg.innerHTML = `<div class="alert success">Cache ryddet.</div>`;
+      await loadStats();
+    } catch (err) {
+      msg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
+    }
+  });
 }
 
 async function initBackendSection(container) {

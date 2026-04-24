@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
 from app.api.deps import get_endpoint_service, require_any, require_editor
+from app.core.endpoint_cache import get_cache
 from app.core.exceptions import IseApiError
 from app.schemas.endpoint import (
     BulkCreateRequest,
@@ -82,12 +83,24 @@ async def list_session_macs(
 @router.get("/{endpoint_id}", response_model=EndpointDetail, dependencies=[Depends(require_any)])
 async def get_endpoint(
     endpoint_id: str,
+    response: Response,
     service: EndpointService = Depends(get_endpoint_service),
 ) -> EndpointDetail:
     try:
-        return await service.get_endpoint(endpoint_id)
+        detail = await service.get_endpoint(endpoint_id)
     except IseApiError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+    # Expose cache age so the frontend can distinguish fresh fetches from
+    # cache hits without a separate call.
+    cache = get_cache()
+    if cache.enabled():
+        age = cache.detail_age(endpoint_id)
+        response.headers["X-Cache-Enabled"] = "true"
+        if age is not None:
+            response.headers["X-Cache-Age-Seconds"] = f"{age:.2f}"
+    else:
+        response.headers["X-Cache-Enabled"] = "false"
+    return detail
 
 
 @router.post("", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_editor)])

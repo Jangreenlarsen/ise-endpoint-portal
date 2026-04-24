@@ -15,6 +15,7 @@ from app.core.config import settings
 from app.core.logging import setup_logging
 from app.core.version import FULL as APP_VERSION, VERSION
 from app.ise.client import close_ise_client
+from app.services.cache_sync import get_worker as get_cache_sync_worker
 
 
 @asynccontextmanager
@@ -22,8 +23,12 @@ async def lifespan(_: FastAPI):
     setup_logging()
     import logging
     logging.getLogger(__name__).info("HyperVision ISE Portal %s starting", APP_VERSION)
-    yield
-    await close_ise_client()
+    get_cache_sync_worker().start()
+    try:
+        yield
+    finally:
+        await get_cache_sync_worker().stop()
+        await close_ise_client()
 
 
 app = FastAPI(

@@ -18,6 +18,10 @@ class BackendSettingsUpdate(BaseModel):
     coa_psn_name: str = ""
     coa_reauth_type: int = 1
     coa_disconnect_type: int = 0
+    cache_enabled: bool = True
+    cache_ttl_seconds: float = 60.0
+    cache_stale_while_revalidate: bool = True
+    cache_sync_interval_seconds: float = 300.0
 
 
 class BackendSettingsResponse(BaseModel):
@@ -32,6 +36,10 @@ class BackendSettingsResponse(BaseModel):
     coa_psn_name: str = ""
     coa_reauth_type: int = 1
     coa_disconnect_type: int = 0
+    cache_enabled: bool = True
+    cache_ttl_seconds: float = 60.0
+    cache_stale_while_revalidate: bool = True
+    cache_sync_interval_seconds: float = 300.0
 
 
 class TestConnectionRequest(BaseModel):

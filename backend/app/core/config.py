@@ -56,6 +56,13 @@ class Settings(BaseSettings):
             "refresh instead of blocking the request."
         ),
     )
+    cache_sync_interval_seconds: float = Field(
+        default=300.0,
+        description=(
+            "How often the background worker revalidates cached detail entries. "
+            "Set to 0 to disable the worker; cache still serves from memory."
+        ),
+    )
 
     backend_cors_origins: list[str] = Field(
         default_factory=lambda: ["http://localhost:5173", "http://localhost:8000"]

@@ -189,6 +189,13 @@ class EndpointCache:
             self._groups = None
             self._stats["invalidations"] += 1
 
+    def detail_ids(self) -> list[str]:
+        return list(self._details.keys())
+
+    def detail_age(self, endpoint_id: str) -> float | None:
+        entry = self._details.get(endpoint_id)
+        return None if entry is None else self._age(entry)
+
     def mark_sync_ok(self) -> None:
         self._last_sync_at = self._now()
         self._last_sync_error = None

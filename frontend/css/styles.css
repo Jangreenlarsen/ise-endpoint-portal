@@ -731,6 +731,25 @@ body.auth-mode .content {
 .user-create-row input { flex: 1; min-width: 8rem; }
 .pw-form .field { max-width: 320px; }
 
+/* ── Cache stats ── */
+.cache-stats-table {
+  width: 100%;
+  max-width: 560px;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  margin: 0.25rem 0 0.75rem;
+}
+.cache-stats-table td {
+  padding: 0.25rem 0.5rem;
+  border-bottom: 1px solid #eef0f3;
+}
+.cache-stats-table td:first-child {
+  color: #6b7280;
+  width: 40%;
+}
+[data-theme="dark"] .cache-stats-table td { border-bottom-color: #2a2a4a; }
+[data-theme="dark"] .cache-stats-table td:first-child { color: #9ca3af; }
+
 /* ── Dark theme ── */
 [data-theme="dark"] body {
   background: #1a1a2e;

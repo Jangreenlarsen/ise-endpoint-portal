@@ -162,6 +162,8 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ current_password, new_password }),
     }),
+  getCacheStats: () => request("/cache/stats"),
+  invalidateCache: () => request("/cache/invalidate", { method: "POST" }),
   listUsers: () => request("/users"),
   createUser: (payload) =>
     request("/users", { method: "POST", body: JSON.stringify(payload) }),

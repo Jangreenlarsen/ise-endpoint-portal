@@ -5,6 +5,58 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.8.0 build 0066] — 2026-04-24 — feat: Endpoint-cache M2 (bg-sync worker + Settings UI)
+
+Færdiggør 2.8.0 (`in-progress` → `done`). Bygger oven på M1 med
+baggrund-sync + frontend-integration.
+
+**Phase 2 — Baggrund-sync worker** ([backend/app/services/cache_sync.py](backend/app/services/cache_sync.py)):
+`CacheSyncWorker` starter/stopper via FastAPI lifespan-hook i
+[backend/app/main.py](backend/app/main.py). Hver
+`cache_sync_interval_seconds` (default 300) itererer workeren de ids
+der allerede ligger i cachen og revaliderer de entries der er ældre
+end TTL/2 — bounded med semaphore(5) for at holde ISE's 5–10 req/sec
+loft. Failure pr. entry invaliderer bare den entry (næste read
+henter fresh); sync-fejl logges og vises via `last_sync_error` i stats.
+Interval <= 0 slår workeren fra; cachen serverer stadig normalt via TTL.
+
+**Phase 4 — Frontend**:
+- [frontend/js/api.js](frontend/js/api.js): nye `getCacheStats` og `invalidateCache`.
+- [backend/app/api/endpoints.py](backend/app/api/endpoints.py) `GET /api/endpoints/{id}`:
+  tilføjer `X-Cache-Enabled` + `X-Cache-Age-Seconds` response-headers så
+  klienter kan skelne cache-hits fra fresh fetches.
+- [frontend/js/views/settings.js](frontend/js/views/settings.js): ny
+  "Endpoint-cache"-card (admin-only) med toggles for `cache_enabled`,
+  `cache_ttl_seconds`, `cache_stale_while_revalidate`,
+  `cache_sync_interval_seconds` + live stats-tabel (hit-rate,
+  entries, bg-refreshes, seneste sync). "Opdatér stats" og "Ryd cache"
+  knapper.
+- [frontend/css/styles.css](frontend/css/styles.css): minimal styling for
+  stats-tabellen (light + dark theme).
+
+**Settings-schema** ([backend/app/schemas/settings.py](backend/app/schemas/settings.py)):
+`BackendSettingsUpdate` + `BackendSettingsResponse` udvidet med de fire
+cache-felter; [backend/app/services/settings_service.py](backend/app/services/settings_service.py)
+læser/skriver dem til `config.json` via den eksisterende override-sti.
+
+Berørte filer:
+- [backend/app/services/cache_sync.py](backend/app/services/cache_sync.py) — ny
+- [backend/app/main.py](backend/app/main.py)
+- [backend/app/core/config.py](backend/app/core/config.py) — `cache_sync_interval_seconds`
+- [backend/app/core/endpoint_cache.py](backend/app/core/endpoint_cache.py) — `detail_ids` + `detail_age` helpers
+- [backend/app/api/endpoints.py](backend/app/api/endpoints.py)
+- [backend/app/schemas/settings.py](backend/app/schemas/settings.py)
+- [backend/app/services/settings_service.py](backend/app/services/settings_service.py)
+- [frontend/js/api.js](frontend/js/api.js)
+- [frontend/js/views/settings.js](frontend/js/views/settings.js)
+- [frontend/css/styles.css](frontend/css/styles.css)
+- [FEATURES.md](FEATURES.md) — 2.8.0 `in-progress` → `done`
+- [version.json](version.json) — 2.8.0-b0065 → 2.8.0-b0066 (build-bump: feature-afslutning)
+
+Næste milestone: 2.9.0 M3 (audit-store + endpoint_service instrumentering).
+
+---
+
 ## [2.8.0 build 0065] — 2026-04-24 — feat: Endpoint-cache M1 (core + write-invalidering)
 
 Første milestone af 2.8.0 (`planned` → `in-progress`). Sigter mod N+1-ISE-

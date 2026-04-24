@@ -31,6 +31,10 @@ def get_backend_settings() -> BackendSettingsResponse:
         coa_psn_name=s.coa_psn_name,
         coa_reauth_type=s.coa_reauth_type,
         coa_disconnect_type=s.coa_disconnect_type,
+        cache_enabled=s.cache_enabled,
+        cache_ttl_seconds=s.cache_ttl_seconds,
+        cache_stale_while_revalidate=s.cache_stale_while_revalidate,
+        cache_sync_interval_seconds=s.cache_sync_interval_seconds,
     )
 
 
@@ -48,6 +52,10 @@ async def update_backend_settings(
             "coa_psn_name": new.coa_psn_name,
             "coa_reauth_type": new.coa_reauth_type,
             "coa_disconnect_type": new.coa_disconnect_type,
+            "cache_enabled": new.cache_enabled,
+            "cache_ttl_seconds": new.cache_ttl_seconds,
+            "cache_stale_while_revalidate": new.cache_stale_while_revalidate,
+            "cache_sync_interval_seconds": new.cache_sync_interval_seconds,
         }
     )
     if new.ise_password:
