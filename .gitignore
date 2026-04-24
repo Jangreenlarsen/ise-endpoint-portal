@@ -19,4 +19,8 @@ backend/custom_attr_values.json
 backend/platform_mapping.json
 backend/users.json
 backend/auth_secret.key
+backend/audit.db
+backend/audit.db-journal
+backend/audit.db-wal
+backend/audit.db-shm
 node_modules/

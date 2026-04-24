@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import Depends, HTTPException, Request, status
 
 from app.core import auth as auth_core
+from app.core.audit_store import ActorContext, actor_ctx
 from app.core.user_store import find_by_id, load_users
 from app.ise.client import get_ise_client
 from app.schemas.user import ROLE_VALUES, Role, User
@@ -56,6 +57,14 @@ def get_current_user(request: Request) -> User:
             status.HTTP_401_UNAUTHORIZED,
             "Rolle er ændret — login igen",
         )
+    client_host = request.client.host if request.client else ""
+    actor_ctx.set(
+        ActorContext(
+            actor_id=record["id"],
+            actor_username=record["username"],
+            source_ip=client_host,
+        )
+    )
     return User(
         id=record["id"],
         username=record["username"],

@@ -5,6 +5,61 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.9.0 build 0067] — 2026-04-24 — feat: Audit log M3 (store + endpoint_service instrumentering)
+
+Første milestone af 2.9.0 (`planned` → `in-progress`). Lægger audit-
+kernen ind og instrumenterer endpoint-writes så vi fremover kan
+svare på "hvem ændrede hvad hvornår". Ingen UI endnu — det kommer i M4.
+
+**Phase 1 — Audit-store** ([backend/app/core/audit_store.py](backend/app/core/audit_store.py)):
+SQLite append-only i `backend/audit.db` med skema
+`(id, ts, actor_id, actor_username, action, resource_type, resource_id,
+before_json, after_json, source_ip)` + indexer på ts, (resource_type,
+resource_id) og actor_username. `init_db()` kaldes fra FastAPI lifespan
+så filen oprettes idempotent ved startup. Sync-SQLite kaldt via
+`asyncio.to_thread` for at holde event-loop fri. Alle record-failures
+logges men propagerer aldrig — audit må aldrig bryde den primære
+operation. `query(...)` understøtter filter på actor / resource_type /
+resource_id / from_ts / to_ts med paginering.
+
+**Actor-kontekst**: `ActorContext` + `actor_ctx: ContextVar` sættes i
+[backend/app/api/deps.py](backend/app/api/deps.py) `get_current_user` med
+aktuel brugers id/username og request `client.host`. Service-laget kan
+optage events uden at tråde User gennem hver funktion.
+
+**Phase 2 — Endpoint_service instrumentering** ([backend/app/services/endpoint_service.py](backend/app/services/endpoint_service.py)):
+- `create_endpoint` → audit `created` med after-snapshot af MAC + gruppe +
+  custom attrs.
+- `update_endpoint` → snapshotter both før **og** efter ISE-kaldet (begge
+  læses via cache-laget så det er billigt) og recorder `updated` med
+  before/after diff som JSON.
+- `delete_endpoint` → snapshotter før-tilstand (mens endpointet stadig
+  eksisterer i ISE) og recorder `deleted` med before-payload så rollback
+  kan re-skabe endpointet i M4.
+
+Andre services (custom_attribute, dacl, user, settings) instrumenteres
+i M4 sammen med UI-viewet.
+
+**Settings** ([backend/app/core/config.py](backend/app/core/config.py)):
+nye `audit_enabled` (default true) og `audit_retention_days` (default 90).
+`audit_enabled=false` slår al recording fra — nyttig hvis SQLite-filen
+bliver problem i et konkret deployment.
+
+**.gitignore**: `backend/audit.db` + WAL/journal-sidecars (data må ikke
+committerens i repoet).
+
+Berørte filer:
+- [backend/app/core/audit_store.py](backend/app/core/audit_store.py) — ny
+- [backend/app/core/config.py](backend/app/core/config.py)
+- [backend/app/api/deps.py](backend/app/api/deps.py) — actor_ctx set i get_current_user
+- [backend/app/main.py](backend/app/main.py) — init_audit_db i lifespan
+- [backend/app/services/endpoint_service.py](backend/app/services/endpoint_service.py) — audit i create/update/delete
+- [.gitignore](.gitignore)
+- [FEATURES.md](FEATURES.md) — 2.9.0 status `planned` → `in-progress`
+- [version.json](version.json) — 2.8.0-b0066 → 2.9.0-b0067 (minor-bump: ny feature)
+
+---
+
 ## [2.8.0 build 0066] — 2026-04-24 — feat: Endpoint-cache M2 (bg-sync worker + Settings UI)
 
 Færdiggør 2.8.0 (`in-progress` → `done`). Bygger oven på M1 med

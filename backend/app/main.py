@@ -11,6 +11,7 @@ from app.api import custom_attributes as custom_attrs_api
 from app.api import dacls as dacls_api
 from app.api import endpoints, groups, health, logs, users
 from app.api import settings as settings_api
+from app.core.audit_store import init_db as init_audit_db
 from app.core.config import settings
 from app.core.logging import setup_logging
 from app.core.version import FULL as APP_VERSION, VERSION
@@ -23,6 +24,7 @@ async def lifespan(_: FastAPI):
     setup_logging()
     import logging
     logging.getLogger(__name__).info("HyperVision ISE Portal %s starting", APP_VERSION)
+    init_audit_db()
     get_cache_sync_worker().start()
     try:
         yield

@@ -4,7 +4,7 @@ import asyncio
 import logging
 from typing import Any
 
-from app.core import config
+from app.core import audit_store, config
 from app.core.custom_attr_store import ALL_ATTRS, HIDDEN_ATTR
 from app.core.endpoint_cache import get_cache
 from app.core.exceptions import IseApiError
@@ -251,14 +251,37 @@ class EndpointService:
             custom_attributes=ca,
         )
         logger.info("created endpoint mac=%s id=%s", req.mac, new_id)
-        # New endpoint → any cached list-snapshot (future M2) would be stale;
-        # detail cache is empty for this id so nothing to invalidate there.
+        await audit_store.record(
+            "created",
+            "endpoint",
+            new_id or req.mac,
+            after={
+                "mac": req.mac,
+                "group_id": req.group_id,
+                "description": req.description,
+                "static_group_assignment": static_flag,
+                "custom_attributes": ca,
+            },
+        )
         return new_id
 
     async def delete_endpoint(self, endpoint_id: str) -> None:
         logger.info("deleting endpoint id=%s", endpoint_id)
+        # Capture before-state for rollback while it still exists in ISE.
+        before: dict[str, Any] | None = None
+        try:
+            before = (await self.get_endpoint(endpoint_id)).model_dump()
+        except IseApiError as exc:
+            logger.warning("audit: could not snapshot endpoint %s before delete: %s",
+                           endpoint_id, exc)
         await self.endpoints.delete(endpoint_id)
         get_cache().invalidate_detail(endpoint_id)
+        await audit_store.record(
+            "deleted",
+            "endpoint",
+            endpoint_id,
+            before=before,
+        )
 
     async def coa_reauth(self, endpoint_id: str) -> tuple[bool, str, str]:
         """Trigger CoA reauth for an endpoint. Returns (ok, mac, message)."""
@@ -308,6 +331,15 @@ class EndpointService:
         # Always stamp endpoints edited through this portal
         ca[HIDDEN_ATTR] = "true"
         await self._ensure_ca_definitions()
+        # Snapshot before-state for audit + rollback.
+        before: dict[str, Any] | None = None
+        try:
+            before = (await self.get_endpoint(endpoint_id)).model_dump()
+        except IseApiError as exc:
+            logger.warning(
+                "audit: could not snapshot endpoint %s before update: %s",
+                endpoint_id, exc,
+            )
         await self.endpoints.update(
             endpoint_id,
             description=update.description,
@@ -317,6 +349,18 @@ class EndpointService:
         )
         # Invalidate cache so the next read reflects the new ISE state.
         get_cache().invalidate_detail(endpoint_id)
+        after: dict[str, Any] | None = None
+        try:
+            after = (await self.get_endpoint(endpoint_id)).model_dump()
+        except IseApiError:
+            pass
+        await audit_store.record(
+            "updated",
+            "endpoint",
+            endpoint_id,
+            before=before,
+            after=after,
+        )
 
     async def bulk_create(self, req: BulkCreateRequest) -> BulkResult:
         logger.info(

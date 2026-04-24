@@ -64,6 +64,16 @@ class Settings(BaseSettings):
         ),
     )
 
+    # Audit log (2.9.0) — append-only event trail with rollback support.
+    audit_enabled: bool = Field(
+        default=True,
+        description="Master switch for the audit log. Off = no events recorded.",
+    )
+    audit_retention_days: int = Field(
+        default=90,
+        description="How many days of audit events to keep. 0 = keep forever.",
+    )
+
     backend_cors_origins: list[str] = Field(
         default_factory=lambda: ["http://localhost:5173", "http://localhost:8000"]
     )
