@@ -1330,3 +1330,92 @@ body.auth-mode .content {
 [data-theme="dark"] .register-vendor-unknown { color: #6b7280; }
 [data-theme="dark"] .register-submit { background: #065f46; color: #d1fae5; }
 [data-theme="dark"] .register-submit:hover:not(:disabled) { background: #047857; }
+
+/* ── MAC-scan + PWA queue (2.10.0 M8) ── */
+.register-mac-row { display: flex; gap: 0.5rem; align-items: stretch; }
+.register-mac-row .register-input.mac { flex: 1; }
+.register-scan-btn {
+  flex: 0 0 auto;
+  width: 48px;
+  min-height: 48px;
+  font-size: 1.4rem;
+  background: #1e40af;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.register-scan-btn:hover { background: #1d4ed8; }
+.register-queue-banner {
+  background: #fef3c7;
+  color: #78350f;
+  border: 1px solid #fcd34d;
+  border-radius: 6px;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.9rem;
+  margin-bottom: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+[data-theme="dark"] .register-queue-banner {
+  background: #422006; color: #fde68a; border-color: #78350f;
+}
+
+.scan-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.scan-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.scan-hud {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.scan-frame {
+  width: min(70vw, 320px);
+  aspect-ratio: 1.6 / 1;
+  border: 3px solid #10b981;
+  border-radius: 12px;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
+}
+.scan-status {
+  margin-top: 1.2rem;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  pointer-events: none;
+}
+.scan-cancel {
+  position: absolute;
+  bottom: 2rem;
+  pointer-events: auto;
+  padding: 0.8rem 1.6rem;
+  background: #fff;
+  color: #111827;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}

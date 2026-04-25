@@ -1,0 +1,26 @@
+{
+  "name": "HyperVision ISE Portal — Registrering",
+  "short_name": "ISE Register",
+  "description": "Mobil endpoint-registrering til Cisco ISE 3.4",
+  "start_url": "/index.html#/register",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b3d91",
+  "theme_color": "#0b3d91",
+  "lang": "da",
+  "icons": [
+    {
+      "src": "/icons/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

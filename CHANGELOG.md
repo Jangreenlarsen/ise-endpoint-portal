@@ -5,6 +5,63 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.10.0 build 0071] — 2026-04-25 — feat: M8 — MAC-scan + PWA + offline-kø
+
+Andet og afsluttende milestone af 2.10.0 — markerer feature `done`.
+Bygger oven på M7's mobile registreringsview med tre PWA-byggesten:
+camera-baseret stregkode/QR-scan, web-app manifest så viewet kan
+installeres på home screen, og en localStorage-baseret offline-kø der
+fanger registreringer der laves uden netværk.
+
+**Camera scan** ([frontend/js/views/register.js](frontend/js/views/register.js)):
+Ny "📷"-knap ved siden af MAC-input (kun synlig hvis browseren har
+`BarcodeDetector` — Chrome, Edge, Safari TP). Klik åbner et fullscreen
+overlay med live-kamera (`facingMode: environment` så det er
+bagkameraet der bruges). Detektor scanner pr. animation-frame og leder
+efter QR/Code 128/Code 39/DataMatrix/PDF417. Første kode hvis indhold
+indeholder et MAC-shaped substring (12 hex-cifre med valgfrie
+separatorer) normaliseres til `AA:BB:CC:DD:EE:FF` og udfyldes i
+input-feltet (auto-trigger af vendor-lookup). Annuller-knap nederst
+stopper streamen og lukker overlay'et.
+
+**PWA manifest** ([frontend/manifest.json](frontend/manifest.json),
+[frontend/icons/icon-192.svg](frontend/icons/icon-192.svg),
+[frontend/icons/icon-512.svg](frontend/icons/icon-512.svg)):
+`start_url` peger direkte på `#/register` så field-tech åbner
+registreringsformularen ved app-launch uden at skulle navigere.
+`display: standalone`, `theme_color: #0b3d91` matcher portalens brand,
+SVG-ikoner i 192×192 og 512×512 (sidstnævnte med `purpose: any
+maskable` for Android adaptive icons).
+[frontend/index.html](frontend/index.html): tilføjet manifest-link,
+theme-color og apple-touch-icon.
+
+**Service worker** ([frontend/service-worker.js](frontend/service-worker.js)):
+Network-first cache for app-shell (`index.html`, CSS, ES-modules,
+manifest, ikoner) så registreringssiden kan boote helt uden netværk
+efter første besøg. API-kald (`/api/...`) og POST-requests
+forwardes urørt så Bearer-token-flowet og 401-handling bevares.
+[frontend/js/app.js](frontend/js/app.js): registrerer
+`/service-worker.js` ved boot (silent failure hvis ikke supporteret).
+
+**Offline-kø** ([frontend/js/offline_queue.js](frontend/js/offline_queue.js)):
+localStorage-backed kø (`hv_ise_register_queue`) der fanger payloads
+fra registreringsviewet når `api.createEndpoint()` fejler med en
+netværksfejl (intet `NNN:`-prefix på error-message). Items gemmes med
+`{id, payload, enqueued_at}`. `flushAll()` itererer og forsøger at
+sende; netværksfejl stopper løkken (resterende beholdes), mens
+HTTP-fejl markeres `failed` og fjernes så de ikke blokerer køen.
+Auto-flush ved `window.online`-event så field-tech ikke selv skal
+trykke når netværket kommer tilbage. Registreringsviewet viser et gult
+banner med "N venter…" + "Send nu"-knap når køen ikke er tom.
+
+**Lag**: frontend (ny `manifest.json`, `service-worker.js`,
+`offline_queue.js`, scanner-overlay i register view, PWA-headers i
+index.html, app.js SW-registrering, CSS for scan-overlay/queue-banner).
+
+Markerer 2.10.0 som done.
+
+---
+
 ## [2.10.0 build 0070] — 2026-04-25 — feat: M7 — registrar-rolle + mobile registreringsview
 
 Første milestone af 2.10.0. Tilføjer den fjerde RBAC-rolle `registrar`

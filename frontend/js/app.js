@@ -117,6 +117,14 @@ async function boot() {
   checkHealth();
   setInterval(checkHealth, 15000);
 
+  // PWA: registrér service worker så registreringssiden kan installeres og
+  // boote uden netværk. Fejler stille hvis SW ikke er understøttet.
+  if ("serviceWorker" in navigator) {
+    try {
+      await navigator.serviceWorker.register("/service-worker.js");
+    } catch { /* ignore */ }
+  }
+
   setUnauthorizedHandler(() => {
     auth.clear();
     showLogin();

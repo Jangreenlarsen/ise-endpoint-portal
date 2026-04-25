@@ -1,6 +1,13 @@
 import { api } from "../api.js";
+import { offlineQueue } from "../offline_queue.js";
 
 const MAC_RE = /^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$/;
+const MAC_EXTRACT_RE = /([0-9A-Fa-f]{2}[:\-]?){5}[0-9A-Fa-f]{2}/;
+const SCAN_FORMATS = ["qr_code", "code_128", "code_39", "data_matrix", "pdf417"];
+
+function hasBarcodeDetector() {
+  return typeof window !== "undefined" && "BarcodeDetector" in window;
+}
 
 function normaliseMac(raw) {
   const hex = (raw || "").replace(/[^0-9A-Fa-f]/g, "").toUpperCase();
@@ -26,17 +33,24 @@ const VENDOR_TO_PLATFORM = {
 
 export async function renderRegister(container) {
   container.classList.add("mobile-register-mode");
+  const scanSupported = hasBarcodeDetector();
   container.innerHTML = `
     <div class="register-shell">
       <div class="register-header">
         <h1>Registrér endpoint</h1>
         <div class="register-sub">Scan eller indtast MAC og indsend.</div>
       </div>
+      <div id="queue-banner" class="register-queue-banner" hidden></div>
       <div id="msg" class="register-msg"></div>
       <form id="register-form" class="register-form" autocomplete="off">
         <label for="r-mac" class="register-label">MAC-adresse</label>
-        <input type="text" id="r-mac" inputmode="text" autocapitalize="characters"
-               placeholder="AA:BB:CC:DD:EE:FF" required class="register-input mac" />
+        <div class="register-mac-row">
+          <input type="text" id="r-mac" inputmode="text" autocapitalize="characters"
+                 placeholder="AA:BB:CC:DD:EE:FF" required class="register-input mac" />
+          ${scanSupported
+            ? `<button type="button" id="r-scan-btn" class="register-scan-btn" title="Scan barcode/QR">📷</button>`
+            : ""}
+        </div>
         <div id="r-vendor" class="register-vendor" hidden></div>
 
         <label for="r-group" class="register-label">Identity Group</label>
@@ -151,6 +165,32 @@ export async function renderRegister(container) {
     msg.innerHTML = `<div class="alert success">${text}</div>`;
   }
 
+  // Offline-kø: vis banner hvis der ligger items, og auto-flush ved 'online'.
+  const queueBanner = container.querySelector("#queue-banner");
+  function refreshQueueBanner() {
+    const n = offlineQueue.size();
+    if (n === 0) {
+      queueBanner.hidden = true;
+      queueBanner.innerHTML = "";
+    } else {
+      queueBanner.hidden = false;
+      queueBanner.innerHTML = `
+        <span>${n} registrering(er) venter på at blive sendt…</span>
+        <button type="button" id="q-flush" class="register-tiny-btn">Send nu</button>
+      `;
+      const flushBtn = container.querySelector("#q-flush");
+      if (flushBtn) flushBtn.addEventListener("click", async () => {
+        flushBtn.disabled = true;
+        const res = await offlineQueue.flushAll();
+        if (res.sent > 0) showOk(`Sendte ${res.sent} fra kø.`);
+        if (res.failed > 0) showError(`${res.failed} fra kø blev afvist af serveren.`);
+        refreshQueueBanner();
+      });
+    }
+  }
+  refreshQueueBanner();
+  window.addEventListener("offlinequeue:flushed", refreshQueueBanner);
+
   container.querySelector("#register-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     msg.innerHTML = "";
@@ -182,12 +222,40 @@ export async function renderRegister(container) {
       vendorDiv.innerHTML = "";
       macInput.focus();
     } catch (err) {
-      showError(`Fejl: ${err.message}`);
+      // Netværksfejl (ingen "NNN:" prefix) → læg i offline-kø.
+      const isNetwork = err && typeof err.message === "string"
+        && !/^\d{3}:/.test(err.message);
+      if (isNetwork) {
+        offlineQueue.enqueue(payload);
+        showOk(`Offline — ${mac} er gemt i kø og sendes når der er forbindelse.`);
+        e.target.reset();
+        vendorDiv.hidden = true;
+        vendorDiv.innerHTML = "";
+        refreshQueueBanner();
+        macInput.focus();
+      } else {
+        showError(`Fejl: ${err.message}`);
+      }
     } finally {
       submitBtn.disabled = false;
       submitBtn.textContent = "Registrér";
     }
   });
+
+  // ── Camera scan via BarcodeDetector ──────────────────────────────
+  const scanBtn = container.querySelector("#r-scan-btn");
+  if (scanBtn) {
+    scanBtn.addEventListener("click", async () => {
+      try {
+        await openScanner((mac) => {
+          macInput.value = mac;
+          macInput.dispatchEvent(new Event("input", { bubbles: true }));
+        });
+      } catch (err) {
+        showError(`Kamera kunne ikke startes: ${err.message}`);
+      }
+    });
+  }
 
   // Cleanup mode-class hvis brugeren navigerer væk
   window.addEventListener("hashchange", function once() {
@@ -196,4 +264,76 @@ export async function renderRegister(container) {
   });
 
   macInput.focus();
+}
+
+/**
+ * Open a fullscreen camera scanner overlay. Uses the browser-native
+ * BarcodeDetector to read QR/Code128/Code39/DataMatrix/PDF417 from the
+ * live video feed; the first match that contains a MAC-shaped substring
+ * is normalised and passed to onMatch().
+ */
+async function openScanner(onMatch) {
+  if (!hasBarcodeDetector()) throw new Error("Browseren understøtter ikke scanning.");
+  const supported = await window.BarcodeDetector.getSupportedFormats?.() || [];
+  const formats = SCAN_FORMATS.filter((f) => supported.includes(f));
+  if (!formats.length) throw new Error("Ingen understøttede barcode-formater.");
+  const detector = new window.BarcodeDetector({ formats });
+
+  const overlay = document.createElement("div");
+  overlay.className = "scan-overlay";
+  overlay.innerHTML = `
+    <video class="scan-video" autoplay muted playsinline></video>
+    <div class="scan-hud">
+      <div class="scan-frame"></div>
+      <div class="scan-status">Peg kameraet på en MAC-stregkode eller QR…</div>
+      <button type="button" class="scan-cancel">Annuller</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  const video = overlay.querySelector(".scan-video");
+  const status = overlay.querySelector(".scan-status");
+
+  let stream;
+  let stopped = false;
+
+  function cleanup() {
+    stopped = true;
+    overlay.remove();
+    if (stream) stream.getTracks().forEach((t) => t.stop());
+  }
+
+  overlay.querySelector(".scan-cancel").addEventListener("click", cleanup);
+
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: "environment" } },
+      audio: false,
+    });
+  } catch (err) {
+    cleanup();
+    throw err;
+  }
+  video.srcObject = stream;
+
+  async function tick() {
+    if (stopped) return;
+    try {
+      const codes = await detector.detect(video);
+      for (const c of codes) {
+        const m = (c.rawValue || "").match(MAC_EXTRACT_RE);
+        if (m) {
+          const hex = m[0].replace(/[^0-9A-Fa-f]/g, "").toUpperCase();
+          if (hex.length === 12) {
+            const mac = hex.match(/.{2}/g).join(":");
+            status.textContent = `✓ ${mac}`;
+            cleanup();
+            onMatch(mac);
+            return;
+          }
+        }
+      }
+    } catch { /* keep looping */ }
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
 }
