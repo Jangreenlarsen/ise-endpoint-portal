@@ -8,6 +8,7 @@ from fastapi import HTTPException, status
 
 from app.core import audit_store
 from app.core import auth as auth_core
+from app.core import role_catalog
 from app.core.user_store import (
     find_by_id,
     find_by_username,
@@ -21,6 +22,7 @@ from app.schemas.user import (
     SetupRequest,
     User,
     UserCreate,
+    UserMe,
     UserUpdate,
 )
 
@@ -38,7 +40,80 @@ def _to_public(record: dict) -> User:
         role=record["role"],
         created_at=record["created_at"],
         last_login=record.get("last_login"),
+        assigned_endpoint_roles=list(record.get("assigned_endpoint_roles") or []),
     )
+
+
+def effective_roles(user: User) -> list[str]:
+    """Returnerer brugerens effektive endpoint-roller: tildelte + username.
+
+    Username-rollen er implicit og kan ikke fjernes — derfor er
+    enhver bruger garanteret mindst én rolle, så de altid kan se
+    deres egne endpoints.
+    """
+    return [*user.assigned_endpoint_roles, user.username]
+
+
+def get_user_me(user_id: str) -> UserMe:
+    """Som get_user, men inkluderer effective_roles. Til /api/auth/me."""
+    base = get_user(user_id)
+    return UserMe(
+        **base.model_dump(),
+        effective_roles=effective_roles(base),
+    )
+
+
+async def set_endpoint_roles(
+    user_id: str,
+    roles: list[str],
+    actor_username: str,
+) -> User:
+    """Admin tildeler N roller fra kataloget til en bruger.
+
+    Validerer at hver rolle eksisterer i kataloget. Dedupliker
+    case-insensitivt men bevarer admin-skrevet stavning.
+    """
+    users = load_users()
+    record = find_by_id(users, user_id)
+    if not record:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Bruger ikke fundet")
+
+    catalog = role_catalog.load_roles()
+    seen: set[str] = set()
+    resolved: list[str] = []
+    for raw in roles:
+        name = (raw or "").strip()
+        if not name:
+            continue
+        match = role_catalog.find_by_name(catalog, name)
+        if not match:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                f"Rollen '{name}' findes ikke i kataloget",
+            )
+        canonical = match["name"]
+        if canonical.lower() in seen:
+            continue
+        seen.add(canonical.lower())
+        resolved.append(canonical)
+
+    before = list(record.get("assigned_endpoint_roles") or [])
+    record["assigned_endpoint_roles"] = resolved
+    save_users(users)
+    logger.info(
+        "endpoint roles set: user=%s roles=%s by=%s",
+        record["username"],
+        resolved,
+        actor_username,
+    )
+    await audit_store.record(
+        "roles_assigned",
+        "user",
+        user_id,
+        before={"assigned_endpoint_roles": before},
+        after={"assigned_endpoint_roles": resolved},
+    )
+    return _to_public(record)
 
 
 def list_users() -> list[User]:

@@ -71,6 +71,7 @@ def get_current_user(request: Request) -> User:
         role=record["role"],
         created_at=record["created_at"],
         last_login=record.get("last_login"),
+        assigned_endpoint_roles=list(record.get("assigned_endpoint_roles") or []),
     )
 
 

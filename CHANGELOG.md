@@ -5,6 +5,50 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.12.0 build 0079] — 2026-04-25 — feat(M3): user assigned_endpoint_roles + assignment API
+
+Phase 3 af 7 i endpoint-level RBAC.
+
+Brugere kan nu få tildelt N roller fra det admin-styrede katalog
+(2.12.0/0078). Effektive roller = tildelte + brugerens implicit
+username — så hver bruger er garanteret mindst én rolle og altid kan
+se sine egne endpoints.
+
+Schema-ændringer ([backend/app/schemas/user.py](backend/app/schemas/user.py)):
+- `User.assigned_endpoint_roles: list[str]` (default `[]`) — tildelte
+  rolle-navne fra kataloget.
+- Ny `UserMe(User)` med `effective_roles: list[str]` — returneres af
+  `GET /api/auth/me`. Frontend bruger dette felt til at filtrere
+  endpoint-visning.
+- Ny `UserEndpointRoles` body-skema (`{ "roles": [...] }`) til PUT.
+
+Service-ændringer ([backend/app/services/user_service.py](backend/app/services/user_service.py)):
+- `_to_public` migrerer ved load: gamle users.json-records uden
+  feltet får automatisk `[]` og fungerer uændret indtil admin
+  tildeler roller.
+- Ny `effective_roles(user)` returnerer `assigned + [username]`.
+- Ny `get_user_me(id)` til `/me`-endpointet.
+- Ny `set_endpoint_roles(user_id, roles, actor_username)`:
+  - validerer at hver rolle findes i kataloget (case-insensitivt
+    opslag, kanonisk stavning bevares fra kataloget).
+  - dedupliker case-insensitivt.
+  - audit-event `roles_assigned` med before/after.
+
+API-ændringer:
+- [backend/app/api/users.py](backend/app/api/users.py): nyt
+  `PUT /api/users/{user_id}/endpoint-roles` (admin only) →
+  returnerer opdateret User.
+- [backend/app/api/auth.py](backend/app/api/auth.py): `GET /me`
+  returnerer nu `UserMe` med `effective_roles`.
+- [backend/app/api/deps.py](backend/app/api/deps.py):
+  `get_current_user` udfylder `assigned_endpoint_roles` på `User`,
+  så downstream-handlers kan bruge feltet uden ekstra DB-opslag.
+
+Næste fase: Phase 4 — read-path filter på endpoint list/get så
+ikke-admin kun ser endpoints tagged med en effektiv rolle.
+
+---
+
 ## [2.12.0 build 0078] — 2026-04-25 — feat(M2): rolle-katalog backend + CRUD-API
 
 Phase 2 af 7 i endpoint-level RBAC.

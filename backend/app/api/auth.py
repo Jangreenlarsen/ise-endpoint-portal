@@ -11,6 +11,7 @@ from app.schemas.user import (
     LoginResponse,
     SetupRequest,
     User,
+    UserMe,
 )
 from app.services import user_service
 
@@ -50,9 +51,9 @@ async def setup(req: SetupRequest) -> LoginResponse:
     return user_service.setup_first_admin(req)
 
 
-@router.get("/me", response_model=User)
-async def me(user: User = Depends(get_current_user)) -> User:
-    return user
+@router.get("/me", response_model=UserMe)
+async def me(user: User = Depends(get_current_user)) -> UserMe:
+    return user_service.get_user_me(user.id)
 
 
 @router.post("/change-password")
