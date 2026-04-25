@@ -15,11 +15,20 @@ STORE_FILE = Path(__file__).resolve().parents[2] / "custom_attr_values.json"
 # Custom attributes this portal manages (user-editable).
 MANAGED_ATTRS = ["Type", "Owner", "Lokation", "AuthzVlan", "AuthzACL", "PlatformType"]
 
-# Hidden attribute — set automatically, not shown in UI dropdowns.
+# Portal-tag — set automatically to "true" på alle portal-redigerede endpoints.
 HIDDEN_ATTR = "HypervisionISEPortal"
 
+# Endpoint-rolle-tag (2.12.0) — comma-separated liste af rolle-navne fra
+# rolle-kataloget + brugerens implicit username-rolle. Synlighed for
+# non-admin filtreres på denne attribut. Sat dynamisk af RBAC-logikken,
+# ikke et fast "true" som HIDDEN_ATTR.
+ROLES_ATTR = "HypervisionRoles"
+
+# Alle skjulte (ikke-UI-dropdown) CAs der skal have ISE-definition.
+HIDDEN_ATTRS = [HIDDEN_ATTR, ROLES_ATTR]
+
 # All attributes that need ISE definitions (managed + hidden).
-ALL_ATTRS = MANAGED_ATTRS + [HIDDEN_ATTR]
+ALL_ATTRS = MANAGED_ATTRS + HIDDEN_ATTRS
 
 
 def _default() -> dict[str, list[str]]:

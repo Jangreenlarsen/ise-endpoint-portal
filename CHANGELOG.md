@@ -5,6 +5,33 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.12.0 build 0077] — 2026-04-25 — feat(M1): bootstrap HypervisionRoles ISE custom attribute
+
+MINOR-bump (versionen tages i brug). Phase 1 af 7 i 2.12.0
+(endpoint-level RBAC).
+
+Ny ISE custom attribute `HypervisionRoles` registreres som hidden
+attribute i [backend/app/core/custom_attr_store.py](backend/app/core/custom_attr_store.py)
+og sættes automatisk i ISE ved næste `_ensure_ca_definitions()`-kald
+(samme bootstrap-mekanik som `HypervisionISEPortal` har brugt siden
+build 0011). CAs er en string der kommer til at indeholde en
+comma-separated liste af rolle-navne i senere faser.
+
+Ændringer:
+- `HIDDEN_ATTR = "HypervisionISEPortal"` (uændret, dokumenteret som
+  portal-tag).
+- Ny konstant `ROLES_ATTR = "HypervisionRoles"`.
+- Ny liste `HIDDEN_ATTRS = [HIDDEN_ATTR, ROLES_ATTR]`.
+- `ALL_ATTRS = MANAGED_ATTRS + HIDDEN_ATTRS` (var
+  `MANAGED_ATTRS + [HIDDEN_ATTR]`).
+
+Eksisterende kode der importerer `HIDDEN_ATTR` (auto-tag-stien i
+[backend/app/services/endpoint_service.py](backend/app/services/endpoint_service.py))
+er uændret. Næste lifespan-startup af backend opretter `HypervisionRoles`
+i ISE; eksisterende endpoints får ingen ændring til deres CA-værdier.
+
+---
+
 ## [2.10.4 build 0076] — 2026-04-25 — docs: planlæg endpoint-level RBAC til 2.12.0
 
 Ren dokumentations-commit. Ingen kode-ændring. Føjer
