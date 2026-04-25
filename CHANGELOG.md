@@ -5,6 +5,30 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.10.4 build 0076] — 2026-04-25 — docs: planlæg endpoint-level RBAC til 2.12.0
+
+Ren dokumentations-commit. Ingen kode-ændring. Føjer
+[FEATURES.md](FEATURES.md) entry for det nye endpoint-level RBAC-system
+(per-bruger endpoint-roller) og skubber de eksisterende planlagte
+features for at gøre plads til 2.12.0:
+
+- 2.12.0 (var Webhooks) → 2.13.0
+- 2.13.0 (var Saved Views) → 2.14.0
+- **NY 2.12.0**: Endpoint-level RBAC
+
+Plan i 7 faser: ISE CA-bootstrap, rolle-katalog, user-tildeling,
+read-filter, write-binding, frontend (Settings/Browse/Register/Mine
+endpoints), audit. Designvalg lukket med brugeren: editor/viewer
+uden tildelte roller ser kun deres eget username-tag; eksisterende
+utaggede endpoints bliver usynlige for non-admin (admin får
+inline-edit-kolonne i Browse/Edit); registrar ser både eget tag og
+assigned roles + får en "Mine endpoints"-knap nederst på
+registreringssiden.
+
+Implementering starter i build 0077.
+
+---
+
 ## [2.10.4 build 0075] — 2026-04-25 — refactor: drop "Opret endpoint" — én samlet registreringsside
 
 PATCH-bump. Konsolidering af to næsten-identiske create-flows til én.
