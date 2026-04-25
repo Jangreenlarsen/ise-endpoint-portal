@@ -15,7 +15,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.deps import get_current_user, require_admin
-from app.core import role_catalog
+from app.core import audit_store, role_catalog
 from app.schemas.endpoint_role import (
     EndpointRole,
     EndpointRoleCreate,
@@ -53,6 +53,16 @@ async def create_role(
     except ValueError as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
     logger.info("endpoint role created: %s by %s", payload.name, user.username)
+    await audit_store.record(
+        "created",
+        "endpoint_role",
+        record["name"],
+        after={
+            "name": record["name"],
+            "description": record.get("description", ""),
+            "created_by": record.get("created_by", ""),
+        },
+    )
     return EndpointRole(**record)
 
 
@@ -66,3 +76,13 @@ async def delete_role(name: str, user: User = Depends(get_current_user)) -> None
     if not deleted:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"Rolle '{name}' findes ikke")
     logger.info("endpoint role deleted: %s by %s", name, user.username)
+    await audit_store.record(
+        "deleted",
+        "endpoint_role",
+        deleted["name"],
+        before={
+            "name": deleted["name"],
+            "description": deleted.get("description", ""),
+            "created_by": deleted.get("created_by", ""),
+        },
+    )

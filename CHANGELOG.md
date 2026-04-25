@@ -5,6 +5,45 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.12.0 build 0085] — 2026-04-25 — feat(M7): Audit-logging af endpoint-rolle CRUD + 2.12.0 done
+
+Phase 7 af 7 — sidste fase i endpoint-level RBAC. Hermed er
+[FEATURES.md](FEATURES.md)-feature 2.12.0 markeret som `done`.
+
+**Audit-logging**:
+- `POST /api/endpoint-roles` (opret rolle) logger nu et
+  `created`/`endpoint_role`-event med name + description +
+  created_by i `after`-feltet.
+- `DELETE /api/endpoint-roles/{name}` logger et
+  `deleted`/`endpoint_role`-event med samme felter i `before`.
+- Role-assignment (`PUT /api/users/{id}/endpoint-roles`)
+  havde allerede audit fra Phase 3 (`roles_assigned`/`user`).
+- Endpoint create/update bruger den eksisterende endpoint-
+  audit der nu også fanger `HypervisionRoles`-CA-ændringer
+  via custom_attributes-diff'en.
+
+**Status efter 2.12.0**:
+- ISE CA `HypervisionRoles` bootstrappes automatisk.
+- Admin definerer rolle-katalog (Settings).
+- Admin tildeler N roller pr. bruger (Settings).
+- Read-path filtrerer endpoints på effektive roller for
+  non-admin (assigned + [username]).
+- Write-path auto-tagger med username hvis ingen roller
+  vælges eksplicit (registrar/viewer-flow).
+- Browse/Edit har editerbar "Roller"-kolonne (admin/editor).
+- Register har rolle-picker (admin/editor) + "Mine
+  endpoints"-knap (alle).
+- Alt CRUD af roller og assignments er auditeret.
+
+Filer:
+- [version.json](version.json): 0084 → 0085
+- [backend/app/api/endpoint_roles.py](backend/app/api/endpoint_roles.py):
+  audit_store-import + record-kald i create_role og
+  delete_role.
+- [FEATURES.md](FEATURES.md): 2.12.0 markeret som `done`.
+
+---
+
 ## [2.12.0 build 0084] — 2026-04-25 — feat(M6c): Register-view rolle-picker + Mine endpoints
 
 Phase 6c af 7 i endpoint-level RBAC.
