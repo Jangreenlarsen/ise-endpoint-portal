@@ -5,6 +5,54 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.12.0 build 0083] — 2026-04-25 — feat(M6b): Browse/Edit Roller-kolonne med inline multi-select
+
+Phase 6b af 7 i endpoint-level RBAC.
+
+Ny "Roller"-kolonne i Browse/Edit-tabellen og detail-modal med
+inline multi-select via rolle-chips:
+
+**Tabel-kolonne**:
+- Ny kolonne "Roller" sidst i `COLUMNS`-arrayet — auto-håndteret
+  af eksisterende kolonne-visibility-menu og col-filter-rækken.
+- Renderes med checkbox-chips: katalog-roller er toggleable for
+  admin/editor (markerer rækken dirty ved klik), disabled for
+  viewer/registrar.
+- Eksterne roller (fx username auto-tags fra registrar) vises som
+  read-only `.role-chip-extern`-chips i lila for at skille dem
+  fra katalog-roller — bevares automatisk ved save.
+
+**Detail-modal**:
+- Nyt felt "Roller" med samme chip-pattern.
+- `dataset.original` gemmer endpointets oprindelige roller-array
+  så eksterne roller (uden for katalog) bevares ved save.
+
+**Bulk-edit-modal**:
+- Ny "Roller"-checkbox med chips-wrapper (`.be-roles-wrap`).
+- Ny `.disabled-overlay`-klasse (pointer-events: none + opacity)
+  bruges for div-felter da `disabled` ikke virker på div'en.
+- Apply replacer kun katalog-roller på de valgte rækker;
+  eksterne roller bevares pr. række.
+
+**Save-payload**:
+- `buildSavePayload` og detail-modalens save inkluderer nu
+  `HypervisionRoles` CSV i custom_attributes — sammensat af
+  eksterne roller (bevaret) + checked katalog-chips.
+
+Frontend-ændringer:
+- [frontend/js/views/browse.js](frontend/js/views/browse.js):
+  ~80 nye linjer (rolesChipsHtml-helper, load() henter katalog +
+  authMe, renderRows-celle, buildSavePayload, detail-modal,
+  bulk-edit, disabled-overlay-toggle).
+- [frontend/css/styles.css](frontend/css/styles.css):
+  `.role-chip-extern`, `.roles-cell .role-chips`,
+  `.disabled-overlay`, `.be-roles-wrap` + dark-theme varianter.
+
+Næste fase: Phase 6c — Register-view: rolle multi-select (skjult
+for registrar) + "Mine endpoints"-knap nederst på register-siden.
+
+---
+
 ## [2.12.0 build 0082] — 2026-04-25 — feat(M6a): Settings UI — rolle-katalog + per-bruger tildeling
 
 Phase 6a af 7 i endpoint-level RBAC.

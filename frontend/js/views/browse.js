@@ -58,6 +58,7 @@ const COLUMNS = [
   { key: "authz_vlan",     label: "AuthzVlan",      field: (r) => r.authz_vlan },
   { key: "authz_acl",      label: "AuthzACL",       field: (r) => r.authz_acl },
   { key: "platform_type",  label: "Platform",       field: (r) => r.platform_type },
+  { key: "roles",          label: "Roller",         field: (r) => (r.roles || []).join(", ") },
 ];
 
 const COLVIS_KEY = "ise_portal_browse_colvis";
@@ -181,6 +182,8 @@ export async function renderBrowse(container) {
           <select id="d-authzacl"></select>
           <label>Platform</label>
           <select id="d-platformtype"></select>
+          <label>Roller</label>
+          <div id="d-roles"></div>
           <label>HypervisionISEPortal</label>
           <div class="detail-value mono" id="d-hypervision"></div>
           <label>Profile ID</label>
@@ -221,6 +224,8 @@ export async function renderBrowse(container) {
           <select id="be-authzacl" disabled></select>
           <label><input type="checkbox" class="be-cb" data-field="platformtype" /> Platform</label>
           <select id="be-platformtype" disabled></select>
+          <label><input type="checkbox" class="be-cb" data-field="roles" /> Roller</label>
+          <div id="be-roles" class="be-roles-wrap disabled-overlay"></div>
         </div>
         <div class="modal-actions">
           <button id="be-apply">Anvend</button>
@@ -302,6 +307,8 @@ export async function renderBrowse(container) {
   let activeSessionMacs = null;
   let groups = [];
   let caValues = { Type: [], Owner: [], Lokation: [], AuthzVlan: [], AuthzACL: [], PlatformType: [] };
+  let roleCatalog = [];
+  let canEditRoles = false;
   let portalOnly = false;
   const dirtyIds = new Set();
   let currentPage = 1;
@@ -517,6 +524,36 @@ export async function renderBrowse(container) {
     });
   });
 
+  // Multi-select role chips. Catalog roles render as toggleable checkbox-chips
+  // (kun admin/editor må toggle); roller udenfor kataloget — fx username-tags
+  // fra registrar auto-tag — vises som disabled chips så de bevares ved save.
+  function rolesChipsHtml(selected, opts = {}) {
+    const editable = opts.editable !== false && canEditRoles;
+    const sel = (selected || []).slice();
+    const selLower = new Set(sel.map((s) => (s || "").toLowerCase()));
+    const catalogLower = new Set(roleCatalog.map((r) => r.name.toLowerCase()));
+    const items = [];
+    for (const r of roleCatalog) {
+      const checked = selLower.has(r.name.toLowerCase()) ? "checked" : "";
+      const dis = editable ? "" : "disabled";
+      items.push(
+        `<label class="role-chip" title="${esc(r.description || r.name)}">` +
+        `<input type="checkbox" class="row-role-chip" data-role="${esc(r.name)}" ${checked} ${dis} />` +
+        `<span>${esc(r.name)}</span></label>`,
+      );
+    }
+    for (const r of sel) {
+      if (!catalogLower.has(r.toLowerCase())) {
+        items.push(
+          `<span class="role-chip role-chip-extern" title="Bruger-tag eller rolle uden for katalog">` +
+          `${esc(r)}</span>`,
+        );
+      }
+    }
+    if (!items.length) return `<span class="hint">—</span>`;
+    return `<div class="role-chips">${items.join("")}</div>`;
+  }
+
   function optionsHtml(values, selected) {
     const opts = [`<option value="">—</option>`];
     for (const v of values) {
@@ -695,6 +732,7 @@ export async function renderBrowse(container) {
         <td><select class="ca-authzvlan">${optionsHtml(caValues.AuthzVlan, r.authz_vlan)}</select></td>
         <td><select class="ca-authzacl">${optionsHtml(caValues.AuthzACL, r.authz_acl)}</select></td>
         <td><select class="ca-platformtype">${optionsHtml(caValues.PlatformType, r.platform_type)}</select></td>
+        <td class="roles-cell">${rolesChipsHtml(r.roles)}</td>
       </tr>
     `).join("");
     updateSelectionUI();
@@ -739,14 +777,18 @@ export async function renderBrowse(container) {
     filterMode = false;
     allRowsCache = null;
     try {
-      const [caData, grps, result, dacls, mapping] = await Promise.all([
+      const [caData, grps, result, dacls, mapping, roles, me] = await Promise.all([
         api.listCustomAttributes(),
         api.listGroups(),
         api.listEndpointDetails(currentPage, currentSize, "", currentFilters),
         api.listDacls().catch(() => []),
         api.getPlatformMapping().catch(() => ({ mappings: [] })),
+        api.listEndpointRoles().catch(() => []),
+        api.authMe().catch(() => null),
       ]);
       groups = grps;
+      roleCatalog = roles || [];
+      canEditRoles = !!me && (me.role === "admin" || me.role === "editor");
       for (const a of caData.attributes) {
         if (a.name in caValues) caValues[a.name] = a.values;
       }
@@ -829,6 +871,17 @@ export async function renderBrowse(container) {
     const originalGroupId = row ? (row.group_id || "") : "";
     const groupChanged = selectedGroupId !== originalGroupId;
 
+    // Saml roller: katalog-chips fra UI + eksterne roller (fx username-tags)
+    // som ikke er i kataloget bevares uændret. Bagsiden auto-tagger ikke når
+    // CSV ikke er tom, så vi sender den fulde liste.
+    const checkedChips = tr.querySelectorAll(".row-role-chip:checked");
+    const selectedCatalogRoles = Array.from(checkedChips).map((cb) => cb.dataset.role);
+    const catalogLower = new Set(roleCatalog.map((c) => c.name.toLowerCase()));
+    const externalRoles = ((row && row.roles) || []).filter(
+      (r) => !catalogLower.has((r || "").toLowerCase()),
+    );
+    const hypervisionRoles = [...externalRoles, ...selectedCatalogRoles].join(",");
+
     let group_id = null;
     let static_group_assignment = null;
     if (groupChanged) {
@@ -859,6 +912,7 @@ export async function renderBrowse(container) {
           AuthzVlan: authzVlan,
           AuthzACL: authzAcl,
           PlatformType: platformType,
+          HypervisionRoles: hypervisionRoles,
         },
       },
       localUpdate: { description, group_id, static_group_assignment, groupChanged, endpointType, owner, lokation, authzVlan, authzAcl, platformType },
@@ -1031,13 +1085,19 @@ export async function renderBrowse(container) {
     container.querySelector("#be-authzvlan").innerHTML = optionsHtml(caValues.AuthzVlan, "");
     container.querySelector("#be-authzacl").innerHTML = optionsHtml(caValues.AuthzACL, "");
     container.querySelector("#be-platformtype").innerHTML = optionsHtml(caValues.PlatformType, "");
+    container.querySelector("#be-roles").innerHTML = rolesChipsHtml([], { editable: true });
     container.querySelector("#be-description").value = "";
     // Reset checkboxes
     bulkEditOverlay.querySelectorAll(".be-cb").forEach((cb) => {
       cb.checked = false;
       const field = cb.dataset.field;
       const ctrl = bulkEditOverlay.querySelector(`#be-${field}`);
-      if (ctrl) ctrl.disabled = true;
+      if (!ctrl) return;
+      if (ctrl.tagName === "DIV") {
+        ctrl.classList.add("disabled-overlay");
+      } else {
+        ctrl.disabled = true;
+      }
     });
     bulkEditOverlay.classList.remove("hidden");
   });
@@ -1046,7 +1106,12 @@ export async function renderBrowse(container) {
   bulkEditOverlay.querySelectorAll(".be-cb").forEach((cb) => {
     cb.addEventListener("change", () => {
       const ctrl = bulkEditOverlay.querySelector(`#be-${cb.dataset.field}`);
-      if (ctrl) ctrl.disabled = !cb.checked;
+      if (!ctrl) return;
+      if (ctrl.tagName === "DIV") {
+        ctrl.classList.toggle("disabled-overlay", !cb.checked);
+      } else {
+        ctrl.disabled = !cb.checked;
+      }
     });
   });
 
@@ -1060,6 +1125,11 @@ export async function renderBrowse(container) {
     const fields = {};
     bulkEditOverlay.querySelectorAll(".be-cb:checked").forEach((cb) => {
       const field = cb.dataset.field;
+      if (field === "roles") {
+        const chips = bulkEditOverlay.querySelectorAll("#be-roles .row-role-chip:checked");
+        fields.roles = Array.from(chips).map((c) => c.dataset.role);
+        return;
+      }
       const ctrl = bulkEditOverlay.querySelector(`#be-${field}`);
       if (ctrl) fields[field] = ctrl.value;
     });
@@ -1079,6 +1149,16 @@ export async function renderBrowse(container) {
       if ("authzvlan" in fields) tr.querySelector(".ca-authzvlan").value = fields.authzvlan;
       if ("authzacl" in fields) tr.querySelector(".ca-authzacl").value = fields.authzacl;
       if ("platformtype" in fields) tr.querySelector(".ca-platformtype").value = fields.platformtype;
+      if ("roles" in fields) {
+        const row = allRows.find((r) => r.id === id);
+        const catalogLower = new Set(roleCatalog.map((c) => c.name.toLowerCase()));
+        const externalRoles = ((row && row.roles) || []).filter(
+          (r) => !catalogLower.has((r || "").toLowerCase()),
+        );
+        const newRoles = [...externalRoles, ...fields.roles];
+        const cell = tr.querySelector(".roles-cell");
+        if (cell) cell.innerHTML = rolesChipsHtml(newRoles);
+      }
       markDirty(tr);
     }
     bulkEditOverlay.classList.add("hidden");
@@ -1150,6 +1230,8 @@ export async function renderBrowse(container) {
       container.querySelector("#d-authzvlan").innerHTML = optionsHtml(caValues.AuthzVlan, d.authz_vlan);
       container.querySelector("#d-authzacl").innerHTML = optionsHtml(caValues.AuthzACL, d.authz_acl);
       container.querySelector("#d-platformtype").innerHTML = optionsHtml(caValues.PlatformType, d.platform_type);
+      container.querySelector("#d-roles").innerHTML = rolesChipsHtml(d.roles);
+      container.querySelector("#d-roles").dataset.original = JSON.stringify(d.roles || []);
       container.querySelector("#d-hypervision").textContent = d.hypervision || "—";
       container.querySelector("#d-profile-id").textContent = d.profile_id || "—";
       container.querySelector("#d-static-profile").textContent = d.static_profile ? "Ja" : "Nej";
@@ -1230,6 +1312,16 @@ export async function renderBrowse(container) {
     } else if (selectedGroupId) {
       static_group_assignment = staticGroup;
     }
+    const dRolesEl = container.querySelector("#d-roles");
+    const checkedChips = dRolesEl.querySelectorAll(".row-role-chip:checked");
+    const selectedCatalogRoles = Array.from(checkedChips).map((cb) => cb.dataset.role);
+    let originalRoles = [];
+    try { originalRoles = JSON.parse(dRolesEl.dataset.original || "[]"); } catch { /* ignore */ }
+    const catalogLower = new Set(roleCatalog.map((c) => c.name.toLowerCase()));
+    const externalRoles = originalRoles.filter(
+      (r) => !catalogLower.has((r || "").toLowerCase()),
+    );
+    const hypervisionRoles = [...externalRoles, ...selectedCatalogRoles].join(",");
     const payload = {
       description: container.querySelector("#d-description").value,
       group_id,
@@ -1241,6 +1333,7 @@ export async function renderBrowse(container) {
         AuthzVlan: container.querySelector("#d-authzvlan").value,
         AuthzACL: container.querySelector("#d-authzacl").value,
         PlatformType: container.querySelector("#d-platformtype").value,
+        HypervisionRoles: hypervisionRoles,
       },
     };
     try {
