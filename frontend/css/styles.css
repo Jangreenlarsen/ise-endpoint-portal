@@ -1210,6 +1210,59 @@ body.auth-mode .content {
 [data-theme="dark"] .col-vis-actions { border-top-color: #3a3a5c; }
 
 /* ── Mobile Register-view (2.10.0) ── */
+/* Når ruten er #/register skjuler vi hele sidebaren — registrering på en
+   mobil tlf har brug for hele skærmen. Login og logout sker i selve
+   register-viewet. */
+body.register-route .sidebar { display: none; }
+body.register-route .app {
+  grid-template-columns: 1fr;
+  height: auto;
+  min-height: 100vh;
+}
+body.register-route .content {
+  padding: 0;
+  overflow-y: auto;
+  height: 100vh;
+}
+body.register-route .login-wrap { padding: 1rem; }
+body.register-route .login-card {
+  width: 100%;
+  max-width: 420px;
+  padding: 1.4rem 1.2rem;
+}
+
+.register-topbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 1rem;
+  background: #0b3d91;
+  color: #f3f4f6;
+  border-bottom: 1px solid #1e3a8a;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+.register-brand {
+  font-weight: 600;
+  font-size: 1rem;
+  flex: 0 0 auto;
+}
+.register-user {
+  flex: 1 1 auto;
+  font-size: 0.8rem;
+  color: #cbd5e1;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.register-topbar .register-tiny-btn {
+  background: #b91c1c;
+  flex: 0 0 auto;
+}
+.register-topbar .register-tiny-btn:hover { background: #991b1b; }
+
 .mobile-register-mode {
   padding: 0 !important;
 }

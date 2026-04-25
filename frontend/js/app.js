@@ -56,6 +56,22 @@ function currentRoute() {
   return hash;
 }
 
+// Sider der skal vises uden sidebar/header (mobil-only chrome).
+// Registrar-rollen og udloggede brugere på /#register får helt clear UX,
+// så der er plads til mobilformularen. Admin/editor beholder sidebaren
+// hvis de besøger /#register, så de stadig kan navigere væk.
+function isChromelessRoute() {
+  const hash = (location.hash || "").replace("#/", "");
+  if (hash !== "register") return false;
+  const user = auth.getUser();
+  if (!user) return true;
+  return user.role === "registrar";
+}
+
+function applyChromeMode() {
+  document.body.classList.toggle("register-route", isChromelessRoute());
+}
+
 function updateNavVisibility(user) {
   document.querySelectorAll(".sidebar nav a").forEach((a) => {
     const route = routes[a.dataset.view];
@@ -84,6 +100,7 @@ async function renderView() {
   const route = currentRoute();
   const def = routes[route];
   container.innerHTML = "";
+  applyChromeMode();
   document.querySelectorAll(".sidebar nav a").forEach((a) => {
     a.classList.toggle("active", a.dataset.view === route);
   });
@@ -100,6 +117,7 @@ async function renderView() {
 
 function showLogin() {
   updateUserBadge(null);
+  applyChromeMode();
   renderLogin((user) => {
     updateUserBadge(user);
     updateNavVisibility(user);

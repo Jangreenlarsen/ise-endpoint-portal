@@ -1,4 +1,5 @@
 import { api } from "../api.js";
+import { auth } from "../auth.js";
 import { offlineQueue } from "../offline_queue.js";
 
 const MAC_RE = /^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$/;
@@ -34,7 +35,14 @@ const VENDOR_TO_PLATFORM = {
 export async function renderRegister(container) {
   container.classList.add("mobile-register-mode");
   const scanSupported = hasBarcodeDetector();
+  const user = auth.getUser();
+  const userLabel = user ? `${user.username} (${user.role})` : "";
   container.innerHTML = `
+    <div class="register-topbar">
+      <span class="register-brand">ISE Register</span>
+      <span class="register-user">${userLabel}</span>
+      <button type="button" id="r-logout" class="register-tiny-btn">Log ud</button>
+    </div>
     <div class="register-shell">
       <div class="register-header">
         <h1>Registrér endpoint</h1>
@@ -254,6 +262,19 @@ export async function renderRegister(container) {
       } catch (err) {
         showError(`Kamera kunne ikke startes: ${err.message}`);
       }
+    });
+  }
+
+  // Logout-knap i topbar — registrar har ingen sidebar at logge ud fra.
+  const logoutBtn = container.querySelector("#r-logout");
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", async () => {
+      logoutBtn.disabled = true;
+      try { await api.logout(); } catch { /* ignore */ }
+      auth.clear();
+      // app.js's setUnauthorizedHandler vil normalt overtage; her kalder vi
+      // direkte for at sikre at login-siden vises i samme chromeless mode.
+      location.reload();
     });
   }
 

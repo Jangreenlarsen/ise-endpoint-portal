@@ -5,6 +5,46 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.10.3 build 0074] — 2026-04-25 — feat: chromeless mobil-registreringsside med inline login/logout
+
+PATCH-bump. UX-forbedring af 2.10.0-registrar-flowet. På en mobiltelefon
+er der ikke plads til den fulde sidebar — registrar-brugere skal kun
+have én ting på skærmen: registreringsformularen.
+
+Ændringer:
+
+- Ny body-class `register-route` toggles fra
+  [frontend/js/app.js](frontend/js/app.js) når aktive rute er `register`
+  *og* brugeren enten er udlogget eller har rollen `registrar`. Class'en
+  skjuler `.sidebar` helt, gør app-grid'et til én kolonne og giver
+  `.content` fuld viewport-højde. Admin/editor der besøger `/#register`
+  beholder deres sidebar så de stadig kan navigere væk.
+- `register-topbar` med brand + brugernavn/rolle + "Log ud"-knap er
+  tilføjet øverst i [frontend/js/views/register.js](frontend/js/views/register.js).
+  Logout kalder `api.logout()`, rydder tokenet via `auth.clear()` og
+  reload'er siden — det sikrer at login-formen vises igen i samme
+  chromeless mode (ingen sidebar).
+- Login-formen (`renderLogin`) er uændret i logik, men styles tunet i
+  [frontend/css/styles.css](frontend/css/styles.css): når `register-route`
+  er aktiv bliver `.login-card` mindre/centreret og bruger fuld bredde
+  på små skærme.
+- Camera-barcode-scanning fra build 0071 (M8) er allerede tilgængelig
+  for registrar-rollen via `📷`-knappen ved siden af MAC-feltet —
+  denne udgivelse bekræfter at scan-overlay'et virker fra det
+  chromeless-layout (ingen role-gating tilføjet, BarcodeDetector er
+  feature-detect-only).
+
+Berørte filer:
+
+- [frontend/js/app.js](frontend/js/app.js) (ny `isChromelessRoute` +
+  `applyChromeMode`, kaldes fra `renderView` og `showLogin`).
+- [frontend/js/views/register.js](frontend/js/views/register.js) (importér
+  `auth`, render topbar med logout, wire logout-handler).
+- [frontend/css/styles.css](frontend/css/styles.css) (`body.register-route`
+  rules + `.register-topbar` styling).
+
+---
+
 ## [2.10.2 build 0073] — 2026-04-25 — fix: Browse/Edit kolonner forskudt pga. manglende Vendor-cell
 
 PATCH-bump. Efter 2.11.0 var Browse/Edit-tabellen forskudt: alt fra
