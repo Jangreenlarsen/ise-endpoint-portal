@@ -295,8 +295,18 @@ class EndpointService:
             for r in raw
         ]
 
-    async def create_endpoint(self, req: CreateEndpointRequest) -> str:
-        """Create an endpoint and return the new ISE endpoint id."""
+    async def create_endpoint(
+        self,
+        req: CreateEndpointRequest,
+        auto_tag_username: str | None = None,
+    ) -> str:
+        """Create an endpoint and return the new ISE endpoint id.
+
+        Hvis ``auto_tag_username`` er sat (non-admin oprettelse) og
+        ``HypervisionRoles`` er tom i requesten, auto-tagges endpointet
+        med brugerens username så de straks kan se deres egen
+        oprettelse via read-path-filteret (Phase 4).
+        """
         logger.info(
             "creating endpoint mac=%s group=%s static=%s",
             req.mac, req.group_id, req.static_group_assignment,
@@ -304,6 +314,7 @@ class EndpointService:
         ca = req.custom_attributes.model_dump() if req.custom_attributes else {}
         # Always stamp endpoints created by this portal
         ca[HIDDEN_ATTR] = "true"
+        _apply_auto_tag(ca, auto_tag_username)
         await self._ensure_ca_definitions()
         # Bevar eksplicit staticGroupAssignment hvis angivet (fx fra CSV-import),
         # ellers default til True som ISE forventer når groupId er sat.
@@ -390,7 +401,12 @@ class EndpointService:
         ok, msg = await coa_module.disconnect(mac)
         return ok, mac, msg
 
-    async def update_endpoint(self, endpoint_id: str, update: EndpointUpdate) -> None:
+    async def update_endpoint(
+        self,
+        endpoint_id: str,
+        update: EndpointUpdate,
+        auto_tag_username: str | None = None,
+    ) -> None:
         logger.info(
             "updating endpoint id=%s fields=%s",
             endpoint_id,
@@ -399,6 +415,7 @@ class EndpointService:
         ca = update.custom_attributes.model_dump() if update.custom_attributes else {}
         # Always stamp endpoints edited through this portal
         ca[HIDDEN_ATTR] = "true"
+        _apply_auto_tag(ca, auto_tag_username)
         await self._ensure_ca_definitions()
         # Snapshot before-state for audit + rollback.
         before: dict[str, Any] | None = None
@@ -431,7 +448,11 @@ class EndpointService:
             after=after,
         )
 
-    async def bulk_create(self, req: BulkCreateRequest) -> BulkResult:
+    async def bulk_create(
+        self,
+        req: BulkCreateRequest,
+        auto_tag_username: str | None = None,
+    ) -> BulkResult:
         logger.info(
             "bulk creating %d endpoints (overwrite=%s)",
             len(req.items), req.overwrite,
@@ -445,7 +466,7 @@ class EndpointService:
         failed: list[BulkFailure] = []
         for idx, item in enumerate(req.items):
             try:
-                await self.create_endpoint(item)
+                await self.create_endpoint(item, auto_tag_username=auto_tag_username)
                 succeeded.append(item.mac)
             except IseApiError as exc:
                 # ISE signalerer "findes allerede" som 409 ELLER som 500
@@ -457,7 +478,9 @@ class EndpointService:
                 if is_conflict:
                     if req.overwrite:
                         try:
-                            await self._overwrite_existing(item)
+                            await self._overwrite_existing(
+                                item, auto_tag_username=auto_tag_username
+                            )
                             overwritten.append(item.mac)
                         except IseApiError as update_exc:
                             failed.append(
@@ -492,7 +515,11 @@ class EndpointService:
             failed=failed,
         )
 
-    async def _overwrite_existing(self, item: CreateEndpointRequest) -> None:
+    async def _overwrite_existing(
+        self,
+        item: CreateEndpointRequest,
+        auto_tag_username: str | None = None,
+    ) -> None:
         """Locate an existing endpoint by MAC and overwrite its fields with
         the values from the import item. Raises ValueError if not found."""
         existing = await self.endpoints.get_by_mac(item.mac)
@@ -519,7 +546,9 @@ class EndpointService:
             static_group_assignment=static_flag,
             custom_attributes=item.custom_attributes,
         )
-        await self.update_endpoint(endpoint_id, update)
+        await self.update_endpoint(
+            endpoint_id, update, auto_tag_username=auto_tag_username
+        )
 
 
 def _extract_custom_attrs(endpoint: dict[str, Any]) -> dict[str, str]:
@@ -530,6 +559,23 @@ def _extract_custom_attrs(endpoint: dict[str, Any]) -> dict[str, str]:
         if isinstance(inner, dict):
             return {k: str(v) for k, v in inner.items()}
     return {}
+
+
+def _apply_auto_tag(ca: dict[str, Any], auto_tag_username: str | None) -> None:
+    """Hvis non-admin opretter/opdaterer og ``HypervisionRoles`` er tom,
+    auto-tag med deres username så de straks kan se egne endpoints
+    via read-path-filteret. Mutates ``ca`` in-place.
+
+    Eksplicit valgte roller respekteres (admin/editor kan vælge
+    yderligere fra kataloget i UI). Admin (``auto_tag_username=None``)
+    er ikke berørt.
+    """
+    if not auto_tag_username:
+        return
+    current = str(ca.get(ROLES_ATTR, "") or "").strip()
+    if current:
+        return
+    ca[ROLES_ATTR] = auto_tag_username
 
 
 def _parse_roles_csv(csv: str) -> list[str]:

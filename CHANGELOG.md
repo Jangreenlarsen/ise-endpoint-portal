@@ -5,6 +5,46 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.12.0 build 0081] — 2026-04-25 — feat(M5): write-path auto-tag for non-admin
+
+Phase 5 af 7 i endpoint-level RBAC.
+
+Når en non-admin opretter eller opdaterer et endpoint og
+`HypervisionRoles` er tom i requesten, auto-tagges endpointet med
+brugerens username. Det sikrer at non-admin (især registrar) kan
+se sine egne nye endpoints via read-path-filteret (Phase 4) uden
+at skulle vælge roller manuelt.
+
+Adfærd:
+- Admin: ingen auto-tag, write-path uændret.
+- Editor/viewer/registrar: hvis `HypervisionRoles` er tom →
+  sættes til `username`. Eksplicit valgte roller respekteres
+  uændret (admin/editor kan vælge yderligere fra kataloget i UI).
+- Bulk-import: auto-tag anvendes på hvert item, både ved create
+  og ved overwrite (409-fallback).
+
+Service-ændringer ([backend/app/services/endpoint_service.py](backend/app/services/endpoint_service.py)):
+- Ny `_apply_auto_tag(ca, auto_tag_username)` helper — mutates
+  CA dict in-place hvis username er sat og roles er tom.
+- `create_endpoint`, `update_endpoint`, `bulk_create`,
+  `_overwrite_existing` accepterer nu `auto_tag_username:
+  str | None` (default `None` = ingen auto-tag).
+
+API-ændringer ([backend/app/api/endpoints.py](backend/app/api/endpoints.py)):
+- Ny `_autotag_for(user)` returnerer `None` for admin og
+  `user.username` ellers.
+- `POST /api/endpoints`, `POST /api/endpoints/bulk`,
+  `PUT /api/endpoints/{id}` modtager nu `User` via Depends og
+  videregiver auto-tag-username til service-laget. Permission-
+  guards (`require_create_endpoint` / `require_editor`) flyttet
+  fra `dependencies=[]` til function-arg.
+
+Næste fase: Phase 6 — frontend UI for rolle-katalog (Settings),
+per-bruger assignments (Settings), Browse/Edit Roller-kolonne, og
+Register "Mine endpoints"-knap.
+
+---
+
 ## [2.12.0 build 0080] — 2026-04-25 — feat(M4): read-path filter på endpoints for non-admin
 
 Phase 4 af 7 i endpoint-level RBAC.

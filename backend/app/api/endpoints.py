@@ -33,6 +33,18 @@ def _scope_for(user: User) -> list[str] | None:
     return user_service.effective_roles(user)
 
 
+def _autotag_for(user: User) -> str | None:
+    """Returnér username der skal auto-tagges på write, eller None for admin.
+
+    Non-admin (editor/viewer/registrar) får deres username som fallback-tag
+    på create/update hvis ``HypervisionRoles`` ikke eksplicit er valgt.
+    Admin overrides ingenting.
+    """
+    if user.role == "admin":
+        return None
+    return user.username
+
+
 @router.get("", response_model=list[EndpointSummary])
 async def list_endpoints(
     page: int = 1,
@@ -139,35 +151,42 @@ async def get_endpoint(
     return detail
 
 
-@router.post("", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_create_endpoint)])
+@router.post("", status_code=status.HTTP_201_CREATED)
 async def create_endpoint(
     req: CreateEndpointRequest,
+    user: User = Depends(require_create_endpoint),
     service: EndpointService = Depends(get_endpoint_service),
 ) -> dict[str, str]:
     try:
-        new_id = await service.create_endpoint(req)
+        new_id = await service.create_endpoint(
+            req, auto_tag_username=_autotag_for(user)
+        )
     except IseApiError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     return {"status": "created", "id": new_id}
 
 
-@router.post("/bulk", response_model=BulkResult, dependencies=[Depends(require_editor)])
+@router.post("/bulk", response_model=BulkResult)
 async def bulk_create_endpoints(
     req: BulkCreateRequest,
+    user: User = Depends(require_editor),
     service: EndpointService = Depends(get_endpoint_service),
 ) -> BulkResult:
     # Partial failures are reported in the response; no 502 here.
-    return await service.bulk_create(req)
+    return await service.bulk_create(req, auto_tag_username=_autotag_for(user))
 
 
-@router.put("/{endpoint_id}", dependencies=[Depends(require_editor)])
+@router.put("/{endpoint_id}")
 async def update_endpoint(
     endpoint_id: str,
     req: EndpointUpdate,
+    user: User = Depends(require_editor),
     service: EndpointService = Depends(get_endpoint_service),
 ) -> dict[str, str]:
     try:
-        await service.update_endpoint(endpoint_id, req)
+        await service.update_endpoint(
+            endpoint_id, req, auto_tag_username=_autotag_for(user)
+        )
     except IseApiError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     return {"status": "updated"}
