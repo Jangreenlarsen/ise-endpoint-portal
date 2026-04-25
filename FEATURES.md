@@ -27,6 +27,8 @@ Alle nye features registreres her FØR implementering påbegyndes.
 
 ## Aktive / færdige
 
+- `[done] 2026-04-25 — Konsolideret create-flow: drop "Opret endpoint", brug registreringssiden til alt` — Den gamle desktop-create-side ([frontend/js/views/create.js](frontend/js/views/create.js)) duplikerede registrer-flowet fra 2.10.0; nu er den fjernet helt. Sidebar-linket "Mobil-registrering" er omdøbt til "Opret endpoint" og er nu eneste create-rute. `register.js` har fået AuthzVlan + AuthzACL-pickers så admin/editor har feature-paritet. Lag: frontend (slettet views/create.js, app.js route + import væk, index.html sidebar, register.js udvidet).
+
 - `[done] 2026-04-25 — Chromeless mobil-registreringsside (registrar-UX-polish)` — Sidebar skjules helt på `/#register` for registrar-brugere og udloggede besøgende; login og logout bor nu på selve registreringssiden via en kompakt topbar med "Log ud"-knap. Admin/editor beholder sidebaren hvis de besøger ruten, så de stadig kan navigere væk. Bekræfter også at camera-barcode-scanning fra M8 virker fra det rene layout. Lag: frontend (app.js route-class, register view topbar, css `body.register-route`).
 
 - `[done] 2026-04-21 — ACL-editor: fanger ISE's "src skal være any i alle ACE" før save` — ACL-editorens real-time syntaks-check udvidet til at afvise enhver ACE hvor source-feltet ikke er `any`. ISE gør det til en save-blocker med fejlen `"While creating DACL, the keyword 'Any' must be the source in all ACE in DACL"` — ISE erstatter selv `any` med klientens IP når DACL'en pushes til switchen. Fanges nu som `error`-severity i validerings-panelet mens brugeren skriver, så man ikke først ser det når man trykker Gem. Lag: backend (services/dacl_service).

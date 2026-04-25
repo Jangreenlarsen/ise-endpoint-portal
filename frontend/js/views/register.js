@@ -97,16 +97,24 @@ export async function renderRegister(container) {
     Type: "Type",
     Owner: "Ejer",
     Lokation: "Lokation",
+    AuthzVlan: "Authz VLAN",
+    AuthzACL: "Authz ACL",
     PlatformType: "Platform",
   };
   let caData = { attributes: [] };
+  let dacls = [];
   try {
-    caData = await api.listCustomAttributes();
+    [caData, dacls] = await Promise.all([
+      api.listCustomAttributes(),
+      api.listDacls().catch(() => []),
+    ]);
   } catch (err) {
     showError(`Kunne ikke hente attributter: ${err.message}`);
   }
   const attrMap = {};
   for (const a of caData.attributes || []) attrMap[a.name] = a.values;
+  // AuthzACL hentes fra ISE DACLs, ikke fra det lokale CA-store.
+  attrMap.AuthzACL = (dacls || []).map((d) => d.name).filter(Boolean).sort();
   for (const [name, label] of Object.entries(attrLabels)) {
     const opts = (attrMap[name] || [])
       .map((v) => `<option value="${v}">${v}</option>`).join("");

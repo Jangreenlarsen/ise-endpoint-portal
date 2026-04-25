@@ -5,6 +5,38 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.10.4 build 0075] — 2026-04-25 — refactor: drop "Opret endpoint" — én samlet registreringsside
+
+PATCH-bump. Konsolidering af to næsten-identiske create-flows til én.
+Den gamle "Opret endpoint"-side ([frontend/js/views/create.js](frontend/js/views/create.js))
+gjorde præcis det samme som det nye registreringsmodul fra 2.10.0
+([frontend/js/views/register.js](frontend/js/views/register.js)) — to flows er
+forvirrende, så den gamle side er fjernet helt.
+
+Ændringer:
+
+- Fjernet: [frontend/js/views/create.js](frontend/js/views/create.js)
+  (slettet) — den fyldte ~270 linjer som duplikerede MAC-input,
+  group-dropdown, custom-attribute-pickers og OUI-lookup.
+- [frontend/js/app.js](frontend/js/app.js): `renderCreate`-import +
+  `create`-route fjernet. Eneste create-rute er nu `/#register`.
+- [frontend/index.html](frontend/index.html): den gamle
+  `<a href="#/create">Opret endpoint</a>` sidebar-link er fjernet,
+  og `Mobil-registrering` linket er omdøbt til "Opret endpoint" og
+  flyttet øverst i menuen — det er nu det primære navn for create-flowet
+  for alle roller.
+- [frontend/js/views/register.js](frontend/js/views/register.js):
+  tilføjet `AuthzVlan` og `AuthzACL` dropdowns så admin/editor har
+  feature-paritet med den fjernede create-side. AuthzACL-værdier
+  hentes fra ISE DACL-listen via `api.listDacls()` (samme kilde som
+  før). Registrar-rollen kan ignorere felterne — de er valgfrie.
+
+Brugere der bookmarkede `/#create` lander nu på deres default-rolle-rute
+(browse for admin/editor, register for registrar). Ingen backend-API'er
+er ændret.
+
+---
+
 ## [2.10.3 build 0074] — 2026-04-25 — feat: chromeless mobil-registreringsside med inline login/logout
 
 PATCH-bump. UX-forbedring af 2.10.0-registrar-flowet. På en mobiltelefon

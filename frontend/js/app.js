@@ -1,6 +1,5 @@
 import { api, setUnauthorizedHandler } from "./api.js";
 import { auth } from "./auth.js";
-import { renderCreate } from "./views/create.js";
 import { renderImport } from "./views/import.js";
 import { renderBrowse } from "./views/browse.js";
 import { renderAttributes } from "./views/attributes.js";
@@ -15,7 +14,6 @@ const statusDot = document.getElementById("status-dot");
 const container = document.getElementById("view-container");
 
 const routes = {
-  create: { render: renderCreate, roles: ["admin", "editor"] },
   import: { render: renderImport, roles: ["admin", "editor"] },
   browse: { render: renderBrowse, roles: ["admin", "editor", "viewer"] },
   attributes: { render: renderAttributes, roles: ["admin", "editor"] },
