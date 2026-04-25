@@ -79,8 +79,9 @@ export async function renderCreate(container) {
       <form id="create-form">
         <div class="field">
           <label for="mac">MAC adresse</label>
-          <input type="text" id="mac" required placeholder="AA:BB:CC:DD:EE:FF" />
+          <input type="text" id="mac" required placeholder="AA:BB:CC:DD:EE:FF" autocomplete="off" />
           <div class="hint">Format: <code>AA:BB:CC:DD:EE:FF</code> (kolon eller bindestreg)</div>
+          <div id="vendor-hint" class="vendor-hint" hidden></div>
         </div>
         <div class="field">
           <label for="group">Endpoint Group (valgfri)</label>
@@ -158,6 +159,78 @@ export async function renderCreate(container) {
   }
 
   await refreshSelects();
+
+  // ── Vendor auto-suggest from OUI lookup ──────────────────────────────
+  const macInput = container.querySelector("#mac");
+  const vendorHint = container.querySelector("#vendor-hint");
+  let vendorDebounce;
+  let lastSuggestedVendor = "";
+
+  const VENDOR_TO_PLATFORM = {
+    "Cisco Systems Inc": "iosxe",
+    "Cisco-Linksys": "iosxe",
+    "Cisco Meraki": "meraki",
+    "Aruba Networks": "aruba",
+    "Espressif Inc (ESP32)": "esp32",
+    "Raspberry Pi Foundation": "linux",
+    "Raspberry Pi Trading": "linux",
+    "Apple Inc": "macos",
+    "Samsung Electronics": "android",
+    "Microsoft Corp": "windows",
+    "HP Inc": "printer",
+    "Canon Inc": "printer",
+    "AXIS Communications": "ipcam",
+  };
+
+  function suggestedPlatform(vendor) {
+    return VENDOR_TO_PLATFORM[vendor] || "";
+  }
+
+  async function lookupVendor() {
+    const mac = macInput.value.trim();
+    if (!mac || mac.replace(/[^0-9A-Fa-f]/g, "").length < 6) {
+      vendorHint.hidden = true;
+      vendorHint.innerHTML = "";
+      return;
+    }
+    try {
+      const res = await api.lookupOui(mac);
+      const vendor = res && res.vendor ? res.vendor : "";
+      if (!vendor) {
+        vendorHint.hidden = false;
+        vendorHint.innerHTML = `<span class="vendor-unknown">Ukendt OUI — ingen vendor-match</span>`;
+        return;
+      }
+      lastSuggestedVendor = vendor;
+      const platform = suggestedPlatform(vendor);
+      const ptSelect = container.querySelector("#ca-PlatformType");
+      const hasPlatform = platform && ptSelect
+        && Array.from(ptSelect.options).some((o) => o.value === platform);
+      const suggestBtn = hasPlatform
+        ? `<button type="button" id="vendor-apply" class="small">Sæt PlatformType=${platform}</button>`
+        : "";
+      vendorHint.hidden = false;
+      vendorHint.innerHTML = `
+        <span class="vendor-badge">Detekteret: <b>${vendor}</b></span>
+        ${suggestBtn}
+      `;
+      const applyBtn = container.querySelector("#vendor-apply");
+      if (applyBtn) {
+        applyBtn.addEventListener("click", () => {
+          ptSelect.value = platform;
+          applyBtn.disabled = true;
+          applyBtn.textContent = "✓ Sat";
+        });
+      }
+    } catch {
+      vendorHint.hidden = true;
+    }
+  }
+
+  macInput.addEventListener("input", () => {
+    clearTimeout(vendorDebounce);
+    vendorDebounce = setTimeout(lookupVendor, 250);
+  });
 
   container.querySelector("#create-form").addEventListener("submit", async (e) => {
     e.preventDefault();

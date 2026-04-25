@@ -8,6 +8,7 @@ from app.core import audit_store, config
 from app.core.custom_attr_store import ALL_ATTRS, HIDDEN_ATTR
 from app.core.endpoint_cache import get_cache
 from app.core.exceptions import IseApiError
+from app.core.oui_lookup import lookup as oui_lookup
 from app.ise import coa as coa_module
 from app.ise import mnt_sessions
 from app.ise.client import IseClient
@@ -87,6 +88,7 @@ class EndpointService:
                 id=r.get("id", ""),
                 name=r.get("name", ""),
                 description=r.get("description"),
+                vendor=oui_lookup(r.get("name", "")),
             )
             for r in raw
         ]
@@ -107,10 +109,11 @@ class EndpointService:
         ca = _extract_custom_attrs(raw)
         group_id = raw.get("groupId", "")
         group_name = await self._resolve_group_name(group_id) if group_id else ""
+        mac_val = raw.get("mac", "") or raw.get("name", "")
         return EndpointDetail(
             id=raw.get("id", endpoint_id),
             name=raw.get("name", ""),
-            mac=raw.get("mac", ""),
+            mac=mac_val,
             description=raw.get("description"),
             group_id=group_id,
             group_name=group_name,
@@ -127,6 +130,7 @@ class EndpointService:
             portal_user=raw.get("portalUser", "") or "",
             identity_store=raw.get("identityStore", "") or "",
             identity_store_id=raw.get("identityStoreId", "") or "",
+            vendor=oui_lookup(mac_val),
         )
 
     async def _resolve_group_name(self, group_id: str) -> str:
@@ -175,6 +179,7 @@ class EndpointService:
                         name=r.get("name", ""),
                         mac=r.get("name", ""),
                         description=r.get("description"),
+                        vendor=oui_lookup(r.get("name", "")),
                     )
 
         details = await asyncio.gather(*(fetch_one(r) for r in resources))
@@ -206,6 +211,7 @@ class EndpointService:
                         name=r.get("name", ""),
                         mac=r.get("name", ""),
                         description=r.get("description"),
+                        vendor=oui_lookup(r.get("name", "")),
                     )
 
         details = await asyncio.gather(*(fetch_one(r) for r in resources))

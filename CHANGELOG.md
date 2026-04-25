@@ -5,6 +5,74 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.11.0 build 0069] — 2026-04-25 — feat: OUI lookup + vendor-enrichment + auto-suggest
+
+Markerer feature `done` for 2.11.0 — MAC OUI → vendor lookup. Komplet
+end-to-end med offline IEEE OUI-database, berigelse af endpoint-responses,
+vendor-badge i Browse, vendor-kolonne i CSV-export og auto-suggest af
+PlatformType i Create-formularen.
+
+**Phase 1 — OUI-database** ([backend/data/oui.csv](backend/data/oui.csv)):
+~420 kuraterede entries fra IEEE MA-L (24 bit), MA-M (28 bit) og MA-S
+(36 bit) registries. Dækker de almindelige vendors: Cisco Systems,
+Cisco Meraki, Apple, Samsung, Microsoft, HP Inc/Enterprise, Canon,
+Aruba Networks, Mikrotik, ASUSTek, Espressif (ESP32), Raspberry Pi,
+Polycom, Avaya, AXIS Communications, Zyxel, Netgear, D-Link, TP-Link,
+Ubiquiti, VMware, VirtualBox, QEMU, Hyper-V, Nokia, Fitbit, Garmin,
+Sonos, NEC, Dell, Cisco-Linksys. Schema: `oui,vendor,registry`.
+
+**Phase 2 — Lookup-service** ([backend/app/core/oui_lookup.py](backend/app/core/oui_lookup.py)):
+Tre prefix-tabeller (`_PREFIX_6`, `_PREFIX_7`, `_PREFIX_9`) loaded lazily
+ved første kald. `lookup(mac) -> str` normaliserer (strip non-hex,
+uppercase) og bruger longest-prefix-wins: MA-S (9 hex) → MA-M (7 hex)
+→ MA-L (6 hex). `stats()` returnerer entry-counts pr. registry.
+
+**Phase 3 — Endpoint-berigelse** ([backend/app/services/endpoint_service.py](backend/app/services/endpoint_service.py),
+[backend/app/schemas/endpoint.py](backend/app/schemas/endpoint.py)):
+Nyt `vendor: str = ""` felt på `EndpointSummary` og `EndpointDetail`.
+Udfyldes via `oui_lookup(mac)` i `list_endpoints`,
+`_fetch_endpoint_detail` og begge fallback-branches. MAC-feltet hentes
+som `raw.get("mac", "") or raw.get("name", "")` så vendor virker selv
+når ISE returnerer tom `mac` og MAC-værdien står i `name`-feltet.
+
+**Phase 4 — Frontend visning**:
+
+- [frontend/js/views/browse.js](frontend/js/views/browse.js): ny
+  "Vendor"-kolonne efter MAC i tabellen + "Vendor"-felt i detail-modal.
+- [frontend/js/csv.js](frontend/js/csv.js): `toIseCsv` udfylder
+  `Vendor`-kolonnen hvis den er en del af aktiv template.
+- [frontend/css/styles.css](frontend/css/styles.css): styling for
+  `.vendor-hint`, `.vendor-badge`, `.vendor-unknown`, `.vendor-cell`
+  med dark-theme-varianter.
+
+**Phase 5 — Auto-suggest i Create** ([frontend/js/views/create.js](frontend/js/views/create.js)):
+Ny `<div id="vendor-hint">` under MAC-input. Debounced (250 ms)
+`lookupVendor()` rammer `/api/oui/{mac}` ved indtastning. Ved match
+viser den "Detekteret: <vendor>" badge plus en "Sæt
+PlatformType=<x>"-knap der med ét klik sætter PlatformType-dropdown'en
+(disables med "✓ Sat" efter klik). `VENDOR_TO_PLATFORM`-mapping i
+frontend dækker Cisco Systems → iosxe, Cisco Meraki → meraki, Aruba
+Networks → aruba, Espressif (ESP32) → esp32, Apple Inc → macos,
+Samsung Electronics → android, Microsoft Corp → windows, HP/Canon →
+printer, AXIS → ipcam, Raspberry Pi → linux.
+
+**Backend API** ([backend/app/api/oui.py](backend/app/api/oui.py)):
+
+- `GET /api/oui/{mac}` — returnerer `{mac, vendor}`. Tom string hvis
+  ingen match. Tilgængeligt for alle roller.
+- `GET /api/oui/stats` — returnerer entry-counts pr. registry
+  (debug/diagnostik).
+
+**Frontend API** ([frontend/js/api.js](frontend/js/api.js)):
+`lookupOui(mac)` og `getOuiStats()`.
+
+**Lifespan**: oui-routeren registreret i
+[backend/app/main.py](backend/app/main.py).
+
+Non-breaking MINOR — ingen ISE-impact, kun beriget response-data.
+
+---
+
 ## [2.9.0 build 0068] — 2026-04-24 — feat: Audit log M4 (API + rollback + view + retention)
 
 Andet og afsluttende milestone af 2.9.0 — markerer feature `done`. Bygger

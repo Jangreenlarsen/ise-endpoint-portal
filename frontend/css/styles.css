@@ -843,6 +843,43 @@ body.auth-mode .content {
 [data-theme="dark"] .audit-action-value_removed { background: #5b21b6; color: #ede9fe; }
 [data-theme="dark"] .audit-action-password_changed { background: #9d174d; color: #fce7f3; }
 
+/* ── Vendor hint (OUI auto-suggest) ── */
+.vendor-hint {
+  margin-top: 0.4rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  font-size: 0.85em;
+}
+.vendor-badge {
+  display: inline-block;
+  background: #e0e7ff;
+  color: #1e3a8a;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.85em;
+}
+.vendor-badge b { font-weight: 600; }
+.vendor-unknown {
+  display: inline-block;
+  color: #9ca3af;
+  font-style: italic;
+  font-size: 0.85em;
+}
+.vendor-cell {
+  display: inline-block;
+  background: #f3f4f6;
+  color: #6b7280;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  font-size: 0.8em;
+  margin-left: 0.4rem;
+}
+[data-theme="dark"] .vendor-badge { background: #1e3a8a; color: #dbeafe; }
+[data-theme="dark"] .vendor-unknown { color: #6b7280; }
+[data-theme="dark"] .vendor-cell { background: #2a2a4a; color: #9ca3af; }
+
 /* ── Dark theme ── */
 [data-theme="dark"] body {
   background: #1a1a2e;

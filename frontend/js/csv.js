@@ -264,6 +264,7 @@ export function toIseCsv(rows) {
     if ("CUSTOM.Owner" in colIdx) cells[colIdx["CUSTOM.Owner"]] = r.owner || "";
     if ("CUSTOM.PlatformType" in colIdx) cells[colIdx["CUSTOM.PlatformType"]] = r.platform_type || "";
     if ("CUSTOM.HypervisionISEPortal" in colIdx) cells[colIdx["CUSTOM.HypervisionISEPortal"]] = r.hypervision || "";
+    if ("Vendor" in colIdx) cells[colIdx["Vendor"]] = r.vendor || "";
     return cells.map(csvQuote).join(",");
   });
 

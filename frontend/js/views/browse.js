@@ -48,6 +48,7 @@ function esc(s) {
 // Column definitions: key = data field accessor, label = header text
 const COLUMNS = [
   { key: "mac",            label: "MAC",            field: (r) => r.mac || r.name },
+  { key: "vendor",         label: "Vendor",         field: (r) => r.vendor || "" },
   { key: "group_name",     label: "Identity Group", field: (r) => r.group_name },
   { key: "static_group",   label: "Tilknytning",    field: (r) => r.static_group ? "Statisk" : "Dynamisk" },
   { key: "description",    label: "Description",    field: (r) => r.description },
@@ -159,6 +160,7 @@ export async function renderBrowse(container) {
         <div id="detail-msg"></div>
         <div class="detail-grid">
           <label>MAC</label><div class="detail-value" id="d-mac"></div>
+          <label>Vendor</label><div class="detail-value" id="d-vendor"></div>
           <label>Name</label><div class="detail-value" id="d-name"></div>
           <label>ID</label><div class="detail-value mono" id="d-id"></div>
           <label>Identity Group</label>
@@ -1135,6 +1137,7 @@ export async function renderBrowse(container) {
       const d = await api.getEndpoint(id);
       detailOriginalGroupId = d.group_id || "";
       container.querySelector("#d-mac").textContent = d.mac || d.name || "";
+      container.querySelector("#d-vendor").textContent = d.vendor || "—";
       container.querySelector("#d-name").textContent = d.name || "";
       container.querySelector("#d-id").textContent = d.id || "";
       container.querySelector("#d-group").innerHTML = groupOptionsHtml(d.group_id);

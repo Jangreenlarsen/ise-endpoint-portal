@@ -5,6 +5,7 @@ class EndpointSummary(BaseModel):
     id: str
     name: str
     description: str | None = None
+    vendor: str = ""
 
 
 class EndpointDetail(BaseModel):
@@ -27,6 +28,7 @@ class EndpointDetail(BaseModel):
     portal_user: str = ""
     identity_store: str = ""
     identity_store_id: str = ""
+    vendor: str = ""
 
 
 class EndpointGroupSummary(BaseModel):

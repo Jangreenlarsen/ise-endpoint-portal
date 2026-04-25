@@ -164,6 +164,8 @@ export const api = {
     }),
   getCacheStats: () => request("/cache/stats"),
   invalidateCache: () => request("/cache/invalidate", { method: "POST" }),
+  lookupOui: (mac) => request(`/oui/${encodeURIComponent(mac)}`),
+  getOuiStats: () => request("/oui/stats"),
   listAuditEvents: (params = {}) => {
     const parts = [];
     for (const [k, v] of Object.entries(params)) {
