@@ -73,13 +73,9 @@ export async function renderAudit(container) {
             ${RESOURCE_TYPES.map((t) => `<option value="${t}">${t || "Alle"}</option>`).join("")}
           </select>
         </label>
-        <label>
-          Aktør
-          <input type="text" id="audit-actor" placeholder="brugernavn" />
-        </label>
         <label class="log-search-label">
-          Ressource-ID
-          <input type="text" id="audit-rid" placeholder="endpoint/DACL-id" />
+          Søg
+          <input type="text" id="audit-search" placeholder="aktør, id, MAC, JSON, IP, dato…" />
         </label>
         <label>
           Antal
@@ -124,8 +120,7 @@ export async function renderAudit(container) {
   const msg = container.querySelector("#audit-msg");
   const meta = container.querySelector("#audit-meta");
   const typeSel = container.querySelector("#audit-type");
-  const actorInput = container.querySelector("#audit-actor");
-  const ridInput = container.querySelector("#audit-rid");
+  const searchInput = container.querySelector("#audit-search");
   const limitSel = container.querySelector("#audit-limit");
   const refreshBtn = container.querySelector("#audit-refresh");
   const drawer = container.querySelector("#audit-drawer");
@@ -142,8 +137,7 @@ export async function renderAudit(container) {
     try {
       const params = {
         resource_type: typeSel.value || undefined,
-        actor: actorInput.value.trim() || undefined,
-        resource_id: ridInput.value.trim() || undefined,
+        search: searchInput.value.trim() || undefined,
         limit: parseInt(limitSel.value, 10),
       };
       const data = await api.listAuditEvents(params);
@@ -269,11 +263,9 @@ export async function renderAudit(container) {
   refreshBtn.addEventListener("click", load);
   typeSel.addEventListener("change", load);
   limitSel.addEventListener("change", load);
-  [actorInput, ridInput].forEach((el) => {
-    el.addEventListener("input", () => {
-      clearTimeout(debounce);
-      debounce = setTimeout(load, 350);
-    });
+  searchInput.addEventListener("input", () => {
+    clearTimeout(debounce);
+    debounce = setTimeout(load, 350);
   });
 
   await load();

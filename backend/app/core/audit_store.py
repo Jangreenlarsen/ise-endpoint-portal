@@ -166,6 +166,7 @@ def _query_sync(
     resource_id: str | None,
     from_ts: str | None,
     to_ts: str | None,
+    search: str | None,
     limit: int,
     offset: int,
 ) -> tuple[list[dict[str, Any]], int]:
@@ -186,6 +187,24 @@ def _query_sync(
     if to_ts:
         where.append("ts <= ?")
         params.append(to_ts)
+    if search:
+        # Bredsøgning på alle relevante kolonner inkl. JSON-blobs.
+        # Case-insensitive via LOWER(); IFNULL beskytter mod NULL-felter
+        # (resource_id og JSON-blobs kan være NULL).
+        pattern = f"%{search.lower()}%"
+        where.append(
+            "("
+            "LOWER(actor_username) LIKE ? OR "
+            "LOWER(action) LIKE ? OR "
+            "LOWER(resource_type) LIKE ? OR "
+            "LOWER(IFNULL(resource_id, '')) LIKE ? OR "
+            "LOWER(IFNULL(before_json, '')) LIKE ? OR "
+            "LOWER(IFNULL(after_json, '')) LIKE ? OR "
+            "LOWER(IFNULL(source_ip, '')) LIKE ? OR "
+            "LOWER(ts) LIKE ?"
+            ")"
+        )
+        params.extend([pattern] * 8)
     where_sql = f"WHERE {' AND '.join(where)}" if where else ""
     with _connect() as conn:
         total = conn.execute(
@@ -206,10 +225,16 @@ async def query(
     resource_id: str | None = None,
     from_ts: str | None = None,
     to_ts: str | None = None,
+    search: str | None = None,
     limit: int = 100,
     offset: int = 0,
 ) -> tuple[list[dict[str, Any]], int]:
-    """Return (events, total_count) matching the filters, newest first."""
+    """Return (events, total_count) matching the filters, newest first.
+
+    ``search`` er en bredsøgning der laver case-insensitive
+    substring-match på actor_username, action, resource_type,
+    resource_id, source_ip, ts og hele før/efter JSON-blobs.
+    """
     return await asyncio.to_thread(
         _query_sync,
         actor,
@@ -217,6 +242,7 @@ async def query(
         resource_id,
         from_ts,
         to_ts,
+        search,
         limit,
         offset,
     )

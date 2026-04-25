@@ -70,6 +70,10 @@ async def list_events(
     resource_id: str | None = Query(None),
     from_ts: str | None = Query(None, description="ISO-8601 lower bound"),
     to_ts: str | None = Query(None, description="ISO-8601 upper bound"),
+    search: str | None = Query(
+        None,
+        description="Bredsøgning (case-insensitive substring) på alle felter",
+    ),
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
 ) -> AuditListResponse:
@@ -79,6 +83,7 @@ async def list_events(
         resource_id=resource_id,
         from_ts=from_ts,
         to_ts=to_ts,
+        search=search,
         limit=limit,
         offset=offset,
     )

@@ -5,6 +5,42 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.12.2 build 0087] — 2026-04-26 — feat: Audit søg på alle felter
+
+Audit-viewet havde to separate filterfelter (Aktør + Ressource-ID),
+som hver kun matchede ét felt og krævede præcis værdi. Det gjorde
+det svært at finde et event hvis man kun huskede en MAC, en IP, et
+navn fra en JSON-payload eller en delvis tidsstempel.
+
+Erstattet med ét samlet **Søg**-felt der laver case-insensitive
+substring-match på tværs af alle relevante kolonner i ét hug:
+`actor_username`, `action`, `resource_type`, `resource_id`,
+`source_ip`, `ts` og hele før/efter JSON-blobs (`before_json` +
+`after_json`). NULL-felter beskyttes med `IFNULL(..., '')` så
+`resource_id`-mangel ikke bryder forespørgslen.
+
+Implementeret i ét lag på SQL-niveau (`LIKE %pattern%` med
+`LOWER()`), så pagination/total-tælling fortsat virker korrekt.
+Backend-API tilføjer ny `search`-query-parameter; frontend sender
+den via det generiske params-loop i `api.listAuditEvents()` —
+ingen ændring nødvendig dér.
+
+PATCH bump (2.12.1 → 2.12.2) — UX-forbedring af eksisterende
+2.9.0-feature, ikke ny RBAC-funktionalitet.
+
+Filer:
+- [version.json](version.json): 2.12.1 b0086 → 2.12.2 b0087
+- [backend/app/core/audit_store.py](backend/app/core/audit_store.py):
+  `_query_sync()` + `query()` accepterer ny `search`-param der
+  bygger en bredsøgnings-OR-klausul over 8 kolonner.
+- [backend/app/api/audit.py](backend/app/api/audit.py): `list_events`
+  videregiver `search` Query-param til store-laget.
+- [frontend/js/views/audit.js](frontend/js/views/audit.js): erstattet
+  `audit-actor` + `audit-rid` inputs med ét unified `audit-search`
+  felt. Debounce (350ms) og refresh-binding bevaret.
+
+---
+
 ## [2.12.1 build 0086] — 2026-04-25 — fix: roleCatalog.map crash i Browse/Edit + Register
 
 `api.listEndpointRoles()` returnerer `{roles: [...]}` (et
