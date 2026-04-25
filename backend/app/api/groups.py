@@ -1,11 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.api.deps import get_endpoint_service, require_any
+from app.api.deps import get_endpoint_service, require_register_lookup
 from app.core.exceptions import IseApiError
 from app.schemas.endpoint import EndpointGroupSummary
 from app.services.endpoint_service import EndpointService
 
-router = APIRouter(prefix="/groups", tags=["groups"], dependencies=[Depends(require_any)])
+# Registrar har brug for groups-dropdown'en i opret-formularen, derfor
+# require_register_lookup (= admin/editor/viewer/registrar) i stedet for
+# require_any (som ikke inkluderer registrar).
+router = APIRouter(prefix="/groups", tags=["groups"], dependencies=[Depends(require_register_lookup)])
 
 
 @router.get("", response_model=list[EndpointGroupSummary])

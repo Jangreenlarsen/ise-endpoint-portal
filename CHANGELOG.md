@@ -5,6 +5,70 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.10.0 build 0070] — 2026-04-25 — feat: M7 — registrar-rolle + mobile registreringsview
+
+Første milestone af 2.10.0. Tilføjer den fjerde RBAC-rolle `registrar`
+samt et dedikeret mobil-optimeret view designet til field-teknikere der
+skal oprette endpoints on-the-spot uden adgang til browse, edit eller
+admin-funktioner. M8 (MAC-scan via kamera + PWA offline-kø) er stadig
+udestående.
+
+**Backend RBAC**:
+
+- [backend/app/schemas/user.py](backend/app/schemas/user.py): `Role`-literal
+  + `ROLE_VALUES` udvidet med `"registrar"`.
+- [backend/app/api/deps.py](backend/app/api/deps.py): nye dependencies
+  `require_create_endpoint` (admin/editor/registrar) og
+  `require_register_lookup` (admin/editor/viewer/registrar). Bruges på
+  endpoints der er nødvendige for registreringsflowet.
+
+**Backend API-guards**:
+
+- [backend/app/api/endpoints.py](backend/app/api/endpoints.py): `POST /api/endpoints`
+  bytter `require_editor` → `require_create_endpoint`. Alle andre
+  endpoint-routes er fortsat låst til editor/viewer.
+- [backend/app/api/groups.py](backend/app/api/groups.py),
+  [backend/app/api/custom_attributes.py](backend/app/api/custom_attributes.py)
+  (kun `GET /custom-attributes`),
+  [backend/app/api/oui.py](backend/app/api/oui.py) (`GET /oui/{mac}`,
+  `GET /oui/stats`), og
+  [backend/app/api/dacls.py](backend/app/api/dacls.py) (kun
+  `GET /dacls`): bytter `require_any` → `require_register_lookup` så
+  registrar-rollen kan læse dropdown-værdier til opret-formularen.
+- Alle øvrige routes (browse, edit, delete, settings, brugere, audit,
+  cache, logs, attribut-CRUD, DACL CRUD) er fortsat utilgængelige for
+  registrar (returnerer 403).
+
+**Frontend**:
+
+- [frontend/js/views/register.js](frontend/js/views/register.js) (NY):
+  mobil-først registreringsview. MAC-input med auto-uppercase,
+  blur-normalisering til `AA:BB:CC:DD:EE:FF`-format og inline
+  OUI-vendor-detektion. Dropdowns til Identity Group, Type, Owner,
+  Lokation og Platform. Auto-suggest-knap "Sæt Platform=X" når
+  vendor matcher en kendt platform-type. Stor submit-knap (56 px)
+  med loading-state.
+- [frontend/js/app.js](frontend/js/app.js): ny `register`-rute med
+  roles `[admin, editor, registrar]`. Settings-ruten åbnet for
+  registrar (kun for password-skift). Login-flow router registrar
+  direkte til `/#register` ved login. Hash-fallback respekterer
+  rolle-restriktioner så registrar ikke kan navigere til /#browse.
+- [frontend/index.html](frontend/index.html): nyt sidebar-link
+  "Mobil-registrering" → `#/register` (skjules automatisk for roller
+  uden adgang).
+- [frontend/js/views/settings.js](frontend/js/views/settings.js):
+  user-create + user-update dropdowns viser nu også `registrar` som
+  valgmulighed.
+- [frontend/css/styles.css](frontend/css/styles.css): nye klasser
+  `.register-shell`, `.register-input`, `.register-vendor`,
+  `.register-submit` mfl. + role-badge `.role-registrar`. Touch-targets
+  på 48-56 px, 16 px input font (forhindrer iOS-zoom). Responsive
+  `@media (max-width: 600px)` collapser sidebar til horisontal nav.
+
+Non-breaking MINOR — eksisterende roller uændret.
+
+---
+
 ## [2.11.0 build 0069] — 2026-04-25 — feat: OUI lookup + vendor-enrichment + auto-suggest
 
 Markerer feature `done` for 2.11.0 — MAC OUI → vendor lookup. Komplet

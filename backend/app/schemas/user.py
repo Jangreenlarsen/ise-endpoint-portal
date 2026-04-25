@@ -4,8 +4,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-Role = Literal["admin", "editor", "viewer"]
-ROLE_VALUES: tuple[Role, ...] = ("admin", "editor", "viewer")
+Role = Literal["admin", "editor", "viewer", "registrar"]
+ROLE_VALUES: tuple[Role, ...] = ("admin", "editor", "viewer", "registrar")
 
 
 class User(BaseModel):

@@ -670,9 +670,10 @@ body.auth-mode .content {
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
-.role-admin  { background: #7f1d1d; color: #fecaca; }
-.role-editor { background: #1e40af; color: #bfdbfe; }
-.role-viewer { background: #374151; color: #d1d5db; }
+.role-admin     { background: #7f1d1d; color: #fecaca; }
+.role-editor    { background: #1e40af; color: #bfdbfe; }
+.role-viewer    { background: #374151; color: #d1d5db; }
+.role-registrar { background: #065f46; color: #d1fae5; }
 .linkish {
   background: none !important;
   border: none !important;
@@ -1207,3 +1208,125 @@ body.auth-mode .content {
 [data-theme="dark"] .col-vis-item { color: #e0e0e0; }
 [data-theme="dark"] .col-vis-item:hover { background: #1f2a44; }
 [data-theme="dark"] .col-vis-actions { border-top-color: #3a3a5c; }
+
+/* ── Mobile Register-view (2.10.0) ── */
+.mobile-register-mode {
+  padding: 0 !important;
+}
+.register-shell {
+  max-width: 540px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 4rem;
+}
+.register-header h1 {
+  margin: 0 0 0.2rem 0;
+  font-size: 1.5rem;
+}
+.register-sub {
+  color: #6b7280;
+  font-size: 0.95rem;
+  margin-bottom: 1.4rem;
+}
+.register-msg { margin-bottom: 1rem; }
+.register-form { display: flex; flex-direction: column; gap: 0.4rem; }
+.register-label {
+  margin-top: 0.6rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #374151;
+}
+.register-input {
+  width: 100%;
+  padding: 0.85rem 0.9rem;
+  font-size: 1.05rem;
+  min-height: 48px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  color: #111827;
+  box-sizing: border-box;
+}
+.register-input.mac {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  letter-spacing: 0.05em;
+  font-size: 1.1rem;
+}
+.register-input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+.register-vendor {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  font-size: 0.9rem;
+  margin-top: 0.3rem;
+}
+.register-vendor-tag {
+  background: #e0e7ff;
+  color: #1e3a8a;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  font-weight: 500;
+}
+.register-vendor-unknown {
+  color: #9ca3af;
+  font-style: italic;
+}
+.register-tiny-btn {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+  background: #1e40af;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  min-height: auto;
+}
+.register-tiny-btn:disabled {
+  background: #9ca3af;
+  cursor: default;
+}
+.register-submit {
+  margin-top: 1.6rem;
+  padding: 1rem 1rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  background: #065f46;
+  color: #d1fae5;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  min-height: 56px;
+}
+.register-submit:hover:not(:disabled) { background: #047857; }
+.register-submit:disabled {
+  background: #6b7280;
+  color: #d1d5db;
+  cursor: default;
+}
+
+@media (max-width: 600px) {
+  .app { grid-template-columns: 1fr; height: auto; min-height: 100vh; }
+  .sidebar { height: auto; padding: 0.8rem 0; }
+  .sidebar nav { flex-direction: row; flex-wrap: wrap; padding-top: 0.4rem; }
+  .sidebar nav a { padding: 0.5rem 0.8rem; font-size: 0.85rem; border-left: none; }
+  .backend-status { padding: 0.8rem 1.5rem; }
+  .content { overflow-y: visible; }
+  .register-shell { padding: 1rem 0.8rem 3rem; }
+  .register-input { font-size: 16px; /* prevents iOS zoom */ }
+}
+
+[data-theme="dark"] .register-sub { color: #9ca3af; }
+[data-theme="dark"] .register-label { color: #cbd5e1; }
+[data-theme="dark"] .register-input {
+  background: #16213e;
+  border-color: #3a3a5c;
+  color: #e0e0e0;
+}
+[data-theme="dark"] .register-vendor-tag { background: #1e3a8a; color: #dbeafe; }
+[data-theme="dark"] .register-vendor-unknown { color: #6b7280; }
+[data-theme="dark"] .register-submit { background: #065f46; color: #d1fae5; }
+[data-theme="dark"] .register-submit:hover:not(:disabled) { background: #047857; }

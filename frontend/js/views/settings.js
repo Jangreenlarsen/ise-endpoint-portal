@@ -190,6 +190,7 @@ export async function renderSettings(container) {
           <option value="viewer">viewer</option>
           <option value="editor">editor</option>
           <option value="admin">admin</option>
+          <option value="registrar">registrar (kun opret)</option>
         </select>
         <button type="submit">Opret bruger</button>
       </form>
@@ -475,7 +476,7 @@ async function initUsersSection(container, currentUser) {
               <td>${esc(u.username)}</td>
               <td>
                 <select class="user-role-select" ${isSelf ? "disabled title='Du kan ikke ændre din egen rolle her'" : ""}>
-                  ${["admin", "editor", "viewer"]
+                  ${["admin", "editor", "viewer", "registrar"]
                     .map((r) => `<option value="${r}"${r === u.role ? " selected" : ""}>${r}</option>`)
                     .join("")}
                 </select>

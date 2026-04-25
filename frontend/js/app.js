@@ -8,6 +8,7 @@ import { renderDacls } from "./views/dacls.js";
 import { renderLogs } from "./views/logs.js";
 import { renderAudit } from "./views/audit.js";
 import { renderLogin } from "./views/login.js";
+import { renderRegister } from "./views/register.js";
 import { renderSettings, initTheme } from "./views/settings.js";
 
 const statusDot = document.getElementById("status-dot");
@@ -21,8 +22,11 @@ const routes = {
   dacls: { render: renderDacls, roles: ["admin", "editor"] },
   logs: { render: renderLogs, roles: ["admin"] },
   audit: { render: renderAudit, roles: ["admin", "editor", "viewer"] },
-  settings: { render: renderSettings, roles: ["admin", "editor", "viewer"] },
+  register: { render: renderRegister, roles: ["admin", "editor", "registrar"] },
+  settings: { render: renderSettings, roles: ["admin", "editor", "viewer", "registrar"] },
 };
+
+const REGISTRAR_DEFAULT_ROUTE = "register";
 
 const versionEl = document.getElementById("version-info");
 const userInfoEl = document.getElementById("user-info");
@@ -43,8 +47,13 @@ async function checkHealth() {
 }
 
 function currentRoute() {
-  const hash = (location.hash || "#/browse").replace("#/", "");
-  return routes[hash] ? hash : "browse";
+  const user = auth.getUser();
+  const fallback = user && user.role === "registrar" ? REGISTRAR_DEFAULT_ROUTE : "browse";
+  const hash = (location.hash || `#/${fallback}`).replace("#/", "");
+  if (!routes[hash]) return fallback;
+  // Hvis brugeren ikke har adgang til ruten, fallback til en tilladt rute.
+  if (user && !routes[hash].roles.includes(user.role)) return fallback;
+  return hash;
 }
 
 function updateNavVisibility(user) {
@@ -94,7 +103,11 @@ function showLogin() {
   renderLogin((user) => {
     updateUserBadge(user);
     updateNavVisibility(user);
-    if (!location.hash || location.hash === "#/") location.hash = "#/browse";
+    const landing = user.role === "registrar" ? REGISTRAR_DEFAULT_ROUTE : "browse";
+    if (!location.hash || location.hash === "#/") location.hash = `#/${landing}`;
+    else if (user.role === "registrar" && !routes[location.hash.replace("#/", "")]?.roles.includes("registrar")) {
+      location.hash = `#/${landing}`;
+    }
     renderView();
   });
 }

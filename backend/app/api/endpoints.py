@@ -1,6 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
-from app.api.deps import get_endpoint_service, require_any, require_editor
+from app.api.deps import (
+    get_endpoint_service,
+    require_any,
+    require_create_endpoint,
+    require_editor,
+)
 from app.core.endpoint_cache import get_cache
 from app.core.exceptions import IseApiError
 from app.schemas.endpoint import (
@@ -103,7 +108,7 @@ async def get_endpoint(
     return detail
 
 
-@router.post("", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_editor)])
+@router.post("", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_create_endpoint)])
 async def create_endpoint(
     req: CreateEndpointRequest,
     service: EndpointService = Depends(get_endpoint_service),

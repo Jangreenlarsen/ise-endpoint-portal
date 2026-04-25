@@ -1,6 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.api.deps import get_dacl_service, require_any, require_editor
+from app.api.deps import (
+    get_dacl_service,
+    require_any,
+    require_editor,
+    require_register_lookup,
+)
 from app.core.exceptions import IseApiError
 from app.schemas.dacl import (
     CreateDaclRequest,
@@ -15,7 +20,7 @@ from app.services.dacl_service import DaclService, validate_dacl
 router = APIRouter(prefix="/dacls", tags=["dacls"])
 
 
-@router.get("", response_model=list[DaclSummary], dependencies=[Depends(require_any)])
+@router.get("", response_model=list[DaclSummary], dependencies=[Depends(require_register_lookup)])
 async def list_dacls(
     service: DaclService = Depends(get_dacl_service),
 ) -> list[DaclSummary]:

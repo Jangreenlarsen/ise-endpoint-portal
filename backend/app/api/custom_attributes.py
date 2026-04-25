@@ -1,6 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.api.deps import get_custom_attribute_service, require_any, require_editor
+from app.api.deps import (
+    get_custom_attribute_service,
+    require_any,
+    require_editor,
+    require_register_lookup,
+)
 from app.core.exceptions import IseApiError
 from app.schemas.custom_attribute import (
     AddValueRequest,
@@ -15,7 +20,7 @@ from app.services.custom_attribute_service import CustomAttributeService
 router = APIRouter(prefix="/custom-attributes", tags=["custom-attributes"])
 
 
-@router.get("", response_model=AllCustomAttributes, dependencies=[Depends(require_any)])
+@router.get("", response_model=AllCustomAttributes, dependencies=[Depends(require_register_lookup)])
 async def list_custom_attributes(
     service: CustomAttributeService = Depends(get_custom_attribute_service),
 ) -> AllCustomAttributes:
