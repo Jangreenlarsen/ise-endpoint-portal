@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
 from app.api.deps import (
+    get_current_user,
     get_endpoint_service,
     require_any,
     require_create_endpoint,
@@ -18,54 +19,76 @@ from app.schemas.endpoint import (
     EndpointUpdate,
     PaginatedEndpointDetails,
 )
+from app.schemas.user import User
+from app.services import user_service
 from app.services.endpoint_service import EndpointService
 
 router = APIRouter(prefix="/endpoints", tags=["endpoints"])
 
 
-@router.get("", response_model=list[EndpointSummary], dependencies=[Depends(require_any)])
+def _scope_for(user: User) -> list[str] | None:
+    """Returnér effektive roller eller None for admin (= ingen filter)."""
+    if user.role == "admin":
+        return None
+    return user_service.effective_roles(user)
+
+
+@router.get("", response_model=list[EndpointSummary])
 async def list_endpoints(
     page: int = 1,
     size: int = 100,
     search: str | None = None,
     filter: list[str] | None = Query(default=None),
+    user: User = Depends(require_any),
     service: EndpointService = Depends(get_endpoint_service),
 ) -> list[EndpointSummary]:
     try:
         return await service.list_endpoints(
-            page=page, size=size, search=search, filters=filter
+            page=page,
+            size=size,
+            search=search,
+            filters=filter,
+            effective_roles=_scope_for(user),
         )
     except IseApiError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
-@router.get("/details", response_model=PaginatedEndpointDetails, dependencies=[Depends(require_any)])
+@router.get("/details", response_model=PaginatedEndpointDetails)
 async def list_endpoint_details(
     page: int = 1,
     size: int = 100,
     search: str | None = None,
     filter: list[str] | None = Query(default=None),
+    user: User = Depends(require_any),
     service: EndpointService = Depends(get_endpoint_service),
 ) -> PaginatedEndpointDetails:
     """List endpoints with full details including custom attributes."""
     try:
         return await service.list_endpoint_details(
-            page=page, size=size, search=search, filters=filter
+            page=page,
+            size=size,
+            search=search,
+            filters=filter,
+            effective_roles=_scope_for(user),
         )
     except IseApiError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
-@router.get("/details/all", response_model=list[EndpointDetail], dependencies=[Depends(require_any)])
+@router.get("/details/all", response_model=list[EndpointDetail])
 async def list_all_endpoint_details(
     search: str | None = None,
     filter: list[str] | None = Query(default=None),
+    user: User = Depends(require_any),
     service: EndpointService = Depends(get_endpoint_service),
 ) -> list[EndpointDetail]:
     """Fetch ALL endpoints with full details across all ISE pages."""
     try:
         return await service.list_all_endpoint_details(
-            search=search, filters=filter
+            search=search,
+            filters=filter,
+            effective_roles=_scope_for(user),
         )
     except IseApiError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
@@ -85,15 +108,23 @@ async def list_session_macs(
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
-@router.get("/{endpoint_id}", response_model=EndpointDetail, dependencies=[Depends(require_any)])
+@router.get("/{endpoint_id}", response_model=EndpointDetail)
 async def get_endpoint(
     endpoint_id: str,
     response: Response,
+    user: User = Depends(require_any),
     service: EndpointService = Depends(get_endpoint_service),
 ) -> EndpointDetail:
     try:
-        detail = await service.get_endpoint(endpoint_id)
+        detail = await service.get_endpoint(
+            endpoint_id, effective_roles=_scope_for(user)
+        )
     except IseApiError as exc:
+        # 404 fra service betyder enten ISE ikke har endpointet, eller
+        # det ligger udenfor brugerens scope. I begge tilfælde returnerer
+        # vi 404 til klienten — bevidst, så scope-grænsen ikke leakes.
+        if exc.status_code == 404:
+            raise HTTPException(status_code=404, detail="Endpoint ikke fundet") from exc
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     # Expose cache age so the frontend can distinguish fresh fetches from
     # cache hits without a separate call.

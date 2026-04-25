@@ -5,7 +5,7 @@ import logging
 from typing import Any
 
 from app.core import audit_store, config
-from app.core.custom_attr_store import ALL_ATTRS, HIDDEN_ATTR
+from app.core.custom_attr_store import ALL_ATTRS, HIDDEN_ATTR, ROLES_ATTR
 from app.core.endpoint_cache import get_cache
 from app.core.exceptions import IseApiError
 from app.core.oui_lookup import lookup as oui_lookup
@@ -76,7 +76,28 @@ class EndpointService:
         size: int = 100,
         search: str | None = None,
         filters: list[str] | None = None,
+        effective_roles: list[str] | None = None,
     ) -> list[EndpointSummary]:
+        if effective_roles is not None:
+            # Non-admin: filtrér via detail-fetch så vi kan inspicere
+            # HypervisionRoles-CA. Lidt langsommere, men den eneste
+            # pålidelige måde: ERS understøtter ikke CA-filter på 3.4.
+            details = await self.list_endpoint_details(
+                page=page,
+                size=size,
+                search=search,
+                filters=filters,
+                effective_roles=effective_roles,
+            )
+            return [
+                EndpointSummary(
+                    id=d.id,
+                    name=d.name,
+                    description=d.description,
+                    vendor=d.vendor,
+                )
+                for d in details.items
+            ]
         filters = _combine_filters(search, filters)
         raw, _ = await self.endpoints.list_page(page=page, size=size, filters=filters)
         logger.info(
@@ -93,16 +114,28 @@ class EndpointService:
             for r in raw
         ]
 
-    async def get_endpoint(self, endpoint_id: str) -> EndpointDetail:
+    async def get_endpoint(
+        self,
+        endpoint_id: str,
+        effective_roles: list[str] | None = None,
+    ) -> EndpointDetail:
         """Fetch full endpoint details from ISE including custom attributes.
 
         Cache-backed: repeated reads within TTL return from memory; stale
         entries can be served while a background refresh runs (see
         ``endpoint_cache``).
+
+        Hvis ``effective_roles`` er sat (non-admin), tjekkes synlighed mod
+        endpointets ``HypervisionRoles``. Out-of-scope rejses som
+        ``IseApiError(404)`` så API-laget kan returnere 404 (ikke 403,
+        så scope-grænsen ikke leakes).
         """
-        return await get_cache().get_detail(
+        detail = await get_cache().get_detail(
             endpoint_id, lambda: self._fetch_endpoint_detail(endpoint_id)
         )
+        if effective_roles is not None and not _endpoint_visible(detail, effective_roles):
+            raise IseApiError(404, f"Endpoint {endpoint_id} not found")
+        return detail
 
     async def _fetch_endpoint_detail(self, endpoint_id: str) -> EndpointDetail:
         raw = await self.endpoints.get(endpoint_id)
@@ -125,6 +158,7 @@ class EndpointService:
             authz_acl=ca.get("AuthzACL", ""),
             platform_type=ca.get("PlatformType", ""),
             hypervision=ca.get("HypervisionISEPortal", ""),
+            roles=_parse_roles_csv(ca.get(ROLES_ATTR, "")),
             profile_id=raw.get("profileId", "") or "",
             static_profile=bool(raw.get("staticProfileAssignment", False)),
             portal_user=raw.get("portalUser", "") or "",
@@ -156,8 +190,15 @@ class EndpointService:
         size: int = 100,
         search: str | None = None,
         filters: list[str] | None = None,
+        effective_roles: list[str] | None = None,
     ) -> PaginatedEndpointDetails:
-        """List endpoints with full details (concurrent fetches, max 5 parallel)."""
+        """List endpoints with full details (concurrent fetches, max 5 parallel).
+
+        Hvis ``effective_roles`` er sat (non-admin), filtreres rækker
+        post-fetch på ``HypervisionRoles``-overlap. ``total`` rapporterer
+        det filtrerede antal for den hentede side; den globale total er
+        ikke kendt uden en fuld scan.
+        """
         filters = _combine_filters(search, filters)
         resources, total = await self.endpoints.list_page(
             page=page, size=size, filters=filters
@@ -183,16 +224,30 @@ class EndpointService:
                     )
 
         details = await asyncio.gather(*(fetch_one(r) for r in resources))
+        items = list(details)
+        if effective_roles is not None:
+            visible = [d for d in items if _endpoint_visible(d, effective_roles)]
+            logger.info(
+                "role-filter: %d → %d endpoints (effective_roles=%s)",
+                len(items), len(visible), effective_roles,
+            )
+            items = visible
+            total = len(items)
         return PaginatedEndpointDetails(
-            items=list(details), total=total, page=page, size=size
+            items=items, total=total, page=page, size=size
         )
 
     async def list_all_endpoint_details(
         self,
         search: str | None = None,
         filters: list[str] | None = None,
+        effective_roles: list[str] | None = None,
     ) -> list[EndpointDetail]:
-        """Fetch ALL endpoints with full details (all ISE pages, concurrent)."""
+        """Fetch ALL endpoints with full details (all ISE pages, concurrent).
+
+        Hvis ``effective_roles`` er sat (non-admin), filtreres listen
+        post-fetch på ``HypervisionRoles``-overlap.
+        """
         filters = _combine_filters(search, filters)
         resources = await self.endpoints.list_all(filters=filters)
         logger.info(
@@ -215,7 +270,15 @@ class EndpointService:
                     )
 
         details = await asyncio.gather(*(fetch_one(r) for r in resources))
-        return list(details)
+        items = list(details)
+        if effective_roles is not None:
+            visible = [d for d in items if _endpoint_visible(d, effective_roles)]
+            logger.info(
+                "role-filter (all): %d → %d endpoints (effective_roles=%s)",
+                len(items), len(visible), effective_roles,
+            )
+            items = visible
+        return items
 
     async def list_groups(self) -> list[EndpointGroupSummary]:
         return await get_cache().get_groups(self._fetch_groups)
@@ -467,6 +530,34 @@ def _extract_custom_attrs(endpoint: dict[str, Any]) -> dict[str, str]:
         if isinstance(inner, dict):
             return {k: str(v) for k, v in inner.items()}
     return {}
+
+
+def _parse_roles_csv(csv: str) -> list[str]:
+    """Parse comma-separated rolle-CSV til en liste af strippede navne.
+
+    Tomme stykker (fx ``"a,,b"``) frasorteres så CSV-noise ikke giver
+    falske rolle-navne. Bevarer original stavning.
+    """
+    if not csv:
+        return []
+    return [r.strip() for r in str(csv).split(",") if r.strip()]
+
+
+def _endpoint_visible(detail: EndpointDetail, effective_roles: list[str]) -> bool:
+    """Returnér True hvis endpointets roller overlapper brugerens.
+
+    Sammenligning er case-insensitiv så stavningsforskelle (fx
+    ``svendbent`` vs ``SvendBent``) ikke skjuler endpoints. Et endpoint
+    uden roller (CA tom) er usynligt for non-admin — least-privilege
+    default som diskuteret i FEATURES.md.
+    """
+    if not effective_roles:
+        return False
+    user_set = {r.lower() for r in effective_roles if r}
+    for role in detail.roles:
+        if role and role.lower() in user_set:
+            return True
+    return False
 
 
 def _build_search_filters(search: str | None) -> list[str] | None:

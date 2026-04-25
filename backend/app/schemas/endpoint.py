@@ -23,6 +23,7 @@ class EndpointDetail(BaseModel):
     authz_acl: str = ""
     platform_type: str = ""
     hypervision: str = ""
+    roles: list[str] = Field(default_factory=list)
     profile_id: str = ""
     static_profile: bool = False
     portal_user: str = ""
@@ -44,6 +45,7 @@ class CustomAttrs(BaseModel):
     AuthzVlan: str = ""
     AuthzACL: str = ""
     PlatformType: str = ""
+    HypervisionRoles: str = ""
 
 
 class CreateEndpointRequest(BaseModel):

@@ -5,6 +5,60 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.12.0 build 0080] — 2026-04-25 — feat(M4): read-path filter på endpoints for non-admin
+
+Phase 4 af 7 i endpoint-level RBAC.
+
+Non-admin brugere ser nu kun endpoints hvor `HypervisionRoles`-CA
+overlapper med deres effektive roller (assigned + username). Admin
+ser stadig alt.
+
+Schema-ændringer ([backend/app/schemas/endpoint.py](backend/app/schemas/endpoint.py)):
+- `EndpointDetail.roles: list[str]` (default `[]`) — parsed fra
+  `HypervisionRoles`-CA. Frontend bruger feltet til Browse/Edit
+  Roller-kolonnen.
+- `CustomAttrs.HypervisionRoles: str = ""` — comma-separated CSV
+  for write-path. Sat eksplicit af admin/editor; auto-tag for
+  non-admin håndteres i Phase 5.
+
+Service-ændringer ([backend/app/services/endpoint_service.py](backend/app/services/endpoint_service.py)):
+- `_fetch_endpoint_detail` udfylder nu `roles` ved at parse
+  `HypervisionRoles`-CA via ny `_parse_roles_csv` helper (strip,
+  drop tomme stykker, bevar stavning).
+- Nye helpers: `_endpoint_visible(detail, effective_roles)` —
+  case-insensitiv overlap-check; et endpoint uden roller er
+  usynligt for non-admin (least-privilege default).
+- `list_endpoints`, `list_endpoint_details`, `list_all_endpoint_details`,
+  `get_endpoint` accepterer nu `effective_roles: list[str] | None`:
+  - `None` (default) = admin-mode = ingen filter
+  - non-empty list = filtrér post-fetch på CA-overlap
+- `get_endpoint` rejser `IseApiError(404)` ved out-of-scope så
+  API-laget kan returnere 404 (ikke 403) — scope-grænsen leakes
+  ikke til klienten.
+- `list_endpoints` (summary) for non-admin går nu via detail-fetch
+  for at have CA tilgængelig; admin-pathen er uændret (hurtig).
+
+API-ændringer ([backend/app/api/endpoints.py](backend/app/api/endpoints.py)):
+- Ny `_scope_for(user)` helper returnerer `None` for admin og
+  `effective_roles` ellers.
+- `GET /api/endpoints`, `/details`, `/details/all`, `/{id}` modtager
+  nu `User` via Depends og videregiver scope. Permission-guards
+  (`require_any`) er flyttet fra `dependencies=[]` til function-arg
+  så user-objektet er tilgængeligt.
+- `GET /api/endpoints/{id}` mapper service-404 til HTTP 404 med
+  "Endpoint ikke fundet" — uskelnelig fra reelt manglende endpoint
+  så scope-grænsen er undselig.
+
+Bemærk: write-path (`create_endpoint`, `update_endpoint`,
+`coa_*`) bevarer admin-snapshots og påvirkes ikke af denne fase.
+Auto-tag for non-admin på create/update kommer i Phase 5.
+
+Næste fase: Phase 5 — write-path auto-tag så non-admin's egne
+oprettelser bliver synlige for dem selv (sætter username-tag hvis
+ingen roller eksplicit valgt).
+
+---
+
 ## [2.12.0 build 0079] — 2026-04-25 — feat(M3): user assigned_endpoint_roles + assignment API
 
 Phase 3 af 7 i endpoint-level RBAC.
