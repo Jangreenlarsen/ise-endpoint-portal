@@ -5,6 +5,24 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.10.2 build 0073] — 2026-04-25 — fix: Browse/Edit kolonner forskudt pga. manglende Vendor-cell
+
+PATCH-bump. Efter 2.11.0 var Browse/Edit-tabellen forskudt: alt fra
+Identity Group og frem stod under den forkerte header.
+
+Rodårsag i [frontend/js/views/browse.js](frontend/js/views/browse.js):
+"Vendor" blev tilføjet til `COLUMNS`-arrayet (som driver header- og
+filter-row), men `renderRows` blev aldrig opdateret til også at
+emittere en `<td>` for vendor. Header havde 11 kolonner (efter
+checkbox), body havde 10 — så indholdet rykkede én plads til venstre
+under hver header.
+
+Fix: tilføjet `<td class="vendor-cell-td">${esc(r.vendor || "")}</td>`
+lige efter MAC-cellen i `renderRows`. Vendor er read-only (udledes fra
+OUI), så ingen edit-handlers kræves.
+
+---
+
 ## [2.10.1 build 0072] — 2026-04-25 — fix: rollback restore custom attributes korrekt
 
 PATCH-bump. Audit-rollback af endpoint-updates ryddede alle custom

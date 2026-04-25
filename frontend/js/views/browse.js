@@ -685,6 +685,7 @@ export async function renderBrowse(container) {
       <tr data-id="${esc(r.id)}"${dirtyIds.has(r.id) ? ' class="dirty"' : ''}>
         <td class="select-cell"><input type="checkbox" class="row-select" /></td>
         <td class="mac-cell"><a href="#" class="mac-link" title="Vis detaljer">${esc(r.mac || r.name)}</a></td>
+        <td class="vendor-cell-td">${esc(r.vendor || "")}</td>
         <td><select class="grp-select">${groupOptionsHtml(r.group_id)}</select></td>
         <td class="assign-cell">${r.static_group ? "Statisk" : "Dynamisk"}</td>
         <td><input type="text" class="desc-input" value="${esc(r.description || "")}" /></td>
