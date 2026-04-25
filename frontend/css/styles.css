@@ -1439,6 +1439,77 @@ body.register-route .login-card {
 [data-theme="dark"] .register-submit { background: #065f46; color: #d1fae5; }
 [data-theme="dark"] .register-submit:hover:not(:disabled) { background: #047857; }
 
+/* Roller-picker i Register */
+.register-roles-section { display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.4rem; }
+.register-roles-hint { font-size: 0.78rem; }
+.register-roles-chips { padding: 0.3rem 0; }
+.register-roles-chips .role-chip { font-size: 0.85rem; padding: 0.3rem 0.6rem; }
+[data-theme="dark"] .register-roles-hint { color: #9ca3af; }
+
+/* Mine endpoints */
+.register-mine-section { margin-top: 1.2rem; display: flex; flex-direction: column; gap: 0.6rem; }
+.register-mine-btn {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  font-size: 1rem;
+  background: #1f2937;
+  color: #e5e7eb;
+  border: 1px solid #374151;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 48px;
+}
+.register-mine-btn:hover { background: #111827; }
+.register-mine-icon { font-size: 1.1rem; }
+.register-mine-list { display: flex; flex-direction: column; gap: 0.5rem; }
+.register-mine-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.7rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.register-mine-mac {
+  font-family: monospace;
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+}
+.register-mine-row {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  color: #475569;
+}
+.register-mine-key {
+  flex: 0 0 4.5rem;
+  color: #94a3b8;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.register-mine-roles { color: #1d4ed8; }
+.register-mine-empty {
+  padding: 1rem;
+  text-align: center;
+  color: #94a3b8;
+  font-style: italic;
+}
+.register-mine-error { color: #dc2626; }
+[data-theme="dark"] .register-mine-btn { background: #1f2937; color: #e5e7eb; border-color: #374151; }
+[data-theme="dark"] .register-mine-btn:hover { background: #0f172a; }
+[data-theme="dark"] .register-mine-card { background: #16213e; border-color: #3a3a5c; }
+[data-theme="dark"] .register-mine-row { color: #cbd5e1; }
+[data-theme="dark"] .register-mine-key { color: #64748b; }
+[data-theme="dark"] .register-mine-roles { color: #93c5fd; }
+[data-theme="dark"] .register-mine-empty { color: #64748b; }
+
 /* ── MAC-scan + PWA queue (2.10.0 M8) ── */
 .register-mac-row { display: flex; gap: 0.5rem; align-items: stretch; }
 .register-mac-row .register-input.mac { flex: 1; }

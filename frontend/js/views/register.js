@@ -16,6 +16,12 @@ function normaliseMac(raw) {
   return hex.match(/.{2}/g).join(":");
 }
 
+function esc(s) {
+  return (s == null ? "" : String(s))
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
 const VENDOR_TO_PLATFORM = {
   "Cisco Systems Inc": "iosxe",
   "Cisco-Linksys": "iosxe",
@@ -68,11 +74,24 @@ export async function renderRegister(container) {
 
         <div id="r-attrs"></div>
 
+        <div id="r-roles-section" class="register-roles-section" hidden>
+          <label class="register-label">Roller</label>
+          <div class="register-sub register-roles-hint">Vælg roller fra kataloget. Hvis ingen vælges, tagges endpointet med dit brugernavn.</div>
+          <div id="r-roles-chips" class="role-chips register-roles-chips"></div>
+        </div>
+
         <label for="r-desc" class="register-label">Beskrivelse</label>
         <input type="text" id="r-desc" class="register-input" placeholder="(valgfri)" />
 
         <button type="submit" id="r-submit" class="register-submit">Registrér</button>
       </form>
+      <div class="register-mine-section">
+        <button type="button" id="r-mine-toggle" class="register-mine-btn">
+          <span class="register-mine-icon">📋</span>
+          <span id="r-mine-label">Mine endpoints</span>
+        </button>
+        <div id="r-mine-list" class="register-mine-list" hidden></div>
+      </div>
     </div>
   `;
 
@@ -103,14 +122,19 @@ export async function renderRegister(container) {
   };
   let caData = { attributes: [] };
   let dacls = [];
+  let roleCatalog = [];
+  let me = null;
   try {
-    [caData, dacls] = await Promise.all([
+    [caData, dacls, roleCatalog, me] = await Promise.all([
       api.listCustomAttributes(),
       api.listDacls().catch(() => []),
+      api.listEndpointRoles().catch(() => []),
+      api.authMe().catch(() => null),
     ]);
   } catch (err) {
     showError(`Kunne ikke hente attributter: ${err.message}`);
   }
+  const canPickRoles = !!me && (me.role === "admin" || me.role === "editor");
   const attrMap = {};
   for (const a of caData.attributes || []) attrMap[a.name] = a.values;
   // AuthzACL hentes fra ISE DACLs, ikke fra det lokale CA-store.
@@ -124,6 +148,20 @@ export async function renderRegister(container) {
         <option value="">— vælg —</option>${opts}
       </select>
     `);
+  }
+
+  // Roller-picker: kun synlig for admin/editor. Viewer/registrar får
+  // automatisk deres username som tag (auto-tag i backend Phase 5).
+  if (canPickRoles && roleCatalog.length) {
+    const rolesSection = container.querySelector("#r-roles-section");
+    const rolesChips = container.querySelector("#r-roles-chips");
+    rolesChips.innerHTML = roleCatalog.map((r) => `
+      <label class="role-chip" title="${esc(r.description || r.name)}">
+        <input type="checkbox" class="r-role-chip" data-role="${esc(r.name)}" />
+        <span>${esc(r.name)}</span>
+      </label>
+    `).join("");
+    rolesSection.hidden = false;
   }
 
   // OUI auto-suggest
@@ -221,6 +259,12 @@ export async function renderRegister(container) {
       const v = sel ? sel.value : "";
       if (v) ca[name] = v;
     }
+    if (canPickRoles) {
+      const checked = container.querySelectorAll(".r-role-chip:checked");
+      if (checked.length) {
+        ca.HypervisionRoles = Array.from(checked).map((c) => c.dataset.role).join(",");
+      }
+    }
     const payload = {
       mac,
       group_id: groupSel.value,
@@ -272,6 +316,61 @@ export async function renderRegister(container) {
       }
     });
   }
+
+  // ── Mine endpoints — mobil-venlig oversigt over endpoints brugeren
+  // har adgang til. Backend filterer allerede pr. effektive roller, så
+  // listen indeholder kun det brugeren må se.
+  const mineToggle = container.querySelector("#r-mine-toggle");
+  const mineList = container.querySelector("#r-mine-list");
+  const mineLabel = container.querySelector("#r-mine-label");
+  let mineLoaded = false;
+  let mineRows = [];
+
+  function renderMineList(rows) {
+    if (!rows.length) {
+      mineList.innerHTML = `<div class="register-mine-empty">Ingen endpoints synlige for dig.</div>`;
+      return;
+    }
+    mineList.innerHTML = rows.map((r) => {
+      const mac = esc(r.mac || r.name || "");
+      const grp = esc(r.group_name || "—");
+      const roles = (r.roles || []).map(esc).join(", ");
+      const desc = esc(r.description || "");
+      return `
+        <div class="register-mine-card">
+          <div class="register-mine-mac">${mac}</div>
+          <div class="register-mine-row"><span class="register-mine-key">Gruppe</span><span>${grp}</span></div>
+          ${desc ? `<div class="register-mine-row"><span class="register-mine-key">Beskr.</span><span>${desc}</span></div>` : ""}
+          ${roles ? `<div class="register-mine-row"><span class="register-mine-key">Roller</span><span class="register-mine-roles">${roles}</span></div>` : ""}
+        </div>
+      `;
+    }).join("");
+  }
+
+  mineToggle.addEventListener("click", async () => {
+    if (!mineList.hidden) {
+      mineList.hidden = true;
+      mineLabel.textContent = "Mine endpoints";
+      return;
+    }
+    if (!mineLoaded) {
+      mineList.hidden = false;
+      mineList.innerHTML = `<div class="register-mine-empty">Henter…</div>`;
+      mineLabel.textContent = "Mine endpoints (henter…)";
+      try {
+        mineRows = await api.listAllEndpointDetails("", []);
+        mineLoaded = true;
+      } catch (err) {
+        mineList.innerHTML = `<div class="register-mine-empty register-mine-error">Kunne ikke hente: ${esc(err.message)}</div>`;
+        mineLabel.textContent = "Mine endpoints";
+        return;
+      }
+    } else {
+      mineList.hidden = false;
+    }
+    renderMineList(mineRows);
+    mineLabel.textContent = `Mine endpoints (${mineRows.length})`;
+  });
 
   // Logout-knap i topbar — registrar har ingen sidebar at logge ud fra.
   const logoutBtn = container.querySelector("#r-logout");

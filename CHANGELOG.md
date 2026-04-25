@@ -5,6 +5,47 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.12.0 build 0084] — 2026-04-25 — feat(M6c): Register-view rolle-picker + Mine endpoints
+
+Phase 6c af 7 i endpoint-level RBAC.
+
+**Rolle-picker i Register**:
+- Ny sektion "Roller" mellem CA-felterne og Beskrivelse, vises
+  KUN for admin/editor (rolleCatalog hentes ved load).
+- Chip-multi-select baseret på `.role-chip`-classen fra
+  Phase 6a/6b — én chip pr. rolle i kataloget med beskrivelse
+  som tooltip.
+- Hint-tekst forklarer at uden eksplicit valg auto-tagges
+  endpointet med brugerens username (Phase 5-logik).
+- Submit bygger nu `HypervisionRoles` CSV i custom_attributes
+  hvis chips er markeret. Viewer/registrar har ingen UI →
+  backend auto-tagger med username.
+
+**Mine endpoints**:
+- Ny knap nederst på register-siden: "Mine endpoints" toggler
+  en mobil-venlig kortliste med endpoints brugeren har adgang
+  til (backend filterer allerede via Phase 4 read-path).
+- Hver kort viser MAC, Identity Group, Beskrivelse (hvis sat)
+  og Roller — alt read-only.
+- Lazy-load: første klik fetcher via `listAllEndpointDetails`,
+  senere klik åbner cachen.
+- Knap-label opdateres med antal: "Mine endpoints (12)".
+
+Filer:
+- [version.json](version.json): 0083 → 0084
+- [frontend/js/views/register.js](frontend/js/views/register.js):
+  +`esc()`-helper, +load af roleCatalog/me, +chip-render +
+  HypervisionRoles i submit-payload, +"Mine endpoints"-toggle
+  med renderMineList.
+- [frontend/css/styles.css](frontend/css/styles.css):
+  `.register-roles-section`, `.register-mine-*` (knap, kort,
+  rækker, empty-state, error) + dark-theme varianter.
+
+Næste fase: Phase 7 — audit-logging af alle role CRUD og
+assignments, polish + slut-commit.
+
+---
+
 ## [2.12.0 build 0083] — 2026-04-25 — feat(M6b): Browse/Edit Roller-kolonne med inline multi-select
 
 Phase 6b af 7 i endpoint-level RBAC.
