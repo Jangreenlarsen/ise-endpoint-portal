@@ -5,6 +5,36 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.12.1 build 0086] — 2026-04-25 — fix: roleCatalog.map crash i Browse/Edit + Register
+
+`api.listEndpointRoles()` returnerer `{roles: [...]}` (et
+`EndpointRoleListResponse`), ikke en array direkte.
+[settings.js](frontend/js/views/settings.js) behandlede det
+korrekt med `data.roles`, men Phase 6b/6c kode i
+[browse.js](frontend/js/views/browse.js) og
+[register.js](frontend/js/views/register.js) brugte responsen
+direkte som array — derfor crashede `roleCatalog.map(...)`
+ved første render af Browse/Edit (og chip-pickeren i
+Register).
+
+Fix: begge views udtrækker nu `rolesResp.roles` med
+`Array.isArray`-guard og fallback til `[]`. `.catch()`
+returnerer `{roles: []}` så samme objektform bruges også
+ved fejl.
+
+PATCH bump (2.12.0 → 2.12.1) — bug-fix uden funktionel
+ændring.
+
+Filer:
+- [version.json](version.json): 2.12.0 b0085 → 2.12.1 b0086
+- [frontend/js/views/browse.js](frontend/js/views/browse.js):
+  `roleCatalog = (roles && Array.isArray(roles.roles)) ? roles.roles : []`
+- [frontend/js/views/register.js](frontend/js/views/register.js):
+  samme rettelse via `rolesResp` mellemvariabel.
+- [BUGS.md](BUGS.md): bug-entry tilføjet under Fixed.
+
+---
+
 ## [2.12.0 build 0085] — 2026-04-25 — feat(M7): Audit-logging af endpoint-rolle CRUD + 2.12.0 done
 
 Phase 7 af 7 — sidste fase i endpoint-level RBAC. Hermed er

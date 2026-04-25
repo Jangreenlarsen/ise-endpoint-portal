@@ -125,12 +125,14 @@ export async function renderRegister(container) {
   let roleCatalog = [];
   let me = null;
   try {
-    [caData, dacls, roleCatalog, me] = await Promise.all([
+    let rolesResp;
+    [caData, dacls, rolesResp, me] = await Promise.all([
       api.listCustomAttributes(),
       api.listDacls().catch(() => []),
-      api.listEndpointRoles().catch(() => []),
+      api.listEndpointRoles().catch(() => ({ roles: [] })),
       api.authMe().catch(() => null),
     ]);
+    roleCatalog = (rolesResp && Array.isArray(rolesResp.roles)) ? rolesResp.roles : [];
   } catch (err) {
     showError(`Kunne ikke hente attributter: ${err.message}`);
   }

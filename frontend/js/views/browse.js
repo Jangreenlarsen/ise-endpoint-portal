@@ -783,11 +783,11 @@ export async function renderBrowse(container) {
         api.listEndpointDetails(currentPage, currentSize, "", currentFilters),
         api.listDacls().catch(() => []),
         api.getPlatformMapping().catch(() => ({ mappings: [] })),
-        api.listEndpointRoles().catch(() => []),
+        api.listEndpointRoles().catch(() => ({ roles: [] })),
         api.authMe().catch(() => null),
       ]);
       groups = grps;
-      roleCatalog = roles || [];
+      roleCatalog = (roles && Array.isArray(roles.roles)) ? roles.roles : [];
       canEditRoles = !!me && (me.role === "admin" || me.role === "editor");
       for (const a of caData.attributes) {
         if (a.name in caValues) caValues[a.name] = a.values;
