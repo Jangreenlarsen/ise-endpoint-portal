@@ -165,10 +165,41 @@ export async function renderSettings(container) {
 
     ${isAdmin ? `
     <div class="card">
+      <h3>Endpoint-roller</h3>
+      <p class="hint">
+        Roller der kan tagges på endpoints (CA <code>HypervisionRoles</code>) og tildeles
+        brugere. Non-admin ser kun endpoints tagget med en af deres effektive roller
+        (tildelte + deres eget username, der altid er en implicit rolle). Admin ser alt.
+        Rolle-navne må kun indeholde <code>A-Z a-z 0-9 _ -</code> (max 64 tegn).
+      </p>
+      <div id="roles-msg"></div>
+      <table class="users-table">
+        <thead>
+          <tr>
+            <th>Navn</th>
+            <th>Beskrivelse</th>
+            <th style="width:9rem;">Oprettet af</th>
+            <th style="width:9rem;">Oprettet</th>
+            <th style="width:6rem;">Handling</th>
+          </tr>
+        </thead>
+        <tbody id="roles-tbody"></tbody>
+      </table>
+      <form id="role-create-form" class="user-create-row">
+        <input type="text" id="new-role-name" placeholder="rolle-navn (fx alle-Printer)"
+               pattern="[A-Za-z0-9_\\-]{1,64}" maxlength="64" required />
+        <input type="text" id="new-role-desc" placeholder="beskrivelse (valgfri)" maxlength="256" />
+        <button type="submit">Opret rolle</button>
+      </form>
+    </div>
+
+    <div class="card">
       <h3>Brugere &amp; roller</h3>
       <p class="hint">
-        Administrer lokale brugerkonti og deres roller.
+        Administrer lokale brugerkonti, system-roller og endpoint-rolle-tildelinger.
         <b>admin</b> har fuld adgang. <b>editor</b> kan oprette/redigere endpoints. <b>viewer</b> kan kun læse.
+        <b>registrar</b> kan kun registrere nye endpoints. Endpoint-roller bestemmer hvilke endpoints
+        ikke-admin-brugere kan se (deres username er altid implicit tildelt).
       </p>
       <div id="users-msg"></div>
       <table class="users-table">
@@ -176,6 +207,7 @@ export async function renderSettings(container) {
           <tr>
             <th>Brugernavn</th>
             <th style="width:9rem;">Rolle</th>
+            <th>Endpoint-roller</th>
             <th style="width:11rem;">Sidst logget ind</th>
             <th style="width:9rem;">Oprettet</th>
             <th style="width:10rem;">Handlinger</th>
@@ -267,7 +299,8 @@ export async function renderSettings(container) {
   if (isAdmin) {
     await initBackendSection(container);
     await initCacheSection(container);
-    await initUsersSection(container, currentUser);
+    const rolesState = await initRolesSection(container);
+    await initUsersSection(container, currentUser, rolesState);
   }
   initPasswordSection(container);
   initCsvAndPrefsSections(container);
@@ -460,9 +493,94 @@ async function initBackendSection(container) {
   });
 }
 
-async function initUsersSection(container, currentUser) {
+async function initRolesSection(container) {
+  const tbody = container.querySelector("#roles-tbody");
+  const msg = container.querySelector("#roles-msg");
+  const form = container.querySelector("#role-create-form");
+  const state = { roles: [], onChange: null };
+
+  async function reload() {
+    msg.innerHTML = "";
+    try {
+      const data = await api.listEndpointRoles();
+      state.roles = data.roles || [];
+      if (state.roles.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="hint" style="text-align:center;padding:1rem;">Ingen roller endnu — opret den første nedenfor.</td></tr>`;
+      } else {
+        tbody.innerHTML = state.roles
+          .map(
+            (r) => `
+              <tr data-role-name="${esc(r.name)}">
+                <td><b>${esc(r.name)}</b></td>
+                <td>${esc(r.description || "")}</td>
+                <td class="mono" style="font-size:0.78rem;">${esc(r.created_by || "")}</td>
+                <td class="mono" style="font-size:0.78rem;">${esc((r.created_at || "").slice(0, 10))}</td>
+                <td><button class="small danger role-del">Slet</button></td>
+              </tr>`,
+          )
+          .join("");
+      }
+      if (state.onChange) await state.onChange();
+    } catch (err) {
+      msg.innerHTML = `<div class="alert error">Kunne ikke hente roller: ${esc(err.message)}</div>`;
+    }
+  }
+
+  tbody.addEventListener("click", async (e) => {
+    if (!e.target.classList.contains("role-del")) return;
+    const row = e.target.closest("tr");
+    const name = row.dataset.roleName;
+    if (!confirm(`Slet rollen "${name}"? Brugere mister tildelingen, men endpoint-tags ændres ikke.`)) return;
+    try {
+      await api.deleteEndpointRole(name);
+      msg.innerHTML = `<div class="alert success">Rolle "${esc(name)}" slettet.</div>`;
+      await reload();
+    } catch (err) {
+      msg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
+    }
+  });
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const nameInput = container.querySelector("#new-role-name");
+    const descInput = container.querySelector("#new-role-desc");
+    const payload = {
+      name: nameInput.value.trim(),
+      description: descInput.value.trim(),
+    };
+    try {
+      await api.createEndpointRole(payload);
+      nameInput.value = "";
+      descInput.value = "";
+      msg.innerHTML = `<div class="alert success">Rolle oprettet.</div>`;
+      await reload();
+    } catch (err) {
+      msg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
+    }
+  });
+
+  await reload();
+  return state;
+}
+
+async function initUsersSection(container, currentUser, rolesState) {
   const tbody = container.querySelector("#users-tbody");
   const msg = container.querySelector("#users-msg");
+
+  function renderEndpointRoleCell(user) {
+    const catalog = rolesState ? rolesState.roles : [];
+    const assigned = new Set(user.assigned_endpoint_roles || []);
+    if (catalog.length === 0) {
+      return `<span class="hint">Ingen roller i kataloget endnu</span>`;
+    }
+    const checks = catalog
+      .map((r) => {
+        const checked = assigned.has(r.name) ? " checked" : "";
+        return `<label class="role-chip"><input type="checkbox" class="user-role-chip" value="${esc(r.name)}"${checked}/> ${esc(r.name)}</label>`;
+      })
+      .join("");
+    return `<div class="role-chips">${checks}</div>`;
+  }
 
   async function reload() {
     msg.innerHTML = "";
@@ -472,7 +590,7 @@ async function initUsersSection(container, currentUser) {
         .map((u) => {
           const isSelf = u.id === currentUser.id;
           return `
-            <tr data-user-id="${esc(u.id)}">
+            <tr data-user-id="${esc(u.id)}" data-username="${esc(u.username)}">
               <td>${esc(u.username)}</td>
               <td>
                 <select class="user-role-select" ${isSelf ? "disabled title='Du kan ikke ændre din egen rolle her'" : ""}>
@@ -481,6 +599,7 @@ async function initUsersSection(container, currentUser) {
                     .join("")}
                 </select>
               </td>
+              <td>${renderEndpointRoleCell(u)}</td>
               <td class="mono" style="font-size:0.78rem;">${esc(u.last_login || "—")}</td>
               <td class="mono" style="font-size:0.78rem;">${esc((u.created_at || "").slice(0, 10))}</td>
               <td>
@@ -495,16 +614,35 @@ async function initUsersSection(container, currentUser) {
     }
   }
 
+  // Sub som kan kaldes når rolle-kataloget ændrer sig så user-cellerne følger med.
+  if (rolesState) rolesState.onChange = reload;
+
   tbody.addEventListener("change", async (e) => {
-    if (!e.target.classList.contains("user-role-select")) return;
     const row = e.target.closest("tr");
+    if (!row) return;
     const id = row.dataset.userId;
-    try {
-      await api.updateUser(id, { role: e.target.value });
-      msg.innerHTML = `<div class="alert success">Rolle opdateret.</div>`;
-    } catch (err) {
-      msg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
-      await reload();
+    if (e.target.classList.contains("user-role-select")) {
+      try {
+        await api.updateUser(id, { role: e.target.value });
+        msg.innerHTML = `<div class="alert success">Rolle opdateret.</div>`;
+      } catch (err) {
+        msg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
+        await reload();
+      }
+      return;
+    }
+    if (e.target.classList.contains("user-role-chip")) {
+      const checks = row.querySelectorAll(".user-role-chip");
+      const selected = Array.from(checks)
+        .filter((c) => c.checked)
+        .map((c) => c.value);
+      try {
+        await api.setUserEndpointRoles(id, selected);
+        msg.innerHTML = `<div class="alert success">Endpoint-roller opdateret for ${esc(row.dataset.username)}.</div>`;
+      } catch (err) {
+        msg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
+        await reload();
+      }
     }
   });
 

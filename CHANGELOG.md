@@ -5,6 +5,43 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.12.0 build 0082] — 2026-04-25 — feat(M6a): Settings UI — rolle-katalog + per-bruger tildeling
+
+Phase 6a af 7 i endpoint-level RBAC.
+
+To nye admin-sektioner i Settings:
+
+**Endpoint-roller** (nyt card):
+- Tabel viser alle roller fra kataloget (navn, beskrivelse,
+  oprettet af, oprettet, slet-knap).
+- Opret-form med pattern-validering (`[A-Za-z0-9_-]{1,64}`)
+  matchende backend-NAME_RE.
+- Sletning advarer om at brugeres tildelinger fjernes (men
+  endpoint-tags ændres ikke automatisk — admin må selv rydde op).
+
+**Brugere & roller** (eksisterende card udvidet):
+- Ny kolonne "Endpoint-roller" med rolle-chips (multi-select
+  via checkbox-chips, én chip pr. rolle i kataloget).
+- Klik på chip → øjeblikkelig PUT mod `/api/users/{id}/endpoint-roles`.
+- Når rolle-kataloget ændrer sig (opret/slet) genrender bruger-
+  cellerne automatisk via shared state-callback.
+
+Frontend-ændringer:
+- [frontend/js/api.js](frontend/js/api.js): nye metoder
+  `listEndpointRoles`, `createEndpointRole`, `deleteEndpointRole`,
+  `setUserEndpointRoles`, `authMe`.
+- [frontend/js/views/settings.js](frontend/js/views/settings.js):
+  ny `initRolesSection` returnerer `state{roles, onChange}` så
+  `initUsersSection` kan reagere på katalog-ændringer.
+- [frontend/css/styles.css](frontend/css/styles.css): `.role-chips`
+  + `.role-chip` styling med `:has(input:checked)` til selected-
+  state, dark-theme variant.
+
+Næste fase: Phase 6b — Browse/Edit Roller-kolonne med inline
+multi-select edit.
+
+---
+
 ## [2.12.0 build 0081] — 2026-04-25 — feat(M5): write-path auto-tag for non-admin
 
 Phase 5 af 7 i endpoint-level RBAC.

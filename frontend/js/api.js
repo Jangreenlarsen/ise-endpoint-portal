@@ -188,4 +188,15 @@ export const api = {
     }),
   deleteUser: (id) =>
     request(`/users/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  setUserEndpointRoles: (id, roles) =>
+    request(`/users/${encodeURIComponent(id)}/endpoint-roles`, {
+      method: "PUT",
+      body: JSON.stringify({ roles }),
+    }),
+  listEndpointRoles: () => request("/endpoint-roles"),
+  createEndpointRole: (payload) =>
+    request("/endpoint-roles", { method: "POST", body: JSON.stringify(payload) }),
+  deleteEndpointRole: (name) =>
+    request(`/endpoint-roles/${encodeURIComponent(name)}`, { method: "DELETE" }),
+  authMe: () => request("/auth/me"),
 };
