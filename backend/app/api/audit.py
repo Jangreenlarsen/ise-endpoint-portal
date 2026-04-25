@@ -28,7 +28,7 @@ from app.core import audit_store
 from app.core.exceptions import IseApiError
 from app.schemas.audit import AuditEvent, AuditListResponse, RollbackResponse
 from app.schemas.dacl import UpdateDaclRequest
-from app.schemas.endpoint import EndpointUpdate
+from app.schemas.endpoint import CustomAttrs, EndpointUpdate
 from app.services.dacl_service import DaclService
 from app.services.endpoint_service import EndpointService
 
@@ -209,14 +209,27 @@ async def _rollback_endpoint(
 def _endpoint_update_from_snapshot(snap: dict) -> EndpointUpdate:
     """Build an EndpointUpdate DTO from a before-snapshot dict.
 
-    The snapshot is whatever ``EndpointDetail.model_dump()`` produced, so
-    field names already match — we just filter to the updatable subset.
+    Snapshots are produced by ``EndpointDetail.model_dump()``, which
+    *flattens* custom attributes into individual fields (``endpoint_type``,
+    ``owner``, ``lokation``, ``authz_vlan``, ``authz_acl``,
+    ``platform_type``) and uses ``static_group`` rather than
+    ``static_group_assignment``. We must rebuild ``CustomAttrs`` from
+    those fields — otherwise the rollback PUT goes out with an empty
+    custom-attributes dict, which (since build 0064) actively clears
+    every CA on ISE instead of restoring them.
     """
     return EndpointUpdate(
         group_id=snap.get("group_id"),
         description=snap.get("description"),
-        static_group_assignment=snap.get("static_group_assignment"),
-        custom_attributes=snap.get("custom_attributes") or {},
+        static_group_assignment=snap.get("static_group"),
+        custom_attributes=CustomAttrs(
+            Type=snap.get("endpoint_type") or "",
+            Owner=snap.get("owner") or "",
+            Lokation=snap.get("lokation") or "",
+            AuthzVlan=snap.get("authz_vlan") or "",
+            AuthzACL=snap.get("authz_acl") or "",
+            PlatformType=snap.get("platform_type") or "",
+        ),
     )
 
 

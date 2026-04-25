@@ -5,6 +5,34 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.10.1 build 0072] — 2026-04-25 — fix: rollback restore custom attributes korrekt
+
+PATCH-bump. Audit-rollback af endpoint-updates ryddede alle custom
+attributes i stedet for at restore før-værdierne (f.eks. AuthzVlan
+ændret 64 → 100, rollback gav `""` i stedet for `64`).
+
+Rodårsag i [backend/app/api/audit.py](backend/app/api/audit.py):
+`_endpoint_update_from_snapshot` læste `snap.get("custom_attributes")`
+og `snap.get("static_group_assignment")`, men før-snapshot'et er
+`EndpointDetail.model_dump()` som *flader* custom attributes ud til
+felterne `endpoint_type`, `owner`, `lokation`, `authz_vlan`,
+`authz_acl`, `platform_type` og bruger `static_group` (ikke
+`static_group_assignment`). Begge nøgler eksisterede dermed ikke i
+snapshot'et — `custom_attributes` faldt tilbage til `{}`, og siden
+build 0064 sender `set_custom_attributes` faktisk tomme strings til
+ISE i stedet for at filtrere dem væk, så rollback'en endte med
+eksplicit at rydde alle felter i stedet for at restore dem.
+
+Fix: `_endpoint_update_from_snapshot` rekonstruerer nu `CustomAttrs`
+fra de fladede snapshot-felter og læser `static_group` med det
+korrekte navn.
+
+Berørte filer: [backend/app/api/audit.py](backend/app/api/audit.py).
+Smoke-testet: snapshot med `authz_vlan=64` rekonstrueres korrekt til
+`AuthzVlan=64` i `EndpointUpdate`-payloaden.
+
+---
+
 ## [2.10.0 build 0071] — 2026-04-25 — feat: M8 — MAC-scan + PWA + offline-kø
 
 Andet og afsluttende milestone af 2.10.0 — markerer feature `done`.
