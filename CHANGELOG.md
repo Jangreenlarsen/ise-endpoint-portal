@@ -5,6 +5,38 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.12.0 build 0078] — 2026-04-25 — feat(M2): rolle-katalog backend + CRUD-API
+
+Phase 2 af 7 i endpoint-level RBAC.
+
+Admin-kontrolleret katalog af endpoint-rolle-navne der bruges som
+tags på endpoints. Lagring i `backend/endpoint_roles.json` (gitignored,
+samme mønster som users.json + custom_attr_values.json).
+
+Nye filer:
+- [backend/app/core/role_catalog.py](backend/app/core/role_catalog.py)
+  — JSON-fil-backed CRUD med `is_valid_name`-validering (kun
+  `[A-Za-z0-9_-]{1,64}` — komma/space er ikke tilladt da komma er
+  separator i CA-værdien). Helpers: `load_roles`, `save_roles`,
+  `find_by_name`, `add_role`, `delete_role`, `role_names`.
+- [backend/app/schemas/endpoint_role.py](backend/app/schemas/endpoint_role.py)
+  — Pydantic `EndpointRole`, `EndpointRoleCreate`,
+  `EndpointRoleListResponse`.
+- [backend/app/api/endpoint_roles.py](backend/app/api/endpoint_roles.py)
+  — REST-router under `/api/endpoint-roles`:
+  - `GET /` — alle authenticated brugere (read), så frontend-pickere
+    kan vise listen.
+  - `POST /` — admin only, opretter med 201.
+  - `DELETE /{name}` — admin only, 204 ved succes, 404 hvis ukendt.
+
+Registreret i [backend/app/main.py](backend/app/main.py).
+[.gitignore](.gitignore) udvidet med `backend/endpoint_roles.json`.
+
+Næste fase (build 0079): user-schema får `assigned_endpoint_roles` +
+PUT-endpoint til admin-tildeling.
+
+---
+
 ## [2.12.0 build 0077] — 2026-04-25 — feat(M1): bootstrap HypervisionRoles ISE custom attribute
 
 MINOR-bump (versionen tages i brug). Phase 1 af 7 i 2.12.0

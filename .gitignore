@@ -18,6 +18,7 @@ backend/config.json
 backend/custom_attr_values.json
 backend/platform_mapping.json
 backend/users.json
+backend/endpoint_roles.json
 backend/auth_secret.key
 backend/audit.db
 backend/audit.db-journal
