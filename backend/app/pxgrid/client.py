@@ -139,8 +139,36 @@ class PxGridClient:
         except httpx.HTTPError as exc:
             raise PxGridError(f"PxGrid transport error on {path}: {exc}") from exc
         if resp.status_code in (401, 403):
+            # 401/403 efter en succesfuld TLS-handshake = ISE accepterede vores
+            # cert som transport-identitet, men afviste kontoen. Typisk fordi
+            # MS-CA-rooten ikke ligger i pxGrid trust store, eller fordi node-
+            # navnet i CSR ikke matcher en kendt klient.
             raise PxGridAuthError(
-                f"PxGrid auth failed on {path}: HTTP {resp.status_code}"
+                f"PxGrid auth failed on {path}: HTTP {resp.status_code}. "
+                "Tjek at MS CA-rooten er importeret i ISE → Administration → "
+                "pxGrid Services → Certificates → Trusted Certificates, og at "
+                "CSR-CN matcher pxgrid_node_name."
+            )
+        if resp.status_code == 503:
+            # 503 fra port 8910 betyder ikke "ISE er nede" — det betyder at
+            # pxGrid-service-laget på den ramte node ikke vil tage imod kaldet.
+            # De tre realistiske årsager (i rækkefølge):
+            #   1. pxGrid-persona er ikke enabled på noden
+            #   2. pxGrid-service'n er restartende efter en config-ændring
+            #   3. AccountCreate er disabled fordi "Allow password based account
+            #      creation" / cert-baseret auto-approval er slået fra og noden
+            #      kører i lockdown
+            psn_hint = self._settings.pxgrid_psn_fqdn or "<bruger ise_base_url>"
+            raise PxGridError(
+                f"PxGrid {path} returned 503 fra {psn_hint} — pxGrid-service "
+                "afviste kaldet. Tjek i ISE: (1) Administration → System → "
+                "Deployment → at noden har 'pxGrid' persona aktiveret; (2) "
+                "Administration → pxGrid Services → All Clients → at servicen "
+                "er Running (ikke 'Initializing'); (3) pxGrid Services → "
+                "Settings → at 'Automatically approve new certificate-based "
+                "accounts' er sat (eller at AccountCreate er tilladt). Hvis "
+                "du har flere PSN-noder skal pxgrid_psn_fqdn pege på den "
+                "specifikke pxGrid-node, ikke load-balanceren."
             )
         if resp.status_code >= 400:
             body = resp.text[:500]

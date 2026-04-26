@@ -5,6 +5,29 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.1.5 build 0097] — 2026-04-27 — fix(PxGrid): brugbare fejlmeddelelser ved 503 + 401/403 på control-plane
+
+ISE pxGrid svarede `503` med tom body på `/AccountCreate` efter
+PEM-fixen i build 0096. Vores client reportede bare
+`PxGrid /AccountCreate returned 503: ` hvilket var ubrugeligt for
+admin.
+
+`_post` i `client.py` håndterer nu de to typiske ikke-OK responses
+specifikt:
+
+- **503** fra port 8910 → dansk besked der lister de tre konkrete
+  tjekpunkter i ISE-UI (Deployment-persona, pxGrid Services → All
+  Clients running, Settings → auto-approval) + note om at multi-PSN
+  setups skal sætte `pxgrid_psn_fqdn` eksplicit (ellers falder vi
+  tilbage på `ise_base_url` som måske ikke er en pxGrid-node).
+- **401/403** → peger på MS CA-trust og CSR-CN vs `pxgrid_node_name`
+  som de typiske rod-årsager.
+
+Filer:
+- [backend/app/pxgrid/client.py](backend/app/pxgrid/client.py)
+
+---
+
 ## [3.1.4 build 0096] — 2026-04-26 — fix(PxGrid): validér uploadede cert/key/CA-filer (CSR-as-cert + p7b + DER)
 
 AccountCreate fejlede med `[SSL] PEM lib (_ssl.c:4143)` fordi admin
