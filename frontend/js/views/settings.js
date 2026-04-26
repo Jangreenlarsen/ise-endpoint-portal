@@ -165,6 +165,100 @@ export async function renderSettings(container) {
 
     ${isAdmin ? `
     <div class="card">
+      <h3>PxGrid 2.0 (real-time session push)</h3>
+      <p class="hint">
+        Erstatter MnT-poll med ægte server-push fra ISE pxGrid (port 8910).
+        Phase 1 sætter REST control plane + cert op. Når <strong>ENABLED</strong>
+        og en <em>Test forbindelse</em> er grøn, kan Phase 2 (STOMP-subscription
+        til <code>com.cisco.ise.session</code>) aktiveres. Kræver mTLS — vælg
+        cert-mode nedenfor.
+      </p>
+      <div id="pxgrid-msg"></div>
+      <form id="pxgrid-form">
+        <div class="field">
+          <label>
+            <input type="checkbox" id="pxgrid_enabled" />
+            PxGrid aktiveret
+          </label>
+          <div class="hint">Off = portalen falder tilbage til MnT-poll (nuværende adfærd).</div>
+        </div>
+        <div class="field">
+          <label for="pxgrid_node_name">Node-navn (vises i ISE pxGrid Services → Clients)</label>
+          <input type="text" id="pxgrid_node_name" placeholder="hypervision-portal" autocomplete="off" />
+          <div class="hint">CSR-mode bruger dette som CN i certifikatet.</div>
+        </div>
+        <div class="field">
+          <label for="pxgrid_psn_fqdn">PSN FQDN (port 8910)</label>
+          <input type="text" id="pxgrid_psn_fqdn" placeholder="(tomt = host fra Base URL)" autocomplete="off" />
+          <div class="hint">FQDN på en ISE PSN-node der har pxGrid-personaen aktiveret.</div>
+        </div>
+        <div class="field">
+          <label for="pxgrid_cert_mode">Cert-mode</label>
+          <select id="pxgrid_cert_mode">
+            <option value="upload">Upload — admin uploader færdige PEM-filer</option>
+            <option value="csr">CSR — portalen genererer keypair + CSR der signeres af ISE internal CA</option>
+          </select>
+        </div>
+        <div id="pxgrid-cert-status" class="hint" style="margin:6px 0;">Cert-status: —</div>
+
+        <div id="pxgrid-upload-block">
+          <p class="hint">
+            <strong>Upload-mode:</strong> upload tre PEM-filer (klient-cert, privat-key, CA-bundle der har signeret ISE pxGrid server-cert).
+            Filer gemmes i <code>backend/pxgrid/</code> med automatisk path-update.
+          </p>
+          <div class="field">
+            <label for="pxgrid-upload-cert">Klient-certifikat (PEM)</label>
+            <input type="file" id="pxgrid-upload-cert" accept=".pem,.crt,.cer" />
+          </div>
+          <div class="field">
+            <label for="pxgrid-upload-key">Privat key (PEM)</label>
+            <input type="file" id="pxgrid-upload-key" accept=".pem,.key" />
+          </div>
+          <div class="field">
+            <label for="pxgrid-upload-ca">CA-bundle (PEM)</label>
+            <input type="file" id="pxgrid-upload-ca" accept=".pem,.crt,.cer" />
+          </div>
+        </div>
+
+        <div id="pxgrid-csr-block" hidden>
+          <p class="hint">
+            <strong>CSR-mode:</strong> klik <em>Generér CSR</em> → portalen laver keypair + CSR i <code>backend/pxgrid/</code>.
+            Indsend CSR-filen til ISE internal CA, download det signerede cert, og upload det som <em>Klient-certifikat</em> herover.
+            Klik derefter <em>Opret pxGrid-konto</em> for at registrere klienten — derefter skal en ISE-admin approve i <em>Administration → pxGrid Services → Clients</em>.
+          </p>
+          <div class="actions">
+            <button type="button" id="pxgrid-csr-btn" class="secondary">Generér CSR + keypair</button>
+            <button type="button" id="pxgrid-account-btn" class="secondary">Opret pxGrid-konto (efter cert er uploadet)</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="pxgrid_cert_path">Klient-cert sti (læses fra filsystem)</label>
+          <input type="text" id="pxgrid_cert_path" placeholder="pxgrid/client.cert.pem" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="pxgrid_key_path">Privat key sti</label>
+          <input type="text" id="pxgrid_key_path" placeholder="pxgrid/client.key.pem" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="pxgrid_ca_bundle_path">CA-bundle sti (valgfri — tom = system CA store)</label>
+          <input type="text" id="pxgrid_ca_bundle_path" placeholder="pxgrid/ca-bundle.pem" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="pxgrid_password">Account secret (write-only)</label>
+          <input type="password" id="pxgrid_password" placeholder="(lad tom for at beholde)" autocomplete="off" />
+          <div class="hint" id="pxgrid-pw-hint">CSR-mode: udfyldes automatisk efter <em>Opret pxGrid-konto</em>. Upload-mode: kun nødvendig hvis ISE-admin har sat shared secret.</div>
+        </div>
+        <div class="actions">
+          <button type="submit">Gem PxGrid settings</button>
+          <button type="button" id="pxgrid-test-btn" class="secondary">Test forbindelse</button>
+        </div>
+      </form>
+    </div>
+    ` : ""}
+
+    ${isAdmin ? `
+    <div class="card">
       <h3>Endpoint-roller</h3>
       <p class="hint">
         Roller der kan tagges på endpoints (CA <code>HypervisionRoles</code>) og tildeles
@@ -299,11 +393,141 @@ export async function renderSettings(container) {
   if (isAdmin) {
     await initBackendSection(container);
     await initCacheSection(container);
+    await initPxGridSection(container);
     const rolesState = await initRolesSection(container);
     await initUsersSection(container, currentUser, rolesState);
   }
   initPasswordSection(container);
   initCsvAndPrefsSections(container);
+}
+
+async function initPxGridSection(container) {
+  const msg = container.querySelector("#pxgrid-msg");
+  const certStatus = container.querySelector("#pxgrid-cert-status");
+  const uploadBlock = container.querySelector("#pxgrid-upload-block");
+  const csrBlock = container.querySelector("#pxgrid-csr-block");
+  const modeSel = container.querySelector("#pxgrid_cert_mode");
+  const pwHint = container.querySelector("#pxgrid-pw-hint");
+
+  function applyMode(mode) {
+    if (mode === "csr") {
+      uploadBlock.querySelectorAll("input[type=file]").forEach((el) => {
+        // CSR mode still allows uploading the *signed cert* back, so keep
+        // upload block visible — admin will use it for the cert file
+        // returned by the ISE CA.
+      });
+      csrBlock.hidden = false;
+    } else {
+      csrBlock.hidden = true;
+    }
+  }
+
+  async function loadSettings() {
+    try {
+      const s = await api.getPxGridSettings();
+      container.querySelector("#pxgrid_enabled").checked = !!s.pxgrid_enabled;
+      container.querySelector("#pxgrid_node_name").value = s.pxgrid_node_name || "";
+      container.querySelector("#pxgrid_psn_fqdn").value = s.pxgrid_psn_fqdn || "";
+      modeSel.value = s.pxgrid_cert_mode || "upload";
+      container.querySelector("#pxgrid_cert_path").value = s.pxgrid_cert_path || "";
+      container.querySelector("#pxgrid_key_path").value = s.pxgrid_key_path || "";
+      container.querySelector("#pxgrid_ca_bundle_path").value = s.pxgrid_ca_bundle_path || "";
+      const cls = s.cert_status === "ok" ? "success"
+                : s.cert_status === "missing" ? "warning" : "error";
+      certStatus.innerHTML = `Cert-status: <span class="alert ${cls}" style="display:inline;padding:2px 8px;">${esc(s.cert_status)}</span>`;
+      pwHint.textContent = s.pxgrid_password_set
+        ? "Account secret er sat. Lad tomt for at beholde."
+        : "Intet secret sat. CSR-mode udfylder dette automatisk efter approval; upload-mode kan lades tom hvis ISE ikke kræver det.";
+      applyMode(s.pxgrid_cert_mode || "upload");
+    } catch (err) {
+      msg.innerHTML = `<div class="alert error">Kunne ikke hente PxGrid settings: ${esc(err.message)}</div>`;
+    }
+  }
+
+  modeSel.addEventListener("change", () => applyMode(modeSel.value));
+
+  function buildPayload() {
+    return {
+      pxgrid_enabled: container.querySelector("#pxgrid_enabled").checked,
+      pxgrid_node_name: container.querySelector("#pxgrid_node_name").value.trim(),
+      pxgrid_psn_fqdn: container.querySelector("#pxgrid_psn_fqdn").value.trim(),
+      pxgrid_cert_mode: modeSel.value,
+      pxgrid_cert_path: container.querySelector("#pxgrid_cert_path").value.trim(),
+      pxgrid_key_path: container.querySelector("#pxgrid_key_path").value.trim(),
+      pxgrid_ca_bundle_path: container.querySelector("#pxgrid_ca_bundle_path").value.trim(),
+      pxgrid_password: container.querySelector("#pxgrid_password").value,
+    };
+  }
+
+  container.querySelector("#pxgrid-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    msg.innerHTML = "";
+    try {
+      await api.updatePxGridSettings(buildPayload());
+      msg.innerHTML = `<div class="alert success">PxGrid settings gemt.</div>`;
+      container.querySelector("#pxgrid_password").value = "";
+      await loadSettings();
+    } catch (err) {
+      msg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
+    }
+  });
+
+  container.querySelector("#pxgrid-test-btn").addEventListener("click", async () => {
+    msg.innerHTML = `<div class="alert info">Tester PxGrid-forbindelse...</div>`;
+    try {
+      const r = await api.testPxGridConnection();
+      const cls = r.ok ? "success" : "error";
+      const services = r.services_found?.length
+        ? `<br><small>Services: ${r.services_found.map(esc).join(", ")}</small>`
+        : "";
+      msg.innerHTML = `<div class="alert ${cls}">[${esc(r.step)}] ${esc(r.message)}${r.latency_ms ? ` (${r.latency_ms}ms)` : ""}${services}</div>`;
+    } catch (err) {
+      msg.innerHTML = `<div class="alert error">Test fejlede: ${esc(err.message)}</div>`;
+    }
+  });
+
+  container.querySelector("#pxgrid-csr-btn").addEventListener("click", async () => {
+    if (!confirm("Generér nyt RSA-2048 keypair + CSR? Eksisterende key for samme node-navn overskrives.")) return;
+    msg.innerHTML = `<div class="alert info">Genererer CSR...</div>`;
+    try {
+      const s = await api.generatePxGridCsr();
+      msg.innerHTML = `<div class="alert success">CSR genereret. Key gemt på <code>${esc(s.pxgrid_key_path)}</code>. CSR-fil ligger ved siden af — indsend den til ISE internal CA og upload det signerede cert som "Klient-certifikat" herover.</div>`;
+      await loadSettings();
+    } catch (err) {
+      msg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
+    }
+  });
+
+  container.querySelector("#pxgrid-account-btn").addEventListener("click", async () => {
+    msg.innerHTML = `<div class="alert info">Opretter pxGrid-konto i ISE...</div>`;
+    try {
+      const r = await api.createPxGridAccount();
+      const cls = r.ok ? "success" : "error";
+      msg.innerHTML = `<div class="alert ${cls}">[${esc(r.account_state)}] ${esc(r.message)}</div>`;
+      await loadSettings();
+    } catch (err) {
+      msg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
+    }
+  });
+
+  for (const [kind, id] of [["cert", "pxgrid-upload-cert"], ["key", "pxgrid-upload-key"], ["ca", "pxgrid-upload-ca"]]) {
+    container.querySelector(`#${id}`).addEventListener("change", async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      msg.innerHTML = `<div class="alert info">Uploader ${esc(kind)}...</div>`;
+      try {
+        await api.uploadPxGridCert(kind, file);
+        msg.innerHTML = `<div class="alert success">${esc(kind)} uploadet og sti opdateret.</div>`;
+        await loadSettings();
+      } catch (err) {
+        msg.innerHTML = `<div class="alert error">Upload af ${esc(kind)} fejlede: ${esc(err.message)}</div>`;
+      } finally {
+        e.target.value = "";
+      }
+    });
+  }
+
+  await loadSettings();
 }
 
 function fmtAge(seconds) {

@@ -5,6 +5,124 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.0.0 build 0089] — 2026-04-26 — feat(PxGrid): Phase 1 — REST control plane + cert-håndtering (upload + CSR)
+
+**MAJOR-bump (3.0.0)** — første eksterne push-integration. Phase 1
+lægger fundamentet for både PxGrid-features fra roadmap'en (server-push
+af session/auth-status + event-invalidering af endpoint-cache):
+REST control plane, mTLS cert-håndtering i to modes, og Settings UI.
+
+Phase 2 (STOMP-subscription til `com.cisco.ise.session`), Phase 3 (SSE
+push til frontend), og Phase 4 (`com.cisco.ise.endpoint`-invalidering)
+følger i 3.0.x build-serien — denne commit isolerer infrastruktur-laget
+så det kan testes mod en rigtig ISE-PSN før vi bygger STOMP ovenpå.
+
+**Hvad er bygget:**
+
+- **Nyt modul `backend/app/pxgrid/`** med:
+  - [exceptions.py](backend/app/pxgrid/exceptions.py): typed errors
+    (`PxGridConfigError`, `PxGridCertError`, `PxGridAuthError`,
+    `PxGridAccountPendingError`, `PxGridServiceNotFoundError`) så
+    api-laget kan mappe til præcise dansksprogede HTTP-fejl uden at
+    lække httpx-internals.
+  - [cert_manager.py](backend/app/pxgrid/cert_manager.py): løser
+    cert-paths relativt til `backend/`, validerer at cert+key+CA
+    eksisterer (uden at parse PEM — OpenSSL gør det bedre ved
+    handshake), og leverer `CertBundle.httpx_cert()` /
+    `httpx_verify()` helpers. Plus `generate_csr()` (RSA-2048 +
+    PKCS8-key + SHA256-CSR via `cryptography`-biblioteket) og
+    `persist_csr_artifacts()` der skriver `<node>.key.pem` (chmod 600
+    på POSIX) + `<node>.csr.pem` til `backend/pxgrid/` for CSR-mode.
+    `save_uploaded_pem()` håndterer upload-mode på tilsvarende måde.
+  - [client.py](backend/app/pxgrid/client.py): async REST-klient mod
+    `https://<psn>:8910/pxgrid/control/*` med httpx + mTLS. Implementerer
+    de fire bootstrap-calls — `account_create`, `account_activate`,
+    `service_lookup` (returnerer `ServiceNode`-dataclass med `ws_url` for
+    Phase 2 STOMP), `access_secret_create`. PSN FQDN afledes auto fra
+    `ise_base_url` hvis `pxgrid_psn_fqdn` er tom. `connectivity_test()`
+    walker cert-load → TLS handshake → ServiceLookup og rapporterer
+    *hvilket trin* der fejlede så Settings UI kan vise præcis fejl.
+
+- **Config + schemas + service-lag:**
+  - [config.py](backend/app/core/config.py): 7 nye `pxgrid_*` felter
+    (enabled, node_name, psn_fqdn, cert_mode∈{upload,csr}, cert/key/ca
+    paths, password). Default `pxgrid_enabled=False` → graceful no-op
+    fallback til MnT-poll.
+  - [schemas/settings.py](backend/app/schemas/settings.py): nye DTOs
+    `PxGridSettingsResponse/Update`, `PxGridStatusResponse`,
+    `PxGridTestResponse` (med `step`-felt så UI viser hvor det fejlede),
+    `PxGridAccountCreateResponse`. Password er write-only —
+    response-DTO'en eksponerer kun `pxgrid_password_set: bool`.
+  - [services/settings_service.py](backend/app/services/settings_service.py):
+    `get/update_pxgrid_settings`, `test_pxgrid_connection`,
+    `get_pxgrid_status`, `pxgrid_account_create`. Update-fluen audit-logges
+    som `backend_settings/pxgrid` resource, så cert-mode-skift og enabled-
+    flip kan rulles tilbage gennem eksisterende audit-view.
+
+- **API:**
+  - [api/settings.py](backend/app/api/settings.py): syv nye routes under
+    `/api/settings/pxgrid*` — `GET/PUT settings`, `GET status`,
+    `POST test`, `POST account` (CSR-mode bootstrap),
+    `POST cert` (multipart-upload med `kind∈{cert,key,ca}` →
+    persist + auto-update sti i settings), `POST csr` (generér + persist).
+    Alle bag `require_admin`.
+
+- **Frontend Settings UI:**
+  - [views/settings.js](frontend/js/views/settings.js): nyt PxGrid-card
+    efter Endpoint-cache-card, med toggle, node-navn, PSN FQDN,
+    cert-mode-dropdown (vis/skjul CSR-blok dynamisk), cert-status-badge
+    (ok/missing/error fra backend), tre file-inputs til upload-mode,
+    "Generér CSR" + "Opret pxGrid-konto" knapper til CSR-mode, sti-felter
+    (auto-udfyldes efter upload), write-only password-felt, "Gem" + "Test
+    forbindelse"-knapper. Test-output viser hvilket trin der fejlede +
+    fundne services.
+  - [api.js](frontend/js/api.js): syv nye API-helpers, inkl. en
+    multipart-upload-helper der bypasser den vanlige JSON `request()`
+    da FormData ikke skal sættes som `application/json`.
+
+- **Dependencies:**
+  - [pyproject.toml](backend/pyproject.toml): tilføjet `cryptography>=42`
+    (CSR-generering) og `python-multipart>=0.0.9` (FastAPI multipart-form
+    til cert-upload).
+
+- **Sikkerhed:**
+  - [.gitignore](.gitignore): `backend/pxgrid/` ignored så cert/key
+    aldrig commit-glemmes.
+  - Key-filer skrives med `chmod 600` på POSIX; password er write-only i
+    UI og audit logger kun `pxgrid_password_changed: bool`, ikke selve
+    secretten.
+
+**Test-stien for admin (efter denne commit):**
+
+1. Settings → PxGrid → vælg cert-mode.
+2. **Upload-mode:** upload de tre PEM-filer (cert, key, CA bundle).
+   ISE-admin har på forhånd udstedt klient-certet og oprettet pxGrid-
+   client-objektet med matching CN.
+3. **CSR-mode:** klik "Generér CSR" → indsend `backend/pxgrid/<node>.csr.pem`
+   til ISE internal CA → download signeret cert → upload som
+   "Klient-certifikat" → klik "Opret pxGrid-konto" → admin approver i ISE
+   → test forbindelse til status flipper til ENABLED.
+4. Klik "Test forbindelse" — output viser hvilket trin (cert_load,
+   tls_handshake, service_lookup) der fejlede + fundne services.
+
+**Hvad der IKKE er bygget endnu (3.0.x):**
+
+- STOMP/WebSocket-klient til `com.cisco.ise.session` (Phase 2).
+- SSE-endpoint `/api/events/sessions` + `browse.js` `EventSource` (Phase 3).
+- `com.cisco.ise.endpoint`-event-invalidering af cache (Phase 4).
+- Background reconnect + PSN-failover loop.
+
+Filer:
+- [version.json](version.json): 2.12.3 b0088 → 3.0.0 b0089
+- 7 nye filer: `backend/app/pxgrid/{__init__,exceptions,cert_manager,client}.py`
+  + udvidelser i `core/config.py`, `schemas/settings.py`,
+  `services/settings_service.py`, `api/settings.py`
+- Frontend: `views/settings.js`, `api.js`
+- `pyproject.toml`, `.gitignore`, `FEATURES.md` (entries → in-progress),
+  `CHANGELOG.md` (denne entry).
+
+---
+
 ## [2.12.3 build 0088] — 2026-04-26 — fix: Audit-actions på samme linje + Enter-trigger på søg
 
 To små UX-fix i Audit-viewet:

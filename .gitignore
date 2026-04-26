@@ -24,4 +24,5 @@ backend/audit.db
 backend/audit.db-journal
 backend/audit.db-wal
 backend/audit.db-shm
+backend/pxgrid/
 node_modules/

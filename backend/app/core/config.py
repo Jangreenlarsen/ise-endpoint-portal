@@ -74,6 +74,63 @@ class Settings(BaseSettings):
         description="How many days of audit events to keep. 0 = keep forever.",
     )
 
+    # PxGrid 2.0 (3.0.0) — REST control plane + WebSocket/STOMP push subscription
+    # for real-time session and endpoint events from ISE. Off by default;
+    # graceful fallback to MnT poll + TTL cache when disabled or unreachable.
+    pxgrid_enabled: bool = Field(
+        default=False,
+        description="Master switch for PxGrid integration.",
+    )
+    pxgrid_node_name: str = Field(
+        default="hypervision-portal",
+        description=(
+            "Portal's identity registered with ISE. Becomes the pxGrid client name "
+            "shown in 'pxGrid Services → Clients'. CSR-mode also uses this as CN."
+        ),
+    )
+    pxgrid_psn_fqdn: str = Field(
+        default="",
+        description=(
+            "FQDN of an ISE PSN that exposes pxGrid (port 8910). If empty, the "
+            "host portion of ise_base_url is used as fallback."
+        ),
+    )
+    pxgrid_cert_mode: str = Field(
+        default="upload",
+        description=(
+            "Cert provisioning mode. 'upload' = admin uploads pre-issued client "
+            "cert+key+CA bundle (paths below). 'csr' = portal generates CSR and "
+            "registers via /pxgrid/control/AccountCreate, then ISE admin must "
+            "approve in pxGrid Services."
+        ),
+    )
+    pxgrid_cert_path: str = Field(
+        default="",
+        description=(
+            "Path to client certificate PEM (upload mode) or written-out cert "
+            "after CSR signing (csr mode). Relative paths resolve from backend/."
+        ),
+    )
+    pxgrid_key_path: str = Field(
+        default="",
+        description="Path to client private key PEM (matches pxgrid_cert_path).",
+    )
+    pxgrid_ca_bundle_path: str = Field(
+        default="",
+        description=(
+            "Path to PEM bundle of CAs that signed the ISE pxGrid server cert. "
+            "Empty = use system CA store."
+        ),
+    )
+    pxgrid_password: str = Field(
+        default="",
+        description=(
+            "Account password returned from AccessSecretCreate (csr mode) or "
+            "shared secret from ISE (upload mode if your ISE requires it). "
+            "Write-only via PUT /api/settings/pxgrid; masked on GET."
+        ),
+    )
+
     backend_cors_origins: list[str] = Field(
         default_factory=lambda: ["http://localhost:5173", "http://localhost:8000"]
     )

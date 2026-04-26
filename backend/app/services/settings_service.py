@@ -9,9 +9,16 @@ from app.core import audit_store, config
 from app.core.endpoint_cache import get_cache
 from app.core.settings_store import load_overrides, save_overrides
 from app.ise.client import close_ise_client
+from app.pxgrid import cert_manager as pxgrid_cert_manager
+from app.pxgrid.client import PxGridClient
 from app.schemas.settings import (
     BackendSettingsResponse,
     BackendSettingsUpdate,
+    PxGridAccountCreateResponse,
+    PxGridSettingsResponse,
+    PxGridSettingsUpdate,
+    PxGridStatusResponse,
+    PxGridTestResponse,
     TestConnectionRequest,
     TestConnectionResponse,
 )
@@ -157,4 +164,157 @@ async def test_connection(req: TestConnectionRequest) -> TestConnectionResponse:
         status_code=status_code,
         message=f"ISE svarede {status_code}. Tjek URL og at {api_hint} er enabled.",
         latency_ms=latency_ms,
+    )
+
+
+# ── PxGrid (3.0.0) ─────────────────────────────────────────────────────
+
+
+def get_pxgrid_settings() -> PxGridSettingsResponse:
+    s = config.settings
+    return PxGridSettingsResponse(
+        pxgrid_enabled=s.pxgrid_enabled,
+        pxgrid_node_name=s.pxgrid_node_name,
+        pxgrid_psn_fqdn=s.pxgrid_psn_fqdn,
+        pxgrid_cert_mode=s.pxgrid_cert_mode,  # type: ignore[arg-type]
+        pxgrid_cert_path=s.pxgrid_cert_path,
+        pxgrid_key_path=s.pxgrid_key_path,
+        pxgrid_ca_bundle_path=s.pxgrid_ca_bundle_path,
+        pxgrid_password_set=bool(s.pxgrid_password),
+        cert_status=pxgrid_cert_manager.cert_status(
+            s.pxgrid_cert_path, s.pxgrid_key_path, s.pxgrid_ca_bundle_path
+        ),
+    )
+
+
+async def update_pxgrid_settings(
+    new: PxGridSettingsUpdate,
+) -> PxGridSettingsResponse:
+    before = get_pxgrid_settings().model_dump()
+    overrides = load_overrides()
+    overrides.update(
+        {
+            "pxgrid_enabled": new.pxgrid_enabled,
+            "pxgrid_node_name": new.pxgrid_node_name,
+            "pxgrid_psn_fqdn": new.pxgrid_psn_fqdn,
+            "pxgrid_cert_mode": new.pxgrid_cert_mode,
+            "pxgrid_cert_path": new.pxgrid_cert_path,
+            "pxgrid_key_path": new.pxgrid_key_path,
+            "pxgrid_ca_bundle_path": new.pxgrid_ca_bundle_path,
+        }
+    )
+    if new.pxgrid_password:
+        overrides["pxgrid_password"] = new.pxgrid_password
+    save_overrides(overrides)
+    config.refresh_settings()
+    logger.info(
+        "pxgrid settings updated: enabled=%s node=%s psn=%s mode=%s",
+        new.pxgrid_enabled,
+        new.pxgrid_node_name,
+        new.pxgrid_psn_fqdn or "(auto)",
+        new.pxgrid_cert_mode,
+    )
+    after = get_pxgrid_settings().model_dump()
+    await audit_store.record(
+        "updated",
+        "backend_settings",
+        "pxgrid",
+        before=before,
+        after={**after, "pxgrid_password_changed": bool(new.pxgrid_password)},
+    )
+    return get_pxgrid_settings()
+
+
+async def test_pxgrid_connection() -> PxGridTestResponse:
+    """Walk cert → TLS → ServiceLookup so admin sees which step failed."""
+    s = config.settings
+    if not s.pxgrid_enabled:
+        return PxGridTestResponse(
+            ok=False,
+            step="cert_load",
+            message="PxGrid er deaktiveret — slå pxgrid_enabled til først.",
+        )
+    start = time.perf_counter()
+    client = PxGridClient()
+    try:
+        result = await client.connectivity_test()
+    except Exception as exc:  # noqa: BLE001
+        return PxGridTestResponse(
+            ok=False, step="tls_handshake", message=f"Uventet fejl: {exc}"
+        )
+    latency_ms = int((time.perf_counter() - start) * 1000)
+    return PxGridTestResponse(
+        ok=bool(result.get("ok")),
+        step=result.get("step", "unknown"),
+        message=result.get("message", ""),
+        latency_ms=latency_ms,
+        services_found=result.get("services_found", []),
+    )
+
+
+def get_pxgrid_status() -> PxGridStatusResponse:
+    """Live runtime state. Phase 1 only knows config-time state.
+
+    Phase 2 will populate ``services`` and ``last_error`` from the
+    background STOMP worker. For now we return a probe-able snapshot.
+    """
+    s = config.settings
+    return PxGridStatusResponse(
+        enabled=s.pxgrid_enabled,
+        account_state="UNKNOWN",
+        services=[],
+        last_error="",
+        psn_fqdn=s.pxgrid_psn_fqdn,
+    )
+
+
+async def pxgrid_account_create() -> PxGridAccountCreateResponse:
+    """CSR-mode: register the portal as a new pxGrid client.
+
+    Caller must have already generated the CSR and uploaded the matching
+    cert/key paths (or run /api/settings/pxgrid/csr first). Returns the
+    account state so the UI knows whether to wait for admin approval.
+    """
+    s = config.settings
+    if s.pxgrid_cert_mode != "csr":
+        return PxGridAccountCreateResponse(
+            ok=False,
+            node_name=s.pxgrid_node_name,
+            account_state="N/A",
+            password_received=False,
+            message=(
+                "AccountCreate er kun nødvendig i 'csr'-mode. I 'upload'-mode "
+                "registrerer ISE allerede klienten via cert-CN'en."
+            ),
+        )
+    client = PxGridClient()
+    try:
+        result = await client.account_create()
+    except Exception as exc:  # noqa: BLE001
+        return PxGridAccountCreateResponse(
+            ok=False,
+            node_name=s.pxgrid_node_name,
+            account_state="ERROR",
+            password_received=False,
+            message=f"AccountCreate fejlede: {exc}",
+        )
+    state = (result.get("accountState") or "UNKNOWN").upper()
+    password = result.get("password", "")
+    if password:
+        # Persist the per-node secret so subsequent calls can authenticate.
+        overrides = load_overrides()
+        overrides["pxgrid_password"] = password
+        save_overrides(overrides)
+        config.refresh_settings()
+    msg = (
+        "Klient registreret — afventer admin-approval i ISE pxGrid Services."
+        if state == "PENDING"
+        else f"AccountCreate OK — accountState={state}"
+    )
+    return PxGridAccountCreateResponse(
+        ok=True,
+        node_name=s.pxgrid_node_name,
+        account_state=state,
+        password_received=bool(password),
+        message=msg,
     )

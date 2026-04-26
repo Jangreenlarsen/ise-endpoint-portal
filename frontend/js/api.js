@@ -164,6 +164,35 @@ export const api = {
     }),
   getCacheStats: () => request("/cache/stats"),
   invalidateCache: () => request("/cache/invalidate", { method: "POST" }),
+  getPxGridSettings: () => request("/settings/pxgrid"),
+  updatePxGridSettings: (payload) =>
+    request("/settings/pxgrid", { method: "PUT", body: JSON.stringify(payload) }),
+  getPxGridStatus: () => request("/settings/pxgrid/status"),
+  testPxGridConnection: () =>
+    request("/settings/pxgrid/test", { method: "POST" }),
+  createPxGridAccount: () =>
+    request("/settings/pxgrid/account", { method: "POST" }),
+  generatePxGridCsr: () =>
+    request("/settings/pxgrid/csr", { method: "POST" }),
+  uploadPxGridCert: async (kind, file) => {
+    const token = auth.getToken();
+    const fd = new FormData();
+    fd.append("kind", kind);
+    fd.append("file", file);
+    const headers = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    const res = await fetch(`${BASE}/api/settings/pxgrid/cert`, {
+      method: "POST",
+      headers,
+      body: fd,
+    });
+    if (!res.ok) {
+      let detail = await res.text();
+      try { detail = JSON.parse(detail).detail || detail; } catch {}
+      throw new Error(`${res.status}: ${detail}`);
+    }
+    return res.json();
+  },
   lookupOui: (mac) => request(`/oui/${encodeURIComponent(mac)}`),
   getOuiStats: () => request("/oui/stats"),
   listAuditEvents: (params = {}) => {
