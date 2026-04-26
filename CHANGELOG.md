@@ -5,6 +5,41 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.1.4 build 0096] — 2026-04-26 — fix(PxGrid): validér uploadede cert/key/CA-filer (CSR-as-cert + p7b + DER)
+
+AccountCreate fejlede med `[SSL] PEM lib (_ssl.c:4143)` fordi admin
+havde uploadet CSR-filen som "signeret cert" — den naive validation
+`b"-----BEGIN" not in raw` slap CSR'en igennem (den har jo
+`-----BEGIN CERTIFICATE REQUEST-----`), filen blev gemt som
+`*.cert.pem`, og OpenSSL fejlede først ved TLS-handshake hvor
+fejlmeddelelsen er ubrugelig.
+
+**Fix** i `cert_manager.normalize_uploaded_bytes` (kaldes nu fra
+`save_uploaded_pem`):
+
+- **CSR uploadet som cert** → afvis med dansk besked der peger admin
+  på den faktiske CA-roundtrip.
+- **PKCS#7 (.p7b) chain** (typisk MS certsrv "Download certificate
+  chain") → udtræk certs og re-emit som concatenated X.509 PEM,
+  understøttes nu både til kind=cert (tager leaf) og kind=ca (hele chain).
+- **DER (.cer / .crt binary)** → forsøg DER X.509 og DER PKCS#7,
+  re-emit som PEM.
+- **UTF-8 BOM** strippes (Notepad/Excel-eksporter tilføjer ofte
+  `\ufeff` i starten).
+- **Private key** valideres med `load_pem_private_key` /
+  `load_der_private_key`; password-beskyttede keys/PFX peger admin
+  hen på "Importér PKCS#12"-knappen.
+
+Endpoint `POST /pxgrid/cert` returnerer nu 400 med konkret dansk
+besked ved hver af disse fejl-typer i stedet for at lade filen lande
+på disk og fejle ved næste handshake.
+
+Filer:
+- [backend/app/pxgrid/cert_manager.py](backend/app/pxgrid/cert_manager.py)
+- [backend/app/api/settings.py](backend/app/api/settings.py)
+
+---
+
 ## [3.1.3 build 0095] — 2026-04-26 — fix(PxGrid): renummerér CSR-flow til 5 trin + per-felt upload-status
 
 To UX-issues opdaget under brug af CSR-flowet:

@@ -95,15 +95,20 @@ async def upload_pxgrid_cert(
             f"Invalid kind '{kind}' — must be one of: cert, key, ca",
         )
     pem_bytes = await file.read()
-    if not pem_bytes or b"-----BEGIN" not in pem_bytes:
+    if not pem_bytes:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Tom fil")
+    current = settings_service.get_pxgrid_settings()
+    if not current.pxgrid_node_name:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
-            "Uploaded file does not look like a PEM (missing -----BEGIN header)",
+            "pxgrid_node_name skal være sat — gem PxGrid-settings først",
         )
-    current = settings_service.get_pxgrid_settings()
-    out_path = cert_manager.save_uploaded_pem(
-        kind, current.pxgrid_node_name, pem_bytes  # type: ignore[arg-type]
-    )
+    try:
+        out_path = cert_manager.save_uploaded_pem(
+            kind, current.pxgrid_node_name, pem_bytes
+        )
+    except Exception as exc:  # PxGridCertError or anything cryptography raised
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
     update = PxGridSettingsUpdate(
         pxgrid_enabled=current.pxgrid_enabled,
         pxgrid_node_name=current.pxgrid_node_name,

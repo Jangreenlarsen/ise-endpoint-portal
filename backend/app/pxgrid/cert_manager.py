@@ -282,6 +282,119 @@ def save_pkcs12_bundle(
 PEM_KIND = Literal["cert", "key", "ca"]
 
 
+def normalize_uploaded_bytes(kind: PEM_KIND, raw: bytes) -> bytes:
+    """Validate + canonicalize an uploaded cert/key/CA file to X.509 PEM.
+
+    Catches the three formats admins commonly hand us by mistake before
+    we hit OpenSSL at TLS-handshake time (where the error is the cryptic
+    ``[SSL] PEM lib (_ssl.c:4143)``):
+
+      - **CSR uploaded as cert** — ``-----BEGIN CERTIFICATE REQUEST-----``
+        passes a naïve "contains BEGIN" check but is not a usable cert.
+      - **PKCS#7 (.p7b) chain** — common output from MS certsrv "Download
+        certificate chain"; has ``-----BEGIN PKCS7-----`` but OpenSSL's
+        ``cert=`` / ``verify=`` want X.509 PEM. We extract certs and
+        re-emit as concatenated X.509 PEM.
+      - **DER (.cer / .crt binary)** — no ``-----BEGIN`` header at all.
+        We DER-decode and re-emit as PEM.
+
+    Raises ``PxGridCertError`` with a Danish message that points the
+    admin at what they actually need to upload.
+    """
+    from app.pxgrid.exceptions import PxGridCertError
+
+    try:
+        from cryptography import x509
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.serialization import pkcs7
+    except ImportError as exc:  # pragma: no cover
+        raise RuntimeError(
+            "PEM-validering kræver 'cryptography'-pakken."
+        ) from exc
+
+    if not raw:
+        raise PxGridCertError("Tom fil")
+
+    # Strip UTF-8 BOM (Notepad/Excel-eksporter tilføjer ofte \ufeff)
+    if raw.startswith(b"\xef\xbb\xbf"):
+        raw = raw[3:]
+
+    if kind == "key":
+        if b"-----BEGIN" in raw:
+            try:
+                key = serialization.load_pem_private_key(raw, password=None)
+            except Exception as exc:  # noqa: BLE001
+                raise PxGridCertError(
+                    f"Kunne ikke parse private key (PEM): {exc}"
+                ) from exc
+        else:
+            try:
+                key = serialization.load_der_private_key(raw, password=None)
+            except Exception as exc:  # noqa: BLE001
+                raise PxGridCertError(
+                    "Filen er ikke en gyldig private key (hverken PEM eller DER). "
+                    "Hvis nøglen er password-beskyttet eller ligger i en .pfx, "
+                    "brug 'Importér PKCS#12'-knappen i stedet."
+                ) from exc
+        return key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption(),
+        )
+
+    # kind == "cert" or "ca" — both want X.509 PEM (CA can be a chain)
+    if b"-----BEGIN CERTIFICATE REQUEST-----" in raw:
+        raise PxGridCertError(
+            "Den uploadede fil er en CSR (Certificate Signing Request), ikke "
+            "et signeret certifikat. Send CSR'en til din CA (ISE internal CA "
+            "eller MS certsrv), download det signerede cert tilbage, og upload "
+            "DET her."
+        )
+
+    certs: list = []
+    if b"-----BEGIN CERTIFICATE-----" in raw:
+        try:
+            certs = list(x509.load_pem_x509_certificates(raw))
+        except Exception as exc:  # noqa: BLE001
+            raise PxGridCertError(
+                f"Kunne ikke parse X.509 PEM: {exc}"
+            ) from exc
+    elif b"-----BEGIN PKCS7-----" in raw or b"-----BEGIN PKCS #7" in raw:
+        try:
+            certs = list(pkcs7.load_pem_pkcs7_certificates(raw))
+        except Exception as exc:  # noqa: BLE001
+            raise PxGridCertError(
+                f"Kunne ikke parse PKCS#7-PEM: {exc}"
+            ) from exc
+    else:
+        # No PEM header → try DER X.509, then DER PKCS#7
+        try:
+            certs = [x509.load_der_x509_certificate(raw)]
+        except Exception:  # noqa: BLE001
+            try:
+                certs = list(pkcs7.load_der_pkcs7_certificates(raw))
+            except Exception as exc:  # noqa: BLE001
+                raise PxGridCertError(
+                    "Filen er ikke et genkendeligt certifikat-format "
+                    "(forventede PEM X.509, PEM PKCS#7, DER X.509 eller "
+                    "DER PKCS#7)."
+                ) from exc
+
+    if not certs:
+        raise PxGridCertError("Ingen certifikater fundet i filen")
+
+    if kind == "cert" and len(certs) > 1:
+        # Klient-cert skal være ét enkelt cert — chain-certs hører til CA-bundle.
+        # Tag leaf-cert (det første i bundlet) og lad admin uploade resten som CA.
+        logger.info(
+            "pxgrid: cert-upload indeholdt %d certs, bruger kun leaf",
+            len(certs),
+        )
+        certs = certs[:1]
+
+    return b"".join(c.public_bytes(serialization.Encoding.PEM) for c in certs)
+
+
 def save_uploaded_pem(
     kind: PEM_KIND,
     node_name: str,
@@ -289,15 +402,20 @@ def save_uploaded_pem(
 ) -> Path:
     """Persist an uploaded PEM file under backend/pxgrid/.
 
+    Validates + canonicalizes via ``normalize_uploaded_bytes`` first so we
+    never persist a CSR/p7b/DER as if it were X.509 PEM (those would only
+    fail later at TLS-handshake with a cryptic OpenSSL error).
+
     Returns the path; the caller writes the resulting path back into
     settings (pxgrid_cert_path / pxgrid_key_path / pxgrid_ca_bundle_path).
     """
+    normalized = normalize_uploaded_bytes(kind, pem_bytes)
     target = BACKEND_ROOT / "pxgrid"
     target.mkdir(parents=True, exist_ok=True)
     safe = _safe_node_name(node_name)
     suffix = {"cert": "cert", "key": "key", "ca": "ca"}[kind]
     out = target / f"{safe}.{suffix}.pem"
-    out.write_bytes(pem_bytes)
+    out.write_bytes(normalized)
     if kind == "key":
         try:
             out.chmod(0o600)
