@@ -5,6 +5,38 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.0.1 build 0090] — 2026-04-26 — fix(PxGrid): /csr og /account 400 efter UI-mode-skift uden Gem
+
+Bug-fix på Phase 1 (3.0.0 build 0089) opdaget ved første rigtige test:
+admin skifter cert-mode dropdown'en fra "upload" til "csr" og klikker
+"Generér CSR" — backend svarer `400` fordi den gatekeeper på
+*persisted* `cert_mode`, men dropdown-ændringen ligger kun i DOM indtil
+formularen submittes.
+
+**Backend** ([backend/app/api/settings.py](backend/app/api/settings.py),
+[backend/app/services/settings_service.py](backend/app/services/settings_service.py)):
+fjernet `cert_mode == "csr"`-gaten fra både `/pxgrid/csr` og
+`pxgrid_account_create()`. Begge operationer er ikke-destruktive (CSR
+genererer nye filer under `backend/pxgrid/`, AccountCreate returnerer
+PENDING uden at ændre noget hvis brugeren ikke er approved). Nu
+valideres kun at `pxgrid_node_name` er sat — admin kan dermed køre CSR
+i upload-mode for at skifte over senere, eller pre-stage en
+account-registrering før mode flippes.
+
+**Frontend** ([frontend/js/views/settings.js](frontend/js/views/settings.js)):
+ny `autoSaveBeforeAction()` helper kaldes før CSR- og account-knapperne
+fyrer deres backend-kald. Bygger samme payload som submit-handleren men
+nuller password-feltet (tomt = bevar) så et eksisterende ISE-secret ikke
+wipes hvis brugeren ikke har skrevet noget i feltet. Defense-in-depth:
+selvom backend nu accepterer alle modes, sikrer auto-save at persisted
+state matcher UI'et før følge-kald (test forbindelse osv.).
+
+Filer: [backend/app/api/settings.py](backend/app/api/settings.py),
+[backend/app/services/settings_service.py](backend/app/services/settings_service.py),
+[frontend/js/views/settings.js](frontend/js/views/settings.js).
+
+---
+
 ## [3.0.0 build 0089] — 2026-04-26 — feat(PxGrid): Phase 1 — REST control plane + cert-håndtering (upload + CSR)
 
 **MAJOR-bump (3.0.0)** — første eksterne push-integration. Phase 1

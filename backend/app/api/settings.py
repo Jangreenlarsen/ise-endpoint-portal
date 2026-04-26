@@ -120,18 +120,22 @@ async def upload_pxgrid_cert(
 
 @router.post("/pxgrid/csr", response_model=PxGridSettingsResponse)
 async def generate_pxgrid_csr() -> PxGridSettingsResponse:
-    """CSR mode: generate a fresh keypair + CSR, persist to backend/pxgrid/.
+    """Generate a fresh keypair + CSR, persist to backend/pxgrid/.
 
     Returns updated settings (key path is set; cert path stays empty until
     the admin downloads the signed cert from ISE and uploads it via
     /pxgrid/cert with kind=cert). The CSR file lives on disk for manual
     submission to the ISE internal CA via Administration → pxGrid Services.
+
+    Generation itself is mode-agnostic and non-destructive (writes new
+    files under backend/pxgrid/) — admin can call this even when nominally
+    in upload-mode, e.g. to switch over later.
     """
     current = settings_service.get_pxgrid_settings()
-    if current.pxgrid_cert_mode != "csr":
+    if not current.pxgrid_node_name:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
-            "CSR generation is only valid when pxgrid_cert_mode='csr'",
+            "pxgrid_node_name skal være sat — gem PxGrid-settings først",
         )
     csr_pem, key_pem = cert_manager.generate_csr(current.pxgrid_node_name)
     key_path, _csr_path = cert_manager.persist_csr_artifacts(

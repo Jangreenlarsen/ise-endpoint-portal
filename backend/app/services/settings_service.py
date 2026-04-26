@@ -269,23 +269,22 @@ def get_pxgrid_status() -> PxGridStatusResponse:
 
 
 async def pxgrid_account_create() -> PxGridAccountCreateResponse:
-    """CSR-mode: register the portal as a new pxGrid client.
+    """Register the portal as a new pxGrid client (typically CSR-mode).
 
-    Caller must have already generated the CSR and uploaded the matching
-    cert/key paths (or run /api/settings/pxgrid/csr first). Returns the
-    account state so the UI knows whether to wait for admin approval.
+    Hovedscenariet er CSR-mode: portalen skal selv registrere sig før ISE
+    udsteder secret. Gaten er dog ikke hård — admin kan også køre dette i
+    upload-mode hvis ISE-pxGrid-konfigurationen kræver eksplicit AccountCreate
+    (f.eks. ved skiftet PSN/CN). Selve kaldet er ikke-destruktivt: ISE returnerer
+    enten PENDING (afventer approval) eller en eksisterende state.
     """
     s = config.settings
-    if s.pxgrid_cert_mode != "csr":
+    if not s.pxgrid_node_name:
         return PxGridAccountCreateResponse(
             ok=False,
-            node_name=s.pxgrid_node_name,
+            node_name="",
             account_state="N/A",
             password_received=False,
-            message=(
-                "AccountCreate er kun nødvendig i 'csr'-mode. I 'upload'-mode "
-                "registrerer ISE allerede klienten via cert-CN'en."
-            ),
+            message="pxgrid_node_name skal være sat — gem PxGrid-settings først.",
         )
     client = PxGridClient()
     try:

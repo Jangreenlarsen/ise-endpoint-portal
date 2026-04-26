@@ -486,10 +486,22 @@ async function initPxGridSection(container) {
     }
   });
 
+  // CSR + account-create kalder backend-endpoints der gatekeeper på persisted
+  // settings (node_name, cert_mode). Bruger kan have ændret formularen uden at
+  // klikke Gem først — auto-save dropdown/node-navn så backend ser samme state
+  // som UI'et. Password-feltet ekskluderes (tomt = bevar) for ikke at wipe en
+  // eksisterende secret hvis brugeren ikke har skrevet noget.
+  async function autoSaveBeforeAction() {
+    const payload = buildPayload();
+    payload.pxgrid_password = "";
+    await api.updatePxGridSettings(payload);
+  }
+
   container.querySelector("#pxgrid-csr-btn").addEventListener("click", async () => {
     if (!confirm("Generér nyt RSA-2048 keypair + CSR? Eksisterende key for samme node-navn overskrives.")) return;
     msg.innerHTML = `<div class="alert info">Genererer CSR...</div>`;
     try {
+      await autoSaveBeforeAction();
       const s = await api.generatePxGridCsr();
       msg.innerHTML = `<div class="alert success">CSR genereret. Key gemt på <code>${esc(s.pxgrid_key_path)}</code>. CSR-fil ligger ved siden af — indsend den til ISE internal CA og upload det signerede cert som "Klient-certifikat" herover.</div>`;
       await loadSettings();
@@ -501,6 +513,7 @@ async function initPxGridSection(container) {
   container.querySelector("#pxgrid-account-btn").addEventListener("click", async () => {
     msg.innerHTML = `<div class="alert info">Opretter pxGrid-konto i ISE...</div>`;
     try {
+      await autoSaveBeforeAction();
       const r = await api.createPxGridAccount();
       const cls = r.ok ? "success" : "error";
       msg.innerHTML = `<div class="alert ${cls}">[${esc(r.account_state)}] ${esc(r.message)}</div>`;
