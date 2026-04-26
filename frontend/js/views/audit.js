@@ -97,7 +97,7 @@ export async function renderAudit(container) {
               <th style="width:9rem;">Ressource</th>
               <th style="width:13rem;">ID</th>
               <th>Detaljer</th>
-              <th style="width:9rem;">&nbsp;</th>
+              <th class="audit-actions-col">&nbsp;</th>
             </tr>
           </thead>
           <tbody id="audit-tbody">
@@ -161,7 +161,7 @@ export async function renderAudit(container) {
               <td class="mono">${esc(e.resource_type)}</td>
               <td class="mono">${esc(e.resource_id || "—")}</td>
               <td class="audit-summary">${summary}</td>
-              <td>
+              <td class="audit-actions-cell">
                 <button class="audit-view" data-id="${e.id}">Vis</button>
                 ${rbBtn}
               </td>
@@ -266,6 +266,17 @@ export async function renderAudit(container) {
   searchInput.addEventListener("input", () => {
     clearTimeout(debounce);
     debounce = setTimeout(load, 350);
+  });
+  searchInput.addEventListener("change", () => {
+    clearTimeout(debounce);
+    load();
+  });
+  searchInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      clearTimeout(debounce);
+      load();
+    }
   });
 
   await load();

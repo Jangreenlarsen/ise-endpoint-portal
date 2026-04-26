@@ -5,6 +5,43 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [2.12.3 build 0088] — 2026-04-26 — fix: Audit-actions på samme linje + Enter-trigger på søg
+
+To små UX-fix i Audit-viewet:
+
+1. **Knapperne "Vis" og "Rollback" stod på hver sin linje** i actions-cellen
+   fordi kolonnen var 9rem bred og standard-button-padding fyldte mere end
+   det. Cellen viste samtidig stort whitespace til højre. Løsning: kolonnen
+   udvidet til 11rem, ny `.audit-actions-cell` med `white-space: nowrap` +
+   `text-align: right`, og kompakte button-styles (mindre padding/font) så
+   begge knapper holder sig på én linje uanset om Rollback faktisk vises.
+
+2. **Søgefeltet reagerede kun på `input`-event med 350ms debounce** — hvis
+   browseren af en eller anden grund holdt en cached version af tidligere
+   `audit.js` (uden b0087-search-koden), fremstod det som om søgningen ikke
+   filtrerede. Tilføjet eksplicit `change`- og `Enter`-trigger så `load()`
+   kaldes med det samme når brugeren forlader feltet eller trykker Enter
+   (uden debounce). Hjælper også når brugeren copy-paster en streng ind.
+
+Verificeret backend: `audit_store.query(search='admin')` filtrerer korrekt
+(3 af 49 events i nuværende DB).
+
+PATCH bump (2.12.2 → 2.12.3) — bugfix/UX, ikke ny funktionalitet.
+
+Filer:
+- [version.json](version.json): 2.12.2 b0087 → 2.12.3 b0088
+- [frontend/js/views/audit.js](frontend/js/views/audit.js): `audit-actions-col`
+  klasse på actions-`<th>`, `audit-actions-cell` på `<td>`; ekstra
+  `change`/`keydown` handlers på `#audit-search` så Enter og blur fyrer
+  `load()` straks.
+- [frontend/css/styles.css](frontend/css/styles.css): nye regler for
+  `.audit-actions-col` (11rem), `.audit-actions-cell` (nowrap + højrejusteret)
+  og kompakt button-styling i actions-cellen.
+- [BUGS.md](BUGS.md): fixed-entry for begge.
+- [CHANGELOG.md](CHANGELOG.md): denne entry.
+
+---
+
 ## [2.12.2 build 0087] — 2026-04-26 — feat: Audit søg på alle felter
 
 Audit-viewet havde to separate filterfelter (Aktør + Ressource-ID),

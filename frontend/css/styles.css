@@ -814,6 +814,17 @@ body.auth-mode .content {
   text-overflow: ellipsis;
   max-width: 20rem;
 }
+.audit-actions-col { width: 11rem; }
+.audit-actions-cell {
+  white-space: nowrap;
+  text-align: right;
+}
+.audit-actions-cell button {
+  padding: 0.15rem 0.5rem;
+  font-size: 0.78rem;
+  margin-left: 0.25rem;
+}
+.audit-actions-cell button:first-child { margin-left: 0; }
 .audit-drawer {
   position: fixed;
   top: 0;
