@@ -5,6 +5,44 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.1.3 build 0095] — 2026-04-26 — fix(PxGrid): renummerér CSR-flow til 5 trin + per-felt upload-status
+
+To UX-issues opdaget under brug af CSR-flowet:
+
+1. **Trin 2 var usynlig**: nummereringen sprang fra Trin 1 → Trin 3 →
+   Trin 3b → Trin 4 fordi "indsend CSR til CA" kun lå som hjælpetekst
+   øverst og ikke som dedikeret felt. Admin opfattede det som om der
+   manglede et trin.
+2. **Ingen lokal feedback efter upload**: `<input type=file>` resettes
+   til "no file chosen" by design (så samme fil kan vælges igen efter
+   fejl), men eneste bekræftelse var en success-banner øverst i kortet
+   + en path-opdatering langt nede. Admin var ikke sikker på om upload
+   faktisk virkede.
+
+**Frontend** ([frontend/js/views/settings.js](frontend/js/views/settings.js)):
+
+- CSR-blokken renummereret til **5 trin** med dedikeret felt for hvert:
+  - Trin 1: Generér + download CSR
+  - Trin 2: Indsend CSR til CA + hent signeret cert/CA-chain (instruktion
+    med både ISE-internal-CA og MS-certsrv-flow inline, inkl. p7b→PEM-
+    konvertering)
+  - Trin 3: Upload signeret klient-cert
+  - Trin 4: Upload CA-bundle
+  - Trin 5: Opret pxGrid-konto
+- Hver fil-upload-felt har fået en `.upload-status` span lige under
+  input'et: "Uploader filnavn..." → "✓ Uploadet: filnavn" (grøn) eller
+  "✗ Fejl: ..." (rød). Gælder både CSR-blokken (trin 3 + 4) og upload-
+  mode-blokken (cert, key, ca). Direkte visuel bekræftelse uden at
+  scanne resten af formularen.
+
+Backend uændret. PFX-import-flowet har allerede eksplicit knap +
+success-banner med paths så enhancement udeladt der.
+
+Filer: [frontend/js/views/settings.js](frontend/js/views/settings.js),
+[BUGS.md](BUGS.md).
+
+---
+
 ## [3.1.2 build 0094] — 2026-04-26 — fix(PxGrid): skjul upload-blok i CSR-mode + flyt CA-upload ind i CSR-flowet
 
 Opfølgning på 3.1.1 — efter at have introduceret nummererede trin i

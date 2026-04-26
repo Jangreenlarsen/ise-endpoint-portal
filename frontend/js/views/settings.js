@@ -209,14 +209,17 @@ export async function renderSettings(container) {
           <div class="field">
             <label for="pxgrid-upload-cert">Klient-certifikat (PEM)</label>
             <input type="file" id="pxgrid-upload-cert" accept=".pem,.crt,.cer" />
+            <div class="upload-status hint" id="pxgrid-upload-cert-status"></div>
           </div>
           <div class="field">
             <label for="pxgrid-upload-key">Privat key (PEM)</label>
             <input type="file" id="pxgrid-upload-key" accept=".pem,.key" />
+            <div class="upload-status hint" id="pxgrid-upload-key-status"></div>
           </div>
           <div class="field">
             <label for="pxgrid-upload-ca">CA-bundle (PEM)</label>
             <input type="file" id="pxgrid-upload-ca" accept=".pem,.crt,.cer" />
+            <div class="upload-status hint" id="pxgrid-upload-ca-status"></div>
           </div>
 
           <hr style="margin:1rem 0;border:0;border-top:1px solid #e5e7eb;" />
@@ -242,31 +245,38 @@ export async function renderSettings(container) {
 
         <div id="pxgrid-csr-block" hidden>
           <p class="hint">
-            <strong>CSR-mode — 4 trin:</strong>
-            (1) Generér CSR → portalen laver keypair + CSR og auto-downloader CSR-filen.
-            (2) Indsend CSR til ISE internal CA (eller MS certsrv) og download det signerede cert.
-            (3) Upload det signerede cert nedenfor.
-            (4) Opret pxGrid-konto → ISE-admin approver klienten i <em>Administration → pxGrid Services → Clients</em>.
+            <strong>CSR-mode — 5 trin (gør i rækkefølge):</strong>
           </p>
           <div class="field">
             <label><strong>Trin 1 — Generér + download CSR</strong></label>
+            <div class="hint">Portalen laver RSA-2048 keypair + CSR med CN=node-navn og auto-downloader CSR-filen til Downloads.</div>
             <div class="actions" style="margin-top:0.25rem;">
               <button type="button" id="pxgrid-csr-btn" class="secondary">Generér CSR + keypair</button>
               <button type="button" id="pxgrid-csr-dl-btn" class="secondary">Download CSR igen</button>
             </div>
           </div>
           <div class="field">
-            <label for="pxgrid-csr-signed-cert"><strong>Trin 3 — Upload signeret cert (PEM/CER)</strong></label>
+            <label><strong>Trin 2 — Indsend CSR til din CA, hent signeret cert + CA-chain</strong></label>
+            <div class="hint">
+              <strong>ISE Internal CA</strong>: Administration → pxGrid Services → Certificates → Generate Certificate → "I have a certificate signing request" → upload CSR → download signeret cert. CA-chain hentes fra Administration → System → Certificates → Certificate Authority Certificates.<br>
+              <strong>MS certsrv</strong>: <code>https://&lt;ca&gt;/certsrv/</code> → advanced request → submit CSR (Base 64) → vælg template (typisk "pxGrid Client") → "Download certificate" (ikke chain). CA-bundle: forsiden → "Download a CA certificate chain" → konvertér p7b til PEM med <code>openssl pkcs7 -print_certs -in certnew.p7b -out ca.pem</code>.
+            </div>
+          </div>
+          <div class="field">
+            <label for="pxgrid-csr-signed-cert"><strong>Trin 3 — Upload signeret klient-cert (PEM/CER)</strong></label>
             <input type="file" id="pxgrid-csr-signed-cert" accept=".pem,.crt,.cer" />
-            <div class="hint">Filen fra ISE internal CA / MS certsrv. Gemmes som <code>pxgrid_cert_path</code> og parres med den private key fra trin 1.</div>
+            <div class="upload-status hint" id="pxgrid-csr-signed-cert-status"></div>
+            <div class="hint">Filen fra trin 2 (MS certsrv eller ISE internal CA). Parres med den private key portalen genererede i trin 1.</div>
           </div>
           <div class="field">
-            <label for="pxgrid-csr-ca-bundle"><strong>Trin 3b — Upload CA-bundle (PEM)</strong></label>
+            <label for="pxgrid-csr-ca-bundle"><strong>Trin 4 — Upload CA-bundle (PEM)</strong></label>
             <input type="file" id="pxgrid-csr-ca-bundle" accept=".pem,.crt,.cer" />
-            <div class="hint">CA-chain der har signeret <em>ISE pxGrid-server-certifikatet</em> (bruges til at verificere serveren ved mTLS-handshake). Hentes typisk fra ISE → System Certificates → Trusted Certificates eller fra MS certsrv "Download a CA certificate chain".</div>
+            <div class="upload-status hint" id="pxgrid-csr-ca-bundle-status"></div>
+            <div class="hint">CA-chain der har signeret <em>ISE pxGrid-server-certifikatet</em> (bruges til at verificere serveren ved mTLS-handshake). Hvis MS CA også har signeret ISE's pxGrid-cert er det samme chain som klient-cert'et.</div>
           </div>
           <div class="field">
-            <label><strong>Trin 4 — Registrér klienten</strong></label>
+            <label><strong>Trin 5 — Registrér klienten i ISE</strong></label>
+            <div class="hint">ISE returnerer accountState=PENDING. ISE-admin approver derefter manuelt i <em>Administration → pxGrid Services → Clients</em>, hvorefter "Test forbindelse"-knappen nedenfor skal være grøn.</div>
             <div class="actions" style="margin-top:0.25rem;">
               <button type="button" id="pxgrid-account-btn" class="secondary">Opret pxGrid-konto</button>
             </div>
@@ -617,23 +627,30 @@ async function initPxGridSection(container) {
     ["cert", "pxgrid-upload-cert"],
     ["key", "pxgrid-upload-key"],
     ["ca", "pxgrid-upload-ca"],
-    // Trin 3 + 3b i CSR-flowet: samme backend-endpoint som upload-block,
+    // Trin 3 + 4 i CSR-flowet: samme backend-endpoint som upload-block,
     // men eksponeret inde i CSR-blokken så admin ikke skal hoppe ud af
     // flowet efter download fra MS certsrv / ISE internal CA.
     ["cert", "pxgrid-csr-signed-cert"],
     ["ca", "pxgrid-csr-ca-bundle"],
   ]) {
-    container.querySelector(`#${id}`).addEventListener("change", async (e) => {
+    const inputEl = container.querySelector(`#${id}`);
+    const statusEl = container.querySelector(`#${id}-status`);
+    inputEl.addEventListener("change", async (e) => {
       const file = e.target.files?.[0];
       if (!file) return;
-      msg.innerHTML = `<div class="alert info">Uploader ${esc(kind)}...</div>`;
+      const filename = file.name;
+      msg.innerHTML = `<div class="alert info">Uploader ${esc(filename)}...</div>`;
+      if (statusEl) statusEl.innerHTML = `<span style="color:#666;">Uploader ${esc(filename)}...</span>`;
       try {
         await api.uploadPxGridCert(kind, file);
-        msg.innerHTML = `<div class="alert success">${esc(kind)} uploadet og sti opdateret.</div>`;
+        msg.innerHTML = `<div class="alert success">${esc(kind)} uploadet (${esc(filename)}) — sti opdateret nedenfor.</div>`;
+        if (statusEl) statusEl.innerHTML = `<span style="color:#16a34a;">✓ Uploadet: ${esc(filename)}</span>`;
         await loadSettings();
       } catch (err) {
         msg.innerHTML = `<div class="alert error">Upload af ${esc(kind)} fejlede: ${esc(err.message)}</div>`;
+        if (statusEl) statusEl.innerHTML = `<span style="color:#c0392b;">✗ Fejl: ${esc(err.message)}</span>`;
       } finally {
+        // Reset input så samme fil kan vælges igen efter fejl/genupload.
         e.target.value = "";
       }
     });
