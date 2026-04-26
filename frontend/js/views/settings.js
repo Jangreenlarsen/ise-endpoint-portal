@@ -261,6 +261,11 @@ export async function renderSettings(container) {
             <div class="hint">Filen fra ISE internal CA / MS certsrv. Gemmes som <code>pxgrid_cert_path</code> og parres med den private key fra trin 1.</div>
           </div>
           <div class="field">
+            <label for="pxgrid-csr-ca-bundle"><strong>Trin 3b — Upload CA-bundle (PEM)</strong></label>
+            <input type="file" id="pxgrid-csr-ca-bundle" accept=".pem,.crt,.cer" />
+            <div class="hint">CA-chain der har signeret <em>ISE pxGrid-server-certifikatet</em> (bruges til at verificere serveren ved mTLS-handshake). Hentes typisk fra ISE → System Certificates → Trusted Certificates eller fra MS certsrv "Download a CA certificate chain".</div>
+          </div>
+          <div class="field">
             <label><strong>Trin 4 — Registrér klienten</strong></label>
             <div class="actions" style="margin-top:0.25rem;">
               <button type="button" id="pxgrid-account-btn" class="secondary">Opret pxGrid-konto</button>
@@ -446,14 +451,15 @@ async function initPxGridSection(container) {
   const pwHint = container.querySelector("#pxgrid-pw-hint");
 
   function applyMode(mode) {
+    // I CSR-mode bor *alle* cert-uploads inde i csrBlock (trin 3 + 3b), og
+    // upload-blokkens "Privat key"-felt ville overskrive den nøgle portalen
+    // lige har genereret — så vi skjuler hele upload-blokken. Upload-mode
+    // er omvendt simpelt: 3 separate PEMs eller PFX-import.
     if (mode === "csr") {
-      uploadBlock.querySelectorAll("input[type=file]").forEach((el) => {
-        // CSR mode still allows uploading the *signed cert* back, so keep
-        // upload block visible — admin will use it for the cert file
-        // returned by the ISE CA.
-      });
+      uploadBlock.hidden = true;
       csrBlock.hidden = false;
     } else {
+      uploadBlock.hidden = false;
       csrBlock.hidden = true;
     }
   }
@@ -611,10 +617,11 @@ async function initPxGridSection(container) {
     ["cert", "pxgrid-upload-cert"],
     ["key", "pxgrid-upload-key"],
     ["ca", "pxgrid-upload-ca"],
-    // Trin 3 i CSR-flowet: samme backend-endpoint som upload-block-cert,
-    // men eksponeret inde i CSR-blokken så admin ikke skal hoppe op til
-    // upload-blokken efter download fra MS certsrv / ISE internal CA.
+    // Trin 3 + 3b i CSR-flowet: samme backend-endpoint som upload-block,
+    // men eksponeret inde i CSR-blokken så admin ikke skal hoppe ud af
+    // flowet efter download fra MS certsrv / ISE internal CA.
     ["cert", "pxgrid-csr-signed-cert"],
+    ["ca", "pxgrid-csr-ca-bundle"],
   ]) {
     container.querySelector(`#${id}`).addEventListener("change", async (e) => {
       const file = e.target.files?.[0];

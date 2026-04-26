@@ -5,6 +5,40 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.1.2 build 0094] — 2026-04-26 — fix(PxGrid): skjul upload-blok i CSR-mode + flyt CA-upload ind i CSR-flowet
+
+Opfølgning på 3.1.1 — efter at have introduceret nummererede trin i
+CSR-blokken, var det stadig forvirrende at upload-blokken (med
+overskriften "Upload-mode:" + tre separate PEM-felter + PFX-import)
+forblev synlig ved siden af. To konkrete problemer:
+
+1. **Footgun**: "Privat key (PEM)"-feltet i upload-blokken ville
+   overskrive den private key portalen lige havde genereret som del
+   af CSR'en — cert/key-paret matchede dermed ikke længere efter en
+   sådan upload. Ingen advarsel.
+2. **Forvirrende mental model**: admin så to parallelle "veje" som om
+   begge skulle gennemføres for at lukke flowet, selvom de er
+   gensidigt udelukkende.
+
+**Frontend** ([frontend/js/views/settings.js](frontend/js/views/settings.js)):
+`applyMode("csr")` skjuler nu hele upload-blokken (i stedet for kun at
+toggle CSR-blokken). CA-bundle-uploaden — som CSR-flowet stadig har
+brug for fordi ISE internal CA / MS certsrv kun udsteder klient-
+certifikatet, ikke chain'en til at verificere ISE-server-cert ved
+mTLS-handshake — er flyttet ind i CSR-blokken som **Trin 3b — Upload
+CA-bundle (PEM)**. Brugte samme multi-kind file-handler-loop, så
+backend-endpoint'et er uændret (`POST /pxgrid/cert kind=ca`).
+
+Resultatet er ét sammenhængende CSR-flow med 4 + 1 trin (Generér →
+Indsend → Upload signeret cert → Upload CA → Opret konto), uden
+synlige felter der ikke giver mening i den valgte mode. Switch til
+upload-mode dropdown viser stadig hele upload-blokken (uændret).
+
+Filer: [frontend/js/views/settings.js](frontend/js/views/settings.js),
+[BUGS.md](BUGS.md).
+
+---
+
 ## [3.1.1 build 0093] — 2026-04-26 — fix(PxGrid): tydeliggør CSR-flow med nummererede trin + inline cert-upload
 
 UX-fix på CSR-flowet: efter download af CSR fra portalen var det ikke
