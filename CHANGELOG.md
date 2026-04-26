@@ -5,6 +5,64 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.1.0 build 0092] — 2026-04-26 — feat(PxGrid): PKCS#12-import (.pfx fra MS certsrv eller generic CA)
+
+Tredje vej til at få cert-materialet på portalen, ud over (a) tre
+separate PEM-uploads og (b) CSR-flow mod ISE internal CA. Primær
+motivation: lader admin bruge **MS Active Directory Certificate
+Services** (`https://<adcs>/certsrv`) som CA — én af de mest udbredte
+interne PKI'er — uden at portalen selv skal kunne tale NTLM/Kerberos
+mod ADCS web enrollment.
+
+**Workflow** for admin:
+1. Browse til `https://<adcs>/certsrv` med Windows-bruger.
+2. Submit CSR (enten den portalen genererede via /pxgrid/csr, eller en
+   ny direkte i certsrv-UI'et via "Create and submit a request to this
+   CA").
+3. Når cert'et er udstedt: "Install Certificate" → eksportér via
+   IE/Edge cert-manager → "Yes, export the private key" + "Include
+   all certificates in path if possible" → vælg password → gem .pfx.
+4. Settings → PxGrid → ny PKCS#12-sektion → vælg fil + password →
+   "Importér PKCS#12".
+
+**Backend** ([backend/app/api/settings.py](backend/app/api/settings.py),
+[backend/app/pxgrid/cert_manager.py](backend/app/pxgrid/cert_manager.py)):
+nyt endpoint `POST /api/settings/pxgrid/pfx` (multipart: `file` +
+`password` Form-field). To nye helpers i `cert_manager`:
+- `extract_pkcs12(pfx_bytes, password)` bruger
+  `cryptography.hazmat.primitives.serialization.pkcs12.load_key_and_certificates()`
+  og returnerer `(cert_pem, key_pem, ca_pem|None)`. CA-chain bygges
+  ved at koncatenere PEMs af alle `additional_certificates` fra
+  bundlet (typisk sub-CA + root). Bad password / korrupt PFX bliver
+  til `PxGridCertError` med dansk besked → 400.
+- `save_pkcs12_bundle()` skriver de tre PEMs til samme naming-scheme
+  som `save_uploaded_pem` (`<safe_node>.{cert,key,ca}.pem`) og
+  chmod'er key til 600 hvor POSIX understøtter det.
+
+Endpointet opdaterer alle tre `pxgrid_*_path`-settings i ét hug; hvis
+PFX'en ikke havde CA-chain bevares den eksisterende
+`pxgrid_ca_bundle_path` så admin kan uploade CA separat bagefter.
+
+**Frontend** ([frontend/js/api.js](frontend/js/api.js),
+[frontend/js/views/settings.js](frontend/js/views/settings.js)):
+ny `api.uploadPxGridPfx(file, password)` med FormData. UI får ny
+sektion under upload-blokken med fil + password + "Importér PKCS#12"-
+knap. Eksplicit knap (ikke auto-submit på fil-change som de tre PEM-
+felter), fordi password skal indtastes først. Success-meddelelsen
+viser hvilke paths der blev sat og noterer hvis CA-chain manglede.
+
+Bump-begrundelse: MINOR (3.1.0) — additivt feature, ingen breaking
+changes. Eksisterende upload- og CSR-flows er uændrede; PFX-import er
+en parallel vej der bruger samme on-disk-shape.
+
+Filer: [backend/app/api/settings.py](backend/app/api/settings.py),
+[backend/app/pxgrid/cert_manager.py](backend/app/pxgrid/cert_manager.py),
+[frontend/js/api.js](frontend/js/api.js),
+[frontend/js/views/settings.js](frontend/js/views/settings.js),
+[FEATURES.md](FEATURES.md).
+
+---
+
 ## [3.0.2 build 0091] — 2026-04-26 — feat(PxGrid): download CSR-fil direkte fra Settings UI
 
 Tidligere lå CSR-filen kun på serverens disk under

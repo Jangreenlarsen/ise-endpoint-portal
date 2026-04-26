@@ -198,6 +198,25 @@ export const api = {
     URL.revokeObjectURL(url);
     return filename;
   },
+  uploadPxGridPfx: async (file, password) => {
+    const token = auth.getToken();
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("password", password || "");
+    const headers = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    const res = await fetch(`${BASE}/api/settings/pxgrid/pfx`, {
+      method: "POST",
+      headers,
+      body: fd,
+    });
+    if (!res.ok) {
+      let detail = await res.text();
+      try { detail = JSON.parse(detail).detail || detail; } catch {}
+      throw new Error(`${res.status}: ${detail}`);
+    }
+    return res.json();
+  },
   uploadPxGridCert: async (kind, file) => {
     const token = auth.getToken();
     const fd = new FormData();

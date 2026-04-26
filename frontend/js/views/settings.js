@@ -218,6 +218,26 @@ export async function renderSettings(container) {
             <label for="pxgrid-upload-ca">CA-bundle (PEM)</label>
             <input type="file" id="pxgrid-upload-ca" accept=".pem,.crt,.cer" />
           </div>
+
+          <hr style="margin:1rem 0;border:0;border-top:1px solid #e5e7eb;" />
+          <p class="hint">
+            <strong>Eller importér PKCS#12 (.pfx/.p12)</strong> — typisk fra
+            <em>MS certsrv → Install Certificate → Export</em> med
+            "Yes, export the private key" + "Include all certificates in path".
+            Portalen splitter bundlet i cert/key/CA og opdaterer alle tre stier
+            i ét hug.
+          </p>
+          <div class="field">
+            <label for="pxgrid-pfx-file">PKCS#12-bundle</label>
+            <input type="file" id="pxgrid-pfx-file" accept=".pfx,.p12" />
+          </div>
+          <div class="field">
+            <label for="pxgrid-pfx-pw">PFX-password</label>
+            <input type="password" id="pxgrid-pfx-pw" placeholder="(tom hvis bundlet ikke er password-beskyttet)" autocomplete="off" />
+          </div>
+          <div class="actions">
+            <button type="button" id="pxgrid-pfx-import-btn" class="secondary">Importér PKCS#12</button>
+          </div>
         </div>
 
         <div id="pxgrid-csr-block" hidden>
@@ -546,6 +566,29 @@ async function initPxGridSection(container) {
       await loadSettings();
     } catch (err) {
       msg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
+    }
+  });
+
+  container.querySelector("#pxgrid-pfx-import-btn").addEventListener("click", async () => {
+    const fileEl = container.querySelector("#pxgrid-pfx-file");
+    const pwEl = container.querySelector("#pxgrid-pfx-pw");
+    const file = fileEl.files?.[0];
+    if (!file) {
+      msg.innerHTML = `<div class="alert error">Vælg en .pfx/.p12-fil først.</div>`;
+      return;
+    }
+    msg.innerHTML = `<div class="alert info">Importerer PKCS#12...</div>`;
+    try {
+      const s = await api.uploadPxGridPfx(file, pwEl.value);
+      const caNote = s.pxgrid_ca_bundle_path
+        ? ` CA-chain: <code>${esc(s.pxgrid_ca_bundle_path)}</code>.`
+        : ` (Ingen CA-chain i bundlet — upload separat hvis nødvendigt.)`;
+      msg.innerHTML = `<div class="alert success">PKCS#12 importeret. Cert: <code>${esc(s.pxgrid_cert_path)}</code>, Key: <code>${esc(s.pxgrid_key_path)}</code>.${caNote}</div>`;
+      fileEl.value = "";
+      pwEl.value = "";
+      await loadSettings();
+    } catch (err) {
+      msg.innerHTML = `<div class="alert error">PKCS#12-import fejlede: ${esc(err.message)}</div>`;
     }
   });
 

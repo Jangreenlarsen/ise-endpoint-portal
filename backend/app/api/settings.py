@@ -145,6 +145,54 @@ async def download_pxgrid_csr() -> FileResponse:
     )
 
 
+@router.post("/pxgrid/pfx", response_model=PxGridSettingsResponse)
+async def upload_pxgrid_pfx(
+    file: UploadFile = File(..., description="PKCS#12 bundle (.pfx / .p12)"),
+    password: str = Form("", description="PFX password (tom hvis ingen)"),
+) -> PxGridSettingsResponse:
+    """Import en PKCS#12-bundle (typisk fra MS certsrv) og udpak til de tre
+    PEM-filer portalen bruger til mTLS.
+
+    Bundlet skal indeholde:
+      - klient-certifikatet
+      - den matchende private key (eksportér med "Yes, export private key")
+      - valgfri CA-chain ("Include all certificates in path")
+
+    Hvis CA-chain er med, sættes pxgrid_ca_bundle_path automatisk;
+    ellers bevares den eksisterende værdi (admin kan så uploade CA-bundle
+    separat via /pxgrid/cert kind=ca).
+    """
+    pfx_bytes = await file.read()
+    if not pfx_bytes:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Tom fil")
+    current = settings_service.get_pxgrid_settings()
+    if not current.pxgrid_node_name:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "pxgrid_node_name skal være sat — gem PxGrid-settings først",
+        )
+    try:
+        cert_pem, key_pem, ca_pem = cert_manager.extract_pkcs12(pfx_bytes, password)
+    except Exception as exc:  # PxGridCertError or anything cryptography raised
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
+    cert_path, key_path, ca_path = cert_manager.save_pkcs12_bundle(
+        current.pxgrid_node_name, cert_pem, key_pem, ca_pem
+    )
+    update = PxGridSettingsUpdate(
+        pxgrid_enabled=current.pxgrid_enabled,
+        pxgrid_node_name=current.pxgrid_node_name,
+        pxgrid_psn_fqdn=current.pxgrid_psn_fqdn,
+        pxgrid_cert_mode=current.pxgrid_cert_mode,
+        pxgrid_cert_path=str(cert_path),
+        pxgrid_key_path=str(key_path),
+        pxgrid_ca_bundle_path=(
+            str(ca_path) if ca_path else current.pxgrid_ca_bundle_path
+        ),
+        pxgrid_password="",
+    )
+    return await settings_service.update_pxgrid_settings(update)
+
+
 @router.post("/pxgrid/csr", response_model=PxGridSettingsResponse)
 async def generate_pxgrid_csr() -> PxGridSettingsResponse:
     """Generate a fresh keypair + CSR, persist to backend/pxgrid/.

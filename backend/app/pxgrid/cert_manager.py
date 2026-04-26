@@ -191,6 +191,92 @@ def persist_csr_artifacts(
     return key_file, csr_file
 
 
+# ── PKCS#12 helpers (Microsoft AD CS / generic .pfx imports) ────────────
+
+
+def extract_pkcs12(
+    pfx_bytes: bytes, password: str = ""
+) -> tuple[bytes, bytes, bytes | None]:
+    """Split a PKCS#12 (.pfx/.p12) bundle into PEM cert + key + CA chain.
+
+    Returns ``(cert_pem, key_pem, ca_pem_or_none)``. Caller persists each
+    to the cert/key/ca paths so we end up with the same on-disk shape as
+    upload-mode (httpx mTLS reads PEMs, not PFX).
+
+    The CA chain is concatenated PEMs of all extra certs in the bundle —
+    ISE typically ships its sub-CA + root in the same PFX when you export
+    "with chain" in the certsrv UI. Returns None if no chain certs.
+    """
+    from app.pxgrid.exceptions import PxGridCertError
+
+    try:
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.serialization import pkcs12
+    except ImportError as exc:  # pragma: no cover
+        raise RuntimeError(
+            "PKCS#12 support requires the 'cryptography' package."
+        ) from exc
+
+    pwd_bytes = password.encode("utf-8") if password else None
+    try:
+        key, cert, extra = pkcs12.load_key_and_certificates(pfx_bytes, pwd_bytes)
+    except ValueError as exc:
+        # cryptography raises ValueError for bad password / corrupt PFX
+        raise PxGridCertError(f"Kunne ikke parse PKCS#12: {exc}") from exc
+
+    if cert is None or key is None:
+        raise PxGridCertError(
+            "PKCS#12 mangler enten cert eller private key — "
+            "eksportér med 'Yes, export the private key' i certsrv."
+        )
+
+    cert_pem = cert.public_bytes(serialization.Encoding.PEM)
+    key_pem = key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption(),
+    )
+    ca_pem: bytes | None = None
+    if extra:
+        ca_pem = b"".join(
+            c.public_bytes(serialization.Encoding.PEM) for c in extra
+        )
+    return cert_pem, key_pem, ca_pem
+
+
+def save_pkcs12_bundle(
+    node_name: str,
+    cert_pem: bytes,
+    key_pem: bytes,
+    ca_pem: bytes | None,
+) -> tuple[Path, Path, Path | None]:
+    """Persist the three PEMs from a PFX import using the same naming scheme
+    as ``save_uploaded_pem``. CA-pathen er None hvis bundlet ikke havde chain.
+    """
+    target = BACKEND_ROOT / "pxgrid"
+    target.mkdir(parents=True, exist_ok=True)
+    safe = _safe_node_name(node_name)
+    cert_path = target / f"{safe}.cert.pem"
+    key_path = target / f"{safe}.key.pem"
+    cert_path.write_bytes(cert_pem)
+    key_path.write_bytes(key_pem)
+    try:
+        key_path.chmod(0o600)
+    except OSError:
+        pass
+    ca_path: Path | None = None
+    if ca_pem:
+        ca_path = target / f"{safe}.ca.pem"
+        ca_path.write_bytes(ca_pem)
+    logger.info(
+        "pxgrid: imported PKCS#12 → cert=%s key=%s ca=%s",
+        cert_path,
+        key_path,
+        ca_path or "(none)",
+    )
+    return cert_path, key_path, ca_path
+
+
 # ── Upload mode helpers ─────────────────────────────────────────────────
 
 PEM_KIND = Literal["cert", "key", "ca"]
