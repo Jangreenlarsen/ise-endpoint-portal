@@ -5,6 +5,35 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.1.1 build 0093] — 2026-04-26 — fix(PxGrid): tydeliggør CSR-flow med nummererede trin + inline cert-upload
+
+UX-fix på CSR-flowet: efter download af CSR fra portalen var det ikke
+klart hvordan det signerede cert skulle uploades tilbage. Hjælpe-
+teksten henviste til "Klient-certifikat (PEM)"-feltet i upload-blokken
+*ovenover*, men feltet lå visuelt adskilt fra CSR-blokken og blev
+overset.
+
+**Frontend** ([frontend/js/views/settings.js](frontend/js/views/settings.js)):
+CSR-blokken er omstruktureret til 4 nummererede trin med dedikerede
+felter inde i selve blokken:
+- **Trin 1**: Generér CSR + keypair (auto-download) + manuel
+  "Download CSR igen"-knap
+- **Trin 2**: (instruktion) indsend CSR til ISE internal CA / MS certsrv
+- **Trin 3**: Upload signeret cert (PEM/CER) — nyt fil-input *inde i
+  CSR-blokken* der bruger samme `POST /pxgrid/cert kind=cert`-endpoint
+  som upload-blokkens cert-felt. Admin behøver ikke længere hoppe ud
+  af CSR-blokken for at lukke flowet.
+- **Trin 4**: Opret pxGrid-konto → afventer admin-approval i ISE
+
+Backend er uændret — endpoint'et `POST /pxgrid/cert kind=cert` håndterer
+allerede signerede certs uden at skelne mellem CSR-flow og frit
+upload-flow. Det er kun UI-strukturen der er ændret.
+
+Filer: [frontend/js/views/settings.js](frontend/js/views/settings.js),
+[BUGS.md](BUGS.md).
+
+---
+
 ## [3.1.0 build 0092] — 2026-04-26 — feat(PxGrid): PKCS#12-import (.pfx fra MS certsrv eller generic CA)
 
 Tredje vej til at få cert-materialet på portalen, ud over (a) tre

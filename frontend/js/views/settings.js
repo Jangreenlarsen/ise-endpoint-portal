@@ -242,14 +242,29 @@ export async function renderSettings(container) {
 
         <div id="pxgrid-csr-block" hidden>
           <p class="hint">
-            <strong>CSR-mode:</strong> klik <em>Generér CSR</em> → portalen laver keypair + CSR i <code>backend/pxgrid/</code>.
-            Indsend CSR-filen til ISE internal CA, download det signerede cert, og upload det som <em>Klient-certifikat</em> herover.
-            Klik derefter <em>Opret pxGrid-konto</em> for at registrere klienten — derefter skal en ISE-admin approve i <em>Administration → pxGrid Services → Clients</em>.
+            <strong>CSR-mode — 4 trin:</strong>
+            (1) Generér CSR → portalen laver keypair + CSR og auto-downloader CSR-filen.
+            (2) Indsend CSR til ISE internal CA (eller MS certsrv) og download det signerede cert.
+            (3) Upload det signerede cert nedenfor.
+            (4) Opret pxGrid-konto → ISE-admin approver klienten i <em>Administration → pxGrid Services → Clients</em>.
           </p>
-          <div class="actions">
-            <button type="button" id="pxgrid-csr-btn" class="secondary">Generér CSR + keypair</button>
-            <button type="button" id="pxgrid-csr-dl-btn" class="secondary">Download CSR-fil</button>
-            <button type="button" id="pxgrid-account-btn" class="secondary">Opret pxGrid-konto (efter cert er uploadet)</button>
+          <div class="field">
+            <label><strong>Trin 1 — Generér + download CSR</strong></label>
+            <div class="actions" style="margin-top:0.25rem;">
+              <button type="button" id="pxgrid-csr-btn" class="secondary">Generér CSR + keypair</button>
+              <button type="button" id="pxgrid-csr-dl-btn" class="secondary">Download CSR igen</button>
+            </div>
+          </div>
+          <div class="field">
+            <label for="pxgrid-csr-signed-cert"><strong>Trin 3 — Upload signeret cert (PEM/CER)</strong></label>
+            <input type="file" id="pxgrid-csr-signed-cert" accept=".pem,.crt,.cer" />
+            <div class="hint">Filen fra ISE internal CA / MS certsrv. Gemmes som <code>pxgrid_cert_path</code> og parres med den private key fra trin 1.</div>
+          </div>
+          <div class="field">
+            <label><strong>Trin 4 — Registrér klienten</strong></label>
+            <div class="actions" style="margin-top:0.25rem;">
+              <button type="button" id="pxgrid-account-btn" class="secondary">Opret pxGrid-konto</button>
+            </div>
           </div>
         </div>
 
@@ -592,7 +607,15 @@ async function initPxGridSection(container) {
     }
   });
 
-  for (const [kind, id] of [["cert", "pxgrid-upload-cert"], ["key", "pxgrid-upload-key"], ["ca", "pxgrid-upload-ca"]]) {
+  for (const [kind, id] of [
+    ["cert", "pxgrid-upload-cert"],
+    ["key", "pxgrid-upload-key"],
+    ["ca", "pxgrid-upload-ca"],
+    // Trin 3 i CSR-flowet: samme backend-endpoint som upload-block-cert,
+    // men eksponeret inde i CSR-blokken så admin ikke skal hoppe op til
+    // upload-blokken efter download fra MS certsrv / ISE internal CA.
+    ["cert", "pxgrid-csr-signed-cert"],
+  ]) {
     container.querySelector(`#${id}`).addEventListener("change", async (e) => {
       const file = e.target.files?.[0];
       if (!file) return;
