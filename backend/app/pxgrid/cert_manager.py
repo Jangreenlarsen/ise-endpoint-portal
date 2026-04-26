@@ -151,6 +151,16 @@ def generate_csr(
     return csr_pem, key_pem
 
 
+def _safe_node_name(node_name: str) -> str:
+    return "".join(c if c.isalnum() or c in "-_" else "_" for c in node_name)
+
+
+def csr_path_for(node_name: str) -> Path:
+    """Where ``persist_csr_artifacts`` writes the CSR. Used by the download
+    endpoint so it doesn't have to track paths separately."""
+    return BACKEND_ROOT / "pxgrid" / f"{_safe_node_name(node_name)}.csr.pem"
+
+
 def persist_csr_artifacts(
     node_name: str,
     csr_pem: bytes,
@@ -166,7 +176,7 @@ def persist_csr_artifacts(
     """
     target = target_dir or (BACKEND_ROOT / "pxgrid")
     target.mkdir(parents=True, exist_ok=True)
-    safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in node_name)
+    safe = _safe_node_name(node_name)
     key_file = target / f"{safe}.key.pem"
     csr_file = target / f"{safe}.csr.pem"
     key_file.write_bytes(key_pem)
@@ -198,7 +208,7 @@ def save_uploaded_pem(
     """
     target = BACKEND_ROOT / "pxgrid"
     target.mkdir(parents=True, exist_ok=True)
-    safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in node_name)
+    safe = _safe_node_name(node_name)
     suffix = {"cert": "cert", "key": "key", "ca": "ca"}[kind]
     out = target / f"{safe}.{suffix}.pem"
     out.write_bytes(pem_bytes)

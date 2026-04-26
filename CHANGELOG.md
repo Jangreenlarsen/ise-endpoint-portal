@@ -5,6 +5,41 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.0.2 build 0091] — 2026-04-26 — feat(PxGrid): download CSR-fil direkte fra Settings UI
+
+Tidligere lå CSR-filen kun på serverens disk under
+`backend/pxgrid/<node>.csr.pem` efter `POST /pxgrid/csr` — admin måtte
+SSH/RDP ind for at hente filen og indsende til ISE internal CA.
+
+**Backend** ([backend/app/api/settings.py](backend/app/api/settings.py),
+[backend/app/pxgrid/cert_manager.py](backend/app/pxgrid/cert_manager.py)):
+nyt endpoint `GET /api/settings/pxgrid/csr/download` returnerer
+`FileResponse` med `application/x-pem-file`-MIME og
+`Content-Disposition: attachment; filename=<safe_node>.csr.pem`. Ny
+helper `cert_manager.csr_path_for(node_name)` udleder CSR-pathen ud
+fra node-navnet (samme `_safe_node_name`-sanitering som
+`persist_csr_artifacts` bruger), så endpoint'et ikke skal tracke paths
+separat. 400 hvis `pxgrid_node_name` ikke er sat, 404 hvis CSR ikke er
+genereret endnu.
+
+**Frontend** ([frontend/js/api.js](frontend/js/api.js),
+[frontend/js/views/settings.js](frontend/js/views/settings.js)):
+ny `api.downloadPxGridCsr()` helper laver auth'et fetch + blob +
+`URL.createObjectURL` + `<a download>`-trigger så download'et virker
+med Bearer-token (kan ikke bruge plain `<a href>`). UI'et har fået
+"Download CSR-fil"-knap i CSR-blokken til standalone-download, og
+auto-trigger efter "Generér CSR" så filen lander i Downloads uden
+ekstra klik. Auto-trigger bruger silent-error-mode så success-beskeden
+inkluderer enten "downloadet som X" eller fallback til manuel knap.
+
+Filer: [backend/app/api/settings.py](backend/app/api/settings.py),
+[backend/app/pxgrid/cert_manager.py](backend/app/pxgrid/cert_manager.py),
+[frontend/js/api.js](frontend/js/api.js),
+[frontend/js/views/settings.js](frontend/js/views/settings.js),
+[FEATURES.md](FEATURES.md).
+
+---
+
 ## [3.0.1 build 0090] — 2026-04-26 — fix(PxGrid): /csr og /account 400 efter UI-mode-skift uden Gem
 
 Bug-fix på Phase 1 (3.0.0 build 0089) opdaget ved første rigtige test:

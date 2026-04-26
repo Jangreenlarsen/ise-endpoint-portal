@@ -174,6 +174,30 @@ export const api = {
     request("/settings/pxgrid/account", { method: "POST" }),
   generatePxGridCsr: () =>
     request("/settings/pxgrid/csr", { method: "POST" }),
+  downloadPxGridCsr: async () => {
+    const token = auth.getToken();
+    const headers = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    const res = await fetch(`${BASE}/api/settings/pxgrid/csr/download`, { headers });
+    if (!res.ok) {
+      let detail = await res.text();
+      try { detail = JSON.parse(detail).detail || detail; } catch {}
+      throw new Error(`${res.status}: ${detail}`);
+    }
+    const blob = await res.blob();
+    const cd = res.headers.get("Content-Disposition") || "";
+    const m = cd.match(/filename\*?=(?:UTF-8'')?["']?([^"';]+)["']?/i);
+    const filename = m ? decodeURIComponent(m[1]) : "pxgrid.csr.pem";
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    return filename;
+  },
   uploadPxGridCert: async (kind, file) => {
     const token = auth.getToken();
     const fd = new FormData();

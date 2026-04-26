@@ -228,6 +228,7 @@ export async function renderSettings(container) {
           </p>
           <div class="actions">
             <button type="button" id="pxgrid-csr-btn" class="secondary">Generér CSR + keypair</button>
+            <button type="button" id="pxgrid-csr-dl-btn" class="secondary">Download CSR-fil</button>
             <button type="button" id="pxgrid-account-btn" class="secondary">Opret pxGrid-konto (efter cert er uploadet)</button>
           </div>
         </div>
@@ -497,16 +498,41 @@ async function initPxGridSection(container) {
     await api.updatePxGridSettings(payload);
   }
 
+  async function downloadCsr({ silentOnError = false } = {}) {
+    try {
+      const filename = await api.downloadPxGridCsr();
+      return filename;
+    } catch (err) {
+      if (!silentOnError) {
+        msg.innerHTML = `<div class="alert error">Download af CSR fejlede: ${esc(err.message)}</div>`;
+      }
+      return null;
+    }
+  }
+
   container.querySelector("#pxgrid-csr-btn").addEventListener("click", async () => {
     if (!confirm("Generér nyt RSA-2048 keypair + CSR? Eksisterende key for samme node-navn overskrives.")) return;
     msg.innerHTML = `<div class="alert info">Genererer CSR...</div>`;
     try {
       await autoSaveBeforeAction();
       const s = await api.generatePxGridCsr();
-      msg.innerHTML = `<div class="alert success">CSR genereret. Key gemt på <code>${esc(s.pxgrid_key_path)}</code>. CSR-fil ligger ved siden af — indsend den til ISE internal CA og upload det signerede cert som "Klient-certifikat" herover.</div>`;
+      // Auto-trigger download so admin har CSR-filen i Downloads med det samme.
+      const filename = await downloadCsr({ silentOnError: true });
+      const dlNote = filename
+        ? ` CSR downloadet som <code>${esc(filename)}</code>.`
+        : ` (Auto-download fejlede — brug "Download CSR-fil"-knappen.)`;
+      msg.innerHTML = `<div class="alert success">CSR genereret. Key gemt på <code>${esc(s.pxgrid_key_path)}</code>.${dlNote} Indsend CSR-filen til ISE internal CA og upload det signerede cert som "Klient-certifikat" herover.</div>`;
       await loadSettings();
     } catch (err) {
       msg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
+    }
+  });
+
+  container.querySelector("#pxgrid-csr-dl-btn").addEventListener("click", async () => {
+    msg.innerHTML = `<div class="alert info">Henter CSR...</div>`;
+    const filename = await downloadCsr();
+    if (filename) {
+      msg.innerHTML = `<div class="alert success">CSR downloadet som <code>${esc(filename)}</code>.</div>`;
     }
   });
 

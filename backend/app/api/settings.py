@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi.responses import FileResponse
 
 from app.api.deps import require_admin
 from app.pxgrid import cert_manager
@@ -116,6 +117,32 @@ async def upload_pxgrid_cert(
         pxgrid_password="",
     )
     return await settings_service.update_pxgrid_settings(update)
+
+
+@router.get("/pxgrid/csr/download")
+async def download_pxgrid_csr() -> FileResponse:
+    """Stream the most recent CSR for the configured node back as a download.
+
+    Saves the admin from having to SSH/RDP into the host to grab the file out
+    of ``backend/pxgrid/``. 404 hvis CSR ikke er genereret endnu.
+    """
+    current = settings_service.get_pxgrid_settings()
+    if not current.pxgrid_node_name:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "pxgrid_node_name skal være sat — gem PxGrid-settings først",
+        )
+    csr_path = cert_manager.csr_path_for(current.pxgrid_node_name)
+    if not csr_path.exists():
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            "Ingen CSR genereret endnu — kør POST /pxgrid/csr først",
+        )
+    return FileResponse(
+        csr_path,
+        media_type="application/x-pem-file",
+        filename=csr_path.name,
+    )
 
 
 @router.post("/pxgrid/csr", response_model=PxGridSettingsResponse)
