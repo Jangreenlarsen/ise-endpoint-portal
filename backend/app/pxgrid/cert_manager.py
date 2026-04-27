@@ -72,16 +72,31 @@ def load_bundle(
     key = _resolve(key_path)
     ca = _resolve(ca_bundle_path)
 
-    if cert is None or key is None:
+    missing: list[str] = []
+    if cert is None:
+        missing.append("klient-cert")
+    if key is None:
+        missing.append("private key (kør Trin 1: Generér CSR for at oprette en ny)")
+    if missing:
         raise PxGridCertError(
-            "pxgrid_cert_path and pxgrid_key_path must both be set"
+            "Manglende cert-materiale: " + ", ".join(missing) +
+            ". Kør CSR-flowet (Trin 1 → 4) eller importér en PKCS#12 først."
         )
     if not cert.exists():
-        raise PxGridCertError(f"Client certificate not found: {cert}")
+        raise PxGridCertError(
+            f"Klient-certifikatet blev ikke fundet på disk: {cert}. "
+            f"Upload det signerede cert igen via Trin 3."
+        )
     if not key.exists():
-        raise PxGridCertError(f"Private key not found: {key}")
+        raise PxGridCertError(
+            f"Private key blev ikke fundet på disk: {key}. "
+            f"Kør Trin 1: Generér CSR for at oprette en ny."
+        )
     if ca is not None and not ca.exists():
-        raise PxGridCertError(f"CA bundle not found: {ca}")
+        raise PxGridCertError(
+            f"CA-bundle blev ikke fundet på disk: {ca}. "
+            f"Upload CA-bundle igen via Trin 4."
+        )
     return CertBundle(cert_path=cert, key_path=key, ca_path=ca)
 
 

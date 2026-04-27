@@ -5,6 +5,28 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.2.1 build 0100] — 2026-04-27 — fix(PxGrid): konkrete fejlmeddelelser ved manglende cert-materiale
+
+`load_bundle()` returnerede den generiske `pxgrid_cert_path and
+pxgrid_key_path must both be set` uanset hvilken af de to der
+manglede, og fortalte ikke admin hvad de skulle gøre. Det er
+mest synligt efter "Nulstil registrering" hvis admin springer
+Trin 1 (Generér CSR) over og hopper direkte til Trin 3.
+
+Fejlmeddelelsen lister nu hvert manglende felt eksplicit
+("klient-cert", "private key") og peger på det korrekte trin
+i CSR-flowet:
+
+- Manglende key → "kør Trin 1: Generér CSR for at oprette en ny"
+- Manglende cert → "upload det signerede cert igen via Trin 3"
+- Manglende CA → "upload CA-bundle igen via Trin 4"
+- Path peger på fil der ikke findes → samme henvisning til trin
+
+Filer:
+- [backend/app/pxgrid/cert_manager.py](backend/app/pxgrid/cert_manager.py)
+
+---
+
 ## [3.2.0 build 0099] — 2026-04-27 — feat(PxGrid): "Nulstil registrering"-knap i Settings
 
 Admin-knap nederst i pxGrid-kortet der nulstiller portal-side
