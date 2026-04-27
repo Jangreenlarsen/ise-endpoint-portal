@@ -142,6 +142,34 @@ class PxGridAccountCreateResponse(BaseModel):
     message: str
 
 
+class PxGridStompProbeResponse(BaseModel):
+    """Result of POST /api/settings/pxgrid/stomp-probe.
+
+    Diagnostik-værktøj der subscriber kortvarigt til pubsub-topic'et og
+    rapporterer hvor mange events der kom — bruges til at verificere at
+    WebSocket+STOMP-laget virker før vi bygger persistent worker oven på.
+    """
+
+    ok: bool
+    step: str = Field(
+        ...,
+        description=(
+            "Hvor langt vi nåede: 'config', 'cert_load', 'service_lookup', "
+            "'access_secret', 'ws_connect', 'stomp_connect', 'stomp_subscribe', "
+            "'complete'."
+        ),
+    )
+    duration_s: float
+    messages_received: int = 0
+    sample_payloads: list[str] = Field(
+        default_factory=list,
+        description="Op til 3 første MESSAGE-bodies (trunkeret til 1 KB hver).",
+    )
+    ws_url: str = ""
+    peer_node: str = ""
+    error: str = ""
+
+
 class PxGridResetResponse(BaseModel):
     """Result of POST /api/settings/pxgrid/reset.
 

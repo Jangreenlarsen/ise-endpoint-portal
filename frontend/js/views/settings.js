@@ -313,7 +313,13 @@ export async function renderSettings(container) {
         <div class="actions">
           <button type="submit">Gem PxGrid settings</button>
           <button type="button" id="pxgrid-test-btn" class="secondary">Test forbindelse</button>
+          <button type="button" id="pxgrid-stomp-btn" class="secondary">Test STOMP-subscription (10s)</button>
           <button type="button" id="pxgrid-reset-btn" class="danger" style="margin-left:auto;">Nulstil registrering</button>
+        </div>
+        <div class="hint" style="margin-top:0.4rem;">
+          <strong>Test STOMP-subscription</strong> verificerer at WebSocket+STOMP-laget mod pubsub-noden virker.
+          Subscriber kortvarigt til <code>com.cisco.ise.session</code> og rapporterer hvor mange events der kom.
+          Tom-resultat (0 events) er ikke en fejl — bare lav RADIUS-trafik i tidsvinduet.
         </div>
         <div class="hint" style="margin-top:0.4rem;">
           <strong>Nulstil registrering</strong> sletter cert/key/CA/CSR-filer fra
@@ -555,6 +561,28 @@ async function initPxGridSection(container) {
       msg.innerHTML = `<div class="alert ${cls}">[${esc(r.step)}] ${esc(r.message)}${r.latency_ms ? ` (${r.latency_ms}ms)` : ""}${services}</div>`;
     } catch (err) {
       msg.innerHTML = `<div class="alert error">Test fejlede: ${esc(err.message)}</div>`;
+    }
+  });
+
+  container.querySelector("#pxgrid-stomp-btn").addEventListener("click", async (e) => {
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    msg.innerHTML = `<div class="alert info">Subscriber til com.cisco.ise.session i 10 sekunder — vent venligst...</div>`;
+    try {
+      const r = await api.runPxGridStompProbe(10);
+      const cls = r.ok ? "success" : "error";
+      const samples = r.sample_payloads?.length
+        ? `<br><details style="margin-top:0.4rem;"><summary>${r.sample_payloads.length} sample payload(s)</summary><pre style="white-space:pre-wrap;font-size:0.85em;background:#f3f4f6;padding:0.5rem;margin-top:0.3rem;border-radius:4px;">${r.sample_payloads.map(esc).join("\n---\n")}</pre></details>`
+        : "";
+      const broker = r.peer_node ? ` via ${esc(r.peer_node)}` : "";
+      const headline = r.ok
+        ? `STOMP OK [${esc(r.step)}] — modtog ${r.messages_received} event(s) på ${r.duration_s}s${broker}`
+        : `STOMP fejlede ved [${esc(r.step)}]: ${esc(r.error || "ukendt")}`;
+      msg.innerHTML = `<div class="alert ${cls}">${headline}${samples}</div>`;
+    } catch (err) {
+      msg.innerHTML = `<div class="alert error">STOMP-probe fejlede: ${esc(err.message)}</div>`;
+    } finally {
+      btn.disabled = false;
     }
   });
 

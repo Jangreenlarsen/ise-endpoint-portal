@@ -176,6 +176,8 @@ export const api = {
     request("/settings/pxgrid/csr", { method: "POST" }),
   resetPxGridRegistration: () =>
     request("/settings/pxgrid/reset", { method: "POST" }),
+  runPxGridStompProbe: (duration = 10) =>
+    request(`/settings/pxgrid/stomp-probe?duration=${duration}`, { method: "POST" }),
   downloadPxGridCsr: async () => {
     const token = auth.getToken();
     const headers = {};

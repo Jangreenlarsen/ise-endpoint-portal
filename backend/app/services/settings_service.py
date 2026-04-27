@@ -367,6 +367,31 @@ async def pxgrid_account_create() -> PxGridAccountCreateResponse:
     )
 
 
+async def pxgrid_stomp_probe(duration_s: float = 10.0) -> "PxGridStompProbeResponse":
+    """Run a one-shot subscribe+listen probe against the pubsub broker.
+
+    Tynd wrapper rundt om ``probe.run_session_probe`` der mapper det interne
+    ``ProbeResult``-dataclass til response-schema'et. Bruges af UI'ets
+    "Test STOMP-subscription"-knap til at verificere at WebSocket-laget
+    virker før vi bygger persistent worker ovenpå.
+    """
+    from app.pxgrid import probe
+    from app.schemas.settings import PxGridStompProbeResponse
+
+    duration_s = max(1.0, min(duration_s, 60.0))
+    result = await probe.run_session_probe(duration_s)
+    return PxGridStompProbeResponse(
+        ok=result.ok,
+        step=result.step,
+        duration_s=round(result.duration_s, 2),
+        messages_received=result.messages_received,
+        sample_payloads=result.sample_payloads,
+        ws_url=result.ws_url,
+        peer_node=result.peer_node,
+        error=result.error,
+    )
+
+
 async def pxgrid_reset() -> "PxGridResetResponse":
     """Nulstil portal-side pxGrid-registrering.
 

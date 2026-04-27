@@ -11,6 +11,7 @@ from app.schemas.settings import (
     PxGridSettingsResponse,
     PxGridSettingsUpdate,
     PxGridStatusResponse,
+    PxGridStompProbeResponse,
     PxGridTestResponse,
     TestConnectionRequest,
     TestConnectionResponse,
@@ -77,6 +78,18 @@ async def create_pxgrid_account() -> PxGridAccountCreateResponse:
     ENABLED on next /pxgrid/test once approved.
     """
     return await settings_service.pxgrid_account_create()
+
+
+@router.post("/pxgrid/stomp-probe", response_model=PxGridStompProbeResponse)
+async def stomp_probe(duration: float = 10.0) -> PxGridStompProbeResponse:
+    """One-shot STOMP-subscription mod com.cisco.ise.session for diagnostik.
+
+    Subscriber til topic'et i ``duration`` sekunder (1-60), counter
+    MESSAGE-frames og returnerer op til 3 sample-payloads. Bruges til
+    at verificere at WebSocket+STOMP-laget virker før vi bygger persistent
+    worker ovenpå. Read-only og selvterminerende.
+    """
+    return await settings_service.pxgrid_stomp_probe(duration)
 
 
 @router.post("/pxgrid/reset", response_model=PxGridResetResponse)

@@ -5,6 +5,54 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.3.0 build 0103] — 2026-04-27 — feat(PxGrid): minimal STOMP-prober (Phase 2a)
+
+Nu hvor REST-bootstrap (port 8910) virker end-to-end, er næste step
+at verificere at WebSocket+STOMP-laget mod pubsub-noden også fungerer
+*før* vi bygger persistent worker + session-cache + SSE-stream ovenpå.
+
+Ny knap i Settings → PxGrid: "Test STOMP-subscription (10s)" der
+walker:
+
+  1. ServiceLookup("com.cisco.ise.pubsub") → wsUrl
+  2. AccessSecretCreate(peer_node) → per-peer secret
+  3. WebSocket connect (mTLS, samme cert som control-plane)
+  4. STOMP CONNECT (login=node, passcode=secret, accept-version=1.2)
+  5. SUBSCRIBE /topic/com.cisco.ise.session
+  6. Læs frames i 10 sek, count MESSAGE-frames, gem ≤3 sample-bodies
+  7. DISCONNECT, luk WS
+
+Returnerer struktureret rapport med præcis hvilket trin der fejlede
+(cert/lookup/connect/subscribe/timeout) + sample-payloads så fejl-
+søgning er præcis. Read-only og selvterminerende.
+
+Tom-resultat (0 events i 10s) er IKKE en fejl — bare lav RADIUS-
+trafik i tidsvinduet. Probe rapporterer ok=True med count=0.
+
+Nye filer:
+- [backend/app/pxgrid/stomp.py](backend/app/pxgrid/stomp.py) —
+  ~120 LOC tiny STOMP 1.2 frame-codec (ingen ekstern dep)
+- [backend/app/pxgrid/probe.py](backend/app/pxgrid/probe.py) —
+  `run_session_probe(duration_s)` walker hele kæden
+
+Udvidelser:
+- [backend/app/schemas/settings.py](backend/app/schemas/settings.py)
+  +PxGridStompProbeResponse
+- [backend/app/api/settings.py](backend/app/api/settings.py)
+  +POST /api/settings/pxgrid/stomp-probe?duration=N (1-60s)
+- [backend/app/services/settings_service.py](backend/app/services/settings_service.py)
+  +pxgrid_stomp_probe wrapper
+- [backend/pyproject.toml](backend/pyproject.toml) +websockets>=12.0
+  (transitiv via uvicorn[standard], gjort eksplicit)
+- [frontend/js/api.js](frontend/js/api.js) +runPxGridStompProbe
+- [frontend/js/views/settings.js](frontend/js/views/settings.js)
+  +knap+inline-resultat med expandable sample-payloads
+
+Næste skridt: Phase 2b (persistent STOMP-worker + session-cache) og
+Phase 2c (SSE-stream til frontend, erstatter MnT-poll).
+
+---
+
 ## [3.2.3 build 0102] — 2026-04-27 — fix(PxGrid): tilføj ekstra SAN-felt så CSR kan inkludere host-FQDN
 
 Build 0101 tilføjede `SAN:dNSName=<node_name>` (minimum for ISE
