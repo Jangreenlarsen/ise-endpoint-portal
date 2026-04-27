@@ -148,12 +148,19 @@ def generate_csr(
         ) from exc
 
     private_key = rsa.generate_private_key(public_exponent=65537, key_size=key_size)
+    # pxGrid 2.0 / RFC 5280: SAN:dNSName skal matche nodeName, ellers afviser
+    # ISE 3.4 cert som "ikke matcher node" selv hvis CN er korrekt (CN-only
+    # matching er deprecated siden RFC 6125).
     csr = (
         x509.CertificateSigningRequestBuilder()
         .subject_name(
             x509.Name(
                 [x509.NameAttribute(NameOID.COMMON_NAME, common_name)]
             )
+        )
+        .add_extension(
+            x509.SubjectAlternativeName([x509.DNSName(common_name)]),
+            critical=False,
         )
         .sign(private_key, hashes.SHA256())
     )

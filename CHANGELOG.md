@@ -5,6 +5,25 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.2.2 build 0101] — 2026-04-27 — fix(PxGrid): tilføj SubjectAlternativeName til genereret CSR
+
+`cert_manager.generate_csr()` lavede CSR'en uden SAN-extension —
+kun `subject_name = CN=<node>`. pxGrid 2.0 / RFC 6125 kræver
+`SubjectAlternativeName:dNSName` matchende nodeName, og ISE 3.4
+afviser cert som "ikke matcher node" når SAN mangler (selv om
+CN er korrekt). Det forklarer "Password mismatch"-loggen på
+hypervision-portal hvor Web Clients-tabben i øvrigt var tom:
+kontoen blev afvist *før* registrering nåede at gennemføres.
+
+CSR'en tilføjer nu `x509.SubjectAlternativeName([DNSName(node)])`
+som non-critical extension. Eksisterende installationer skal
+køre Nulstil registrering → Trin 1 (ny CSR) → re-signering hos
+CA → Trin 3 (upload nyt cert), da SAN bages ind ved CA-signering.
+
+Filer: [backend/app/pxgrid/cert_manager.py](backend/app/pxgrid/cert_manager.py).
+
+---
+
 ## [3.2.1 build 0100] — 2026-04-27 — fix(PxGrid): konkrete fejlmeddelelser ved manglende cert-materiale
 
 `load_bundle()` returnerede den generiske `pxgrid_cert_path and
