@@ -5,6 +5,29 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.1.6 build 0098] — 2026-04-27 — fix(PxGrid): gør Trin 5 idempotent når ISE returnerer 503 for kendt klient
+
+ISE 3.4's pxGrid svarer 503 (i stedet for idempotent success) på
+gentagne `/AccountCreate` for samme `nodeName`. Hvis admin allerede
+har en gemt `pxgrid_password` betyder det bare at en tidligere
+AccountCreate er lykkedes — kontoen findes på ISE-siden, bare i
+en eller anden state (PENDING/ENABLED).
+
+Trin 5 i UI'et fejlede unødvendigt selvom flowet faktisk var
+gennemført. Fix:
+
+- `pxgrid_account_create()` detekterer "503 + gemt password" og
+  kalder `AccountActivate` for at rapportere den faktiske state.
+- ENABLED → success med besked om at admin kan gå videre til Test.
+- PENDING → success med besked om at klienten afventer approval i
+  ISE → pxGrid Services → All Clients.
+- Activate fejler også → original 503 propageres med kontekst.
+
+Filer:
+- [backend/app/services/settings_service.py](backend/app/services/settings_service.py)
+
+---
+
 ## [3.1.5 build 0097] — 2026-04-27 — fix(PxGrid): brugbare fejlmeddelelser ved 503 + 401/403 på control-plane
 
 ISE pxGrid svarede `503` med tom body på `/AccountCreate` efter

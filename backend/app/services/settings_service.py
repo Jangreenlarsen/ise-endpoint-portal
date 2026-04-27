@@ -11,6 +11,7 @@ from app.core.settings_store import load_overrides, save_overrides
 from app.ise.client import close_ise_client
 from app.pxgrid import cert_manager as pxgrid_cert_manager
 from app.pxgrid.client import PxGridClient
+from app.pxgrid.exceptions import PxGridAccountPendingError
 from app.schemas.settings import (
     BackendSettingsResponse,
     BackendSettingsUpdate,
@@ -290,6 +291,51 @@ async def pxgrid_account_create() -> PxGridAccountCreateResponse:
     try:
         result = await client.account_create()
     except Exception as exc:  # noqa: BLE001
+        # ISE 3.4 returnerer 503 på AccountCreate når klienten *allerede* er
+        # registreret (i stedet for den idempotente success som pxGrid 2.0-spec'et
+        # foreskriver). Hvis vi har en gemt pxgrid_password er en tidligere
+        # AccountCreate lykkedes — fald tilbage på AccountActivate for at
+        # rapportere den faktiske state (PENDING/ENABLED/DISABLED) i stedet
+        # for at fejle Trin 5 med en misvisende 503.
+        if "503" in str(exc) and s.pxgrid_password:
+            try:
+                activate = await client.account_activate()
+                state = (activate.get("accountState") or "ENABLED").upper()
+                return PxGridAccountCreateResponse(
+                    ok=True,
+                    node_name=s.pxgrid_node_name,
+                    account_state=state,
+                    password_received=True,
+                    message=(
+                        f"Kontoen er allerede registreret hos ISE og er {state}. "
+                        f"AccountCreate er idempotent her — du kan gå videre "
+                        f"til 'Test PxGrid forbindelse'."
+                    ),
+                )
+            except PxGridAccountPendingError:
+                return PxGridAccountCreateResponse(
+                    ok=True,
+                    node_name=s.pxgrid_node_name,
+                    account_state="PENDING",
+                    password_received=True,
+                    message=(
+                        "Kontoen er registreret men afventer admin-approval i "
+                        "ISE → Administration → pxGrid Services → All Clients."
+                    ),
+                )
+            except Exception as inner:  # noqa: BLE001
+                # Activate fejlede også — så er det en reel fejl. Rapporter
+                # begge dele så admin ved hvad der skete.
+                return PxGridAccountCreateResponse(
+                    ok=False,
+                    node_name=s.pxgrid_node_name,
+                    account_state="ERROR",
+                    password_received=bool(s.pxgrid_password),
+                    message=(
+                        f"AccountCreate gav 503 (klient findes allerede), men "
+                        f"AccountActivate fejlede også: {inner}"
+                    ),
+                )
         return PxGridAccountCreateResponse(
             ok=False,
             node_name=s.pxgrid_node_name,
