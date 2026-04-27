@@ -182,6 +182,7 @@ def get_pxgrid_settings() -> PxGridSettingsResponse:
         pxgrid_key_path=s.pxgrid_key_path,
         pxgrid_ca_bundle_path=s.pxgrid_ca_bundle_path,
         pxgrid_password_set=bool(s.pxgrid_password),
+        pxgrid_cert_extra_sans=s.pxgrid_cert_extra_sans,
         cert_status=pxgrid_cert_manager.cert_status(
             s.pxgrid_cert_path, s.pxgrid_key_path, s.pxgrid_ca_bundle_path
         ),
@@ -202,6 +203,7 @@ async def update_pxgrid_settings(
             "pxgrid_cert_path": new.pxgrid_cert_path,
             "pxgrid_key_path": new.pxgrid_key_path,
             "pxgrid_ca_bundle_path": new.pxgrid_ca_bundle_path,
+            "pxgrid_cert_extra_sans": new.pxgrid_cert_extra_sans,
         }
     )
     if new.pxgrid_password:

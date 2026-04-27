@@ -185,7 +185,17 @@ export async function renderSettings(container) {
         <div class="field">
           <label for="pxgrid_node_name">Node-navn (vises i ISE pxGrid Services → Clients)</label>
           <input type="text" id="pxgrid_node_name" placeholder="hypervision-portal" autocomplete="off" />
-          <div class="hint">CSR-mode bruger dette som CN i certifikatet.</div>
+          <div class="hint">CSR-mode bruger dette som CN + SAN:dNSName i certifikatet.</div>
+        </div>
+        <div class="field">
+          <label for="pxgrid_cert_extra_sans">Ekstra SAN-navne (komma-separeret, valgfri)</label>
+          <input type="text" id="pxgrid_cert_extra_sans" placeholder="portal.ll.lan, hypervision-portal.ll.lan" autocomplete="off" />
+          <div class="hint">
+            Tilføjes som <code>SubjectAlternativeName:dNSName</code> i CSR'en udover node-navnet.
+            <strong>Anbefalet:</strong> medtag portalens host-FQDN — pxGrid 2.0 / RFC 6125 best practice.
+            Tom = kun node-navnet i SAN (minimum-kravet for ISE 3.4).
+            <em>Påvirker kun nye CSR'er — eksisterende cert skal genskabes via Nulstil registrering → Trin 1.</em>
+          </div>
         </div>
         <div class="field">
           <label for="pxgrid_psn_fqdn">PSN FQDN (port 8910)</label>
@@ -487,6 +497,7 @@ async function initPxGridSection(container) {
       const s = await api.getPxGridSettings();
       container.querySelector("#pxgrid_enabled").checked = !!s.pxgrid_enabled;
       container.querySelector("#pxgrid_node_name").value = s.pxgrid_node_name || "";
+      container.querySelector("#pxgrid_cert_extra_sans").value = s.pxgrid_cert_extra_sans || "";
       container.querySelector("#pxgrid_psn_fqdn").value = s.pxgrid_psn_fqdn || "";
       modeSel.value = s.pxgrid_cert_mode || "upload";
       container.querySelector("#pxgrid_cert_path").value = s.pxgrid_cert_path || "";
@@ -516,6 +527,7 @@ async function initPxGridSection(container) {
       pxgrid_key_path: container.querySelector("#pxgrid_key_path").value.trim(),
       pxgrid_ca_bundle_path: container.querySelector("#pxgrid_ca_bundle_path").value.trim(),
       pxgrid_password: container.querySelector("#pxgrid_password").value,
+      pxgrid_cert_extra_sans: container.querySelector("#pxgrid_cert_extra_sans").value.trim(),
     };
   }
 

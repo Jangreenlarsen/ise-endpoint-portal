@@ -79,6 +79,7 @@ class PxGridSettingsUpdate(BaseModel):
     pxgrid_key_path: str = ""
     pxgrid_ca_bundle_path: str = ""
     pxgrid_password: str = ""
+    pxgrid_cert_extra_sans: str = ""
 
 
 class PxGridSettingsResponse(BaseModel):
@@ -90,6 +91,7 @@ class PxGridSettingsResponse(BaseModel):
     pxgrid_key_path: str
     pxgrid_ca_bundle_path: str
     pxgrid_password_set: bool = Field(..., description="true if a secret is stored")
+    pxgrid_cert_extra_sans: str = ""
     cert_status: str = Field(
         ...,
         description=(

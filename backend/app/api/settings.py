@@ -235,7 +235,12 @@ async def generate_pxgrid_csr() -> PxGridSettingsResponse:
             status.HTTP_400_BAD_REQUEST,
             "pxgrid_node_name skal være sat — gem PxGrid-settings først",
         )
-    csr_pem, key_pem = cert_manager.generate_csr(current.pxgrid_node_name)
+    extra_sans = [
+        s for s in (current.pxgrid_cert_extra_sans or "").split(",") if s.strip()
+    ]
+    csr_pem, key_pem = cert_manager.generate_csr(
+        current.pxgrid_node_name, extra_sans=extra_sans
+    )
     key_path, _csr_path = cert_manager.persist_csr_artifacts(
         current.pxgrid_node_name, csr_pem, key_pem
     )
@@ -248,5 +253,6 @@ async def generate_pxgrid_csr() -> PxGridSettingsResponse:
         pxgrid_key_path=str(key_path),
         pxgrid_ca_bundle_path=current.pxgrid_ca_bundle_path,
         pxgrid_password="",
+        pxgrid_cert_extra_sans=current.pxgrid_cert_extra_sans,
     )
     return await settings_service.update_pxgrid_settings(update)

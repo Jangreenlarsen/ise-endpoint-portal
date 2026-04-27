@@ -5,6 +5,31 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.2.3 build 0102] — 2026-04-27 — fix(PxGrid): tilføj ekstra SAN-felt så CSR kan inkludere host-FQDN
+
+Build 0101 tilføjede `SAN:dNSName=<node_name>` (minimum for ISE
+3.4). For fuld pxGrid 2.0 / RFC 6125 compliance bør SAN også
+indeholde portalens host-FQDN — visse ISE-deployments med
+strict cert-validation afviser klient-certs uden det.
+
+Nyt setting-felt `pxgrid_cert_extra_sans` (komma-separeret
+liste af DNS-navne) inkluderes nu som ekstra `SAN:dNSName` i
+CSR'en udover `pxgrid_node_name`. Listen dedupes og tomme
+entries filtreres væk. UI-felt under node-navnet i Settings
+→ PxGrid med hint om at tilføje host-FQDN.
+
+Påvirker kun nye CSR'er — eksisterende cert skal genskabes via
+Nulstil registrering → Trin 1 hvis admin vil have FQDN ind.
+
+Filer: [backend/app/core/config.py](backend/app/core/config.py),
+[backend/app/schemas/settings.py](backend/app/schemas/settings.py),
+[backend/app/services/settings_service.py](backend/app/services/settings_service.py),
+[backend/app/pxgrid/cert_manager.py](backend/app/pxgrid/cert_manager.py),
+[backend/app/api/settings.py](backend/app/api/settings.py),
+[frontend/js/views/settings.js](frontend/js/views/settings.js).
+
+---
+
 ## [3.2.2 build 0101] — 2026-04-27 — fix(PxGrid): tilføj SubjectAlternativeName til genereret CSR
 
 `cert_manager.generate_csr()` lavede CSR'en uden SAN-extension —

@@ -130,6 +130,16 @@ class Settings(BaseSettings):
             "Write-only via PUT /api/settings/pxgrid; masked on GET."
         ),
     )
+    pxgrid_cert_extra_sans: str = Field(
+        default="",
+        description=(
+            "Komma-separeret liste af ekstra DNS-navne der inkluderes som "
+            "SubjectAlternativeName:dNSName i CSR'en udover pxgrid_node_name. "
+            "Best practice: tilføj portalens host-FQDN (f.eks. portal.ll.lan) så "
+            "cert'et er fuldt spec-compliant pr. RFC 6125 / pxGrid 2.0. Tom = "
+            "kun node_name i SAN (minimum-kravet for ISE 3.4-acceptance)."
+        ),
+    )
 
     backend_cors_origins: list[str] = Field(
         default_factory=lambda: ["http://localhost:5173", "http://localhost:8000"]

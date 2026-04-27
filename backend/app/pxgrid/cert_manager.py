@@ -126,9 +126,15 @@ CsrResult = tuple[bytes, bytes]  # (csr_pem, key_pem)
 def generate_csr(
     common_name: str,
     *,
+    extra_sans: list[str] | None = None,
     key_size: int = 2048,
 ) -> CsrResult:
     """Generate a fresh RSA keypair + CSR.
+
+    SAN-håndtering: ``common_name`` inkluderes altid som dNSName (pxGrid 2.0
+    minimumskrav til ISE 3.4). ``extra_sans`` tilføjer yderligere dNSName-
+    entries — typisk portalens host-FQDN, så cert'et er fuldt RFC 6125-
+    compliant. Listen dedupes og tomme strings filtreres væk.
 
     Returns ``(csr_pem, key_pem)``. Caller is responsible for persisting
     the key (never log it!) and posting the CSR to ISE.
@@ -150,7 +156,13 @@ def generate_csr(
     private_key = rsa.generate_private_key(public_exponent=65537, key_size=key_size)
     # pxGrid 2.0 / RFC 5280: SAN:dNSName skal matche nodeName, ellers afviser
     # ISE 3.4 cert som "ikke matcher node" selv hvis CN er korrekt (CN-only
-    # matching er deprecated siden RFC 6125).
+    # matching er deprecated siden RFC 6125). Best practice: medtag også
+    # host-FQDN'en så cert'et kan bruges til både identitet og host-validering.
+    san_names: list[str] = [common_name]
+    for extra in extra_sans or []:
+        name = extra.strip()
+        if name and name not in san_names:
+            san_names.append(name)
     csr = (
         x509.CertificateSigningRequestBuilder()
         .subject_name(
@@ -159,7 +171,7 @@ def generate_csr(
             )
         )
         .add_extension(
-            x509.SubjectAlternativeName([x509.DNSName(common_name)]),
+            x509.SubjectAlternativeName([x509.DNSName(n) for n in san_names]),
             critical=False,
         )
         .sign(private_key, hashes.SHA256())
