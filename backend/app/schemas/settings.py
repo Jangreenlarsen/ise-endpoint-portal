@@ -138,3 +138,17 @@ class PxGridAccountCreateResponse(BaseModel):
         ..., description="true if AccessSecretCreate returned a secret"
     )
     message: str
+
+
+class PxGridResetResponse(BaseModel):
+    """Result of POST /api/settings/pxgrid/reset.
+
+    Nulstiller portal-side registrerings-state: cert/key/CA-paths,
+    gemt password og fysiske PEM-filer på disk. Beholder config-niveau
+    indstillinger (enabled, node_name, psn_fqdn, cert_mode) så admin
+    kan starte registreringen forfra uden at miste opsætningen.
+    """
+
+    ok: bool
+    files_deleted: list[str] = Field(default_factory=list)
+    message: str

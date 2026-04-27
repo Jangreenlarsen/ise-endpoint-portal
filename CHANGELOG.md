@@ -5,6 +5,42 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.2.0 build 0099] — 2026-04-27 — feat(PxGrid): "Nulstil registrering"-knap i Settings
+
+Admin-knap nederst i pxGrid-kortet der nulstiller portal-side
+registrerings-state, så CSR-flowet kan køres forfra uden at man
+selv skal slette filer på serveren. Bruges typisk efter:
+
+- **Server-skift** (klient-entry på gamle ISE matcher ikke længere)
+- **Forkert cert uploadet** (CSR i stedet for signed, mismatched key)
+- **Expired keys** eller andre fejl-tilstande hvor "start rent" er
+  hurtigere end at debugge
+
+**Sletter** under `backend/pxgrid/<node>.{cert,key,ca,csr}.pem` plus
+rydder cert/key/CA-paths og gemt `pxgrid_password` fra settings.
+
+**Beholder** config-niveau felter (enabled, node_name, psn_fqdn,
+cert_mode) så admin ikke skal indtaste dem igen før CSR-genereringen
+køres på ny.
+
+Operationen er **idempotent** og **kun portal-side** — admin skal
+selv slette klient-entry'en i ISE → pxGrid Services → All Clients
+hvis 100% rent flow ønskes. Det fremgår af både confirm-dialog,
+UI-hint og API-docstring.
+
+Audit: ny event `reset/backend_settings/pxgrid` (admin-only) der
+logger before/after + listen af slettede filer.
+
+Filer:
+- [backend/app/pxgrid/cert_manager.py](backend/app/pxgrid/cert_manager.py) — ny `delete_artifacts(node_name)`
+- [backend/app/services/settings_service.py](backend/app/services/settings_service.py) — ny `pxgrid_reset()`
+- [backend/app/api/settings.py](backend/app/api/settings.py) — `POST /api/settings/pxgrid/reset`
+- [backend/app/schemas/settings.py](backend/app/schemas/settings.py) — `PxGridResetResponse`
+- [frontend/js/api.js](frontend/js/api.js) — `resetPxGridRegistration()`
+- [frontend/js/views/settings.js](frontend/js/views/settings.js) — rød knap + confirm-dialog
+
+---
+
 ## [3.1.6 build 0098] — 2026-04-27 — fix(PxGrid): gør Trin 5 idempotent når ISE returnerer 503 for kendt klient
 
 ISE 3.4's pxGrid svarer 503 (i stedet for idempotent success) på

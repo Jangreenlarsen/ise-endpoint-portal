@@ -7,6 +7,7 @@ from app.schemas.settings import (
     BackendSettingsResponse,
     BackendSettingsUpdate,
     PxGridAccountCreateResponse,
+    PxGridResetResponse,
     PxGridSettingsResponse,
     PxGridSettingsUpdate,
     PxGridStatusResponse,
@@ -76,6 +77,23 @@ async def create_pxgrid_account() -> PxGridAccountCreateResponse:
     ENABLED on next /pxgrid/test once approved.
     """
     return await settings_service.pxgrid_account_create()
+
+
+@router.post("/pxgrid/reset", response_model=PxGridResetResponse)
+async def reset_pxgrid_registration() -> PxGridResetResponse:
+    """Nulstil portal-side pxGrid-registrering så CSR-flowet kan køres forfra.
+
+    Sletter cert/key/CA/CSR-filer fra ``backend/pxgrid/`` og rydder de
+    tilhørende paths + gemt password fra settings. Beholder config-niveau
+    felter (enabled, node_name, psn_fqdn, cert_mode). Idempotent.
+
+    **Server-side reset er ikke fuldstændig** — admin skal stadig manuelt
+    slette klient-entry'en i ISE → Administration → pxGrid Services →
+    All Clients hvis de vil starte 100% rent. Reset er primært til når
+    portalen er gået i hak (forkert cert uploadet, server-skifte,
+    expired keys osv.).
+    """
+    return await settings_service.pxgrid_reset()
 
 
 @router.post("/pxgrid/cert", response_model=PxGridSettingsResponse)

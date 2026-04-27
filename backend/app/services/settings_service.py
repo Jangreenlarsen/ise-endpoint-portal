@@ -363,3 +363,54 @@ async def pxgrid_account_create() -> PxGridAccountCreateResponse:
         password_received=bool(password),
         message=msg,
     )
+
+
+async def pxgrid_reset() -> "PxGridResetResponse":
+    """Nulstil portal-side pxGrid-registrering.
+
+    Sletter cert/key/CA/CSR-filerne fra disk og rydder de tilhørende paths
+    + gemt password fra settings. Beholder config-niveau felter (enabled,
+    node_name, psn_fqdn, cert_mode) så admin ikke skal indtaste dem igen
+    før de kører CSR-flowet forfra.
+
+    Bruges typisk efter (a) skift af ISE-server (klient-entry'en på den
+    gamle server matcher ikke længere), (b) cert er udløbet eller forkert
+    udstedt, (c) admin vil bare starte rent. Idempotent — sletter kun det
+    der findes, fejler ikke ved manglende filer.
+    """
+    from app.schemas.settings import PxGridResetResponse
+
+    s = config.settings
+    before = get_pxgrid_settings().model_dump()
+    deleted_files: list[str] = []
+    if s.pxgrid_node_name:
+        deleted_files = pxgrid_cert_manager.delete_artifacts(s.pxgrid_node_name)
+
+    overrides = load_overrides()
+    overrides.update(
+        {
+            "pxgrid_cert_path": "",
+            "pxgrid_key_path": "",
+            "pxgrid_ca_bundle_path": "",
+            "pxgrid_password": "",
+        }
+    )
+    save_overrides(overrides)
+    config.refresh_settings()
+
+    after = get_pxgrid_settings().model_dump()
+    await audit_store.record(
+        "reset",
+        "backend_settings",
+        "pxgrid",
+        before=before,
+        after={**after, "files_deleted": deleted_files},
+    )
+
+    msg = (
+        f"PxGrid-registrering nulstillet — slettede {len(deleted_files)} fil(er) "
+        f"({', '.join(deleted_files) if deleted_files else 'ingen filer fundet'}) "
+        f"og ryddede gemt password + cert-paths. Kør CSR-flowet eller PFX-import "
+        f"forfra for at registrere klienten igen."
+    )
+    return PxGridResetResponse(ok=True, files_deleted=deleted_files, message=msg)

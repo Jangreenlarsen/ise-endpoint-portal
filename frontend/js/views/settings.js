@@ -303,6 +303,14 @@ export async function renderSettings(container) {
         <div class="actions">
           <button type="submit">Gem PxGrid settings</button>
           <button type="button" id="pxgrid-test-btn" class="secondary">Test forbindelse</button>
+          <button type="button" id="pxgrid-reset-btn" class="danger" style="margin-left:auto;">Nulstil registrering</button>
+        </div>
+        <div class="hint" style="margin-top:0.4rem;">
+          <strong>Nulstil registrering</strong> sletter cert/key/CA/CSR-filer fra
+          portalen og rydder gemt password — så CSR-flowet kan køres forfra.
+          Bruges efter server-skift, forkert cert, eller når noget er gået i hak.
+          <em>Husk også at slette klient-entry'en i ISE → pxGrid Services → All
+          Clients hvis du vil starte 100% rent.</em>
         </div>
       </form>
     </div>
@@ -597,6 +605,29 @@ async function initPxGridSection(container) {
       await loadSettings();
     } catch (err) {
       msg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
+    }
+  });
+
+  container.querySelector("#pxgrid-reset-btn").addEventListener("click", async () => {
+    const ok = window.confirm(
+      "Nulstil pxGrid-registrering?\n\n" +
+      "Dette sletter:\n" +
+      "  • Klient-cert, private key, CA-bundle, CSR\n" +
+      "  • Gemt account-password\n\n" +
+      "Behold:\n" +
+      "  • pxgrid_enabled, node_name, psn_fqdn, cert_mode\n\n" +
+      "Du skal selv slette klient-entry'en i ISE → pxGrid Services →\n" +
+      "All Clients hvis du vil starte 100% rent.\n\n" +
+      "Fortsæt?"
+    );
+    if (!ok) return;
+    msg.innerHTML = `<div class="alert info">Nulstiller pxGrid-registrering...</div>`;
+    try {
+      const r = await api.resetPxGridRegistration();
+      msg.innerHTML = `<div class="alert success">${esc(r.message)}</div>`;
+      await loadSettings();
+    } catch (err) {
+      msg.innerHTML = `<div class="alert error">Reset fejlede: ${esc(err.message)}</div>`;
     }
   });
 

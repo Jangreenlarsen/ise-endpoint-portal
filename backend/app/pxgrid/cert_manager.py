@@ -161,6 +161,32 @@ def csr_path_for(node_name: str) -> Path:
     return BACKEND_ROOT / "pxgrid" / f"{_safe_node_name(node_name)}.csr.pem"
 
 
+def delete_artifacts(node_name: str) -> list[str]:
+    """Slet alle PEM/CSR-artifacts for en given node fra ``backend/pxgrid/``.
+
+    Returnerer listen af faktisk-slettede filnavne. Fejler ikke hvis
+    filerne ikke findes — reset er idempotent. Bruges af
+    ``POST /api/settings/pxgrid/reset`` til at give admin et rent slate.
+    """
+    target = BACKEND_ROOT / "pxgrid"
+    if not target.exists():
+        return []
+    safe = _safe_node_name(node_name)
+    suffixes = ["cert.pem", "key.pem", "ca.pem", "csr.pem"]
+    deleted: list[str] = []
+    for suffix in suffixes:
+        f = target / f"{safe}.{suffix}"
+        if f.exists():
+            try:
+                f.unlink()
+                deleted.append(f.name)
+            except OSError as exc:
+                logger.warning("pxgrid reset: kunne ikke slette %s: %s", f, exc)
+    if deleted:
+        logger.info("pxgrid reset: slettede %s for node=%s", deleted, node_name)
+    return deleted
+
+
 def persist_csr_artifacts(
     node_name: str,
     csr_pem: bytes,
