@@ -407,3 +407,4 @@ GET /admin/API/mnt/CoA/Disconnect/{psnName}/{macAddress}/{disconnectType}
 5. **Port 9060 vs 443** — begge virker. Siden ISE 3.1 anbefales 443 via API gateway.
 6. **ERS SDK** — `https://<ise>:9060/ers/sdk` giver auto-genereret doku med schema-filer, Java/Python eksempler, og cURL use cases. Kun tilgængelig for ERS Admin.
 7. **Swagger UI** — `https://<ise>/api/swagger-ui/index.html` for Open API interactive docs.
+8. **pxGrid 2.0 `/pxgrid/control/AccessSecret`** — bemærk: kortform uden "Create"-suffix, modsat de tre andre control-plane calls (`AccountCreate`, `AccountActivate`, `ServiceLookup`). ISE 3.4 returnerer **404** hvis du kalder `/AccessSecretCreate` (let trap fordi naming-mønstret bryder med de øvrige). Verificeret empirisk på ISE 3.4 — Cisco DevNet samples (cisco-pxgrid/pxgrid-rest-ws) bruger også kortformen.

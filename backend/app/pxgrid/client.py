@@ -16,15 +16,18 @@ Implements the four calls needed for the bootstrap flow:
                          topic (e.g. ``com.cisco.ise.session``). The
                          returned ``properties.wsUrl`` is what the
                          STOMP layer connects to in phase 2.
-    4. AccessSecretCreate — exchange peer-node identity for the
-                            per-subscription password used by STOMP CONNECT.
+    4. AccessSecret — exchange peer-node identity for the
+                      per-subscription password used by STOMP CONNECT.
+                      (Bemærk: ikke "AccessSecretCreate" — pxGrid 2.0-spec'et
+                      bruger kortform her hvor de andre tre har "Create"-suffix.
+                      ISE 3.4 returnerer 404 hvis "Create" tilføjes.)
 
 Once enabled+activated, all subsequent control-plane calls authenticate
 with Basic(node_name, password) on top of mTLS. ISE rejects anything else.
 
 Phase 2 will add a thin asyncio task that loops:
     sub_node = ServiceLookup("com.cisco.ise.pubsub")
-    secret   = AccessSecretCreate(sub_node)
+    secret   = AccessSecret(sub_node)
     stomp.connect(sub_node.wsUrl, login=node, passcode=secret)
     stomp.subscribe("/topic/com.cisco.ise.session", on_message=...)
 and runs forever with reconnect + PSN-failover.
@@ -249,14 +252,19 @@ class PxGridClient:
         Each subscription gets its own short-lived secret bound to the
         peer node returned by ServiceLookup. ISE rotates these — never
         cache long-term; re-fetch on reconnect.
+
+        Note: pxGrid 2.0-spec'et og Cisco DevNet samples kalder dette
+        endpoint ``/AccessSecret`` (ikke ``/AccessSecretCreate`` som de tre
+        andre control-plane calls). ISE 3.4 returnerer 404 hvis "Create"-
+        suffix bruges.
         """
         result = await self._post(
-            "/AccessSecretCreate", {"peerNodeName": peer_node_name}
+            "/AccessSecret", {"peerNodeName": peer_node_name}
         )
         secret = result.get("secret", "")
         if not secret:
             raise PxGridError(
-                f"AccessSecretCreate for {peer_node_name} returned empty secret"
+                f"AccessSecret for {peer_node_name} returned empty secret"
             )
         return secret
 

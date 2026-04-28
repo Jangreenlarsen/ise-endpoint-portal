@@ -7,7 +7,7 @@ i fuld session-cache + SSE-stream til frontend.
 Walks::
 
     1. ServiceLookup("com.cisco.ise.pubsub")  → wsUrl + nodeName
-    2. AccessSecretCreate(nodeName)           → per-peer secret
+    2. AccessSecret(nodeName)                 → per-peer secret
     3. WebSocket connect (mTLS)               → upgrade på wsUrl
     4. STOMP CONNECT                          → login=node, passcode=secret
     5. STOMP SUBSCRIBE /topic/com.cisco.ise.session
@@ -132,7 +132,7 @@ async def run_session_probe(duration_s: float = 10.0) -> ProbeResult:
             ok=False,
             step="access_secret",
             duration_s=time.perf_counter() - start,
-            error=f"AccessSecretCreate({peer.node_name}) fejlede: {exc}",
+            error=f"AccessSecret({peer.node_name}) fejlede: {exc}",
             ws_url=ws_url,
             peer_node=peer.node_name,
         )

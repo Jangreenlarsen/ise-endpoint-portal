@@ -5,6 +5,26 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.3.1 build 0104] — 2026-04-27 — fix(PxGrid): kald /AccessSecret (ikke /AccessSecretCreate) — ISE 3.4 returnerer 404
+
+STOMP-prober fejlede ved `access_secret`-trinet med 404 fra ISE.
+pxGrid 2.0-spec'et + Cisco DevNet samples bruger **kortformen**
+`/pxgrid/control/AccessSecret` her, modsat de tre andre control-
+plane calls (`AccountCreate`, `AccountActivate`, `ServiceLookup`)
+der har "Create"/"Activate"/"Lookup"-suffix. Naming-mønstret
+bryder med de øvrige.
+
+`client.access_secret_create()` kalder nu det rigtige path.
+Fejlmeddelelser + docstrings opdateret. Ny gotcha #8 i
+[ISE_API_REFERENCE.md](ISE_API_REFERENCE.md) så fælden ikke
+gentages.
+
+Filer: [backend/app/pxgrid/client.py](backend/app/pxgrid/client.py),
+[backend/app/pxgrid/probe.py](backend/app/pxgrid/probe.py),
+[ISE_API_REFERENCE.md](ISE_API_REFERENCE.md).
+
+---
+
 ## [3.3.0 build 0103] — 2026-04-27 — feat(PxGrid): minimal STOMP-prober (Phase 2a)
 
 Nu hvor REST-bootstrap (port 8910) virker end-to-end, er næste step
