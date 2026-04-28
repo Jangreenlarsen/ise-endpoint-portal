@@ -183,6 +183,12 @@ def get_pxgrid_settings() -> PxGridSettingsResponse:
         pxgrid_ca_bundle_path=s.pxgrid_ca_bundle_path,
         pxgrid_password_set=bool(s.pxgrid_password),
         pxgrid_cert_extra_sans=s.pxgrid_cert_extra_sans,
+        pxgrid_session_topic=s.pxgrid_session_topic,
+        pxgrid_stomp_heartbeat_ms=s.pxgrid_stomp_heartbeat_ms,
+        pxgrid_stomp_reconnect_min_s=s.pxgrid_stomp_reconnect_min_s,
+        pxgrid_stomp_reconnect_max_s=s.pxgrid_stomp_reconnect_max_s,
+        pxgrid_session_cache_max_age_s=s.pxgrid_session_cache_max_age_s,
+        pxgrid_worker_enabled=s.pxgrid_worker_enabled,
         cert_status=pxgrid_cert_manager.cert_status(
             s.pxgrid_cert_path, s.pxgrid_key_path, s.pxgrid_ca_bundle_path
         ),
@@ -204,12 +210,28 @@ async def update_pxgrid_settings(
             "pxgrid_key_path": new.pxgrid_key_path,
             "pxgrid_ca_bundle_path": new.pxgrid_ca_bundle_path,
             "pxgrid_cert_extra_sans": new.pxgrid_cert_extra_sans,
+            "pxgrid_session_topic": new.pxgrid_session_topic,
+            "pxgrid_stomp_heartbeat_ms": new.pxgrid_stomp_heartbeat_ms,
+            "pxgrid_stomp_reconnect_min_s": new.pxgrid_stomp_reconnect_min_s,
+            "pxgrid_stomp_reconnect_max_s": new.pxgrid_stomp_reconnect_max_s,
+            "pxgrid_session_cache_max_age_s": new.pxgrid_session_cache_max_age_s,
+            "pxgrid_worker_enabled": new.pxgrid_worker_enabled,
         }
     )
     if new.pxgrid_password:
         overrides["pxgrid_password"] = new.pxgrid_password
     save_overrides(overrides)
     config.refresh_settings()
+    # Restart worker so new tunables (heart-beat, backoff, topic) tager effekt
+    # uden full backend-restart. Best-effort: spis fejl så save altid lykkes.
+    try:
+        from app.pxgrid.session_worker import get_worker
+
+        worker = get_worker()
+        await worker.stop()
+        worker.start()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("kunne ikke restarte pxgrid worker: %s", exc)
     logger.info(
         "pxgrid settings updated: enabled=%s node=%s psn=%s mode=%s",
         new.pxgrid_enabled,

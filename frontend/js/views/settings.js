@@ -309,6 +309,47 @@ export async function renderSettings(container) {
           <input type="password" id="pxgrid_password" placeholder="(lad tom for at beholde)" autocomplete="off" />
           <div class="hint" id="pxgrid-pw-hint">CSR-mode: udfyldes automatisk efter <em>Opret pxGrid-konto</em>. Upload-mode: kun nødvendig hvis ISE-admin har sat shared secret.</div>
         </div>
+        <fieldset style="margin-top:0.8rem; padding:0.6rem 0.8rem; border:1px solid var(--border, #ccc); border-radius:6px;">
+          <legend style="padding:0 0.4rem; font-weight:600;">Phase 2b — Persistent STOMP-worker</legend>
+          <div class="field">
+            <label>
+              <input type="checkbox" id="pxgrid_worker_enabled" />
+              Worker aktiveret (kører subscribe-loop i baggrunden)
+            </label>
+            <div class="hint">Off = falder tilbage på MnT-poll. Off her uden at slå PxGrid helt fra er nyttigt til fejlsøgning.</div>
+          </div>
+          <div class="field">
+            <label for="pxgrid_session_topic">STOMP destination</label>
+            <input type="text" id="pxgrid_session_topic" placeholder="/topic/com.cisco.ise.session" autocomplete="off" />
+            <div class="hint">Default <code>/topic/com.cisco.ise.session</code>. Skift kun ved fejlsøgning.</div>
+          </div>
+          <div class="field">
+            <label for="pxgrid_stomp_heartbeat_ms">Heart-beat interval (ms, server → klient)</label>
+            <input type="number" id="pxgrid_stomp_heartbeat_ms" min="0" step="1000" placeholder="30000" />
+            <div class="hint">Annonceres som <code>0,N</code> i CONNECT. Tab af heartbeat trigger reconnect efter 2× interval. 0 = ingen heartbeat.</div>
+          </div>
+          <div class="field" style="display:flex; gap:0.6rem;">
+            <div style="flex:1;">
+              <label for="pxgrid_stomp_reconnect_min_s">Reconnect backoff min (sek)</label>
+              <input type="number" id="pxgrid_stomp_reconnect_min_s" min="0.5" step="0.5" placeholder="1" />
+            </div>
+            <div style="flex:1;">
+              <label for="pxgrid_stomp_reconnect_max_s">Reconnect backoff max (sek)</label>
+              <input type="number" id="pxgrid_stomp_reconnect_max_s" min="1" step="1" placeholder="300" />
+            </div>
+          </div>
+          <div class="hint">Eksponentiel backoff: starter ved <em>min</em>, fordobles efter hver fejlet reconnect, capper ved <em>max</em>. 1 → 300s er en god balance.</div>
+          <div class="field">
+            <label for="pxgrid_session_cache_max_age_s">Session-cache max age (sek)</label>
+            <input type="number" id="pxgrid_session_cache_max_age_s" min="0" step="60" placeholder="0" />
+            <div class="hint">0 = ingen automatisk udløb (kun DISCONNECTED-events evictor). 86400 = 24t.</div>
+          </div>
+          <div id="pxgrid-worker-status" class="hint" style="margin-top:0.4rem; padding:0.5rem; background:rgba(0,0,0,0.04); border-radius:4px;">Henter worker-status…</div>
+          <div class="actions" style="margin-top:0.4rem;">
+            <button type="button" id="pxgrid-worker-refresh-btn" class="secondary">Opdater status</button>
+            <button type="button" id="pxgrid-worker-restart-btn" class="secondary">Restart worker</button>
+          </div>
+        </fieldset>
         <div class="actions">
           <button type="submit">Gem PxGrid settings</button>
           <button type="button" id="pxgrid-test-btn" class="secondary">Test forbindelse</button>
@@ -509,6 +550,12 @@ async function initPxGridSection(container) {
       container.querySelector("#pxgrid_cert_path").value = s.pxgrid_cert_path || "";
       container.querySelector("#pxgrid_key_path").value = s.pxgrid_key_path || "";
       container.querySelector("#pxgrid_ca_bundle_path").value = s.pxgrid_ca_bundle_path || "";
+      container.querySelector("#pxgrid_worker_enabled").checked = s.pxgrid_worker_enabled !== false;
+      container.querySelector("#pxgrid_session_topic").value = s.pxgrid_session_topic || "/topic/com.cisco.ise.session";
+      container.querySelector("#pxgrid_stomp_heartbeat_ms").value = s.pxgrid_stomp_heartbeat_ms ?? 30000;
+      container.querySelector("#pxgrid_stomp_reconnect_min_s").value = s.pxgrid_stomp_reconnect_min_s ?? 1;
+      container.querySelector("#pxgrid_stomp_reconnect_max_s").value = s.pxgrid_stomp_reconnect_max_s ?? 300;
+      container.querySelector("#pxgrid_session_cache_max_age_s").value = s.pxgrid_session_cache_max_age_s ?? 0;
       const cls = s.cert_status === "ok" ? "success"
                 : s.cert_status === "missing" ? "warning" : "error";
       certStatus.innerHTML = `Cert-status: <span class="alert ${cls}" style="display:inline;padding:2px 8px;">${esc(s.cert_status)}</span>`;
@@ -534,6 +581,12 @@ async function initPxGridSection(container) {
       pxgrid_ca_bundle_path: container.querySelector("#pxgrid_ca_bundle_path").value.trim(),
       pxgrid_password: container.querySelector("#pxgrid_password").value,
       pxgrid_cert_extra_sans: container.querySelector("#pxgrid_cert_extra_sans").value.trim(),
+      pxgrid_worker_enabled: container.querySelector("#pxgrid_worker_enabled").checked,
+      pxgrid_session_topic: container.querySelector("#pxgrid_session_topic").value.trim() || "/topic/com.cisco.ise.session",
+      pxgrid_stomp_heartbeat_ms: parseInt(container.querySelector("#pxgrid_stomp_heartbeat_ms").value, 10) || 0,
+      pxgrid_stomp_reconnect_min_s: parseFloat(container.querySelector("#pxgrid_stomp_reconnect_min_s").value) || 1,
+      pxgrid_stomp_reconnect_max_s: parseFloat(container.querySelector("#pxgrid_stomp_reconnect_max_s").value) || 300,
+      pxgrid_session_cache_max_age_s: parseFloat(container.querySelector("#pxgrid_session_cache_max_age_s").value) || 0,
     };
   }
 
@@ -585,6 +638,66 @@ async function initPxGridSection(container) {
       btn.disabled = false;
     }
   });
+
+  function fmtAge(ts) {
+    if (!ts) return "—";
+    const s = Math.max(0, Math.floor(Date.now() / 1000 - ts));
+    if (s < 60) return `${s}s siden`;
+    if (s < 3600) return `${Math.floor(s/60)}m siden`;
+    return `${Math.floor(s/3600)}t siden`;
+  }
+
+  async function refreshWorkerStatus() {
+    const el = container.querySelector("#pxgrid-worker-status");
+    if (!el) return;
+    try {
+      const w = await api.getPxGridWorkerStatus();
+      const dot = w.connected ? "🟢" : (w.running ? "🟡" : "🔴");
+      const lbl = w.connected ? "connected" : (w.running ? "running, ikke connected" : "stopped");
+      const lastErr = w.last_error
+        ? `<br><span style="color:#b91c1c;">Sidste fejl: ${esc(w.last_error)}</span>`
+        : "";
+      el.innerHTML = `
+        <strong>${dot} Worker: ${esc(lbl)}</strong>
+        — peer: <code>${esc(w.peer_node || "—")}</code>
+        — topic: <code>${esc(w.subscribed_topic || "—")}</code><br>
+        Events: <strong>${w.messages_total}</strong>
+        · cache: <strong>${w.cache_size}</strong> sessioner
+        · reconnects: ${w.reconnect_count}
+        · sidste event: ${fmtAge(w.last_event_at)}
+        · sidste connect: ${fmtAge(w.last_connect_at)}${lastErr}`;
+    } catch (err) {
+      el.innerHTML = `<span style="color:#b91c1c;">Kunne ikke hente worker-status: ${esc(err.message)}</span>`;
+    }
+  }
+
+  container.querySelector("#pxgrid-worker-refresh-btn").addEventListener("click", refreshWorkerStatus);
+  container.querySelector("#pxgrid-worker-restart-btn").addEventListener("click", async (e) => {
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    msg.innerHTML = `<div class="alert info">Restarter pxGrid-worker...</div>`;
+    try {
+      await api.restartPxGridWorker();
+      msg.innerHTML = `<div class="alert success">Worker restartet.</div>`;
+      await refreshWorkerStatus();
+    } catch (err) {
+      msg.innerHTML = `<div class="alert error">Restart fejlede: ${esc(err.message)}</div>`;
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  // Auto-refresh worker-status hvert 10s mens settings-siden er åben.
+  refreshWorkerStatus();
+  const workerStatusTimer = setInterval(refreshWorkerStatus, 10000);
+  // Best-effort cleanup når view skiftes (app.js rydder containerens children).
+  const observer = new MutationObserver(() => {
+    if (!document.body.contains(container)) {
+      clearInterval(workerStatusTimer);
+      observer.disconnect();
+    }
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
 
   // CSR + account-create kalder backend-endpoints der gatekeeper på persisted
   // settings (node_name, cert_mode). Bruger kan have ændret formularen uden at

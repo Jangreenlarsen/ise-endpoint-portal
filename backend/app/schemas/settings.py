@@ -80,6 +80,12 @@ class PxGridSettingsUpdate(BaseModel):
     pxgrid_ca_bundle_path: str = ""
     pxgrid_password: str = ""
     pxgrid_cert_extra_sans: str = ""
+    pxgrid_session_topic: str = "/topic/com.cisco.ise.session"
+    pxgrid_stomp_heartbeat_ms: int = 30000
+    pxgrid_stomp_reconnect_min_s: float = 1.0
+    pxgrid_stomp_reconnect_max_s: float = 300.0
+    pxgrid_session_cache_max_age_s: float = 0.0
+    pxgrid_worker_enabled: bool = True
 
 
 class PxGridSettingsResponse(BaseModel):
@@ -92,6 +98,12 @@ class PxGridSettingsResponse(BaseModel):
     pxgrid_ca_bundle_path: str
     pxgrid_password_set: bool = Field(..., description="true if a secret is stored")
     pxgrid_cert_extra_sans: str = ""
+    pxgrid_session_topic: str = "/topic/com.cisco.ise.session"
+    pxgrid_stomp_heartbeat_ms: int = 30000
+    pxgrid_stomp_reconnect_min_s: float = 1.0
+    pxgrid_stomp_reconnect_max_s: float = 300.0
+    pxgrid_session_cache_max_age_s: float = 0.0
+    pxgrid_worker_enabled: bool = True
     cert_status: str = Field(
         ...,
         description=(
@@ -168,6 +180,41 @@ class PxGridStompProbeResponse(BaseModel):
     ws_url: str = ""
     peer_node: str = ""
     error: str = ""
+
+
+class PxGridSessionInfoResponse(BaseModel):
+    """En enkelt cached session — read-only snapshot fra worker."""
+
+    mac: str
+    state: str = ""
+    audit_session_id: str = ""
+    nas_ip: str = ""
+    user_name: str = ""
+    last_event_at: float = 0.0
+
+
+class PxGridSessionsResponse(BaseModel):
+    sessions: list[PxGridSessionInfoResponse] = Field(default_factory=list)
+    total: int = 0
+    cache_stats: dict = Field(default_factory=dict)
+
+
+class PxGridWorkerStatusResponse(BaseModel):
+    """Live runtime-state fra den persistente STOMP-worker."""
+
+    running: bool
+    connected: bool
+    peer_node: str = ""
+    ws_url: str = ""
+    started_at: float = 0.0
+    last_connect_at: float = 0.0
+    last_disconnect_at: float = 0.0
+    last_event_at: float = 0.0
+    last_error: str = ""
+    reconnect_count: int = 0
+    messages_total: int = 0
+    subscribed_topic: str = ""
+    cache_size: int = 0
 
 
 class PxGridResetResponse(BaseModel):

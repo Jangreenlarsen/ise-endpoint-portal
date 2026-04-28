@@ -110,9 +110,19 @@ def split_frames(buffer: bytes) -> tuple[list[StompFrame], bytes]:
 # ── Outbound frame helpers ─────────────────────────────────────────
 
 
-def connect_frame(host: str, login: str, passcode: str) -> bytes:
+def connect_frame(
+    host: str,
+    login: str,
+    passcode: str,
+    *,
+    heartbeat_ms: int = 30000,
+) -> bytes:
     """STOMP CONNECT — pxGrid broker requires accept-version 1.2 and
-    Basic-auth-equivalent in login/passcode headers."""
+    Basic-auth-equivalent in login/passcode headers.
+
+    ``heartbeat_ms`` er server-til-klient interval vi annoncerer
+    (cx=0, sx=heartbeat_ms). 0 = ingen heart-beat.
+    """
     return StompFrame(
         command="CONNECT",
         headers={
@@ -120,7 +130,7 @@ def connect_frame(host: str, login: str, passcode: str) -> bytes:
             "host": host,
             "login": login,
             "passcode": passcode,
-            "heart-beat": "0,30000",
+            "heart-beat": f"0,{int(heartbeat_ms)}",
         },
     ).encode()
 

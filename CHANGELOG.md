@@ -5,6 +5,57 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.4.0 build 0107] — 2026-04-28 — feat(PxGrid Phase 2b): persistent STOMP-worker + session-cache
+
+Phase 2a's prober blev brugt som diagnose-værktøj og er bekræftet end-to-end
+(STOMP OK, 0 events i 10s — broker accepterede subscribe). 2b bygger den
+permanente kanal: en lifespan-task der subscriber til
+`com.cisco.ise.session` *uendeligt*, parser MESSAGE-frames og holder en
+in-memory `MAC → SessionInfo`-cache opdateret i real-time.
+
+**Backend:**
+- Ny `pxgrid/session_cache.py` — asyncio-lock-beskyttet dict + stats.
+- Ny `pxgrid/session_worker.py` — auto-reconnect med eksponentiel backoff,
+  PSN-failover via fresh ServiceLookup pr. cycle, fresh AccessSecret pr.
+  reconnect (broker afviser genbrugte secrets), heart-beat-tab → reconnect.
+- Worker startes/stoppes i FastAPI lifespan (`main.py`).
+- Ny router `api/pxgrid.py`: `GET /pxgrid/sessions`, `GET /pxgrid/sessions/{mac}`,
+  `GET /pxgrid/worker/status`, `POST /pxgrid/worker/restart`.
+- `stomp.connect_frame()` accepterer nu `heartbeat_ms`-param.
+
+**Settings (alle nye tunables):**
+- `pxgrid_session_topic` (default `/topic/com.cisco.ise.session`)
+- `pxgrid_stomp_heartbeat_ms` (default 30000)
+- `pxgrid_stomp_reconnect_min_s` / `_max_s` (default 1 / 300 sek)
+- `pxgrid_session_cache_max_age_s` (default 0 = aldrig udløb)
+- `pxgrid_worker_enabled` (default true) — separat fra `pxgrid_enabled`
+  så admin kan slå worker fra uden at miste REST control plane.
+
+**Frontend:**
+- Nyt fieldset under PxGrid-card med alle tunables + live worker-status
+  (running/connected, peer-node, event-count, cache-size, reconnect-count,
+  last error). Auto-refresh hvert 10s. "Restart worker"-knap.
+
+**Designvalg:** worker restartes automatisk når settings gemmes så ændrede
+heartbeat/topic/backoff tager effekt uden full backend-restart. Tunables
+giver ops mulighed for at tune broker-timeouts under konkrete deployments
+uden code-ændring (fx kortere heartbeat ved aggressive firewalls,
+længere backoff ved flaky links).
+
+**Filer:** [backend/app/core/config.py](backend/app/core/config.py),
+[backend/app/pxgrid/session_cache.py](backend/app/pxgrid/session_cache.py),
+[backend/app/pxgrid/session_worker.py](backend/app/pxgrid/session_worker.py),
+[backend/app/pxgrid/stomp.py](backend/app/pxgrid/stomp.py),
+[backend/app/api/pxgrid.py](backend/app/api/pxgrid.py),
+[backend/app/api/settings.py](backend/app/api/settings.py),
+[backend/app/schemas/settings.py](backend/app/schemas/settings.py),
+[backend/app/services/settings_service.py](backend/app/services/settings_service.py),
+[backend/app/main.py](backend/app/main.py),
+[frontend/js/api.js](frontend/js/api.js),
+[frontend/js/views/settings.js](frontend/js/views/settings.js)
+
+---
+
 ## [3.3.3 build 0106] — 2026-04-27 — ux(PxGrid): flyt status-bar under action-knapper
 
 Status-feltet (`#pxgrid-msg`) lå over selve formularen, så test-knapperne

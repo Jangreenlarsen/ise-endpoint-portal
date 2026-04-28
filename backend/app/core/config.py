@@ -141,6 +141,48 @@ class Settings(BaseSettings):
         ),
     )
 
+    # PxGrid Phase 2b (3.4.0) — persistent STOMP-worker tunables.
+    pxgrid_session_topic: str = Field(
+        default="/topic/com.cisco.ise.session",
+        description=(
+            "STOMP destination som worker subscriber til. Standard er "
+            "session-topic'et; kan ændres til andre topics under fejlsøgning."
+        ),
+    )
+    pxgrid_stomp_heartbeat_ms: int = Field(
+        default=30000,
+        description=(
+            "Server-til-klient heart-beat interval i ms som vi annoncerer i "
+            "STOMP CONNECT (cx,sx hvor sx er denne værdi). Broker forventes at "
+            "sende mindst én byte hvert sx ms; ellers anses forbindelsen død. "
+            "0 = ingen heart-beat (ikke anbefalet — hængende TCP detekteres ikke)."
+        ),
+    )
+    pxgrid_stomp_reconnect_min_s: float = Field(
+        default=1.0,
+        description="Initial backoff ved reconnect (eksponentiel: min → max).",
+    )
+    pxgrid_stomp_reconnect_max_s: float = Field(
+        default=300.0,
+        description="Maks backoff cap (5 min default = balanceret idle-cost).",
+    )
+    pxgrid_session_cache_max_age_s: float = Field(
+        default=0.0,
+        description=(
+            "Sessioner ældre end denne fjernes ved næste cache-touch. 0 = aldrig "
+            "udløb (kun DISCONNECTED-events evictor). Brug fx 86400 (24t) til "
+            "automatisk oprydning hvis disconnect-events bortfalder."
+        ),
+    )
+    pxgrid_worker_enabled: bool = Field(
+        default=True,
+        description=(
+            "Kør den persistente STOMP-worker. Sættes typisk samme som "
+            "pxgrid_enabled, men kan slåes fra alene for at falde tilbage på "
+            "MnT-poll uden at miste REST control plane."
+        ),
+    )
+
     backend_cors_origins: list[str] = Field(
         default_factory=lambda: ["http://localhost:5173", "http://localhost:8000"]
     )

@@ -12,12 +12,14 @@ from app.api import custom_attributes as custom_attrs_api
 from app.api import dacls as dacls_api
 from app.api import endpoint_roles as endpoint_roles_api
 from app.api import endpoints, groups, health, logs, oui, users
+from app.api import pxgrid as pxgrid_api
 from app.api import settings as settings_api
 from app.core.audit_store import init_db as init_audit_db
 from app.core.config import settings
 from app.core.logging import setup_logging
 from app.core.version import FULL as APP_VERSION, VERSION
 from app.ise.client import close_ise_client
+from app.pxgrid.session_worker import get_worker as get_pxgrid_worker
 from app.services.audit_retention import get_worker as get_audit_retention_worker
 from app.services.cache_sync import get_worker as get_cache_sync_worker
 
@@ -30,9 +32,11 @@ async def lifespan(_: FastAPI):
     init_audit_db()
     get_cache_sync_worker().start()
     get_audit_retention_worker().start()
+    get_pxgrid_worker().start()
     try:
         yield
     finally:
+        await get_pxgrid_worker().stop()
         await get_audit_retention_worker().stop()
         await get_cache_sync_worker().stop()
         await close_ise_client()
@@ -65,6 +69,7 @@ app.include_router(cache_api.router, prefix="/api")
 app.include_router(audit_api.router, prefix="/api")
 app.include_router(oui.router, prefix="/api")
 app.include_router(endpoint_roles_api.router, prefix="/api")
+app.include_router(pxgrid_api.router, prefix="/api")
 
 frontend_dir = Path(__file__).resolve().parents[2] / "frontend"
 if frontend_dir.exists():

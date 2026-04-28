@@ -178,6 +178,11 @@ export const api = {
     request("/settings/pxgrid/reset", { method: "POST" }),
   runPxGridStompProbe: (duration = 10) =>
     request(`/settings/pxgrid/stomp-probe?duration=${duration}`, { method: "POST" }),
+  getPxGridSessions: () => request("/pxgrid/sessions"),
+  getPxGridSession: (mac) => request(`/pxgrid/sessions/${encodeURIComponent(mac)}`),
+  getPxGridWorkerStatus: () => request("/pxgrid/worker/status"),
+  restartPxGridWorker: () =>
+    request("/pxgrid/worker/restart", { method: "POST" }),
   downloadPxGridCsr: async () => {
     const token = auth.getToken();
     const headers = {};
