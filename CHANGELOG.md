@@ -5,6 +5,22 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.3.2 build 0105] — 2026-04-28 — fix(PxGrid): tilføj HTTP Basic auth på WebSocket-upgrade
+
+STOMP-prober fejlede ved `ws_connect`-trinet med `server rejected
+WebSocket connection: HTTP 401`. pxGrid pubsub-broker kræver
+HTTP Basic auth (`node_name:secret`) på selve WS-upgrade-
+requesten — ikke kun inde i STOMP CONNECT-frame'en. mTLS alene
+er ikke nok til broker-laget; ISE forventer to-lags auth.
+
+`probe.run_session_probe()` bygger nu `Authorization: Basic
+<b64(node:secret)>` og sender den via `additional_headers=`
+til `websockets.connect()`.
+
+Filer: [backend/app/pxgrid/probe.py](backend/app/pxgrid/probe.py).
+
+---
+
 ## [3.3.1 build 0104] — 2026-04-27 — fix(PxGrid): kald /AccessSecret (ikke /AccessSecretCreate) — ISE 3.4 returnerer 404
 
 STOMP-prober fejlede ved `access_secret`-trinet med 404 fra ISE.

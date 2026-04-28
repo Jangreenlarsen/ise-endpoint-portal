@@ -21,6 +21,7 @@ trin (cert/lookup/connect/subscribe/timeout). Read-only og selvterminerende
 from __future__ import annotations
 
 import asyncio
+import base64
 import logging
 import ssl
 import time
@@ -144,11 +145,18 @@ async def run_session_probe(duration_s: float = 10.0) -> ProbeResult:
 
     samples: list[str] = []
     msg_count = 0
+    # pxGrid pubsub-broker kræver HTTP Basic auth på selve WS-upgraden (oven på
+    # mTLS) — ikke kun i STOMP CONNECT-frame'en. Uden Authorization-headeren
+    # afviser ISE handshaken med 401 inden vi når STOMP-laget.
+    basic_auth = base64.b64encode(
+        f"{s.pxgrid_node_name}:{secret}".encode("utf-8")
+    ).decode("ascii")
     try:
         async with websockets.connect(
             ws_url,
             ssl=ssl_ctx,
             subprotocols=["v12.stomp"],
+            additional_headers={"Authorization": f"Basic {basic_auth}"},
             open_timeout=10,
             ping_interval=None,  # broker bruger STOMP heart-beat, ikke WS ping
         ) as ws:
