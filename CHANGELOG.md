@@ -5,6 +5,17 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.3.3 build 0106] — 2026-04-27 — ux(PxGrid): flyt status-bar under action-knapper
+
+Status-feltet (`#pxgrid-msg`) lå over selve formularen, så test-knapperne
+blev skubbet langt ned. Flyttet til lige under action-rækken så
+knapperne ligger i toppen af PxGrid-sektionen og status vises der hvor
+brugeren har klikket.
+
+**Filer:** [frontend/js/views/settings.js](frontend/js/views/settings.js)
+
+---
+
 ## [3.3.2 build 0105] — 2026-04-28 — fix(PxGrid): tilføj HTTP Basic auth på WebSocket-upgrade
 
 STOMP-prober fejlede ved `ws_connect`-trinet med `server rejected

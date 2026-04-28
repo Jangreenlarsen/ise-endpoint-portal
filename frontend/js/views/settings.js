@@ -173,7 +173,6 @@ export async function renderSettings(container) {
         til <code>com.cisco.ise.session</code>) aktiveres. Kræver mTLS — vælg
         cert-mode nedenfor.
       </p>
-      <div id="pxgrid-msg"></div>
       <form id="pxgrid-form">
         <div class="field">
           <label>
@@ -316,6 +315,7 @@ export async function renderSettings(container) {
           <button type="button" id="pxgrid-stomp-btn" class="secondary">Test STOMP-subscription (10s)</button>
           <button type="button" id="pxgrid-reset-btn" class="danger" style="margin-left:auto;">Nulstil registrering</button>
         </div>
+        <div id="pxgrid-msg" style="margin-top:0.6rem;"></div>
         <div class="hint" style="margin-top:0.4rem;">
           <strong>Test STOMP-subscription</strong> verificerer at WebSocket+STOMP-laget mod pubsub-noden virker.
           Subscriber kortvarigt til <code>com.cisco.ise.session</code> og rapporterer hvor mange events der kom.
