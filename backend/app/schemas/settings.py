@@ -88,6 +88,7 @@ class PxGridSettingsUpdate(BaseModel):
     pxgrid_worker_enabled: bool = True
     pxgrid_endpoint_topic_enabled: bool = False
     pxgrid_endpoint_topic: str = "/topic/com.cisco.ise.endpoint"
+    pxgrid_endpoint_service: str = "com.cisco.ise.endpoint"
 
 
 class PxGridSettingsResponse(BaseModel):
@@ -108,6 +109,7 @@ class PxGridSettingsResponse(BaseModel):
     pxgrid_worker_enabled: bool = True
     pxgrid_endpoint_topic_enabled: bool = False
     pxgrid_endpoint_topic: str = "/topic/com.cisco.ise.endpoint"
+    pxgrid_endpoint_service: str = "com.cisco.ise.endpoint"
     cert_status: str = Field(
         ...,
         description=(

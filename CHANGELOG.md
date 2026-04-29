@@ -5,6 +5,38 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.6.1 build 0112] — 2026-04-29 — fix(PxGrid): ServiceLookup for endpoint-topic, ikke hardcoded default
+
+Bruger rapporterede at nye endpoints oprettet i ISE-GUI ikke dukker op i
+portalens Browse-view, selv med endpoint-topic enabled. Worker accepterede
+SUBSCRIBE silently for et topic der ikke nødvendigvis eksisterer på alle
+ISE-versioner.
+
+Fix: worker gør nu ServiceLookup for et konfigurerbart service-navn
+(`pxgrid_endpoint_service`, default `com.cisco.ise.endpoint`) når endpoint-
+topic er enabled. Bruger den returnerede `topic`-property fra service-
+node'en hvis tilstede, falder tilbage til den konfigurerede topic ellers.
+ServiceLookup-fejl skrives til `last_error` i worker-status så det er
+synligt i Settings UI.
+
+Settings UI har nu separate felter:
+- **Endpoint-service navn** (ServiceLookup target — prøv
+  `com.cisco.ise.config.profiler` eller `com.cisco.ise.endpoint.asset`
+  hvis default ikke virker på din ISE-version).
+- **Endpoint-topic fallback** (kun brugt hvis ServiceLookup ikke
+  returnerer topic-property).
+
+Worker-status viser nu altid den faktisk subscribede topic (ikke bare
+default-config) i `subscribed_topics`-listen.
+
+**Filer:** [backend/app/core/config.py](backend/app/core/config.py),
+[backend/app/pxgrid/session_worker.py](backend/app/pxgrid/session_worker.py),
+[backend/app/schemas/settings.py](backend/app/schemas/settings.py),
+[backend/app/services/settings_service.py](backend/app/services/settings_service.py),
+[frontend/js/views/settings.js](frontend/js/views/settings.js)
+
+---
+
 ## [3.6.0 build 0111] — 2026-04-29 — feat(PxGrid Phase 4): endpoint-topic + live cache-invalidering
 
 Sidste leg af 3.0.0-roadmap'en: portalen reagerer nu live på endpoint-

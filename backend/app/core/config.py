@@ -195,7 +195,19 @@ class Settings(BaseSettings):
     )
     pxgrid_endpoint_topic: str = Field(
         default="/topic/com.cisco.ise.endpoint",
-        description="STOMP destination for endpoint-events.",
+        description=(
+            "STOMP destination for endpoint-events. Bruges som fallback hvis "
+            "ServiceLookup ikke returnerer en eksplicit 'topic'-property på "
+            "den fundne service-node."
+        ),
+    )
+    pxgrid_endpoint_service: str = Field(
+        default="com.cisco.ise.endpoint",
+        description=(
+            "ISE pxGrid-service navn der ServiceLookup'es for endpoint CRUD-"
+            "events. Hvis denne ikke eksisterer på din ISE-version, prøv "
+            "'com.cisco.ise.config.profiler' eller 'com.cisco.ise.endpoint.asset'."
+        ),
     )
 
     backend_cors_origins: list[str] = Field(

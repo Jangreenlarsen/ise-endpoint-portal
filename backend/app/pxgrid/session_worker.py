@@ -219,9 +219,32 @@ class PxGridSessionWorker:
             sub_map: dict[str, str] = {SUB_ID_SESSION: topic}
             await ws.send(stomp.subscribe_frame(topic, sub_id=SUB_ID_SESSION))
             if s.pxgrid_endpoint_topic_enabled:
+                # ServiceLookup på endpoint-servicen så vi får ISE's kanoniske
+                # topic (kan afvige fra default-konfig pr. ISE-version).
                 ep_topic = s.pxgrid_endpoint_topic
+                try:
+                    ep_nodes = await client.service_lookup(s.pxgrid_endpoint_service)
+                    if ep_nodes:
+                        discovered = ep_nodes[0].properties.get("topic")
+                        if discovered:
+                            ep_topic = discovered
+                            logger.info(
+                                "pxgrid endpoint-service '%s' returnerede topic=%s",
+                                s.pxgrid_endpoint_service, discovered,
+                            )
+                except Exception as exc:  # noqa: BLE001
+                    self._status.last_error = (
+                        f"endpoint-topic ServiceLookup('{s.pxgrid_endpoint_service}') "
+                        f"fejlede: {exc} — fallback til konfigureret '{ep_topic}'. "
+                        f"Hvis events stadig udebliver: prøv et andet service-navn "
+                        f"(com.cisco.ise.config.profiler, com.cisco.ise.endpoint.asset)."
+                    )
+                    logger.warning(self._status.last_error)
                 sub_map[SUB_ID_ENDPOINT] = ep_topic
                 await ws.send(stomp.subscribe_frame(ep_topic, sub_id=SUB_ID_ENDPOINT))
+                # Opdater status så UI viser den faktisk subscribede topic
+                # (ikke bare det konfigurerede default).
+                self._status.subscribed_topics = [topic, ep_topic]
 
             self._status.connected = True
             self._status.last_connect_at = time.time()

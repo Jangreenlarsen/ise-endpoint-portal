@@ -331,9 +331,18 @@ export async function renderSettings(container) {
             <div class="hint">Når ON: ISE-admin's endpoint create/update/delete-events invaliderer 2.8.0-cachen og pushes til Browse, så rækken reloader automatisk uden refresh. Off = kun session-topic.</div>
           </div>
           <div class="field">
-            <label for="pxgrid_endpoint_topic">Endpoint-topic destination</label>
+            <label for="pxgrid_endpoint_service">Endpoint-service navn (ServiceLookup)</label>
+            <input type="text" id="pxgrid_endpoint_service" placeholder="com.cisco.ise.endpoint" autocomplete="off" />
+            <div class="hint">
+              ISE pxGrid-service der ServiceLookup'es for at finde den kanoniske endpoint-topic.
+              Hvis events udebliver, prøv: <code>com.cisco.ise.config.profiler</code> eller
+              <code>com.cisco.ise.endpoint.asset</code>. Worker-status feltet viser hvilken topic der faktisk blev fundet.
+            </div>
+          </div>
+          <div class="field">
+            <label for="pxgrid_endpoint_topic">Endpoint-topic fallback (hvis ServiceLookup ikke har 'topic'-property)</label>
             <input type="text" id="pxgrid_endpoint_topic" placeholder="/topic/com.cisco.ise.endpoint" autocomplete="off" />
-            <div class="hint">Default <code>/topic/com.cisco.ise.endpoint</code>.</div>
+            <div class="hint">Bruges kun hvis ServiceLookup på service-navnet ikke returnerer en eksplicit topic.</div>
           </div>
           <div class="field">
             <label for="pxgrid_stomp_heartbeat_ms">Heart-beat interval (ms, server → klient)</label>
@@ -570,6 +579,7 @@ async function initPxGridSection(container) {
       container.querySelector("#pxgrid_session_cache_max_age_s").value = s.pxgrid_session_cache_max_age_s ?? 0;
       container.querySelector("#pxgrid_endpoint_topic_enabled").checked = !!s.pxgrid_endpoint_topic_enabled;
       container.querySelector("#pxgrid_endpoint_topic").value = s.pxgrid_endpoint_topic || "/topic/com.cisco.ise.endpoint";
+      container.querySelector("#pxgrid_endpoint_service").value = s.pxgrid_endpoint_service || "com.cisco.ise.endpoint";
       const cls = s.cert_status === "ok" ? "success"
                 : s.cert_status === "missing" ? "warning" : "error";
       certStatus.innerHTML = `Cert-status: <span class="alert ${cls}" style="display:inline;padding:2px 8px;">${esc(s.cert_status)}</span>`;
@@ -603,6 +613,7 @@ async function initPxGridSection(container) {
       pxgrid_session_cache_max_age_s: parseFloat(container.querySelector("#pxgrid_session_cache_max_age_s").value) || 0,
       pxgrid_endpoint_topic_enabled: container.querySelector("#pxgrid_endpoint_topic_enabled").checked,
       pxgrid_endpoint_topic: container.querySelector("#pxgrid_endpoint_topic").value.trim() || "/topic/com.cisco.ise.endpoint",
+      pxgrid_endpoint_service: container.querySelector("#pxgrid_endpoint_service").value.trim() || "com.cisco.ise.endpoint",
     };
   }
 
