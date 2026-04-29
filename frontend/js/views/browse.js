@@ -912,6 +912,65 @@ export async function renderBrowse(container) {
     applyAuthStatusColors();
   }
 
+  // 3.7.2: inkrementel row-refresh efter save. Erstatter ``await load()``
+  // (der genhenter hele endpoint-listen + groups + DACLs + custom-attrs +
+  // platform-mapping + roles = 7 ISE-kald) med kun de specifikke endpoints
+  // brugeren lige har gemt. Resultat: 1 ISE-kald pr. gemt endpoint i stedet
+  // for 1 listekald pr. save-runde uanset hvor få der ændredes.
+  async function refreshRows(ids) {
+    if (!ids || !ids.length) return;
+    const fresh = await Promise.all(
+      ids.map(id => api.getEndpoint(id).catch(() => null))
+    );
+    const byId = new Map();
+    for (const r of fresh) if (r && r.id) byId.set(r.id, r);
+    if (!byId.size) return;
+    // Patch in-memory datasets så efterfølgende filter/sort ser fresh data.
+    for (let i = 0; i < allRows.length; i++) {
+      const upd = byId.get(allRows[i].id);
+      if (upd) allRows[i] = upd;
+    }
+    if (allRowsCache) {
+      for (let i = 0; i < allRowsCache.length; i++) {
+        const upd = byId.get(allRowsCache[i].id);
+        if (upd) allRowsCache[i] = upd;
+      }
+    }
+    // In-place DOM-patch — kun de affected <tr>'er, bevarer scroll og focus.
+    for (const [id, r] of byId) {
+      const tr = tbody.querySelector(`tr[data-id="${CSS.escape(id)}"]`);
+      if (!tr) continue;
+      const macLink = tr.querySelector(".mac-cell .mac-link");
+      if (macLink) macLink.textContent = r.mac || r.name;
+      const vendorCell = tr.querySelector(".vendor-cell-td");
+      if (vendorCell) vendorCell.textContent = r.vendor || "";
+      const grpSel = tr.querySelector(".grp-select");
+      if (grpSel) grpSel.innerHTML = groupOptionsHtml(r.group_id);
+      const assignCell = tr.querySelector(".assign-cell");
+      if (assignCell) assignCell.textContent = r.static_group ? "Statisk" : "Dynamisk";
+      const descInput = tr.querySelector(".desc-input");
+      if (descInput) descInput.value = r.description || "";
+      const setSel = (cls, val, opts) => {
+        const el = tr.querySelector(`.${cls}`);
+        if (el) el.innerHTML = optionsHtml(opts, val);
+      };
+      setSel("ca-type", r.endpoint_type, caValues.Type);
+      setSel("ca-owner", r.owner, caValues.Owner);
+      setSel("ca-lokation", r.lokation, caValues.Lokation);
+      setSel("ca-authzvlan", r.authz_vlan, caValues.AuthzVlan);
+      setSel("ca-authzacl", r.authz_acl, caValues.AuthzACL);
+      setSel("ca-platformtype", r.platform_type, caValues.PlatformType);
+      const rolesCell = tr.querySelector(".roles-cell");
+      if (rolesCell) rolesCell.innerHTML = rolesChipsHtml(r.roles);
+      tr.classList.remove("dirty");
+      dirtyIds.delete(id);
+    }
+    applyColVis();
+    applyAuthStatusColors();
+    updateDirtyUI();
+    updateSelectionUI();
+  }
+
   function applyFilter() {
     if (filterMode) {
       // Client-side filter + pagination on full dataset
@@ -1127,7 +1186,8 @@ export async function renderBrowse(container) {
       const coa = await runCoaForIds(savedEntries);
       coaSummary = coaSummaryText(coa);
     }
-    await load();
+    // 3.7.2: kun re-fetch de gemte endpoints (ikke hele listen + 6 hjælpekald).
+    await refreshRows(savedEntries.map(s => s.id));
     const parts = [];
     if (ok) parts.push(`${ok} gemt`);
     if (fail) parts.push(`${fail} fejlede`);
@@ -1163,7 +1223,8 @@ export async function renderBrowse(container) {
       const coa = await runCoaForIds(savedEntries);
       coaSummary = coaSummaryText(coa);
     }
-    await load();
+    // 3.7.2: kun re-fetch de gemte endpoints (ikke hele listen + 6 hjælpekald).
+    await refreshRows(savedEntries.map(s => s.id));
     const parts = [];
     if (ok) parts.push(`${ok} gemt`);
     if (fail) parts.push(`${fail} fejlede`);
@@ -1523,7 +1584,8 @@ export async function renderBrowse(container) {
         }
       }
       closeDetail();
-      await load();
+      // 3.7.2: kun re-fetch det ene endpoint (ikke hele listen).
+      await refreshRows([savedId]);
       msg.innerHTML = `<div class="alert success">Endpoint gemt.${coaSummary}</div>`;
     } catch (err) {
       detailMsg.innerHTML = `<div class="alert error">${err.message}</div>`;

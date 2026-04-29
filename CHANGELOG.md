@@ -5,6 +5,40 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.7.2 build 0117] — 2026-04-29 — perf(Browse): inkrementel row-refresh efter save (ikke længere flud-reload)
+
+Hver gang admin gemte ændringer i Browse — hvad enten via "Gem alle",
+"Gem valgte", eller detail-modal'en — kaldte vi ``await load()`` der
+genfetchede **hele** datasettet plus 6 hjælpekald (groups, custom-attrs,
+DACLs, platform-mapping, roles, auth-me). Det er en "flud opdatering"
+selv hvis kun ét enkelt endpoint blev gemt.
+
+**Optimering:**
+- Ny ``refreshRows(ids)`` i [browse.js](frontend/js/views/browse.js) der
+  henter kun de specifikke endpoints via ``api.getEndpoint(id)`` parallelt,
+  patcher ``allRows`` + ``allRowsCache`` in-memory, og opdaterer kun de
+  affected ``<tr>`` i DOM in-place (bevarer scroll, focus, selection).
+- De tre ``await load()``-kald efter save er erstattet med
+  ``refreshRows(savedIds)``.
+
+**Effekt:** Save af 1 endpoint går fra ~7 ISE-kald til 1. Save af 10
+endpoints går fra ~7 ISE-kald (paginated list + groups + ...) til 10 GET-
+detail-kald (parallelt). Bedre fordi vi kun rører det der faktisk ændrede
+sig, og fordi user-state (scroll position, åbne dropdowns, checkbox-
+selection) bevares — ingen UI-flicker.
+
+**Bevarede full-reloads:**
+- Initial mount af Browse-viewet
+- Eksplicit "Refresh"-knap i toolbaren (intentionel full reload)
+- Filter mode-skift (kræver fuld dataset)
+- Bulk delete (slettede endpoints kan ikke re-fetches)
+- pxGrid endpoint_changed-event (ekstern trigger — kunne optimeres senere
+  hvis event-id matches en cached row)
+
+**Filer:** [frontend/js/views/browse.js](frontend/js/views/browse.js)
+
+---
+
 ## [3.7.1 build 0116] — 2026-04-29 — refactor(purge-protect): revert DRS-stempling, tilføj guide-card + dok
 
 3.7.0's tilgang viste sig at være forkert: Cisco's docs siger eksplicit at
