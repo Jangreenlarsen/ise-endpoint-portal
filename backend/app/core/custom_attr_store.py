@@ -24,8 +24,16 @@ HIDDEN_ATTR = "HypervisionISEPortal"
 # ikke et fast "true" som HIDDEN_ATTR.
 ROLES_ATTR = "HypervisionRoles"
 
+# Purge-protection (3.7.0). ISE's default endpoint-purge-rules springer
+# endpoints over hvor DeviceRegistrationStatus="Registered". Den indbyggede
+# DRS er forbeholdt BYOD-flowet, men purge-rule-evalueringen matcher også
+# custom-attributes med samme navn — så vi definerer den som CA og stempler
+# "Registered" på alle portal-endpoints automatisk.
+PURGE_PROTECT_ATTR = "DeviceRegistrationStatus"
+PURGE_PROTECT_VALUE = "Registered"
+
 # Alle skjulte (ikke-UI-dropdown) CAs der skal have ISE-definition.
-HIDDEN_ATTRS = [HIDDEN_ATTR, ROLES_ATTR]
+HIDDEN_ATTRS = [HIDDEN_ATTR, ROLES_ATTR, PURGE_PROTECT_ATTR]
 
 # All attributes that need ISE definitions (managed + hidden).
 ALL_ATTRS = MANAGED_ATTRS + HIDDEN_ATTRS

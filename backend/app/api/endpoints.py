@@ -1,8 +1,11 @@
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
 from app.api.deps import (
     get_current_user,
     get_endpoint_service,
+    require_admin,
     require_any,
     require_create_endpoint,
     require_editor,
@@ -164,6 +167,21 @@ async def create_endpoint(
     except IseApiError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     return {"status": "created", "id": new_id}
+
+
+@router.post("/purge-protect-backfill")
+async def purge_protect_backfill(
+    user: User = Depends(require_admin),
+    service: EndpointService = Depends(get_endpoint_service),
+) -> dict[str, Any]:
+    """One-shot backfill: stempel DeviceRegistrationStatus=Registered på alle
+    portal-endpoints der ikke allerede har den, så ISE's purge-policy
+    springer dem over. Idempotent — kan køres flere gange uden bivirkning.
+    """
+    try:
+        return await service.purge_protect_backfill()
+    except IseApiError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
 @router.post("/bulk", response_model=BulkResult)

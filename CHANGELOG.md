@@ -5,6 +5,47 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.7.0 build 0115] — 2026-04-29 — feat: purge-protection via DeviceRegistrationStatus="Registered"
+
+ISE's default endpoint-purge-policy fjerner endpoints baseret på inaktivitet
+— ødelæggende for portal-managed devices der måske ikke ses på nettet i lang
+tid. ISE's purge-rules eksempterer dog endpoints hvor
+`DeviceRegistrationStatus="Registered"`. Den indbyggede DRS er forbeholdt
+BYOD-flowet, men purge-evalueringen matcher også **custom attributes med
+samme navn** — så vi definerer den som CA og stempler "Registered"
+automatisk på alle portal-endpoints.
+
+**Backend:**
+- `custom_attr_store.HIDDEN_ATTRS` udvidet med `DeviceRegistrationStatus` så
+  ISE-definitionen auto-bootstrappes ved første endpoint-create/update via
+  eksisterende `_ensure_ca_definitions()`-flow.
+- `endpoint_service.create_endpoint()` + `update_endpoint()` stempler nu
+  automatisk `DeviceRegistrationStatus=Registered` (sammen med eksisterende
+  `HypervisionISEPortal=true`).
+- Ny `purge_protect_backfill()` der paginerer gennem portal-endpoints
+  (filter `CUSTOM.HypervisionISEPortal.EQ.true`), tjekker raw customAttributes
+  for eksisterende DRS-værdi og opdaterer kun dem der mangler stemplet.
+  Idempotent. Audit-logged som `backfill/endpoint/purge_protect`.
+- Nyt admin-only endpoint `POST /api/endpoints/purge-protect-backfill` der
+  returnerer `{scanned, already_ok, updated, failures}`.
+
+**Frontend:**
+- Ny "Purge-protection"-card i Settings med Backfill-knap, confirm-dialog,
+  in-flight progress og resultat-rapport (success/warning ved fejl + expandable
+  failure-list).
+
+**Filer:** [backend/app/core/custom_attr_store.py](backend/app/core/custom_attr_store.py),
+[backend/app/services/endpoint_service.py](backend/app/services/endpoint_service.py),
+[backend/app/api/endpoints.py](backend/app/api/endpoints.py),
+[frontend/js/api.js](frontend/js/api.js),
+[frontend/js/views/settings.js](frontend/js/views/settings.js)
+
+**Use:** Efter opgradering, gå til Settings → Purge-protection → klik
+"Backfill DeviceRegistrationStatus..." én gang for at stemple alle
+eksisterende portal-endpoints. Nye endpoints stemples automatisk fra nu.
+
+---
+
 ## [3.6.3 build 0114] — 2026-04-29 — diag(PxGrid): vis ServiceLookup-properties for endpoint-topic
 
 User rapporterer at endpoint-events udebliver selv om SUBSCRIBE accepteres

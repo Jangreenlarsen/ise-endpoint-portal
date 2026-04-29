@@ -5,7 +5,13 @@ import logging
 from typing import Any
 
 from app.core import audit_store, config
-from app.core.custom_attr_store import ALL_ATTRS, HIDDEN_ATTR, ROLES_ATTR
+from app.core.custom_attr_store import (
+    ALL_ATTRS,
+    HIDDEN_ATTR,
+    PURGE_PROTECT_ATTR,
+    PURGE_PROTECT_VALUE,
+    ROLES_ATTR,
+)
 from app.core.endpoint_cache import get_cache
 from app.core.exceptions import IseApiError
 from app.core.oui_lookup import lookup as oui_lookup
@@ -314,6 +320,10 @@ class EndpointService:
         ca = req.custom_attributes.model_dump() if req.custom_attributes else {}
         # Always stamp endpoints created by this portal
         ca[HIDDEN_ATTR] = "true"
+        # 3.7.0: stempel DeviceRegistrationStatus=Registered så ISE's purge-
+        # rules springer endpointet over (matcher CA med samme navn som den
+        # indbyggede BYOD-attribut).
+        ca[PURGE_PROTECT_ATTR] = PURGE_PROTECT_VALUE
         _apply_auto_tag(ca, auto_tag_username)
         await self._ensure_ca_definitions()
         # Bevar eksplicit staticGroupAssignment hvis angivet (fx fra CSV-import),
@@ -415,6 +425,7 @@ class EndpointService:
         ca = update.custom_attributes.model_dump() if update.custom_attributes else {}
         # Always stamp endpoints edited through this portal
         ca[HIDDEN_ATTR] = "true"
+        ca[PURGE_PROTECT_ATTR] = PURGE_PROTECT_VALUE
         _apply_auto_tag(ca, auto_tag_username)
         await self._ensure_ca_definitions()
         # Snapshot before-state for audit + rollback.
@@ -447,6 +458,94 @@ class EndpointService:
             before=before,
             after=after,
         )
+
+    async def purge_protect_backfill(self) -> dict[str, Any]:
+        """Stempel ``DeviceRegistrationStatus=Registered`` på alle eksisterende
+        portal-endpoints (HypervisionISEPortal=true) der mangler attributten.
+
+        Bruges én gang efter opgradering til 3.7.0 så historiske endpoints også
+        bliver beskyttet mod ISE's purge-policy. Idempotent: endpoints der
+        allerede har stemplet ignoreres. Begrænser til portal-endpoints så vi
+        ikke rører andres data i ISE.
+        """
+        logger.info("purge-protect backfill: scanning portal endpoints")
+        await self._ensure_ca_definitions()
+        # Bredt portal-only scan via ERS-filter på CUSTOM-attributten.
+        scanned = 0
+        already_ok = 0
+        updated = 0
+        failures: list[dict[str, str]] = []
+        # ERS understøtter kun ét sideopslag ad gangen — paginér gennem listen.
+        page = 1
+        page_size = 100
+        while True:
+            try:
+                items = await self.list_endpoints(
+                    page=page, size=page_size,
+                    filters=[f"CUSTOM.{HIDDEN_ATTR}.EQ.true"],
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.error("backfill list_endpoints fejlede side %d: %s", page, exc)
+                break
+            if not items:
+                break
+            for ep in items:
+                scanned += 1
+                try:
+                    detail = await self.get_endpoint(ep.id)
+                except Exception as exc:  # noqa: BLE001
+                    failures.append({"id": ep.id, "mac": ep.mac, "error": str(exc)})
+                    continue
+                ca_dump = detail.custom_attributes.model_dump()
+                # ca_dump kun har MANAGED_ATTRS — vi skal hente raw for at
+                # tjekke om DeviceRegistrationStatus allerede er sat.
+                raw_ca: dict[str, str] = {}
+                try:
+                    raw = await self.endpoints.get(ep.id)
+                    raw_ca = (raw.get("customAttributes") or {}).get(
+                        "customAttributes", {}
+                    ) or raw.get("customAttributes") or {}
+                except Exception:  # noqa: BLE001
+                    raw_ca = {}
+                if str(raw_ca.get(PURGE_PROTECT_ATTR, "")).lower() == PURGE_PROTECT_VALUE.lower():
+                    already_ok += 1
+                    continue
+                # Update kun med det ene felt — bevar andre CAs ved at sende
+                # det fulde existing-set + ny værdi.
+                merged_ca = {**raw_ca, PURGE_PROTECT_ATTR: PURGE_PROTECT_VALUE}
+                merged_ca[HIDDEN_ATTR] = "true"
+                try:
+                    await self.endpoints.update(
+                        ep.id, custom_attributes=merged_ca,
+                    )
+                    get_cache().invalidate_detail(ep.id)
+                    updated += 1
+                except Exception as exc:  # noqa: BLE001
+                    failures.append({"id": ep.id, "mac": ep.mac, "error": str(exc)})
+            if len(items) < page_size:
+                break
+            page += 1
+        logger.info(
+            "purge-protect backfill complete: scanned=%d already_ok=%d updated=%d failed=%d",
+            scanned, already_ok, updated, len(failures),
+        )
+        await audit_store.record(
+            "backfill",
+            "endpoint",
+            "purge_protect",
+            after={
+                "scanned": scanned,
+                "already_ok": already_ok,
+                "updated": updated,
+                "failed": len(failures),
+            },
+        )
+        return {
+            "scanned": scanned,
+            "already_ok": already_ok,
+            "updated": updated,
+            "failures": failures,
+        }
 
     async def bulk_create(
         self,

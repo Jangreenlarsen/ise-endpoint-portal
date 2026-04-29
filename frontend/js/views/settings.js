@@ -396,6 +396,26 @@ export async function renderSettings(container) {
 
     ${isAdmin ? `
     <div class="card">
+      <h3>Purge-protection</h3>
+      <p class="hint">
+        ISE's default endpoint-purge-policy fjerner endpoints baseret på inaktivitet.
+        Portalen stempler nu automatisk <code>DeviceRegistrationStatus = Registered</code>
+        på alle nye/redigerede endpoints — ISE springer matchende endpoints over ved
+        purge-evaluering. Eksisterende portal-endpoints fra før 3.7.0 mangler stemplet
+        og skal backfilles én gang.
+      </p>
+      <div id="purge-protect-msg"></div>
+      <div class="actions">
+        <button type="button" id="purge-protect-backfill-btn" class="secondary">Backfill DeviceRegistrationStatus på alle portal-endpoints</button>
+      </div>
+      <p class="hint">
+        Idempotent — skipper endpoints der allerede har stemplet. Kører sekventielt
+        gennem alle portal-endpoints (HypervisionISEPortal=true), så det kan tage
+        nogle minutter ved store deployments. Kan altid køres igen.
+      </p>
+    </div>
+
+    <div class="card">
       <h3>Endpoint-roller</h3>
       <p class="hint">
         Roller der kan tagges på endpoints (CA <code>HypervisionRoles</code>) og tildeles
@@ -531,6 +551,7 @@ export async function renderSettings(container) {
     await initBackendSection(container);
     await initCacheSection(container);
     await initPxGridSection(container);
+    await initPurgeProtectSection(container);
     const rolesState = await initRolesSection(container);
     await initUsersSection(container, currentUser, rolesState);
   }
@@ -1067,6 +1088,40 @@ async function initBackendSection(container) {
         : "Intet password sat endnu.";
     } catch (err) {
       backendMsg.innerHTML = `<div class="alert error">${err.message}</div>`;
+    }
+  });
+}
+
+async function initPurgeProtectSection(container) {
+  const btn = container.querySelector("#purge-protect-backfill-btn");
+  const msg = container.querySelector("#purge-protect-msg");
+  if (!btn || !msg) return;
+  btn.addEventListener("click", async () => {
+    if (!confirm(
+      "Backfill DeviceRegistrationStatus=Registered på alle portal-endpoints?\n\n" +
+      "Dette kan tage nogle minutter for store deployments. " +
+      "Kan altid køres igen — idempotent."
+    )) return;
+    btn.disabled = true;
+    msg.innerHTML = `<div class="alert info">Kører backfill — vent venligst...</div>`;
+    try {
+      const r = await api.purgeProtectBackfill();
+      const failures = (r.failures || []).length;
+      const cls = failures > 0 ? "warning" : "success";
+      const failHtml = failures
+        ? `<details style="margin-top:0.4rem;"><summary>${failures} fejl</summary>` +
+          `<pre style="white-space:pre-wrap;font-size:0.85em;">${esc(JSON.stringify(r.failures, null, 2))}</pre></details>`
+        : "";
+      msg.innerHTML = `<div class="alert ${cls}">
+        Backfill færdig — scannet: <strong>${r.scanned}</strong>,
+        allerede ok: <strong>${r.already_ok}</strong>,
+        opdateret: <strong>${r.updated}</strong>,
+        fejl: <strong>${failures}</strong>${failHtml}
+      </div>`;
+    } catch (err) {
+      msg.innerHTML = `<div class="alert error">Backfill fejlede: ${esc(err.message)}</div>`;
+    } finally {
+      btn.disabled = false;
     }
   });
 }
