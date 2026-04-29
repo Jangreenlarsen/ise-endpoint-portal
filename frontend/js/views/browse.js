@@ -110,6 +110,11 @@ export async function renderBrowse(container) {
                 title="CoA Disconnect — deautentificér valgte klienter på WLC/switch (tvinger ny DHCP ved re-associate)">Disconnect valgte</button>
         <button id="bulk-del-btn" class="danger small" disabled>Slet valgte</button>
         <span id="selection-count" class="hint"></span>
+        <span id="pxgrid-source-badge" class="hint"
+              title="Hvor auth-status kommer fra: pxGrid push (live) eller MnT pull (5-15s forsinkelse)"
+              style="margin-left:auto; padding:2px 8px; border-radius:10px; font-size:0.8em; background:#e5e7eb; color:#374151;">
+          ⚪ Auth-status: ukendt
+        </span>
         <label class="hint page-size-label">Vis
           <select id="page-size-select">
             <option value="10">10</option>
@@ -610,14 +615,16 @@ export async function renderBrowse(container) {
   }
 
   async function refreshActiveSessionMacs() {
-    if (!anyFilterActive()) {
-      activeSessionMacs = null;
-      return;
-    }
-    // Phase 3 (3.5.0): hvis pxGrid SSE-stream allerede pusher live data,
-    // skip MnT-polden — cache er fresher og koster ikke ISE round-trips.
+    // Phase 3 (3.5.0): når pxGrid SSE-stream er live har vi allerede fresh
+    // data — vis altid auth-status farver, uafhængigt af filter (SSE-data
+    // kostede ikke noget ekstra ISE-kald). MnT-polden kun for at skåne ISE
+    // ved store unfiltered datasets.
     if (pxgridLive && pxgridSessionMacs) {
       activeSessionMacs = new Set(pxgridSessionMacs);
+      return;
+    }
+    if (!anyFilterActive()) {
+      activeSessionMacs = null;
       return;
     }
     try {
@@ -626,6 +633,31 @@ export async function renderBrowse(container) {
     } catch (err) {
       console.warn("Kunne ikke hente aktive sessioner fra MnT:", err.message);
       activeSessionMacs = null;
+    }
+  }
+
+  // Push/pull-indikator + last-event tidsstempel.
+  let pxgridLastEventTs = 0;
+  function updatePxGridSourceBadge() {
+    const el = container.querySelector("#pxgrid-source-badge");
+    if (!el) return;
+    if (pxgridLive && pxgridSessionMacs) {
+      const ago = pxgridLastEventTs
+        ? Math.max(0, Math.floor(Date.now() / 1000 - pxgridLastEventTs))
+        : null;
+      const agoStr = ago === null ? "—"
+        : ago < 60 ? `${ago}s` : ago < 3600 ? `${Math.floor(ago/60)}m` : `${Math.floor(ago/3600)}t`;
+      el.textContent = `🟢 Auth-status: PUSH (pxGrid · ${pxgridSessionMacs.size} aktive · sidste event ${agoStr} siden)`;
+      el.style.background = "#dcfce7";
+      el.style.color = "#166534";
+    } else if (activeSessionMacs) {
+      el.textContent = `🟡 Auth-status: PULL (MnT-poll · ${activeSessionMacs.size} aktive)`;
+      el.style.background = "#fef3c7";
+      el.style.color = "#92400e";
+    } else {
+      el.textContent = "⚪ Auth-status: inaktiv (intet filter + pxGrid offline)";
+      el.style.background = "#e5e7eb";
+      el.style.color = "#374151";
     }
   }
 
@@ -656,10 +688,10 @@ export async function renderBrowse(container) {
         const data = JSON.parse(e.data);
         pxgridSessionMacs = new Set((data.sessions || []).map(s => normalizeMac(s.mac)));
         pxgridLive = true;
-        if (anyFilterActive()) {
-          activeSessionMacs = new Set(pxgridSessionMacs);
-          applyAuthStatusColors();
-        }
+        pxgridLastEventTs = Math.floor(Date.now() / 1000);
+        activeSessionMacs = new Set(pxgridSessionMacs);
+        applyAuthStatusColors();
+        updatePxGridSourceBadge();
       } catch {}
     });
     pxgridEventSource.addEventListener("upsert", (e) => {
@@ -669,10 +701,11 @@ export async function renderBrowse(container) {
         if (!mac) return;
         if (!pxgridSessionMacs) pxgridSessionMacs = new Set();
         pxgridSessionMacs.add(mac);
-        if (activeSessionMacs && anyFilterActive()) {
-          activeSessionMacs.add(mac);
-          applyAuthStatusColors();
-        }
+        pxgridLastEventTs = data.ts || Math.floor(Date.now() / 1000);
+        if (!activeSessionMacs) activeSessionMacs = new Set();
+        activeSessionMacs.add(mac);
+        applyAuthStatusColors();
+        updatePxGridSourceBadge();
       } catch {}
     });
     pxgridEventSource.addEventListener("remove", (e) => {
@@ -680,25 +713,26 @@ export async function renderBrowse(container) {
         const data = JSON.parse(e.data);
         const mac = normalizeMac(data.mac);
         if (pxgridSessionMacs) pxgridSessionMacs.delete(mac);
-        if (activeSessionMacs) {
-          activeSessionMacs.delete(mac);
-          applyAuthStatusColors();
-        }
+        pxgridLastEventTs = data.ts || Math.floor(Date.now() / 1000);
+        if (activeSessionMacs) activeSessionMacs.delete(mac);
+        applyAuthStatusColors();
+        updatePxGridSourceBadge();
       } catch {}
     });
     pxgridEventSource.addEventListener("clear", () => {
       if (pxgridSessionMacs) pxgridSessionMacs.clear();
-      if (activeSessionMacs) {
-        activeSessionMacs.clear();
-        applyAuthStatusColors();
-      }
+      if (activeSessionMacs) activeSessionMacs.clear();
+      applyAuthStatusColors();
+      updatePxGridSourceBadge();
     });
     pxgridEventSource.onerror = () => {
-      // EventSource auto-reconnecter selv. Marker som ikke-live så
-      // refreshActiveSessionMacs falder tilbage til MnT-poll i mellemtiden.
       pxgridLive = false;
+      updatePxGridSourceBadge();
     };
-    pxgridEventSource.onopen = () => { pxgridLive = true; };
+    pxgridEventSource.onopen = () => {
+      pxgridLive = true;
+      updatePxGridSourceBadge();
+    };
   }
 
   function stopPxGridStream() {
@@ -714,9 +748,13 @@ export async function renderBrowse(container) {
   // 401/snapshot vil være tom, og vi falder tilbage til MnT uden brugeren
   // mærker noget. Cleanup når view skiftes:
   startPxGridStream();
+  updatePxGridSourceBadge();
+  // Tæl "sidste event N siden" op live så badge ikke ser fastfrosset ud.
+  const badgeTickTimer = setInterval(updatePxGridSourceBadge, 5000);
   const cleanupObs = new MutationObserver(() => {
     if (!document.body.contains(container)) {
       stopPxGridStream();
+      clearInterval(badgeTickTimer);
       cleanupObs.disconnect();
     }
   });

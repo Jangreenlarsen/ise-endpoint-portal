@@ -5,6 +5,28 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.5.1 build 0109] — 2026-04-29 — fix(Browse): live re-color uden refresh + push/pull-indikator
+
+To problemer i Phase 3-leverancen rapporteret efter rollout:
+
+1. **Auth-status opdateredes kun ved Refresh** — SSE-handlerne for `upsert/remove`
+   tjekkede `anyFilterActive()` og sprang DOM-update over uden filter, så
+   live events ikke ændrede grøn/rød farve på rækkerne. Fix: `activeSessionMacs`
+   populeres nu altid fra `pxgridSessionMacs` når stream er live (det koster
+   ingen ISE-kald), og `applyAuthStatusColors()` kaldes uafhængigt af filter.
+2. **Ingen indikation af kilde** — admin kunne ikke se om farverne kom fra
+   pxGrid push eller MnT pull. Ny status-badge i Browse-toolbar viser:
+   - 🟢 PUSH (pxGrid · N aktive · sidste event Xs siden)
+   - 🟡 PULL (MnT-poll · N aktive)
+   - ⚪ Inaktiv (intet filter + pxGrid offline)
+
+   Badge tælles op hvert 5s så "sidste event"-tid forbliver retvisende selv
+   når der er stille på STOMP-kanalen.
+
+**Filer:** [frontend/js/views/browse.js](frontend/js/views/browse.js)
+
+---
+
 ## [3.5.0 build 0108] — 2026-04-29 — feat(PxGrid Phase 3): SSE-stream til frontend, Browse farver live
 
 Phase 2b's worker fyldte cachen med real-time event-data, men frontend
