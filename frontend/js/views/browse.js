@@ -614,16 +614,113 @@ export async function renderBrowse(container) {
       activeSessionMacs = null;
       return;
     }
+    // Phase 3 (3.5.0): hvis pxGrid SSE-stream allerede pusher live data,
+    // skip MnT-polden — cache er fresher og koster ikke ISE round-trips.
+    if (pxgridLive && pxgridSessionMacs) {
+      activeSessionMacs = new Set(pxgridSessionMacs);
+      return;
+    }
     try {
       const list = await api.listActiveSessionMacs();
       activeSessionMacs = new Set((list || []).map(normalizeMac));
     } catch (err) {
-      // MnT kald kan fejle hvis brugeren ikke har MnT Admin-rolle — vi
-      // viser blot ingen farver i så fald og logger i console.
       console.warn("Kunne ikke hente aktive sessioner fra MnT:", err.message);
       activeSessionMacs = null;
     }
   }
+
+  // ── PxGrid SSE-stream (3.5.0) ────────────────────────────────────────
+  // EventSource der lytter på /api/pxgrid/sessions/stream og holder en
+  // live MAC-set opdateret. Hvis stream'en virker bruger refreshActiveSessionMacs
+  // den i stedet for at polle MnT. Auto-reconnect indbygget i EventSource.
+  let pxgridEventSource = null;
+  let pxgridLive = false;
+  let pxgridSessionMacs = null;  // Set<MAC> eller null hvis ikke streamer
+
+  function startPxGridStream() {
+    if (pxgridEventSource) return;
+    const token = (window.localStorage && localStorage.getItem("hv_ise_token")) || "";
+    if (!token) return;
+    const base = window.location.origin.startsWith("file://")
+      ? "http://localhost:8000" : "";
+    try {
+      pxgridEventSource = new EventSource(
+        `${base}/api/pxgrid/sessions/stream?token=${encodeURIComponent(token)}`
+      );
+    } catch (err) {
+      console.warn("EventSource opsætning fejlede:", err);
+      return;
+    }
+    pxgridEventSource.addEventListener("snapshot", (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        pxgridSessionMacs = new Set((data.sessions || []).map(s => normalizeMac(s.mac)));
+        pxgridLive = true;
+        if (anyFilterActive()) {
+          activeSessionMacs = new Set(pxgridSessionMacs);
+          applyAuthStatusColors();
+        }
+      } catch {}
+    });
+    pxgridEventSource.addEventListener("upsert", (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        const mac = normalizeMac(data.mac);
+        if (!mac) return;
+        if (!pxgridSessionMacs) pxgridSessionMacs = new Set();
+        pxgridSessionMacs.add(mac);
+        if (activeSessionMacs && anyFilterActive()) {
+          activeSessionMacs.add(mac);
+          applyAuthStatusColors();
+        }
+      } catch {}
+    });
+    pxgridEventSource.addEventListener("remove", (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        const mac = normalizeMac(data.mac);
+        if (pxgridSessionMacs) pxgridSessionMacs.delete(mac);
+        if (activeSessionMacs) {
+          activeSessionMacs.delete(mac);
+          applyAuthStatusColors();
+        }
+      } catch {}
+    });
+    pxgridEventSource.addEventListener("clear", () => {
+      if (pxgridSessionMacs) pxgridSessionMacs.clear();
+      if (activeSessionMacs) {
+        activeSessionMacs.clear();
+        applyAuthStatusColors();
+      }
+    });
+    pxgridEventSource.onerror = () => {
+      // EventSource auto-reconnecter selv. Marker som ikke-live så
+      // refreshActiveSessionMacs falder tilbage til MnT-poll i mellemtiden.
+      pxgridLive = false;
+    };
+    pxgridEventSource.onopen = () => { pxgridLive = true; };
+  }
+
+  function stopPxGridStream() {
+    if (pxgridEventSource) {
+      pxgridEventSource.close();
+      pxgridEventSource = null;
+    }
+    pxgridLive = false;
+    pxgridSessionMacs = null;
+  }
+
+  // Start stream'en proaktivt — hvis pxGrid er disabled returnerer endpoint'et
+  // 401/snapshot vil være tom, og vi falder tilbage til MnT uden brugeren
+  // mærker noget. Cleanup når view skiftes:
+  startPxGridStream();
+  const cleanupObs = new MutationObserver(() => {
+    if (!document.body.contains(container)) {
+      stopPxGridStream();
+      cleanupObs.disconnect();
+    }
+  });
+  cleanupObs.observe(document.body, { childList: true, subtree: true });
 
   function applyAuthStatusColors() {
     const rows = tbody.querySelectorAll("tr[data-id]");

@@ -5,6 +5,44 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.5.0 build 0108] — 2026-04-29 — feat(PxGrid Phase 3): SSE-stream til frontend, Browse farver live
+
+Phase 2b's worker fyldte cachen med real-time event-data, men frontend
+brugte stadig MnT-poll for at farve auth-status. Phase 3 lukker loopet:
+en SSE-stream pusher cache-deltas direkte til Browse-viewet, så grøn/rød
+checkbox-farve følger ISE i realtid uden poll.
+
+**Backend:**
+- `session_cache.py` udvidet med pubsub-fan-out: hver SSE-subscriber får sin
+  egen `asyncio.Queue` (cap 256, drop-oldest ved overflow så slow consumers
+  ikke holder worker'en op). `upsert/remove/clear` broadcaster events.
+- Nyt endpoint `GET /api/pxgrid/sessions/stream?token=<jwt>` (text/event-stream).
+  EventSource kan ikke sætte Authorization-header, så JWT'en accepteres som
+  query-param og valideres mod samme codepath som require_any. Sender
+  `snapshot` ved connect, derefter `upsert`/`remove`/`clear` events,
+  `keepalive` hvert 15s.
+
+**Frontend:**
+- `browse.js` åbner EventSource ved view-load, holder en lokal Set af
+  aktive MAC'er live opdateret. Når mindst ét filter er aktivt og pxGrid-
+  stream er live, springes MnT-polden over (kommer ind i `refreshActiveSessionMacs`).
+- Graceful fallback: EventSource auto-reconnecter; når den er nede falder
+  vi tilbage til MnT-poll. Når pxGrid er disabled returnerer endpoint'et
+  401 og browse fortsætter med MnT som hidtil.
+- Cleanup når Browse-view skiftes (MutationObserver + EventSource.close()).
+
+**Designvalg:** SSE valgt over WebSocket fordi (a) one-way push er nok —
+frontend skal kun læse, (b) browser auto-reconnect er gratis, (c) ingen
+ekstra dependency på server-side. Token-i-query er en bevidst trade-off
+for EventSource's manglende header-support; tokens er korte og pages igennem
+samme CORS/HTTPS som resten af API'et.
+
+**Filer:** [backend/app/pxgrid/session_cache.py](backend/app/pxgrid/session_cache.py),
+[backend/app/api/pxgrid.py](backend/app/api/pxgrid.py),
+[frontend/js/views/browse.js](frontend/js/views/browse.js)
+
+---
+
 ## [3.4.0 build 0107] — 2026-04-28 — feat(PxGrid Phase 2b): persistent STOMP-worker + session-cache
 
 Phase 2a's prober blev brugt som diagnose-værktøj og er bekræftet end-to-end

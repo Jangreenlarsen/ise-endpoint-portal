@@ -49,10 +49,37 @@ class SessionCache:
         self._messages_total = 0
         self._upserts_total = 0
         self._evictions_total = 0
+        # Phase 3 (3.5.0): pubsub-fan-out til SSE-subscribers. Hver subscriber
+        # får sin egen Queue så langsomme klienter ikke holder worker'en op.
+        # Queue capper ved 256 events; ved overflow droppes ældste.
+        self._subscribers: set[asyncio.Queue] = set()
 
     @staticmethod
     def _norm(mac: str) -> str:
         return (mac or "").upper().replace("-", ":").strip()
+
+    def subscribe(self, maxsize: int = 256) -> asyncio.Queue:
+        q: asyncio.Queue = asyncio.Queue(maxsize=maxsize)
+        self._subscribers.add(q)
+        return q
+
+    def unsubscribe(self, q: asyncio.Queue) -> None:
+        self._subscribers.discard(q)
+
+    def _broadcast(self, event: dict) -> None:
+        dead: list[asyncio.Queue] = []
+        for q in self._subscribers:
+            try:
+                q.put_nowait(event)
+            except asyncio.QueueFull:
+                # Slow consumer: drop oldest event so nye kommer igennem.
+                try:
+                    q.get_nowait()
+                    q.put_nowait(event)
+                except Exception:  # noqa: BLE001
+                    dead.append(q)
+        for q in dead:
+            self._subscribers.discard(q)
 
     async def upsert(self, info: SessionInfo) -> None:
         info.mac = self._norm(info.mac)
@@ -61,6 +88,15 @@ class SessionCache:
         async with self._lock:
             self._sessions[info.mac] = info
             self._upserts_total += 1
+        self._broadcast({
+            "type": "upsert",
+            "mac": info.mac,
+            "state": info.state,
+            "user_name": info.user_name,
+            "nas_ip": info.nas_ip,
+            "audit_session_id": info.audit_session_id,
+            "ts": info.last_event_at,
+        })
 
     async def remove(self, mac: str) -> bool:
         mac = self._norm(mac)
@@ -68,13 +104,17 @@ class SessionCache:
             existed = self._sessions.pop(mac, None) is not None
             if existed:
                 self._evictions_total += 1
-            return existed
+        if existed:
+            self._broadcast({"type": "remove", "mac": mac, "ts": time.time()})
+        return existed
 
     async def clear(self) -> None:
         async with self._lock:
             n = len(self._sessions)
             self._sessions.clear()
             self._evictions_total += n
+        if n:
+            self._broadcast({"type": "clear", "ts": time.time()})
 
     def note_message(self) -> None:
         self._messages_total += 1

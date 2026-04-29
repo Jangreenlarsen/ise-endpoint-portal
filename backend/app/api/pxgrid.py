@@ -7,10 +7,17 @@ forbrugerens vej ind — enhver authentikeret bruger må læse cache
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+import asyncio
+import json
+import logging
 
-from app.api.deps import require_admin, require_any
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi.responses import StreamingResponse
+
+from app.api.deps import get_current_user, require_admin, require_any
+from app.core import auth as auth_core
 from app.core import config
+from app.core.user_store import find_by_id, load_users
 from app.pxgrid.session_cache import get_cache
 from app.pxgrid.session_worker import get_worker
 from app.schemas.settings import (
@@ -18,6 +25,9 @@ from app.schemas.settings import (
     PxGridSessionsResponse,
     PxGridWorkerStatusResponse,
 )
+
+logger = logging.getLogger(__name__)
+SSE_KEEPALIVE_SECONDS = 15.0
 
 router = APIRouter(prefix="/pxgrid", tags=["pxgrid"])
 
@@ -94,6 +104,73 @@ async def worker_status() -> PxGridWorkerStatusResponse:
         messages_total=st.messages_total,
         subscribed_topic=st.subscribed_topic,
         cache_size=cache.stats()["size"],
+    )
+
+
+@router.get("/sessions/stream")
+async def sessions_stream(
+    request: Request,
+    token: str = Query("", description="Bearer-token (EventSource kan ikke sætte Auth-header)"),
+):
+    """SSE-stream af session-cache deltas.
+
+    Browser's ``EventSource`` API understøtter ikke custom headers, så vi
+    accepterer JWT'en som query-param i stedet for ``Authorization``-header.
+    Validerer manuelt mod samme JWT-codepath som require_any.
+
+    Event-types:
+      - ``snapshot``: initial fuld liste ved connect
+      - ``upsert``: ny eller opdateret session
+      - ``remove``: session disconnected
+      - ``clear``: cache wiped (worker-reset)
+      - ``ping``: keepalive (hver 15s)
+    """
+    payload = auth_core.verify_token(token) if token else None
+    if not payload or not isinstance(payload.get("sub"), str):
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED, "Manglende eller ugyldigt token"
+        )
+    record = find_by_id(load_users(), payload["sub"])
+    if not record or record["role"] != payload.get("role"):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Bruger ikke fundet")
+
+    cache = get_cache()
+    queue = cache.subscribe()
+
+    async def event_generator():
+        try:
+            initial = await cache.list(
+                max_age_s=config.settings.pxgrid_session_cache_max_age_s
+            )
+            snapshot = {
+                "type": "snapshot",
+                "sessions": [s.to_dict() for s in initial],
+            }
+            yield f"event: snapshot\ndata: {json.dumps(snapshot)}\n\n"
+
+            while True:
+                if await request.is_disconnected():
+                    break
+                try:
+                    evt = await asyncio.wait_for(
+                        queue.get(), timeout=SSE_KEEPALIVE_SECONDS
+                    )
+                    yield f"event: {evt['type']}\ndata: {json.dumps(evt)}\n\n"
+                except asyncio.TimeoutError:
+                    yield ": keepalive\n\n"
+        except asyncio.CancelledError:
+            raise
+        finally:
+            cache.unsubscribe(queue)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache, no-transform",
+            "X-Accel-Buffering": "no",  # disable nginx buffering hvis foran proxy
+            "Connection": "keep-alive",
+        },
     )
 
 
