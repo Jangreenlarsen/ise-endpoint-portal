@@ -396,23 +396,41 @@ export async function renderSettings(container) {
 
     ${isAdmin ? `
     <div class="card">
-      <h3>Purge-protection</h3>
+      <h3>Anbefalet ISE purge-config</h3>
       <p class="hint">
-        ISE's default endpoint-purge-policy fjerner endpoints baseret på inaktivitet.
-        Portalen stempler nu automatisk <code>DeviceRegistrationStatus = Registered</code>
-        på alle nye/redigerede endpoints — ISE springer matchende endpoints over ved
-        purge-evaluering. Eksisterende portal-endpoints fra før 3.7.0 mangler stemplet
-        og skal backfilles én gang.
+        ISE's default endpoint-purge-policy sletter endpoints efter inaktivitet — det er
+        ødelæggende for portal-managed devices. <strong>ISE 3.5+</strong> understøtter
+        custom attributes som purge-condition (i 3.4 og tidligere er denne mulighed ikke
+        tilgængelig — der skal man bruge Identity Group som condition i stedet).
       </p>
-      <div id="purge-protect-msg"></div>
-      <div class="actions">
-        <button type="button" id="purge-protect-backfill-btn" class="secondary">Backfill DeviceRegistrationStatus på alle portal-endpoints</button>
-      </div>
       <p class="hint">
-        Idempotent — skipper endpoints der allerede har stemplet. Kører sekventielt
-        gennem alle portal-endpoints (HypervisionISEPortal=true), så det kan tage
-        nogle minutter ved store deployments. Kan altid køres igen.
+        Portalen stempler automatisk <code>HypervisionISEPortal = true</code> på alle
+        endpoints den opretter eller redigerer. Tilføj én "Never Purge"-regel i ISE der
+        matcher den attribut, så slipper portal-endpoints for purge:
       </p>
+      <ol style="margin-left:1rem; line-height:1.6;">
+        <li>Log på ISE GUI som admin</li>
+        <li>Gå til <strong>Administration → Identity Management → Settings → Endpoint Purge</strong></li>
+        <li>Find sektionen <strong>Never Purge</strong> og klik <strong>Add</strong> (eller "Insert New Rule")</li>
+        <li>Sæt felterne:
+          <ul style="margin-top:0.3rem;">
+            <li><strong>Rule Name:</strong> <code>HyperVision Portal</code> <button type="button" class="secondary small copy-btn" data-copy="HyperVision Portal">Kopiér</button></li>
+            <li><strong>Condition:</strong> <code>CUSTOMATTRIBUTE HypervisionISEPortal EQUALS true</code> <button type="button" class="secondary small copy-btn" data-copy="HypervisionISEPortal">Kopiér attribut-navn</button></li>
+            <li><strong>Status:</strong> ✅ Enabled</li>
+          </ul>
+        </li>
+        <li>Klik <strong>Save</strong></li>
+      </ol>
+      <p class="hint" style="margin-top:0.5rem;">
+        Der findes <em>ingen ERS/Open API</em> til at oprette purge-rules programmatisk
+        — det skal gøres manuelt i ISE GUI'en. Til gengæld er det en engangs-opsætning.
+      </p>
+      <p class="hint">
+        <strong>ISE 3.4 alternativ</strong> (uden custom-attribute support i purge-rules):
+        opret en dedikeret Endpoint Identity Group (fx <code>HypervisionPortalManaged</code>)
+        og placér portal-endpoints i den; brug derefter Identity Group som condition i Never Purge-rule.
+      </p>
+      <div id="purge-protect-msg" class="hint"></div>
     </div>
 
     <div class="card">
@@ -1093,36 +1111,22 @@ async function initBackendSection(container) {
 }
 
 async function initPurgeProtectSection(container) {
-  const btn = container.querySelector("#purge-protect-backfill-btn");
+  // Copy-knapper i vejledning-card'et: lægger den specificerede streng på
+  // udklipsholderen så admin hurtigt kan paste ind i ISE-formularen.
   const msg = container.querySelector("#purge-protect-msg");
-  if (!btn || !msg) return;
-  btn.addEventListener("click", async () => {
-    if (!confirm(
-      "Backfill DeviceRegistrationStatus=Registered på alle portal-endpoints?\n\n" +
-      "Dette kan tage nogle minutter for store deployments. " +
-      "Kan altid køres igen — idempotent."
-    )) return;
-    btn.disabled = true;
-    msg.innerHTML = `<div class="alert info">Kører backfill — vent venligst...</div>`;
-    try {
-      const r = await api.purgeProtectBackfill();
-      const failures = (r.failures || []).length;
-      const cls = failures > 0 ? "warning" : "success";
-      const failHtml = failures
-        ? `<details style="margin-top:0.4rem;"><summary>${failures} fejl</summary>` +
-          `<pre style="white-space:pre-wrap;font-size:0.85em;">${esc(JSON.stringify(r.failures, null, 2))}</pre></details>`
-        : "";
-      msg.innerHTML = `<div class="alert ${cls}">
-        Backfill færdig — scannet: <strong>${r.scanned}</strong>,
-        allerede ok: <strong>${r.already_ok}</strong>,
-        opdateret: <strong>${r.updated}</strong>,
-        fejl: <strong>${failures}</strong>${failHtml}
-      </div>`;
-    } catch (err) {
-      msg.innerHTML = `<div class="alert error">Backfill fejlede: ${esc(err.message)}</div>`;
-    } finally {
-      btn.disabled = false;
-    }
+  container.querySelectorAll(".copy-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const text = btn.dataset.copy || "";
+      try {
+        await navigator.clipboard.writeText(text);
+        if (msg) msg.innerHTML = `<span style="color:#166534;">Kopieret: <code>${esc(text)}</code></span>`;
+        const original = btn.textContent;
+        btn.textContent = "✓ Kopieret";
+        setTimeout(() => { btn.textContent = original; }, 1500);
+      } catch (err) {
+        if (msg) msg.innerHTML = `<span style="color:#b91c1c;">Kunne ikke kopiere: ${esc(err.message)}</span>`;
+      }
+    });
   });
 }
 

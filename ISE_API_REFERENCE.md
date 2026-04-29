@@ -408,3 +408,124 @@ GET /admin/API/mnt/CoA/Disconnect/{psnName}/{macAddress}/{disconnectType}
 6. **ERS SDK** — `https://<ise>:9060/ers/sdk` giver auto-genereret doku med schema-filer, Java/Python eksempler, og cURL use cases. Kun tilgængelig for ERS Admin.
 7. **Swagger UI** — `https://<ise>/api/swagger-ui/index.html` for Open API interactive docs.
 8. **pxGrid 2.0 `/pxgrid/control/AccessSecret`** — bemærk: kortform uden "Create"-suffix, modsat de tre andre control-plane calls (`AccountCreate`, `AccountActivate`, `ServiceLookup`). ISE 3.4 returnerer **404** hvis du kalder `/AccessSecretCreate` (let trap fordi naming-mønstret bryder med de øvrige). Verificeret empirisk på ISE 3.4 — Cisco DevNet samples (cisco-pxgrid/pxgrid-rest-ws) bruger også kortformen.
+
+---
+
+## pxGrid 2.0 — empiriske erfaringer fra portalen
+
+Dokumenteret i forbindelse med implementering af 3.0.0 → 3.6.x-roadmap'en (REST control plane → STOMP-prober → persistent worker → SSE til frontend → multi-topic).
+
+### Kontrolplan-bootstrap (REST på port 8910)
+
+Sekvensen for førstegangs-onboarding af en pxGrid-klient:
+
+1. `POST /pxgrid/control/AccountCreate { "nodeName": "<klient-navn>" }` — registrér klienten. ISE returnerer typisk `accountState=PENDING` første gang.
+2. **Manuel approve i ISE GUI** — Administration → pxGrid Services → Clients → ✅ approve. Eller opsæt "Automatically approve new certificate-based accounts" hvis du vil have automation.
+3. `POST /pxgrid/control/AccountActivate {}` — første gang efter approve returneres `password`-felt; gem det.
+4. Efterfølgende calls bruger Basic auth `(node_name, password)` oven på mTLS.
+
+**Gotchas i bootstrap:**
+- **HTTP 503 på AccountCreate** når klienten allerede er registreret. ISE 3.4 burde returnere idempotent 200, men gør det ikke — fall back til AccountActivate for at få faktisk state.
+- **HTTP 401/403** efter succesfuld TLS-handshake = cert er valid som transport, men account-validation fejlede. Tjek at MS-CA-rooten er importeret i ISE → pxGrid Services → Certificates → Trusted Certificates.
+- **CSR SAN-krav (RFC 6125):** ISE 3.4 accepterer minimum CN, men best practice er at inkludere både `node_name` og host-FQDN som `SubjectAlternativeName:dNSName`. Uden SAN faldt tidlige builds tilbage på CN-matching, men det er deprecated pr. RFC 6125.
+
+### WebSocket-laget — to-lags auth
+
+Pubsub-broker'en (`com.cisco.ise.pubsub`, port 8910) **kræver HTTP Basic auth på selve WebSocket-upgraden** oven på mTLS. STOMP CONNECT-frame'ens login/passcode-felter er IKKE tilstrækkelige — uden `Authorization: Basic <b64(node:secret)>`-header på upgrade-requesten afviser ISE handshaken med 401 inden vi når STOMP-laget.
+
+```python
+# Korrekt
+async with websockets.connect(
+    ws_url, ssl=ssl_ctx, subprotocols=["v12.stomp"],
+    additional_headers={"Authorization": f"Basic {b64_basic}"},
+    ping_interval=None,  # broker bruger STOMP heart-beat, ikke WS ping
+) as ws: ...
+```
+
+`ping_interval=None` er vigtigt — broker forventer STOMP heart-beat-frames (bare `\n`), ikke WS ping/pong.
+
+### STOMP heart-beat & reconnect
+
+- CONNECT-frame skal annoncere `heart-beat: 0,30000` (eller justérbar — 0 = vi sender ikke, 30000ms = vi forventer broker sender hvert 30s).
+- Sæt `recv_timeout` til ~2× heart-beat-intervallet — så detekteres en død forbindelse hurtigt.
+- Ved reconnect: lav **fresh `AccessSecret`** — broker afviser genbrug af tidligere secret. Også fresh `ServiceLookup` så PSN-failover virker hvis primær node er nede.
+- Eksponentiel backoff anbefales (1 → 300s cap) for at undgå storm ved ISE-restart.
+
+### Topics — hvad firer ISE faktisk på?
+
+**Empirisk verificeret på ISE 3.4 og 3.5 (egen test-deployment):**
+
+| Topic | Firer på | Noter |
+|---|---|---|
+| `/topic/com.cisco.ise.session` | RADIUS session lifecycle (STARTED, AUTHENTICATED, DISCONNECTED) | Den eneste topic der pålideligt firer i alle setups. Bruges til auth-status grøn/rød. |
+| `/topic/com.cisco.ise.session.group` | Identity-group ændringer for session | Samme service som .session. |
+| `/topic/com.cisco.ise.config.anc` | ANC-policy ændringer (Adaptive Network Control) | Konfig-events, ikke endpoint-events. |
+| `/topic/com.cisco.ise.endpoint` | "Endpoint attribute changes apart from timestamps and statistics" — i praksis: **profiler-drevne** ændringer, IKKE admin-GUI CRUD | ServiceLookup returnerer topic, SUBSCRIBE accepteres, men ingen events kommer ved manuelt admin-create. Cisco's design — ikke bug. |
+| `/topic/com.cisco.ise.config.profiler` | Profiler-policy ændringer | Konfig, ikke endpoint-data. |
+
+**Vigtigste konklusion:** Der findes **INGEN pxGrid 2.0-vej** til real-time admin-CRUD-mirror af endpoint-databasen i ISE 3.4 eller 3.5. Cisco's egen anbefaling er periodisk ERS-poll med passende interval. Portalen bruger 2.8.0-cache med stale-while-revalidate som standardløsning.
+
+### pxGrid policy — publish vs subscribe
+
+Hver topic kræver TO policy-entries i ISE → Administration → pxGrid Services → pxGrid Policy:
+
+```
+Service: com.cisco.ise.pubsub
+Operation: publish /topic/<navn>
+Groups: Internal       ← ISE selv
+
+Service: com.cisco.ise.pubsub
+Operation: subscribe /topic/<navn>
+Groups: <din klients gruppe>   ← portalen
+```
+
+Hvis kun publish-policy findes, kan klienten ikke modtage. Hvis kun subscribe-policy findes, publicerer ISE ikke topic'et internt. Begge skal være på plads.
+
+### ServiceLookup-properties — discovery
+
+For at undgå hardcoded topic-navne: kør altid `ServiceLookup` på service-name og brug returnerede `properties.topic` (eller `wsPubsubTopic`/`endpointTopic`). Eksempel-respons:
+
+```json
+{
+  "wsPubsubService": "com.cisco.ise.pubsub",
+  "restBaseUrl": "https://ise2.ll.lan:8910/pxgrid/ise/endpoint",
+  "topic": "/topic/com.cisco.ise.endpoint"
+}
+```
+
+`restBaseUrl`-tilstedeværelsen indikerer at servicen også har REST-API til pull-baseret query (ikke kun event-stream).
+
+---
+
+## Endpoint Purge — hvad virker og hvad gør ikke
+
+**Sti i ISE GUI:** Administration → Identity Management → Settings → Endpoint Purge → Never Purge.
+
+### API-tilgængelighed
+
+**Der findes INGEN ERS- eller Open API til at oprette/læse/ændre purge-rules** — hverken i ISE 3.4 eller 3.5. Det er ren GUI-konfiguration. Verificeret via Cisco DevNet API Framework + Cisco Community-tråde.
+
+### Custom attribute som condition
+
+| ISE-version | CUSTOMATTRIBUTE som purge-condition | Note |
+|---|---|---|
+| 3.4 og tidligere | ❌ Ikke understøttet | Cisco docs: *"You cannot use a custom attribute as a condition for an endpoint purge policy."* Brug Identity Group som condition i stedet. |
+| 3.5 | ✅ Understøttet | Ny condition-type "CUSTOMATTRIBUTE". Skift til 3.5 hvis I har behov. |
+
+### Anbefalet portal-purge-bypass
+
+Portalen stempler altid `HypervisionISEPortal=true` på create + update. Admin opretter manuelt én "Never Purge"-rule:
+
+- **Rule Name:** `HyperVision Portal`
+- **Condition:** `CUSTOMATTRIBUTE HypervisionISEPortal EQUALS true` (ISE 3.5+)
+- **Status:** Enabled
+
+På ISE 3.4 kan man i stedet bruge en dedikeret Endpoint Identity Group:
+- **Condition:** `Endpoint Identity Group EQUALS HypervisionPortalManaged`
+
+### `DeviceRegistrationStatus`-attributten
+
+Indbygget BYOD-attribut. Den fungerer som purge-bypass-condition i ISE's default `EnrolledRule` (`if DeviceRegistrationStatus Equals Registered then never purge`). MEN:
+
+- Den indbyggede DRS sættes kun via BYOD/MyDevices-portal-flow.
+- Vi forsøgte at definere en custom attribute kaldet `DeviceRegistrationStatus` og stemple `Registered` (3.7.0). På ISE 3.4 virker dette IKKE som purge-bypass fordi custom attributes ikke kan bruges som condition på den version. På 3.5 ville det virke, men det er overflødigt nu hvor `HypervisionISEPortal=true` matcher samme endpoints. Tilbagerullet i 3.7.1.

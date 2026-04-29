@@ -5,6 +5,45 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.7.1 build 0116] — 2026-04-29 — refactor(purge-protect): revert DRS-stempling, tilføj guide-card + dok
+
+3.7.0's tilgang viste sig at være forkert: Cisco's docs siger eksplicit at
+custom attributes IKKE kan bruges som purge-condition i ISE 3.4. Vores
+DRS-stempling havde derfor ingen reel effekt. Bruger har opgraderet til
+ISE 3.5 hvor `CUSTOMATTRIBUTE` som purge-condition ER understøttet — og
+har manuelt oprettet en `Hypervision`-rule med
+`CUSTOMATTRIBUTE HypervisionISEPortal EQUALS true`. Det dækker 100% af
+portal-stemplede endpoints, så DRS-stemplingen er overflødig.
+
+**Rollback:**
+- Fjernet `DeviceRegistrationStatus`-stempling fra create/update.
+- Fjernet `purge_protect_backfill()`-service-method og
+  `POST /api/endpoints/purge-protect-backfill`-endpoint.
+- Fjernet `PURGE_PROTECT_*`-konstanterne fra `custom_attr_store`.
+- Fjernet `purgeProtectBackfill()` fra frontend api.js.
+
+**Tilføjet:**
+- Settings UI har nu et "Anbefalet ISE purge-config"-card med:
+  - Step-by-step vejledning til at oprette `Never Purge`-rule manuelt
+    (ISE 3.5+ med `CUSTOMATTRIBUTE` condition).
+  - Kopiér-knapper til rule-name og attribut-navn.
+  - Alternativ-opskrift for ISE 3.4 (Identity Group som condition).
+  - Eksplicit note om at der ikke findes API til purge-rules.
+- [ISE_API_REFERENCE.md](ISE_API_REFERENCE.md) udvidet med stort afsnit
+  om pxGrid 2.0 empiriske erfaringer (bootstrap, WS-auth, heart-beat,
+  topics-tabel, ServiceLookup-discovery) plus "Endpoint Purge — hvad
+  virker og hvad gør ikke" inkl. version-matrix for custom-attribute-
+  condition support.
+
+**Filer:** [backend/app/core/custom_attr_store.py](backend/app/core/custom_attr_store.py),
+[backend/app/services/endpoint_service.py](backend/app/services/endpoint_service.py),
+[backend/app/api/endpoints.py](backend/app/api/endpoints.py),
+[frontend/js/api.js](frontend/js/api.js),
+[frontend/js/views/settings.js](frontend/js/views/settings.js),
+[ISE_API_REFERENCE.md](ISE_API_REFERENCE.md)
+
+---
+
 ## [3.7.0 build 0115] — 2026-04-29 — feat: purge-protection via DeviceRegistrationStatus="Registered"
 
 ISE's default endpoint-purge-policy fjerner endpoints baseret på inaktivitet

@@ -178,8 +178,6 @@ export const api = {
     request("/settings/pxgrid/reset", { method: "POST" }),
   runPxGridStompProbe: (duration = 10) =>
     request(`/settings/pxgrid/stomp-probe?duration=${duration}`, { method: "POST" }),
-  purgeProtectBackfill: () =>
-    request("/endpoints/purge-protect-backfill", { method: "POST" }),
   getPxGridSessions: () => request("/pxgrid/sessions"),
   getPxGridSession: (mac) => request(`/pxgrid/sessions/${encodeURIComponent(mac)}`),
   getPxGridWorkerStatus: () => request("/pxgrid/worker/status"),
