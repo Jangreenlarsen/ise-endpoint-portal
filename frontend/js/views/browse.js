@@ -669,6 +669,21 @@ export async function renderBrowse(container) {
   let pxgridLive = false;
   let pxgridSessionMacs = null;  // Set<MAC> eller null hvis ikke streamer
 
+  let endpointReloadTimer = null;
+  function scheduleEndpointReload() {
+    if (endpointReloadTimer) return;
+    endpointReloadTimer = setTimeout(() => {
+      endpointReloadTimer = null;
+      // Hvis brugeren midt i en redigering: skip — dirty-tracking ville
+      // ellers blive overskrevet af genfetched data. CHANGELOG-noten
+      // forklarer afvejningen.
+      if (dirtyIds && dirtyIds.size > 0) return;
+      try {
+        if (typeof load === "function") load();
+      } catch {}
+    }, 500);
+  }
+
   function startPxGridStream() {
     if (pxgridEventSource) return;
     const token = (window.localStorage && localStorage.getItem("hv_ise_token")) || "";
@@ -716,6 +731,18 @@ export async function renderBrowse(container) {
         pxgridLastEventTs = data.ts || Math.floor(Date.now() / 1000);
         if (activeSessionMacs) activeSessionMacs.delete(mac);
         applyAuthStatusColors();
+        updatePxGridSourceBadge();
+      } catch {}
+    });
+    pxgridEventSource.addEventListener("endpoint_changed", (e) => {
+      // Phase 4 (3.6.0): admin har ændret/oprettet/slettet et endpoint
+      // direkte i ISE-GUI. Backend har allerede invalideret 2.8.0-cachen,
+      // så et reload her henter fresh data. Debounced så en bulk-ændring
+      // ikke trigger N reloads i træk.
+      try {
+        const data = JSON.parse(e.data);
+        pxgridLastEventTs = data.ts || Math.floor(Date.now() / 1000);
+        scheduleEndpointReload();
         updatePxGridSourceBadge();
       } catch {}
     });

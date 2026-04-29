@@ -28,6 +28,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from app.core import config
+from app.core.endpoint_cache import get_cache as get_endpoint_cache
 from app.pxgrid import cert_manager, stomp
 from app.pxgrid.client import PxGridClient
 from app.pxgrid.session_cache import SessionInfo, get_cache
@@ -35,6 +36,8 @@ from app.pxgrid.session_cache import SessionInfo, get_cache
 logger = logging.getLogger(__name__)
 
 PUBSUB_SERVICE = "com.cisco.ise.pubsub"
+SUB_ID_SESSION = "sub-session"
+SUB_ID_ENDPOINT = "sub-endpoint"
 
 
 @dataclass
@@ -50,6 +53,11 @@ class WorkerStatus:
     last_error: str = ""
     reconnect_count: int = 0
     messages_total: int = 0
+    subscribed_topics: list[str] = field(default_factory=list)
+    endpoint_events_total: int = 0
+    session_events_total: int = 0
+    # Bevaret for backwards compat med eksisterende API/UI; afspejler
+    # første topic i subscribed_topics-listen.
     subscribed_topic: str = ""
     extra: dict[str, Any] = field(default_factory=dict)
 
@@ -76,9 +84,13 @@ class PxGridSessionWorker:
         if self._task and not self._task.done():
             return
         self._stop_event = asyncio.Event()
+        topics = [s.pxgrid_session_topic]
+        if s.pxgrid_endpoint_topic_enabled:
+            topics.append(s.pxgrid_endpoint_topic)
         self._status = WorkerStatus(
             running=True, started_at=time.time(),
-            subscribed_topic=s.pxgrid_session_topic,
+            subscribed_topics=topics,
+            subscribed_topic=topics[0],
         )
         self._task = asyncio.create_task(
             self._run_loop(), name="pxgrid-session-worker"
@@ -202,13 +214,21 @@ class PxGridSessionWorker:
             if not connected:
                 raise RuntimeError(f"Forventede CONNECTED, fik {[f.command for f in frames]}")
 
-            await ws.send(stomp.subscribe_frame(topic))
+            # SUBSCRIBE — én frame pr. topic, distinct sub-id'er så vi kan
+            # route incoming MESSAGE-frames via 'subscription'-headeren.
+            sub_map: dict[str, str] = {SUB_ID_SESSION: topic}
+            await ws.send(stomp.subscribe_frame(topic, sub_id=SUB_ID_SESSION))
+            if s.pxgrid_endpoint_topic_enabled:
+                ep_topic = s.pxgrid_endpoint_topic
+                sub_map[SUB_ID_ENDPOINT] = ep_topic
+                await ws.send(stomp.subscribe_frame(ep_topic, sub_id=SUB_ID_ENDPOINT))
+
             self._status.connected = True
             self._status.last_connect_at = time.time()
             self._status.last_error = ""
             logger.info(
                 "pxgrid session worker subscribed to %s on %s",
-                topic, peer.node_name,
+                ", ".join(sub_map.values()), peer.node_name,
             )
 
             while not self._stop_event.is_set():
@@ -225,7 +245,13 @@ class PxGridSessionWorker:
                         self._status.messages_total += 1
                         self._status.last_event_at = time.time()
                         cache.note_message()
-                        await _handle_message_body(f.body, cache)
+                        sub_id = f.headers.get("subscription", SUB_ID_SESSION)
+                        if sub_id == SUB_ID_ENDPOINT:
+                            self._status.endpoint_events_total += 1
+                            await _handle_endpoint_body(f.body, cache)
+                        else:
+                            self._status.session_events_total += 1
+                            await _handle_message_body(f.body, cache)
                     elif f.command == "ERROR":
                         raise RuntimeError(
                             "STOMP ERROR: "
@@ -279,6 +305,66 @@ def _extract_sessions(payload: Any) -> list[dict[str, Any]]:
             return [payload]
     if isinstance(payload, list):
         return [s for s in payload if isinstance(s, dict)]
+    return []
+
+
+async def _handle_endpoint_body(body: bytes, cache) -> None:  # type: ignore[no-untyped-def]
+    """Endpoint-event fra com.cisco.ise.endpoint topic.
+
+    Payload-shape varierer (CREATE/UPDATE/DELETE-events fra ISE-admin).
+    Vi udtrækker MAC + ISE-ID best-effort, invaliderer 2.8.0 endpoint-
+    cache for det specifikke endpoint, og broadcaster en
+    ``endpoint_changed``-event på samme SSE-bus så frontend kan reload
+    rækken uden poll. Hvis ID mangler invaliderer vi hele cachen
+    (sjældent men sikkert fallback).
+    """
+    if not body:
+        return
+    try:
+        payload = json.loads(body.decode("utf-8", errors="replace"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return
+    items = _extract_endpoints(payload)
+    if not items:
+        return
+    ep_cache = get_endpoint_cache()
+    import time as _time
+    for d in items:
+        ep_id = (
+            d.get("id") or d.get("endpointId") or d.get("operatingSystem", {}).get("id")
+            or ""
+        )
+        mac = (d.get("mac") or d.get("macAddress") or d.get("name") or "").upper()
+        operation = (
+            d.get("operation") or d.get("eventType") or d.get("action") or ""
+        ).upper()
+        if ep_id:
+            ep_cache.invalidate_detail(str(ep_id))
+        else:
+            ep_cache.invalidate_all()
+        # Genbrug session-cachens broadcaster — alle SSE-subscribere får
+        # det her event-type på samme stream som de allerede lytter på.
+        cache._broadcast({  # noqa: SLF001
+            "type": "endpoint_changed",
+            "id": ep_id,
+            "mac": mac,
+            "operation": operation or "UPDATE",
+            "ts": _time.time(),
+        })
+
+
+def _extract_endpoints(payload: Any) -> list[dict[str, Any]]:
+    if isinstance(payload, dict):
+        for key in ("endpoints", "endpoint", "data"):
+            v = payload.get(key)
+            if isinstance(v, list):
+                return [x for x in v if isinstance(x, dict)]
+            if isinstance(v, dict):
+                return [v]
+        if any(k in payload for k in ("id", "mac", "macAddress", "endpointId")):
+            return [payload]
+    if isinstance(payload, list):
+        return [x for x in payload if isinstance(x, dict)]
     return []
 
 

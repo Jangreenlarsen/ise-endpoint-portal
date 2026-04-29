@@ -182,6 +182,21 @@ class Settings(BaseSettings):
             "MnT-poll uden at miste REST control plane."
         ),
     )
+    # Phase 4 (3.6.0) — abonnér også på endpoint-topic så admin-ændringer
+    # i ISE-GUI'en invaliderer 2.8.0 endpoint-cache i real-time.
+    pxgrid_endpoint_topic_enabled: bool = Field(
+        default=False,
+        description=(
+            "Subscribe også til com.cisco.ise.endpoint-topic. Når ON: "
+            "endpoint-events fra ISE-admin invaliderer cache + pushes til "
+            "frontend så Browse genindlæser rækken automatisk. Off = kun "
+            "session-topic (auth-status). Opt-in fordi det øger event-volume."
+        ),
+    )
+    pxgrid_endpoint_topic: str = Field(
+        default="/topic/com.cisco.ise.endpoint",
+        description="STOMP destination for endpoint-events.",
+    )
 
     backend_cors_origins: list[str] = Field(
         default_factory=lambda: ["http://localhost:5173", "http://localhost:8000"]

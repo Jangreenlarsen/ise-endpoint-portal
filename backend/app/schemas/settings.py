@@ -86,6 +86,8 @@ class PxGridSettingsUpdate(BaseModel):
     pxgrid_stomp_reconnect_max_s: float = 300.0
     pxgrid_session_cache_max_age_s: float = 0.0
     pxgrid_worker_enabled: bool = True
+    pxgrid_endpoint_topic_enabled: bool = False
+    pxgrid_endpoint_topic: str = "/topic/com.cisco.ise.endpoint"
 
 
 class PxGridSettingsResponse(BaseModel):
@@ -104,6 +106,8 @@ class PxGridSettingsResponse(BaseModel):
     pxgrid_stomp_reconnect_max_s: float = 300.0
     pxgrid_session_cache_max_age_s: float = 0.0
     pxgrid_worker_enabled: bool = True
+    pxgrid_endpoint_topic_enabled: bool = False
+    pxgrid_endpoint_topic: str = "/topic/com.cisco.ise.endpoint"
     cert_status: str = Field(
         ...,
         description=(
@@ -214,6 +218,9 @@ class PxGridWorkerStatusResponse(BaseModel):
     reconnect_count: int = 0
     messages_total: int = 0
     subscribed_topic: str = ""
+    subscribed_topics: list[str] = Field(default_factory=list)
+    session_events_total: int = 0
+    endpoint_events_total: int = 0
     cache_size: int = 0
 
 

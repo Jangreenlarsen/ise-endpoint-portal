@@ -5,6 +5,49 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.6.0 build 0111] — 2026-04-29 — feat(PxGrid Phase 4): endpoint-topic + live cache-invalidering
+
+Sidste leg af 3.0.0-roadmap'en: portalen reagerer nu live på endpoint-
+ændringer foretaget direkte i ISE-GUI (uden om portalen). Worker'en
+subscriber til to topics samtidigt på samme WebSocket, og endpoint-events
+invaliderer 2.8.0 endpoint-cache + pushes som `endpoint_changed` til
+Browse-viewet som så reloader.
+
+**Backend:**
+- `session_worker._one_session()` refactored til multi-SUBSCRIBE: én sub-id
+  pr. topic (`sub-session`, `sub-endpoint`), MESSAGE-frames routes via
+  `subscription`-header til separate handlere.
+- Ny `_handle_endpoint_body()` — tolerant payload-parser, kalder
+  `endpoint_cache.invalidate_detail(id)` (fallback til `invalidate_all()`
+  hvis ISE-ID mangler), broadcaster `endpoint_changed`-event på samme
+  SSE-bus som session-events.
+- `WorkerStatus` har nu `subscribed_topics`, `session_events_total`,
+  `endpoint_events_total` for separate counters i UI.
+
+**Settings:**
+- `pxgrid_endpoint_topic_enabled` (default OFF — opt-in fordi event-volume
+  stiger) + `pxgrid_endpoint_topic` (default `/topic/com.cisco.ise.endpoint`).
+- Worker restartes automatisk ved settings-save så ny subscription tager
+  effekt uden backend-restart.
+
+**Frontend:**
+- `browse.js` lytter på `endpoint_changed`-events fra SSE-stream og kører
+  debounced reload (500ms vindue) så bulk-ændringer i ISE ikke triggrer
+  N reloads i træk. Skipper reload hvis bruger har dirty edits — lokale
+  ændringer skal ikke wipes af cache-refresh.
+- Settings worker-status panel viser nu topics-listen + separate
+  session/endpoint event-tællere.
+
+**Filer:** [backend/app/core/config.py](backend/app/core/config.py),
+[backend/app/pxgrid/session_worker.py](backend/app/pxgrid/session_worker.py),
+[backend/app/api/pxgrid.py](backend/app/api/pxgrid.py),
+[backend/app/schemas/settings.py](backend/app/schemas/settings.py),
+[backend/app/services/settings_service.py](backend/app/services/settings_service.py),
+[frontend/js/views/settings.js](frontend/js/views/settings.js),
+[frontend/js/views/browse.js](frontend/js/views/browse.js)
+
+---
+
 ## [3.5.2 build 0110] — 2026-04-29 — fix(PxGrid): SSE-stream-route skygges af /sessions/{mac}
 
 Browse-toolbar viste vedvarende "🟡 PULL (MnT-poll · 0 aktive)" selv når

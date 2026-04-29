@@ -319,9 +319,21 @@ export async function renderSettings(container) {
             <div class="hint">Off = falder tilbage på MnT-poll. Off her uden at slå PxGrid helt fra er nyttigt til fejlsøgning.</div>
           </div>
           <div class="field">
-            <label for="pxgrid_session_topic">STOMP destination</label>
+            <label for="pxgrid_session_topic">Session-topic (auth-status)</label>
             <input type="text" id="pxgrid_session_topic" placeholder="/topic/com.cisco.ise.session" autocomplete="off" />
-            <div class="hint">Default <code>/topic/com.cisco.ise.session</code>. Skift kun ved fejlsøgning.</div>
+            <div class="hint">Default <code>/topic/com.cisco.ise.session</code>. RADIUS session-events (STARTED/AUTHENTICATED/DISCONNECTED).</div>
+          </div>
+          <div class="field">
+            <label>
+              <input type="checkbox" id="pxgrid_endpoint_topic_enabled" />
+              Subscribe også til endpoint-topic (Phase 4 — admin-ændringer i ISE)
+            </label>
+            <div class="hint">Når ON: ISE-admin's endpoint create/update/delete-events invaliderer 2.8.0-cachen og pushes til Browse, så rækken reloader automatisk uden refresh. Off = kun session-topic.</div>
+          </div>
+          <div class="field">
+            <label for="pxgrid_endpoint_topic">Endpoint-topic destination</label>
+            <input type="text" id="pxgrid_endpoint_topic" placeholder="/topic/com.cisco.ise.endpoint" autocomplete="off" />
+            <div class="hint">Default <code>/topic/com.cisco.ise.endpoint</code>.</div>
           </div>
           <div class="field">
             <label for="pxgrid_stomp_heartbeat_ms">Heart-beat interval (ms, server → klient)</label>
@@ -556,6 +568,8 @@ async function initPxGridSection(container) {
       container.querySelector("#pxgrid_stomp_reconnect_min_s").value = s.pxgrid_stomp_reconnect_min_s ?? 1;
       container.querySelector("#pxgrid_stomp_reconnect_max_s").value = s.pxgrid_stomp_reconnect_max_s ?? 300;
       container.querySelector("#pxgrid_session_cache_max_age_s").value = s.pxgrid_session_cache_max_age_s ?? 0;
+      container.querySelector("#pxgrid_endpoint_topic_enabled").checked = !!s.pxgrid_endpoint_topic_enabled;
+      container.querySelector("#pxgrid_endpoint_topic").value = s.pxgrid_endpoint_topic || "/topic/com.cisco.ise.endpoint";
       const cls = s.cert_status === "ok" ? "success"
                 : s.cert_status === "missing" ? "warning" : "error";
       certStatus.innerHTML = `Cert-status: <span class="alert ${cls}" style="display:inline;padding:2px 8px;">${esc(s.cert_status)}</span>`;
@@ -587,6 +601,8 @@ async function initPxGridSection(container) {
       pxgrid_stomp_reconnect_min_s: parseFloat(container.querySelector("#pxgrid_stomp_reconnect_min_s").value) || 1,
       pxgrid_stomp_reconnect_max_s: parseFloat(container.querySelector("#pxgrid_stomp_reconnect_max_s").value) || 300,
       pxgrid_session_cache_max_age_s: parseFloat(container.querySelector("#pxgrid_session_cache_max_age_s").value) || 0,
+      pxgrid_endpoint_topic_enabled: container.querySelector("#pxgrid_endpoint_topic_enabled").checked,
+      pxgrid_endpoint_topic: container.querySelector("#pxgrid_endpoint_topic").value.trim() || "/topic/com.cisco.ise.endpoint",
     };
   }
 
@@ -657,11 +673,17 @@ async function initPxGridSection(container) {
       const lastErr = w.last_error
         ? `<br><span style="color:#b91c1c;">Sidste fejl: ${esc(w.last_error)}</span>`
         : "";
+      const topics = (w.subscribed_topics && w.subscribed_topics.length)
+        ? w.subscribed_topics : (w.subscribed_topic ? [w.subscribed_topic] : []);
+      const topicsHtml = topics.length
+        ? topics.map(t => `<code>${esc(t)}</code>`).join(", ")
+        : "—";
       el.innerHTML = `
         <strong>${dot} Worker: ${esc(lbl)}</strong>
         — peer: <code>${esc(w.peer_node || "—")}</code>
-        — topic: <code>${esc(w.subscribed_topic || "—")}</code><br>
+        — topics: ${topicsHtml}<br>
         Events: <strong>${w.messages_total}</strong>
+        (session: ${w.session_events_total ?? 0}, endpoint: ${w.endpoint_events_total ?? 0})
         · cache: <strong>${w.cache_size}</strong> sessioner
         · reconnects: ${w.reconnect_count}
         · sidste event: ${fmtAge(w.last_event_at)}

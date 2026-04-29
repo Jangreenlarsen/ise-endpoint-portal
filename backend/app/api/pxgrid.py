@@ -173,6 +173,9 @@ async def worker_status() -> PxGridWorkerStatusResponse:
         reconnect_count=st.reconnect_count,
         messages_total=st.messages_total,
         subscribed_topic=st.subscribed_topic,
+        subscribed_topics=list(st.subscribed_topics),
+        session_events_total=st.session_events_total,
+        endpoint_events_total=st.endpoint_events_total,
         cache_size=cache.stats()["size"],
     )
 

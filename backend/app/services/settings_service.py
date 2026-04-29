@@ -189,6 +189,8 @@ def get_pxgrid_settings() -> PxGridSettingsResponse:
         pxgrid_stomp_reconnect_max_s=s.pxgrid_stomp_reconnect_max_s,
         pxgrid_session_cache_max_age_s=s.pxgrid_session_cache_max_age_s,
         pxgrid_worker_enabled=s.pxgrid_worker_enabled,
+        pxgrid_endpoint_topic_enabled=s.pxgrid_endpoint_topic_enabled,
+        pxgrid_endpoint_topic=s.pxgrid_endpoint_topic,
         cert_status=pxgrid_cert_manager.cert_status(
             s.pxgrid_cert_path, s.pxgrid_key_path, s.pxgrid_ca_bundle_path
         ),
@@ -216,6 +218,8 @@ async def update_pxgrid_settings(
             "pxgrid_stomp_reconnect_max_s": new.pxgrid_stomp_reconnect_max_s,
             "pxgrid_session_cache_max_age_s": new.pxgrid_session_cache_max_age_s,
             "pxgrid_worker_enabled": new.pxgrid_worker_enabled,
+            "pxgrid_endpoint_topic_enabled": new.pxgrid_endpoint_topic_enabled,
+            "pxgrid_endpoint_topic": new.pxgrid_endpoint_topic,
         }
     )
     if new.pxgrid_password:
