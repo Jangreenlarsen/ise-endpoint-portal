@@ -58,61 +58,15 @@ async def list_sessions() -> PxGridSessionsResponse:
     )
 
 
-@router.get(
-    "/sessions/{mac}",
-    response_model=PxGridSessionInfoResponse,
-    dependencies=[Depends(require_any)],
-)
-async def get_session(mac: str) -> PxGridSessionInfoResponse:
-    cache = get_cache()
-    max_age = config.settings.pxgrid_session_cache_max_age_s
-    info = await cache.get(mac, max_age_s=max_age)
-    if not info:
-        raise HTTPException(
-            status.HTTP_404_NOT_FOUND, f"Ingen aktiv session for {mac}"
-        )
-    return PxGridSessionInfoResponse(
-        mac=info.mac,
-        state=info.state,
-        audit_session_id=info.audit_session_id,
-        nas_ip=info.nas_ip,
-        user_name=info.user_name,
-        last_event_at=info.last_event_at,
-    )
-
-
-@router.get(
-    "/worker/status",
-    response_model=PxGridWorkerStatusResponse,
-    dependencies=[Depends(require_admin)],
-)
-async def worker_status() -> PxGridWorkerStatusResponse:
-    w = get_worker()
-    st = w.status
-    cache = get_cache()
-    return PxGridWorkerStatusResponse(
-        running=st.running,
-        connected=st.connected,
-        peer_node=st.peer_node,
-        ws_url=st.ws_url,
-        started_at=st.started_at,
-        last_connect_at=st.last_connect_at,
-        last_disconnect_at=st.last_disconnect_at,
-        last_event_at=st.last_event_at,
-        last_error=st.last_error,
-        reconnect_count=st.reconnect_count,
-        messages_total=st.messages_total,
-        subscribed_topic=st.subscribed_topic,
-        cache_size=cache.stats()["size"],
-    )
-
-
 @router.get("/sessions/stream")
 async def sessions_stream(
     request: Request,
     token: str = Query("", description="Bearer-token (EventSource kan ikke sætte Auth-header)"),
 ):
     """SSE-stream af session-cache deltas.
+
+    **VIGTIGT:** denne route SKAL stå før ``/sessions/{mac}`` så FastAPI
+    ikke matcher ``/sessions/stream`` som ``mac="stream"`` og returnerer 404.
 
     Browser's ``EventSource`` API understøtter ikke custom headers, så vi
     accepterer JWT'en som query-param i stedet for ``Authorization``-header.
@@ -171,6 +125,55 @@ async def sessions_stream(
             "X-Accel-Buffering": "no",  # disable nginx buffering hvis foran proxy
             "Connection": "keep-alive",
         },
+    )
+
+
+@router.get(
+    "/sessions/{mac}",
+    response_model=PxGridSessionInfoResponse,
+    dependencies=[Depends(require_any)],
+)
+async def get_session(mac: str) -> PxGridSessionInfoResponse:
+    cache = get_cache()
+    max_age = config.settings.pxgrid_session_cache_max_age_s
+    info = await cache.get(mac, max_age_s=max_age)
+    if not info:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND, f"Ingen aktiv session for {mac}"
+        )
+    return PxGridSessionInfoResponse(
+        mac=info.mac,
+        state=info.state,
+        audit_session_id=info.audit_session_id,
+        nas_ip=info.nas_ip,
+        user_name=info.user_name,
+        last_event_at=info.last_event_at,
+    )
+
+
+@router.get(
+    "/worker/status",
+    response_model=PxGridWorkerStatusResponse,
+    dependencies=[Depends(require_admin)],
+)
+async def worker_status() -> PxGridWorkerStatusResponse:
+    w = get_worker()
+    st = w.status
+    cache = get_cache()
+    return PxGridWorkerStatusResponse(
+        running=st.running,
+        connected=st.connected,
+        peer_node=st.peer_node,
+        ws_url=st.ws_url,
+        started_at=st.started_at,
+        last_connect_at=st.last_connect_at,
+        last_disconnect_at=st.last_disconnect_at,
+        last_event_at=st.last_event_at,
+        last_error=st.last_error,
+        reconnect_count=st.reconnect_count,
+        messages_total=st.messages_total,
+        subscribed_topic=st.subscribed_topic,
+        cache_size=cache.stats()["size"],
     )
 
 

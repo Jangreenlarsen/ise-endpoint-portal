@@ -5,6 +5,22 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.5.2 build 0110] — 2026-04-29 — fix(PxGrid): SSE-stream-route skygges af /sessions/{mac}
+
+Browse-toolbar viste vedvarende "🟡 PULL (MnT-poll · 0 aktive)" selv når
+worker var connected (Settings rapporterede 🟢 connected, 0 events). Bug
+var ren route-ordering: `/sessions/stream` blev registreret EFTER
+`/sessions/{mac}`, så FastAPI matchede stream-URL'en som `mac="stream"`,
+returnerede 404 fra `cache.get("stream")`, EventSource fejlede silent og
+`pxgridLive` forblev false → fallback til MnT.
+
+Fix: flyttet stream-route op før den dynamiske `{mac}`-route. Tilføjet
+eksplicit kommentar om kravet så regression er svær at lave igen.
+
+**Filer:** [backend/app/api/pxgrid.py](backend/app/api/pxgrid.py)
+
+---
+
 ## [3.5.1 build 0109] — 2026-04-29 — fix(Browse): live re-color uden refresh + push/pull-indikator
 
 To problemer i Phase 3-leverancen rapporteret efter rollout:
