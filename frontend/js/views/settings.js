@@ -689,6 +689,14 @@ async function initPxGridSection(container) {
       const topicsHtml = topics.length
         ? topics.map(t => `<code>${esc(t)}</code>`).join(", ")
         : "—";
+      let lookupHtml = "";
+      if (w.endpoint_lookup_service) {
+        const propsKeys = Object.keys(w.endpoint_lookup_props || {});
+        const propsLine = propsKeys.length
+          ? `<pre style="margin:0.2rem 0;font-size:0.85em;background:#f3f4f6;padding:0.4rem;border-radius:4px;white-space:pre-wrap;">${esc(JSON.stringify(w.endpoint_lookup_props, null, 2))}</pre>`
+          : `<em>(ingen properties returneret)</em>`;
+        lookupHtml = `<br><strong>Endpoint ServiceLookup:</strong> <code>${esc(w.endpoint_lookup_service)}</code> ${propsLine}`;
+      }
       el.innerHTML = `
         <strong>${dot} Worker: ${esc(lbl)}</strong>
         — peer: <code>${esc(w.peer_node || "—")}</code>
@@ -698,7 +706,7 @@ async function initPxGridSection(container) {
         · cache: <strong>${w.cache_size}</strong> sessioner
         · reconnects: ${w.reconnect_count}
         · sidste event: ${fmtAge(w.last_event_at)}
-        · sidste connect: ${fmtAge(w.last_connect_at)}${lastErr}`;
+        · sidste connect: ${fmtAge(w.last_connect_at)}${lastErr}${lookupHtml}`;
     } catch (err) {
       el.innerHTML = `<span style="color:#b91c1c;">Kunne ikke hente worker-status: ${esc(err.message)}</span>`;
     }

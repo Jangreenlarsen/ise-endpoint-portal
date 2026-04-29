@@ -59,6 +59,8 @@ class WorkerStatus:
     # Bevaret for backwards compat med eksisterende API/UI; afspejler
     # første topic i subscribed_topics-listen.
     subscribed_topic: str = ""
+    endpoint_lookup_service: str = ""
+    endpoint_lookup_props: dict[str, Any] = field(default_factory=dict)
     extra: dict[str, Any] = field(default_factory=dict)
 
 
@@ -222,15 +224,35 @@ class PxGridSessionWorker:
                 # ServiceLookup på endpoint-servicen så vi får ISE's kanoniske
                 # topic (kan afvige fra default-konfig pr. ISE-version).
                 ep_topic = s.pxgrid_endpoint_topic
+                self._status.endpoint_lookup_service = s.pxgrid_endpoint_service
                 try:
                     ep_nodes = await client.service_lookup(s.pxgrid_endpoint_service)
                     if ep_nodes:
-                        discovered = ep_nodes[0].properties.get("topic")
+                        props = dict(ep_nodes[0].properties)
+                        self._status.endpoint_lookup_props = props
+                        logger.info(
+                            "pxgrid endpoint-service '%s' returnerede properties=%s",
+                            s.pxgrid_endpoint_service, props,
+                        )
+                        # Prøv flere kendte property-navne i prioriteret rækkefølge.
+                        discovered = (
+                            props.get("topic")
+                            or props.get("endpointTopic")
+                            or props.get("wsPubsubTopic")
+                            or ""
+                        )
                         if discovered:
                             ep_topic = discovered
                             logger.info(
-                                "pxgrid endpoint-service '%s' returnerede topic=%s",
-                                s.pxgrid_endpoint_service, discovered,
+                                "bruger discovered topic=%s", discovered,
+                            )
+                        else:
+                            logger.warning(
+                                "ServiceLookup på '%s' returnerede INGEN topic-property "
+                                "(properties: %s) — bruger konfigureret fallback '%s'. "
+                                "Hvis events udebliver er fallback-navnet sandsynligvis "
+                                "ikke den faktiske broker-destination.",
+                                s.pxgrid_endpoint_service, list(props.keys()), ep_topic,
                             )
                 except Exception as exc:  # noqa: BLE001
                     self._status.last_error = (

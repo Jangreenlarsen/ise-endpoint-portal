@@ -5,6 +5,33 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.6.3 build 0114] — 2026-04-29 — diag(PxGrid): vis ServiceLookup-properties for endpoint-topic
+
+User rapporterer at endpoint-events udebliver selv om SUBSCRIBE accepteres
+silently (begge topics i `subscribed_topics`, men `endpoint: 0`). Hypotese:
+ServiceLookup returnerer en service-node uden `topic`-property, så vi
+falder tilbage til en hardcoded default som ikke matcher den faktiske
+broker-destination.
+
+Tilføjet diagnostik:
+- Worker fanger nu hele `properties`-dict fra ServiceLookup-svaret og
+  prøver flere kendte property-navne (`topic`, `endpointTopic`,
+  `wsPubsubTopic`) før fallback.
+- Logger advarsel hvis ingen topic-property findes i responset, så
+  problemet er synligt i `app.log`.
+- Worker-status API returnerer nu `endpoint_lookup_service` +
+  `endpoint_lookup_props` så Settings UI kan vise nøjagtigt hvad ISE
+  svarede på ServiceLookup-kaldet — admin kan se direkte i UI'et om
+  topic er tom, om properties bare er ufuldstændige, eller om vi har
+  ramt forkert service-navn.
+
+**Filer:** [backend/app/pxgrid/session_worker.py](backend/app/pxgrid/session_worker.py),
+[backend/app/api/pxgrid.py](backend/app/api/pxgrid.py),
+[backend/app/schemas/settings.py](backend/app/schemas/settings.py),
+[frontend/js/views/settings.js](frontend/js/views/settings.js)
+
+---
+
 ## [3.6.2 build 0113] — 2026-04-29 — ux(Browse): vis endpoint-event-count i status-badge
 
 Fejlsøgning af "nye endpoints i ISE dukker ikke op": badge'en viste kun

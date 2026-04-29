@@ -223,6 +223,8 @@ class PxGridWorkerStatusResponse(BaseModel):
     subscribed_topics: list[str] = Field(default_factory=list)
     session_events_total: int = 0
     endpoint_events_total: int = 0
+    endpoint_lookup_service: str = ""
+    endpoint_lookup_props: dict = Field(default_factory=dict)
     cache_size: int = 0
 
 

@@ -176,6 +176,8 @@ async def worker_status() -> PxGridWorkerStatusResponse:
         subscribed_topics=list(st.subscribed_topics),
         session_events_total=st.session_events_total,
         endpoint_events_total=st.endpoint_events_total,
+        endpoint_lookup_service=st.endpoint_lookup_service,
+        endpoint_lookup_props=dict(st.endpoint_lookup_props),
         cache_size=cache.stats()["size"],
     )
 
