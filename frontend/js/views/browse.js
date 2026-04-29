@@ -638,24 +638,31 @@ export async function renderBrowse(container) {
 
   // Push/pull-indikator + last-event tidsstempel.
   let pxgridLastEventTs = 0;
+  let pxgridEndpointEventCount = 0;
+  let pxgridLastEndpointEventTs = 0;
+  function fmtAgo(ts) {
+    if (!ts) return null;
+    const s = Math.max(0, Math.floor(Date.now() / 1000 - ts));
+    return s < 60 ? `${s}s` : s < 3600 ? `${Math.floor(s/60)}m` : `${Math.floor(s/3600)}t`;
+  }
   function updatePxGridSourceBadge() {
     const el = container.querySelector("#pxgrid-source-badge");
     if (!el) return;
+    const epAgo = fmtAgo(pxgridLastEndpointEventTs);
+    const epPart = pxgridEndpointEventCount > 0
+      ? ` · endpoint-events: ${pxgridEndpointEventCount}${epAgo ? ` (sidste ${epAgo} siden)` : ""}`
+      : " · endpoint-events: 0";
     if (pxgridLive && pxgridSessionMacs) {
-      const ago = pxgridLastEventTs
-        ? Math.max(0, Math.floor(Date.now() / 1000 - pxgridLastEventTs))
-        : null;
-      const agoStr = ago === null ? "—"
-        : ago < 60 ? `${ago}s` : ago < 3600 ? `${Math.floor(ago/60)}m` : `${Math.floor(ago/3600)}t`;
-      el.textContent = `🟢 Auth-status: PUSH (pxGrid · ${pxgridSessionMacs.size} aktive · sidste event ${agoStr} siden)`;
+      const sessAgo = fmtAgo(pxgridLastEventTs);
+      el.innerHTML = `🟢 PUSH (pxGrid · ${pxgridSessionMacs.size} aktive · sidste session-event ${sessAgo || "—"} siden)${epPart}`;
       el.style.background = "#dcfce7";
       el.style.color = "#166534";
     } else if (activeSessionMacs) {
-      el.textContent = `🟡 Auth-status: PULL (MnT-poll · ${activeSessionMacs.size} aktive)`;
+      el.innerHTML = `🟡 PULL (MnT-poll · ${activeSessionMacs.size} aktive)${epPart}`;
       el.style.background = "#fef3c7";
       el.style.color = "#92400e";
     } else {
-      el.textContent = "⚪ Auth-status: inaktiv (intet filter + pxGrid offline)";
+      el.innerHTML = `⚪ inaktiv (intet filter + pxGrid offline)${epPart}`;
       el.style.background = "#e5e7eb";
       el.style.color = "#374151";
     }
@@ -742,6 +749,8 @@ export async function renderBrowse(container) {
       try {
         const data = JSON.parse(e.data);
         pxgridLastEventTs = data.ts || Math.floor(Date.now() / 1000);
+        pxgridEndpointEventCount += 1;
+        pxgridLastEndpointEventTs = pxgridLastEventTs;
         scheduleEndpointReload();
         updatePxGridSourceBadge();
       } catch {}

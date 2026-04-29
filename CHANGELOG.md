@@ -5,6 +5,18 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.6.2 build 0113] — 2026-04-29 — ux(Browse): vis endpoint-event-count i status-badge
+
+Fejlsøgning af "nye endpoints i ISE dukker ikke op": badge'en viste kun
+session-data, så det var svært at se om endpoint-topic-subscription
+faktisk modtog events. Badge viser nu altid `endpoint-events: N (sidste
+Xs siden)` så admin kan se i Browse-viewet om SSE-eventene faktisk når
+frem (uden at skifte til Settings).
+
+**Filer:** [frontend/js/views/browse.js](frontend/js/views/browse.js)
+
+---
+
 ## [3.6.1 build 0112] — 2026-04-29 — fix(PxGrid): ServiceLookup for endpoint-topic, ikke hardcoded default
 
 Bruger rapporterede at nye endpoints oprettet i ISE-GUI ikke dukker op i
