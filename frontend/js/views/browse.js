@@ -75,57 +75,87 @@ function saveColVis(state) {
 
 export async function renderBrowse(container) {
   container.innerHTML = `
-    <h2>Browse / Edit endpoints</h2>
+    <div class="page-header">
+      <h2 style="margin:0;">Browse / Edit endpoints</h2>
+      <span id="pxgrid-source-badge"
+            title="Hvor auth-status kommer fra: pxGrid push (live) eller MnT pull (5-15s forsinkelse)"
+            style="padding:3px 10px; border-radius:12px; font-size:0.8em; background:#e5e7eb; color:#374151; white-space:nowrap;">
+        ⚪ Auth-status: ukendt
+      </span>
+    </div>
     <div class="card">
       <div class="toolbar">
-        <button id="refresh-btn">Refresh</button>
-        <button id="export-btn" class="secondary">Export CSV</button>
-        <button id="portal-filter-btn" class="secondary" title="Vis kun endpoints oprettet af HyperVision ISE Portal">Kun portal</button>
-        <button id="coa-toggle-btn" class="secondary" title="Udløs CoA reauth på ISE efter hver gemt ændring">CoA reauth: FRA</button>
-        <button id="save-all-btn" disabled title="Gem alle ændrede endpoints">Gem alle</button>
-        <div class="server-filter"
-             title="Server-side ERS filter på MAC — for Name/Description brug kolonnefilter-rækken nedenfor">
-          <select id="filter-field" class="filter-field">
-            <option value="mac">MAC</option>
-          </select>
-          <select id="filter-op" class="filter-op">
-            <option value="CONTAINS">CONTAINS</option>
-            <option value="EQ">EQ</option>
-            <option value="NEQ">NEQ</option>
-            <option value="STARTSW">STARTSW</option>
-            <option value="ENDSW">ENDSW</option>
-          </select>
-          <input type="search" id="filter-value" class="mac-search filter-value"
-                 placeholder="Værdi (server-side MAC)" autocomplete="off" />
+        <!-- Group: data refresh + export + visning -->
+        <div class="toolbar-group" title="Data-handlinger">
+          <button id="refresh-btn">Refresh</button>
+          <button id="export-btn" class="secondary">Export CSV</button>
+          <div class="col-vis-wrap">
+            <button id="col-vis-btn" class="secondary small" type="button"
+                    title="Vis/skjul kolonner">Kolonner ▾</button>
+            <div id="col-vis-menu" class="col-vis-menu hidden"></div>
+          </div>
         </div>
+
+        <span class="toolbar-divider"></span>
+
+        <!-- Group: filtre -->
+        <div class="toolbar-group" title="Filtre">
+          <button id="portal-filter-btn" class="secondary"
+                  title="Vis kun endpoints oprettet af HyperVision ISE Portal">Kun portal</button>
+          <div class="server-filter"
+               title="Server-side ERS filter på MAC — for Name/Description brug kolonnefilter-rækken nedenfor">
+            <select id="filter-field" class="filter-field">
+              <option value="mac">MAC</option>
+            </select>
+            <select id="filter-op" class="filter-op">
+              <option value="CONTAINS">CONTAINS</option>
+              <option value="EQ">EQ</option>
+              <option value="NEQ">NEQ</option>
+              <option value="STARTSW">STARTSW</option>
+              <option value="ENDSW">ENDSW</option>
+            </select>
+            <input type="search" id="filter-value" class="mac-search filter-value"
+                   placeholder="Værdi (server-side MAC)" autocomplete="off" />
+          </div>
+        </div>
+
         <div class="spacer"></div>
-        <div class="col-vis-wrap">
-          <button id="col-vis-btn" class="secondary small" type="button"
-                  title="Vis/skjul kolonner">Kolonner ▾</button>
-          <div id="col-vis-menu" class="col-vis-menu hidden"></div>
+
+        <!-- Group: gem-handlinger (CoA + global save) -->
+        <div class="toolbar-group" title="Gem-handlinger">
+          <button id="coa-toggle-btn" class="secondary"
+                  title="Udløs CoA reauth på ISE efter hver gemt ændring">CoA reauth: FRA</button>
+          <button id="save-all-btn" disabled title="Gem alle ændrede endpoints">Gem alle</button>
         </div>
-        <button id="bulk-edit-btn" class="secondary small" disabled>Rediger valgte</button>
-        <button id="bulk-save-btn" class="small" disabled>Gem valgte</button>
-        <button id="bulk-disconnect-btn" class="danger small" disabled
-                title="CoA Disconnect — deautentificér valgte klienter på WLC/switch (tvinger ny DHCP ved re-associate)">Disconnect valgte</button>
-        <button id="bulk-del-btn" class="danger small" disabled>Slet valgte</button>
-        <span id="selection-count" class="hint"></span>
-        <span id="pxgrid-source-badge" class="hint"
-              title="Hvor auth-status kommer fra: pxGrid push (live) eller MnT pull (5-15s forsinkelse)"
-              style="margin-left:auto; padding:2px 8px; border-radius:10px; font-size:0.8em; background:#e5e7eb; color:#374151;">
-          ⚪ Auth-status: ukendt
-        </span>
-        <label class="hint page-size-label">Vis
-          <select id="page-size-select">
-            <option value="10">10</option>
-            <option value="25">25</option>
-            <option value="50">50</option>
-            <option value="100">100</option>
-            <option value="200">200</option>
-            <option value="500">500</option>
-          </select>
-        </label>
-        <span id="count" class="hint"></span>
+
+        <span class="toolbar-divider"></span>
+
+        <!-- Group: bulk-actions (på selektion) -->
+        <div class="toolbar-group" title="Handlinger på valgte rækker">
+          <span id="selection-count" class="hint"></span>
+          <button id="bulk-edit-btn" class="secondary small" disabled>Rediger valgte</button>
+          <button id="bulk-save-btn" class="small" disabled>Gem valgte</button>
+          <button id="bulk-disconnect-btn" class="danger small" disabled
+                  title="CoA Disconnect — deautentificér valgte klienter på WLC/switch (tvinger ny DHCP ved re-associate)">Disconnect</button>
+          <button id="bulk-del-btn" class="danger small" disabled>Slet</button>
+        </div>
+
+        <span class="toolbar-divider"></span>
+
+        <!-- Group: pagination -->
+        <div class="toolbar-group" title="Visning">
+          <label class="hint page-size-label">Vis
+            <select id="page-size-select">
+              <option value="10">10</option>
+              <option value="25">25</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+              <option value="200">200</option>
+              <option value="500">500</option>
+            </select>
+          </label>
+          <span id="count" class="hint"></span>
+        </div>
       </div>
       <div id="msg"></div>
       <div class="browse-table-wrap">

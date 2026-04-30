@@ -5,6 +5,44 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.7.4 build 0119] — 2026-04-30 — ux(Browse): PxGrid-status flyttet til header + reorganiseret toolbar + FEATURES-oprydning
+
+**Browse-toolbaren var blevet for lang** med 14+ knapper i én række.
+Reorganiseret med visuelle dividers i 5 logiske grupper:
+
+1. **Data-handlinger** — Refresh · Export CSV · Kolonner ▾
+2. **Filtre** — Kun portal · server-filter (MAC search)
+3. *(spacer)* — skubber resten til højre
+4. **Gem-handlinger** — CoA reauth · Gem alle
+5. **Bulk-actions** — selection-count · Rediger · Gem · Disconnect · Slet
+6. **Visning** — page-size · count
+
+PxGrid push/pull-status-badgen er flyttet **ud af toolbar'en** og op
+ved siden af "Browse / Edit endpoints"-titlen i en ny `.page-header`.
+Det giver:
+- Mere plads i selve toolbar'en
+- Status fungerer som en "ambient" indikator der altid er synlig på
+  side-niveau, ikke gemt blandt knapper
+- Logisk separation: status (information) vs. toolbar (handlinger)
+
+Bulk-knapperne har også fået kortere labels ("Disconnect" og "Slet" i
+stedet for "Disconnect valgte" / "Slet valgte") fordi gruppen allerede
+viser selection-count som kontekst.
+
+**FEATURES.md oprydning:**
+- `[in-progress 3.0.0] PxGrid server-push af session/auth-status` →
+  `[done 3.0.0 → 3.7.3]` — er reelt landet gennem 8 minor/patch-bumps.
+- `[in-progress 3.0.0] PxGrid event-invalidering af endpoint-cache` →
+  `[wontfix 3.0.0]` — empirisk verificeret at ISE 3.4/3.5 ikke
+  publicerer endpoint-CRUD-events. Multi-topic worker bevaret som
+  opt-in for profiler-events. 2.8.0 background-sync er B-løsning.
+
+**Filer:** [frontend/js/views/browse.js](frontend/js/views/browse.js),
+[frontend/css/styles.css](frontend/css/styles.css),
+[FEATURES.md](FEATURES.md)
+
+---
+
 ## [3.7.3 build 0118] — 2026-04-30 — fix(Browse): falsk PUSH-status når pxGrid er disabled
 
 Browse-badge fortsatte med at vise "🟢 PUSH (pxGrid)" efter admin slog

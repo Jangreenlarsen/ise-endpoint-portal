@@ -200,6 +200,28 @@ td input, td select {
   border-top-right-radius: 8px;
 }
 .toolbar .spacer { flex: 1; }
+
+/* 3.7.4: gruppér toolbar-knapper logisk + visuelle dividers */
+.toolbar .toolbar-group {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+.toolbar .toolbar-divider {
+  width: 1px;
+  height: 22px;
+  background: #d1d5db;
+  margin: 0 0.15rem;
+}
+
+/* Page-header: titel + pxgrid-status badge på samme linje */
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0 0 0.75rem;
+  flex-wrap: wrap;
+}
 .toolbar .mac-search {
   padding: 0.35rem 0.55rem;
   border: 1px solid #d1d5db;
@@ -947,6 +969,9 @@ body.auth-mode .content {
 [data-theme="dark"] .toolbar {
   background: #16213e;
   border-bottom-color: #2a2a4a;
+}
+[data-theme="dark"] .toolbar .toolbar-divider {
+  background: #2a2a4a;
 }
 [data-theme="dark"] .card h3 { color: #e0e0e0; }
 [data-theme="dark"] th {
