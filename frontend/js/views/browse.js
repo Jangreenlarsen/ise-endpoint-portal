@@ -755,6 +755,15 @@ export async function renderBrowse(container) {
         updatePxGridSourceBadge();
       } catch {}
     });
+    pxgridEventSource.addEventListener("pxgrid_disabled", () => {
+      // Backend signalerer at pxGrid-worker ikke kører (admin har slået
+      // PxGrid fra eller worker_enabled=false). Luk SSE permanent så vi
+      // ikke retrier mod en disabled service, og fald tilbage til MnT-poll.
+      stopPxGridStream();
+      // Re-evaluér auth-status med MnT hvis filter er aktivt
+      if (anyFilterActive()) refreshActiveSessionMacs().then(applyAuthStatusColors);
+      updatePxGridSourceBadge();
+    });
     pxgridEventSource.addEventListener("clear", () => {
       if (pxgridSessionMacs) pxgridSessionMacs.clear();
       if (activeSessionMacs) activeSessionMacs.clear();
@@ -778,6 +787,11 @@ export async function renderBrowse(container) {
     }
     pxgridLive = false;
     pxgridSessionMacs = null;
+    // Ryd activeSessionMacs hvis den var afledt af pxGrid-data så badge
+    // og auth-farver ikke viser stale state. MnT-poll re-populerer ved
+    // næste filter-event.
+    activeSessionMacs = null;
+    pxgridLastEventTs = 0;
   }
 
   // Start stream'en proaktivt — hvis pxGrid er disabled returnerer endpoint'et

@@ -5,6 +5,29 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.7.3 build 0118] — 2026-04-30 — fix(Browse): falsk PUSH-status når pxGrid er disabled
+
+Browse-badge fortsatte med at vise "🟢 PUSH (pxGrid)" efter admin slog
+PxGrid fra i Settings. Det var ikke kun visuelt forkert — `pxgridLive=true`
+fik også frontend til at springe MnT-polden over, så auth-status-farver
+aldrig blev opdateret.
+
+**Fix:** indført eksplicit "pxgrid_disabled"-event over SSE-kanalen:
+- SSE-endpoint sender det med det samme hvis `pxgrid_enabled=false` ved
+  connect-tidspunkt.
+- `session_worker.stop()` broadcaster det til alle aktive SSE-subscribers
+  så frontend reagerer øjeblikkeligt når admin disabler under drift
+  (worker stoppes som del af settings-save-flow).
+- Frontend lytter på event'et: lukker EventSource permanent (ingen retry-
+  storm mod disabled service), rydder pxGrid-state, og falder tilbage til
+  MnT-poll. Badge viser nu korrekt "🟡 PULL (MnT-poll)" når pxGrid er fra.
+
+**Filer:** [backend/app/api/pxgrid.py](backend/app/api/pxgrid.py),
+[backend/app/pxgrid/session_worker.py](backend/app/pxgrid/session_worker.py),
+[frontend/js/views/browse.js](frontend/js/views/browse.js)
+
+---
+
 ## [3.7.2 build 0117] — 2026-04-29 — perf(Browse): inkrementel row-refresh efter save (ikke længere flud-reload)
 
 Hver gang admin gemte ændringer i Browse — hvad enten via "Gem alle",

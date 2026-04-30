@@ -93,6 +93,17 @@ async def sessions_stream(
 
     async def event_generator():
         try:
+            # Hvis pxGrid er disabled OR worker ikke kører, fortæl klienten det
+            # eksplicit via 'pxgrid_disabled'-event så frontend kan falde tilbage
+            # til MnT-poll i stedet for at vise misvisende "PUSH"-status.
+            if not config.settings.pxgrid_enabled:
+                disabled = {
+                    "type": "pxgrid_disabled",
+                    "reason": "pxgrid_enabled=false",
+                }
+                yield f"event: pxgrid_disabled\ndata: {json.dumps(disabled)}\n\n"
+                return
+
             initial = await cache.list(
                 max_age_s=config.settings.pxgrid_session_cache_max_age_s
             )
@@ -110,6 +121,11 @@ async def sessions_stream(
                         queue.get(), timeout=SSE_KEEPALIVE_SECONDS
                     )
                     yield f"event: {evt['type']}\ndata: {json.dumps(evt)}\n\n"
+                    # Hvis vi har sendt et pxgrid_disabled-event (broadcastet
+                    # fra worker.stop() ved settings-skift), lukker vi pænt så
+                    # klienten ikke fortsætter med stale state.
+                    if evt.get("type") == "pxgrid_disabled":
+                        return
                 except asyncio.TimeoutError:
                     yield ": keepalive\n\n"
         except asyncio.CancelledError:

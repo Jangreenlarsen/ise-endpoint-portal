@@ -116,6 +116,16 @@ class PxGridSessionWorker:
             self._status.connected = False
             self._task = None
             logger.info("pxgrid session worker stopped")
+            # Fortæl SSE-subscribers at PUSH-kanalen er væk så de kan falde
+            # tilbage til MnT-pull i stedet for at vise misvisende grøn
+            # "PUSH"-badge.
+            try:
+                get_cache()._broadcast({  # noqa: SLF001
+                    "type": "pxgrid_disabled",
+                    "reason": "worker_stopped",
+                })
+            except Exception:  # noqa: BLE001
+                pass
 
     async def _run_loop(self) -> None:
         s = config.settings
