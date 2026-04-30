@@ -75,8 +75,8 @@ export async function renderRegister(container) {
         <div id="r-attrs"></div>
 
         <div id="r-roles-section" class="register-roles-section" hidden>
-          <label class="register-label">Roller</label>
-          <div class="register-sub register-roles-hint">Vælg roller fra kataloget. Hvis ingen vælges, tagges endpointet med dit brugernavn.</div>
+          <label class="register-label">System adm</label>
+          <div class="register-sub register-roles-hint">Vælg System adm fra kataloget. Hvis ingen vælges, tagges endpointet med dit brugernavn (din egen System adm-rolle).</div>
           <div id="r-roles-chips" class="role-chips register-roles-chips"></div>
         </div>
 
@@ -343,7 +343,7 @@ export async function renderRegister(container) {
           <div class="register-mine-mac">${mac}</div>
           <div class="register-mine-row"><span class="register-mine-key">Gruppe</span><span>${grp}</span></div>
           ${desc ? `<div class="register-mine-row"><span class="register-mine-key">Beskr.</span><span>${desc}</span></div>` : ""}
-          ${roles ? `<div class="register-mine-row"><span class="register-mine-key">Roller</span><span class="register-mine-roles">${roles}</span></div>` : ""}
+          ${roles ? `<div class="register-mine-row"><span class="register-mine-key">System adm</span><span class="register-mine-roles">${roles}</span></div>` : ""}
         </div>
       `;
     }).join("");

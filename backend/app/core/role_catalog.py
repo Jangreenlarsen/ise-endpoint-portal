@@ -92,3 +92,49 @@ def delete_role(name: str) -> dict[str, Any] | None:
 
 def role_names() -> list[str]:
     return [r["name"] for r in load_roles()]
+
+
+def ensure_user_role(username: str) -> dict[str, Any] | None:
+    """3.8.0: Sikrer at en bruger har en tilsvarende System adm-rolle i kataloget.
+
+    Idempotent: returnerer eksisterende entry hvis den findes (uden at ændre
+    den), eller opretter en ny med standardbeskrivelse. Returnerer None hvis
+    username er ugyldigt som rolle-navn (fx indeholder ikke-tilladte tegn)
+    — caller bør logge advarsel men ikke fejle bruger-creation pga. det.
+    """
+    if not is_valid_name(username):
+        return None
+    roles = load_roles()
+    existing = find_by_name(roles, username)
+    if existing is not None:
+        return existing
+    role = {
+        "name": username,
+        "description": f"Auto: System adm-rolle for bruger '{username}'",
+        "created_by": "system",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "auto_user_role": True,
+    }
+    roles.append(role)
+    save_roles(roles)
+    return role
+
+
+def backfill_user_roles(usernames: list[str]) -> dict[str, int]:
+    """Sikrer at hver username har en tilhørende rolle. Kaldes ved startup
+    + når admin tilføjer/opdaterer brugere. Returnerer counts.
+    """
+    created = 0
+    skipped = 0
+    invalid = 0
+    for u in usernames:
+        if not is_valid_name(u):
+            invalid += 1
+            continue
+        roles = load_roles()
+        if find_by_name(roles, u) is not None:
+            skipped += 1
+            continue
+        if ensure_user_role(u) is not None:
+            created += 1
+    return {"created": created, "skipped": skipped, "invalid": invalid}

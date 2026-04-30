@@ -5,6 +5,53 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.8.0 build 0120] — 2026-04-30 — feat: omdøb "Endpoint-roller" → "System adm" + auto-rolle pr. bruger
+
+UI-terminologien for endpoint-tag-systemet skiftet fra "Endpoint-roller" /
+"Roller" til **"System adm"** alle steder portalen viser eller refererer
+til det. Ny funktion: hver bruger får automatisk en System adm-rolle i
+kataloget med navn = username, så admin kan se og bruge brugeren som
+scope-tag på endpoints uden manuelt at oprette rollen.
+
+**Backend:**
+- `role_catalog.ensure_user_role(username)` — idempotent helper der
+  tilføjer en katalog-entry markeret med `auto_user_role: true`. Skipper
+  ugyldige navne (skal matche `^[A-Za-z0-9_-]{1,64}$`).
+- `role_catalog.backfill_user_roles(usernames)` — bulk-helper der køres
+  ved startup for at oprette manglende user-roller efter opgradering.
+- `user_service.create_user()` kalder nu `ensure_user_role` efter user-
+  creation. Logger advarsel hvis username indeholder ugyldige tegn så
+  user-flowet ikke fejler — admin kan manuelt oprette rolle bagefter.
+- `main.py` lifespan kører backfill ved hver startup. Idempotent.
+
+**Frontend rename (UI-text only, internal IDs/API-stier uændret):**
+- Settings: "Endpoint-roller" header → "System adm". Hint-tekst opdateret
+  til at forklare admin-konceptet (admin uden System adm = fuld synlighed,
+  brugere får automatisk username-rolle).
+- Settings: "Brugere & roller" → "Brugere & System adm". Tabellen viser
+  "System adm" i kolonneoverskriften.
+- Browse: kolonne "Roller" → "System adm". Detail-modal og bulk-edit
+  felter ligeledes.
+- Register: rolle-picker label "Roller" → "System adm". Hint-tekst
+  opdateret. "Mine endpoints"-listen viser "System adm" i stedet for
+  "Roller".
+- Alerts/dialogs: "Rolle oprettet" → "System adm oprettet", etc.
+
+**Bevarede internt:**
+- ISE custom attribute hedder stadig `HypervisionRoles` (ingen ISE-side
+  rename — det er en breaking change for bestående endpoints).
+- API-paths `/api/endpoint-roles` uændret.
+- Field-navne `assigned_endpoint_roles` i user-records uændret.
+
+**Filer:** [backend/app/core/role_catalog.py](backend/app/core/role_catalog.py),
+[backend/app/services/user_service.py](backend/app/services/user_service.py),
+[backend/app/main.py](backend/app/main.py),
+[frontend/js/views/settings.js](frontend/js/views/settings.js),
+[frontend/js/views/browse.js](frontend/js/views/browse.js),
+[frontend/js/views/register.js](frontend/js/views/register.js)
+
+---
+
 ## [3.7.4 build 0119] — 2026-04-30 — ux(Browse): PxGrid-status flyttet til header + reorganiseret toolbar + FEATURES-oprydning
 
 **Browse-toolbaren var blevet for lang** med 14+ knapper i én række.

@@ -28,8 +28,23 @@ from app.services.cache_sync import get_worker as get_cache_sync_worker
 async def lifespan(_: FastAPI):
     setup_logging()
     import logging
-    logging.getLogger(__name__).info("HyperVision ISE Portal %s starting", APP_VERSION)
+    logger = logging.getLogger(__name__)
+    logger.info("HyperVision ISE Portal %s starting", APP_VERSION)
     init_audit_db()
+    # 3.8.0: backfill System adm-rolle for hver eksisterende bruger så admin
+    # kan tagge endpoints med username via rolle-katalogen. Idempotent.
+    try:
+        from app.core import role_catalog
+        from app.core.user_store import load_users
+        usernames = [u.get("username") for u in load_users() if u.get("username")]
+        result = role_catalog.backfill_user_roles(usernames)
+        if result["created"] > 0:
+            logger.info(
+                "System adm-rolle backfill: created=%d skipped=%d invalid=%d",
+                result["created"], result["skipped"], result["invalid"],
+            )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("System adm-rolle backfill fejlede: %s", exc)
     get_cache_sync_worker().start()
     get_audit_retention_worker().start()
     get_pxgrid_worker().start()

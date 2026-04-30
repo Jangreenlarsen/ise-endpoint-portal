@@ -143,6 +143,19 @@ async def create_user(payload: UserCreate) -> User:
     users.append(record)
     save_users(users)
     logger.info("user created: %s role=%s", payload.username, payload.role)
+    # 3.8.0: auto-opret System adm-rolle med navnet = username så admin
+    # kan se brugeren i rolle-kataloget og bruge dem som scope-tag på endpoints.
+    try:
+        from app.core import role_catalog
+        result = role_catalog.ensure_user_role(payload.username)
+        if result is None:
+            logger.warning(
+                "kunne ikke auto-oprette System adm-rolle for '%s' "
+                "(ugyldigt navn — kun A-Z, a-z, 0-9, '-', '_')",
+                payload.username,
+            )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("auto-rolle-create fejlede for %s: %s", payload.username, exc)
     await audit_store.record(
         "created",
         "user",

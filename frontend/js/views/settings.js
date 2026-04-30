@@ -434,12 +434,15 @@ export async function renderSettings(container) {
     </div>
 
     <div class="card">
-      <h3>Endpoint-roller</h3>
+      <h3>System adm</h3>
       <p class="hint">
-        Roller der kan tagges på endpoints (CA <code>HypervisionRoles</code>) og tildeles
-        brugere. Non-admin ser kun endpoints tagget med en af deres effektive roller
-        (tildelte + deres eget username, der altid er en implicit rolle). Admin ser alt.
-        Rolle-navne må kun indeholde <code>A-Z a-z 0-9 _ -</code> (max 64 tegn).
+        System adm-tags der kan sættes på endpoints (CA <code>HypervisionRoles</code>) og
+        tildeles brugere. Non-admin ser kun endpoints tagget med en af deres effektive
+        System adm (tildelte + deres eget username, der altid er en implicit System adm-rolle).
+        Portal-admin har ingen System adm tilknyttet og ser derfor alt — det er admin der
+        fordeler System adm/tags på endpoints. Hvert username får automatisk en
+        System adm-rolle med samme navn ved bruger-oprettelse.
+        Navne må kun indeholde <code>A-Z a-z 0-9 _ -</code> (max 64 tegn).
       </p>
       <div id="roles-msg"></div>
       <table class="users-table">
@@ -455,19 +458,19 @@ export async function renderSettings(container) {
         <tbody id="roles-tbody"></tbody>
       </table>
       <form id="role-create-form" class="user-create-row">
-        <input type="text" id="new-role-name" placeholder="rolle-navn (fx alle-Printer)"
+        <input type="text" id="new-role-name" placeholder="System adm-navn (fx alle-Printer)"
                pattern="[A-Za-z0-9_\\-]{1,64}" maxlength="64" required />
         <input type="text" id="new-role-desc" placeholder="beskrivelse (valgfri)" maxlength="256" />
-        <button type="submit">Opret rolle</button>
+        <button type="submit">Opret System adm</button>
       </form>
     </div>
 
     <div class="card">
-      <h3>Brugere &amp; roller</h3>
+      <h3>Brugere &amp; System adm</h3>
       <p class="hint">
-        Administrer lokale brugerkonti, system-roller og endpoint-rolle-tildelinger.
+        Administrer lokale brugerkonti, system-roller og System adm-tildelinger.
         <b>admin</b> har fuld adgang. <b>editor</b> kan oprette/redigere endpoints. <b>viewer</b> kan kun læse.
-        <b>registrar</b> kan kun registrere nye endpoints. Endpoint-roller bestemmer hvilke endpoints
+        <b>registrar</b> kan kun registrere nye endpoints. System adm bestemmer hvilke endpoints
         ikke-admin-brugere kan se (deres username er altid implicit tildelt).
       </p>
       <div id="users-msg"></div>
@@ -476,7 +479,7 @@ export async function renderSettings(container) {
           <tr>
             <th>Brugernavn</th>
             <th style="width:9rem;">Rolle</th>
-            <th>Endpoint-roller</th>
+            <th>System adm</th>
             <th style="width:11rem;">Sidst logget ind</th>
             <th style="width:9rem;">Oprettet</th>
             <th style="width:10rem;">Handlinger</th>
@@ -1142,7 +1145,7 @@ async function initRolesSection(container) {
       const data = await api.listEndpointRoles();
       state.roles = data.roles || [];
       if (state.roles.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="hint" style="text-align:center;padding:1rem;">Ingen roller endnu — opret den første nedenfor.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="hint" style="text-align:center;padding:1rem;">Ingen System adm endnu — opret den første nedenfor.</td></tr>`;
       } else {
         tbody.innerHTML = state.roles
           .map(
@@ -1159,7 +1162,7 @@ async function initRolesSection(container) {
       }
       if (state.onChange) await state.onChange();
     } catch (err) {
-      msg.innerHTML = `<div class="alert error">Kunne ikke hente roller: ${esc(err.message)}</div>`;
+      msg.innerHTML = `<div class="alert error">Kunne ikke hente System adm: ${esc(err.message)}</div>`;
     }
   }
 
@@ -1167,10 +1170,10 @@ async function initRolesSection(container) {
     if (!e.target.classList.contains("role-del")) return;
     const row = e.target.closest("tr");
     const name = row.dataset.roleName;
-    if (!confirm(`Slet rollen "${name}"? Brugere mister tildelingen, men endpoint-tags ændres ikke.`)) return;
+    if (!confirm(`Slet System adm "${name}"? Brugere mister tildelingen, men endpoint-tags ændres ikke.`)) return;
     try {
       await api.deleteEndpointRole(name);
-      msg.innerHTML = `<div class="alert success">Rolle "${esc(name)}" slettet.</div>`;
+      msg.innerHTML = `<div class="alert success">System adm "${esc(name)}" slettet.</div>`;
       await reload();
     } catch (err) {
       msg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
@@ -1189,7 +1192,7 @@ async function initRolesSection(container) {
       await api.createEndpointRole(payload);
       nameInput.value = "";
       descInput.value = "";
-      msg.innerHTML = `<div class="alert success">Rolle oprettet.</div>`;
+      msg.innerHTML = `<div class="alert success">System adm oprettet.</div>`;
       await reload();
     } catch (err) {
       msg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
@@ -1208,7 +1211,7 @@ async function initUsersSection(container, currentUser, rolesState) {
     const catalog = rolesState ? rolesState.roles : [];
     const assigned = new Set(user.assigned_endpoint_roles || []);
     if (catalog.length === 0) {
-      return `<span class="hint">Ingen roller i kataloget endnu</span>`;
+      return `<span class="hint">Ingen System adm i kataloget endnu</span>`;
     }
     const checks = catalog
       .map((r) => {
@@ -1275,7 +1278,7 @@ async function initUsersSection(container, currentUser, rolesState) {
         .map((c) => c.value);
       try {
         await api.setUserEndpointRoles(id, selected);
-        msg.innerHTML = `<div class="alert success">Endpoint-roller opdateret for ${esc(row.dataset.username)}.</div>`;
+        msg.innerHTML = `<div class="alert success">System adm opdateret for ${esc(row.dataset.username)}.</div>`;
       } catch (err) {
         msg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
         await reload();

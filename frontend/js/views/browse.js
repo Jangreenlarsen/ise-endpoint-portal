@@ -58,7 +58,7 @@ const COLUMNS = [
   { key: "authz_vlan",     label: "AuthzVlan",      field: (r) => r.authz_vlan },
   { key: "authz_acl",      label: "AuthzACL",       field: (r) => r.authz_acl },
   { key: "platform_type",  label: "Platform",       field: (r) => r.platform_type },
-  { key: "roles",          label: "Roller",         field: (r) => (r.roles || []).join(", ") },
+  { key: "roles",          label: "System adm",     field: (r) => (r.roles || []).join(", ") },
 ];
 
 const COLVIS_KEY = "ise_portal_browse_colvis";
@@ -217,7 +217,7 @@ export async function renderBrowse(container) {
           <select id="d-authzacl"></select>
           <label>Platform</label>
           <select id="d-platformtype"></select>
-          <label>Roller</label>
+          <label>System adm</label>
           <div id="d-roles"></div>
           <label>HypervisionISEPortal</label>
           <div class="detail-value mono" id="d-hypervision"></div>
@@ -259,7 +259,7 @@ export async function renderBrowse(container) {
           <select id="be-authzacl" disabled></select>
           <label><input type="checkbox" class="be-cb" data-field="platformtype" /> Platform</label>
           <select id="be-platformtype" disabled></select>
-          <label><input type="checkbox" class="be-cb" data-field="roles" /> Roller</label>
+          <label><input type="checkbox" class="be-cb" data-field="roles" /> System adm</label>
           <div id="be-roles" class="be-roles-wrap disabled-overlay"></div>
         </div>
         <div class="modal-actions">
