@@ -5,6 +5,22 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.8.1 build 0121] — 2026-04-30 — fix: registrar får 403 på "Mine endpoints"
+
+Bruger med rollen `registrar` blev mødt med *"403: Kræver en af rollerne:
+admin, editor, viewer"* når de klikkede "Mine endpoints" i register-
+viewet. Årsag: `GET /api/endpoints/details/all` var beskyttet af
+`require_any` (kun admin/editor/viewer). Service-laget filtrerer dog
+allerede pr. effektive roller, så det er sikkert at give registrar
+adgang — de ser kun egne endpoints (deres username + assigned System adm).
+
+Fix: skift dependency til `require_register_lookup` (admin/editor/viewer/
+registrar) på dette ene endpoint.
+
+**Filer:** [backend/app/api/endpoints.py](backend/app/api/endpoints.py)
+
+---
+
 ## [3.8.0 build 0120] — 2026-04-30 — feat: omdøb "Endpoint-roller" → "System adm" + auto-rolle pr. bruger
 
 UI-terminologien for endpoint-tag-systemet skiftet fra "Endpoint-roller" /

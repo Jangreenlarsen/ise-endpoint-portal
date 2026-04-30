@@ -6,6 +6,7 @@ from app.api.deps import (
     require_any,
     require_create_endpoint,
     require_editor,
+    require_register_lookup,
 )
 from app.core.endpoint_cache import get_cache
 from app.core.exceptions import IseApiError
@@ -92,10 +93,16 @@ async def list_endpoint_details(
 async def list_all_endpoint_details(
     search: str | None = None,
     filter: list[str] | None = Query(default=None),
-    user: User = Depends(require_any),
+    user: User = Depends(require_register_lookup),
     service: EndpointService = Depends(get_endpoint_service),
 ) -> list[EndpointDetail]:
-    """Fetch ALL endpoints with full details across all ISE pages."""
+    """Fetch ALL endpoints with full details across all ISE pages.
+
+    Registrar er tilladt fordi register-viewets "Mine endpoints"-knap
+    bruger dette endpoint. Service-laget filtrerer pr. effektive roller
+    (registrar's username + assigned System adm), så registrar ser kun
+    egne endpoints — ikke en privilegie-eskalering.
+    """
     try:
         return await service.list_all_endpoint_details(
             search=search,
