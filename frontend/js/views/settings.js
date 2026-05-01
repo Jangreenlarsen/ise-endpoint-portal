@@ -1137,7 +1137,7 @@ async function initRolesSection(container) {
   const tbody = container.querySelector("#roles-tbody");
   const msg = container.querySelector("#roles-msg");
   const form = container.querySelector("#role-create-form");
-  const state = { roles: [], onChange: null };
+  const state = { roles: [], onChange: null, reload: null };
 
   async function reload() {
     msg.innerHTML = "";
@@ -1200,6 +1200,7 @@ async function initRolesSection(container) {
   });
 
   await reload();
+  state.reload = reload;
   return state;
 }
 
@@ -1229,6 +1230,11 @@ async function initUsersSection(container, currentUser, rolesState) {
       tbody.innerHTML = users
         .map((u) => {
           const isSelf = u.id === currentUser.id;
+          // 3.8.2: Admin har implicit alle System adm-roller (ser alt) —
+          // skjul rolle-pickeren og vis i stedet en hint så det er klart
+          // at rolle-tildeling ikke er relevant for admin-brugere.
+          const isPortalAdmin = u.role === "admin";
+          const adminCell = `<span class="hint" style="font-style:italic;">Admin — alle System adm implicit</span>`;
           return `
             <tr data-user-id="${esc(u.id)}" data-username="${esc(u.username)}">
               <td>${esc(u.username)}</td>
@@ -1239,7 +1245,7 @@ async function initUsersSection(container, currentUser, rolesState) {
                     .join("")}
                 </select>
               </td>
-              <td>${renderEndpointRoleCell(u)}</td>
+              <td>${isPortalAdmin ? adminCell : renderEndpointRoleCell(u)}</td>
               <td class="mono" style="font-size:0.78rem;">${esc(u.last_login || "—")}</td>
               <td class="mono" style="font-size:0.78rem;">${esc((u.created_at || "").slice(0, 10))}</td>
               <td>
@@ -1265,6 +1271,9 @@ async function initUsersSection(container, currentUser, rolesState) {
       try {
         await api.updateUser(id, { role: e.target.value });
         msg.innerHTML = `<div class="alert success">Rolle opdateret.</div>`;
+        // 3.8.2: rebuild rækken så System adm-cellen toggler mellem
+        // picker og admin-hint baseret på den nye rolle.
+        await reload();
       } catch (err) {
         msg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
         await reload();
@@ -1328,7 +1337,13 @@ async function initUsersSection(container, currentUser, rolesState) {
       await api.createUser(payload);
       container.querySelector("#new-username").value = "";
       container.querySelector("#new-password").value = "";
-      msg.innerHTML = `<div class="alert success">Bruger oprettet.</div>`;
+      msg.innerHTML = `<div class="alert success">Bruger oprettet — auto-System adm-rolle med samme navn er tilføjet til kataloget.</div>`;
+      // 3.8.2: backend opretter automatisk en System adm-rolle med navn =
+      // username (3.8.0-feature). Refresh rolle-kataloget så admin straks
+      // kan tilvælge rollen til den nye bruger uden side-reload.
+      if (rolesState && typeof rolesState.reload === "function") {
+        await rolesState.reload();
+      }
       await reload();
     } catch (err) {
       msg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;

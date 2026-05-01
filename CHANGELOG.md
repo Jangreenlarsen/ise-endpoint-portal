@@ -5,6 +5,27 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.8.2 build 0122] — 2026-05-01 — fix(Settings): refresh System adm-katalog efter user-create + skjul picker for admin
+
+To follow-ups på 3.8.0 (auto-rolle pr. bruger):
+
+1. **System adm-katalog opdateres efter user-create.** Backend auto-opretter
+   en rolle med navn = username, men frontend's cache blev ikke refreshed
+   → rollen var usynlig i Brugere-tabellens picker indtil page reload.
+   `initRolesSection` returnerer nu sin `reload`-funktion via
+   `state.reload`, og `createUser`-handleren kalder den efter success.
+
+2. **Skjul System adm-picker for admin-brugere.** Admin har implicit alle
+   roller og ser alle endpoints — det er forvirrende at vise et
+   checkbox-katalog som om de skal vælge noget. Admin-rækker viser nu
+   hinten *"Admin — alle System adm implicit"* i kolonnen. Når en bruger
+   skifter system-rolle (fx editor → admin) genrenderes rækken så cellen
+   automatisk toggler mellem picker og admin-hint.
+
+**Filer:** [frontend/js/views/settings.js](frontend/js/views/settings.js)
+
+---
+
 ## [3.8.1 build 0121] — 2026-04-30 — fix: registrar får 403 på "Mine endpoints"
 
 Bruger med rollen `registrar` blev mødt med *"403: Kræver en af rollerne:
