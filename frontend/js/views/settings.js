@@ -36,10 +36,23 @@ export async function renderSettings(container) {
   const currentUser = auth.getUser();
 
   container.innerHTML = `
-    <h2>Settings</h2>
+    <div class="page-header">
+      <h2 style="margin:0;">Settings</h2>
+    </div>
+    <nav class="settings-tabs" id="settings-tabs">
+      ${isAdmin ? `
+      <button class="settings-tab" data-tab="connection">Forbindelse</button>
+      <button class="settings-tab" data-tab="performance">Performance</button>
+      <button class="settings-tab" data-tab="pxgrid">PxGrid</button>
+      <button class="settings-tab" data-tab="ise-config">ISE-config</button>
+      <button class="settings-tab" data-tab="access">Adgang</button>
+      ` : ""}
+      <button class="settings-tab" data-tab="account">Konto</button>
+    </nav>
+    <div class="settings-panels" id="settings-panels">
 
     ${isAdmin ? `
-    <div class="card">
+    <div class="card" data-tab="connection">
       <h3>Backend — Cisco ISE connection</h3>
       <p class="hint">
         Disse værdier persisteres i <code>backend/config.json</code> og overrider
@@ -115,7 +128,7 @@ export async function renderSettings(container) {
     ` : ""}
 
     ${isAdmin ? `
-    <div class="card">
+    <div class="card" data-tab="performance">
       <h3>Endpoint-cache</h3>
       <p class="hint">
         In-memory cache for endpoint- og gruppe-opslag. Reducerer ISE-kald ved filter-skift og refresh i Browse.
@@ -164,7 +177,7 @@ export async function renderSettings(container) {
     ` : ""}
 
     ${isAdmin ? `
-    <div class="card">
+    <div class="card" data-tab="pxgrid">
       <h3>PxGrid 2.0 (real-time session push)</h3>
       <p class="hint">
         Erstatter MnT-poll med ægte server-push fra ISE pxGrid (port 8910).
@@ -395,7 +408,7 @@ export async function renderSettings(container) {
     ` : ""}
 
     ${isAdmin ? `
-    <div class="card">
+    <div class="card" data-tab="ise-config">
       <h3>Anbefalet ISE purge-config</h3>
       <p class="hint">
         ISE's default endpoint-purge-policy sletter endpoints efter inaktivitet — det er
@@ -433,7 +446,7 @@ export async function renderSettings(container) {
       <div id="purge-protect-msg" class="hint"></div>
     </div>
 
-    <div class="card">
+    <div class="card" data-tab="access">
       <h3>System adm</h3>
       <p class="hint">
         System adm-tags der kan sættes på endpoints (CA <code>HypervisionRoles</code>) og
@@ -465,7 +478,7 @@ export async function renderSettings(container) {
       </form>
     </div>
 
-    <div class="card">
+    <div class="card" data-tab="access">
       <h3>Brugere &amp; System adm</h3>
       <p class="hint">
         Administrer lokale brugerkonti, system-roller og System adm-tildelinger.
@@ -501,7 +514,7 @@ export async function renderSettings(container) {
     </div>
     ` : ""}
 
-    <div class="card">
+    <div class="card" data-tab="account">
       <h3>Skift dit password</h3>
       <p class="hint">Logget ind som <b>${esc(currentUser?.username || "")}</b> (rolle: ${esc(currentUser?.role || "")}).</p>
       <div id="pw-msg"></div>
@@ -524,7 +537,7 @@ export async function renderSettings(container) {
       </form>
     </div>
 
-    <div class="card">
+    <div class="card" data-tab="account">
       <h3>CSV Export Template</h3>
       <p class="hint">
         Definerer hvilke kolonner der inkluderes ved CSV-eksport fra Browse view.
@@ -545,7 +558,7 @@ export async function renderSettings(container) {
       </div>
     </div>
 
-    <div class="card">
+    <div class="card" data-tab="account">
       <h3>Frontend — preferences</h3>
       <p class="hint">Gemmes lokalt i browser <code>localStorage</code>.</p>
       <div id="frontend-msg"></div>
@@ -566,7 +579,10 @@ export async function renderSettings(container) {
         </div>
       </form>
     </div>
+    </div><!-- /settings-panels -->
   `;
+
+  initSettingsTabs(container, isAdmin);
 
   if (isAdmin) {
     await initBackendSection(container);
@@ -1435,4 +1451,29 @@ function initCsvAndPrefsSections(container) {
     applyTheme(newPrefs.theme);
     frontendMsg.innerHTML = `<div class="alert success">Frontend preferences gemt.</div>`;
   });
+}
+
+/* 3.8.3: Settings tab-navigation. Skjul/vis cards baseret på data-tab.
+ * Persistér valgt tab i localStorage så bruger lander samme sted ved reload. */
+const SETTINGS_TAB_KEY = "ise_portal_settings_tab";
+function initSettingsTabs(container, isAdmin) {
+  const tabs = container.querySelectorAll(".settings-tab");
+  const cards = container.querySelectorAll(".settings-panels [data-tab]");
+  if (!tabs.length) return;
+  const validTabs = Array.from(tabs).map(t => t.dataset.tab);
+  const defaultTab = isAdmin ? "connection" : "account";
+  let stored = null;
+  try { stored = localStorage.getItem(SETTINGS_TAB_KEY); } catch { /* ignore */ }
+  const initial = validTabs.includes(stored) ? stored : defaultTab;
+
+  function activate(tabId) {
+    tabs.forEach(t => t.classList.toggle("active", t.dataset.tab === tabId));
+    cards.forEach(c => {
+      c.style.display = c.dataset.tab === tabId ? "" : "none";
+    });
+    try { localStorage.setItem(SETTINGS_TAB_KEY, tabId); } catch { /* ignore */ }
+  }
+
+  tabs.forEach(t => t.addEventListener("click", () => activate(t.dataset.tab)));
+  activate(initial);
 }

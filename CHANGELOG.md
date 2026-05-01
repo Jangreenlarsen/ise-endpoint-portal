@@ -5,6 +5,35 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.8.3 build 0123] — 2026-05-01 — ux(Settings): tab-navigation grupperer 9 cards i logiske sektioner
+
+Settings-siden var blevet rodet med 9 cards stablet vertikalt — admin
+skulle scrolle langt for at finde det rigtige felt. Indført tab-baseret
+navigation der grupperer cards efter formål:
+
+**Admin-tabs:**
+- **Forbindelse** — Backend (Cisco ISE connection)
+- **Performance** — Endpoint-cache
+- **PxGrid** — PxGrid 2.0 (real-time session push)
+- **ISE-config** — Anbefalet ISE purge-config
+- **Adgang** — System adm + Brugere & System adm
+- **Konto** — Skift password + CSV Export Template + Frontend preferences
+
+**Non-admin-tabs:**
+- **Konto** (kun)
+
+Selected tab persisteres i `localStorage` (key: `ise_portal_settings_tab`),
+så bruger lander samme sted ved page reload. Default = "Forbindelse" for
+admin, "Konto" for andre. Hver card markeret med `data-tab`-attribut og
+toggles via `display:none`/`""`. Underliggende init-funktioner kører
+stadig ved page load (uændret), så form-state og data er klar når en tab
+aktiveres.
+
+**Filer:** [frontend/js/views/settings.js](frontend/js/views/settings.js),
+[frontend/css/styles.css](frontend/css/styles.css)
+
+---
+
 ## [3.8.2 build 0122] — 2026-05-01 — fix(Settings): refresh System adm-katalog efter user-create + skjul picker for admin
 
 To follow-ups på 3.8.0 (auto-rolle pr. bruger):
