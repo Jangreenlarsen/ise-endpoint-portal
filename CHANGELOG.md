@@ -5,6 +5,24 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.9.4 build 0128] — 2026-05-01 — ux(Saved views): tilføj "🚫 Ryd alle filtre" reset-action
+
+Brugeren havde ingen direkte måde at deaktivere et anvendt view på —
+man kunne kun ændre filtre manuelt eller skifte til andet view. Tilføjet
+en eksplicit reset-action øverst i Views-dropdown'en:
+
+> 🚫 **Ryd alle filtre (ingen view)**
+
+Klik nulstiller portalOnly, server-MAC-filter og alle kolonnefiltre,
+rydder aktivt view, og refresher Browse til server-side pagination uden
+filter. Kolonne-synlighed og page-size bevares (de er ikke filter-state
+per se).
+
+**Filer:** [frontend/js/views/browse.js](frontend/js/views/browse.js),
+[frontend/css/styles.css](frontend/css/styles.css)
+
+---
+
 ## [3.9.3 build 0127] — 2026-05-01 — ux(Saved views): vis aktivt view i toolbar + dropdown
 
 Når man har anvendt et view eller lige har gemt et, ser man nu hvilket

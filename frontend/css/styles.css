@@ -1418,6 +1418,19 @@ body.auth-mode .content {
   cursor: pointer;
 }
 .views-save:hover { background: #eff6ff; }
+.views-clear {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: #b91c1c;
+  padding: 0.4rem 0.55rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+.views-clear:hover { background: #fef2f2; }
 
 [data-theme="dark"] .views-menu {
   background: #16213e;
@@ -1434,6 +1447,8 @@ body.auth-mode .content {
 [data-theme="dark"] .views-divider { background: #3a3a5c; }
 [data-theme="dark"] .views-save { color: #60a5fa; }
 [data-theme="dark"] .views-save:hover { background: #1a2a4a; }
+[data-theme="dark"] .views-clear { color: #f87171; }
+[data-theme="dark"] .views-clear:hover { background: #3a1f1f; }
 
 [data-theme="dark"] .col-vis-menu {
   background: #16213e;

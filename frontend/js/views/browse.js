@@ -1783,6 +1783,10 @@ export async function renderBrowse(container) {
           `;
         }).join("");
     viewsMenu.innerHTML = `
+      <button type="button" class="views-clear" title="Ryd alle filtre og aktivt view">
+        🚫 Ryd alle filtre (ingen view)
+      </button>
+      <div class="views-divider"></div>
       ${items}
       <div class="views-divider"></div>
       <button type="button" class="views-save" title="Gem nuværende filter-kombination">
@@ -1813,6 +1817,24 @@ export async function renderBrowse(container) {
   viewsMenu.addEventListener("click", async (e) => {
     e.stopPropagation();
     const tgt = e.target;
+    if (tgt.classList.contains("views-clear")) {
+      // 3.9.4: nulstil alle filtre + aktivt view, falder tilbage til
+      // server-side pagination uden filtre. Bevarer kolonne-synlighed
+      // og page-size (det er ikke filter-state per se).
+      applyFilterSnapshot({
+        portalOnly: false,
+        server: { field: filterFieldSelect.value, op: filterOpSelect.value, value: "" },
+        cols: [],
+      });
+      persistFilters();
+      activeViewId = null;
+      renderViewsMenu();
+      updateViewsBtnLabel();
+      msg.innerHTML = `<div class="alert info">Alle filtre nulstillet.</div>`;
+      viewsMenu.classList.add("hidden");
+      await onFilterChange();
+      return;
+    }
     if (tgt.classList.contains("views-apply")) {
       const id = tgt.dataset.viewId;
       const v = savedViews.find((x) => x.id === id);
