@@ -456,6 +456,10 @@ export async function renderBrowse(container) {
         value: filterValueInput.value,
       },
       cols,
+      // 3.9.1: gem også kolonne-synlighed (Kolonner ▾) og page-size så
+      // saved views fanger HELE Browse-state, ikke kun filtre.
+      colVis: { ...colVis },
+      pageSize: currentSize,
     };
   }
   function persistFilters() {
@@ -496,6 +500,21 @@ export async function renderBrowse(container) {
           input.value = value || "";
         }
       }
+    }
+    // 3.9.1: kolonne-synlighed + page-size (kun hvis tilstede i snapshot —
+    // gamle views gemt før 3.9.1 mangler felterne og bevarer current state).
+    if (s.colVis && typeof s.colVis === "object") {
+      for (const c of COLUMNS) {
+        if (c.key in s.colVis) colVis[c.key] = s.colVis[c.key] !== false;
+      }
+      saveColVis(colVis);
+      if (typeof renderColVisMenu === "function") renderColVisMenu();
+      applyColVis();
+    }
+    if (typeof s.pageSize === "number" && s.pageSize > 0) {
+      currentSize = s.pageSize;
+      savePageSize(currentSize);
+      if (pageSizeSelect) pageSizeSelect.value = String(currentSize);
     }
   }
   function restoreFilters() {

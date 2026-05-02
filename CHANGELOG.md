@@ -5,6 +5,20 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.9.1 build 0125] — 2026-05-01 — fix(Saved views): inkludér kolonne-synlighed + page-size
+
+3.9.0's view-snapshot manglede kolonne-synlighed (Kolonner ▾) og
+page-size — hvis bruger gemte et view med skjulte kolonner og senere
+genaktiverede det, kom de skjulte kolonner tilbage. `snapshotFilters()`
+fanger nu HELE Browse-state inkl. `colVis` og `pageSize`.
+`applyFilterSnapshot()` anvender begge ved view-load (kun hvis tilstede,
+så gamle views gemt før 3.9.1 fortsætter med at virke for de fields de
+indeholder).
+
+**Filer:** [frontend/js/views/browse.js](frontend/js/views/browse.js)
+
+---
+
 ## [3.9.0 build 0124] — 2026-05-01 — feat: Saved filter views i Browse (per-bruger presets)
 
 Browse-toolbaren har nu en **📁 Views ▾**-dropdown der gemmer nuværende
