@@ -100,6 +100,11 @@ export async function renderBrowse(container) {
 
         <!-- Group: filtre -->
         <div class="toolbar-group" title="Filtre">
+          <div class="views-wrap">
+            <button id="views-btn" class="secondary small" type="button"
+                    title="Gemte filter-views — én-klik gendan filterkombination">📁 Views ▾</button>
+            <div id="views-menu" class="views-menu hidden"></div>
+          </div>
           <button id="portal-filter-btn" class="secondary"
                   title="Vis kun endpoints oprettet af HyperVision ISE Portal">Kun portal</button>
           <div class="server-filter"
@@ -456,9 +461,21 @@ export async function renderBrowse(container) {
   function persistFilters() {
     saveBrowseFilters(snapshotFilters());
   }
-  function restoreFilters() {
-    const s = loadBrowseFilters();
+  // 3.9.0: factored ud af restoreFilters så Saved Views kan dele apply-logic.
+  // Resetter ALLE filtre først så vi får ren tilstand før vi anvender s.
+  function applyFilterSnapshot(s) {
     if (!s) return;
+    // Reset
+    portalOnly = false;
+    portalFilterBtn.classList.remove("active-toggle");
+    filterValueInput.value = "";
+    currentFilters = [];
+    filterRow.querySelectorAll(".col-filter-cb").forEach((cb) => {
+      const input = filterRow.querySelector(`.col-filter-input[data-col="${cb.dataset.col}"]`);
+      cb.checked = false;
+      if (input) { input.value = ""; input.disabled = true; }
+    });
+    // Apply
     if (s.portalOnly) {
       portalOnly = true;
       portalFilterBtn.classList.add("active-toggle");
@@ -480,6 +497,9 @@ export async function renderBrowse(container) {
         }
       }
     }
+  }
+  function restoreFilters() {
+    applyFilterSnapshot(loadBrowseFilters());
   }
 
   function totalPages() {
@@ -1680,5 +1700,99 @@ export async function renderBrowse(container) {
 
   restoreFilters();
   applyColVis();
+
+  // ── Saved views (3.9.0) ─────────────────────────────────────────────
+  const viewsBtn = container.querySelector("#views-btn");
+  const viewsMenu = container.querySelector("#views-menu");
+  let savedViews = [];
+
+  async function reloadViews() {
+    try {
+      const r = await api.listMyViews();
+      savedViews = r.views || [];
+    } catch (err) {
+      console.warn("Kunne ikke hente saved views:", err.message);
+      savedViews = [];
+    }
+    renderViewsMenu();
+  }
+
+  function renderViewsMenu() {
+    const items = savedViews.length === 0
+      ? `<div class="views-empty">Ingen gemte views endnu</div>`
+      : savedViews.map((v) => `
+          <div class="views-item" data-view-id="${esc(v.id)}">
+            <button type="button" class="views-apply" data-view-id="${esc(v.id)}"
+                    title="Aktivér dette view">${esc(v.name)}</button>
+            <button type="button" class="views-del" data-view-id="${esc(v.id)}"
+                    title="Slet view">×</button>
+          </div>
+        `).join("");
+    viewsMenu.innerHTML = `
+      ${items}
+      <div class="views-divider"></div>
+      <button type="button" class="views-save" title="Gem nuværende filter-kombination">
+        💾 Gem nuværende filtre som view…
+      </button>
+    `;
+  }
+
+  viewsBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    viewsMenu.classList.toggle("hidden");
+  });
+  document.addEventListener("click", (e) => {
+    if (!viewsMenu.contains(e.target) && e.target !== viewsBtn) {
+      viewsMenu.classList.add("hidden");
+    }
+  });
+
+  viewsMenu.addEventListener("click", async (e) => {
+    e.stopPropagation();
+    const tgt = e.target;
+    if (tgt.classList.contains("views-apply")) {
+      const id = tgt.dataset.viewId;
+      const v = savedViews.find((x) => x.id === id);
+      if (!v) return;
+      applyFilterSnapshot(v.query || {});
+      persistFilters();
+      msg.innerHTML = `<div class="alert info">View "${esc(v.name)}" anvendt.</div>`;
+      viewsMenu.classList.add("hidden");
+      await onFilterChange();
+      return;
+    }
+    if (tgt.classList.contains("views-del")) {
+      const id = tgt.dataset.viewId;
+      const v = savedViews.find((x) => x.id === id);
+      if (!v) return;
+      if (!confirm(`Slet view "${v.name}"?`)) return;
+      try {
+        await api.deleteMyView(id);
+        await reloadViews();
+        msg.innerHTML = `<div class="alert success">View "${esc(v.name)}" slettet.</div>`;
+      } catch (err) {
+        msg.innerHTML = `<div class="alert error">Kunne ikke slette: ${esc(err.message)}</div>`;
+      }
+      return;
+    }
+    if (tgt.classList.contains("views-save")) {
+      const name = prompt(
+        "Navn på view (fx 'Mine printere', 'PLC-HalA aktive')\n" +
+        "Gemmer nuværende filterkombination — Kun portal, server-MAC-filter, kolonnefiltre."
+      );
+      if (!name || !name.trim()) return;
+      try {
+        await api.createMyView(name.trim(), snapshotFilters());
+        await reloadViews();
+        msg.innerHTML = `<div class="alert success">View "${esc(name.trim())}" gemt.</div>`;
+        viewsMenu.classList.add("hidden");
+      } catch (err) {
+        msg.innerHTML = `<div class="alert error">Kunne ikke gemme: ${esc(err.message)}</div>`;
+      }
+    }
+  });
+
+  reloadViews();
+
   await load();
 }

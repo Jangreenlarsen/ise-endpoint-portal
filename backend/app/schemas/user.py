@@ -70,3 +70,26 @@ class SetupRequest(BaseModel):
 class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str = Field(min_length=8, max_length=256)
+
+
+# Saved views (3.9.0) — per-bruger Browse filter-presets.
+class SavedView(BaseModel):
+    id: str
+    name: str = Field(min_length=1, max_length=64)
+    query: dict = Field(default_factory=dict)
+    created_at: str
+
+
+class SavedViewCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=64)
+    query: dict = Field(default_factory=dict)
+
+
+class SavedViewUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=64)
+    query: dict | None = None
+
+
+class SavedViewsResponse(BaseModel):
+    views: list[SavedView] = Field(default_factory=list)
+    max_views: int = 20

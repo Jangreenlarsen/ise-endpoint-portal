@@ -5,6 +5,51 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.9.0 build 0124] — 2026-05-01 — feat: Saved filter views i Browse (per-bruger presets)
+
+Browse-toolbaren har nu en **📁 Views ▾**-dropdown der gemmer nuværende
+filterkombination som navngivet view pr. bruger. Brugbar når man har
+faste flows ("Mine printere", "PLC-HalA aktive", "Disconnected i dag")
+og ikke vil sætte filtre op manuelt hver gang.
+
+**Hvad gemmes i et view:**
+- "Kun portal"-toggle
+- Server-side MAC-filter (field, op, value)
+- Kolonnefiltre (alle aktive kolonner med deres værdier)
+
+**Backend:**
+- Nyt `api/me`-router med CRUD `GET/POST/PUT/DELETE /api/me/views`
+- `User`-record udvidet med `saved_views: list[SavedView]` (gemt i
+  `users.json`); max 20 views pr. bruger.
+- Hver write audit-logges som resource `saved_view`.
+- Schema: `SavedView`, `SavedViewCreate`, `SavedViewUpdate`,
+  `SavedViewsResponse` (med `max_views`-grænse).
+
+**Frontend:**
+- Ny `views-wrap`/`views-menu`-dropdown i Filtre-gruppen i toolbar.
+- Liste over gemte views + "💾 Gem nuværende filtre som view…"-action
+  der prompter for navn og gemmer via `snapshotFilters()`.
+- Hver view har en delete-knap (×) med confirm.
+- `applyFilterSnapshot()` factored ud af `restoreFilters()` så samme
+  apply-logic deles af localStorage-restore og view-aktivering — sikrer
+  at views fuldt resetter alle filtre før de anvender det gemte sæt.
+- Click-outside lukker menuen; nye views vises øjeblikkeligt efter
+  oprettelse.
+
+**Designvalg:**
+- View-navne kan være duplikate (admin vælger selv); kun 20-cap er hård
+  begrænsning.
+- Endpoint-templates fra original 2.14.0-plan er udsat til separat release.
+
+**Filer:** [backend/app/schemas/user.py](backend/app/schemas/user.py),
+[backend/app/api/me.py](backend/app/api/me.py),
+[backend/app/main.py](backend/app/main.py),
+[frontend/js/api.js](frontend/js/api.js),
+[frontend/js/views/browse.js](frontend/js/views/browse.js),
+[frontend/css/styles.css](frontend/css/styles.css)
+
+---
+
 ## [3.8.3 build 0123] — 2026-05-01 — ux(Settings): tab-navigation grupperer 9 cards i logiske sektioner
 
 Settings-siden var blevet rodet med 9 cards stablet vertikalt — admin

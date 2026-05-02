@@ -178,6 +178,17 @@ export const api = {
     request("/settings/pxgrid/reset", { method: "POST" }),
   runPxGridStompProbe: (duration = 10) =>
     request(`/settings/pxgrid/stomp-probe?duration=${duration}`, { method: "POST" }),
+  // Saved views (3.9.0)
+  listMyViews: () => request("/me/views"),
+  createMyView: (name, query) =>
+    request("/me/views", { method: "POST", body: JSON.stringify({ name, query }) }),
+  updateMyView: (id, payload) =>
+    request(`/me/views/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+  deleteMyView: (id) =>
+    request(`/me/views/${encodeURIComponent(id)}`, { method: "DELETE" }),
   getPxGridSessions: () => request("/pxgrid/sessions"),
   getPxGridSession: (mac) => request(`/pxgrid/sessions/${encodeURIComponent(mac)}`),
   getPxGridWorkerStatus: () => request("/pxgrid/worker/status"),

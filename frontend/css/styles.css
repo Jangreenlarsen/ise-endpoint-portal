@@ -1335,6 +1335,87 @@ body.auth-mode .content {
 }
 .col-hidden { display: none !important; }
 
+/* Saved views dropdown (3.9.0) */
+.views-wrap { position: relative; display: inline-block; }
+.views-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 50;
+  min-width: 240px;
+  max-width: 320px;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+  padding: 0.35rem;
+}
+.views-menu.hidden { display: none; }
+.views-item {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.views-apply {
+  flex: 1;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: #1a2330;
+  padding: 0.4rem 0.55rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.views-apply:hover { background: #f1f5f9; }
+.views-del {
+  background: transparent;
+  border: none;
+  color: #b91c1c;
+  font-size: 1.1rem;
+  line-height: 1;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.views-del:hover { background: #fee2e2; }
+.views-empty {
+  color: #6b7280;
+  font-size: 0.82rem;
+  font-style: italic;
+  padding: 0.4rem 0.55rem;
+}
+.views-divider {
+  height: 1px;
+  background: #e5e7eb;
+  margin: 0.35rem 0;
+}
+.views-save {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: #1d4ed8;
+  padding: 0.4rem 0.55rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+.views-save:hover { background: #eff6ff; }
+
+[data-theme="dark"] .views-menu {
+  background: #16213e;
+  border-color: #3a3a5c;
+}
+[data-theme="dark"] .views-apply { color: #e0e0e0; }
+[data-theme="dark"] .views-apply:hover { background: #1f2a44; }
+[data-theme="dark"] .views-del:hover { background: #3a1f1f; }
+[data-theme="dark"] .views-divider { background: #3a3a5c; }
+[data-theme="dark"] .views-save { color: #60a5fa; }
+[data-theme="dark"] .views-save:hover { background: #1a2a4a; }
+
 [data-theme="dark"] .col-vis-menu {
   background: #16213e;
   border-color: #3a3a5c;
