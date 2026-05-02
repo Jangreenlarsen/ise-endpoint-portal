@@ -5,6 +5,24 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.9.2 build 0126] — 2026-05-01 — ux(Saved views): tilbyd overskrivning ved duplikat-navn
+
+Tidligere kunne man gemme to views med samme navn — backend tillader det,
+men UX-mæssigt giver det forvirring (hvilken vil jeg aktivere?). Nu
+tjekker frontend ved gem om der findes et view med samme navn (case-
+insensitive), og hvis ja, prompter:
+
+> Et view med navnet "X" findes allerede. Overskriv det med nuværende
+> filtre?
+
+Bekræft = PUT på det eksisterende view-id (samme navn + nye filtre).
+Afvis = ingen action. Cleanere end at have parallelle "Mine printere",
+"Mine printere (kopi)", "Mine printere v2".
+
+**Filer:** [frontend/js/views/browse.js](frontend/js/views/browse.js)
+
+---
+
 ## [3.9.1 build 0125] — 2026-05-01 — fix(Saved views): inkludér kolonne-synlighed + page-size
 
 3.9.0's view-snapshot manglede kolonne-synlighed (Kolonner ▾) og

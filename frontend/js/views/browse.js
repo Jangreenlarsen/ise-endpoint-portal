@@ -1800,10 +1800,26 @@ export async function renderBrowse(container) {
         "Gemmer nuværende filterkombination — Kun portal, server-MAC-filter, kolonnefiltre."
       );
       if (!name || !name.trim()) return;
+      const trimmed = name.trim();
+      const snap = snapshotFilters();
+      // 3.9.2: hvis et view med samme navn (case-insensitive) findes,
+      // tilbyd overskrivning så vi undgår duplikater.
+      const existing = savedViews.find(
+        (v) => (v.name || "").toLowerCase() === trimmed.toLowerCase()
+      );
       try {
-        await api.createMyView(name.trim(), snapshotFilters());
-        await reloadViews();
-        msg.innerHTML = `<div class="alert success">View "${esc(name.trim())}" gemt.</div>`;
+        if (existing) {
+          if (!confirm(
+            `Et view med navnet "${existing.name}" findes allerede.\n\nOverskriv det med nuværende filtre?`
+          )) return;
+          await api.updateMyView(existing.id, { name: trimmed, query: snap });
+          await reloadViews();
+          msg.innerHTML = `<div class="alert success">View "${esc(trimmed)}" overskrevet.</div>`;
+        } else {
+          await api.createMyView(trimmed, snap);
+          await reloadViews();
+          msg.innerHTML = `<div class="alert success">View "${esc(trimmed)}" gemt.</div>`;
+        }
         viewsMenu.classList.add("hidden");
       } catch (err) {
         msg.innerHTML = `<div class="alert error">Kunne ikke gemme: ${esc(err.message)}</div>`;
