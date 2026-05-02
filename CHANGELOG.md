@@ -5,6 +5,30 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.9.3 build 0127] — 2026-05-01 — ux(Saved views): vis aktivt view i toolbar + dropdown
+
+Når man har anvendt et view eller lige har gemt et, ser man nu hvilket
+det er:
+
+- **Toolbar-knappen** viser navnet i fed: `📁 Mine printere ▾`
+  (mod default `📁 Views ▾`). Knappen får også en blå "active"-baggrund.
+- **Dropdown-menuen** viser ✓-prefix og blå highlight på det aktive view.
+
+Aktivt view **ryddes automatisk** når brugeren ændrer en filter-state
+(Kun portal toggle, server-MAC-filter, kolonnefilter, page-size, eller
+kolonne-synlighed) — fordi nuværende state så ikke længere matcher det
+gemte view. Toolbar-knappen falder tilbage til `📁 Views ▾`.
+
+Implementeret med en let-vægt `activeViewId`-variabel + `clearActiveView()`-
+helper kaldt fra alle filter-mutation-handlers. `applyFilterSnapshot`
+og `views-apply`/`views-save`-handlers opdaterer den til det rigtige
+view-id.
+
+**Filer:** [frontend/js/views/browse.js](frontend/js/views/browse.js),
+[frontend/css/styles.css](frontend/css/styles.css)
+
+---
+
 ## [3.9.2 build 0126] — 2026-05-01 — ux(Saved views): tilbyd overskrivning ved duplikat-navn
 
 Tidligere kunne man gemme to views med samme navn — backend tillader det,

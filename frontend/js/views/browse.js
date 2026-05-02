@@ -418,6 +418,7 @@ export async function renderBrowse(container) {
         colVis[cb.dataset.col] = cb.checked;
         saveColVis(colVis);
         applyColVis();
+        if (typeof clearActiveView === "function") clearActiveView();
       });
     });
     const allBtn = colVisMenu.querySelector("#col-vis-all");
@@ -427,6 +428,7 @@ export async function renderBrowse(container) {
         saveColVis(colVis);
         renderColVisMenu();
         applyColVis();
+        if (typeof clearActiveView === "function") clearActiveView();
       });
     }
   }
@@ -587,6 +589,7 @@ export async function renderBrowse(container) {
       input.disabled = !cb.checked;
       if (!cb.checked) input.value = "";
       persistFilters();
+      if (typeof clearActiveView === "function") clearActiveView();
       await onFilterChange();
       if (cb.checked) input.focus();
     });
@@ -594,6 +597,7 @@ export async function renderBrowse(container) {
   filterRow.querySelectorAll(".col-filter-input").forEach((input) => {
     input.addEventListener("input", () => {
       persistFilters();
+      if (typeof clearActiveView === "function") clearActiveView();
       if (filterMode) applyFilter();
     });
   });
@@ -1137,6 +1141,7 @@ export async function renderBrowse(container) {
     portalOnly = !portalOnly;
     portalFilterBtn.classList.toggle("active-toggle", portalOnly);
     persistFilters();
+    if (typeof clearActiveView === "function") clearActiveView();
     await onFilterChange();
   });
 
@@ -1496,6 +1501,7 @@ export async function renderBrowse(container) {
     currentSize = parseInt(pageSizeSelect.value, 10);
     savePageSize(currentSize);
     currentPage = 1;
+    if (typeof clearActiveView === "function") clearActiveView();
     if (filterMode) { applyFilter(); } else { load(); }
   });
 
@@ -1515,9 +1521,21 @@ export async function renderBrowse(container) {
     if (immediate) fire();
     else searchDebounce = setTimeout(fire, 400);
   }
-  filterValueInput.addEventListener("input", () => { persistFilters(); triggerFilterChange(false); });
-  filterFieldSelect.addEventListener("change", () => { persistFilters(); triggerFilterChange(true); });
-  filterOpSelect.addEventListener("change", () => { persistFilters(); triggerFilterChange(true); });
+  filterValueInput.addEventListener("input", () => {
+    persistFilters();
+    if (typeof clearActiveView === "function") clearActiveView();
+    triggerFilterChange(false);
+  });
+  filterFieldSelect.addEventListener("change", () => {
+    persistFilters();
+    if (typeof clearActiveView === "function") clearActiveView();
+    triggerFilterChange(true);
+  });
+  filterOpSelect.addEventListener("change", () => {
+    persistFilters();
+    if (typeof clearActiveView === "function") clearActiveView();
+    triggerFilterChange(true);
+  });
 
   // Endpoint detail modal
   const detailOverlay = container.querySelector("#detail-overlay");
@@ -1724,6 +1742,15 @@ export async function renderBrowse(container) {
   const viewsBtn = container.querySelector("#views-btn");
   const viewsMenu = container.querySelector("#views-menu");
   let savedViews = [];
+  let activeViewId = null;  // 3.9.3: id på det view der lige er aktiveret
+
+  function updateViewsBtnLabel() {
+    const active = savedViews.find((v) => v.id === activeViewId);
+    viewsBtn.innerHTML = active
+      ? `📁 <strong>${esc(active.name)}</strong> ▾`
+      : `📁 Views ▾`;
+    viewsBtn.classList.toggle("active-view", !!active);
+  }
 
   async function reloadViews() {
     try {
@@ -1733,20 +1760,28 @@ export async function renderBrowse(container) {
       console.warn("Kunne ikke hente saved views:", err.message);
       savedViews = [];
     }
+    // Hvis det aktive view blev slettet/forsvandt, ryd state.
+    if (activeViewId && !savedViews.find((v) => v.id === activeViewId)) {
+      activeViewId = null;
+    }
     renderViewsMenu();
+    updateViewsBtnLabel();
   }
 
   function renderViewsMenu() {
     const items = savedViews.length === 0
       ? `<div class="views-empty">Ingen gemte views endnu</div>`
-      : savedViews.map((v) => `
-          <div class="views-item" data-view-id="${esc(v.id)}">
-            <button type="button" class="views-apply" data-view-id="${esc(v.id)}"
-                    title="Aktivér dette view">${esc(v.name)}</button>
-            <button type="button" class="views-del" data-view-id="${esc(v.id)}"
-                    title="Slet view">×</button>
-          </div>
-        `).join("");
+      : savedViews.map((v) => {
+          const isActive = v.id === activeViewId;
+          return `
+            <div class="views-item${isActive ? " views-item-active" : ""}" data-view-id="${esc(v.id)}">
+              <button type="button" class="views-apply" data-view-id="${esc(v.id)}"
+                      title="Aktivér dette view">${isActive ? "✓ " : ""}${esc(v.name)}</button>
+              <button type="button" class="views-del" data-view-id="${esc(v.id)}"
+                      title="Slet view">×</button>
+            </div>
+          `;
+        }).join("");
     viewsMenu.innerHTML = `
       ${items}
       <div class="views-divider"></div>
@@ -1754,6 +1789,15 @@ export async function renderBrowse(container) {
         💾 Gem nuværende filtre som view…
       </button>
     `;
+  }
+
+  // Ryd active-marker når brugeren ændrer filtre (filterstate matcher
+  // ikke længere det gemte view). Kaldes fra alle filter-mutation-points.
+  function clearActiveView() {
+    if (!activeViewId) return;
+    activeViewId = null;
+    renderViewsMenu();
+    updateViewsBtnLabel();
   }
 
   viewsBtn.addEventListener("click", (e) => {
@@ -1775,6 +1819,11 @@ export async function renderBrowse(container) {
       if (!v) return;
       applyFilterSnapshot(v.query || {});
       persistFilters();
+      // 3.9.3: marker som aktivt view efter apply (ryddes ved næste
+      // filter-mutation via clearActiveView).
+      activeViewId = id;
+      renderViewsMenu();
+      updateViewsBtnLabel();
       msg.innerHTML = `<div class="alert info">View "${esc(v.name)}" anvendt.</div>`;
       viewsMenu.classList.add("hidden");
       await onFilterChange();
@@ -1808,18 +1857,22 @@ export async function renderBrowse(container) {
         (v) => (v.name || "").toLowerCase() === trimmed.toLowerCase()
       );
       try {
+        let savedId;
         if (existing) {
           if (!confirm(
             `Et view med navnet "${existing.name}" findes allerede.\n\nOverskriv det med nuværende filtre?`
           )) return;
           await api.updateMyView(existing.id, { name: trimmed, query: snap });
-          await reloadViews();
+          savedId = existing.id;
           msg.innerHTML = `<div class="alert success">View "${esc(trimmed)}" overskrevet.</div>`;
         } else {
-          await api.createMyView(trimmed, snap);
-          await reloadViews();
+          const created = await api.createMyView(trimmed, snap);
+          savedId = created && created.id;
           msg.innerHTML = `<div class="alert success">View "${esc(trimmed)}" gemt.</div>`;
         }
+        // 3.9.3: marker det netop gemte/overskrevne view som aktivt.
+        activeViewId = savedId || null;
+        await reloadViews();
         viewsMenu.classList.add("hidden");
       } catch (err) {
         msg.innerHTML = `<div class="alert error">Kunne ikke gemme: ${esc(err.message)}</div>`;
