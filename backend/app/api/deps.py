@@ -31,7 +31,7 @@ def _extract_token(request: Request) -> str | None:
     return None
 
 
-def get_current_user(request: Request) -> User:
+async def get_current_user(request: Request) -> User:
     token = _extract_token(request)
     if not token:
         raise HTTPException(

@@ -5,6 +5,15 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.9.7 build 0131] — 2026-05-03 — fix(audit): aktør viser nu faktisk login-bruger i stedet for "system"
+
+`get_current_user` i `deps.py` er en sync funktion. FastAPI kører sync dependencies via `run_in_executor` (threadpool), og `ContextVar.set()` i en thread modificerer kun threadens kontekst-kopi — ændringen propagerer ikke tilbage til den asyncio-task hvor `audit_store.record()` kører. Resultatet: `actor_ctx.get()` returnerer altid default `ActorContext(actor_username="system")`. **Fix**: `get_current_user` ændret fra `def` til `async def` så FastAPI awaiter den direkte i den aktuelle asyncio-task. `actor_ctx.set()` er nu synlig for alle efterfølgende `record()`-kald i samme request.
+
+**Berørte filer:**
+- [backend/app/api/deps.py](backend/app/api/deps.py) — `get_current_user`: `def` → `async def`
+
+---
+
 ## [3.9.6 build 0130] — 2026-05-03 — fix(brugere): auto-tildel System adm-rolle ved oprettelse
 
 Ny bruger fik automatisk en System adm-rolle oprettet i kataloget (3.8.0),

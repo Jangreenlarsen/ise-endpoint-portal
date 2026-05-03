@@ -9,9 +9,9 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 ## Åbne
 
-(ingen)
-
 ## Fixed
+
+- `[fixed 3.9.7] 2026-05-03 — Audit-log aktør viser altid "system" i stedet for den indloggede bruger` — `audit_store.record()` læser aktøren fra `actor_ctx` (en `ContextVar`). `actor_ctx.set()` kaldes korrekt i `get_current_user()` i `deps.py`, men `get_current_user` var en sync `def`-funktion — FastAPI kører sync dependencies via `run_in_executor` (threadpool), og `ContextVar.set()` i en thread modificerer kun threadens kontekst-kopi. Ændringen propagerer ikke tilbage til den asyncio-task hvor `audit_store.record()` kører, så `actor_ctx.get()` altid returnerer default `ActorContext(actor_username="system")`. **Fix (3.9.7)**: `get_current_user` ændret fra `def` til `async def` — FastAPI awaiter den nu direkte i den aktuelle asyncio-task, og `actor_ctx.set()` er synlig for alle efterfølgende `record()`-kald i samme request. **Filer:** [backend/app/api/deps.py](backend/app/api/deps.py).
 
 - `[fixed 3.9.6] 2026-05-03 — Ny bruger tildeles ikke automatisk sin egen System adm-rolle ved oprettelse` — `create_user` opretter korrekt en System adm-rolle i kataloget med navn = username (3.8.0), men initialiserer `assigned_endpoint_roles = []`. UI-tabel viser dermed rollen som unchecked selv om den eksisterer i kataloget — admin skal manuelt gå ind og tilvælge den. `effective_roles()` tilføjer `username` implicit (så adgangen ER der teknisk), men det er usynligt i UI og forvirrende. **Fix (3.9.6)**: `create_user` sætter `assigned_endpoint_roles = [username]` når `ensure_user_role` lykkes. `effective_roles()` deduplicerer med `dict.fromkeys` så `["jan", "jan"]` ikke kan opstå for nye brugere. **Filer:** [backend/app/services/user_service.py](backend/app/services/user_service.py).
 
