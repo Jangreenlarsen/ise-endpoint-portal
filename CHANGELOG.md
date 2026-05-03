@@ -5,6 +5,40 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.9.5 build 0129] — 2026-05-03 — fix(pxGrid): WS ping/pong liveness + badge-debounce + disconnect-farve
+
+Tre relaterede pxGrid-bugs fundet ved analyse af `logs/app.log`:
+
+**Bug 1 — Worker oscillerer hvert 60s (ISE sender ingen STOMP heartbeats)**
+ISE's pxGrid STOMP-broker på `ise2.ll.lan` sender aldrig heartbeat-frames selv
+når portalen anmoder om det (`heart-beat: 0,30000`). `recv_timeout = 2×heartbeat_ms
+= 60s` trigges konstantt. Fix: WebSocket RFC 6455 ping/pong (`ping_interval=20s,
+ping_timeout=10s`) er nu primær liveness-mekanisme — uafhængigt af STOMP-laget.
+`recv_timeout` sat til 120s som backstop. Forventes at eliminere de periodiske
+reconnects når ISE blot er stille (ingen session-events).
+
+**Bug 2 — Badge flicker ⚪↔🟢 hvert ~3s ved transient SSE-reconnect**
+`EventSource.onerror` satte øjeblikkeligt `pxgridLive=false` → badge ⚪. Browser
+auto-reconnect (~3s) satte `onopen` → pxgridLive=true → badge 🟢. Synlig flicker.
+Fix: `onerror` debounced 5s — hvis `onopen` ankommer inden for 5s annulleres
+timer og badge forbliver grøn. `stopPxGridStream()` rydder timeren.
+
+**Bug 3 — Disconnected endpoint forbliver grøn i Browse**
+To root causes: (A) `applyAuthStatusColors()` returnerede early når
+`activeSessionMacs === null` (sker når `refreshFilters` kører uden aktivt filter).
+Det betød at `remove`-events aldrig farvede rækken rød. Fix: funktion bruger nu
+`pxgridSessionMacs` som fallback når pxGrid er live og `activeSessionMacs` er null.
+(B) Disconnect-events der sker mens worker er offline (60s-reconnect-vindue)
+misses: `cache.remove()` returnerer `existed=False` → ingen broadcast til frontend.
+Fix: worker kalder `_reconcile_cache_with_mnt()` efter hver STOMP SUBSCRIBE —
+fetcher MnT ActiveList og evict'er cache-entries der ikke længere er aktive.
+
+**Berørte filer:**
+- [backend/app/pxgrid/session_worker.py](backend/app/pxgrid/session_worker.py)
+- [frontend/js/views/browse.js](frontend/js/views/browse.js)
+
+---
+
 ## [3.9.4 build 0128] — 2026-05-01 — ux(Saved views): tilføj "🚫 Ryd alle filtre" reset-action
 
 Brugeren havde ingen direkte måde at deaktivere et anvendt view på —

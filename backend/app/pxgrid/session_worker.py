@@ -193,9 +193,12 @@ class PxGridSessionWorker:
         cache = get_cache()
         topic = s.pxgrid_session_topic
         heartbeat_ms = max(0, int(s.pxgrid_stomp_heartbeat_ms))
-        # Read timeout slightly larger than the negotiated heartbeat so a
-        # missed heartbeat fails fast and we reconnect.
-        recv_timeout = (heartbeat_ms / 1000.0) * 2.0 if heartbeat_ms else 60.0
+        # WebSocket ping/pong (RFC 6455) er primær liveness-mekanisme og virker
+        # uafhængigt af STOMP heartbeats. ISE's pxGrid broker sender ikke altid
+        # STOMP heartbeats selv når vi anmoder om det, så recv_timeout sættes
+        # til 120s som backstop; ping_interval=20+ping_timeout=10 sikrer at
+        # en død TCP-forbindelse detekteres inden for 30s.
+        recv_timeout = 120.0
 
         async with websockets.connect(
             ws_url,
@@ -203,7 +206,8 @@ class PxGridSessionWorker:
             subprotocols=["v12.stomp"],
             additional_headers={"Authorization": f"Basic {basic_auth}"},
             open_timeout=10,
-            ping_interval=None,
+            ping_interval=20,
+            ping_timeout=10,
         ) as ws:
             await ws.send(stomp.connect_frame(
                 host, s.pxgrid_node_name, secret, heartbeat_ms=heartbeat_ms,
@@ -285,6 +289,11 @@ class PxGridSessionWorker:
                 "pxgrid session worker subscribed to %s on %s",
                 ", ".join(sub_map.values()), peer.node_name,
             )
+
+            # Reconcilér session-cache mod MnT ActiveList efter reconnect så
+            # disconnect-events misset under offline-vinduet ikke efterlader
+            # stale grønne rækker i Browse. Best-effort: fejl blokerer ikke.
+            await _reconcile_cache_with_mnt(cache)
 
             while not self._stop_event.is_set():
                 try:
@@ -438,6 +447,54 @@ def _build_session_info(d: dict[str, Any]) -> SessionInfo:
         user_name=str(d.get("userName", "") or d.get("username", "")),
         raw=d,
     )
+
+
+async def _reconcile_cache_with_mnt(cache) -> None:  # type: ignore[no-untyped-def]
+    """Fjern stale cache-entries der ikke længere optræder i MnT ActiveList.
+
+    Kaldes efter hver vellykket STOMP-reconnect. Håndterer tilfældet hvor
+    et endpoint disconnectede mens worker'en var offline (timeout-genstarts-
+    vinduet) — ISE sender ikke et replay af missede events ved reconnect.
+    Best-effort: enhver fejl logges og ignoreres så normal drift fortsætter.
+    """
+    try:
+        from app.ise.mnt_sessions import fetch_active_sessions
+    except ImportError:
+        return
+    try:
+        sessions = await fetch_active_sessions()
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("pxgrid reconcile: MnT ActiveList fejlede: %s", exc)
+        return
+    try:
+        # Byg sæt af normaliserede MACs fra MnT (calling_station_id).
+        mnt_macs: set[str] = set()
+        for sess in sessions:
+            mac_raw = (
+                sess.get("calling_station_id", "")
+                or sess.get("callingstationid", "")
+                or ""
+            )
+            if not mac_raw:
+                continue
+            mac = mac_raw.upper().replace("-", ":").strip()
+            if len(mac) == 17 and mac.count(":") == 5:
+                mnt_macs.add(mac)
+
+        # Evict cache-entries der ikke er i MnT — disse er disconnectede.
+        cached = await cache.list()
+        evicted = 0
+        for entry in cached:
+            if entry.mac not in mnt_macs:
+                await cache.remove(entry.mac)
+                evicted += 1
+        if evicted:
+            logger.info(
+                "pxgrid reconcile: fjernede %d stale session(er) efter reconnect",
+                evicted,
+            )
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("pxgrid reconcile: uventet fejl: %s", exc)
 
 
 _worker: PxGridSessionWorker | None = None

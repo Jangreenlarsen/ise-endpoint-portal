@@ -748,6 +748,7 @@ export async function renderBrowse(container) {
   let pxgridEventSource = null;
   let pxgridLive = false;
   let pxgridSessionMacs = null;  // Set<MAC> eller null hvis ikke streamer
+  let pxgridErrorTimer = null;   // debounce-timer for onerror → badge-opdatering
 
   let endpointReloadTimer = null;
   function scheduleEndpointReload() {
@@ -844,16 +845,25 @@ export async function renderBrowse(container) {
       updatePxGridSourceBadge();
     });
     pxgridEventSource.onerror = () => {
-      pxgridLive = false;
-      updatePxGridSourceBadge();
+      // Debounce: EventSource reconnecterer automatisk om ~3s (browser default).
+      // Vent 5s inden badge skiftes til offline så transiente reconnects er
+      // usynlige for brugeren og badge ikke flicker ⚪↔🟢.
+      clearTimeout(pxgridErrorTimer);
+      pxgridErrorTimer = setTimeout(() => {
+        pxgridLive = false;
+        updatePxGridSourceBadge();
+      }, 5000);
     };
     pxgridEventSource.onopen = () => {
+      clearTimeout(pxgridErrorTimer);  // afbryd evt. pending offline-badge
       pxgridLive = true;
       updatePxGridSourceBadge();
     };
   }
 
   function stopPxGridStream() {
+    clearTimeout(pxgridErrorTimer);
+    pxgridErrorTimer = null;
     if (pxgridEventSource) {
       pxgridEventSource.close();
       pxgridEventSource = null;
@@ -884,16 +894,22 @@ export async function renderBrowse(container) {
   cleanupObs.observe(document.body, { childList: true, subtree: true });
 
   function applyAuthStatusColors() {
+    // Når pxGrid er live men activeSessionMacs er null (fx. fordi refreshFilters
+    // kørte uden aktivt filter og satte den til null), brug pxgridSessionMacs
+    // direkte så disconnect-events stadig farver rækker korrekt.
+    const macs = activeSessionMacs
+      || (pxgridLive && pxgridSessionMacs)
+      || null;
     const rows = tbody.querySelectorAll("tr[data-id]");
     rows.forEach((tr) => {
       const cb = tr.querySelector(".row-select");
       if (!cb) return;
       cb.classList.remove("auth-active", "auth-failed");
-      if (!activeSessionMacs) return;
+      if (!macs) return;
       const macCell = tr.querySelector(".mac-cell");
       const mac = normalizeMac(macCell ? macCell.textContent : "");
       if (!mac) return;
-      if (activeSessionMacs.has(mac)) {
+      if (macs.has(mac)) {
         cb.classList.add("auth-active");
       } else {
         cb.classList.add("auth-failed");
