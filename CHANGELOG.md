@@ -5,6 +5,23 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.12.4 build 0148] — 2026-05-03 — fix(bulk-edit): paritet med Endpoint detaljer-modal
+
+Tilføjet manglende felter til "Rediger valgte endpoints" så den matcher
+"Endpoint detaljer" modal:
+- **Tilknytning** (static group checkbox) — toggle Statisk/Dynamisk på
+  alle valgte endpoints. Sendes i save-payload via data-attribut på row.
+- **PSK Mode** — checkbox (kun synlig for PSK-editors). Toggler psk-mode-cb
+  i tabellen direkte.
+- **PSK Key** — password input + Vis/Skjul + Generer (kun PSK-editors).
+  Nøglen sendes i custom_attributes.PSK_Key ved save; sentinel "****" afvises.
+
+Vis/Generer knapper i bulk-edit modal er fuldt kablet.
+Toggle-mekanisme (be-cb) udvidet til også at enable inner inputs i div-wrappere.
+refreshRows rydder data-attributter (beStaticGroup, bePskKey) efter save.
+
+**Berørte filer:** `frontend/js/views/browse.js`
+
 ## [3.12.3 build 0147] — 2026-05-03 — ux(browse): PSK Mode-kolonne viser interaktiv checkbox
 
 PSK Mode-kolonnen i browse-tabellen viser nu en checkbox i stedet for tekst

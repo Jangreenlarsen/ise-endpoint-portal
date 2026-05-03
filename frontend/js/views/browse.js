@@ -261,6 +261,10 @@ export async function renderBrowse(container) {
         <div class="modal-body">
           <label><input type="checkbox" class="be-cb" data-field="group" /> Identity Group</label>
           <select id="be-group" disabled></select>
+          <label><input type="checkbox" class="be-cb" data-field="static-group" /> Tilknytning</label>
+          <div id="be-static-group" class="be-inner-wrap disabled-overlay">
+            <label class="inline-cb"><input type="checkbox" id="be-static-group-cb" disabled /> Statisk gruppetildeling</label>
+          </div>
           <label><input type="checkbox" class="be-cb" data-field="description" /> Description</label>
           <input type="text" id="be-description" disabled />
           <label><input type="checkbox" class="be-cb" data-field="type" /> Type</label>
@@ -275,6 +279,16 @@ export async function renderBrowse(container) {
           <select id="be-authzacl" disabled></select>
           <label><input type="checkbox" class="be-cb" data-field="platformtype" /> Platform</label>
           <select id="be-platformtype" disabled></select>
+          <label id="be-psk-mode-row" class="hidden"><input type="checkbox" class="be-cb" data-field="psk-mode" /> PSK Mode</label>
+          <div id="be-psk-mode" class="be-inner-wrap disabled-overlay hidden">
+            <label class="inline-cb"><input type="checkbox" id="be-psk-mode-cb" disabled /> MPSK/IPSK aktiveret</label>
+          </div>
+          <label id="be-psk-key-row" class="hidden"><input type="checkbox" class="be-cb" data-field="psk-key" /> PSK Key</label>
+          <div id="be-psk-key" class="psk-key-wrap disabled-overlay hidden">
+            <input type="password" id="be-psk-key-inp" autocomplete="off" disabled />
+            <button type="button" id="be-psk-show" class="secondary small" disabled>Vis</button>
+            <button type="button" id="be-psk-gen" class="secondary small" disabled>Generer</button>
+          </div>
           <label><input type="checkbox" class="be-cb" data-field="roles" /> System adm</label>
           <div id="be-roles" class="be-roles-wrap disabled-overlay"></div>
         </div>
@@ -1083,6 +1097,8 @@ export async function renderBrowse(container) {
       if (pskModeCb) pskModeCb.checked = !!r.psk_mode;
       const pskKeyCell = tr.querySelector(".psk-key-cell");
       if (pskKeyCell) pskKeyCell.textContent = r.psk_key || "";
+      delete tr.dataset.beStaticGroup;
+      delete tr.dataset.bePskKey;
       tr.classList.remove("dirty");
       dirtyIds.delete(id);
     }
@@ -1261,6 +1277,12 @@ export async function renderBrowse(container) {
         group_id = selectedGroupId;
       }
     }
+    // Bulk-edit kan sætte static_group uafhængigt af gruppeændring
+    if (tr.dataset.beStaticGroup !== undefined) {
+      static_group_assignment = tr.dataset.beStaticGroup === "1";
+    }
+
+    const bePskKey = isPskEditor && tr.dataset.bePskKey !== undefined ? tr.dataset.bePskKey : undefined;
 
     return {
       id,
@@ -1278,6 +1300,7 @@ export async function renderBrowse(container) {
           PlatformType: platformType,
           HypervisionRoles: hypervisionRoles,
           ...(isPskEditor && pskMode !== null ? { PSK_Mode: pskMode ? "true" : "false" } : {}),
+          ...(bePskKey !== undefined && bePskKey !== "****" ? { PSK_Key: bePskKey } : {}),
         },
       },
       localUpdate: { description, group_id, static_group_assignment, groupChanged, endpointType, owner, lokation, authzVlan, authzAcl, platformType, pskMode },
@@ -1454,7 +1477,16 @@ export async function renderBrowse(container) {
     container.querySelector("#be-platformtype").innerHTML = optionsHtml(caValues.PlatformType, "");
     container.querySelector("#be-roles").innerHTML = rolesChipsHtml([], { editable: true });
     container.querySelector("#be-description").value = "";
-    // Reset checkboxes
+    // Reset inner checkboxes + psk input
+    container.querySelector("#be-static-group-cb").checked = false;
+    container.querySelector("#be-psk-mode-cb").checked = false;
+    container.querySelector("#be-psk-key-inp").value = "";
+    container.querySelector("#be-psk-show").textContent = "Vis";
+    // Show PSK rows only for psk-editors
+    ["be-psk-mode-row", "be-psk-mode", "be-psk-key-row", "be-psk-key"].forEach((id) => {
+      container.querySelector(`#${id}`).classList.toggle("hidden", !isPskEditor);
+    });
+    // Reset all be-cb checkboxes and their controls
     bulkEditOverlay.querySelectorAll(".be-cb").forEach((cb) => {
       cb.checked = false;
       const field = cb.dataset.field;
@@ -1462,6 +1494,7 @@ export async function renderBrowse(container) {
       if (!ctrl) return;
       if (ctrl.tagName === "DIV") {
         ctrl.classList.add("disabled-overlay");
+        ctrl.querySelectorAll("input, button").forEach((el) => { el.disabled = true; });
       } else {
         ctrl.disabled = true;
       }
@@ -1476,10 +1509,30 @@ export async function renderBrowse(container) {
       if (!ctrl) return;
       if (ctrl.tagName === "DIV") {
         ctrl.classList.toggle("disabled-overlay", !cb.checked);
+        ctrl.querySelectorAll("input, button").forEach((el) => { el.disabled = !cb.checked; });
       } else {
         ctrl.disabled = !cb.checked;
       }
     });
+  });
+
+  container.querySelector("#be-psk-show").addEventListener("click", () => {
+    const inp = container.querySelector("#be-psk-key-inp");
+    const btn = container.querySelector("#be-psk-show");
+    inp.type = inp.type === "password" ? "text" : "password";
+    btn.textContent = inp.type === "password" ? "Vis" : "Skjul";
+  });
+
+  container.querySelector("#be-psk-gen").addEventListener("click", async () => {
+    try {
+      const result = await api.generatePskKey();
+      const inp = container.querySelector("#be-psk-key-inp");
+      inp.value = result.key;
+      inp.type = "text";
+      container.querySelector("#be-psk-show").textContent = "Skjul";
+    } catch (err) {
+      msg.innerHTML = `<div class="alert error">Kunne ikke generere PSK: ${err.message}</div>`;
+    }
   });
 
   container.querySelector("#be-cancel").addEventListener("click", () => {
@@ -1497,6 +1550,18 @@ export async function renderBrowse(container) {
         fields.roles = Array.from(chips).map((c) => c.dataset.role);
         return;
       }
+      if (field === "static-group") {
+        fields["static-group"] = bulkEditOverlay.querySelector("#be-static-group-cb").checked;
+        return;
+      }
+      if (field === "psk-mode") {
+        fields["psk-mode"] = bulkEditOverlay.querySelector("#be-psk-mode-cb").checked;
+        return;
+      }
+      if (field === "psk-key") {
+        fields["psk-key"] = bulkEditOverlay.querySelector("#be-psk-key-inp").value;
+        return;
+      }
       const ctrl = bulkEditOverlay.querySelector(`#be-${field}`);
       if (ctrl) fields[field] = ctrl.value;
     });
@@ -1509,6 +1574,11 @@ export async function renderBrowse(container) {
       const tr = tbody.querySelector(`tr[data-id="${id}"]`);
       if (!tr) continue;
       if ("group" in fields) tr.querySelector(".grp-select").value = fields.group;
+      if ("static-group" in fields) {
+        const assignCell = tr.querySelector(".assign-cell");
+        if (assignCell) assignCell.textContent = fields["static-group"] ? "Statisk" : "Dynamisk";
+        tr.dataset.beStaticGroup = fields["static-group"] ? "1" : "0";
+      }
       if ("description" in fields) tr.querySelector(".desc-input").value = fields.description;
       if ("type" in fields) tr.querySelector(".ca-type").value = fields.type;
       if ("owner" in fields) tr.querySelector(".ca-owner").value = fields.owner;
@@ -1516,6 +1586,15 @@ export async function renderBrowse(container) {
       if ("authzvlan" in fields) tr.querySelector(".ca-authzvlan").value = fields.authzvlan;
       if ("authzacl" in fields) tr.querySelector(".ca-authzacl").value = fields.authzacl;
       if ("platformtype" in fields) tr.querySelector(".ca-platformtype").value = fields.platformtype;
+      if ("psk-mode" in fields) {
+        const cb = tr.querySelector(".psk-mode-cb");
+        if (cb) cb.checked = !!fields["psk-mode"];
+      }
+      if ("psk-key" in fields) {
+        const cell = tr.querySelector(".psk-key-cell");
+        if (cell) cell.textContent = fields["psk-key"];
+        tr.dataset.bePskKey = fields["psk-key"];
+      }
       if ("roles" in fields) {
         const row = allRows.find((r) => r.id === id);
         const catalogLower = new Set(roleCatalog.map((c) => c.name.toLowerCase()));
