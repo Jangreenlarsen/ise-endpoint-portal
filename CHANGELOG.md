@@ -5,6 +5,20 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.11.3 build 0139] — 2026-05-03 — fix(PSK): editor-psk adgang til browse/edit + PSK-synlighed for admin
+
+**Bug 1 (editor-psk 403):** `require_any` inkluderede ikke `editor-psk` →
+editor-psk-brugere fik "Din rolle har ikke adgang til denne side" ved forsøg
+på at åbne browse/edit. Rettet: `editor-psk` tilføjet til `require_any`.
+
+**Bug 2 (PSK usynlig for admin):** `isPskEditor` i browse.js blev initialiseret
+til `false` og først sat korrekt når den async `authMe()`-kald i `load()`
+returnerede. Detail-modal åbnet før load er fuldstændig ville bruge den forkerte
+værdi. Fix: `isPskEditor` initialiseres nu straks fra `auth.hasRole(...)` (JWT
+i localStorage) ligesom `isAdmin` i settings.js — ingen async race condition.
+
+**Berørte filer:** `backend/app/api/deps.py`, `frontend/js/views/browse.js`
+
 ## [3.11.2 build 0138] — 2026-05-03 — feat(PSK): PSK-felter tilføjet til opret-endpoint-siden
 
 PSK Mode toggle og PSK Key-felt (med Vis/Skjul og Generer-knapper) er nu

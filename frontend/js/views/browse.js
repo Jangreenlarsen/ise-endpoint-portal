@@ -1,4 +1,5 @@
 import { api } from "../api.js";
+import { auth } from "../auth.js";
 import { toIseCsv, downloadCsv } from "../csv.js";
 
 const FRONTEND_PREFS_KEY = "ise_portal_prefs";
@@ -357,7 +358,7 @@ export async function renderBrowse(container) {
   let caValues = { Type: [], Owner: [], Lokation: [], AuthzVlan: [], AuthzACL: [], PlatformType: [] };
   let roleCatalog = [];
   let canEditRoles = false;
-  let isPskEditor = false;
+  let isPskEditor = auth.hasRole("admin", "editor-psk");
   let portalOnly = false;
   const dirtyIds = new Set();
   let currentPage = 1;
