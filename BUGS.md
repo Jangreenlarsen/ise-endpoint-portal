@@ -9,6 +9,8 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 ## Åbne
 
+- `[fixed 3.12.0] 2026-05-03 — editor-psk kan ikke redigere tildelte System adm-roller` — `canEditRoles` i browse.js og `canPickRoles` i register.js ekskluderer `editor-psk`-rollen, så chips er read-only for psk-editors. **Berørte filer:** `frontend/js/views/browse.js`, `frontend/js/views/register.js`.
+
 ## Fixed
 
 - `[fixed 3.10.1] 2026-05-03 — Tab-skift til Browse/Edit: alle endpoints rød til manuel Refresh` — Ved view-mount kaldte den initielle `load()` `refreshActiveSessionMacs(false)`. SSE-snapshot-event kan ankomme under load med `sessions=[]` (tom backend-cache) og sætter `activeSessionMacs = new Set([])` (tom Set er truthy!). `refreshActiveSessionMacs(false)` ser `pxgridLive && pxgridSessionMacs` (tom Set ≠ null) og returnerer med den tomme Set — MnT polles aldrig — alle endpoints forbliver røde. **Fix (3.10.1)**: Det initielle `load()` på view-mount ændret til `load(true)` — poller altid MnT ved view-init uanset pxGrid-snapshot-state. **Filer:** [frontend/js/views/browse.js](frontend/js/views/browse.js).

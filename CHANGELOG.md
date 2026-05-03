@@ -5,6 +5,18 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.12.0 build 0144] — 2026-05-03 — fix+ux(roles): editor-psk kan redigere roller + auto-select ved opret
+
+**Bug fix**: `canEditRoles` i browse.js og `canPickRoles` i register.js ekskluderede
+`editor-psk`, så psk-editors ikke kunne redigere System adm-chips. Rettet ved at
+tilføje `editor-psk` til begge guards.
+
+**Feature**: Register-view pre-selekterer nu automatisk chippen med navn =
+brugerens username (brugerens egen System adm-rolle) ved visning. Brugeren
+kan fravælge den eller tilføje andre.
+
+**Berørte filer:** `frontend/js/views/browse.js`, `frontend/js/views/register.js`
+
 ## [3.11.7 build 0143] — 2026-05-03 — fix(browse): opdatér PSK-kolonner i tabel efter gem i detail-modal
 
 `refreshRows` patchede ikke PSK Mode / PSK Key cellerne i tabellen efter et

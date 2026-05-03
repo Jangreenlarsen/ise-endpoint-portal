@@ -156,7 +156,7 @@ export async function renderRegister(container) {
   } catch (err) {
     showError(`Kunne ikke hente attributter: ${err.message}`);
   }
-  const canPickRoles = !!me && (me.role === "admin" || me.role === "editor");
+  const canPickRoles = !!me && (me.role === "admin" || me.role === "editor" || me.role === "editor-psk");
   const isPskEditor = !!me && (me.role === "admin" || me.role === "editor-psk");
   const attrMap = {};
   for (const a of caData.attributes || []) attrMap[a.name] = a.values;
@@ -178,12 +178,14 @@ export async function renderRegister(container) {
   if (canPickRoles && roleCatalog.length) {
     const rolesSection = container.querySelector("#r-roles-section");
     const rolesChips = container.querySelector("#r-roles-chips");
-    rolesChips.innerHTML = roleCatalog.map((r) => `
-      <label class="role-chip" title="${esc(r.description || r.name)}">
-        <input type="checkbox" class="r-role-chip" data-role="${esc(r.name)}" />
+    const ownRole = me ? me.username.toLowerCase() : null;
+    rolesChips.innerHTML = roleCatalog.map((r) => {
+      const isOwn = ownRole && r.name.toLowerCase() === ownRole;
+      return `<label class="role-chip" title="${esc(r.description || r.name)}">
+        <input type="checkbox" class="r-role-chip" data-role="${esc(r.name)}"${isOwn ? " checked" : ""} />
         <span>${esc(r.name)}</span>
-      </label>
-    `).join("");
+      </label>`;
+    }).join("");
     rolesSection.hidden = false;
   }
 

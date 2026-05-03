@@ -1138,7 +1138,7 @@ export async function renderBrowse(container) {
       ]);
       groups = grps;
       const allRoles = (roles && Array.isArray(roles.roles)) ? roles.roles : [];
-      canEditRoles = !!me && (me.role === "admin" || me.role === "editor");
+      canEditRoles = !!me && (me.role === "admin" || me.role === "editor" || me.role === "editor-psk");
       isPskEditor = !!me && (me.role === "admin" || me.role === "editor-psk");
       // Admin ser hele kataloget; alle andre ser kun deres tildelte roller.
       if (!me || me.role === "admin") {
