@@ -1133,9 +1133,16 @@ export async function renderBrowse(container) {
         api.authMe().catch(() => null),
       ]);
       groups = grps;
-      roleCatalog = (roles && Array.isArray(roles.roles)) ? roles.roles : [];
+      const allRoles = (roles && Array.isArray(roles.roles)) ? roles.roles : [];
       canEditRoles = !!me && (me.role === "admin" || me.role === "editor");
       isPskEditor = !!me && (me.role === "admin" || me.role === "editor-psk");
+      // Admin ser hele kataloget; alle andre ser kun deres tildelte roller.
+      if (!me || me.role === "admin") {
+        roleCatalog = allRoles;
+      } else {
+        const assigned = new Set((me.assigned_endpoint_roles || []).map((r) => r.toLowerCase()));
+        roleCatalog = allRoles.filter((r) => assigned.has(r.name.toLowerCase()));
+      }
       for (const a of caData.attributes) {
         if (a.name in caValues) caValues[a.name] = a.values;
       }

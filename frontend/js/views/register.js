@@ -145,7 +145,14 @@ export async function renderRegister(container) {
       api.listEndpointRoles().catch(() => ({ roles: [] })),
       api.authMe().catch(() => null),
     ]);
-    roleCatalog = (rolesResp && Array.isArray(rolesResp.roles)) ? rolesResp.roles : [];
+    const allRoles = (rolesResp && Array.isArray(rolesResp.roles)) ? rolesResp.roles : [];
+    // Admin ser hele kataloget; alle andre ser kun deres tildelte roller.
+    if (!me || me.role === "admin") {
+      roleCatalog = allRoles;
+    } else {
+      const assigned = new Set((me.assigned_endpoint_roles || []).map((r) => r.toLowerCase()));
+      roleCatalog = allRoles.filter((r) => assigned.has(r.name.toLowerCase()));
+    }
   } catch (err) {
     showError(`Kunne ikke hente attributter: ${err.message}`);
   }

@@ -5,6 +5,18 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.11.6 build 0142] — 2026-05-03 — ux(RBAC): brugere ser kun tildelte System adm-roller ved opret/rediger
+
+Non-admin brugere ser nu kun de System adm-roller der er tildelt dem af
+admin (via Settings → Brugere → System adm-tildeling) når de redigerer
+eller opretter endpoints. Roller på et endpoint der ikke er i brugerens
+tildelte sæt bevares som read-only "externe" chips og overskrives ikke.
+Admin ser stadig hele rolle-kataloget.
+
+Gælder i browse/edit detail-modal, bulk-edit og register-viewet.
+
+**Berørte filer:** `frontend/js/views/browse.js`, `frontend/js/views/register.js`
+
 ## [3.11.5 build 0141] — 2026-05-03 — fix(PSK): editor-psk login-fejl pga. manglende route-adgang
 
 `editor-psk` manglede i alle frontend route-definitioner i `app.js`.
