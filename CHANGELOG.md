@@ -5,6 +5,13 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.13.2 build 0152] — 2026-05-03 — fix(browse): AuthzVlan+ACL rettet til yderst højre (næst-sidst)
+
+Rettelse af 3.13.1: kolonner var placeret yderst venstre — skal yderst
+højre (næstsidst og tredje-sidst, foran System adm).
+
+**Berørte filer:** `frontend/js/views/browse.js`
+
 ## [3.13.1 build 0151] — 2026-05-03 — ux(browse): AuthzVlan + AuthzACL yderst til venstre med fløde-gul baggrund
 
 AuthzVlan og AuthzACL er rykket til de to første datakolonner (efter
