@@ -1264,7 +1264,7 @@ async function initUsersSection(container, currentUser, rolesState) {
   const msg = container.querySelector("#users-msg");
 
   function renderEndpointRoleCell(user) {
-    const catalog = rolesState ? rolesState.roles : [];
+    const catalog = (rolesState ? rolesState.roles : []).filter((r) => r.name.toLowerCase() !== "admin");
     const assigned = new Set(user.assigned_endpoint_roles || []);
     if (catalog.length === 0) {
       return `<span class="hint">Ingen System adm i kataloget endnu</span>`;

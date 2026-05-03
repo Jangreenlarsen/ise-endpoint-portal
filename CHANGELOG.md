@@ -5,6 +5,13 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.12.2 build 0146] — 2026-05-03 — ux(roles): skjul "admin"-chip i Settings → Brugere → System adm
+
+`renderEndpointRoleCell` i settings.js filtrerer nu "admin" fra kataloglisten
+så systemrollen ikke vises som tilvalgbar System adm-tildeling for brugere.
+
+**Berørte filer:** `frontend/js/views/settings.js`
+
 ## [3.12.1 build 0145] — 2026-05-03 — ux(roles): skjul "admin"-chip i System adm-kolonne
 
 `"admin"`-rollen er en systemrolle, ikke et endpoint-tag. Den filtreres nu
