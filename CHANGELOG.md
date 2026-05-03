@@ -5,6 +5,21 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.11.4 build 0140] — 2026-05-03 — fix(PSK): PSK-kolonner i browse-tabel + ingen PSK-rydning ved tabel-gem
+
+**Bug 1 (manglende kolonner):** `psk_mode` og `psk_key` tilføjet til COLUMNS-arrayet
+og renderRows i browse.js som read-only display-celler (PSK redigeres kun via
+detail-modal). PSK Key vises med monospace-font og truncation.
+
+**Bug 2 (PSK-data ryddes ved tabel-gem):** Ikke-PSK-editors' save-payload sender
+ikke PSK-felter, men `CustomAttrs.PSK_Mode/PSK_Key` defaultede til `""` → ISE-update
+ryddede eksisterende PSK-data. Fix: `PSK_Mode`/`PSK_Key` er nu `str | None = None`
+i `CustomAttrs`; `model_dump(exclude_none=True)` i service ekskluderer dem fra
+ISE-payloaden når de ikke er eksplicit sat.
+
+**Berørte filer:** `frontend/js/views/browse.js`, `frontend/css/styles.css`,
+`backend/app/schemas/endpoint.py`, `backend/app/services/endpoint_service.py`
+
 ## [3.11.3 build 0139] — 2026-05-03 — fix(PSK): editor-psk adgang til browse/edit + PSK-synlighed for admin
 
 **Bug 1 (editor-psk 403):** `require_any` inkluderede ikke `editor-psk` →

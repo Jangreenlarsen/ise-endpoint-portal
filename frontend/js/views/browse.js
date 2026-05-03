@@ -59,6 +59,8 @@ const COLUMNS = [
   { key: "authz_vlan",     label: "AuthzVlan",      field: (r) => r.authz_vlan },
   { key: "authz_acl",      label: "AuthzACL",       field: (r) => r.authz_acl },
   { key: "platform_type",  label: "Platform",       field: (r) => r.platform_type },
+  { key: "psk_mode",       label: "PSK Mode",       field: (r) => r.psk_mode ? "Ja" : "" },
+  { key: "psk_key",        label: "PSK Key",        field: (r) => r.psk_key || "" },
   { key: "roles",          label: "System adm",     field: (r) => (r.roles || []).join(", ") },
 ];
 
@@ -1015,6 +1017,8 @@ export async function renderBrowse(container) {
         <td><select class="ca-authzvlan">${optionsHtml(caValues.AuthzVlan, r.authz_vlan)}</select></td>
         <td><select class="ca-authzacl">${optionsHtml(caValues.AuthzACL, r.authz_acl)}</select></td>
         <td><select class="ca-platformtype">${optionsHtml(caValues.PlatformType, r.platform_type)}</select></td>
+        <td class="psk-mode-cell">${r.psk_mode ? "Ja" : ""}</td>
+        <td class="psk-key-cell mono">${esc(r.psk_key || "")}</td>
         <td class="roles-cell">${rolesChipsHtml(r.roles)}</td>
       </tr>
     `).join("");

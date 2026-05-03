@@ -328,7 +328,7 @@ class EndpointService:
             "creating endpoint mac=%s group=%s static=%s",
             req.mac, req.group_id, req.static_group_assignment,
         )
-        ca = req.custom_attributes.model_dump() if req.custom_attributes else {}
+        ca = req.custom_attributes.model_dump(exclude_none=True) if req.custom_attributes else {}
         # Always stamp endpoints created by this portal
         ca[HIDDEN_ATTR] = "true"
         _apply_auto_tag(ca, auto_tag_username)
@@ -430,7 +430,7 @@ class EndpointService:
             endpoint_id,
             update.model_dump(exclude_unset=True),
         )
-        ca = update.custom_attributes.model_dump() if update.custom_attributes else {}
+        ca = update.custom_attributes.model_dump(exclude_none=True) if update.custom_attributes else {}
         # Always stamp endpoints edited through this portal
         ca[HIDDEN_ATTR] = "true"
         _apply_auto_tag(ca, auto_tag_username)

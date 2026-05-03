@@ -48,8 +48,8 @@ class CustomAttrs(BaseModel):
     AuthzACL: str = ""
     PlatformType: str = ""
     HypervisionRoles: str = ""
-    PSK_Mode: str = ""
-    PSK_Key: str = ""
+    PSK_Mode: str | None = None
+    PSK_Key: str | None = None
 
 
 class CreateEndpointRequest(BaseModel):
