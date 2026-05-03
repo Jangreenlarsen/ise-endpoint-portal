@@ -1930,5 +1930,7 @@ export async function renderBrowse(container) {
 
   reloadViews();
 
-  await load();
+  // force=true: poll altid MnT ved view-mount så auth-status er korrekt
+  // fra start uanset om pxGrid-snapshot er tom eller stale.
+  await load(true);
 }

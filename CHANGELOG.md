@@ -5,6 +5,15 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.10.1 build 0135] — 2026-05-03 — fix(browse): tab-skift til Browse/Edit giver ikke længere alle-rød
+
+Initiellt `load()` på view-mount brugte `force=false`. Race condition: SSE-snapshot ankommer under ISE API-kaldet med `sessions=[]` (tom backend-cache) → `activeSessionMacs = new Set([])` (tom Set er truthy) → `refreshActiveSessionMacs(false)` ser `pxgridLive && pxgridSessionMacs` og returnerer med den tomme Set → MnT polles aldrig → alle endpoints rød. Fix: view-mount kalder `load(true)` — poller altid MnT ved init, uanset pxGrid-snapshot-state.
+
+**Berørte filer:**
+- [frontend/js/views/browse.js](frontend/js/views/browse.js) — linje 1933: `await load()` → `await load(true)`
+
+---
+
 ## [3.10.0 build 0134] — 2026-05-03 — fix(browse): Refresh poller nu MnT selv når pxGrid er aktiv
 
 `refreshActiveSessionMacs(force)` returnerede altid tidligt med pxGrid-data når `pxgridLive && pxgridSessionMacs` — `force=true` fra Refresh-knappen blev aldrig evalueret fordi pxGrid-tjekket stod *før* force-logikken. pxGrids session-set er inkrementelt (bygget fra events) og kan indeholde stale MACs, fx. efter portal-reload. MnT's ActiveList er det autoritative snapshot. Fix: `force`-tjekket wrapper nu begge early-returns; ved `force=true` bypasses pxGrid-data og MnT polles altid. `pxgridSessionMacs` synkroniseres herefter med MnT-set som nyt fundament.
