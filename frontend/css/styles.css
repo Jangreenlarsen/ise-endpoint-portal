@@ -569,6 +569,17 @@ tr.dirty td {
 .detail-grid div.hidden {
   display: none;
 }
+/* AuthzVlan + AuthzACL kolonne-highlight */
+th.authz-col,
+td.authz-col {
+  background-color: #fef9e7;
+}
+th.authz-col {
+  background-color: #fdf3c0;
+}
+[data-theme="dark"] th.authz-col { background-color: #4a3f00; }
+[data-theme="dark"] td.authz-col { background-color: #3a3000; }
+
 .radio-group {
   display: flex;
   flex-direction: column;

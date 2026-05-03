@@ -5,6 +5,15 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.13.1 build 0151] — 2026-05-03 — ux(browse): AuthzVlan + AuthzACL yderst til venstre med fløde-gul baggrund
+
+AuthzVlan og AuthzACL er rykket til de to første datakolonner (efter
+checkbox). Baggrunden er cream-gul (`#fef9e7` / header `#fdf3c0`) via
+`.authz-col` CSS-klassen — dark mode bruger mørke amber-toner.
+COLUMNS-arrayet er reordered; `renderRows` og header-rendering følger.
+
+**Berørte filer:** `frontend/js/views/browse.js`, `frontend/css/styles.css`
+
 ## [3.13.0 build 0150] — 2026-05-03 — feat(PSK): IPSK vs MPSK mode-type i Settings
 
 Ny indstilling i PSK-politik-kortet (Settings → PSK Pass Key Politik):

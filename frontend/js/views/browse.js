@@ -48,6 +48,8 @@ function esc(s) {
 
 // Column definitions: key = data field accessor, label = header text
 const COLUMNS = [
+  { key: "authz_vlan",     label: "AuthzVlan",      field: (r) => r.authz_vlan,                    cls: "authz-col" },
+  { key: "authz_acl",      label: "AuthzACL",       field: (r) => r.authz_acl,                     cls: "authz-col" },
   { key: "mac",            label: "MAC",            field: (r) => r.mac || r.name },
   { key: "vendor",         label: "Vendor",         field: (r) => r.vendor || "" },
   { key: "group_name",     label: "Identity Group", field: (r) => r.group_name },
@@ -56,8 +58,6 @@ const COLUMNS = [
   { key: "endpoint_type",  label: "Type",           field: (r) => r.endpoint_type },
   { key: "owner",          label: "Owner",          field: (r) => r.owner },
   { key: "lokation",       label: "Lokation",       field: (r) => r.lokation },
-  { key: "authz_vlan",     label: "AuthzVlan",      field: (r) => r.authz_vlan },
-  { key: "authz_acl",      label: "AuthzACL",       field: (r) => r.authz_acl },
   { key: "platform_type",  label: "Platform",       field: (r) => r.platform_type },
   { key: "psk_mode",       label: "PSK Mode",       field: (r) => r.psk_mode ? "Ja" : "" },
   { key: "psk_key",        label: "PSK Key",        field: (r) => r.psk_key || "" },
@@ -171,12 +171,12 @@ export async function renderBrowse(container) {
           <thead>
             <tr>
               <th style="width:36px;"><input type="checkbox" id="select-all" title="Vælg alle" /></th>
-              ${COLUMNS.map((c) => `<th>${c.label}</th>`).join("")}
+              ${COLUMNS.map((c) => `<th${c.cls ? ` class="${c.cls}"` : ""}>${c.label}</th>`).join("")}
             </tr>
             <tr class="filter-row">
               <th></th>
               ${COLUMNS.map((c) => `
-                <th>
+                <th${c.cls ? ` class="${c.cls}"` : ""}>
                   <div class="col-filter">
                     <label class="col-filter-toggle" title="Aktivér filter for ${c.label}">
                       <input type="checkbox" class="col-filter-cb" data-col="${c.key}" />
@@ -1021,6 +1021,8 @@ export async function renderBrowse(container) {
     tbody.innerHTML = rows.map((r) => `
       <tr data-id="${esc(r.id)}"${dirtyIds.has(r.id) ? ' class="dirty"' : ''}>
         <td class="select-cell"><input type="checkbox" class="row-select" /></td>
+        <td class="authz-col"><select class="ca-authzvlan">${optionsHtml(caValues.AuthzVlan, r.authz_vlan)}</select></td>
+        <td class="authz-col"><select class="ca-authzacl">${optionsHtml(caValues.AuthzACL, r.authz_acl)}</select></td>
         <td class="mac-cell"><a href="#" class="mac-link" title="Vis detaljer">${esc(r.mac || r.name)}</a></td>
         <td class="vendor-cell-td">${esc(r.vendor || "")}</td>
         <td><select class="grp-select">${groupOptionsHtml(r.group_id)}</select></td>
@@ -1029,8 +1031,6 @@ export async function renderBrowse(container) {
         <td><select class="ca-type">${optionsHtml(caValues.Type, r.endpoint_type)}</select></td>
         <td><select class="ca-owner">${optionsHtml(caValues.Owner, r.owner)}</select></td>
         <td><select class="ca-lokation">${optionsHtml(caValues.Lokation, r.lokation)}</select></td>
-        <td><select class="ca-authzvlan">${optionsHtml(caValues.AuthzVlan, r.authz_vlan)}</select></td>
-        <td><select class="ca-authzacl">${optionsHtml(caValues.AuthzACL, r.authz_acl)}</select></td>
         <td><select class="ca-platformtype">${optionsHtml(caValues.PlatformType, r.platform_type)}</select></td>
         <td class="psk-mode-cell"><input type="checkbox" class="psk-mode-cb"${r.psk_mode ? " checked" : ""}${isPskEditor ? "" : " disabled"} title="MPSK/IPSK" /></td>
         <td class="psk-key-cell mono">${esc(r.psk_key || "")}</td>
