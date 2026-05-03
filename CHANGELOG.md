@@ -5,6 +5,24 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.9.6 build 0130] — 2026-05-03 — fix(brugere): auto-tildel System adm-rolle ved oprettelse
+
+Ny bruger fik automatisk en System adm-rolle oprettet i kataloget (3.8.0),
+men `assigned_endpoint_roles` blev initialiseret til `[]`. Admin måtte manuelt
+gå ind og sætte flueben på brugerens egen rolle i tabellen.
+
+`create_user` sætter nu `assigned_endpoint_roles = [username]` umiddelbart
+efter `ensure_user_role` lykkes. `effective_roles()` deduplicerer med
+`dict.fromkeys` så nye brugere ikke får `["jan", "jan"]` i stedet for `["jan"]`.
+
+Eksisterende brugere er upåvirkede — `effective_roles()` tilføjer stadig
+`username` implicit, og deduplicering er harmløs for dem.
+
+**Berørte filer:**
+- [backend/app/services/user_service.py](backend/app/services/user_service.py)
+
+---
+
 ## [3.9.5 build 0129] — 2026-05-03 — fix(pxGrid): WS ping/pong liveness + badge-debounce + disconnect-farve
 
 Tre relaterede pxGrid-bugs fundet ved analyse af `logs/app.log`:

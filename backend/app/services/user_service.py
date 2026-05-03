@@ -49,9 +49,11 @@ def effective_roles(user: User) -> list[str]:
 
     Username-rollen er implicit og kan ikke fjernes — derfor er
     enhver bruger garanteret mindst én rolle, så de altid kan se
-    deres egne endpoints.
+    deres egne endpoints. dict.fromkeys deduplicerer så nye brugere
+    (der nu får assigned_endpoint_roles=[username] automatisk) ikke
+    returnerer ["jan", "jan"].
     """
-    return [*user.assigned_endpoint_roles, user.username]
+    return list(dict.fromkeys([*user.assigned_endpoint_roles, user.username]))
 
 
 def get_user_me(user_id: str) -> UserMe:
@@ -143,8 +145,9 @@ async def create_user(payload: UserCreate) -> User:
     users.append(record)
     save_users(users)
     logger.info("user created: %s role=%s", payload.username, payload.role)
-    # 3.8.0: auto-opret System adm-rolle med navnet = username så admin
-    # kan se brugeren i rolle-kataloget og bruge dem som scope-tag på endpoints.
+    # 3.8.0: auto-opret System adm-rolle med navnet = username.
+    # 3.9.6: tildel rollen til brugeren med det samme så UI viser den
+    # som checked uden at admin skal gøre det manuelt.
     try:
         from app.core import role_catalog
         result = role_catalog.ensure_user_role(payload.username)
@@ -154,6 +157,10 @@ async def create_user(payload: UserCreate) -> User:
                 "(ugyldigt navn — kun A-Z, a-z, 0-9, '-', '_')",
                 payload.username,
             )
+        else:
+            record["assigned_endpoint_roles"] = [payload.username]
+            save_users(users)
+            logger.info("auto-tildelt System adm-rolle '%s' til ny bruger", payload.username)
     except Exception as exc:  # noqa: BLE001
         logger.warning("auto-rolle-create fejlede for %s: %s", payload.username, exc)
     await audit_store.record(
