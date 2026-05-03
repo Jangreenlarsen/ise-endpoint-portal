@@ -1078,6 +1078,10 @@ export async function renderBrowse(container) {
       setSel("ca-platformtype", r.platform_type, caValues.PlatformType);
       const rolesCell = tr.querySelector(".roles-cell");
       if (rolesCell) rolesCell.innerHTML = rolesChipsHtml(r.roles);
+      const pskModeCell = tr.querySelector(".psk-mode-cell");
+      if (pskModeCell) pskModeCell.textContent = r.psk_mode ? "Ja" : "";
+      const pskKeyCell = tr.querySelector(".psk-key-cell");
+      if (pskKeyCell) pskKeyCell.textContent = r.psk_key || "";
       tr.classList.remove("dirty");
       dirtyIds.delete(id);
     }

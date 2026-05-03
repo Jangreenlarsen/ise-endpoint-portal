@@ -5,6 +5,14 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.11.7 build 0143] — 2026-05-03 — fix(browse): opdatér PSK-kolonner i tabel efter gem i detail-modal
+
+`refreshRows` patchede ikke PSK Mode / PSK Key cellerne i tabellen efter et
+endpoint blev gemt via detail-modalen. Tilføjet in-place patch af
+`.psk-mode-cell` og `.psk-key-cell` i `refreshRows()`.
+
+**Berørte filer:** `frontend/js/views/browse.js`
+
 ## [3.11.6 build 0142] — 2026-05-03 — ux(RBAC): brugere ser kun tildelte System adm-roller ved opret/rediger
 
 Non-admin brugere ser nu kun de System adm-roller der er tildelt dem af
