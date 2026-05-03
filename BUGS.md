@@ -13,6 +13,8 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 - `[fixed 3.12.4] 2026-05-03 — Rediger valgte endpoints mangler Tilknytning, PSK Mode og PSK Key` — Bulk-edit modal har ikke de samme felter som Endpoint detaljer detail-modal (mangler Tilknytning/static group, PSK Mode, PSK Key). **Berørte filer:** `frontend/js/views/browse.js`.
 
+- `[fixed 3.12.5] 2026-05-03 — Bulk-edit modal ændrer størrelse ved Vis/PSK Key-aktivering` — `.modal` har kun `width: 420px` men PSK Key-sektionen kræver 560px (som detail-modal). Bulk-edit modal-div manglede `detail-modal` klassen. **Berørte filer:** `frontend/js/views/browse.js`.
+
 ## Fixed
 
 - `[fixed 3.10.1] 2026-05-03 — Tab-skift til Browse/Edit: alle endpoints rød til manuel Refresh` — Ved view-mount kaldte den initielle `load()` `refreshActiveSessionMacs(false)`. SSE-snapshot-event kan ankomme under load med `sessions=[]` (tom backend-cache) og sætter `activeSessionMacs = new Set([])` (tom Set er truthy!). `refreshActiveSessionMacs(false)` ser `pxgridLive && pxgridSessionMacs` (tom Set ≠ null) og returnerer med den tomme Set — MnT polles aldrig — alle endpoints forbliver røde. **Fix (3.10.1)**: Det initielle `load()` på view-mount ændret til `load(true)` — poller altid MnT ved view-init uanset pxGrid-snapshot-state. **Filer:** [frontend/js/views/browse.js](frontend/js/views/browse.js).

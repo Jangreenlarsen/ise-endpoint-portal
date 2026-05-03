@@ -5,6 +5,14 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.12.5 build 0149] — 2026-05-03 — fix(bulk-edit): fast modal-bredde, ikke resize ved Vis/PSK
+
+Bulk-edit modalen manglede `detail-modal` klassen (560px). Den arvede kun
+base `.modal` (420px) og reflowede ved PSK Key-aktivering og Vis-klik.
+Tilføjet `detail-modal` til modal-div i bulk-edit overlay.
+
+**Berørte filer:** `frontend/js/views/browse.js`
+
 ## [3.12.4 build 0148] — 2026-05-03 — fix(bulk-edit): paritet med Endpoint detaljer-modal
 
 Tilføjet manglende felter til "Rediger valgte endpoints" så den matcher

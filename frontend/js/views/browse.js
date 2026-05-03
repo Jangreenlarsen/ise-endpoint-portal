@@ -255,7 +255,7 @@ export async function renderBrowse(container) {
       </div>
     </div>
     <div id="bulk-edit-overlay" class="modal-overlay hidden">
-      <div class="modal">
+      <div class="modal detail-modal">
         <h3>Rediger valgte endpoints</h3>
         <p class="hint" id="bulk-edit-count"></p>
         <div class="modal-body">
