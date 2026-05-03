@@ -5,6 +5,16 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.9.8 build 0132] — 2026-05-03 — fix(browse): Refresh buster cache + henter altid aktuel auth-status fra MnT
+
+Refresh-knappen kaldte `load()` uden cache-bust → backend returnerede cached endpoint-data. `refreshActiveSessionMacs()` sprang MnT-poll over ved `!anyFilterActive()` → ingen grøn/rød auth-status uden aktivt filter (f.eks. efter portal-genstart). Fix: (A) `POST /cache/invalidate` åbnet for alle roller (`require_any`). (B) Refresh-knap kalder `invalidateCache()` + `load(true)`. (C) `force`-parameter på `load()` og `refreshActiveSessionMacs()` — tvinger MnT-poll ved eksplicit Refresh. Knap viser "Opdaterer…" under operationen.
+
+**Berørte filer:**
+- [frontend/js/views/browse.js](frontend/js/views/browse.js) — Refresh-handler, `load(force)`, `refreshActiveSessionMacs(force)`
+- [backend/app/api/cache.py](backend/app/api/cache.py) — `/cache/invalidate`: `require_admin` → `require_any`
+
+---
+
 ## [3.9.7 build 0131] — 2026-05-03 — fix(audit): aktør viser nu faktisk login-bruger i stedet for "system"
 
 `get_current_user` i `deps.py` er en sync funktion. FastAPI kører sync dependencies via `run_in_executor` (threadpool), og `ContextVar.set()` i en thread modificerer kun threadens kontekst-kopi — ændringen propagerer ikke tilbage til den asyncio-task hvor `audit_store.record()` kører. Resultatet: `actor_ctx.get()` returnerer altid default `ActorContext(actor_username="system")`. **Fix**: `get_current_user` ændret fra `def` til `async def` så FastAPI awaiter den direkte i den aktuelle asyncio-task. `actor_ctx.set()` er nu synlig for alle efterfølgende `record()`-kald i samme request.

@@ -687,7 +687,7 @@ export async function renderBrowse(container) {
     return (s || "").replace(/-/g, ":").trim().toUpperCase();
   }
 
-  async function refreshActiveSessionMacs() {
+  async function refreshActiveSessionMacs(force = false) {
     // Phase 3 (3.5.0): når pxGrid SSE-stream er live har vi allerede fresh
     // data — vis altid auth-status farver, uafhængigt af filter (SSE-data
     // kostede ikke noget ekstra ISE-kald). MnT-polden kun for at skåne ISE
@@ -696,7 +696,9 @@ export async function renderBrowse(container) {
       activeSessionMacs = new Set(pxgridSessionMacs);
       return;
     }
-    if (!anyFilterActive()) {
+    // Ved eksplicit Refresh (force=true) poller vi altid MnT så auth-status
+    // er aktuel uanset om et filter er aktivt.
+    if (!force && !anyFilterActive()) {
       activeSessionMacs = null;
       return;
     }
@@ -1100,7 +1102,7 @@ export async function renderBrowse(container) {
     }
   }
 
-  async function load() {
+  async function load(force = false) {
     const cols = COLUMNS.length + 2;
     tbody.innerHTML = `<tr><td colspan="${cols}" class="empty">Henter detaljer fra ISE...</td></tr>`;
     msg.innerHTML = "";
@@ -1141,9 +1143,9 @@ export async function renderBrowse(container) {
         await enterFilterMode();
       }
 
-      // Hent MnT auth-status kun når et filter er aktivt — undgår et MnT-kald
-      // pr. load når man browser alle endpoints uden filter.
-      await refreshActiveSessionMacs();
+      // Hent MnT auth-status: altid ved eksplicit Refresh (force=true),
+      // ellers kun når et filter er aktivt — undgår et MnT-kald pr. load.
+      await refreshActiveSessionMacs(force);
 
       applyFilter();
     } catch (err) {
@@ -1521,7 +1523,18 @@ export async function renderBrowse(container) {
     if (filterMode) { applyFilter(); } else { load(); }
   });
 
-  container.querySelector("#refresh-btn").addEventListener("click", load);
+  container.querySelector("#refresh-btn").addEventListener("click", async () => {
+    const btn = container.querySelector("#refresh-btn");
+    btn.disabled = true;
+    btn.textContent = "Opdaterer…";
+    try {
+      await api.invalidateCache().catch(() => {});
+      await load(true);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Refresh";
+    }
+  });
 
   function triggerFilterChange(immediate = false) {
     if (searchDebounce) clearTimeout(searchDebounce);

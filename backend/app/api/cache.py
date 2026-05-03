@@ -8,20 +8,18 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 
-from app.api.deps import require_admin
+from app.api.deps import require_admin, require_any
 from app.core.endpoint_cache import get_cache
 
-router = APIRouter(
-    prefix="/cache", tags=["cache"], dependencies=[Depends(require_admin)]
-)
+router = APIRouter(prefix="/cache", tags=["cache"])
 
 
-@router.get("/stats")
+@router.get("/stats", dependencies=[Depends(require_admin)])
 async def cache_stats() -> dict[str, object]:
     return get_cache().stats()
 
 
-@router.post("/invalidate")
+@router.post("/invalidate", dependencies=[Depends(require_any)])
 async def cache_invalidate() -> dict[str, str]:
     get_cache().invalidate_all()
     return {"status": "cleared"}
