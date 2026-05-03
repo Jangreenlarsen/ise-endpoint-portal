@@ -5,6 +5,12 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.13.3 build 0153] — 2026-05-03 — ux(browse): PSK Key kolonne yderst til højre (foran System adm)
+
+PSK Key rykket til næstsidste kolonne — rækkefølge nu: ... PSK Mode, AuthzVlan, AuthzACL, PSK Key, System adm.
+
+**Berørte filer:** `frontend/js/views/browse.js`
+
 ## [3.13.2 build 0152] — 2026-05-03 — fix(browse): AuthzVlan+ACL rettet til yderst højre (næst-sidst)
 
 Rettelse af 3.13.1: kolonner var placeret yderst venstre — skal yderst
