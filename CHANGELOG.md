@@ -5,6 +5,15 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.12.3 build 0147] — 2026-05-03 — ux(browse): PSK Mode-kolonne viser interaktiv checkbox
+
+PSK Mode-kolonnen i browse-tabellen viser nu en checkbox i stedet for tekst
+"Ja"/"". For PSK-editors er den interaktiv og inkluderes i save-payloaden
+(PSK_Mode i custom_attributes). For andre brugere er den disabled/visuel.
+refreshRows patcher checkbox-state korrekt efter save.
+
+**Berørte filer:** `frontend/js/views/browse.js`
+
 ## [3.12.2 build 0146] — 2026-05-03 — ux(roles): skjul "admin"-chip i Settings → Brugere → System adm
 
 `renderEndpointRoleCell` i settings.js filtrerer nu "admin" fra kataloglisten

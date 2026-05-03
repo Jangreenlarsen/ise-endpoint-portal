@@ -1018,7 +1018,7 @@ export async function renderBrowse(container) {
         <td><select class="ca-authzvlan">${optionsHtml(caValues.AuthzVlan, r.authz_vlan)}</select></td>
         <td><select class="ca-authzacl">${optionsHtml(caValues.AuthzACL, r.authz_acl)}</select></td>
         <td><select class="ca-platformtype">${optionsHtml(caValues.PlatformType, r.platform_type)}</select></td>
-        <td class="psk-mode-cell">${r.psk_mode ? "Ja" : ""}</td>
+        <td class="psk-mode-cell"><input type="checkbox" class="psk-mode-cb"${r.psk_mode ? " checked" : ""}${isPskEditor ? "" : " disabled"} title="MPSK/IPSK" /></td>
         <td class="psk-key-cell mono">${esc(r.psk_key || "")}</td>
         <td class="roles-cell">${rolesChipsHtml(r.roles)}</td>
       </tr>
@@ -1079,8 +1079,8 @@ export async function renderBrowse(container) {
       setSel("ca-platformtype", r.platform_type, caValues.PlatformType);
       const rolesCell = tr.querySelector(".roles-cell");
       if (rolesCell) rolesCell.innerHTML = rolesChipsHtml(r.roles);
-      const pskModeCell = tr.querySelector(".psk-mode-cell");
-      if (pskModeCell) pskModeCell.textContent = r.psk_mode ? "Ja" : "";
+      const pskModeCb = tr.querySelector(".psk-mode-cb");
+      if (pskModeCb) pskModeCb.checked = !!r.psk_mode;
       const pskKeyCell = tr.querySelector(".psk-key-cell");
       if (pskKeyCell) pskKeyCell.textContent = r.psk_key || "";
       tr.classList.remove("dirty");
@@ -1228,6 +1228,8 @@ export async function renderBrowse(container) {
     const authzVlan = tr.querySelector(".ca-authzvlan").value;
     const authzAcl = tr.querySelector(".ca-authzacl").value;
     const platformType = tr.querySelector(".ca-platformtype").value;
+    const pskModeCb = tr.querySelector(".psk-mode-cb");
+    const pskMode = pskModeCb ? pskModeCb.checked : null;
 
     const row = allRows.find((r) => r.id === id);
     const originalGroupId = row ? (row.group_id || "") : "";
@@ -1275,9 +1277,10 @@ export async function renderBrowse(container) {
           AuthzACL: authzAcl,
           PlatformType: platformType,
           HypervisionRoles: hypervisionRoles,
+          ...(isPskEditor && pskMode !== null ? { PSK_Mode: pskMode ? "true" : "false" } : {}),
         },
       },
-      localUpdate: { description, group_id, static_group_assignment, groupChanged, endpointType, owner, lokation, authzVlan, authzAcl, platformType },
+      localUpdate: { description, group_id, static_group_assignment, groupChanged, endpointType, owner, lokation, authzVlan, authzAcl, platformType, pskMode },
       platformType,
     };
   }
