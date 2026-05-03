@@ -5,6 +5,12 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.13.4 build 0154] — 2026-05-03 — ux(browse): PSK Key tilbage på gammel plads med cream-gul baggrund
+
+PSK Key er tilbage mellem PSK Mode og AuthzVlan. Alle tre (PSK Key, AuthzVlan, AuthzACL) har nu samme cream-gule `authz-col` baggrund.
+
+**Berørte filer:** `frontend/js/views/browse.js`
+
 ## [3.13.3 build 0153] — 2026-05-03 — ux(browse): PSK Key kolonne yderst til højre (foran System adm)
 
 PSK Key rykket til næstsidste kolonne — rækkefølge nu: ... PSK Mode, AuthzVlan, AuthzACL, PSK Key, System adm.

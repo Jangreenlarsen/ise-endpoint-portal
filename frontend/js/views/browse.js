@@ -58,9 +58,9 @@ const COLUMNS = [
   { key: "lokation",       label: "Lokation",       field: (r) => r.lokation },
   { key: "platform_type",  label: "Platform",       field: (r) => r.platform_type },
   { key: "psk_mode",       label: "PSK Mode",       field: (r) => r.psk_mode ? "Ja" : "" },
+  { key: "psk_key",        label: "PSK Key",        field: (r) => r.psk_key || "",                 cls: "authz-col" },
   { key: "authz_vlan",     label: "AuthzVlan",      field: (r) => r.authz_vlan,                    cls: "authz-col" },
   { key: "authz_acl",      label: "AuthzACL",       field: (r) => r.authz_acl,                     cls: "authz-col" },
-  { key: "psk_key",        label: "PSK Key",        field: (r) => r.psk_key || "" },
   { key: "roles",          label: "System adm",     field: (r) => (r.roles || []).join(", ") },
 ];
 
@@ -1031,9 +1031,9 @@ export async function renderBrowse(container) {
         <td><select class="ca-lokation">${optionsHtml(caValues.Lokation, r.lokation)}</select></td>
         <td><select class="ca-platformtype">${optionsHtml(caValues.PlatformType, r.platform_type)}</select></td>
         <td class="psk-mode-cell"><input type="checkbox" class="psk-mode-cb"${r.psk_mode ? " checked" : ""}${isPskEditor ? "" : " disabled"} title="MPSK/IPSK" /></td>
+        <td class="authz-col psk-key-cell mono">${esc(r.psk_key || "")}</td>
         <td class="authz-col"><select class="ca-authzvlan">${optionsHtml(caValues.AuthzVlan, r.authz_vlan)}</select></td>
         <td class="authz-col"><select class="ca-authzacl">${optionsHtml(caValues.AuthzACL, r.authz_acl)}</select></td>
-        <td class="psk-key-cell mono">${esc(r.psk_key || "")}</td>
         <td class="roles-cell">${rolesChipsHtml(r.roles)}</td>
       </tr>
     `).join("");
