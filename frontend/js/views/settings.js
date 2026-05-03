@@ -34,6 +34,7 @@ export function initTheme() {
 export async function renderSettings(container) {
   const isAdmin = auth.isAdmin();
   const currentUser = auth.getUser();
+  const isPskEditorUser = isAdmin || currentUser?.role === "editor-psk";
 
   container.innerHTML = `
     <div class="page-header">
@@ -46,6 +47,9 @@ export async function renderSettings(container) {
       <button class="settings-tab" data-tab="pxgrid">PxGrid</button>
       <button class="settings-tab" data-tab="ise-config">ISE-config</button>
       <button class="settings-tab" data-tab="access">Adgang</button>
+      ` : ""}
+      ${isPskEditorUser ? `
+      <button class="settings-tab" data-tab="psk-policy">PSK-politik</button>
       ` : ""}
       <button class="settings-tab" data-tab="account">Konto</button>
     </nav>
@@ -506,11 +510,43 @@ export async function renderSettings(container) {
         <select id="new-role">
           <option value="viewer">viewer</option>
           <option value="editor">editor</option>
+          <option value="editor-psk">editor-psk (PSK-redaktør)</option>
           <option value="admin">admin</option>
           <option value="registrar">registrar (kun opret)</option>
         </select>
         <button type="submit">Opret bruger</button>
       </form>
+    </div>
+    ` : ""}
+
+    ${isPskEditorUser ? `
+    <div class="card" data-tab="psk-policy">
+      <h3>PSK Pass Key Politik</h3>
+      <p class="hint">
+        Definerer krav til MPSK/IPSK pass keys. Nøgler valideres mod denne politik
+        når de gemmes på endpoints. Politikken anvendes også af nøgle-generatoren.
+      </p>
+      <div id="psk-policy-msg"></div>
+      <form id="psk-policy-form">
+        <div class="field">
+          <label for="psk-min-length">Minimum længde (8–128 tegn)</label>
+          <input type="number" id="psk-min-length" min="8" max="128" step="1" value="8" />
+        </div>
+        <div class="field checkbox-field">
+          <label><input type="checkbox" id="psk-req-upper" /> Kræver stort bogstav (A-Z)</label>
+        </div>
+        <div class="field checkbox-field">
+          <label><input type="checkbox" id="psk-req-number" /> Kræver tal (0-9)</label>
+        </div>
+        <div class="field checkbox-field">
+          <label><input type="checkbox" id="psk-req-special" /> Kræver specialtegn (!@#$…)</label>
+        </div>
+        <div class="actions">
+          <button type="submit">Gem PSK-politik</button>
+          <button type="button" id="psk-test-gen" class="secondary">Test: Generer nøgle</button>
+        </div>
+      </form>
+      <div id="psk-gen-result" class="hint" style="margin-top:0.5rem;font-family:monospace;"></div>
     </div>
     ` : ""}
 
@@ -582,7 +618,7 @@ export async function renderSettings(container) {
     </div><!-- /settings-panels -->
   `;
 
-  initSettingsTabs(container, isAdmin);
+  initSettingsTabs(container, isAdmin, isPskEditorUser);
 
   if (isAdmin) {
     await initBackendSection(container);
@@ -591,6 +627,9 @@ export async function renderSettings(container) {
     await initPurgeProtectSection(container);
     const rolesState = await initRolesSection(container);
     await initUsersSection(container, currentUser, rolesState);
+  }
+  if (isPskEditorUser) {
+    await initPskPolicySection(container);
   }
   initPasswordSection(container);
   initCsvAndPrefsSections(container);
@@ -1256,7 +1295,7 @@ async function initUsersSection(container, currentUser, rolesState) {
               <td>${esc(u.username)}</td>
               <td>
                 <select class="user-role-select" ${isSelf ? "disabled title='Du kan ikke ændre din egen rolle her'" : ""}>
-                  ${["admin", "editor", "viewer", "registrar"]
+                  ${["admin", "editor", "editor-psk", "viewer", "registrar"]
                     .map((r) => `<option value="${r}"${r === u.role ? " selected" : ""}>${r}</option>`)
                     .join("")}
                 </select>
@@ -1453,15 +1492,64 @@ function initCsvAndPrefsSections(container) {
   });
 }
 
+async function initPskPolicySection(container) {
+  const msg = container.querySelector("#psk-policy-msg");
+  const form = container.querySelector("#psk-policy-form");
+  const genResult = container.querySelector("#psk-gen-result");
+  if (!form) return;
+
+  function applyPolicy(p) {
+    container.querySelector("#psk-min-length").value = p.min_length ?? 8;
+    container.querySelector("#psk-req-upper").checked = !!p.require_uppercase;
+    container.querySelector("#psk-req-number").checked = !!p.require_numbers;
+    container.querySelector("#psk-req-special").checked = !!p.require_special;
+  }
+
+  try {
+    const policy = await api.getPskPolicy();
+    applyPolicy(policy);
+  } catch (err) {
+    msg.innerHTML = `<div class="alert error">Kunne ikke hente PSK-politik: ${esc(err.message)}</div>`;
+  }
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    msg.innerHTML = "";
+    const payload = {
+      min_length: parseInt(container.querySelector("#psk-min-length").value, 10),
+      require_uppercase: container.querySelector("#psk-req-upper").checked,
+      require_numbers: container.querySelector("#psk-req-number").checked,
+      require_special: container.querySelector("#psk-req-special").checked,
+    };
+    try {
+      const saved = await api.updatePskPolicy(payload);
+      applyPolicy(saved);
+      msg.innerHTML = `<div class="alert success">PSK-politik gemt.</div>`;
+    } catch (err) {
+      msg.innerHTML = `<div class="alert error">Fejl: ${esc(err.message)}</div>`;
+    }
+  });
+
+  container.querySelector("#psk-test-gen").addEventListener("click", async () => {
+    genResult.textContent = "Genererer…";
+    try {
+      const { key } = await api.generatePskKey();
+      genResult.textContent = `Eksempel: ${key}`;
+    } catch (err) {
+      genResult.textContent = `Fejl: ${err.message}`;
+    }
+  });
+}
+
 /* 3.8.3: Settings tab-navigation. Skjul/vis cards baseret på data-tab.
  * Persistér valgt tab i localStorage så bruger lander samme sted ved reload. */
 const SETTINGS_TAB_KEY = "ise_portal_settings_tab";
-function initSettingsTabs(container, isAdmin) {
+function initSettingsTabs(container, isAdmin, isPskEditorUser = false) {
   const tabs = container.querySelectorAll(".settings-tab");
   const cards = container.querySelectorAll(".settings-panels [data-tab]");
   if (!tabs.length) return;
   const validTabs = Array.from(tabs).map(t => t.dataset.tab);
-  const defaultTab = isAdmin ? "connection" : "account";
+  const defaultTab = isAdmin ? "connection" : isPskEditorUser ? "psk-policy" : "account";
   let stored = null;
   try { stored = localStorage.getItem(SETTINGS_TAB_KEY); } catch { /* ignore */ }
   const initial = validTabs.includes(stored) ? stored : defaultTab;

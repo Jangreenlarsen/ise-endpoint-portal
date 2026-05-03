@@ -291,4 +291,8 @@ export const api = {
   deleteEndpointRole: (name) =>
     request(`/endpoint-roles/${encodeURIComponent(name)}`, { method: "DELETE" }),
   authMe: () => request("/auth/me"),
+  getPskPolicy: () => request("/settings/psk-policy"),
+  updatePskPolicy: (payload) =>
+    request("/settings/psk-policy", { method: "PUT", body: JSON.stringify(payload) }),
+  generatePskKey: () => request("/settings/psk-policy/generate", { method: "POST" }),
 };

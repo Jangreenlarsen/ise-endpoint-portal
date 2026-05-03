@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import logging
+import random
+import string
 import time
 
 import httpx
@@ -15,6 +17,8 @@ from app.pxgrid.exceptions import PxGridAccountPendingError
 from app.schemas.settings import (
     BackendSettingsResponse,
     BackendSettingsUpdate,
+    GeneratedPskKey,
+    PskPolicy,
     PxGridAccountCreateResponse,
     PxGridSettingsResponse,
     PxGridSettingsUpdate,
@@ -469,3 +473,84 @@ async def pxgrid_reset() -> "PxGridResetResponse":
         f"forfra for at registrere klienten igen."
     )
     return PxGridResetResponse(ok=True, files_deleted=deleted_files, message=msg)
+
+
+# ── PSK-politik (3.11.0) ────────────────────────────────────────────────
+
+def get_psk_policy() -> PskPolicy:
+    s = config.settings
+    return PskPolicy(
+        min_length=int(getattr(s, "psk_min_length", 8)),
+        require_uppercase=bool(getattr(s, "psk_require_uppercase", False)),
+        require_numbers=bool(getattr(s, "psk_require_numbers", False)),
+        require_special=bool(getattr(s, "psk_require_special", False)),
+    )
+
+
+async def update_psk_policy(new: PskPolicy) -> PskPolicy:
+    before = get_psk_policy().model_dump()
+    overrides = load_overrides()
+    overrides.update(
+        {
+            "psk_min_length": new.min_length,
+            "psk_require_uppercase": new.require_uppercase,
+            "psk_require_numbers": new.require_numbers,
+            "psk_require_special": new.require_special,
+        }
+    )
+    save_overrides(overrides)
+    config.refresh_settings()
+    logger.info("psk policy updated: %s", new.model_dump())
+    await audit_store.record(
+        "updated",
+        "psk_policy",
+        None,
+        before=before,
+        after=new.model_dump(),
+    )
+    return get_psk_policy()
+
+
+def validate_psk_key(key: str, policy: PskPolicy | None = None) -> list[str]:
+    """Returnér liste af valideringsfejl (tom = godkendt)."""
+    p = policy or get_psk_policy()
+    errors: list[str] = []
+    if len(key) < p.min_length:
+        errors.append(f"PSK-nøgle skal være mindst {p.min_length} tegn")
+    if p.require_uppercase and not any(c.isupper() for c in key):
+        errors.append("PSK-nøgle skal indeholde mindst ét stort bogstav")
+    if p.require_numbers and not any(c.isdigit() for c in key):
+        errors.append("PSK-nøgle skal indeholde mindst ét tal")
+    if p.require_special and not any(c in string.punctuation for c in key):
+        errors.append("PSK-nøgle skal indeholde mindst ét specialtegn")
+    return errors
+
+
+def generate_psk_key(policy: PskPolicy | None = None) -> GeneratedPskKey:
+    """Generér en PSK-nøgle der overholder den aktive politik."""
+    p = policy or get_psk_policy()
+    lowercase = string.ascii_lowercase
+    uppercase = string.ascii_uppercase
+    digits = string.digits
+    special = "!@#$%^&*-_=+"
+
+    # Opbyg med garanterede tegn for hver aktiveret krav
+    required: list[str] = []
+    if p.require_uppercase:
+        required.append(random.choice(uppercase))
+    if p.require_numbers:
+        required.append(random.choice(digits))
+    if p.require_special:
+        required.append(random.choice(special))
+
+    pool = lowercase + uppercase + digits
+    if p.require_special:
+        pool += special
+
+    # Fyld op til min_length + lidt ekstra for god entropi (min 12)
+    target_len = max(p.min_length, 12)
+    remaining = target_len - len(required)
+    required += [random.choice(pool) for _ in range(remaining)]
+
+    random.shuffle(required)
+    return GeneratedPskKey(key="".join(required))

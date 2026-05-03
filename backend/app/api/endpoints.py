@@ -5,6 +5,7 @@ from app.api.deps import (
     get_endpoint_service,
     require_any,
     require_create_endpoint,
+    require_edit_endpoint,
     require_editor,
     require_register_lookup,
 )
@@ -46,6 +47,10 @@ def _autotag_for(user: User) -> str | None:
     return user.username
 
 
+def _is_psk_editor_for(user: User) -> bool:
+    return user.role in ("admin", "editor-psk")
+
+
 @router.get("", response_model=list[EndpointSummary])
 async def list_endpoints(
     page: int = 1,
@@ -84,6 +89,7 @@ async def list_endpoint_details(
             search=search,
             filters=filter,
             effective_roles=_scope_for(user),
+            is_psk_editor=_is_psk_editor_for(user),
         )
     except IseApiError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
@@ -108,6 +114,7 @@ async def list_all_endpoint_details(
             search=search,
             filters=filter,
             effective_roles=_scope_for(user),
+            is_psk_editor=_is_psk_editor_for(user),
         )
     except IseApiError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
@@ -136,7 +143,9 @@ async def get_endpoint(
 ) -> EndpointDetail:
     try:
         detail = await service.get_endpoint(
-            endpoint_id, effective_roles=_scope_for(user)
+            endpoint_id,
+            effective_roles=_scope_for(user),
+            is_psk_editor=_is_psk_editor_for(user),
         )
     except IseApiError as exc:
         # 404 fra service betyder enten ISE ikke har endpointet, eller
@@ -168,6 +177,8 @@ async def create_endpoint(
         new_id = await service.create_endpoint(
             req, auto_tag_username=_autotag_for(user)
         )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     except IseApiError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     return {"status": "created", "id": new_id}
@@ -187,13 +198,15 @@ async def bulk_create_endpoints(
 async def update_endpoint(
     endpoint_id: str,
     req: EndpointUpdate,
-    user: User = Depends(require_editor),
+    user: User = Depends(require_edit_endpoint),
     service: EndpointService = Depends(get_endpoint_service),
 ) -> dict[str, str]:
     try:
         await service.update_endpoint(
             endpoint_id, req, auto_tag_username=_autotag_for(user)
         )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     except IseApiError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     return {"status": "updated"}

@@ -94,8 +94,11 @@ def require_roles(*roles: Role):
 require_admin = require_roles("admin")
 require_editor = require_roles("admin", "editor")
 require_any = require_roles("admin", "editor", "viewer")
+# editor-psk: kan se og skrive PSK-attributter på endpoints + PSK-politik i settings.
+require_psk_editor = require_roles("admin", "editor-psk")
 # Registrar må KUN oprette endpoints — ingen browse/edit/delete/audit/admin.
 # Bruges på POST /api/endpoints og de read-only opslag der er nødvendige
 # for opret-formularen (groups, custom-attributes, oui).
-require_create_endpoint = require_roles("admin", "editor", "registrar")
-require_register_lookup = require_roles("admin", "editor", "viewer", "registrar")
+require_edit_endpoint = require_roles("admin", "editor", "editor-psk")
+require_create_endpoint = require_roles("admin", "editor", "editor-psk", "registrar")
+require_register_lookup = require_roles("admin", "editor", "editor-psk", "viewer", "registrar")

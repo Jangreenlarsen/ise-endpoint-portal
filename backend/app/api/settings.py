@@ -1,11 +1,13 @@
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse
 
-from app.api.deps import require_admin
+from app.api.deps import require_admin, require_psk_editor
 from app.pxgrid import cert_manager
 from app.schemas.settings import (
     BackendSettingsResponse,
     BackendSettingsUpdate,
+    GeneratedPskKey,
+    PskPolicy,
     PxGridAccountCreateResponse,
     PxGridResetResponse,
     PxGridSettingsResponse,
@@ -269,3 +271,28 @@ async def generate_pxgrid_csr() -> PxGridSettingsResponse:
         pxgrid_cert_extra_sans=current.pxgrid_cert_extra_sans,
     )
     return await settings_service.update_pxgrid_settings(update)
+
+
+# ── PSK-politik (3.11.0) ────────────────────────────────────────────────
+# Separat router uden require_admin så editor-psk-rollen kan tilgå PSK-endpoints.
+# Monteres på samme /settings-prefix i main.py.
+
+psk_router = APIRouter(
+    prefix="/settings", tags=["settings"], dependencies=[Depends(require_psk_editor)]
+)
+
+
+@psk_router.get("/psk-policy", response_model=PskPolicy)
+async def read_psk_policy() -> PskPolicy:
+    return settings_service.get_psk_policy()
+
+
+@psk_router.put("/psk-policy", response_model=PskPolicy)
+async def update_psk_policy(req: PskPolicy) -> PskPolicy:
+    return await settings_service.update_psk_policy(req)
+
+
+@psk_router.post("/psk-policy/generate", response_model=GeneratedPskKey)
+async def generate_psk_key() -> GeneratedPskKey:
+    """Generér én PSK-nøgle der overholder den aktive PSK-politik."""
+    return settings_service.generate_psk_key()

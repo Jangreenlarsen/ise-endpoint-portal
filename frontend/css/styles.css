@@ -104,6 +104,19 @@ form .field {
   gap: 0.3rem;
   margin-bottom: 1rem;
 }
+form .field.checkbox-field {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+form .field.checkbox-field label {
+  font-weight: 400;
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  cursor: pointer;
+}
 form label {
   font-size: 0.85rem;
   font-weight: 600;
@@ -551,6 +564,24 @@ tr.dirty td {
   display: flex;
   gap: 0.35rem;
   align-items: center;
+}
+.detail-grid label.hidden,
+.detail-grid div.hidden {
+  display: none;
+}
+.psk-key-wrap {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+}
+.psk-key-wrap input[type="password"],
+.psk-key-wrap input[type="text"] {
+  flex: 1;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.85rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-family: ui-monospace, "Cascadia Mono", Menlo, monospace;
 }
 a.mac-link {
   color: #0b3d91;

@@ -222,6 +222,14 @@ export async function renderBrowse(container) {
           <select id="d-authzacl"></select>
           <label>Platform</label>
           <select id="d-platformtype"></select>
+          <label>PSK Mode</label>
+          <label class="inline-cb"><input type="checkbox" id="d-psk-mode" /> MPSK/IPSK aktiveret</label>
+          <label id="d-psk-key-label">PSK Key</label>
+          <div id="d-psk-key-wrap" class="psk-key-wrap">
+            <input type="password" id="d-psk-key" autocomplete="off" />
+            <button type="button" id="d-psk-show" class="secondary small">Vis</button>
+            <button type="button" id="d-psk-gen" class="secondary small">Generer</button>
+          </div>
           <label>System adm</label>
           <div id="d-roles"></div>
           <label>HypervisionISEPortal</label>
@@ -349,6 +357,7 @@ export async function renderBrowse(container) {
   let caValues = { Type: [], Owner: [], Lokation: [], AuthzVlan: [], AuthzACL: [], PlatformType: [] };
   let roleCatalog = [];
   let canEditRoles = false;
+  let isPskEditor = false;
   let portalOnly = false;
   const dirtyIds = new Set();
   let currentPage = 1;
@@ -1121,6 +1130,7 @@ export async function renderBrowse(container) {
       groups = grps;
       roleCatalog = (roles && Array.isArray(roles.roles)) ? roles.roles : [];
       canEditRoles = !!me && (me.role === "admin" || me.role === "editor");
+      isPskEditor = !!me && (me.role === "admin" || me.role === "editor-psk");
       for (const a of caData.attributes) {
         if (a.name in caValues) caValues[a.name] = a.values;
       }
@@ -1589,6 +1599,23 @@ export async function renderBrowse(container) {
       container.querySelector("#d-authzvlan").innerHTML = optionsHtml(caValues.AuthzVlan, d.authz_vlan);
       container.querySelector("#d-authzacl").innerHTML = optionsHtml(caValues.AuthzACL, d.authz_acl);
       container.querySelector("#d-platformtype").innerHTML = optionsHtml(caValues.PlatformType, d.platform_type);
+      // PSK fields
+      const pskModeEl = container.querySelector("#d-psk-mode");
+      const pskKeyEl = container.querySelector("#d-psk-key");
+      const pskKeyLabel = container.querySelector("#d-psk-key-label");
+      const pskKeyWrap = container.querySelector("#d-psk-key-wrap");
+      pskModeEl.checked = !!d.psk_mode;
+      pskModeEl.disabled = !isPskEditor;
+      pskKeyEl.value = d.psk_key || "";
+      pskKeyEl.type = "password";
+      pskKeyEl.disabled = !isPskEditor;
+      container.querySelector("#d-psk-show").textContent = "Vis";
+      // PSK Key section: always visible to psk-editors; to others only when mode is on
+      const showPskKey = isPskEditor || !!d.psk_mode;
+      pskKeyLabel.classList.toggle("hidden", !showPskKey);
+      pskKeyWrap.classList.toggle("hidden", !showPskKey);
+      container.querySelector("#d-psk-show").classList.toggle("hidden", !isPskEditor);
+      container.querySelector("#d-psk-gen").classList.toggle("hidden", !isPskEditor);
       container.querySelector("#d-roles").innerHTML = rolesChipsHtml(d.roles);
       container.querySelector("#d-roles").dataset.original = JSON.stringify(d.roles || []);
       container.querySelector("#d-hypervision").textContent = d.hypervision || "—";
@@ -1620,6 +1647,34 @@ export async function renderBrowse(container) {
   container.querySelector("#d-close").addEventListener("click", closeDetail);
   detailOverlay.addEventListener("click", (e) => {
     if (e.target === detailOverlay) closeDetail();
+  });
+
+  container.querySelector("#d-psk-show").addEventListener("click", () => {
+    const inp = container.querySelector("#d-psk-key");
+    const btn = container.querySelector("#d-psk-show");
+    if (inp.type === "password") {
+      inp.type = "text";
+      btn.textContent = "Skjul";
+    } else {
+      inp.type = "password";
+      btn.textContent = "Vis";
+    }
+  });
+
+  container.querySelector("#d-psk-gen").addEventListener("click", async () => {
+    const btn = container.querySelector("#d-psk-gen");
+    btn.disabled = true;
+    try {
+      const { key } = await api.generatePskKey();
+      const inp = container.querySelector("#d-psk-key");
+      inp.value = key;
+      inp.type = "text";
+      container.querySelector("#d-psk-show").textContent = "Skjul";
+    } catch (err) {
+      detailMsg.innerHTML = `<div class="alert error">Kunne ikke generere nøgle: ${err.message}</div>`;
+    } finally {
+      btn.disabled = false;
+    }
   });
 
   container.querySelector("#d-disconnect").addEventListener("click", async () => {
@@ -1681,19 +1736,24 @@ export async function renderBrowse(container) {
       (r) => !catalogLower.has((r || "").toLowerCase()),
     );
     const hypervisionRoles = [...externalRoles, ...selectedCatalogRoles].join(",");
+    const customAttrs = {
+      Type: container.querySelector("#d-type").value,
+      Owner: container.querySelector("#d-owner").value,
+      Lokation: container.querySelector("#d-lokation").value,
+      AuthzVlan: container.querySelector("#d-authzvlan").value,
+      AuthzACL: container.querySelector("#d-authzacl").value,
+      PlatformType: container.querySelector("#d-platformtype").value,
+      HypervisionRoles: hypervisionRoles,
+    };
+    if (isPskEditor) {
+      customAttrs.PSK_Mode = container.querySelector("#d-psk-mode").checked ? "true" : "false";
+      customAttrs.PSK_Key = container.querySelector("#d-psk-key").value;
+    }
     const payload = {
       description: container.querySelector("#d-description").value,
       group_id,
       static_group_assignment,
-      custom_attributes: {
-        Type: container.querySelector("#d-type").value,
-        Owner: container.querySelector("#d-owner").value,
-        Lokation: container.querySelector("#d-lokation").value,
-        AuthzVlan: container.querySelector("#d-authzvlan").value,
-        AuthzACL: container.querySelector("#d-authzacl").value,
-        PlatformType: container.querySelector("#d-platformtype").value,
-        HypervisionRoles: hypervisionRoles,
-      },
+      custom_attributes: customAttrs,
     };
     try {
       await api.updateEndpoint(detailCurrentId, payload);

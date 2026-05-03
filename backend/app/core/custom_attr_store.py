@@ -32,8 +32,15 @@ ROLES_ATTR = "HypervisionRoles"
 # at vi skal sætte en ekstra CA. Settings UI har en vejledning med præcis
 # rule-config.
 
+# PSK-attributter (3.11.0) — MPSK/IPSK. Gemmes som ISE custom attrs.
+# PSK_Mode: "true"/"false"-streng (ISE har ingen native boolean-CA-type).
+# PSK_Key: fri streng; portalen håndhæver policy-validering.
+PSK_MODE_ATTR = "PSK_Mode"
+PSK_KEY_ATTR = "PSK_Key"
+PSK_ATTRS = [PSK_MODE_ATTR, PSK_KEY_ATTR]
+
 # Alle skjulte (ikke-UI-dropdown) CAs der skal have ISE-definition.
-HIDDEN_ATTRS = [HIDDEN_ATTR, ROLES_ATTR]
+HIDDEN_ATTRS = [HIDDEN_ATTR, ROLES_ATTR] + PSK_ATTRS
 
 # All attributes that need ISE definitions (managed + hidden).
 ALL_ATTRS = MANAGED_ATTRS + HIDDEN_ATTRS

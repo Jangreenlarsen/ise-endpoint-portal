@@ -30,6 +30,8 @@ class EndpointDetail(BaseModel):
     identity_store: str = ""
     identity_store_id: str = ""
     vendor: str = ""
+    psk_mode: bool = False
+    psk_key: str = ""
 
 
 class EndpointGroupSummary(BaseModel):
@@ -46,6 +48,8 @@ class CustomAttrs(BaseModel):
     AuthzACL: str = ""
     PlatformType: str = ""
     HypervisionRoles: str = ""
+    PSK_Mode: str = ""
+    PSK_Key: str = ""
 
 
 class CreateEndpointRequest(BaseModel):

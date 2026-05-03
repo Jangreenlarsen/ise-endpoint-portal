@@ -210,6 +210,12 @@ class Settings(BaseSettings):
         ),
     )
 
+    # PSK-politik (3.11.0) — validerings-regler for MPSK/IPSK nøgler.
+    psk_min_length: int = Field(default=8, description="Minimum PSK-nøgle længde.")
+    psk_require_uppercase: bool = Field(default=False, description="Kræv mindst ét stort bogstav.")
+    psk_require_numbers: bool = Field(default=False, description="Kræv mindst ét tal.")
+    psk_require_special: bool = Field(default=False, description="Kræv mindst ét specialtegn.")
+
     backend_cors_origins: list[str] = Field(
         default_factory=lambda: ["http://localhost:5173", "http://localhost:8000"]
     )

@@ -5,6 +5,28 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.11.0 build 0136] — 2026-05-03 — feat(PSK): MPSK/IPSK PSK-nøgle-management
+
+Ny `editor-psk`-rolle + fuld PSK-livscyklus i portalen. PSK_Mode/PSK_Key gemmes i ISE som custom attributes. PSK_Key maskeres til `****` for alle roller undtagen admin og editor-psk. Nøgle-generator i detail-modal og Settings PSK-politik-tab. Validering mod politik ved create/update; sentinel-write-back (`****`) afvises.
+
+**Backend:**
+- `schemas/user.py`: tilføjet `editor-psk` til `Role` Literal og `ROLE_VALUES`
+- `api/deps.py`: `require_psk_editor`, `require_edit_endpoint`, `require_create_endpoint` og `require_register_lookup` opdateret med `editor-psk`
+- `schemas/endpoint.py`: `CustomAttrs` +`PSK_Mode`/`PSK_Key`; `EndpointDetail` +`psk_mode: bool`/`psk_key: str`
+- `schemas/settings.py`: `PskPolicy`, `GeneratedPskKey`
+- `core/config.py`: `psk_min_length`, `psk_require_uppercase`, `psk_require_numbers`, `psk_require_special`
+- `core/custom_attr_store.py`: `PSK_MODE_ATTR`, `PSK_KEY_ATTR`, `PSK_ATTRS`, `HIDDEN_ATTRS`, `ALL_ATTRS`
+- `services/settings_service.py`: `get_psk_policy()`, `update_psk_policy()`, `validate_psk_key()`, `generate_psk_key()`
+- `services/endpoint_service.py`: `PSK_MASKED`, `_mask_psk()`, `_validate_psk()`; `get_endpoint`/`list_endpoint_details`/`list_all_endpoint_details` +`is_psk_editor`; interne audit-snapshots bruger `is_psk_editor=True`
+- `api/settings.py`: separat `psk_router` med `require_psk_editor` dependency; PSK-endpoints: GET/PUT `/psk-policy`, POST `/psk-policy/generate`
+- `api/endpoints.py`: `_is_psk_editor_for()`, `is_psk_editor` sendt til service; `update_endpoint` dependency → `require_edit_endpoint`; ValueError → 422
+
+**Frontend:**
+- `api.js`: `getPskPolicy()`, `updatePskPolicy()`, `generatePskKey()`
+- `views/browse.js`: `isPskEditor`-flag; PSK Mode toggle + PSK Key felt med Vis/Skjul og Generer i detail-modal; PSK-felter medsendes i save-payload kun for psk-editors
+- `views/settings.js`: PSK-politik-tab (synlig for admin + editor-psk), PSK-politik-form med test-generator; `editor-psk` tilføjet til opret- og rediger-rolle-dropdowns
+- `css/styles.css`: `.psk-key-wrap`, `form .field.checkbox-field`, `.detail-grid label/div.hidden`
+
 ## [3.10.1 build 0135] — 2026-05-03 — fix(browse): tab-skift til Browse/Edit giver ikke længere alle-rød
 
 Initiellt `load()` på view-mount brugte `force=false`. Race condition: SSE-snapshot ankommer under ISE API-kaldet med `sessions=[]` (tom backend-cache) → `activeSessionMacs = new Set([])` (tom Set er truthy) → `refreshActiveSessionMacs(false)` ser `pxgridLive && pxgridSessionMacs` og returnerer med den tomme Set → MnT polles aldrig → alle endpoints rød. Fix: view-mount kalder `load(true)` — poller altid MnT ved init, uanset pxGrid-snapshot-state.

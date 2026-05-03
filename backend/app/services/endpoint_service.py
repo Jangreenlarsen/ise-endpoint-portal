@@ -5,7 +5,13 @@ import logging
 from typing import Any
 
 from app.core import audit_store, config
-from app.core.custom_attr_store import ALL_ATTRS, HIDDEN_ATTR, ROLES_ATTR
+from app.core.custom_attr_store import (
+    ALL_ATTRS,
+    HIDDEN_ATTR,
+    PSK_KEY_ATTR,
+    PSK_MODE_ATTR,
+    ROLES_ATTR,
+)
 from app.core.endpoint_cache import get_cache
 from app.core.exceptions import IseApiError
 from app.core.oui_lookup import lookup as oui_lookup
@@ -31,6 +37,8 @@ from app.schemas.endpoint import (
 )
 
 logger = logging.getLogger(__name__)
+
+PSK_MASKED = "****"
 
 # Module-level flag: have we ensured custom attribute definitions in ISE this session?
 _ca_definitions_ensured = False
@@ -118,6 +126,7 @@ class EndpointService:
         self,
         endpoint_id: str,
         effective_roles: list[str] | None = None,
+        is_psk_editor: bool = False,
     ) -> EndpointDetail:
         """Fetch full endpoint details from ISE including custom attributes.
 
@@ -129,12 +138,16 @@ class EndpointService:
         endpointets ``HypervisionRoles``. Out-of-scope rejses som
         ``IseApiError(404)`` så API-laget kan returnere 404 (ikke 403,
         så scope-grænsen ikke leakes).
+
+        PSK_Key maskeres til ``PSK_MASKED`` medmindre ``is_psk_editor=True``.
         """
         detail = await get_cache().get_detail(
             endpoint_id, lambda: self._fetch_endpoint_detail(endpoint_id)
         )
         if effective_roles is not None and not _endpoint_visible(detail, effective_roles):
             raise IseApiError(404, f"Endpoint {endpoint_id} not found")
+        if not is_psk_editor:
+            detail = _mask_psk(detail)
         return detail
 
     async def _fetch_endpoint_detail(self, endpoint_id: str) -> EndpointDetail:
@@ -165,6 +178,8 @@ class EndpointService:
             identity_store=raw.get("identityStore", "") or "",
             identity_store_id=raw.get("identityStoreId", "") or "",
             vendor=oui_lookup(mac_val),
+            psk_mode=ca.get(PSK_MODE_ATTR, "").lower() == "true",
+            psk_key=ca.get(PSK_KEY_ATTR, ""),
         )
 
     async def _resolve_group_name(self, group_id: str) -> str:
@@ -191,6 +206,7 @@ class EndpointService:
         search: str | None = None,
         filters: list[str] | None = None,
         effective_roles: list[str] | None = None,
+        is_psk_editor: bool = False,
     ) -> PaginatedEndpointDetails:
         """List endpoints with full details (concurrent fetches, max 5 parallel).
 
@@ -213,7 +229,7 @@ class EndpointService:
         async def fetch_one(r: dict[str, Any]) -> EndpointDetail:
             async with sem:
                 try:
-                    return await self.get_endpoint(r["id"])
+                    return await self.get_endpoint(r["id"], is_psk_editor=is_psk_editor)
                 except IseApiError:
                     return EndpointDetail(
                         id=r.get("id", ""),
@@ -242,6 +258,7 @@ class EndpointService:
         search: str | None = None,
         filters: list[str] | None = None,
         effective_roles: list[str] | None = None,
+        is_psk_editor: bool = False,
     ) -> list[EndpointDetail]:
         """Fetch ALL endpoints with full details (all ISE pages, concurrent).
 
@@ -259,7 +276,7 @@ class EndpointService:
         async def fetch_one(r: dict[str, Any]) -> EndpointDetail:
             async with sem:
                 try:
-                    return await self.get_endpoint(r["id"])
+                    return await self.get_endpoint(r["id"], is_psk_editor=is_psk_editor)
                 except IseApiError:
                     return EndpointDetail(
                         id=r.get("id", ""),
@@ -315,6 +332,7 @@ class EndpointService:
         # Always stamp endpoints created by this portal
         ca[HIDDEN_ATTR] = "true"
         _apply_auto_tag(ca, auto_tag_username)
+        _validate_psk(ca)
         await self._ensure_ca_definitions()
         # Bevar eksplicit staticGroupAssignment hvis angivet (fx fra CSV-import),
         # ellers default til True som ISE forventer når groupId er sat.
@@ -350,7 +368,7 @@ class EndpointService:
         # Capture before-state for rollback while it still exists in ISE.
         before: dict[str, Any] | None = None
         try:
-            before = (await self.get_endpoint(endpoint_id)).model_dump()
+            before = (await self.get_endpoint(endpoint_id, is_psk_editor=True)).model_dump()
         except IseApiError as exc:
             logger.warning("audit: could not snapshot endpoint %s before delete: %s",
                            endpoint_id, exc)
@@ -416,11 +434,12 @@ class EndpointService:
         # Always stamp endpoints edited through this portal
         ca[HIDDEN_ATTR] = "true"
         _apply_auto_tag(ca, auto_tag_username)
+        _validate_psk(ca)
         await self._ensure_ca_definitions()
         # Snapshot before-state for audit + rollback.
         before: dict[str, Any] | None = None
         try:
-            before = (await self.get_endpoint(endpoint_id)).model_dump()
+            before = (await self.get_endpoint(endpoint_id, is_psk_editor=True)).model_dump()
         except IseApiError as exc:
             logger.warning(
                 "audit: could not snapshot endpoint %s before update: %s",
@@ -437,7 +456,7 @@ class EndpointService:
         get_cache().invalidate_detail(endpoint_id)
         after: dict[str, Any] | None = None
         try:
-            after = (await self.get_endpoint(endpoint_id)).model_dump()
+            after = (await self.get_endpoint(endpoint_id, is_psk_editor=True)).model_dump()
         except IseApiError:
             pass
         await audit_store.record(
@@ -549,6 +568,30 @@ class EndpointService:
         await self.update_endpoint(
             endpoint_id, update, auto_tag_username=auto_tag_username
         )
+
+
+def _mask_psk(detail: EndpointDetail) -> EndpointDetail:
+    """Return a copy of detail with psk_key replaced by PSK_MASKED (if non-empty)."""
+    if detail.psk_key:
+        return detail.model_copy(update={"psk_key": PSK_MASKED})
+    return detail
+
+
+def _validate_psk(ca: dict[str, Any]) -> None:
+    """Validate PSK fields before write. Raises ValueError on violation."""
+    key = str(ca.get(PSK_KEY_ATTR, "") or "")
+    if key == PSK_MASKED:
+        raise ValueError(
+            "PSK Key indeholder den maskerede sentinel-værdi '****' — "
+            "send den faktiske nøgle eller lad feltet være tomt"
+        )
+    mode = str(ca.get(PSK_MODE_ATTR, "") or "").lower()
+    if mode == "true" and key:
+        from app.services.settings_service import get_psk_policy, validate_psk_key
+        policy = get_psk_policy()
+        ok, msg = validate_psk_key(key, policy)
+        if not ok:
+            raise ValueError(f"PSK Key overholder ikke politik: {msg}")
 
 
 def _extract_custom_attrs(endpoint: dict[str, Any]) -> dict[str, str]:

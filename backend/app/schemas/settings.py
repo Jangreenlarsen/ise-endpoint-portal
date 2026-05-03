@@ -228,6 +228,19 @@ class PxGridWorkerStatusResponse(BaseModel):
     cache_size: int = 0
 
 
+class PskPolicy(BaseModel):
+    """PSK-nøgle politik — validerings-regler for MPSK/IPSK PSK Key attributten."""
+
+    min_length: int = Field(default=8, ge=8, le=128, description="Minimum nøgle-længde (min. 8).")
+    require_uppercase: bool = Field(default=False, description="Kræv mindst ét stort bogstav.")
+    require_numbers: bool = Field(default=False, description="Kræv mindst ét tal.")
+    require_special: bool = Field(default=False, description="Kræv mindst ét specialtegn (!@#$%^&* m.fl.).")
+
+
+class GeneratedPskKey(BaseModel):
+    key: str
+
+
 class PxGridResetResponse(BaseModel):
     """Result of POST /api/settings/pxgrid/reset.
 
