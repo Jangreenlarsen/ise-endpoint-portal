@@ -5,6 +5,15 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.10.0 build 0134] — 2026-05-03 — fix(browse): Refresh poller nu MnT selv når pxGrid er aktiv
+
+`refreshActiveSessionMacs(force)` returnerede altid tidligt med pxGrid-data når `pxgridLive && pxgridSessionMacs` — `force=true` fra Refresh-knappen blev aldrig evalueret fordi pxGrid-tjekket stod *før* force-logikken. pxGrids session-set er inkrementelt (bygget fra events) og kan indeholde stale MACs, fx. efter portal-reload. MnT's ActiveList er det autoritative snapshot. Fix: `force`-tjekket wrapper nu begge early-returns; ved `force=true` bypasses pxGrid-data og MnT polles altid. `pxgridSessionMacs` synkroniseres herefter med MnT-set som nyt fundament.
+
+**Berørte filer:**
+- [frontend/js/views/browse.js](frontend/js/views/browse.js) — `refreshActiveSessionMacs()`: force-guard wrapper pxGrid early-return + MnT→pxGrid sync
+
+---
+
 ## [3.9.9 build 0133] — 2026-05-03 — ux(browse): MAC-celle helbaggrund grøn/rød for auth-status
 
 Auth-status visning flyttes fra checkbox-outline (svær at se) til helbaggrund på MAC-adresse-cellen. Grøn (`#4ade80`) = aktiv RADIUS session, rød (`#f87171`) = ingen aktiv session. Link-tekst justeres til mørk grøn/rød for kontrast. `applyAuthStatusColors()` sætter klassen på `td.mac-cell` i stedet for checkbox-elementet.

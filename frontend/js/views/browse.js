@@ -688,23 +688,25 @@ export async function renderBrowse(container) {
   }
 
   async function refreshActiveSessionMacs(force = false) {
-    // Phase 3 (3.5.0): når pxGrid SSE-stream er live har vi allerede fresh
-    // data — vis altid auth-status farver, uafhængigt af filter (SSE-data
-    // kostede ikke noget ekstra ISE-kald). MnT-polden kun for at skåne ISE
-    // ved store unfiltered datasets.
-    if (pxgridLive && pxgridSessionMacs) {
-      activeSessionMacs = new Set(pxgridSessionMacs);
-      return;
-    }
-    // Ved eksplicit Refresh (force=true) poller vi altid MnT så auth-status
-    // er aktuel uanset om et filter er aktivt.
-    if (!force && !anyFilterActive()) {
-      activeSessionMacs = null;
-      return;
+    // force=true (eksplicit Refresh): poll altid MnT for autoritativt snapshot.
+    // pxGrid giver inkrementelle events — MnT's ActiveList er den fulde sandhed.
+    if (!force) {
+      // Phase 3 (3.5.0): pxGrid live → brug stream-data, intet ISE-kald.
+      if (pxgridLive && pxgridSessionMacs) {
+        activeSessionMacs = new Set(pxgridSessionMacs);
+        return;
+      }
+      if (!anyFilterActive()) {
+        activeSessionMacs = null;
+        return;
+      }
     }
     try {
       const list = await api.listActiveSessionMacs();
       activeSessionMacs = new Set((list || []).map(normalizeMac));
+      // Synkronisér pxgridSessionMacs med MnT-data så fremtidige pxGrid-events
+      // bygger videre på det korrekte fundament og ikke genskaber stale MACs.
+      if (pxgridLive) pxgridSessionMacs = new Set(activeSessionMacs);
     } catch (err) {
       console.warn("Kunne ikke hente aktive sessioner fra MnT:", err.message);
       activeSessionMacs = null;
