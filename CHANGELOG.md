@@ -5,6 +5,14 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.11.1 build 0137] — 2026-05-03 — fix(PSK): validate_psk_key returnerer list ikke tuple
+
+`_validate_psk` i `endpoint_service.py` forsøgte at unpacke returværdien fra
+`validate_psk_key` som `ok, msg = ...`, men funktionen returnerer en `list[str]`
+(fejlliste). Tom liste → "not enough values to unpack (expected 2, got 0)" → 422
+ved oprettelse af ethvert endpoint med PSK_Mode=false/tom. Rettet til
+`errors = validate_psk_key(...)` + `if errors: raise ValueError(...)`.
+
 ## [3.11.0 build 0136] — 2026-05-03 — feat(PSK): MPSK/IPSK PSK-nøgle-management
 
 Ny `editor-psk`-rolle + fuld PSK-livscyklus i portalen. PSK_Mode/PSK_Key gemmes i ISE som custom attributes. PSK_Key maskeres til `****` for alle roller undtagen admin og editor-psk. Nøgle-generator i detail-modal og Settings PSK-politik-tab. Validering mod politik ved create/update; sentinel-write-back (`****`) afvises.

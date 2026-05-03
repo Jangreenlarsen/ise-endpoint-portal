@@ -589,9 +589,9 @@ def _validate_psk(ca: dict[str, Any]) -> None:
     if mode == "true" and key:
         from app.services.settings_service import get_psk_policy, validate_psk_key
         policy = get_psk_policy()
-        ok, msg = validate_psk_key(key, policy)
-        if not ok:
-            raise ValueError(f"PSK Key overholder ikke politik: {msg}")
+        errors = validate_psk_key(key, policy)
+        if errors:
+            raise ValueError(f"PSK Key overholder ikke politik: {'; '.join(errors)}")
 
 
 def _extract_custom_attrs(endpoint: dict[str, Any]) -> dict[str, str]:
