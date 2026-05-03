@@ -211,6 +211,7 @@ class Settings(BaseSettings):
     )
 
     # PSK-politik (3.11.0) — validerings-regler for MPSK/IPSK nøgler.
+    psk_type: str = Field(default="MPSK", description="PSK mode-type: MPSK eller IPSK.")
     psk_min_length: int = Field(default=8, description="Minimum PSK-nøgle længde.")
     psk_require_uppercase: bool = Field(default=False, description="Kræv mindst ét stort bogstav.")
     psk_require_numbers: bool = Field(default=False, description="Kræv mindst ét tal.")

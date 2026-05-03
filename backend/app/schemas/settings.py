@@ -231,6 +231,7 @@ class PxGridWorkerStatusResponse(BaseModel):
 class PskPolicy(BaseModel):
     """PSK-nøgle politik — validerings-regler for MPSK/IPSK PSK Key attributten."""
 
+    psk_type: str = Field(default="MPSK", description="PSK mode: 'MPSK' eller 'IPSK'. IPSK tilføjer automatisk 'psk='-prefix i ISE.")
     min_length: int = Field(default=8, ge=8, le=128, description="Minimum nøgle-længde (min. 8).")
     require_uppercase: bool = Field(default=False, description="Kræv mindst ét stort bogstav.")
     require_numbers: bool = Field(default=False, description="Kræv mindst ét tal.")

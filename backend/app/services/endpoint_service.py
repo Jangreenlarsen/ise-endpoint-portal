@@ -39,6 +39,25 @@ from app.schemas.endpoint import (
 logger = logging.getLogger(__name__)
 
 PSK_MASKED = "****"
+PSK_IPSK_PREFIX = "psk="
+
+
+def _psk_encode(key: str) -> str:
+    """Tilføj 'psk='-prefix til nøglen hvis IPSK mode er aktiv i settings."""
+    if not key:
+        return key
+    if str(getattr(config.settings, "psk_type", "MPSK")).upper() != "IPSK":
+        return key
+    if key.startswith(PSK_IPSK_PREFIX):
+        return key
+    return PSK_IPSK_PREFIX + key
+
+
+def _psk_decode(raw: str) -> str:
+    """Strip 'psk='-prefix så UI aldrig ser det (transparent uanset mode)."""
+    if raw and raw.startswith(PSK_IPSK_PREFIX):
+        return raw[len(PSK_IPSK_PREFIX):]
+    return raw
 
 # Module-level flag: have we ensured custom attribute definitions in ISE this session?
 _ca_definitions_ensured = False
@@ -179,7 +198,7 @@ class EndpointService:
             identity_store_id=raw.get("identityStoreId", "") or "",
             vendor=oui_lookup(mac_val),
             psk_mode=ca.get(PSK_MODE_ATTR, "").lower() == "true",
-            psk_key=ca.get(PSK_KEY_ATTR, ""),
+            psk_key=_psk_decode(ca.get(PSK_KEY_ATTR, "")),
         )
 
     async def _resolve_group_name(self, group_id: str) -> str:
@@ -333,6 +352,7 @@ class EndpointService:
         ca[HIDDEN_ATTR] = "true"
         _apply_auto_tag(ca, auto_tag_username)
         _validate_psk(ca)
+        _psk_encode_ca(ca)
         await self._ensure_ca_definitions()
         # Bevar eksplicit staticGroupAssignment hvis angivet (fx fra CSV-import),
         # ellers default til True som ISE forventer når groupId er sat.
@@ -435,6 +455,7 @@ class EndpointService:
         ca[HIDDEN_ATTR] = "true"
         _apply_auto_tag(ca, auto_tag_username)
         _validate_psk(ca)
+        _psk_encode_ca(ca)
         await self._ensure_ca_definitions()
         # Snapshot before-state for audit + rollback.
         before: dict[str, Any] | None = None
@@ -575,6 +596,13 @@ def _mask_psk(detail: EndpointDetail) -> EndpointDetail:
     if detail.psk_key:
         return detail.model_copy(update={"psk_key": PSK_MASKED})
     return detail
+
+
+def _psk_encode_ca(ca: dict[str, Any]) -> None:
+    """In-place: tilføj 'psk='-prefix på PSK_Key i ca-dict hvis IPSK mode aktiv."""
+    key = str(ca.get(PSK_KEY_ATTR, "") or "")
+    if key:
+        ca[PSK_KEY_ATTR] = _psk_encode(key)
 
 
 def _validate_psk(ca: dict[str, Any]) -> None:

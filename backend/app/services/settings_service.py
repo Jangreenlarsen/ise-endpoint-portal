@@ -480,6 +480,7 @@ async def pxgrid_reset() -> "PxGridResetResponse":
 def get_psk_policy() -> PskPolicy:
     s = config.settings
     return PskPolicy(
+        psk_type=str(getattr(s, "psk_type", "MPSK")).upper() or "MPSK",
         min_length=int(getattr(s, "psk_min_length", 8)),
         require_uppercase=bool(getattr(s, "psk_require_uppercase", False)),
         require_numbers=bool(getattr(s, "psk_require_numbers", False)),
@@ -490,8 +491,10 @@ def get_psk_policy() -> PskPolicy:
 async def update_psk_policy(new: PskPolicy) -> PskPolicy:
     before = get_psk_policy().model_dump()
     overrides = load_overrides()
+    psk_type = new.psk_type.upper() if new.psk_type in ("MPSK", "IPSK") else "MPSK"
     overrides.update(
         {
+            "psk_type": psk_type,
             "psk_min_length": new.min_length,
             "psk_require_uppercase": new.require_uppercase,
             "psk_require_numbers": new.require_numbers,

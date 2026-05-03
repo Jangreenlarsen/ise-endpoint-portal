@@ -5,6 +5,27 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.13.0 build 0150] — 2026-05-03 — feat(PSK): IPSK vs MPSK mode-type i Settings
+
+Ny indstilling i PSK-politik-kortet (Settings → PSK Pass Key Politik):
+radio-buttons til at vælge **MPSK** (standard) eller **IPSK**-mode.
+
+I **IPSK**-mode tilføjer backend transparant `psk=`-prefix på nøglen
+inden den skrives til ISE (`_psk_encode_ca` efter `_validate_psk`).
+Ved read fra ISE strippes præfikset igen (`_psk_decode`) — UI-brugeren
+ser og redigerer altid den rene nøgle uden prefix.
+
+Validering (min. længde, store bogstaver osv.) kører altid på den rå
+nøgle inden encoding, så policy-reglerne gælder den del brugeren angiver.
+
+**Berørte filer:**
+- `backend/app/schemas/settings.py` (+psk_type felt)
+- `backend/app/core/config.py` (+psk_type config-felt)
+- `backend/app/services/settings_service.py` (get/update psk_policy +psk_type)
+- `backend/app/services/endpoint_service.py` (+PSK_IPSK_PREFIX, _psk_encode, _psk_decode, _psk_encode_ca; koblet ind i create + update)
+- `frontend/js/views/settings.js` (+radio-buttons + applyPolicy/payload psk_type)
+- `frontend/css/styles.css` (+.radio-group/.radio-label CSS)
+
 ## [3.12.5 build 0149] — 2026-05-03 — fix(bulk-edit): fast modal-bredde, ikke resize ved Vis/PSK
 
 Bulk-edit modalen manglede `detail-modal` klassen (560px). Den arvede kun

@@ -529,6 +529,13 @@ export async function renderSettings(container) {
       <div id="psk-policy-msg"></div>
       <form id="psk-policy-form">
         <div class="field">
+          <label>PSK Mode-type</label>
+          <div class="radio-group">
+            <label class="radio-label"><input type="radio" name="psk-type" id="psk-type-mpsk" value="MPSK" checked /> <b>MPSK</b> — Multi-PSK (Cisco WLC)</label>
+            <label class="radio-label"><input type="radio" name="psk-type" id="psk-type-ipsk" value="IPSK" /> <b>IPSK</b> — Identity PSK (Cisco ISE RADIUS). Portalen tilføjer automatisk <code>psk=</code>-prefix i ISE.</label>
+          </div>
+        </div>
+        <div class="field">
           <label for="psk-min-length">Minimum længde (8–128 tegn)</label>
           <input type="number" id="psk-min-length" min="8" max="128" step="1" value="8" />
         </div>
@@ -1499,6 +1506,11 @@ async function initPskPolicySection(container) {
   if (!form) return;
 
   function applyPolicy(p) {
+    const pskType = (p.psk_type || "MPSK").toUpperCase();
+    const mpskRb = container.querySelector("#psk-type-mpsk");
+    const ipskRb = container.querySelector("#psk-type-ipsk");
+    if (mpskRb) mpskRb.checked = pskType !== "IPSK";
+    if (ipskRb) ipskRb.checked = pskType === "IPSK";
     container.querySelector("#psk-min-length").value = p.min_length ?? 8;
     container.querySelector("#psk-req-upper").checked = !!p.require_uppercase;
     container.querySelector("#psk-req-number").checked = !!p.require_numbers;
@@ -1515,7 +1527,9 @@ async function initPskPolicySection(container) {
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     msg.innerHTML = "";
+    const pskTypeEl = container.querySelector("input[name='psk-type']:checked");
     const payload = {
+      psk_type: pskTypeEl ? pskTypeEl.value : "MPSK",
       min_length: parseInt(container.querySelector("#psk-min-length").value, 10),
       require_uppercase: container.querySelector("#psk-req-upper").checked,
       require_numbers: container.querySelector("#psk-req-number").checked,
