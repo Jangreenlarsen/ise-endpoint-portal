@@ -5,6 +5,16 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.9.9 build 0133] — 2026-05-03 — ux(browse): MAC-celle helbaggrund grøn/rød for auth-status
+
+Auth-status visning flyttes fra checkbox-outline (svær at se) til helbaggrund på MAC-adresse-cellen. Grøn (`#4ade80`) = aktiv RADIUS session, rød (`#f87171`) = ingen aktiv session. Link-tekst justeres til mørk grøn/rød for kontrast. `applyAuthStatusColors()` sætter klassen på `td.mac-cell` i stedet for checkbox-elementet.
+
+**Berørte filer:**
+- [frontend/css/styles.css](frontend/css/styles.css) — `td.mac-cell.auth-active/auth-failed` erstatter checkbox-outline regler
+- [frontend/js/views/browse.js](frontend/js/views/browse.js) — `applyAuthStatusColors()`: class på `macCell` i stedet for `cb`
+
+---
+
 ## [3.9.8 build 0132] — 2026-05-03 — fix(browse): Refresh buster cache + henter altid aktuel auth-status fra MnT
 
 Refresh-knappen kaldte `load()` uden cache-bust → backend returnerede cached endpoint-data. `refreshActiveSessionMacs()` sprang MnT-poll over ved `!anyFilterActive()` → ingen grøn/rød auth-status uden aktivt filter (f.eks. efter portal-genstart). Fix: (A) `POST /cache/invalidate` åbnet for alle roller (`require_any`). (B) Refresh-knap kalder `invalidateCache()` + `load(true)`. (C) `force`-parameter på `load()` og `refreshActiveSessionMacs()` — tvinger MnT-poll ved eksplicit Refresh. Knap viser "Opdaterer…" under operationen.

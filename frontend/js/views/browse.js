@@ -904,18 +904,13 @@ export async function renderBrowse(container) {
       || null;
     const rows = tbody.querySelectorAll("tr[data-id]");
     rows.forEach((tr) => {
-      const cb = tr.querySelector(".row-select");
-      if (!cb) return;
-      cb.classList.remove("auth-active", "auth-failed");
-      if (!macs) return;
       const macCell = tr.querySelector(".mac-cell");
-      const mac = normalizeMac(macCell ? macCell.textContent : "");
+      if (!macCell) return;
+      macCell.classList.remove("auth-active", "auth-failed");
+      if (!macs) return;
+      const mac = normalizeMac(macCell.textContent);
       if (!mac) return;
-      if (macs.has(mac)) {
-        cb.classList.add("auth-active");
-      } else {
-        cb.classList.add("auth-failed");
-      }
+      macCell.classList.add(macs.has(mac) ? "auth-active" : "auth-failed");
     });
   }
 
