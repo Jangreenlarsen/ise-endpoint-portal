@@ -80,6 +80,19 @@ export async function renderRegister(container) {
           <div id="r-roles-chips" class="role-chips register-roles-chips"></div>
         </div>
 
+        <div id="r-psk-section" hidden>
+          <label class="register-label">PSK Mode</label>
+          <label class="register-psk-mode-cb">
+            <input type="checkbox" id="r-psk-mode" /> MPSK/IPSK aktiveret
+          </label>
+          <label class="register-label">PSK Key</label>
+          <div class="psk-key-wrap register-psk-key-wrap">
+            <input type="password" id="r-psk-key" class="register-input" autocomplete="off" placeholder="(valgfri)" />
+            <button type="button" id="r-psk-show" class="register-tiny-btn">Vis</button>
+            <button type="button" id="r-psk-gen" class="register-tiny-btn">Generer</button>
+          </div>
+        </div>
+
         <label for="r-desc" class="register-label">Beskrivelse</label>
         <input type="text" id="r-desc" class="register-input" placeholder="(valgfri)" />
 
@@ -137,6 +150,7 @@ export async function renderRegister(container) {
     showError(`Kunne ikke hente attributter: ${err.message}`);
   }
   const canPickRoles = !!me && (me.role === "admin" || me.role === "editor");
+  const isPskEditor = !!me && (me.role === "admin" || me.role === "editor-psk");
   const attrMap = {};
   for (const a of caData.attributes || []) attrMap[a.name] = a.values;
   // AuthzACL hentes fra ISE DACLs, ikke fra det lokale CA-store.
@@ -164,6 +178,39 @@ export async function renderRegister(container) {
       </label>
     `).join("");
     rolesSection.hidden = false;
+  }
+
+  // PSK-sektion: kun for admin og editor-psk
+  if (isPskEditor) {
+    container.querySelector("#r-psk-section").hidden = false;
+
+    container.querySelector("#r-psk-show").addEventListener("click", () => {
+      const inp = container.querySelector("#r-psk-key");
+      const btn = container.querySelector("#r-psk-show");
+      if (inp.type === "password") {
+        inp.type = "text";
+        btn.textContent = "Skjul";
+      } else {
+        inp.type = "password";
+        btn.textContent = "Vis";
+      }
+    });
+
+    container.querySelector("#r-psk-gen").addEventListener("click", async () => {
+      const btn = container.querySelector("#r-psk-gen");
+      btn.disabled = true;
+      try {
+        const { key } = await api.generatePskKey();
+        const inp = container.querySelector("#r-psk-key");
+        inp.value = key;
+        inp.type = "text";
+        container.querySelector("#r-psk-show").textContent = "Skjul";
+      } catch (err) {
+        showError(`Kunne ikke generere nøgle: ${err.message}`);
+      } finally {
+        btn.disabled = false;
+      }
+    });
   }
 
   // OUI auto-suggest
@@ -267,6 +314,11 @@ export async function renderRegister(container) {
         ca.HypervisionRoles = Array.from(checked).map((c) => c.dataset.role).join(",");
       }
     }
+    if (isPskEditor) {
+      ca.PSK_Mode = container.querySelector("#r-psk-mode").checked ? "true" : "false";
+      const pskKey = container.querySelector("#r-psk-key").value.trim();
+      if (pskKey) ca.PSK_Key = pskKey;
+    }
     const payload = {
       mac,
       group_id: groupSel.value,
@@ -280,6 +332,11 @@ export async function renderRegister(container) {
       await api.createEndpoint(payload);
       showOk(`✓ ${mac} oprettet`);
       e.target.reset();
+      if (isPskEditor) {
+        const pskInp = container.querySelector("#r-psk-key");
+        pskInp.type = "password";
+        container.querySelector("#r-psk-show").textContent = "Vis";
+      }
       vendorDiv.hidden = true;
       vendorDiv.innerHTML = "";
       macInput.focus();

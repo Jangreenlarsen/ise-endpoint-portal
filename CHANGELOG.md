@@ -5,6 +5,14 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.11.2 build 0138] — 2026-05-03 — feat(PSK): PSK-felter tilføjet til opret-endpoint-siden
+
+PSK Mode toggle og PSK Key-felt (med Vis/Skjul og Generer-knapper) er nu
+synlige i register-viewet for brugere med admin- eller editor-psk-rolle.
+PSK-felterne inkluderes i create-payload og nulstilles efter vellykket registrering.
+
+**Berørte filer:** `frontend/js/views/register.js`
+
 ## [3.11.1 build 0137] — 2026-05-03 — fix(PSK): validate_psk_key returnerer list ikke tuple
 
 `_validate_psk` i `endpoint_service.py` forsøgte at unpacke returværdien fra
