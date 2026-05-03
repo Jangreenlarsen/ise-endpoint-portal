@@ -535,6 +535,9 @@ export async function renderSettings(container) {
             <label class="radio-label"><input type="radio" name="psk-type" id="psk-type-ipsk" value="IPSK" /> <b>IPSK</b> — Identity PSK (Cisco ISE RADIUS). Portalen tilføjer automatisk <code>psk=</code>-prefix i ISE.</label>
           </div>
         </div>
+        <div class="field checkbox-field">
+          <label><input type="checkbox" id="psk-show-key" /> Vis PSK Key i klartekst i browse-tabellen (ellers vises ••••••)</label>
+        </div>
         <div class="field">
           <label for="psk-min-length">Minimum længde (8–128 tegn)</label>
           <input type="number" id="psk-min-length" min="8" max="128" step="1" value="8" />
@@ -1511,6 +1514,7 @@ async function initPskPolicySection(container) {
     const ipskRb = container.querySelector("#psk-type-ipsk");
     if (mpskRb) mpskRb.checked = pskType !== "IPSK";
     if (ipskRb) ipskRb.checked = pskType === "IPSK";
+    container.querySelector("#psk-show-key").checked = !!p.show_key_in_table;
     container.querySelector("#psk-min-length").value = p.min_length ?? 8;
     container.querySelector("#psk-req-upper").checked = !!p.require_uppercase;
     container.querySelector("#psk-req-number").checked = !!p.require_numbers;
@@ -1530,6 +1534,7 @@ async function initPskPolicySection(container) {
     const pskTypeEl = container.querySelector("input[name='psk-type']:checked");
     const payload = {
       psk_type: pskTypeEl ? pskTypeEl.value : "MPSK",
+      show_key_in_table: container.querySelector("#psk-show-key").checked,
       min_length: parseInt(container.querySelector("#psk-min-length").value, 10),
       require_uppercase: container.querySelector("#psk-req-upper").checked,
       require_numbers: container.querySelector("#psk-req-number").checked,

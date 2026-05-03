@@ -5,6 +5,20 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.13.5 build 0155] — 2026-05-03 — feat(PSK): portal-indstilling til at skjule/vise PSK Key i browse-tabel
+
+Ny checkbox i Settings → PSK Pass Key Politik: "Vis PSK Key i klartekst
+i browse-tabellen". Default: slukket — PSK Key vises som •••••• i tabellen.
+Slår man den til, vises den faktiske nøgle (kun for PSK-editors — backend
+maskerer stadig for andre roller).
+
+Browse.js henter PSK-politik via getPskPolicy() i load() og anvender
+pskShowKey-flaget i renderRows og refreshRows.
+
+**Berørte filer:** `backend/app/schemas/settings.py`, `backend/app/core/config.py`,
+`backend/app/services/settings_service.py`, `frontend/js/views/browse.js`,
+`frontend/js/views/settings.js`
+
 ## [3.13.4 build 0154] — 2026-05-03 — ux(browse): PSK Key tilbage på gammel plads med cream-gul baggrund
 
 PSK Key er tilbage mellem PSK Mode og AuthzVlan. Alle tre (PSK Key, AuthzVlan, AuthzACL) har nu samme cream-gule `authz-col` baggrund.

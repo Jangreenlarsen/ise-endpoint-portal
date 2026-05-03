@@ -375,6 +375,7 @@ export async function renderBrowse(container) {
   let roleCatalog = [];
   let canEditRoles = false;
   let isPskEditor = auth.hasRole("admin", "editor-psk");
+  let pskShowKey = false;
   let portalOnly = false;
   const dirtyIds = new Set();
   let currentPage = 1;
@@ -1031,7 +1032,7 @@ export async function renderBrowse(container) {
         <td><select class="ca-lokation">${optionsHtml(caValues.Lokation, r.lokation)}</select></td>
         <td><select class="ca-platformtype">${optionsHtml(caValues.PlatformType, r.platform_type)}</select></td>
         <td class="psk-mode-cell"><input type="checkbox" class="psk-mode-cb"${r.psk_mode ? " checked" : ""}${isPskEditor ? "" : " disabled"} title="MPSK/IPSK" /></td>
-        <td class="authz-col psk-key-cell mono">${esc(r.psk_key || "")}</td>
+        <td class="authz-col psk-key-cell mono">${pskShowKey ? esc(r.psk_key || "") : (r.psk_key ? "••••••" : "")}</td>
         <td class="authz-col"><select class="ca-authzvlan">${optionsHtml(caValues.AuthzVlan, r.authz_vlan)}</select></td>
         <td class="authz-col"><select class="ca-authzacl">${optionsHtml(caValues.AuthzACL, r.authz_acl)}</select></td>
         <td class="roles-cell">${rolesChipsHtml(r.roles)}</td>
@@ -1096,7 +1097,7 @@ export async function renderBrowse(container) {
       const pskModeCb = tr.querySelector(".psk-mode-cb");
       if (pskModeCb) pskModeCb.checked = !!r.psk_mode;
       const pskKeyCell = tr.querySelector(".psk-key-cell");
-      if (pskKeyCell) pskKeyCell.textContent = r.psk_key || "";
+      if (pskKeyCell) pskKeyCell.textContent = pskShowKey ? (r.psk_key || "") : (r.psk_key ? "••••••" : "");
       delete tr.dataset.beStaticGroup;
       delete tr.dataset.bePskKey;
       tr.classList.remove("dirty");
@@ -1144,7 +1145,7 @@ export async function renderBrowse(container) {
     filterMode = false;
     allRowsCache = null;
     try {
-      const [caData, grps, result, dacls, mapping, roles, me] = await Promise.all([
+      const [caData, grps, result, dacls, mapping, roles, me, pskPolicy] = await Promise.all([
         api.listCustomAttributes(),
         api.listGroups(),
         api.listEndpointDetails(currentPage, currentSize, "", currentFilters),
@@ -1152,7 +1153,9 @@ export async function renderBrowse(container) {
         api.getPlatformMapping().catch(() => ({ mappings: [] })),
         api.listEndpointRoles().catch(() => ({ roles: [] })),
         api.authMe().catch(() => null),
+        api.getPskPolicy().catch(() => null),
       ]);
+      pskShowKey = !!(pskPolicy && pskPolicy.show_key_in_table);
       groups = grps;
       const allRoles = (roles && Array.isArray(roles.roles)) ? roles.roles : [];
       canEditRoles = !!me && (me.role === "admin" || me.role === "editor" || me.role === "editor-psk");
