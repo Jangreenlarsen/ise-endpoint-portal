@@ -619,7 +619,8 @@ export async function renderBrowse(container) {
   // fra registrar auto-tag — vises som disabled chips så de bevares ved save.
   function rolesChipsHtml(selected, opts = {}) {
     const editable = opts.editable !== false && canEditRoles;
-    const sel = (selected || []).slice();
+    // "admin" er en systemrolle, ikke et endpoint-tag — filtreres altid fra.
+    const sel = (selected || []).filter((r) => r.toLowerCase() !== "admin");
     const selLower = new Set(sel.map((s) => (s || "").toLowerCase()));
     const catalogLower = new Set(roleCatalog.map((r) => r.name.toLowerCase()));
     const items = [];
@@ -1141,11 +1142,13 @@ export async function renderBrowse(container) {
       canEditRoles = !!me && (me.role === "admin" || me.role === "editor" || me.role === "editor-psk");
       isPskEditor = !!me && (me.role === "admin" || me.role === "editor-psk");
       // Admin ser hele kataloget; alle andre ser kun deres tildelte roller.
+      // "admin"-rollen vises aldrig som System adm-chip — admin er implicit superbruger.
+      const nonAdminRoles = allRoles.filter((r) => r.name.toLowerCase() !== "admin");
       if (!me || me.role === "admin") {
-        roleCatalog = allRoles;
+        roleCatalog = nonAdminRoles;
       } else {
         const assigned = new Set((me.assigned_endpoint_roles || []).map((r) => r.toLowerCase()));
-        roleCatalog = allRoles.filter((r) => assigned.has(r.name.toLowerCase()));
+        roleCatalog = nonAdminRoles.filter((r) => assigned.has(r.name.toLowerCase()));
       }
       for (const a of caData.attributes) {
         if (a.name in caValues) caValues[a.name] = a.values;

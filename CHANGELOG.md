@@ -5,6 +5,14 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.12.1 build 0145] — 2026-05-03 — ux(roles): skjul "admin"-chip i System adm-kolonne
+
+`"admin"`-rollen er en systemrolle, ikke et endpoint-tag. Den filtreres nu
+fra i `rolesChipsHtml` (både katalog-chips og ekstern-chips) og fra `roleCatalog`
+ved load, så den aldrig vises i System adm-kolonnen eller detail-modalen.
+
+**Berørte filer:** `frontend/js/views/browse.js`
+
 ## [3.12.0 build 0144] — 2026-05-03 — fix+ux(roles): editor-psk kan redigere roller + auto-select ved opret
 
 **Bug fix**: `canEditRoles` i browse.js og `canPickRoles` i register.js ekskluderede
