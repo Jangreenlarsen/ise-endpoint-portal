@@ -5,6 +5,16 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.11.5 build 0141] — 2026-05-03 — fix(PSK): editor-psk login-fejl pga. manglende route-adgang
+
+`editor-psk` manglede i alle frontend route-definitioner i `app.js`.
+Efter login blev brugeren sendt til `browse` (default landing), men
+`browse.roles` indeholdt ikke `editor-psk` → "Din rolle har ikke adgang
+til denne side." Tilføjet `editor-psk` til browse, import, audit,
+register og settings routes.
+
+**Berørte filer:** `frontend/js/app.js`
+
 ## [3.11.4 build 0140] — 2026-05-03 — fix(PSK): PSK-kolonner i browse-tabel + ingen PSK-rydning ved tabel-gem
 
 **Bug 1 (manglende kolonner):** `psk_mode` og `psk_key` tilføjet til COLUMNS-arrayet

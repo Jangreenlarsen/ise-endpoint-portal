@@ -14,14 +14,14 @@ const statusDot = document.getElementById("status-dot");
 const container = document.getElementById("view-container");
 
 const routes = {
-  import: { render: renderImport, roles: ["admin", "editor"] },
-  browse: { render: renderBrowse, roles: ["admin", "editor", "viewer"] },
+  import:     { render: renderImport,     roles: ["admin", "editor", "editor-psk"] },
+  browse:     { render: renderBrowse,     roles: ["admin", "editor", "editor-psk", "viewer"] },
   attributes: { render: renderAttributes, roles: ["admin", "editor"] },
-  dacls: { render: renderDacls, roles: ["admin", "editor"] },
-  logs: { render: renderLogs, roles: ["admin"] },
-  audit: { render: renderAudit, roles: ["admin", "editor", "viewer"] },
-  register: { render: renderRegister, roles: ["admin", "editor", "registrar"] },
-  settings: { render: renderSettings, roles: ["admin", "editor", "viewer", "registrar"] },
+  dacls:      { render: renderDacls,      roles: ["admin", "editor"] },
+  logs:       { render: renderLogs,       roles: ["admin"] },
+  audit:      { render: renderAudit,      roles: ["admin", "editor", "editor-psk", "viewer"] },
+  register:   { render: renderRegister,   roles: ["admin", "editor", "editor-psk", "registrar"] },
+  settings:   { render: renderSettings,   roles: ["admin", "editor", "editor-psk", "viewer", "registrar"] },
 };
 
 const REGISTRAR_DEFAULT_ROUTE = "register";
