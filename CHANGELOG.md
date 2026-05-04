@@ -5,6 +5,22 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.13.7 build 0157] — 2026-05-04 — fix(pxGrid): backoff-reset logik fikset — worker reconnecte hurtigt efter disconnect
+
+`connected_ok` i `_run_loop` var kun True ved graceful shutdown (stop_event). Enhver
+exception (inkl. recv_timeout) efterlod `connected_ok=False` → backoff nulstilles aldrig
+→ efter ~9 fejl er backoff maxet på 300s. Worker sidder i 5-minutters cykler selv når
+forbindelsen bare droppede pga. idle-timeout.
+
+Fix: backoff-reset baseres på `last_connect_at > iter_start` — hvis SUBSCRIBE lykkedes
+denne iteration (uanset hvad der siden fejlede) nulstilles backoff til min_s. Worker
+logger nu også backoff-ventetid og reconnect-tæller ved hvert forsøg.
+
+**Ændringer:**
+- `backend/app/pxgrid/session_worker.py`: backoff-reset via `last_connect_at`, `_one_session()` ændret til `-> None`
+
+---
+
 ## [3.13.6 build 0156] — 2026-05-04 — fix(pxGrid): recv_timeout øget til 600s for at undgå falske reconnects under idle
 
 pxGrid STOMP-worker disconnectede hvert 120s under perioder uden session-events

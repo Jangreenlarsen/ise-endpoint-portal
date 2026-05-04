@@ -132,9 +132,9 @@ class PxGridSessionWorker:
         backoff = max(0.5, s.pxgrid_stomp_reconnect_min_s)
         try:
             while not self._stop_event.is_set():
-                connected_ok = False
+                iter_start = time.time()
                 try:
-                    connected_ok = await self._one_session()
+                    await self._one_session()
                 except asyncio.CancelledError:
                     raise
                 except Exception as exc:  # noqa: BLE001
@@ -144,9 +144,17 @@ class PxGridSessionWorker:
                 self._status.last_disconnect_at = time.time()
                 if self._stop_event.is_set():
                     break
-                if connected_ok:
+                # Reset backoff hvis vi nåede at subscribere denne iteration
+                # (last_connect_at opdateres efter vellykket STOMP SUBSCRIBE).
+                # En recv_timeout eller anden fejl EFTER subscribe tæller stadig
+                # som "session var oppe" — backoff nulstilles så reconnect er hurtig.
+                if self._status.last_connect_at > iter_start:
                     backoff = max(0.5, s.pxgrid_stomp_reconnect_min_s)
                 self._status.reconnect_count += 1
+                logger.info(
+                    "pxgrid worker venter %.1fs inden reconnect (#%d)",
+                    backoff, self._status.reconnect_count,
+                )
                 try:
                     await asyncio.wait_for(
                         self._stop_event.wait(), timeout=backoff
@@ -158,9 +166,10 @@ class PxGridSessionWorker:
         finally:
             self._status.running = False
 
-    async def _one_session(self) -> bool:
-        """One bootstrap+subscribe cycle. Returns True if SUBSCRIBE succeeded
-        (so the outer loop can reset the backoff window)."""
+    async def _one_session(self) -> None:
+        """One bootstrap+subscribe cycle. Raises on any error; returns normally
+        only on graceful shutdown (stop_event). Caller resets backoff based on
+        whether last_connect_at was updated (= SUBSCRIBE succeeded)."""
         try:
             import websockets
         except ImportError as exc:
@@ -329,7 +338,6 @@ class PxGridSessionWorker:
                 await ws.send(stomp.disconnect_frame())
             except Exception:  # noqa: BLE001
                 pass
-            return True
 
     @staticmethod
     def _build_ssl_context(bundle: cert_manager.CertBundle) -> ssl.SSLContext:
