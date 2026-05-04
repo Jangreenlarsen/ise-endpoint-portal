@@ -193,12 +193,13 @@ class PxGridSessionWorker:
         cache = get_cache()
         topic = s.pxgrid_session_topic
         heartbeat_ms = max(0, int(s.pxgrid_stomp_heartbeat_ms))
-        # WebSocket ping/pong (RFC 6455) er primær liveness-mekanisme og virker
-        # uafhængigt af STOMP heartbeats. ISE's pxGrid broker sender ikke altid
-        # STOMP heartbeats selv når vi anmoder om det, så recv_timeout sættes
-        # til 120s som backstop; ping_interval=20+ping_timeout=10 sikrer at
-        # en død TCP-forbindelse detekteres inden for 30s.
-        recv_timeout = 120.0
+        # WebSocket ping/pong (ping_interval=20, ping_timeout=10) er den primære
+        # liveness-mekanisme og detekterer en død TCP-forbindelse inden for 30s.
+        # recv_timeout er kun backstop mod en broker der er TCP-alive men tavs;
+        # ISE pxGrid broker kan have stille perioder på langt over 120s (ingen
+        # sessions der skifter state), så vi bruger den konfigurerbare setting
+        # (default 600s) fremfor en hardkodet 120s.
+        recv_timeout = float(getattr(s, "pxgrid_stomp_recv_timeout_s", 600.0))
 
         async with websockets.connect(
             ws_url,
@@ -300,7 +301,9 @@ class PxGridSessionWorker:
                     chunk = await asyncio.wait_for(ws.recv(), timeout=recv_timeout)
                 except asyncio.TimeoutError:
                     raise RuntimeError(
-                        f"Ingen frames i {recv_timeout:.0f}s (heartbeat-tab)"
+                        f"Broker tavs i {recv_timeout:.0f}s — ingen STOMP-frames modtaget "
+                        f"(WebSocket ping/pong OK; øg pxgrid_stomp_recv_timeout_s hvis "
+                        f"ISE-broker har lange idle-perioder)"
                     ) from None
                 buf += chunk if isinstance(chunk, bytes) else chunk.encode("utf-8")
                 frames, buf = stomp.split_frames(buf)

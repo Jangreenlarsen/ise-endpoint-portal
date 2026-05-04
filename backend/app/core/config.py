@@ -158,6 +158,16 @@ class Settings(BaseSettings):
             "0 = ingen heart-beat (ikke anbefalet — hængende TCP detekteres ikke)."
         ),
     )
+    pxgrid_stomp_recv_timeout_s: float = Field(
+        default=600.0,
+        description=(
+            "Maks ventetid i sekunder på en STOMP-frame (MESSAGE, heartbeat o.l.). "
+            "WebSocket ping/pong (ping_interval=20, ping_timeout=10) detekterer "
+            "dead TCP inden for 30s — denne timeout er kun backstop mod en broker "
+            "der er alive på TCP-niveau men sender ingenting. ISE pxGrid broker "
+            "kan sagtens have >120s stille perioder, så default er 600s."
+        ),
+    )
     pxgrid_stomp_reconnect_min_s: float = Field(
         default=1.0,
         description="Initial backoff ved reconnect (eksponentiel: min → max).",

@@ -5,6 +5,20 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.13.6 build 0156] — 2026-05-04 — fix(pxGrid): recv_timeout øget til 600s for at undgå falske reconnects under idle
+
+pxGrid STOMP-worker disconnectede hvert 120s under perioder uden session-events
+fordi `recv_timeout = 120.0` (hardkodet) overskred ISE brokerens normale idle-vindue.
+WebSocket ping/pong (ping_interval=20, ping_timeout=10) detekterer dead TCP inden for
+30s uafhængigt af STOMP-frames — recv_timeout er kun nødvendig som backstop mod en
+broker der er TCP-alive men helt tavs.
+
+**Ændringer:**
+- `backend/app/core/config.py`: Ny setting `pxgrid_stomp_recv_timeout_s` (default 600.0s)
+- `backend/app/pxgrid/session_worker.py`: `recv_timeout` læses fra config i stedet for hardkodet 120s; forbedret fejlbesked
+
+---
+
 ## [3.13.5 build 0155] — 2026-05-03 — feat(PSK): portal-indstilling til at skjule/vise PSK Key i browse-tabel
 
 Ny checkbox i Settings → PSK Pass Key Politik: "Vis PSK Key i klartekst
