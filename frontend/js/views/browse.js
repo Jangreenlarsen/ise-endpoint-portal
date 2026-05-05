@@ -1685,14 +1685,7 @@ export async function renderBrowse(container) {
 
   async function openDetail(id) {
     detailCurrentId = id;
-    // Sæt endpoint forrest i pre-warm køen — returnerer øjeblikkeligt (fire-and-forget)
-    api.prioritizeEndpoint(id).catch(() => {});
-    // Tjek om dette endpoint er stale (fra disk) — vis da advarsel mens vi henter
-    const trEl = tbody.querySelector(`tr[data-id="${CSS.escape(id)}"]`);
-    const isStale = trEl && trEl.querySelector(".mac-cell.cache-stale");
-    detailMsg.innerHTML = isStale
-      ? `<div class="alert warning">⏱ Data fra gammel cache — henter friske ISE-data...</div>`
-      : `<div class="alert info">Henter fra ISE...</div>`;
+    detailMsg.innerHTML = `<div class="alert info">Henter detaljer fra ISE...</div>`;
     detailOverlay.classList.remove("hidden");
     try {
       const d = await api.getEndpoint(id);

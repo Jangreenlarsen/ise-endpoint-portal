@@ -157,15 +157,15 @@ async def get_endpoint(
     service: EndpointService = Depends(get_endpoint_service),
 ) -> EndpointDetail:
     cache = get_cache()
-    # Hvis entry er fra disk (offline cache) hentes friske data fra ISE
-    # direkte — edit-modal skal altid vise aktuelle ISE-data.
-    force_fresh = cache.is_from_disk(endpoint_id)
+    # Edit-modal skal altid vise aktuelle ISE-data. Concurrent requests
+    # (pre-warm hot-queue, to browsere) koalescerer til ét ISE-kald via
+    # _inflight_detail i cache i stedet for at ramme ISE selvstændigt.
     try:
         detail = await service.get_endpoint(
             endpoint_id,
             effective_roles=_scope_for(user),
             is_psk_editor=_is_psk_editor_for(user),
-            force_fresh=force_fresh,
+            force_fresh=True,
         )
     except IseApiError as exc:
         # 404 fra service betyder enten ISE ikke har endpointet, eller

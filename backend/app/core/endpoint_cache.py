@@ -58,6 +58,10 @@ class EndpointCache:
     def __init__(self) -> None:
         self._details: dict[str, CachedEntry[Any]] = {}
         self._groups: CachedEntry[Any] | None = None
+        # Unified inflight dict: tasks that return the fetched value.
+        # Coalesces concurrent requests for the same endpoint — if a fetch
+        # is already in-flight (from pre-warm, SWR background, or another
+        # user), new requests await the existing task instead of hitting ISE.
         self._inflight_detail: dict[str, asyncio.Task[Any]] = {}
         self._inflight_groups: asyncio.Task[Any] | None = None
         self._stats: dict[str, int] = {
@@ -103,6 +107,42 @@ class EndpointCache:
     def disk_stale_count(self) -> int:
         return sum(1 for e in self._details.values() if e.from_disk)
 
+    async def _fetch_and_store(
+        self,
+        endpoint_id: str,
+        fetch_fn: Callable[[], Awaitable[Any]],
+    ) -> Any:
+        """Fetch from ISE, store in cache, return value. Cleans up inflight entry."""
+        try:
+            value = await fetch_fn()
+            self._details[endpoint_id] = CachedEntry(value, self._now(), from_disk=False)
+            self._stats["bg_refreshes"] += 1
+            return value
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("cache fetch failed id=%s err=%s", endpoint_id, exc)
+            raise
+        finally:
+            self._inflight_detail.pop(endpoint_id, None)
+
+    def _get_or_create_inflight(
+        self,
+        endpoint_id: str,
+        fetch_fn: Callable[[], Awaitable[Any]],
+    ) -> asyncio.Task[Any] | None:
+        """Return an existing in-flight task for endpoint_id, or create a new one.
+
+        Returns None if the event loop is not running (startup edge case).
+        """
+        existing = self._inflight_detail.get(endpoint_id)
+        if existing and not existing.done():
+            return existing
+        try:
+            task = asyncio.create_task(self._fetch_and_store(endpoint_id, fetch_fn))
+            self._inflight_detail[endpoint_id] = task
+            return task
+        except RuntimeError:
+            return None
+
     async def get_detail(
         self,
         endpoint_id: str,
@@ -112,18 +152,24 @@ class EndpointCache:
         if not self.enabled():
             return await fetch_fn()
         entry = self._details.get(endpoint_id)
-        # Disk-loaded entries are always treated as cache misses so the
-        # background pre-warm (or a direct force_fresh caller) can replace
-        # them with live ISE data. They are still *served* from memory so
-        # the list view renders immediately — callers mark them as stale.
+        # Disk-loaded entries are always treated as misses so live ISE data
+        # can replace them. They are still *served* from memory for list views.
         if entry and self._fresh(entry) and not entry.from_disk and not force_fresh:
             self._stats["hits"] += 1
             return entry.value
         if entry and self._swr() and self._stale_servable(entry) and not force_fresh:
             self._stats["stale_serves"] += 1
-            self._spawn_detail_refresh(endpoint_id, fetch_fn)
+            # Fire-and-forget background refresh — coalesces with any existing fetch.
+            self._get_or_create_inflight(endpoint_id, fetch_fn)
             return entry.value
+        # Miss or force_fresh: coalesce with any existing in-flight fetch so
+        # concurrent requests (edit-modal + pre-warm hot-queue, two users)
+        # share one ISE call instead of each hammering ISE independently.
         self._stats["misses"] += 1
+        task = self._get_or_create_inflight(endpoint_id, fetch_fn)
+        if task is not None:
+            return await task
+        # Fallback: no event loop (shouldn't happen at runtime).
         value = await fetch_fn()
         self._details[endpoint_id] = CachedEntry(value, self._now(), from_disk=False)
         return value
@@ -133,27 +179,7 @@ class EndpointCache:
         endpoint_id: str,
         fetch_fn: Callable[[], Awaitable[Any]],
     ) -> None:
-        existing = self._inflight_detail.get(endpoint_id)
-        if existing and not existing.done():
-            return
-
-        async def _refresh() -> None:
-            try:
-                value = await fetch_fn()
-                self._details[endpoint_id] = CachedEntry(value, self._now(), from_disk=False)
-                self._stats["bg_refreshes"] += 1
-            except Exception as exc:  # noqa: BLE001
-                logger.warning(
-                    "cache bg-refresh failed id=%s err=%s", endpoint_id, exc
-                )
-            finally:
-                self._inflight_detail.pop(endpoint_id, None)
-
-        try:
-            task = asyncio.create_task(_refresh())
-            self._inflight_detail[endpoint_id] = task
-        except RuntimeError:
-            pass
+        self._get_or_create_inflight(endpoint_id, fetch_fn)
 
     def put_detail(self, endpoint_id: str, value: Any, from_disk: bool = False) -> None:
         if not self.enabled():

@@ -5,6 +5,26 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.15.2 build 0165] — 2026-05-05 — fix(cache): koalescer concurrent ISE-fetches, fjern race condition i edit-modal
+
+**Root cause:** `openDetail()` affyrede `prioritizeEndpoint` (pre-warm hot-queue) og
+`getEndpoint` (force_fresh=True ISE-fetch) simultant → to uafhængige ISE-kald for
+samme endpoint. Pre-warm workeren (Semaphore 5) optog alle ISE-forbindelser, og
+brugerens fetch ventede i kø. Ingen coalescing i `get_detail()` miss-path.
+
+**Backend (`backend/app/core/endpoint_cache.py`):**
+- Ny `_fetch_and_store()`: fælles coroutine der fetcher fra ISE, gemmer i cache og returnerer værdien
+- Ny `_get_or_create_inflight()`: returnerer eksisterende in-flight task eller opretter ny — alle concurrent requests for samme endpoint deler ét ISE-kald
+- `get_detail()` miss-path: `await _get_or_create_inflight()` i stedet for direkte `await fetch_fn()`
+- SWR background refresh: bruger `_get_or_create_inflight()` (fire-and-forget, stadig ikke-blokerende)
+- `_spawn_detail_refresh()` er nu en tynd wrapper om `_get_or_create_inflight()`
+
+**Backend (`backend/app/api/endpoints.py`):**
+- `GET /{endpoint_id}`: `force_fresh = True` altid — edit-modal viser altid friske ISE-data, ikke SWR-serveret gammel cache
+
+**Frontend (`frontend/js/views/browse.js`):**
+- `openDetail()`: fjernet `api.prioritizeEndpoint(id)` fire-and-forget — det medvirkede til dobbelt ISE-kald. Force_fresh=True i backend håndterer cache-bypass direkte.
+
 ## [3.15.1 build 0164] — 2026-05-04 — ux(settings): opdater Endpoint-cache sektion til pre-warm + disk-cache arkitektur
 
 Settings → Endpoint-cache afspejler nu den intelligente to-lags cache fra v3.14.0.
