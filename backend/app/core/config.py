@@ -72,10 +72,11 @@ class Settings(BaseSettings):
         ),
     )
     cache_prewarm_concurrency: int = Field(
-        default=10,
+        default=5,
         description=(
             "Antal parallelle ISE-kald under baggrunds pre-warm scan. "
-            "Højere = hurtigere warm-up men øger load på ISE. 5-15 anbefales."
+            "ISE ERS accepterer ca. 5 samtidige forbindelser pr. klient — "
+            "overskridelse medfører connection-reset fejl. 3-5 anbefales."
         ),
     )
     cache_prewarm_interval_s: float = Field(

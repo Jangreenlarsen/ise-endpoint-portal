@@ -121,6 +121,21 @@ class PrewarmWorker:
         try:
             from app.services.endpoint_service import EndpointService
             service = EndpointService(get_ise_client())
+
+            # Pre-warm group-name cache med ét enkelt kald FØR parallel scan.
+            # Uden dette vil N parallelle _fetch_endpoint_detail-kald hver
+            # kalde groups.list_all() når de ikke finder gruppen i _group_cache
+            # — ISE afviser forbindelserne ved for mange samtidige kald.
+            try:
+                raw_groups = await service.groups.list_all()
+                service._group_cache = {
+                    g.get("id", ""): g.get("name", "") for g in raw_groups
+                }
+                logger.info("prewarm: group-cache pre-warmet (%d grupper)", len(service._group_cache))
+            except Exception as exc:  # noqa: BLE001
+                service._group_cache = {}
+                logger.warning("prewarm: group pre-warm fejlede (fortsætter): %s", exc)
+
             # Hent alle endpoint IDs (kun ID + navn, billig liste-kald)
             all_ids = await self._fetch_all_ids(service)
             self.status.total_endpoints = len(all_ids)
@@ -142,7 +157,10 @@ class PrewarmWorker:
                     break
             ordered = hot_first + remaining
 
-            concurrency = int(getattr(config.settings, "cache_prewarm_concurrency", 10))
+            # ISE ERS accepterer ca. 5 samtidige forbindelser fra én klient.
+            # Default 5 for ikke at overskride ISE's rate-limit; kan øges
+            # hvis ISE er konfigureret til at acceptere flere.
+            concurrency = int(getattr(config.settings, "cache_prewarm_concurrency", 5))
             sem = asyncio.Semaphore(concurrency)
             cache = get_cache()
 
