@@ -136,7 +136,9 @@ export async function renderSettings(container) {
     <div class="card" data-tab="performance">
       <h3>Endpoint-cache</h3>
       <p class="hint">
-        In-memory cache for endpoint- og gruppe-opslag. Reducerer ISE-kald ved filter-skift og refresh i Browse.
+        Intelligent to-lags cache: en <strong>pre-warm worker</strong> scanner alle ISE-endpoints i baggrunden og
+        gemmer dem på disk, så portalen viser data med det samme ved genstart (markeret med ⏱ hvis data er ældre end TTL).
+        Redigering af et endpoint prioriterer det i hot-queue, så du altid ser friske data i edit-dialogen.
         Cachen invalideres automatisk når du gemmer/sletter et endpoint.
       </p>
       <div id="cache-msg"></div>
@@ -151,20 +153,38 @@ export async function renderSettings(container) {
         <div class="field">
           <label for="cache_ttl_seconds">TTL (sekunder)</label>
           <input type="number" id="cache_ttl_seconds" min="5" max="3600" step="5" />
-          <div class="hint">Hvor længe en entry regnes som fresh før den skal revalideres.</div>
+          <div class="hint">Hvor længe en detail-entry regnes som fresh. Pre-warm workeren erstatter løbende stale entries.</div>
         </div>
         <div class="field">
           <label>
             <input type="checkbox" id="cache_stale_while_revalidate" />
             Stale-while-revalidate
           </label>
-          <div class="hint">Server stale entries op til 10× TTL og hent ny data i baggrunden.</div>
+          <div class="hint">Server stale entries straks og hent ny data i baggrunden — undgår ventetid i Browse.</div>
         </div>
         <div class="field">
-          <label for="cache_sync_interval_seconds">Baggrund-sync interval (sekunder)</label>
+          <label for="cache_sync_interval_seconds">Reaktiv sync-interval (sekunder)</label>
           <input type="number" id="cache_sync_interval_seconds" min="0" max="3600" step="30" />
-          <div class="hint">0 = slå baggrund-sync fra. Workeren refresh'er cachede entries der er ældre end halv TTL.</div>
+          <div class="hint">0 = deaktiveret. Supplerer pre-warm: refresh'er entries der er ældre end halv TTL ud over den planlagte scanning.</div>
         </div>
+
+        <h4 style="margin-top:1.2rem;margin-bottom:0.6rem;">Pre-warm worker</h4>
+        <div class="field">
+          <label for="cache_prewarm_interval_s">Scanning-interval (sekunder)</label>
+          <input type="number" id="cache_prewarm_interval_s" min="60" max="86400" step="60" />
+          <div class="hint">Hvor ofte workeren scanner <em>alle</em> ISE-endpoints (default: 1800 = 30 min).</div>
+        </div>
+        <div class="field">
+          <label for="cache_prewarm_concurrency">Parallel ISE-forbindelser</label>
+          <input type="number" id="cache_prewarm_concurrency" min="1" max="10" step="1" />
+          <div class="hint">Antal samtidige GET-kald mod ISE under scanning. ISE klarer max ~5 (default: 5).</div>
+        </div>
+        <div class="field">
+          <label for="cache_disk_path">Disk-cache sti</label>
+          <input type="text" id="cache_disk_path" style="font-family:monospace;width:100%;" />
+          <div class="hint">Relativ til backend-mappen. Indeholdet genindlæses ved genstart og markeres med ⏱ i Browse.</div>
+        </div>
+
         <div class="actions">
           <button type="submit">Gem cache-indstillinger</button>
         </div>
@@ -1061,19 +1081,46 @@ function renderCacheStats(container, stats) {
   const staleServes = stats.stale_serves || 0;
   const total = hits + misses + staleServes;
   const hitRate = total > 0 ? ((hits + staleServes) / total * 100).toFixed(1) : "—";
+
+  const pw = stats.prewarm;
+  let prewarmRows = "";
+  if (pw == null) {
+    prewarmRows = `<tr><td colspan="2" style="color:#888;font-style:italic;">Pre-warm worker ikke tilgængelig</td></tr>`;
+  } else {
+    const scanPct = pw.total_endpoints > 0 ? Math.round(pw.scanned / pw.total_endpoints * 100) : 0;
+    const scanStatus = pw.scanning
+      ? `Scanner… ${pw.scanned}/${pw.total_endpoints} (${scanPct}%) — scan #${pw.scan_number}`
+      : pw.running ? `Aktiv (afventer næste scan #${pw.scan_number + 1})` : `<span style="color:#c0392b;">Stoppet</span>`;
+    const scanAge = pw.last_full_scan_age_s != null
+      ? `${fmtAge(pw.last_full_scan_age_s * 1000)} siden` : "—";
+    const diskSave = pw.last_disk_save_at
+      ? fmtTimestamp(pw.last_disk_save_at) : "—";
+    prewarmRows = `
+        <tr><td colspan="2" style="font-weight:600;padding-top:.6rem;">Pre-warm worker</td></tr>
+        <tr><td>Status</td><td>${scanStatus}</td></tr>
+        <tr><td>Seneste fuld scan</td><td>${scanAge}</td></tr>
+        <tr><td>Disk-cache gemt</td><td>${diskSave}</td></tr>
+        <tr><td>Disk-indlæste entries</td><td>${pw.disk_loaded}</td></tr>
+        <tr><td>Hot-queue</td><td>${pw.hot_queue_size} endpoint(s) prioriteret</td></tr>
+        ${pw.last_error ? `<tr><td>Seneste fejl</td><td><span style="color:#c0392b;">${esc(pw.last_error)}</span></td></tr>` : ""}`;
+  }
+
   container.innerHTML = `
     <table class="cache-stats-table">
       <tbody>
         <tr><td>Status</td><td>${stats.enabled ? "Aktiveret" : "Deaktiveret"}</td></tr>
         <tr><td>TTL</td><td>${stats.ttl_seconds}s</td></tr>
         <tr><td>Stale-while-revalidate</td><td>${stats.stale_while_revalidate ? "TIL" : "FRA"}</td></tr>
-        <tr><td>Detail-entries</td><td>${stats.detail_entries}</td></tr>
+        <tr><td>Detail-entries (memory)</td><td>${stats.detail_entries}</td></tr>
+        <tr><td>Disk-stale entries</td><td>${stats.disk_stale_entries ?? 0}</td></tr>
+        <tr><td>Disk-indlæsninger (total)</td><td>${stats.disk_loads ?? 0}</td></tr>
         <tr><td>Groups cached</td><td>${stats.groups_cached ? "Ja" : "Nej"}</td></tr>
         <tr><td>Hit-rate</td><td>${hitRate === "—" ? "—" : hitRate + "%"} (hits: ${hits}, stale: ${staleServes}, misses: ${misses})</td></tr>
         <tr><td>Baggrund-refreshes</td><td>${stats.bg_refreshes || 0} (${stats.inflight_detail_refreshes || 0} inflight)</td></tr>
         <tr><td>Invalideringer</td><td>${stats.invalidations || 0}</td></tr>
         <tr><td>Seneste sync</td><td>${fmtTimestamp(stats.last_sync_at)}</td></tr>
         <tr><td>Sync-fejl</td><td>${stats.last_sync_error ? `<span style="color:#c0392b;">${esc(stats.last_sync_error)}</span>` : "(ingen)"}</td></tr>
+        ${prewarmRows}
       </tbody>
     </table>
   `;
@@ -1092,6 +1139,9 @@ async function initCacheSection(container) {
       container.querySelector("#cache_ttl_seconds").value = s.cache_ttl_seconds ?? 60;
       container.querySelector("#cache_stale_while_revalidate").checked = !!s.cache_stale_while_revalidate;
       container.querySelector("#cache_sync_interval_seconds").value = s.cache_sync_interval_seconds ?? 300;
+      container.querySelector("#cache_prewarm_interval_s").value = s.cache_prewarm_interval_s ?? 1800;
+      container.querySelector("#cache_prewarm_concurrency").value = s.cache_prewarm_concurrency ?? 5;
+      container.querySelector("#cache_disk_path").value = s.cache_disk_path ?? "cache/endpoints.json";
     } catch (err) {
       msg.innerHTML = `<div class="alert error">Kunne ikke hente cache-indstillinger: ${esc(err.message)}</div>`;
     }
@@ -1134,6 +1184,9 @@ async function initCacheSection(container) {
       cache_ttl_seconds: parseFloat(container.querySelector("#cache_ttl_seconds").value),
       cache_stale_while_revalidate: container.querySelector("#cache_stale_while_revalidate").checked,
       cache_sync_interval_seconds: parseFloat(container.querySelector("#cache_sync_interval_seconds").value),
+      cache_prewarm_interval_s: parseFloat(container.querySelector("#cache_prewarm_interval_s").value),
+      cache_prewarm_concurrency: parseInt(container.querySelector("#cache_prewarm_concurrency").value, 10),
+      cache_disk_path: container.querySelector("#cache_disk_path").value.trim(),
     };
     try {
       await api.updateBackendSettings(payload);

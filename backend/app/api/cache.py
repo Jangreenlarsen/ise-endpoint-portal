@@ -1,10 +1,7 @@
-"""Admin endpoints for the endpoint/group cache (2.8.0).
-
-Stats are useful for tuning TTL and verifying hit-rate; the invalidate
-endpoint is a manual escape hatch when the cache needs to be dropped
-without bouncing the backend.
-"""
+"""Admin endpoints for endpoint/group cache og pre-warm worker."""
 from __future__ import annotations
+
+import time
 
 from fastapi import APIRouter, Depends
 
@@ -15,11 +12,34 @@ router = APIRouter(prefix="/cache", tags=["cache"])
 
 
 @router.get("/stats", dependencies=[Depends(require_admin)])
-async def cache_stats() -> dict[str, object]:
-    return get_cache().stats()
+async def cache_stats() -> dict:
+    """Cache-statistik inkl. pre-warm worker status."""
+    stats = get_cache().stats()
+    # Tilføj pre-warm worker status
+    try:
+        from app.services.cache_prewarm import get_worker
+        pw = get_worker()
+        s = pw.status
+        now = time.time()
+        stats["prewarm"] = {
+            "running":           s.running,
+            "scanning":          s.scanning,
+            "scan_number":       s.scan_number,
+            "total_endpoints":   s.total_endpoints,
+            "scanned":           s.scanned,
+            "disk_loaded":       s.disk_loaded,
+            "hot_queue_size":    s.hot_queue_size,
+            "last_error":        s.last_error,
+            "last_full_scan_at": s.last_full_scan_at,
+            "last_disk_save_at": s.last_disk_save_at,
+            "last_full_scan_age_s": round(now - s.last_full_scan_at, 0) if s.last_full_scan_at else None,
+        }
+    except Exception:  # noqa: BLE001
+        stats["prewarm"] = None
+    return stats
 
 
 @router.post("/invalidate", dependencies=[Depends(require_any)])
-async def cache_invalidate() -> dict[str, str]:
+async def cache_invalidate() -> dict:
     get_cache().invalidate_all()
     return {"status": "cleared"}

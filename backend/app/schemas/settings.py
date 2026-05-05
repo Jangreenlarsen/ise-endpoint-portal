@@ -22,6 +22,9 @@ class BackendSettingsUpdate(BaseModel):
     cache_ttl_seconds: float = 60.0
     cache_stale_while_revalidate: bool = True
     cache_sync_interval_seconds: float = 300.0
+    cache_disk_path: str = "cache/endpoints.json"
+    cache_prewarm_concurrency: int = 5
+    cache_prewarm_interval_s: float = 1800.0
 
 
 class BackendSettingsResponse(BaseModel):
@@ -40,6 +43,9 @@ class BackendSettingsResponse(BaseModel):
     cache_ttl_seconds: float = 60.0
     cache_stale_while_revalidate: bool = True
     cache_sync_interval_seconds: float = 300.0
+    cache_disk_path: str = "cache/endpoints.json"
+    cache_prewarm_concurrency: int = 5
+    cache_prewarm_interval_s: float = 1800.0
 
 
 class TestConnectionRequest(BaseModel):

@@ -5,6 +5,23 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.15.1 build 0164] — 2026-05-04 — ux(settings): opdater Endpoint-cache sektion til pre-warm + disk-cache arkitektur
+
+Settings → Endpoint-cache afspejler nu den intelligente to-lags cache fra v3.14.0.
+
+**Frontend (`frontend/js/views/settings.js`):**
+- Ny beskrivelse forklarer pre-warm worker, disk-persistens og ⏱-badge
+- Tre nye indstillingsfelter: `cache_prewarm_interval_s` (scanning-interval), `cache_prewarm_concurrency` (parallel ISE-forbindelser), `cache_disk_path` (disk-cache sti)
+- `renderCacheStats()` viser nu disk-stale entries, disk-loads og fuld pre-warm worker status (scanning-fremskridt, seneste fuld scan, disk-gem, hot-queue, fejl)
+- `initCacheSection()` loader/gemmer de tre nye settings
+
+**Backend (`backend/app/schemas/settings.py`):**
+- `BackendSettingsUpdate` og `BackendSettingsResponse` udvidet med `cache_disk_path`, `cache_prewarm_concurrency`, `cache_prewarm_interval_s`
+
+**Backend (`backend/app/services/settings_service.py`):**
+- `get_backend_settings()` returnerer de tre nye felter
+- `update_backend_settings()` persisterer de tre nye felter til overrides
+
 ## [3.15.0 build 0162] — 2026-05-05 — feat(update): portal system opdatering via admin UI
 
 Ny "Opdatering"-tab i Settings (kun synlig for admin). Upload ZIP-pakke →

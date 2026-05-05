@@ -47,6 +47,9 @@ def get_backend_settings() -> BackendSettingsResponse:
         cache_ttl_seconds=s.cache_ttl_seconds,
         cache_stale_while_revalidate=s.cache_stale_while_revalidate,
         cache_sync_interval_seconds=s.cache_sync_interval_seconds,
+        cache_disk_path=s.cache_disk_path,
+        cache_prewarm_concurrency=s.cache_prewarm_concurrency,
+        cache_prewarm_interval_s=s.cache_prewarm_interval_s,
     )
 
 
@@ -69,6 +72,9 @@ async def update_backend_settings(
             "cache_ttl_seconds": new.cache_ttl_seconds,
             "cache_stale_while_revalidate": new.cache_stale_while_revalidate,
             "cache_sync_interval_seconds": new.cache_sync_interval_seconds,
+            "cache_disk_path": new.cache_disk_path,
+            "cache_prewarm_concurrency": new.cache_prewarm_concurrency,
+            "cache_prewarm_interval_s": new.cache_prewarm_interval_s,
         }
     )
     if new.ise_password:
