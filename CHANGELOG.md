@@ -5,6 +5,44 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.14.0 build 0158] — 2026-05-05 — feat(perf): fuld pre-warm cache + offline disk-cache med stale-badge
+
+**PrewarmWorker** (`services/cache_prewarm.py`, ny):
+- Scanner ALLE ISE endpoints i baggrunden ved startup (pagineret list → N×detail-fetch)
+- Konfigurerbar concurrency: `cache_prewarm_concurrency` (default 10 parallelle ISE-kald)
+- Hot-queue: `POST /endpoints/{id}/prioritize` sætter et endpoint forrest i scannen
+- Periodisk rescan: `cache_prewarm_interval_s` (default 1800s = 30 min)
+- Gemmer til disk ved hvert fuldt scan og ved shutdown
+
+**Offline disk-cache** (`core/endpoint_cache.py`):
+- `save_to_disk(path)` / `load_from_disk(path)` — JSON-format med version-guard
+- Entries fra disk markeres `from_disk=True` så UI ved de er stale
+- Live ISE-fetch overskrivet altid disk-entries
+
+**Staleness-flow** (browse.js + styles.css):
+- Rækker med `cache_stale=True` viser ⏱-badge i MAC-cellen + cream-gul baggrund
+- Edit-modal viser advarsel "Data fra gammel cache — henter friske ISE-data..."
+- `GET /endpoints/{id}` bypasser disk-stale entries (`force_fresh=True`) → returnerer altid friske ISE-data til edit-modal
+
+**Nye config-settings** (`core/config.py`):
+- `cache_disk_path` (default `cache/endpoints.json`)
+- `cache_prewarm_concurrency` (default 10)
+- `cache_prewarm_interval_s` (default 1800.0)
+
+**Berørte filer:**
+- `backend/app/services/cache_prewarm.py` (ny)
+- `backend/app/core/endpoint_cache.py` (+disk persistence, +from_disk, +force_fresh)
+- `backend/app/core/config.py` (+3 settings)
+- `backend/app/schemas/endpoint.py` (+cache_stale)
+- `backend/app/services/endpoint_service.py` (+force_fresh, +cache_stale sættes)
+- `backend/app/api/endpoints.py` (+prioritize route, +force_fresh ved GET /{id})
+- `backend/app/main.py` (+PrewarmWorker start/stop)
+- `frontend/js/api.js` (+prioritizeEndpoint)
+- `frontend/js/views/browse.js` (+stale-badge render, +prioritize ved openDetail)
+- `frontend/css/styles.css` (+.stale-badge, +.cache-stale styling)
+
+---
+
 ## [3.13.7 build 0157] — 2026-05-04 — fix(pxGrid): backoff-reset logik fikset — worker reconnecte hurtigt efter disconnect
 
 `connected_ok` i `_run_loop` var kun True ved graceful shutdown (stop_event). Enhver

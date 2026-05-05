@@ -146,12 +146,17 @@ class EndpointService:
         endpoint_id: str,
         effective_roles: list[str] | None = None,
         is_psk_editor: bool = False,
+        force_fresh: bool = False,
     ) -> EndpointDetail:
         """Fetch full endpoint details from ISE including custom attributes.
 
         Cache-backed: repeated reads within TTL return from memory; stale
         entries can be served while a background refresh runs (see
         ``endpoint_cache``).
+
+        force_fresh=True bypasser cachen (eller disk-stale entries) og
+        henter direkte fra ISE — bruges af edit-modal så brugeren altid
+        ser aktuelle data på det endpoint de er ved at redigere.
 
         Hvis ``effective_roles`` er sat (non-admin), tjekkes synlighed mod
         endpointets ``HypervisionRoles``. Out-of-scope rejses som
@@ -160,9 +165,17 @@ class EndpointService:
 
         PSK_Key maskeres til ``PSK_MASKED`` medmindre ``is_psk_editor=True``.
         """
-        detail = await get_cache().get_detail(
-            endpoint_id, lambda: self._fetch_endpoint_detail(endpoint_id)
+        cache = get_cache()
+        detail = await cache.get_detail(
+            endpoint_id,
+            lambda: self._fetch_endpoint_detail(endpoint_id),
+            force_fresh=force_fresh,
         )
+        # Sæt cache_stale flag baseret på om entry er fra disk
+        if cache.is_from_disk(endpoint_id):
+            detail = detail.model_copy(update={"cache_stale": True})
+        elif detail.cache_stale:
+            detail = detail.model_copy(update={"cache_stale": False})
         if effective_roles is not None and not _endpoint_visible(detail, effective_roles):
             raise IseApiError(404, f"Endpoint {endpoint_id} not found")
         if not is_psk_editor:

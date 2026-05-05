@@ -70,6 +70,7 @@ export const api = {
     return request(`/endpoints/details/all${qs}`);
   },
   getEndpoint: (id) => request(`/endpoints/${encodeURIComponent(id)}`),
+  prioritizeEndpoint: (id) => request(`/endpoints/${encodeURIComponent(id)}/prioritize`, { method: "POST" }),
   listGroups: () => request("/groups"),
   createEndpoint: (payload) =>
     request("/endpoints", { method: "POST", body: JSON.stringify(payload) }),

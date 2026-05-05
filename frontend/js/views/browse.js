@@ -1022,7 +1022,7 @@ export async function renderBrowse(container) {
     tbody.innerHTML = rows.map((r) => `
       <tr data-id="${esc(r.id)}"${dirtyIds.has(r.id) ? ' class="dirty"' : ''}>
         <td class="select-cell"><input type="checkbox" class="row-select" /></td>
-        <td class="mac-cell"><a href="#" class="mac-link" title="Vis detaljer">${esc(r.mac || r.name)}</a></td>
+        <td class="mac-cell${r.cache_stale ? " cache-stale" : ""}"><a href="#" class="mac-link" title="Vis detaljer">${esc(r.mac || r.name)}</a>${r.cache_stale ? '<span class="stale-badge" title="Data fra gammel cache — opdateres i baggrunden">⏱</span>' : ""}</td>
         <td class="vendor-cell-td">${esc(r.vendor || "")}</td>
         <td><select class="grp-select">${groupOptionsHtml(r.group_id)}</select></td>
         <td class="assign-cell">${r.static_group ? "Statisk" : "Dynamisk"}</td>
@@ -1685,7 +1685,14 @@ export async function renderBrowse(container) {
 
   async function openDetail(id) {
     detailCurrentId = id;
-    detailMsg.innerHTML = `<div class="alert info">Henter fra ISE...</div>`;
+    // Sæt endpoint forrest i pre-warm køen — returnerer øjeblikkeligt (fire-and-forget)
+    api.prioritizeEndpoint(id).catch(() => {});
+    // Tjek om dette endpoint er stale (fra disk) — vis da advarsel mens vi henter
+    const trEl = tbody.querySelector(`tr[data-id="${CSS.escape(id)}"]`);
+    const isStale = trEl && trEl.querySelector(".mac-cell.cache-stale");
+    detailMsg.innerHTML = isStale
+      ? `<div class="alert warning">⏱ Data fra gammel cache — henter friske ISE-data...</div>`
+      : `<div class="alert info">Henter fra ISE...</div>`;
     detailOverlay.classList.remove("hidden");
     try {
       const d = await api.getEndpoint(id);

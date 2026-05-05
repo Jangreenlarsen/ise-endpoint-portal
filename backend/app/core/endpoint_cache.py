@@ -8,11 +8,19 @@ while a background refresh repopulates them.
 
 Policy per read:
   - fresh (age <= ttl)      → return cache value, count a hit
+  - from_disk               → serve value (marked stale), treat as miss
+                              so caller gets a bg-refresh or force-fresh
   - stale + SWR enabled     → return cache value, spawn bg-refresh,
                               count a stale-serve
   - stale + SWR disabled    → synchronous fetch + cache put
   - too stale (10x ttl)     → synchronous fetch + cache put
   - cache disabled          → passthrough to fetch_fn, no caching
+
+Disk persistence (offline cache):
+  save_to_disk() serialises all detail entries to a JSON file so a
+  portal restart can serve data immediately while the background
+  pre-warm scan refreshes from ISE. Entries loaded from disk are
+  flagged from_disk=True so callers can mark them as stale in the UI.
 
 Write-invalidation is the responsibility of callers (endpoint_service):
 after a successful create/update/delete they call invalidate_detail /
@@ -22,9 +30,11 @@ without waiting for the TTL to expire.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Awaitable, Callable, Generic, TypeVar
 
 from app.core import config
@@ -34,12 +44,14 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T")
 
 STALE_MAX_FACTOR = 10.0
+DISK_CACHE_VERSION = 2
 
 
 @dataclass
 class CachedEntry(Generic[T]):
     value: T
     fetched_at: float
+    from_disk: bool = False
 
 
 class EndpointCache:
@@ -54,6 +66,7 @@ class EndpointCache:
             "stale_serves": 0,
             "bg_refreshes": 0,
             "invalidations": 0,
+            "disk_loads": 0,
         }
         self._last_sync_at: float | None = None
         self._last_sync_error: str | None = None
@@ -83,24 +96,36 @@ class EndpointCache:
     def _stale_servable(self, entry: CachedEntry[Any]) -> bool:
         return self._age(entry) <= self._ttl() * STALE_MAX_FACTOR
 
+    def is_from_disk(self, endpoint_id: str) -> bool:
+        entry = self._details.get(endpoint_id)
+        return entry is not None and entry.from_disk
+
+    def disk_stale_count(self) -> int:
+        return sum(1 for e in self._details.values() if e.from_disk)
+
     async def get_detail(
         self,
         endpoint_id: str,
         fetch_fn: Callable[[], Awaitable[Any]],
+        force_fresh: bool = False,
     ) -> Any:
         if not self.enabled():
             return await fetch_fn()
         entry = self._details.get(endpoint_id)
-        if entry and self._fresh(entry):
+        # Disk-loaded entries are always treated as cache misses so the
+        # background pre-warm (or a direct force_fresh caller) can replace
+        # them with live ISE data. They are still *served* from memory so
+        # the list view renders immediately — callers mark them as stale.
+        if entry and self._fresh(entry) and not entry.from_disk and not force_fresh:
             self._stats["hits"] += 1
             return entry.value
-        if entry and self._swr() and self._stale_servable(entry):
+        if entry and self._swr() and self._stale_servable(entry) and not force_fresh:
             self._stats["stale_serves"] += 1
             self._spawn_detail_refresh(endpoint_id, fetch_fn)
             return entry.value
         self._stats["misses"] += 1
         value = await fetch_fn()
-        self._details[endpoint_id] = CachedEntry(value, self._now())
+        self._details[endpoint_id] = CachedEntry(value, self._now(), from_disk=False)
         return value
 
     def _spawn_detail_refresh(
@@ -115,7 +140,7 @@ class EndpointCache:
         async def _refresh() -> None:
             try:
                 value = await fetch_fn()
-                self._details[endpoint_id] = CachedEntry(value, self._now())
+                self._details[endpoint_id] = CachedEntry(value, self._now(), from_disk=False)
                 self._stats["bg_refreshes"] += 1
             except Exception as exc:  # noqa: BLE001
                 logger.warning(
@@ -130,10 +155,10 @@ class EndpointCache:
         except RuntimeError:
             pass
 
-    def put_detail(self, endpoint_id: str, value: Any) -> None:
+    def put_detail(self, endpoint_id: str, value: Any, from_disk: bool = False) -> None:
         if not self.enabled():
             return
-        self._details[endpoint_id] = CachedEntry(value, self._now())
+        self._details[endpoint_id] = CachedEntry(value, self._now(), from_disk=from_disk)
 
     def invalidate_detail(self, endpoint_id: str) -> None:
         if self._details.pop(endpoint_id, None) is not None:
@@ -196,6 +221,83 @@ class EndpointCache:
         entry = self._details.get(endpoint_id)
         return None if entry is None else self._age(entry)
 
+    # ------------------------------------------------------------------ #
+    # Disk persistence                                                     #
+    # ------------------------------------------------------------------ #
+
+    def save_to_disk(self, path: Path) -> int:
+        """Serialise all detail entries to a JSON file. Returns entry count."""
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            entries: dict[str, Any] = {}
+            for ep_id, entry in self._details.items():
+                if entry.from_disk:
+                    continue  # don't re-persist disk-loaded stale data
+                try:
+                    # value may be a Pydantic model or plain dict
+                    value_dict = (
+                        entry.value.model_dump()
+                        if hasattr(entry.value, "model_dump")
+                        else dict(entry.value)
+                    )
+                    entries[ep_id] = {
+                        "fetched_at": entry.fetched_at,
+                        "value": value_dict,
+                    }
+                except Exception:  # noqa: BLE001
+                    pass
+            payload = {
+                "version": DISK_CACHE_VERSION,
+                "saved_at": self._now(),
+                "count": len(entries),
+                "entries": entries,
+            }
+            path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+            logger.info("disk cache: saved %d entries to %s", len(entries), path)
+            return len(entries)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("disk cache: save failed: %s", exc)
+            return 0
+
+    def load_from_disk(self, path: Path) -> int:
+        """Load detail entries from a JSON file, flagged as from_disk=True.
+        Existing in-memory (live) entries are NOT overwritten.
+        Returns count of entries loaded."""
+        if not path.exists():
+            return 0
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            if payload.get("version") != DISK_CACHE_VERSION:
+                logger.info("disk cache: version mismatch, skipping %s", path)
+                return 0
+            entries = payload.get("entries", {})
+            loaded = 0
+            for ep_id, raw in entries.items():
+                if ep_id in self._details:
+                    continue  # live entry takes precedence
+                try:
+                    from app.schemas.endpoint import EndpointDetail
+                    value = EndpointDetail.model_validate(raw["value"])
+                    value.cache_stale = True
+                    fetched_at = float(raw.get("fetched_at", 0.0))
+                    self._details[ep_id] = CachedEntry(
+                        value, fetched_at, from_disk=True
+                    )
+                    loaded += 1
+                except Exception:  # noqa: BLE001
+                    pass
+            self._stats["disk_loads"] += loaded
+            saved_at = payload.get("saved_at", 0)
+            age_min = (self._now() - saved_at) / 60
+            logger.info(
+                "disk cache: loaded %d entries from %s (saved %.0f min ago)",
+                loaded, path, age_min,
+            )
+            return loaded
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("disk cache: load failed: %s", exc)
+            return 0
+
     def mark_sync_ok(self) -> None:
         self._last_sync_at = self._now()
         self._last_sync_error = None
@@ -209,12 +311,14 @@ class EndpointCache:
             "ttl_seconds": self._ttl(),
             "stale_while_revalidate": self._swr(),
             "detail_entries": len(self._details),
+            "disk_stale_entries": self.disk_stale_count(),
             "groups_cached": self._groups is not None,
             "hits": self._stats["hits"],
             "misses": self._stats["misses"],
             "stale_serves": self._stats["stale_serves"],
             "bg_refreshes": self._stats["bg_refreshes"],
             "invalidations": self._stats["invalidations"],
+            "disk_loads": self._stats["disk_loads"],
             "last_sync_at": self._last_sync_at,
             "last_sync_error": self._last_sync_error,
             "inflight_detail_refreshes": sum(

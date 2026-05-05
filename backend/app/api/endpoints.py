@@ -134,6 +134,21 @@ async def list_session_macs(
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
+@router.post("/{endpoint_id}/prioritize", status_code=status.HTTP_202_ACCEPTED)
+async def prioritize_endpoint(
+    endpoint_id: str,
+    _user: User = Depends(require_any),
+) -> dict[str, str]:
+    """Sæt et endpoint forrest i pre-warm refresh-køen.
+
+    Kaldes af edit-modal ved åbning så baggrunds pre-warm workeren
+    prioriterer dette endpoint og cachen hurtigt afspejler live ISE-data.
+    """
+    from app.services.cache_prewarm import get_worker as get_prewarm_worker
+    get_prewarm_worker().prioritize(endpoint_id)
+    return {"status": "queued", "id": endpoint_id}
+
+
 @router.get("/{endpoint_id}", response_model=EndpointDetail)
 async def get_endpoint(
     endpoint_id: str,
@@ -141,11 +156,16 @@ async def get_endpoint(
     user: User = Depends(require_any),
     service: EndpointService = Depends(get_endpoint_service),
 ) -> EndpointDetail:
+    cache = get_cache()
+    # Hvis entry er fra disk (offline cache) hentes friske data fra ISE
+    # direkte — edit-modal skal altid vise aktuelle ISE-data.
+    force_fresh = cache.is_from_disk(endpoint_id)
     try:
         detail = await service.get_endpoint(
             endpoint_id,
             effective_roles=_scope_for(user),
             is_psk_editor=_is_psk_editor_for(user),
+            force_fresh=force_fresh,
         )
     except IseApiError as exc:
         # 404 fra service betyder enten ISE ikke har endpointet, eller
@@ -154,9 +174,6 @@ async def get_endpoint(
         if exc.status_code == 404:
             raise HTTPException(status_code=404, detail="Endpoint ikke fundet") from exc
         raise HTTPException(status_code=502, detail=str(exc)) from exc
-    # Expose cache age so the frontend can distinguish fresh fetches from
-    # cache hits without a separate call.
-    cache = get_cache()
     if cache.enabled():
         age = cache.detail_age(endpoint_id)
         response.headers["X-Cache-Enabled"] = "true"

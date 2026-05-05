@@ -63,6 +63,29 @@ class Settings(BaseSettings):
             "Set to 0 to disable the worker; cache still serves from memory."
         ),
     )
+    cache_disk_path: str = Field(
+        default="cache/endpoints.json",
+        description=(
+            "Sti til disk-cache JSON-fil (relativ til backend/). Indeholder "
+            "alle endpoint-details fra seneste fulde pre-warm scan så portalen "
+            "kan vise data øjeblikkeligt ved genstart. Tom streng = deaktiveret."
+        ),
+    )
+    cache_prewarm_concurrency: int = Field(
+        default=10,
+        description=(
+            "Antal parallelle ISE-kald under baggrunds pre-warm scan. "
+            "Højere = hurtigere warm-up men øger load på ISE. 5-15 anbefales."
+        ),
+    )
+    cache_prewarm_interval_s: float = Field(
+        default=1800.0,
+        description=(
+            "Interval i sekunder mellem hele pre-warm scans (default 30 min). "
+            "0 = kun ét scan ved startup. Pre-warm sørger for at cachen "
+            "forbliver varm selvom brugere ikke aktivt browser."
+        ),
+    )
 
     # Audit log (2.9.0) — append-only event trail with rollback support.
     audit_enabled: bool = Field(

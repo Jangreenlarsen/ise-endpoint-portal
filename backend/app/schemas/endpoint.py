@@ -32,6 +32,7 @@ class EndpointDetail(BaseModel):
     vendor: str = ""
     psk_mode: bool = False
     psk_key: str = ""
+    cache_stale: bool = False
 
 
 class EndpointGroupSummary(BaseModel):

@@ -471,6 +471,28 @@ tr.dirty td {
   border-bottom-color: #fde68a;
 }
 
+/* Stale cache badge — vises på rækker der serveres fra gammel disk-cache */
+.stale-badge {
+  display: inline-block;
+  margin-left: 0.35rem;
+  font-size: 0.7rem;
+  opacity: 0.65;
+  cursor: default;
+  vertical-align: middle;
+}
+td.mac-cell.cache-stale a {
+  color: #92400e;
+}
+td.mac-cell.cache-stale {
+  background: #fffbeb;
+}
+[data-theme="dark"] td.mac-cell.cache-stale {
+  background: #2d1f00;
+}
+[data-theme="dark"] td.mac-cell.cache-stale a {
+  color: #fbbf24;
+}
+
 /* Modal overlay */
 .modal-overlay {
   position: fixed;

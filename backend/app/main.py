@@ -21,6 +21,7 @@ from app.core.version import FULL as APP_VERSION, VERSION
 from app.ise.client import close_ise_client
 from app.pxgrid.session_worker import get_worker as get_pxgrid_worker
 from app.services.audit_retention import get_worker as get_audit_retention_worker
+from app.services.cache_prewarm import get_worker as get_prewarm_worker
 from app.services.cache_sync import get_worker as get_cache_sync_worker
 
 
@@ -48,9 +49,11 @@ async def lifespan(_: FastAPI):
     get_cache_sync_worker().start()
     get_audit_retention_worker().start()
     get_pxgrid_worker().start()
+    get_prewarm_worker().start()
     try:
         yield
     finally:
+        await get_prewarm_worker().stop()
         await get_pxgrid_worker().stop()
         await get_audit_retention_worker().stop()
         await get_cache_sync_worker().stop()
