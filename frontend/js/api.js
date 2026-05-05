@@ -19,12 +19,16 @@ export function setUnauthorizedHandler(fn) {
 }
 
 async function request(path, options = {}) {
-  const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
+  // _noContentType: true bruges ved FormData-uploads (browser sætter selv boundary)
+  const { _noContentType, ...fetchOpts } = options;
+  const headers = _noContentType
+    ? { ...(options.headers || {}) }
+    : { "Content-Type": "application/json", ...(options.headers || {}) };
   const token = auth.getToken();
   if (token && !UNAUTH_PATHS.has(path.split("?")[0])) {
     headers["Authorization"] = `Bearer ${token}`;
   }
-  const res = await fetch(`${BASE}/api${path}`, { ...options, headers });
+  const res = await fetch(`${BASE}/api${path}`, { ...fetchOpts, headers });
   if (res.status === 401) {
     auth.clear();
     if (onUnauthorized) onUnauthorized();
@@ -296,4 +300,13 @@ export const api = {
   updatePskPolicy: (payload) =>
     request("/settings/psk-policy", { method: "PUT", body: JSON.stringify(payload) }),
   generatePskKey: () => request("/settings/psk-policy/generate", { method: "POST" }),
+  validateUpdate: (file) => {
+    const fd = new FormData(); fd.append("file", file);
+    return request("/update/validate", { method: "POST", body: fd, _noContentType: true });
+  },
+  applyUpdate: (file) => {
+    const fd = new FormData(); fd.append("file", file);
+    return request("/update/apply", { method: "POST", body: fd, _noContentType: true });
+  },
+  restartServer: () => request("/update/restart", { method: "POST" }),
 };

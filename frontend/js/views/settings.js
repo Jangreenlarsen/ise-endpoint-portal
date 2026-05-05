@@ -47,6 +47,7 @@ export async function renderSettings(container) {
       <button class="settings-tab" data-tab="pxgrid">PxGrid</button>
       <button class="settings-tab" data-tab="ise-config">ISE-config</button>
       <button class="settings-tab" data-tab="access">Adgang</button>
+      <button class="settings-tab" data-tab="system-update">Opdatering</button>
       ` : ""}
       ${isPskEditorUser ? `
       <button class="settings-tab" data-tab="psk-policy">PSK-politik</button>
@@ -560,6 +561,52 @@ export async function renderSettings(container) {
     </div>
     ` : ""}
 
+    ${isAdmin ? `
+    <div class="card" data-tab="system-update">
+      <h3>Portal system opdatering</h3>
+      <p class="hint">
+        Upload en opdateringspakke (ZIP) for at opdatere portalen.
+        Frontend-ændringer aktiveres øjeblikkeligt. Backend-ændringer kræver genstart.<br>
+        <strong>Kun tilgængelig for admin-brugere.</strong>
+      </p>
+      <div id="update-msg"></div>
+
+      <div class="field">
+        <label>Opdateringspakke (.zip)</label>
+        <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+          <input type="file" id="update-file-input" accept=".zip" style="flex:1;min-width:200px;" />
+          <button type="button" id="update-validate-btn" class="secondary" disabled>Validér pakke</button>
+        </div>
+      </div>
+
+      <div id="update-preview" class="hidden" style="margin-top:1rem;">
+        <div class="field">
+          <label>Pakke-info</label>
+          <div id="update-pkg-info" style="font-family:monospace;font-size:0.85rem;background:var(--bg-secondary,#f8fafc);border:1px solid var(--border,#e2e8f0);border-radius:6px;padding:0.75rem;"></div>
+        </div>
+        <div id="update-file-list-wrap" class="field hidden">
+          <label>Filer der opdateres (<span id="update-file-count">0</span>)</label>
+          <div id="update-file-list" style="font-family:monospace;font-size:0.78rem;max-height:180px;overflow-y:auto;background:var(--bg-secondary,#f8fafc);border:1px solid var(--border,#e2e8f0);border-radius:6px;padding:0.5rem;white-space:pre;"></div>
+        </div>
+        <div id="update-blocked-wrap" class="field hidden">
+          <label style="color:#b45309;">⚠ Blokerede filer (overskrives ikke)</label>
+          <div id="update-blocked-list" style="font-family:monospace;font-size:0.78rem;background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:0.5rem;white-space:pre;color:#92400e;"></div>
+        </div>
+        <div class="actions" style="margin-top:1rem;">
+          <button type="button" id="update-apply-btn" class="primary" disabled>Anvend opdatering</button>
+        </div>
+      </div>
+
+      <div id="update-result" class="hidden" style="margin-top:1rem;">
+        <div id="update-result-msg"></div>
+        <div class="actions" style="margin-top:1rem;">
+          <button type="button" id="update-restart-btn" class="secondary">Genstart server</button>
+          <span class="hint" style="margin-left:0.5rem;">Kræver at START.bat kører i loop-tilstand</span>
+        </div>
+      </div>
+    </div>
+    ` : ""}
+
     <div class="card" data-tab="account">
       <h3>Skift dit password</h3>
       <p class="hint">Logget ind som <b>${esc(currentUser?.username || "")}</b> (rolle: ${esc(currentUser?.role || "")}).</p>
@@ -640,6 +687,9 @@ export async function renderSettings(container) {
   }
   if (isPskEditorUser) {
     await initPskPolicySection(container);
+  }
+  if (isAdmin) {
+    initSystemUpdateSection(container);
   }
   initPasswordSection(container);
   initCsvAndPrefsSections(container);
@@ -1583,4 +1633,119 @@ function initSettingsTabs(container, isAdmin, isPskEditorUser = false) {
 
   tabs.forEach(t => t.addEventListener("click", () => activate(t.dataset.tab)));
   activate(initial);
+}
+
+function initSystemUpdateSection(container) {
+  const fileInput    = container.querySelector("#update-file-input");
+  const validateBtn  = container.querySelector("#update-validate-btn");
+  const applyBtn     = container.querySelector("#update-apply-btn");
+  const restartBtn   = container.querySelector("#update-restart-btn");
+  const preview      = container.querySelector("#update-preview");
+  const result       = container.querySelector("#update-result");
+  const pkgInfo      = container.querySelector("#update-pkg-info");
+  const fileListWrap = container.querySelector("#update-file-list-wrap");
+  const fileListEl   = container.querySelector("#update-file-list");
+  const fileCountEl  = container.querySelector("#update-file-count");
+  const blockedWrap  = container.querySelector("#update-blocked-wrap");
+  const blockedEl    = container.querySelector("#update-blocked-list");
+  const msgEl        = container.querySelector("#update-msg");
+  const resultMsg    = container.querySelector("#update-result-msg");
+
+  if (!fileInput) return;
+
+  let validatedFile = null;
+
+  fileInput.addEventListener("change", () => {
+    const hasFile = !!fileInput.files.length;
+    validateBtn.disabled = !hasFile;
+    validatedFile = null;
+    applyBtn.disabled = true;
+    preview.classList.add("hidden");
+    result.classList.add("hidden");
+    msgEl.innerHTML = "";
+  });
+
+  validateBtn.addEventListener("click", async () => {
+    const file = fileInput.files[0];
+    if (!file) return;
+    msgEl.innerHTML = `<div class="alert info">Validerer pakke...</div>`;
+    validateBtn.disabled = true;
+    try {
+      const info = await api.validateUpdate(file);
+      msgEl.innerHTML = "";
+      preview.classList.remove("hidden");
+      result.classList.add("hidden");
+
+      // Pakke-info boks
+      const statusIcon = info.ok ? "✅" : "❌";
+      const errHtml = info.errors.length
+        ? `<span style="color:#b91c1c;">Fejl: ${info.errors.map(e => esc(e)).join("; ")}</span>\n`
+        : "";
+      pkgInfo.textContent =
+        `${statusIcon} Version: ${info.version} build ${info.build}\n` +
+        `Filer: ${info.file_count}   Blokerede: ${info.blocked.length}\n` +
+        errHtml;
+
+      // Fil-liste
+      if (info.files.length) {
+        fileListEl.textContent = info.files.join("\n");
+        fileCountEl.textContent = info.file_count;
+        fileListWrap.classList.remove("hidden");
+      } else {
+        fileListWrap.classList.add("hidden");
+      }
+
+      // Blokerede filer
+      if (info.blocked.length) {
+        blockedEl.textContent = info.blocked.join("\n");
+        blockedWrap.classList.remove("hidden");
+      } else {
+        blockedWrap.classList.add("hidden");
+      }
+
+      applyBtn.disabled = !info.ok;
+      if (info.ok) validatedFile = file;
+    } catch (err) {
+      msgEl.innerHTML = `<div class="alert error">Validering fejlede: ${esc(err.message)}</div>`;
+    } finally {
+      validateBtn.disabled = false;
+    }
+  });
+
+  applyBtn.addEventListener("click", async () => {
+    if (!validatedFile) return;
+    if (!confirm("Anvend opdateringen nu?\n\nFrontend-ændringer aktiveres øjeblikkeligt.\nBackend-ændringer kræver genstart.")) return;
+    applyBtn.disabled = true;
+    msgEl.innerHTML = `<div class="alert info">Anvender opdatering...</div>`;
+    try {
+      const res = await api.applyUpdate(validatedFile);
+      msgEl.innerHTML = "";
+      preview.classList.add("hidden");
+      result.classList.remove("hidden");
+      const errHtml = res.errors.length
+        ? `<div class="alert warning" style="margin-top:0.5rem;">⚠ ${res.errors.length} fejl:<br>${res.errors.map(e => esc(e)).join("<br>")}</div>`
+        : "";
+      resultMsg.innerHTML =
+        `<div class="alert success">✅ Opdatering gennemført — ${res.applied_count} filer opdateret.</div>` +
+        errHtml +
+        `<p class="hint" style="margin-top:0.5rem;">Frontend-ændringer er aktive nu.<br>Klik <strong>Genstart server</strong> for at aktivere backend-ændringer.</p>`;
+    } catch (err) {
+      msgEl.innerHTML = `<div class="alert error">Opdatering fejlede: ${esc(err.message)}</div>`;
+      applyBtn.disabled = false;
+    }
+  });
+
+  restartBtn.addEventListener("click", async () => {
+    if (!confirm("Genstart serveren nu?\n\nPortalen vil være utilgængelig i et par sekunder.")) return;
+    restartBtn.disabled = true;
+    try {
+      await api.restartServer();
+      resultMsg.innerHTML += `<div class="alert info" style="margin-top:0.5rem;">Server genstarter... siden genindlæses automatisk om 8 sekunder.</div>`;
+      setTimeout(() => window.location.reload(), 8000);
+    } catch {
+      // Serveren lukker ned — det er forventet at kaldet fejler
+      resultMsg.innerHTML += `<div class="alert info" style="margin-top:0.5rem;">Server genstarter... siden genindlæses automatisk om 8 sekunder.</div>`;
+      setTimeout(() => window.location.reload(), 8000);
+    }
+  });
 }

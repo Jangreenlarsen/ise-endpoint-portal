@@ -5,6 +5,34 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.15.0 build 0162] — 2026-05-05 — feat(update): portal system opdatering via admin UI
+
+Ny "Opdatering"-tab i Settings (kun synlig for admin). Upload ZIP-pakke →
+validér (version, filstruktur, blokerede stier) → preview → anvend → genstart.
+
+**Sikkerhedsmodel:**
+- Kun admin-brugere (require_admin dependency)
+- Tilladt: `frontend/`, `backend/app/`, `version.json`, docs, `START.bat`
+- Blokeret altid: `.env`, `backend/logs/`, `backend/cache/`, `backend/data/`
+- Path-traversal (`..`) afvises
+- Max 100 MB pr. pakke
+- Paranoid path-check: target skal ligge under PROJECT_ROOT
+
+**Genstart-mekanisme:**
+- `POST /api/update/restart` → `os._exit(0)` efter 2.5s delay
+- `START.bat` opdateret til genstart-loop (timeout /t 3 + goto start)
+- Frontend venter 8s og genindlæser siden automatisk
+
+**Berørte filer:**
+- `backend/app/services/update_service.py` (ny)
+- `backend/app/api/update.py` (ny)
+- `backend/app/main.py` (+update router)
+- `frontend/js/api.js` (+validateUpdate/applyUpdate/restartServer + _noContentType)
+- `frontend/js/views/settings.js` (+Opdatering tab + initSystemUpdateSection)
+- `START.bat` (loop-genstart)
+
+---
+
 ## [3.14.0 build 0158] — 2026-05-05 — feat(perf): fuld pre-warm cache + offline disk-cache med stale-badge
 
 **PrewarmWorker** (`services/cache_prewarm.py`, ny):

@@ -14,6 +14,7 @@ from app.api import endpoint_roles as endpoint_roles_api
 from app.api import endpoints, groups, health, logs, me, oui, users
 from app.api import pxgrid as pxgrid_api
 from app.api import settings as settings_api
+from app.api import update as update_api
 from app.core.audit_store import init_db as init_audit_db
 from app.core.config import settings
 from app.core.logging import setup_logging
@@ -90,6 +91,7 @@ app.include_router(oui.router, prefix="/api")
 app.include_router(endpoint_roles_api.router, prefix="/api")
 app.include_router(pxgrid_api.router, prefix="/api")
 app.include_router(me.router, prefix="/api")
+app.include_router(update_api.router, prefix="/api")
 
 frontend_dir = Path(__file__).resolve().parents[2] / "frontend"
 if frontend_dir.exists():
