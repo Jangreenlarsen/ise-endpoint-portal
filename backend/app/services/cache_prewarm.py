@@ -17,6 +17,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -27,19 +28,19 @@ from app.ise.client import get_ise_client
 logger = logging.getLogger(__name__)
 
 
+@dataclass
 class PrewarmStatus:
-    def __init__(self) -> None:
-        self.running: bool = False
-        self.scanning: bool = False
-        self.scan_number: int = 0
-        self.total_endpoints: int = 0
-        self.scanned: int = 0
-        self.last_full_scan_at: float | None = None
-        self.last_disk_save_at: float | None = None
-        self.disk_loaded: int = 0
-        self.last_error: str = ""
-        self.hot_queue_size: int = 0
-        self.started_at: float = 0.0
+    running: bool = False
+    scanning: bool = False
+    scan_number: int = 0
+    total_endpoints: int = 0
+    scanned: int = 0
+    last_full_scan_at: float | None = None
+    last_disk_save_at: float | None = None
+    disk_loaded: int = 0
+    last_error: str = ""
+    hot_queue_size: int = 0
+    started_at: float = 0.0
 
 
 class PrewarmWorker:
