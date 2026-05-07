@@ -9,6 +9,7 @@ import { renderAudit } from "./views/audit.js";
 import { renderLogin } from "./views/login.js";
 import { renderRegister } from "./views/register.js";
 import { renderSettings, initTheme } from "./views/settings.js";
+import { renderMetrics } from "./views/metrics.js";
 
 const statusDot = document.getElementById("status-dot");
 const container = document.getElementById("view-container");
@@ -20,6 +21,7 @@ const routes = {
   dacls:      { render: renderDacls,      roles: ["admin", "editor"] },
   logs:       { render: renderLogs,       roles: ["admin"] },
   audit:      { render: renderAudit,      roles: ["admin", "editor", "editor-psk", "viewer"] },
+  metrics:    { render: renderMetrics,    roles: ["admin"] },
   register:   { render: renderRegister,   roles: ["admin", "editor", "editor-psk", "registrar"] },
   settings:   { render: renderSettings,   roles: ["admin", "editor", "editor-psk", "viewer", "registrar"] },
 };

@@ -1885,3 +1885,97 @@ body.register-route .login-card {
   font-weight: 600;
   cursor: pointer;
 }
+
+/* ------------------------------------------------------------------ */
+/* Metrics view                                                         */
+/* ------------------------------------------------------------------ */
+
+.metrics-toolbar {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  margin-bottom: 1.25rem;
+}
+
+.metrics-hero {
+  margin-bottom: 1.25rem;
+}
+
+.cb-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 1.1rem;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+.cb-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.cb-closed  { background: #d1fae5; color: #065f46; }
+.cb-closed .cb-dot  { background: #10b981; }
+.cb-halfopen { background: #fef3c7; color: #92400e; }
+.cb-halfopen .cb-dot { background: #f59e0b; }
+.cb-open    { background: #fee2e2; color: #991b1b; }
+.cb-open .cb-dot    { background: #ef4444; }
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+
+.metrics-card { margin-bottom: 0; }
+
+.metric-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.metric-stat {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  align-items: baseline;
+  column-gap: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+.metric-stat:last-child { border-bottom: none; padding-bottom: 0; }
+
+.metric-stat-label {
+  font-size: 0.8rem;
+  color: #6b7280;
+  grid-column: 1;
+  grid-row: 1;
+}
+.metric-stat-value {
+  font-size: 1.1rem;
+  font-weight: 600;
+  font-family: ui-monospace, "Cascadia Mono", Menlo, monospace;
+  color: #1a2330;
+  grid-column: 2;
+  grid-row: 1;
+  text-align: right;
+}
+.metric-stat-sub {
+  font-size: 0.7rem;
+  color: #9ca3af;
+  grid-column: 2;
+  grid-row: 2;
+  text-align: right;
+}
+
+[data-theme="dark"] .metrics-card { background: #1e2030; }
+[data-theme="dark"] .metric-stat-label { color: #9ca3af; }
+[data-theme="dark"] .metric-stat-value { color: #e5e7eb; }
+[data-theme="dark"] .metric-stat { border-bottom-color: #2a2a4a; }
+[data-theme="dark"] .cb-closed  { background: #064e3b; color: #6ee7b7; }
+[data-theme="dark"] .cb-halfopen { background: #451a03; color: #fcd34d; }
+[data-theme="dark"] .cb-open    { background: #450a0a; color: #fca5a5; }
+

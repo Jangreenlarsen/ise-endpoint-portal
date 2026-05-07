@@ -17,6 +17,8 @@ Alle nye features registreres her FØR implementering påbegyndes.
 
 - `[done 3.19.0] 2026-05-07 — Circuit-breaker + rate limiting + FTS5 audit-søgning` — Når ISE er utilgængelig detekteres det efter N på hinanden følgende transport-fejl og efterfølgende kald fast-failer med 503 i en backoff-periode i stedet for at vente 90s (30s timeout × 3 retry). Beskytter event-loop og brugeroplevelse under ISE-maintenance. **Lag:** backend (`ise/client.py` eller ny `ise/circuit_breaker.py`).
 
+- `[done 3.20.0] 2026-05-07 — Frontend Metrics-dashboard` — Ny side i portalen (kun admin) der viser live Prometheus-data fra GET /metrics: circuit-breaker state (farvet badge), ISE request totals + gennemsnitlig svartid, cache hit-rate/entries/evictions, rate-limit blocks, bulk-outcomes. Parser Prometheus text-format direkte i browseren. Auto-opdaterer hvert 15 sek. **Lag:** frontend (`js/views/metrics.js` ny, `index.html` +nav-link, `js/app.js` +route, `css/styles.css` +metrics-styling).
+
 
 - `[done 3.15.0] 2026-05-05 — Portal system opdatering via admin UI` — Admin kan uploade en ZIP-opdateringspakke direkte i Settings → Opdatering. Pakken valideres (version.json påkrævet, path-traversal og .env blokeres), preview viser hvilke filer der opdateres + blokerede filer. Anvend skriver filer til disk øjeblikkeligt (frontend aktivt med det samme). Genstart-knap kalder os._exit(0) og START.bat (nu loop-baseret) genstarter serveren. Kun tilgængelig for admin-brugere. **Lag:** backend (`services/update_service.py` ny, `api/update.py` ny, `main.py`), frontend (`api.js` +validateUpdate/applyUpdate/restartServer, `views/settings.js` +Opdatering-tab), `START.bat` (loop-genstart).
 

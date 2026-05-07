@@ -5,6 +5,26 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.20.0 build 0174] — 2026-05-07 — feat(frontend): metrics-dashboard
+
+**`frontend/js/views/metrics.js`** (ny):
+- Ny admin-only side der henter `GET /metrics` (Prometheus text format) og viser live data.
+- Parser Prometheus text format direkte i browseren (ingen externe biblioteker).
+- Viser: circuit-breaker state (farvet badge: grøn/gul/rød), ISE request totals + gennemsnitlig svartid, cache entries/hit-rate/evictions, rate-limit blocks, bulk-outcomes.
+- Auto-refresh hvert 15 sek. (clearInterval når containeren fjernes fra DOM).
+
+**`frontend/index.html`**:
+- Tilføjet `<a href="#/metrics" data-view="metrics">Metrics</a>` i sidebar-nav.
+
+**`frontend/js/app.js`**:
+- Importeret `renderMetrics` fra `views/metrics.js`.
+- Registreret route `metrics` med `roles: ["admin"]`.
+
+**`frontend/css/styles.css`**:
+- Tilføjet metrics-specifik CSS: `.metrics-grid`, `.metrics-card`, `.metric-stat`, `.cb-badge` (CLOSED/HALF-OPEN/OPEN farver), dark-mode varianter.
+
+---
+
 ## [3.19.0 build 0173] — 2026-05-07 — feat: circuit-breaker + rate limiting + FTS5 audit-søgning
 
 **`backend/app/ise/circuit_breaker.py`** (ny):
