@@ -5,6 +5,34 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.25.3 build 0189] — 2026-05-07 — style+copy: skabelon-formular layout + hint-tekst
+
+**`frontend/js/views/settings.js`**:
+- Skabelon-redigér-formular pakket i `<form onsubmit="return false;">` så `.field`-CSS (flex-column) virker korrekt — felter stacker nu pænt under hinanden
+- `editor` tilføjet som checkbox under "Synlig for roller"
+- Hint-tekst opdateret: "plus admin/editor" → "admin se alle roller default"
+
+**`frontend/css/styles.css`**:
+- Ny `.checkbox-label` utility-klasse (inline-flex, gap, cursor:pointer)
+
+---
+
+## [3.25.2 build 0185] — 2026-05-07 — fix(update): genstart-knap permanent synlig i Settings/Opdatering
+
+**`frontend/js/views/settings.js`**:
+- "Genstart server"-knappen lå i `#update-result.hidden` og forsvandt efter global `.hidden`-CSS-fix
+- Knappen flyttet til permanent-synlig sektion under upload-formularen
+- Restart-besked vises nu i `#update-msg` frem for `#update-result-msg`
+
+---
+
+## [3.25.3 build 0186] — 2026-05-07 — fix(users): skabeloner opdateres live uden manuel reload
+
+**`frontend/js/views/settings.js`**:
+- `allTemplates`-fetch flyttet fra `initUsersSection`-init til `reload()` så nyoprettede skabeloner er synlige i brugertabellen uden sideopdatering
+
+---
+
 ## [3.25.1 build 0184] — 2026-05-07 — feat+fix: per-bruger skabelontildeling + registrar_templet-rename + nav-lås
 
 **`backend/app/schemas/user.py`**:
