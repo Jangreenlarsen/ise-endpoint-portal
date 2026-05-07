@@ -509,7 +509,7 @@ export async function renderSettings(container) {
       <p class="hint">
         Administrer lokale brugerkonti, system-roller og System adm-tildelinger.
         <b>admin</b> har fuld adgang. <b>editor</b> kan oprette/redigere endpoints. <b>viewer</b> kan kun læse.
-        <b>registrar</b> kan registrere endpoints (alle formularfelter). <b>registrant</b> kan KUN vælge skabelon + indtaste MAC og beskrivelse.
+        <b>registrar</b> kan registrere endpoints (alle formularfelter). <b>registrar_templet</b> kan KUN vælge skabelon + indtaste MAC og beskrivelse.
         System adm bestemmer hvilke endpoints ikke-admin-brugere kan se (deres username er altid implicit tildelt).
       </p>
       <div id="users-msg"></div>
@@ -535,7 +535,7 @@ export async function renderSettings(container) {
           <option value="editor-psk">editor-psk (PSK-redaktør)</option>
           <option value="admin">admin</option>
           <option value="registrar">registrar (opret — alle felter)</option>
-          <option value="registrant">registrant (skabelon + MAC + beskrivelse)</option>
+          <option value="registrar_templet">registrar_templet (skabelon + MAC + beskrivelse)</option>
         </select>
         <button type="submit">Opret bruger</button>
       </form>
@@ -632,7 +632,7 @@ export async function renderSettings(container) {
             <label><input type="checkbox" class="tpl-visible-to" value="editor-psk" style="margin-right:0.3rem;" /> editor-psk</label>
             <label><input type="checkbox" class="tpl-visible-to" value="viewer" style="margin-right:0.3rem;" /> viewer</label>
             <label><input type="checkbox" class="tpl-visible-to" value="registrar" style="margin-right:0.3rem;" /> registrar</label>
-            <label><input type="checkbox" class="tpl-visible-to" value="registrant" style="margin-right:0.3rem;" /> registrant</label>
+            <label><input type="checkbox" class="tpl-visible-to" value="registrar_templet" style="margin-right:0.3rem;" /> registrar_templet</label>
           </div>
         </div>
         <div class="actions" style="margin-top:1rem;">
@@ -1471,7 +1471,7 @@ async function initUsersSection(container, currentUser, rolesState) {
               <td>${esc(u.username)}</td>
               <td>
                 <select class="user-role-select" ${isSelf ? "disabled title='Du kan ikke ændre din egen rolle her'" : ""}>
-                  ${["admin", "editor", "editor-psk", "viewer", "registrar", "registrant"]
+                  ${["admin", "editor", "editor-psk", "viewer", "registrar", "registrar_templet"]
                     .map((r) => `<option value="${r}"${r === u.role ? " selected" : ""}>${r}</option>`)
                     .join("")}
                 </select>

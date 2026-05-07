@@ -42,7 +42,7 @@ export async function renderRegister(container) {
   container.classList.add("mobile-register-mode");
   const scanSupported = hasBarcodeDetector();
   const user = auth.getUser();
-  const isRegistrant = user?.role === "registrant";
+  const isRegistrant = user?.role === "registrar_templet";
   const userLabel = user ? `${user.username} (${user.role})` : "";
   const subText = isRegistrant
     ? "Vælg skabelon, scan MAC og indsend."
