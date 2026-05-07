@@ -5,6 +5,7 @@ import logging
 from typing import Any
 
 from app.core import audit_store, config
+from app.core.metrics import BULK_ITEMS
 from app.core.custom_attr_store import (
     ALL_ATTRS,
     HIDDEN_ATTR,
@@ -650,6 +651,14 @@ class EndpointService:
             "bulk done: %d ok, %d skipped, %d overwritten, %d failed",
             len(succeeded), len(skipped), len(overwritten), len(failed),
         )
+        if succeeded:
+            BULK_ITEMS.labels(outcome="succeeded").inc(len(succeeded))
+        if skipped:
+            BULK_ITEMS.labels(outcome="skipped").inc(len(skipped))
+        if overwritten:
+            BULK_ITEMS.labels(outcome="overwritten").inc(len(overwritten))
+        if failed:
+            BULK_ITEMS.labels(outcome="failed").inc(len(failed))
         if succeeded or overwritten:
             # Bulk ops can touch many ids — clear everything rather than
             # tracking per-id invalidation.

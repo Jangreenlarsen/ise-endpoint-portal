@@ -38,6 +38,14 @@ from pathlib import Path
 from typing import Any, Awaitable, Callable, Generic, TypeVar
 
 from app.core import config
+from app.core.metrics import (
+    CACHE_DISK_STALE,
+    CACHE_ENTRIES,
+    CACHE_EVICTIONS,
+    CACHE_HITS,
+    CACHE_MISSES,
+    CACHE_STALE_SERVES,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -167,6 +175,7 @@ class EndpointCache:
             value = await fetch_fn()
             self._details[endpoint_id] = CachedEntry(value, self._now(), from_disk=False)
             self._stats["bg_refreshes"] += 1
+            CACHE_ENTRIES.set(len(self._details))
             return value
         except Exception as exc:  # noqa: BLE001
             logger.warning("cache fetch failed id=%s err=%s", endpoint_id, exc)
@@ -213,9 +222,11 @@ class EndpointCache:
         # can replace them. They are still *served* from memory for list views.
         if entry and self._fresh(entry) and not entry.from_disk and not force_fresh:
             self._stats["hits"] += 1
+            CACHE_HITS.inc()
             return entry.value
         if entry and self._swr() and self._stale_servable(entry) and not force_fresh:
             self._stats["stale_serves"] += 1
+            CACHE_STALE_SERVES.inc()
             # Fire-and-forget background refresh — coalesces with any existing fetch.
             self._get_or_create_inflight(endpoint_id, fetch_fn)
             return entry.value
@@ -223,6 +234,7 @@ class EndpointCache:
         # concurrent requests (edit-modal + pre-warm hot-queue, two users)
         # share one ISE call instead of each hammering ISE independently.
         self._stats["misses"] += 1
+        CACHE_MISSES.inc()
         task = self._get_or_create_inflight(endpoint_id, fetch_fn)
         if task is not None:
             try:
@@ -262,6 +274,7 @@ class EndpointCache:
             self._disk_stale_count -= 1
         del self._details[oldest_id]
         self._stats["evictions"] += 1
+        CACHE_EVICTIONS.inc()
 
     def put_detail(self, endpoint_id: str, value: Any, from_disk: bool = False) -> None:
         if not self.enabled():
@@ -281,6 +294,8 @@ class EndpointCache:
             self._disk_stale_count += 1
         self._details[endpoint_id] = CachedEntry(value, self._now(), from_disk=from_disk)
         self._add_to_roles_index(endpoint_id, value)
+        CACHE_ENTRIES.set(len(self._details))
+        CACHE_DISK_STALE.set(self._disk_stale_count)
 
     def invalidate_detail(self, endpoint_id: str) -> None:
         entry = self._details.pop(endpoint_id, None)
@@ -289,6 +304,7 @@ class EndpointCache:
             if entry.from_disk:
                 self._disk_stale_count -= 1
             self._stats["invalidations"] += 1
+            CACHE_ENTRIES.set(len(self._details))
 
     async def _fetch_and_store_groups(
         self,
@@ -361,6 +377,8 @@ class EndpointCache:
             self._roles_index.clear()
             self._disk_stale_count = 0
             self._stats["invalidations"] += 1
+            CACHE_ENTRIES.set(0)
+            CACHE_DISK_STALE.set(0)
 
     def detail_ids(self) -> list[str]:
         return list(self._details.keys())

@@ -5,6 +5,60 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.18.0 build 0172] — 2026-05-07 — obs(metrics) + test: Prometheus + udvidet test-suite
+
+**`backend/pyproject.toml`:**
+- Tilføjet `prometheus-client>=0.20.0`
+
+**`backend/app/core/metrics.py`** (ny):
+- Definerer alle Prometheus metric-objekter som module-level singletons:
+  `CACHE_HITS/MISSES/STALE_SERVES/EVICTIONS` (Counter), `CACHE_ENTRIES/DISK_STALE` (Gauge),
+  `ISE_REQUESTS` (Counter, labels: method+outcome), `ISE_REQUEST_DURATION` (Histogram, 9 buckets 50ms–30s),
+  `ISE_RETRIES` (Counter), `BULK_ITEMS` (Counter, label: outcome)
+
+**`backend/app/api/metrics_api.py`** (ny):
+- `GET /metrics` — Prometheus text scrape endpoint (CONTENT_TYPE_LATEST, ikke auth-beskyttet)
+
+**`backend/app/main.py`:**
+- Inkluderer `metrics_api.router` (uden prefix — `/metrics` direkte)
+
+**`backend/app/core/endpoint_cache.py`:**
+- Inkrementerer `CACHE_HITS/MISSES/STALE_SERVES/EVICTIONS` ved siden af eksisterende `_stats` dict
+- Opdaterer `CACHE_ENTRIES` gauge i `put_detail`, `_fetch_and_store`, `invalidate_detail`, `invalidate_all`
+- Opdaterer `CACHE_DISK_STALE` gauge i `put_detail`, `invalidate_all`
+
+**`backend/app/ise/client.py`:**
+- `request()`: måler `time.perf_counter()` rundt om hele retry-loop, recorder i `ISE_REQUEST_DURATION`
+- Incrementerer `ISE_REQUESTS` (method+outcome: 2xx/4xx/5xx/error) ved hvert kald
+- `_on_retry` callback inkrementerer `ISE_RETRIES` + logger WARNING (erstatter separat log-linje)
+
+**`backend/app/services/endpoint_service.py`:**
+- Efter `asyncio.gather` i `bulk_create`: inkrementerer `BULK_ITEMS` (outcome: succeeded/skipped/overwritten/failed)
+
+**`backend/tests/conftest.py`** (ny):
+- Sætter ISE_BASE_URL/USERNAME/PASSWORD env-vars inden app-moduler importeres
+
+**`backend/tests/test_endpoint_cache.py`** (ny, 13 tests):
+- fresh hit, TTL miss, stale-while-revalidate, FIFO-eviction (3 varianter), zero-max=unlimited,
+  invalidate_detail, invalidate_all, roles_index (populate/cleanup/case-insensitive), disabled-cache passthrough
+
+**`backend/tests/test_ise_retry.py`** (ny, 7 tests):
+- retry succeeds on 3rd attempt, retry exhausted → IseApiError, timeout triggers retry,
+  no retry on 404, no retry on 500, retry_attempts configured, connection_pool is AsyncClient
+
+**`backend/tests/test_parallel_fetch.py`** (ny, 7 tests):
+- single page (no parallel), exact 100 (no parallel), 250 → 3 pages, 1000 → 10 pages,
+  filters passed through, groups single page, groups multipage
+
+**`backend/tests/test_health.py`:**
+- Opdateret assertion: `r.json()["status"] == "ok"` (health-endpoint returnerer nu også version-felter)
+
+**`FEATURES.md`:** tilføjet circuit-breaker, rate limiting, FTS5 audit-søgning som `[planned]`
+
+**Testresultat:** 28/28 passed
+
+---
+
 ## [3.17.0 build 0171] — 2026-05-07 — perf(scale): Tier 1 skalerbarhedsforbedringer (10K endpoints)
 
 **`backend/pyproject.toml`:**

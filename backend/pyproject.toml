@@ -14,6 +14,7 @@ dependencies = [
     "cryptography>=42.0.0",
     "websockets>=12.0",
     "tenacity>=8.2.0",
+    "prometheus-client>=0.20.0",
 ]
 
 [project.optional-dependencies]

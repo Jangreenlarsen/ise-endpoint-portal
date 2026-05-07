@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.api import audit as audit_api
+from app.api import metrics_api
 from app.api import auth as auth_api
 from app.api import cache as cache_api
 from app.api import custom_attributes as custom_attrs_api
@@ -92,6 +93,7 @@ app.include_router(endpoint_roles_api.router, prefix="/api")
 app.include_router(pxgrid_api.router, prefix="/api")
 app.include_router(me.router, prefix="/api")
 app.include_router(update_api.router, prefix="/api")
+app.include_router(metrics_api.router)
 
 frontend_dir = Path(__file__).resolve().parents[2] / "frontend"
 if frontend_dir.exists():

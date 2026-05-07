@@ -7,11 +7,19 @@ Alle nye features registreres her FØR implementering påbegyndes.
 
 ---
 
-## Under implementering
+## Planlagt / Under implementering
 
 - `[done 3.17.0] 2026-05-07 — Tier 1 skalerbarhedsforbedringer (10K endpoints)` — Fem kritiske fixes der bringer systemet til at håndtere 10.000 endpoints stabilt: (1) httpx.Limits + tenacity exponential-backoff retry på alle ISE-kald, (2) parallel page-fetching i list_all() (20s → ~5s), (3) FIFO-eviction i endpoint-cache ved konfigurerbart max, (4) parallel bulk_create() med Semaphore i stedet for seriel sleep, (5) nye konfigurerbare settings for alle fire parametre. **Lag:** backend (`ise/client.py`, `ise/endpoints.py`, `core/endpoint_cache.py`, `core/config.py`, `services/endpoint_service.py`, `pyproject.toml`).
 
 ## Planlagt
+
+- `[done 3.18.0] 2026-05-07 — Prometheus metrics + udvidet test-suite` — Eksponerer /metrics (Prometheus scrape-endpoint) med custom metrics for ISE request duration (histogram), retry-tæller, cache hits/misses/evictions/entries (gauge), og bulk-outcome counters. Test-suite udvides fra 1 til 10+ tests: cache-enhedstest (TTL, eviction, SWR, roles-index), ISE retry-tests (transport-fejl retries, ingen retry på 4xx), og parallel fetch-tests (list_all med ≥2 sider). **Lag:** backend (`core/metrics.py` ny, `api/metrics_api.py` ny, `core/endpoint_cache.py`, `ise/client.py`, `services/endpoint_service.py`, `main.py`, `tests/conftest.py`, `tests/test_endpoint_cache.py`, `tests/test_ise_retry.py`, `tests/test_parallel_fetch.py`, `pyproject.toml`).
+
+- `[planned] 2026-05-07 — Circuit-breaker ved ISE-nedetid` — Når ISE er utilgængelig detekteres det efter N på hinanden følgende transport-fejl og efterfølgende kald fast-failer med 503 i en backoff-periode i stedet for at vente 90s (30s timeout × 3 retry). Beskytter event-loop og brugeroplevelse under ISE-maintenance. **Lag:** backend (`ise/client.py` eller ny `ise/circuit_breaker.py`).
+
+- `[planned] 2026-05-07 — Rate limiting på portal-API` — Beskytter ISE mod burst-trafik: per-bruger og per-IP grænser på API-lag med slowapi (FastAPI-kompatibel). Forhindrer at fejlagtige scripts eller parallelle browsere lammer ISE-forbindelsespoolen. **Lag:** backend (`main.py` + ny middleware, `core/config.py` +rate_limit settings).
+
+- `[planned] 2026-05-07 — SQLite FTS5 audit-søgning` — Erstatter LIKE på JSON-blobs med SQLite FTS5 full-text search i audit_store. Migration tilføjer virtuel FTS5-tabel med auto-populated before/after content. Reducerer søgning fra O(N) table-scan til O(log N). **Lag:** backend (`core/audit_store.py` +FTS5 migration+søgning).
 
 - `[done 3.15.0] 2026-05-05 — Portal system opdatering via admin UI` — Admin kan uploade en ZIP-opdateringspakke direkte i Settings → Opdatering. Pakken valideres (version.json påkrævet, path-traversal og .env blokeres), preview viser hvilke filer der opdateres + blokerede filer. Anvend skriver filer til disk øjeblikkeligt (frontend aktivt med det samme). Genstart-knap kalder os._exit(0) og START.bat (nu loop-baseret) genstarter serveren. Kun tilgængelig for admin-brugere. **Lag:** backend (`services/update_service.py` ny, `api/update.py` ny, `main.py`), frontend (`api.js` +validateUpdate/applyUpdate/restartServer, `views/settings.js` +Opdatering-tab), `START.bat` (loop-genstart).
 

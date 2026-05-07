@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from typing import Any
 
 import httpx
@@ -13,6 +14,7 @@ from tenacity import (
 
 from app.core import config
 from app.core.exceptions import IseApiError
+from app.core.metrics import ISE_REQUEST_DURATION, ISE_REQUESTS, ISE_RETRIES
 
 logger = logging.getLogger(__name__)
 
@@ -64,11 +66,20 @@ class IseClient:
         HTTP 4xx/5xx are NOT retried — they are passed through as IseApiError.
         """
         logger.info("ISE %s %s params=%s", method, path, params)
+        _t0 = time.perf_counter()
+
+        def _on_retry(retry_state: Any) -> None:
+            ISE_RETRIES.inc()
+            logger.warning(
+                "ISE retry #%d: %s %s", retry_state.attempt_number, method, path
+            )
+
         try:
             async for attempt in AsyncRetrying(
                 retry=retry_if_exception_type(httpx.TransportError),
                 stop=stop_after_attempt(max(1, self._retry_attempts)),
                 wait=wait_exponential(multiplier=1, min=1, max=8),
+                before_sleep=_on_retry,
                 reraise=True,
             ):
                 with attempt:
@@ -81,8 +92,12 @@ class IseClient:
                             attempt.retry_state.attempt_number, method, path,
                         )
         except httpx.TransportError as exc:
+            ISE_REQUEST_DURATION.observe(time.perf_counter() - _t0)
+            ISE_REQUESTS.labels(method=method, outcome="error").inc()
             logger.error("ISE transport error on %s %s: %s", method, path, exc)
             raise IseApiError(0, f"transport error: {exc}") from exc
+
+        ISE_REQUEST_DURATION.observe(time.perf_counter() - _t0)
 
         if response.status_code >= 400:
             message = response.text
@@ -99,8 +114,11 @@ class IseClient:
             logger.warning(
                 "ISE %s %s -> %s: %s", method, path, response.status_code, message
             )
+            status_bucket = "4xx" if response.status_code < 500 else "5xx"
+            ISE_REQUESTS.labels(method=method, outcome=status_bucket).inc()
             raise IseApiError(response.status_code, message, payload)
 
+        ISE_REQUESTS.labels(method=method, outcome="2xx").inc()
         data = None if response.status_code == 204 or not response.content else response.json()
         if return_response:
             return data, response
