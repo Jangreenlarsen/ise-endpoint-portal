@@ -118,6 +118,14 @@ form .field.checkbox-field label {
   align-items: center;
   cursor: pointer;
 }
+.checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 400;
+  cursor: pointer;
+}
 form label {
   font-size: 0.85rem;
   font-weight: 600;

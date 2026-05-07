@@ -595,51 +595,48 @@ export async function renderSettings(container) {
       <div id="tpl-list" style="margin-bottom:1rem;"></div>
       <button type="button" id="tpl-new-btn" class="secondary">+ Ny skabelon</button>
 
-      <div id="tpl-form-wrap" class="hidden" style="margin-top:1.5rem;border-top:1px solid var(--border,#e2e8f0);padding-top:1rem;">
-        <h4 id="tpl-form-title" style="margin:0 0 1rem;">Ny skabelon</h4>
+      <div id="tpl-form-wrap" class="hidden" style="margin-top:1.5rem;border-top:1px solid var(--border,#e2e8f0);padding-top:1.25rem;">
+        <h4 id="tpl-form-title" style="margin:0 0 1.25rem;">Ny skabelon</h4>
         <input type="hidden" id="tpl-edit-id" value="" />
-        <div class="field">
-          <label for="tpl-name">Navn <span style="color:#e11d48;">*</span></label>
-          <input type="text" id="tpl-name" placeholder="fx ESP32-Modbus" required style="max-width:320px;" />
-        </div>
-        <div class="field">
-          <label for="tpl-desc-field">Beskrivelse</label>
-          <input type="text" id="tpl-desc-field" placeholder="(valgfri)" style="max-width:480px;" />
-        </div>
-        <div class="field">
-          <label for="tpl-group">Identity Group</label>
-          <select id="tpl-group" style="max-width:320px;">
-            <option value="">— ingen (ISE default) —</option>
-          </select>
-        </div>
-        <div class="field">
-          <label for="tpl-ep-desc">Standard beskrivelse på endpoint</label>
-          <input type="text" id="tpl-ep-desc" placeholder="(valgfri)" style="max-width:480px;" />
-        </div>
-        <div id="tpl-attrs-wrap"></div>
-        <div class="field">
-          <label>
-            <input type="checkbox" id="tpl-static-group" style="margin-right:0.4rem;" />
-            Static Group Assignment
-          </label>
-        </div>
-        <div class="field">
-          <label style="font-weight:600;">Synlig for roller</label>
-          <p class="hint" style="margin:0.2rem 0 0.5rem;">
-            Lad alle stå ukrydset = skabelonen er synlig for alle roller.
-            Krydses roller af = kun de valgte (plus admin/editor) kan se skabelonen.
-          </p>
-          <div style="display:flex;flex-wrap:wrap;gap:0.5rem 1.2rem;">
-            <label><input type="checkbox" class="tpl-visible-to" value="editor-psk" style="margin-right:0.3rem;" /> editor-psk</label>
-            <label><input type="checkbox" class="tpl-visible-to" value="viewer" style="margin-right:0.3rem;" /> viewer</label>
-            <label><input type="checkbox" class="tpl-visible-to" value="registrar" style="margin-right:0.3rem;" /> registrar</label>
-            <label><input type="checkbox" class="tpl-visible-to" value="registrar_templet" style="margin-right:0.3rem;" /> registrar_templet</label>
+        <form id="tpl-form" onsubmit="return false;" style="max-width:560px;">
+          <div class="field">
+            <label for="tpl-name">Navn <span style="color:#e11d48;">*</span></label>
+            <input type="text" id="tpl-name" placeholder="fx ESP32-Modbus" required />
           </div>
-        </div>
-        <div class="actions" style="margin-top:1rem;">
-          <button type="button" id="tpl-save-btn" class="primary">Gem skabelon</button>
-          <button type="button" id="tpl-cancel-btn" class="secondary">Annuller</button>
-        </div>
+          <div class="field">
+            <label for="tpl-desc-field">Beskrivelse af skabelon</label>
+            <input type="text" id="tpl-desc-field" placeholder="(valgfri kort beskrivelse af skabelonen)" />
+          </div>
+          <div class="field">
+            <label for="tpl-group">Identity Group</label>
+            <select id="tpl-group">
+              <option value="">— ingen (ISE default) —</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="tpl-ep-desc">Standard beskrivelse på endpoint</label>
+            <input type="text" id="tpl-ep-desc" placeholder="(valgfri — forudfylder endpoint-beskrivelsesfeltet)" />
+          </div>
+          <div id="tpl-attrs-wrap"></div>
+          <div class="field checkbox-field">
+            <input type="checkbox" id="tpl-static-group" />
+            <label for="tpl-static-group">Static Group Assignment</label>
+          </div>
+          <div class="field">
+            <label>Synlig for roller</label>
+            <p class="hint" style="margin:0 0 0.5rem;">Tom = synlig for alle roller. Sæt hak = kun de valgte (plus admin/editor) kan se skabelonen.</p>
+            <div style="display:flex;flex-wrap:wrap;gap:0.4rem 1.5rem;">
+              <label class="checkbox-label"><input type="checkbox" class="tpl-visible-to" value="editor-psk" /> editor-psk</label>
+              <label class="checkbox-label"><input type="checkbox" class="tpl-visible-to" value="viewer" /> viewer</label>
+              <label class="checkbox-label"><input type="checkbox" class="tpl-visible-to" value="registrar" /> registrar</label>
+              <label class="checkbox-label"><input type="checkbox" class="tpl-visible-to" value="registrar_templet" /> registrar_templet</label>
+            </div>
+          </div>
+          <div class="actions" style="margin-top:1.25rem;">
+            <button type="button" id="tpl-save-btn" class="primary">Gem skabelon</button>
+            <button type="button" id="tpl-cancel-btn" class="secondary">Annuller</button>
+          </div>
+        </form>
       </div>
     </div>
     ` : ""}
