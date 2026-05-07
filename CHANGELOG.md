@@ -5,7 +5,41 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
-## [3.25.0 build 0180] — 2026-05-07 — feat(templates): synlighed per rolle + registrant-systemrolle
+## [3.25.1 build 0184] — 2026-05-07 — feat+fix: per-bruger skabelontildeling + registrar_templet-rename + nav-lås
+
+**`backend/app/schemas/user.py`**:
+- Rolle `registrant` omdøbt til `registrar_templet`
+- Nyt felt `assigned_templates: list[str]` på `User`
+- Ny `UserTemplates`-schema (body for PUT `/users/{id}/templates`)
+
+**`backend/app/api/deps.py`**:
+- `get_current_user` populerer `assigned_templates` fra user-record
+- Alle rolle-referencer opdateret til `registrar_templet`
+
+**`backend/app/api/users.py`**:
+- Ny `PUT /api/users/{user_id}/templates` — admin tildeler skabeloner til `registrar_templet`-bruger
+
+**`backend/app/services/user_service.py`**:
+- `_to_public()` inkluderer `assigned_templates`
+- Ny `set_user_templates()` — validerer IDs mod skabelon-katalog, gemmer, audit-logger
+
+**`backend/app/api/templates.py`**:
+- `registrar_templet` med `assigned_templates` → ser kun tildelte skabeloner; uden tildeling → `visible_to`-filtrering
+
+**`frontend/js/api.js`**:
+- Ny `setUserTemplates(id, template_ids)`
+
+**`frontend/js/views/settings.js`**:
+- Users-tabel: ny "Skabeloner (registrar_templet)"-kolonne med checkboxes for `registrar_templet`-brugere
+- `initUsersSection` henter templates og renderer `user-tpl-chip` checkboxes
+- `change`-handler for `.user-tpl-chip` kalder `api.setUserTemplates()`
+
+**`frontend/js/app.js`**:
+- `registrar` og `registrar_templet` fjernet fra `settings`-routens roller — de lander direkte på Registrér ved login og kan ikke tilgå Settings
+
+---
+
+## [3.25.0 build 0180] — 2026-05-07 — feat(templates): synlighed per rolle + registrar_templet-systemrolle
 
 **`backend/app/schemas/user.py`**:
 - Tilføjet `"registrant"` til `Role` Literal og `ROLE_VALUES`
