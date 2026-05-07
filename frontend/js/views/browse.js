@@ -1730,7 +1730,20 @@ export async function renderBrowse(container) {
       container.querySelector("#d-identity-store").textContent = store || "—";
       detailMsg.innerHTML = "";
     } catch (err) {
-      detailMsg.innerHTML = `<div class="alert error">Kunne ikke hente: ${err.message}</div>`;
+      const httpStatus = parseInt(err.message?.split(":")[0], 10) || 0;
+      if (httpStatus === 503) {
+        detailMsg.innerHTML = `
+          <div class="alert warning">
+            ISE er midlertidigt utilgængelig — data kan ikke hentes lige nu.<br>
+            <button type="button" class="secondary" style="margin-top:.5rem" id="detail-retry-btn">Prøv igen</button>
+          </div>`;
+        detailMsg.querySelector("#detail-retry-btn")
+          ?.addEventListener("click", () => openDetail(id), { once: true });
+      } else if (httpStatus === 404) {
+        detailMsg.innerHTML = `<div class="alert error">Endpoint ikke fundet i ISE.</div>`;
+      } else {
+        detailMsg.innerHTML = `<div class="alert error">Fejl ved hentning af endpoint-detaljer — prøv igen eller kontakt administrator.</div>`;
+      }
     }
   }
 

@@ -28,6 +28,26 @@ from app.services.endpoint_service import EndpointService
 router = APIRouter(prefix="/endpoints", tags=["endpoints"])
 
 
+def _ise_http_error(exc: IseApiError, not_found_msg: str = "Endpoint ikke fundet") -> HTTPException:
+    """Konvertér IseApiError til en brugervenlig HTTPException.
+
+    - 404          → 404 med dansk besked
+    - transport (0)→ 503 "ISE midlertidigt utilgængelig"
+    - andet        → 502 med HTTP-status
+    """
+    if exc.status_code == 404:
+        return HTTPException(status_code=404, detail=not_found_msg)
+    if exc.status_code == 0:
+        return HTTPException(
+            status_code=503,
+            detail="ISE er midlertidigt utilgængelig — prøv igen om lidt",
+        )
+    return HTTPException(
+        status_code=502,
+        detail=f"ISE returnerede en uventet fejl (HTTP {exc.status_code})",
+    )
+
+
 def _scope_for(user: User) -> list[str] | None:
     """Returnér effektive roller eller None for admin (= ingen filter)."""
     if user.role == "admin":
@@ -69,7 +89,7 @@ async def list_endpoints(
             effective_roles=_scope_for(user),
         )
     except IseApiError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        raise _ise_http_error(exc) from exc
 
 
 @router.get("/details", response_model=PaginatedEndpointDetails)
@@ -92,7 +112,7 @@ async def list_endpoint_details(
             is_psk_editor=_is_psk_editor_for(user),
         )
     except IseApiError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        raise _ise_http_error(exc) from exc
 
 
 @router.get("/details/all", response_model=list[EndpointDetail])
@@ -117,7 +137,7 @@ async def list_all_endpoint_details(
             is_psk_editor=_is_psk_editor_for(user),
         )
     except IseApiError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        raise _ise_http_error(exc) from exc
 
 
 @router.get("/session-macs", response_model=list[str], dependencies=[Depends(require_any)])
@@ -131,7 +151,7 @@ async def list_session_macs(
     try:
         return await service.list_active_session_macs()
     except IseApiError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        raise _ise_http_error(exc) from exc
 
 
 @router.post("/{endpoint_id}/prioritize", status_code=status.HTTP_202_ACCEPTED)
@@ -168,12 +188,7 @@ async def get_endpoint(
             force_fresh=True,
         )
     except IseApiError as exc:
-        # 404 fra service betyder enten ISE ikke har endpointet, eller
-        # det ligger udenfor brugerens scope. I begge tilfælde returnerer
-        # vi 404 til klienten — bevidst, så scope-grænsen ikke leakes.
-        if exc.status_code == 404:
-            raise HTTPException(status_code=404, detail="Endpoint ikke fundet") from exc
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        raise _ise_http_error(exc) from exc
     if cache.enabled():
         age = cache.detail_age(endpoint_id)
         response.headers["X-Cache-Enabled"] = "true"
@@ -197,7 +212,7 @@ async def create_endpoint(
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except IseApiError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        raise _ise_http_error(exc) from exc
     return {"status": "created", "id": new_id}
 
 
@@ -225,7 +240,7 @@ async def update_endpoint(
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except IseApiError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        raise _ise_http_error(exc) from exc
     return {"status": "updated"}
 
 
@@ -237,7 +252,7 @@ async def delete_endpoint(
     try:
         await service.delete_endpoint(endpoint_id)
     except IseApiError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        raise _ise_http_error(exc) from exc
 
 
 @router.post("/{endpoint_id}/coa-reauth", response_model=CoaReauthResponse, dependencies=[Depends(require_editor)])
@@ -249,7 +264,7 @@ async def coa_reauth(
     try:
         ok, mac, msg = await service.coa_reauth(endpoint_id)
     except IseApiError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        raise _ise_http_error(exc) from exc
     return CoaReauthResponse(ok=ok, mac=mac, message=msg)
 
 
@@ -266,5 +281,5 @@ async def coa_disconnect(
     try:
         ok, mac, msg = await service.coa_disconnect(endpoint_id)
     except IseApiError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        raise _ise_http_error(exc) from exc
     return CoaReauthResponse(ok=ok, mac=mac, message=msg)

@@ -5,6 +5,20 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.15.5 build 0168] — 2026-05-07 — ux(errors): brugervenlige fejlbeskeder ved ISE-utilgængelighed
+
+**`backend/app/api/endpoints.py`:**
+- Ny `_ise_http_error(exc)` helper erstatter alle `raise HTTPException(502, str(exc))` i hele filen
+- Transport-fejl (status 0): returnerer **503** med "ISE er midlertidigt utilgængelig — prøv igen om lidt"
+- Uventet ISE-fejl: returnerer **502** med "ISE returnerede en uventet fejl (HTTP NNN)"
+- 404: uændret → "Endpoint ikke fundet"
+
+**`frontend/js/views/browse.js`:**
+- `openDetail()` catch-blok parser HTTP-statuskode fra `err.message`
+- 503: viser warning + "Prøv igen"-knap der kalder `openDetail(id)` igen
+- 404: viser "Endpoint ikke fundet i ISE."
+- Andet: viser generisk fejlbesked uden teknisk jargon
+
 ## [3.15.4 build 0167] — 2026-05-07 — fix(logs+cache): korrekt log-sti i API + 502-fallback til cached data
 
 **`backend/app/api/logs.py`:**
