@@ -23,7 +23,7 @@ const routes = {
   audit:      { render: renderAudit,      roles: ["admin", "editor", "editor-psk", "viewer"] },
   metrics:    { render: renderMetrics,    roles: ["admin"] },
   register:   { render: renderRegister,   roles: ["admin", "editor", "editor-psk", "registrar", "registrar_templet"] },
-  settings:   { render: renderSettings,   roles: ["admin", "editor", "editor-psk", "viewer", "registrar", "registrar_templet"] },
+  settings:   { render: renderSettings,   roles: ["admin", "editor", "editor-psk", "viewer"] },
 };
 
 const REGISTRAR_DEFAULT_ROUTE = "register";
