@@ -5,6 +5,34 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.16.0 build 0170] — 2026-05-07 — perf(scale): roles-indeks + async disk-save + group-paginering (10K-fix)
+
+**`backend/app/core/endpoint_cache.py`:**
+- Tilføjet `_roles_index: dict[str, set[str]]` — mappes `lowercase_rolle → {endpoint_id}`, vedligeholdes inkrementelt i `put_detail`, `invalidate_detail`, `invalidate_all` og `load_from_disk`. Non-admin Browse slipper for at hente alle 10K endpoints for at finde de synlige
+- Tilføjet `get_ids_for_roles(roles)` — O(1) opslag returnerer alle endpoint-IDs synlige for brugerens effektive roller
+- Tilføjet `detail_count()` — returnerer cache-størrelse; bruges til at skelne varm vs. kold cache
+- Tilføjet `save_to_disk_async(path)` — kører `save_to_disk` i `run_in_executor` så event loop ikke blokeres under JSON-serialisering af 10K entries (300–700 ms synkront)
+- `disk_stale_count()` returnerer nu `_disk_stale_count` counter (O(1)) i stedet for O(N) iteration over hele `_details`-dict
+- `put_detail` / `invalidate_detail` / `invalidate_all` / `load_from_disk` vedligeholder alle `_roles_index` og `_disk_stale_count`
+- `stats()` eksponerer `roles_index_roles` (antal unikke roller i indekset)
+
+**`backend/app/services/cache_prewarm.py`:**
+- `_save_to_disk` gjort `async` og awaiter `cache.save_to_disk_async()` — fjerner event-loop-blokering ved pre-warm scan-afslutning og portal-shutdown
+- `stop()` og `_full_scan()` awaiter nu `_save_to_disk()`
+
+**`backend/app/services/endpoint_service.py`:**
+- `list_endpoint_details`: varm cache + non-admin → delegerer til ny `_list_from_roles_index()` i stedet for ISE list_page + post-filter
+- `list_all_endpoint_details`: varm cache + non-admin → bruger roles-indeks (registrars "Mine endpoints" reduceret fra ~7 min til sub-sekund)
+- Ny `_list_from_roles_index(roles, page, size, is_psk_editor, search)`: henter IDs fra indekset, fetcher details fra cache (typisk < 1 ms per hit), filtrerer på search i Python, sorterer på MAC, paginerer
+- Kold cache falder tilbage til eksisterende ISE-baseret sti (startup-periode inden pre-warm)
+
+**`backend/app/ise/endpoints.py`:**
+- `IseEndpointGroupRepository.list_all()`: paginerer nu korrekt over alle ISE-sider (identisk med `IseEndpointRepository.list_all()`). Retter fejl ved ISE-deployments med >100 endpoint-identity-groups — tidligere returnerede kun de første 100
+
+**`version.json`:** 3.15.5 build 0169 → 3.16.0 build 0170
+
+---
+
 ## [3.15.5 build 0169] — 2026-05-07 — docs: komplet systemmanual (README + docs/INDEX + 01–05)
 
 **`README.md`:**

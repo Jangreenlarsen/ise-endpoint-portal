@@ -62,7 +62,7 @@ class PrewarmWorker:
         if not self._task:
             return
         # Gem til disk ved shutdown
-        self._save_to_disk()
+        await self._save_to_disk()
         self._stop.set()
         try:
             await asyncio.wait_for(self._task, timeout=10.0)
@@ -187,7 +187,7 @@ class PrewarmWorker:
                 self.status.total_endpoints,
                 elapsed,
             )
-            self._save_to_disk()
+            await self._save_to_disk()
         except Exception as exc:  # noqa: BLE001
             self.status.last_error = str(exc)
             logger.warning("prewarm: fuldt scan fejlede: %s", exc)
@@ -249,6 +249,17 @@ class PrewarmWorker:
             page += 1
         return all_ids
 
+    async def _save_to_disk(self) -> None:
+        """Async wrapper: runs save_to_disk in a thread-pool executor so the
+        event loop is not blocked by json.dumps + file write at large scale."""
+        path = self._get_disk_path()
+        if not path:
+            return
+        cache = get_cache()
+        saved = await cache.save_to_disk_async(path)
+        if saved > 0:
+            self.status.last_disk_save_at = time.time()
+
     def _get_disk_path(self) -> Path | None:
         disk_path_str = getattr(config.settings, "cache_disk_path", "")
         if not disk_path_str:
@@ -266,16 +277,6 @@ class PrewarmWorker:
         cache = get_cache()
         loaded = cache.load_from_disk(path)
         self.status.disk_loaded = loaded
-
-    def _save_to_disk(self) -> None:
-        path = self._get_disk_path()
-        if not path:
-            return
-        cache = get_cache()
-        saved = cache.save_to_disk(path)
-        if saved > 0:
-            self.status.last_disk_save_at = time.time()
-
 
 _worker: PrewarmWorker | None = None
 

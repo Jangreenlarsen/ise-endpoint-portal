@@ -162,8 +162,24 @@ class IseEndpointGroupRepository:
         self.client = client
 
     async def list_all(self) -> list[dict[str, Any]]:
-        data = await self.client.get(ERS_ENDPOINT_GROUPS, params={"size": 100})
-        return data.get("SearchResult", {}).get("resources", []) if data else []
+        """Fetch all endpoint groups across all ISE pages (ERS max 100 per page).
+        ISE deployments with >100 groups require pagination — a single size=100
+        call silently returns only the first 100."""
+        all_resources: list[dict[str, Any]] = []
+        page = 1
+        while True:
+            data = await self.client.get(
+                ERS_ENDPOINT_GROUPS,
+                params=[("size", 100), ("page", page)],
+            )
+            sr = data.get("SearchResult", {}) if data else {}
+            resources = sr.get("resources", [])
+            total = sr.get("total", len(resources))
+            all_resources.extend(resources)
+            if len(all_resources) >= total or not resources:
+                break
+            page += 1
+        return all_resources
 
     async def get_by_name(self, name: str) -> dict[str, Any] | None:
         data = await self.client.get(f"{ERS_ENDPOINT_GROUPS}/name/{name}")

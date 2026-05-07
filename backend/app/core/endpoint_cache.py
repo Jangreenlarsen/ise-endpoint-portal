@@ -72,6 +72,13 @@ class EndpointCache:
             "invalidations": 0,
             "disk_loads": 0,
         }
+        # roles_index maps lowercase role name → set of endpoint_ids that carry
+        # that role in their HypervisionRoles custom attribute.  Maintained by
+        # put_detail / invalidate_detail / invalidate_all / load_from_disk so
+        # non-admin Browse can skip fetching all 10K endpoints just to post-filter.
+        self._roles_index: dict[str, set[str]] = {}
+        # O(1) counter so disk_stale_count() avoids iterating _details.
+        self._disk_stale_count: int = 0
         self._last_sync_at: float | None = None
         self._last_sync_error: str | None = None
 
@@ -105,7 +112,49 @@ class EndpointCache:
         return entry is not None and entry.from_disk
 
     def disk_stale_count(self) -> int:
-        return sum(1 for e in self._details.values() if e.from_disk)
+        return self._disk_stale_count
+
+    # ------------------------------------------------------------------ #
+    # Roles index helpers                                                  #
+    # ------------------------------------------------------------------ #
+
+    def _add_to_roles_index(self, endpoint_id: str, value: Any) -> None:
+        roles = getattr(value, "roles", None)
+        if not roles:
+            return
+        for role in roles:
+            if role:
+                key = role.lower()
+                if key not in self._roles_index:
+                    self._roles_index[key] = set()
+                self._roles_index[key].add(endpoint_id)
+
+    def _remove_from_roles_index(self, endpoint_id: str, value: Any) -> None:
+        roles = getattr(value, "roles", None)
+        if not roles:
+            return
+        for role in roles:
+            if role:
+                key = role.lower()
+                bucket = self._roles_index.get(key)
+                if bucket is not None:
+                    bucket.discard(endpoint_id)
+                    if not bucket:
+                        del self._roles_index[key]
+
+    def get_ids_for_roles(self, roles: list[str]) -> set[str]:
+        """Return all cached endpoint IDs visible to a user with the given
+        effective roles.  Union of all role buckets — case-insensitive."""
+        result: set[str] = set()
+        for role in roles:
+            if role:
+                bucket = self._roles_index.get(role.lower())
+                if bucket:
+                    result |= bucket
+        return result
+
+    def detail_count(self) -> int:
+        return len(self._details)
 
     async def _fetch_and_store(
         self,
@@ -203,10 +252,22 @@ class EndpointCache:
     def put_detail(self, endpoint_id: str, value: Any, from_disk: bool = False) -> None:
         if not self.enabled():
             return
+        old = self._details.get(endpoint_id)
+        if old is not None:
+            self._remove_from_roles_index(endpoint_id, old.value)
+            if old.from_disk:
+                self._disk_stale_count -= 1
+        if from_disk:
+            self._disk_stale_count += 1
         self._details[endpoint_id] = CachedEntry(value, self._now(), from_disk=from_disk)
+        self._add_to_roles_index(endpoint_id, value)
 
     def invalidate_detail(self, endpoint_id: str) -> None:
-        if self._details.pop(endpoint_id, None) is not None:
+        entry = self._details.pop(endpoint_id, None)
+        if entry is not None:
+            self._remove_from_roles_index(endpoint_id, entry.value)
+            if entry.from_disk:
+                self._disk_stale_count -= 1
             self._stats["invalidations"] += 1
 
     async def _fetch_and_store_groups(
@@ -277,6 +338,8 @@ class EndpointCache:
         if self._details or self._groups:
             self._details.clear()
             self._groups = None
+            self._roles_index.clear()
+            self._disk_stale_count = 0
             self._stats["invalidations"] += 1
 
     def detail_ids(self) -> list[str]:
@@ -324,6 +387,13 @@ class EndpointCache:
             logger.warning("disk cache: save failed: %s", exc)
             return 0
 
+    async def save_to_disk_async(self, path: Path) -> int:
+        """Non-blocking variant: offload save_to_disk to a thread-pool executor
+        so the event loop is not held while json.dumps + file write run (can
+        take 300–700 ms at 10K endpoints)."""
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, self.save_to_disk, path)
+
     def load_from_disk(self, path: Path) -> int:
         """Load detail entries from a JSON file, flagged as from_disk=True.
         Existing in-memory (live) entries are NOT overwritten.
@@ -348,6 +418,8 @@ class EndpointCache:
                     self._details[ep_id] = CachedEntry(
                         value, fetched_at, from_disk=True
                     )
+                    self._add_to_roles_index(ep_id, value)
+                    self._disk_stale_count += 1
                     loaded += 1
                 except Exception:  # noqa: BLE001
                     pass
@@ -386,6 +458,7 @@ class EndpointCache:
             "disk_loads": self._stats["disk_loads"],
             "last_sync_at": self._last_sync_at,
             "last_sync_error": self._last_sync_error,
+            "roles_index_roles": len(self._roles_index),
             "inflight_detail_refreshes": sum(
                 1 for t in self._inflight_detail.values() if not t.done()
             ),

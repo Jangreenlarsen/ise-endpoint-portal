@@ -248,11 +248,15 @@ class EndpointService:
     ) -> PaginatedEndpointDetails:
         """List endpoints with full details (concurrent fetches, max 5 parallel).
 
-        Hvis ``effective_roles`` er sat (non-admin), filtreres rækker
-        post-fetch på ``HypervisionRoles``-overlap. ``total`` rapporterer
-        det filtrerede antal for den hentede side; den globale total er
-        ikke kendt uden en fuld scan.
+        Hvis ``effective_roles`` er sat (non-admin) og cachen er varm, bruges
+        roles-indekset: O(1) opslag giver de synlige endpoint-IDs direkte fra
+        cache uden at hente alle ISE-endpoints. Kold cache falder tilbage til
+        ISE list_page + post-filter (samme som admins sti).
         """
+        if effective_roles is not None and get_cache().detail_count() > 0:
+            return await self._list_from_roles_index(
+                effective_roles, page, size, is_psk_editor, search=search
+            )
         filters = _combine_filters(search, filters)
         resources, total = await self.endpoints.list_page(
             page=page, size=size, filters=filters
@@ -282,7 +286,7 @@ class EndpointService:
         if effective_roles is not None:
             visible = [d for d in items if _endpoint_visible(d, effective_roles)]
             logger.info(
-                "role-filter: %d → %d endpoints (effective_roles=%s)",
+                "role-filter (cold-cache fallback): %d → %d endpoints (effective_roles=%s)",
                 len(items), len(visible), effective_roles,
             )
             items = visible
@@ -290,6 +294,53 @@ class EndpointService:
         return PaginatedEndpointDetails(
             items=items, total=total, page=page, size=size
         )
+
+    async def _list_from_roles_index(
+        self,
+        effective_roles: list[str],
+        page: int,
+        size: int,
+        is_psk_editor: bool,
+        search: str | None = None,
+    ) -> PaginatedEndpointDetails:
+        """Hurtig sti for non-admin Browse: brug roles-indeks i stedet for at
+        hente alle ISE-endpoints og post-filtrere.
+
+        Alle IDs hentes fra cache-indekset (O(1) per rolle).  Details fetches
+        fra cache (typisk sub-ms hit).  Søg filtreres i Python på MAC + beskrivelse.
+        Resultat sorteres på MAC for konsistent visning.
+        """
+        cache = get_cache()
+        all_ids = list(cache.get_ids_for_roles(effective_roles))
+
+        sem = asyncio.Semaphore(5)
+
+        async def fetch_one(ep_id: str) -> EndpointDetail | None:
+            async with sem:
+                try:
+                    return await self.get_endpoint(ep_id, is_psk_editor=is_psk_editor)
+                except IseApiError:
+                    return None
+
+        results = await asyncio.gather(*(fetch_one(i) for i in all_ids))
+        items: list[EndpointDetail] = [r for r in results if r is not None]
+
+        if search:
+            low = search.strip().lower()
+            items = [
+                d for d in items
+                if low in d.mac.lower() or low in (d.description or "").lower()
+            ]
+
+        items.sort(key=lambda d: d.mac or d.name)
+        total = len(items)
+        start = (page - 1) * size
+        page_items = items[start:start + size]
+        logger.info(
+            "roles-index list: %d total visible, page=%d → %d items (effective_roles=%s)",
+            total, page, len(page_items), effective_roles,
+        )
+        return PaginatedEndpointDetails(items=page_items, total=total, page=page, size=size)
 
     async def list_all_endpoint_details(
         self,
@@ -300,9 +351,37 @@ class EndpointService:
     ) -> list[EndpointDetail]:
         """Fetch ALL endpoints with full details (all ISE pages, concurrent).
 
-        Hvis ``effective_roles`` er sat (non-admin), filtreres listen
-        post-fetch på ``HypervisionRoles``-overlap.
+        Hvis ``effective_roles`` er sat (non-admin) og cachen er varm, bruges
+        roles-indekset til at returnere kun brugerens endpoints uden ISE-scan.
+        Kold cache falder tilbage til fuld ISE list_all + post-filter.
         """
+        if effective_roles is not None and get_cache().detail_count() > 0:
+            cache = get_cache()
+            all_ids = list(cache.get_ids_for_roles(effective_roles))
+            sem = asyncio.Semaphore(5)
+
+            async def fetch_indexed(ep_id: str) -> EndpointDetail | None:
+                async with sem:
+                    try:
+                        return await self.get_endpoint(ep_id, is_psk_editor=is_psk_editor)
+                    except IseApiError:
+                        return None
+
+            results = await asyncio.gather(*(fetch_indexed(i) for i in all_ids))
+            items: list[EndpointDetail] = [r for r in results if r is not None]
+            if search:
+                low = search.strip().lower()
+                items = [
+                    d for d in items
+                    if low in d.mac.lower() or low in (d.description or "").lower()
+                ]
+            items.sort(key=lambda d: d.mac or d.name)
+            logger.info(
+                "roles-index list_all: %d endpoints (effective_roles=%s)",
+                len(items), effective_roles,
+            )
+            return items
+
         filters = _combine_filters(search, filters)
         resources = await self.endpoints.list_all(filters=filters)
         logger.info(
@@ -325,15 +404,15 @@ class EndpointService:
                     )
 
         details = await asyncio.gather(*(fetch_one(r) for r in resources))
-        items = list(details)
+        all_items = list(details)
         if effective_roles is not None:
-            visible = [d for d in items if _endpoint_visible(d, effective_roles)]
+            visible = [d for d in all_items if _endpoint_visible(d, effective_roles)]
             logger.info(
-                "role-filter (all): %d → %d endpoints (effective_roles=%s)",
-                len(items), len(visible), effective_roles,
+                "role-filter (all, cold-cache fallback): %d → %d endpoints (effective_roles=%s)",
+                len(all_items), len(visible), effective_roles,
             )
-            items = visible
-        return items
+            all_items = visible
+        return all_items
 
     async def list_groups(self) -> list[EndpointGroupSummary]:
         return await get_cache().get_groups(self._fetch_groups)
