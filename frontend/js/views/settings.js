@@ -1459,17 +1459,42 @@ async function initUsersSection(container, currentUser, rolesState) {
     return `<div class="role-chips">${checks}</div>`;
   }
 
+  function visibleTemplatesForRole(role) {
+    if (role === "admin") return null; // null = alle
+    return allTemplates.filter((t) => {
+      const vt = t.visible_to || [];
+      return vt.length === 0 || vt.includes(role);
+    });
+  }
+
   function renderTemplateCell(user) {
-    if (user.role !== "registrar_templet") return `<span style="color:var(--text-secondary,#94a3b8);">—</span>`;
-    if (!allTemplates.length) return `<span class="hint">Ingen skabeloner endnu</span>`;
-    const assigned = new Set(user.assigned_templates || []);
-    const checks = allTemplates
-      .map((t) => {
-        const checked = assigned.has(t.id) ? " checked" : "";
-        return `<label class="role-chip"><input type="checkbox" class="user-tpl-chip" value="${esc(t.id)}"${checked}/> ${esc(t.name)}</label>`;
-      })
+    if (!allTemplates.length) return `<span class="hint" style="color:var(--text-secondary,#94a3b8);">Ingen skabeloner</span>`;
+
+    if (user.role === "admin") {
+      return `<span class="hint" style="font-style:italic;">Alle (${allTemplates.length})</span>`;
+    }
+
+    if (user.role === "registrar_templet") {
+      // Redigerbare checkboxes — admin tildeler eksplicit
+      const assigned = new Set(user.assigned_templates || []);
+      const checks = allTemplates
+        .map((t) => {
+          const checked = assigned.has(t.id) ? " checked" : "";
+          return `<label class="role-chip"><input type="checkbox" class="user-tpl-chip" value="${esc(t.id)}"${checked}/> ${esc(t.name)}</label>`;
+        })
+        .join("");
+      return `<div class="role-chips">${checks}</div>`;
+    }
+
+    // Alle andre roller: vis hvilke skabeloner de kan se via visible_to
+    const visible = visibleTemplatesForRole(user.role);
+    if (!visible.length) {
+      return `<span class="hint" style="color:var(--text-secondary,#94a3b8);">Ingen adgang</span>`;
+    }
+    const tags = visible
+      .map((t) => `<span class="role-chip" style="background:var(--bg-secondary,#f1f5f9);border:1px solid var(--border,#e2e8f0);padding:1px 7px;border-radius:4px;font-size:0.78rem;">${esc(t.name)}</span>`)
       .join("");
-    return `<div class="role-chips">${checks}</div>`;
+    return `<div style="display:flex;flex-wrap:wrap;gap:0.25rem;">${tags}</div>`;
   }
 
   async function reload() {

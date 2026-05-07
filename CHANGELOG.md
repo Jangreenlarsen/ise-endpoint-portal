@@ -5,6 +5,18 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.25.3 build 0190] — 2026-05-07 — feat(users): synlige skabeloner vist pr. bruger i Adgang-tabellen
+
+**`frontend/js/views/settings.js`**:
+- `renderTemplateCell()` viser nu effektiv skabelonadgang for alle roller:
+  - `admin` → "Alle (N)" (læs: altid fuld adgang)
+  - `registrar_templet` → redigerbare checkboxes som før (admin tildeler eksplicit)
+  - Alle andre roller (`editor`, `editor-psk`, `viewer`, `registrar`) → read-only tags med skabeloner der matcher `visible_to` (tom liste = alle; ellers kun matchende)
+  - Ingen matchende skabeloner → "Ingen adgang"
+- Ny hjælpefunktion `visibleTemplatesForRole(role)` beregner effektiv liste
+
+---
+
 ## [3.25.3 build 0189] — 2026-05-07 — style+copy: skabelon-formular layout + hint-tekst
 
 **`frontend/js/views/settings.js`**:
