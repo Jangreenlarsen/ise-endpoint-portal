@@ -27,7 +27,11 @@ CACHE_STALE_SERVES = Counter(
 )
 CACHE_EVICTIONS = Counter(
     "ise_portal_cache_evictions_total",
-    "Number of FIFO evictions triggered by cache_max_entries limit.",
+    "Number of FIFO evictions triggered by cache_max_entries or cache_max_memory_mb limit.",
+)
+CACHE_MEMORY_BYTES = Gauge(
+    "ise_portal_cache_memory_bytes",
+    "Estimated memory used by endpoint detail entries (sum of JSON-serialised sizes).",
 )
 CACHE_ENTRIES = Gauge(
     "ise_portal_cache_entries",

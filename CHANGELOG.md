@@ -5,6 +5,27 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.21.0 build 0175] — 2026-05-07 — feat(cache): memory-baseret eviction (300 MB grænse)
+
+**`backend/app/core/endpoint_cache.py`**:
+- `CachedEntry` får nyt felt `size_bytes: int = 0` — størrelse estimeres via `model_dump_json()` ved indsættelse
+- `EndpointCache._total_bytes` — løbende byte-tæller, nulstilles ved `invalidate_all`
+- `_max_memory_bytes()` — læser ny `cache_max_memory_mb` setting (default 300 MB)
+- `_estimate_size()` — estimerer entry-størrelse fra JSON-serialisering; fallback 8 KB
+- `put_detail()` — eviction-løkken tjekker nu **begge** grænser: `max_entries` og `max_memory_bytes`
+- `_evict_oldest()` / `invalidate_detail()` / `invalidate_all()` — fratrækker korrekt fra `_total_bytes`
+- `_fetch_and_store()` og fallback i `get_detail()` bruger nu `put_detail()` i stedet for direkte dict-assignment
+- `load_from_disk()` bruger `put_detail()` + bevarer original `fetched_at`
+- `stats()` eksponerer `total_bytes` og `max_memory_bytes`
+
+**`backend/app/core/metrics.py`**:
+- Ny Prometheus gauge `ise_portal_cache_memory_bytes` — estimeret hukommelsesforbrug
+
+**`backend/app/core/config.py`**:
+- Ny setting `cache_max_memory_mb: int = 300` — konfigurerbar memory-grænse (0 = ubegrænset)
+
+---
+
 ## [3.20.0 build 0174] — 2026-05-07 — feat(frontend): metrics-dashboard
 
 **`frontend/js/views/metrics.js`** (ny):

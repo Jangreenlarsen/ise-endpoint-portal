@@ -43,6 +43,7 @@ from app.core.metrics import (
     CACHE_ENTRIES,
     CACHE_EVICTIONS,
     CACHE_HITS,
+    CACHE_MEMORY_BYTES,
     CACHE_MISSES,
     CACHE_STALE_SERVES,
 )
@@ -60,6 +61,7 @@ class CachedEntry(Generic[T]):
     value: T
     fetched_at: float
     from_disk: bool = False
+    size_bytes: int = 0
 
 
 class EndpointCache:
@@ -88,6 +90,7 @@ class EndpointCache:
         self._roles_index: dict[str, set[str]] = {}
         # O(1) counter so disk_stale_count() avoids iterating _details.
         self._disk_stale_count: int = 0
+        self._total_bytes: int = 0
         self._last_sync_at: float | None = None
         self._last_sync_error: str | None = None
 
@@ -173,9 +176,8 @@ class EndpointCache:
         """Fetch from ISE, store in cache, return value. Cleans up inflight entry."""
         try:
             value = await fetch_fn()
-            self._details[endpoint_id] = CachedEntry(value, self._now(), from_disk=False)
+            self.put_detail(endpoint_id, value, from_disk=False)
             self._stats["bg_refreshes"] += 1
-            CACHE_ENTRIES.set(len(self._details))
             return value
         except Exception as exc:  # noqa: BLE001
             logger.warning("cache fetch failed id=%s err=%s", endpoint_id, exc)
@@ -252,7 +254,7 @@ class EndpointCache:
                 raise  # no cached data at all — propagate so caller can 502
         # Fallback: no event loop (shouldn't happen at runtime).
         value = await fetch_fn()
-        self._details[endpoint_id] = CachedEntry(value, self._now(), from_disk=False)
+        self.put_detail(endpoint_id, value, from_disk=False)
         return value
 
     def _spawn_detail_refresh(
@@ -266,12 +268,27 @@ class EndpointCache:
     def _max_entries() -> int:
         return int(getattr(config.settings, "cache_max_entries", 5000))
 
+    @staticmethod
+    def _max_memory_bytes() -> int:
+        mb = int(getattr(config.settings, "cache_max_memory_mb", 300))
+        return mb * 1024 * 1024 if mb > 0 else 0
+
+    @staticmethod
+    def _estimate_size(value: Any) -> int:
+        try:
+            if hasattr(value, "model_dump_json"):
+                return len(value.model_dump_json().encode())
+            return len(json.dumps(value if isinstance(value, dict) else vars(value)).encode())
+        except Exception:  # noqa: BLE001
+            return 8192  # fallback ~8 KB
+
     def _evict_oldest(self) -> None:
         """Evict the oldest (first-inserted) entry. FIFO — O(1) with ordered dict."""
         oldest_id, oldest_entry = next(iter(self._details.items()))
         self._remove_from_roles_index(oldest_id, oldest_entry.value)
         if oldest_entry.from_disk:
             self._disk_stale_count -= 1
+        self._total_bytes -= oldest_entry.size_bytes
         del self._details[oldest_id]
         self._stats["evictions"] += 1
         CACHE_EVICTIONS.inc()
@@ -279,23 +296,32 @@ class EndpointCache:
     def put_detail(self, endpoint_id: str, value: Any, from_disk: bool = False) -> None:
         if not self.enabled():
             return
+        size_bytes = self._estimate_size(value)
         old = self._details.get(endpoint_id)
         if old is not None:
             self._remove_from_roles_index(endpoint_id, old.value)
             if old.from_disk:
                 self._disk_stale_count -= 1
+            self._total_bytes -= old.size_bytes
         else:
-            # New entry: enforce size limit before inserting.
+            # New entry: enforce both limits before inserting.
             max_entries = self._max_entries()
-            if max_entries > 0:
-                while len(self._details) >= max_entries:
-                    self._evict_oldest()
+            max_bytes = self._max_memory_bytes()
+            while self._details and (
+                (max_entries > 0 and len(self._details) >= max_entries)
+                or (max_bytes > 0 and self._total_bytes + size_bytes > max_bytes)
+            ):
+                self._evict_oldest()
         if from_disk:
             self._disk_stale_count += 1
-        self._details[endpoint_id] = CachedEntry(value, self._now(), from_disk=from_disk)
+        self._details[endpoint_id] = CachedEntry(
+            value, self._now(), from_disk=from_disk, size_bytes=size_bytes
+        )
+        self._total_bytes += size_bytes
         self._add_to_roles_index(endpoint_id, value)
         CACHE_ENTRIES.set(len(self._details))
         CACHE_DISK_STALE.set(self._disk_stale_count)
+        CACHE_MEMORY_BYTES.set(self._total_bytes)
 
     def invalidate_detail(self, endpoint_id: str) -> None:
         entry = self._details.pop(endpoint_id, None)
@@ -303,8 +329,10 @@ class EndpointCache:
             self._remove_from_roles_index(endpoint_id, entry.value)
             if entry.from_disk:
                 self._disk_stale_count -= 1
+            self._total_bytes -= entry.size_bytes
             self._stats["invalidations"] += 1
             CACHE_ENTRIES.set(len(self._details))
+            CACHE_MEMORY_BYTES.set(self._total_bytes)
 
     async def _fetch_and_store_groups(
         self,
@@ -376,9 +404,11 @@ class EndpointCache:
             self._groups = None
             self._roles_index.clear()
             self._disk_stale_count = 0
+            self._total_bytes = 0
             self._stats["invalidations"] += 1
             CACHE_ENTRIES.set(0)
             CACHE_DISK_STALE.set(0)
+            CACHE_MEMORY_BYTES.set(0)
 
     def detail_ids(self) -> list[str]:
         return list(self._details.keys())
@@ -453,11 +483,12 @@ class EndpointCache:
                     value = EndpointDetail.model_validate(raw["value"])
                     value.cache_stale = True
                     fetched_at = float(raw.get("fetched_at", 0.0))
-                    self._details[ep_id] = CachedEntry(
-                        value, fetched_at, from_disk=True
-                    )
-                    self._add_to_roles_index(ep_id, value)
-                    self._disk_stale_count += 1
+                    self.put_detail(ep_id, value, from_disk=True)
+                    # Preserve original timestamp so TTL is relative to when ISE
+                    # data was actually fetched, not when we loaded from disk.
+                    entry = self._details.get(ep_id)
+                    if entry is not None:
+                        entry.fetched_at = fetched_at
                     loaded += 1
                 except Exception:  # noqa: BLE001
                     pass
@@ -482,12 +513,15 @@ class EndpointCache:
 
     def stats(self) -> dict[str, Any]:
         max_entries = self._max_entries()
+        max_bytes = self._max_memory_bytes()
         return {
             "enabled": self.enabled(),
             "ttl_seconds": self._ttl(),
             "stale_while_revalidate": self._swr(),
             "detail_entries": len(self._details),
             "max_entries": max_entries if max_entries > 0 else "unlimited",
+            "total_bytes": self._total_bytes,
+            "max_memory_bytes": max_bytes if max_bytes > 0 else "unlimited",
             "disk_stale_entries": self.disk_stale_count(),
             "groups_cached": self._groups is not None,
             "hits": self._stats["hits"],

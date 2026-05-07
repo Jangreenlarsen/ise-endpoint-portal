@@ -114,8 +114,16 @@ class Settings(BaseSettings):
         description=(
             "Max antal endpoint-entries i in-memory cachen. Når grænsen nås "
             "evictes ældste (FIFO) entries ved næste put_detail. "
-            "0 = ubegrænset (default-adfærd frem til 3.17.0). "
-            "5000 entries ≈ 37 MB ved ~7,5 KB/endpoint."
+            "0 = ubegrænset. 5000 entries ≈ 37 MB ved ~7,5 KB/endpoint."
+        ),
+    )
+    cache_max_memory_mb: int = Field(
+        default=300,
+        description=(
+            "Max hukommelsesforbrug for endpoint-cache i MB (målt som JSON-størrelse). "
+            "Eviction sker når samlet estimeret størrelse overstiger grænsen — "
+            "aktiveres parallelt med cache_max_entries (begge grænser håndhæves). "
+            "0 = ubegrænset."
         ),
     )
     cache_prewarm_concurrency: int = Field(
