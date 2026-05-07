@@ -5,6 +5,33 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.15.5 build 0169] — 2026-05-07 — docs: komplet systemmanual (README + docs/INDEX + 01–05)
+
+**`README.md`:**
+- Komplet omskrivning med en-sides forklaring af portal-systemet, hvorfor REST + pxGrid, opdateret funktionsliste, hurtigstart, forudsætninger og links til docs/-sektioner
+
+**`docs/INDEX.md`** (ny):
+- Hoveddokument med indholdsfortegnelse, sektionsoversigt og ændringslog for manualen
+
+**`docs/01-OVERBLIK.md`** (ny):
+- Systemoverblik: formål, ASCII-arkitekturdiagram, REST-integration (ERS/Open API/MnT), pxGrid 2.0, cache-arkitektur (to-lags + pre-warm), roller/System adm-scoping, tre dataflow-eksempler
+
+**`docs/02-INSTALLATION.md`** (ny):
+- Forudsætninger, trin-for-trin installation, ISE ERS/Open API aktivering, ISE-bruger opsætning, pxGrid-aktivering, konfigurationsfiler, START.bat og NSSM Windows Service, verificeringstjekliste
+
+**`docs/03-BRUGERGUIDE.md`** (ny):
+- Browse/Edit (kolonner, søg/filter, sessionsfarve, edit-modal, bulk-edit, CoA), opret endpoint, CSV-import (ISE-format og simpelt format), attribut-administration, PlatformType-mapping, CoA-binding, ACL-editor, PSK-workflow, register-view (registrar), fejlbesked-oversigt
+
+**`docs/04-ADMIN.md`** (ny):
+- Brugerstyring (opret/slet/roller/System adm-tags), alle Settings-sektioner, cache-parametre, pxGrid-opsætning (tre certifikatmetoder + STOMP-prober), system-opdatering via ZIP, Logs-siden
+
+**`docs/05-DRIFT.md`** (ny):
+- Start/stop/genstart (START.bat + NSSM), backup-oversigt og -procedure, log-rotation, fejlsøgningsguide (tabel med symptomer og løsninger), ydelsestuning (TTL/interval/concurrency), ISE-timeout anbefalinger
+
+**`version.json`:** build 0168 → 0169
+
+---
+
 ## [3.15.5 build 0168] — 2026-05-07 — ux(errors): brugervenlige fejlbeskeder ved ISE-utilgængelighed
 
 **`backend/app/api/endpoints.py`:**
