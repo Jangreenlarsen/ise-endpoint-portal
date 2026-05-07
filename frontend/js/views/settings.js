@@ -628,7 +628,6 @@ export async function renderSettings(container) {
             <div style="display:flex;flex-wrap:wrap;gap:0.4rem 1.5rem;">
               <label class="checkbox-label"><input type="checkbox" class="tpl-visible-to" value="editor" /> editor</label>
               <label class="checkbox-label"><input type="checkbox" class="tpl-visible-to" value="editor-psk" /> editor-psk</label>
-              <label class="checkbox-label"><input type="checkbox" class="tpl-visible-to" value="viewer" /> viewer</label>
               <label class="checkbox-label"><input type="checkbox" class="tpl-visible-to" value="registrar" /> registrar</label>
               <label class="checkbox-label"><input type="checkbox" class="tpl-visible-to" value="registrar_templet" /> registrar_templet</label>
             </div>
@@ -1468,6 +1467,9 @@ async function initUsersSection(container, currentUser, rolesState) {
   }
 
   function renderTemplateCell(user) {
+    // viewer kan ikke oprette endpoints — skabeloner ikke relevante
+    if (user.role === "viewer") return `<span style="color:var(--text-secondary,#94a3b8);">—</span>`;
+
     if (!allTemplates.length) return `<span class="hint" style="color:var(--text-secondary,#94a3b8);">Ingen skabeloner</span>`;
 
     if (user.role === "admin") {

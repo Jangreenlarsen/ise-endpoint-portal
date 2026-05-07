@@ -5,6 +5,14 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.25.3 build 0191] — 2026-05-07 — fix(templates): viewer fjernet fra skabelon-synlighed
+
+**`frontend/js/views/settings.js`**:
+- `viewer` fjernet fra "Synlig for roller" checkboxes — viewer kan ikke oprette endpoints og har ingen brug for skabeloner
+- `renderTemplateCell()` viser "—" for viewer-brugere i brugertabellen
+
+---
+
 ## [3.25.3 build 0190] — 2026-05-07 — feat(users): synlige skabeloner vist pr. bruger i Adgang-tabellen
 
 **`frontend/js/views/settings.js`**:
