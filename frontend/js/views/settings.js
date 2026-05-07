@@ -682,9 +682,13 @@ export async function renderSettings(container) {
 
       <div id="update-result" class="hidden" style="margin-top:1rem;">
         <div id="update-result-msg"></div>
-        <div class="actions" style="margin-top:1rem;">
+      </div>
+
+      <div style="margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border,#e2e8f0);">
+        <h4 style="margin:0 0 0.5rem;">Genstart server</h4>
+        <p class="hint" style="margin:0 0 0.75rem;">Genstarter backend-processen. Kræver at START.bat kører i loop-tilstand. Siden genindlæses automatisk.</p>
+        <div class="actions">
           <button type="button" id="update-restart-btn" class="secondary">Genstart server</button>
-          <span class="hint" style="margin-left:0.5rem;">Kræver at START.bat kører i loop-tilstand</span>
         </div>
       </div>
     </div>
@@ -2103,11 +2107,11 @@ function initSystemUpdateSection(container) {
     restartBtn.disabled = true;
     try {
       await api.restartServer();
-      resultMsg.innerHTML += `<div class="alert info" style="margin-top:0.5rem;">Server genstarter... siden genindlæses automatisk om 8 sekunder.</div>`;
+      msgEl.innerHTML = `<div class="alert info">Server genstarter... siden genindlæses automatisk om 8 sekunder.</div>`;
       setTimeout(() => window.location.reload(), 8000);
     } catch {
       // Serveren lukker ned — det er forventet at kaldet fejler
-      resultMsg.innerHTML += `<div class="alert info" style="margin-top:0.5rem;">Server genstarter... siden genindlæses automatisk om 8 sekunder.</div>`;
+      msgEl.innerHTML = `<div class="alert info">Server genstarter... siden genindlæses automatisk om 8 sekunder.</div>`;
       setTimeout(() => window.location.reload(), 8000);
     }
   });
