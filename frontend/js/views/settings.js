@@ -1445,10 +1445,6 @@ async function initUsersSection(container, currentUser, rolesState) {
   const msg = container.querySelector("#users-msg");
 
   let allTemplates = [];
-  try {
-    const tplResp = await api.listTemplates().catch(() => ({ templates: [] }));
-    allTemplates = tplResp.templates || [];
-  } catch { /* ignorer */ }
 
   function renderEndpointRoleCell(user) {
     const catalog = (rolesState ? rolesState.roles : []).filter((r) => r.name.toLowerCase() !== "admin");
@@ -1480,6 +1476,10 @@ async function initUsersSection(container, currentUser, rolesState) {
 
   async function reload() {
     msg.innerHTML = "";
+    try {
+      const tplResp = await api.listTemplates().catch(() => ({ templates: [] }));
+      allTemplates = tplResp.templates || [];
+    } catch { /* ignorer */ }
     try {
       const users = await api.listUsers();
       tbody.innerHTML = users
