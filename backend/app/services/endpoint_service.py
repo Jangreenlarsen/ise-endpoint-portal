@@ -220,15 +220,21 @@ class EndpointService:
             return ""
         if not hasattr(self, "_group_cache"):
             self._group_cache: dict[str, str] = {}
+        if not hasattr(self, "_group_cache_lock"):
+            self._group_cache_lock = asyncio.Lock()
         if group_id in self._group_cache:
             return self._group_cache[group_id]
-        # Populate cache from group list
-        try:
-            raw = await self.groups.list_all()
-            for g in raw:
-                self._group_cache[g.get("id", "")] = g.get("name", "")
-        except IseApiError:
-            pass
+        # Lock prevents N concurrent endpoint-fetches from all hitting ISE for
+        # the same group list when the local cache is cold.
+        async with self._group_cache_lock:
+            if group_id in self._group_cache:
+                return self._group_cache[group_id]
+            try:
+                raw = await self.groups.list_all()
+                for g in raw:
+                    self._group_cache[g.get("id", "")] = g.get("name", "")
+            except IseApiError:
+                pass
         return self._group_cache.get(group_id, "")
 
     async def list_endpoint_details(

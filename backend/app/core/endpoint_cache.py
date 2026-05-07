@@ -132,6 +132,10 @@ class EndpointCache:
         """Return an existing in-flight task for endpoint_id, or create a new one.
 
         Returns None if the event loop is not running (startup edge case).
+        The done-callback on new tasks calls task.exception() which marks the
+        exception as "retrieved" so asyncio does not log "Task exception was
+        never retrieved" for fire-and-forget SWR callers. Direct awaiters still
+        receive the exception normally when they await the task.
         """
         existing = self._inflight_detail.get(endpoint_id)
         if existing and not existing.done():
@@ -139,6 +143,9 @@ class EndpointCache:
         try:
             task = asyncio.create_task(self._fetch_and_store(endpoint_id, fetch_fn))
             self._inflight_detail[endpoint_id] = task
+            task.add_done_callback(
+                lambda t: t.exception() if not t.cancelled() else None
+            )
             return task
         except RuntimeError:
             return None
@@ -190,6 +197,38 @@ class EndpointCache:
         if self._details.pop(endpoint_id, None) is not None:
             self._stats["invalidations"] += 1
 
+    async def _fetch_and_store_groups(
+        self,
+        fetch_fn: Callable[[], Awaitable[Any]],
+    ) -> Any:
+        """Fetch groups from ISE, store in cache, return value."""
+        try:
+            value = await fetch_fn()
+            self._groups = CachedEntry(value, self._now())
+            self._stats["bg_refreshes"] += 1
+            return value
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("cache bg-refresh groups failed: %s", exc)
+            raise
+        finally:
+            self._inflight_groups = None
+
+    def _get_or_create_groups_inflight(
+        self,
+        fetch_fn: Callable[[], Awaitable[Any]],
+    ) -> asyncio.Task[Any] | None:
+        if self._inflight_groups and not self._inflight_groups.done():
+            return self._inflight_groups
+        try:
+            task = asyncio.create_task(self._fetch_and_store_groups(fetch_fn))
+            self._inflight_groups = task
+            task.add_done_callback(
+                lambda t: t.exception() if not t.cancelled() else None
+            )
+            return task
+        except RuntimeError:
+            return None
+
     async def get_groups(
         self,
         fetch_fn: Callable[[], Awaitable[Any]],
@@ -201,9 +240,13 @@ class EndpointCache:
             return self._groups.value
         if self._groups and self._swr() and self._stale_servable(self._groups):
             self._stats["stale_serves"] += 1
-            self._spawn_groups_refresh(fetch_fn)
+            self._get_or_create_groups_inflight(fetch_fn)  # fire-and-forget
             return self._groups.value
+        # Miss — coalesce concurrent fetches so only one hits ISE.
         self._stats["misses"] += 1
+        task = self._get_or_create_groups_inflight(fetch_fn)
+        if task is not None:
+            return await task
         value = await fetch_fn()
         self._groups = CachedEntry(value, self._now())
         return value
@@ -211,23 +254,7 @@ class EndpointCache:
     def _spawn_groups_refresh(
         self, fetch_fn: Callable[[], Awaitable[Any]]
     ) -> None:
-        if self._inflight_groups and not self._inflight_groups.done():
-            return
-
-        async def _refresh() -> None:
-            try:
-                value = await fetch_fn()
-                self._groups = CachedEntry(value, self._now())
-                self._stats["bg_refreshes"] += 1
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("cache bg-refresh groups failed: %s", exc)
-            finally:
-                self._inflight_groups = None
-
-        try:
-            self._inflight_groups = asyncio.create_task(_refresh())
-        except RuntimeError:
-            pass
+        self._get_or_create_groups_inflight(fetch_fn)
 
     def invalidate_groups(self) -> None:
         if self._groups is not None:

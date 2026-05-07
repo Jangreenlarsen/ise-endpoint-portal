@@ -5,6 +5,17 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.15.3 build 0166] — 2026-05-07 — fix(cache): fjern "Task exception was never retrieved" + coalescer group-fetches
+
+**`backend/app/core/endpoint_cache.py`:**
+- `_get_or_create_inflight()`: tilføjet `task.add_done_callback(lambda t: t.exception() if not t.cancelled() else None)` — markerer exception som "retrieved" for asyncio så SWR fire-and-forget tasks ikke genererer ERROR-log. Direkte awaits propagerer stadig exception normalt.
+- Ny `_fetch_and_store_groups()` + `_get_or_create_groups_inflight()`: samme coalescing-mønster for groups som for detail-entries — kun ét ISE `endpointgroup`-kald ad gangen uanset antal samtidige kaldte.
+- `get_groups()` miss-path: `await _get_or_create_groups_inflight()` i stedet for direkte `await fetch_fn()`.
+- `_spawn_groups_refresh()`: thin wrapper om `_get_or_create_groups_inflight()`.
+
+**`backend/app/services/endpoint_service.py`:**
+- `_resolve_group_name()`: tilføjet `asyncio.Lock` (double-checked locking) — forhindrer N samtidige endpoint-fetches i at kalde `groups.list_all()` når den lokale `_group_cache` er kold.
+
 ## [3.15.2 build 0165] — 2026-05-05 — fix(cache): koalescer concurrent ISE-fetches, fjern race condition i edit-modal
 
 **Root cause:** `openDetail()` affyrede `prioritizeEndpoint` (pre-warm hot-queue) og
