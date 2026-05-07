@@ -1,16 +1,20 @@
-"""Baggrunds pre-warm worker: scanner ALLE ISE endpoints og holder cachen varm.
+"""Baggrunds pre-warm worker: holder cachen varm med inkrementel ISE-scan.
 
 Lifecycle:
   1. start() → load_from_disk() → status vises øjeblikkeligt fra gammel cache
-  2. Baggrundstask: full ISE-scan (list all IDs + fetch details parallelt)
+  2. Baggrundstask: inkrementel ISE-scan (list all IDs + fetch kun stale/nye)
   3. Efter hvert fuldt scan: save_to_disk() så næste restart er hurtig
   4. Hot-queue: prioritize(id) sætter et endpoint forrest i køen —
      bruges af edit-modal så brugeren altid ser friske ISE-data
   5. Gentag scan hvert cache_prewarm_interval_s sekunder (default 30 min)
 
-Concurrency styres af cache_prewarm_concurrency (default 10 parallelle
-ISE-kald). Det er højere end listview-semaphoren (5) fordi pre-warm kører
-i baggrunden og ikke blokerer UI-requests.
+Inkrementel adfærd (cache_prewarm_skip_fresh_s, default 1800s):
+  - Endpoints slettet fra ISE siden sidst scan invalideres i cachen.
+  - Detail-fetch springes over for entries friskere end skip-tærsklen.
+  - Kun nye (ikke i cache) og stale (for gamle) endpoints detail-hentes.
+
+Concurrency styres af cache_prewarm_concurrency (default 5 parallelle
+ISE-kald) — ISE ERS accepterer ca. 5 samtidige forbindelser pr. klient.
 """
 from __future__ import annotations
 
@@ -35,6 +39,8 @@ class PrewarmStatus:
     scan_number: int = 0
     total_endpoints: int = 0
     scanned: int = 0
+    skipped: int = 0
+    deleted: int = 0
     last_full_scan_at: float | None = None
     last_disk_save_at: float | None = None
     disk_loaded: int = 0
@@ -112,12 +118,14 @@ class PrewarmWorker:
         self.status.running = False
 
     async def _full_scan(self) -> None:
-        """Hent alle endpoint IDs fra ISE og refresh details i baggrunden."""
+        """Inkrementel ISE-scan: hent ID-liste, invalider slettede, skip friske."""
         self.status.scanning = True
         self.status.scan_number += 1
         self.status.scanned = 0
+        self.status.skipped = 0
+        self.status.deleted = 0
         scan_start = time.time()
-        logger.info("prewarm: starter fuldt ISE-scan #%d", self.status.scan_number)
+        logger.info("prewarm: starter scan #%d", self.status.scan_number)
         try:
             from app.services.endpoint_service import EndpointService
             service = EndpointService(get_ise_client())
@@ -136,15 +144,27 @@ class PrewarmWorker:
                 service._group_cache = {}
                 logger.warning("prewarm: group pre-warm fejlede (fortsætter): %s", exc)
 
-            # Hent alle endpoint IDs (kun ID + navn, billig liste-kald)
+            # Hent alle endpoint IDs fra ISE (kun ID, billige liste-kald)
             all_ids = await self._fetch_all_ids(service)
             self.status.total_endpoints = len(all_ids)
-            logger.info(
-                "prewarm: scan #%d — %d endpoints fundet, starter detail-fetch",
-                self.status.scan_number, len(all_ids),
-            )
 
-            # Sæt hot-queue IDs forrest
+            cache = get_cache()
+
+            # Invalider endpoints slettet fra ISE siden sidst scan
+            ise_ids_set = set(all_ids)
+            cached_ids_set = set(cache.detail_ids())
+            deleted_ids = cached_ids_set - ise_ids_set
+            for ep_id in deleted_ids:
+                cache.invalidate_detail(ep_id)
+            self.status.deleted = len(deleted_ids)
+            if deleted_ids:
+                logger.info(
+                    "prewarm: %d endpoints slettet fra ISE — invalideret i cache",
+                    len(deleted_ids),
+                )
+
+            # Sæt hot-queue IDs forrest og markér dem til force-fetch
+            hot_set: set[str] = set()
             hot_first: list[str] = []
             remaining: list[str] = list(all_ids)
             while not self._hot.empty():
@@ -153,16 +173,43 @@ class PrewarmWorker:
                     if h in remaining:
                         remaining.remove(h)
                     hot_first.append(h)
+                    hot_set.add(h)
                 except asyncio.QueueEmpty:
                     break
             ordered = hot_first + remaining
 
-            # ISE ERS accepterer ca. 5 samtidige forbindelser fra én klient.
-            # Default 5 for ikke at overskride ISE's rate-limit; kan øges
-            # hvis ISE er konfigureret til at acceptere flere.
+            # Inkrementel filtrering: spring over entries der er friske nok.
+            # Hot-queue IDs fetchets altid. 0 = klassisk fuld-scan.
+            skip_threshold = float(
+                getattr(config.settings, "cache_prewarm_skip_fresh_s", 1800.0)
+            )
+
+            def should_fetch(ep_id: str) -> bool:
+                if ep_id in hot_set:
+                    return True
+                if skip_threshold <= 0:
+                    return True
+                age = cache.detail_age(ep_id)
+                if age is None:
+                    return True  # ikke i cache — altid fetch
+                if cache.is_from_disk(ep_id):
+                    return True  # disk-loaded entries er stale
+                return age > skip_threshold
+
+            to_fetch = [ep_id for ep_id in ordered if should_fetch(ep_id)]
+            self.status.skipped = len(ordered) - len(to_fetch)
+
+            logger.info(
+                "prewarm: scan #%d — %d endpoints: %d fetches, %d skipped (friske), %d slettet",
+                self.status.scan_number,
+                len(all_ids),
+                len(to_fetch),
+                self.status.skipped,
+                self.status.deleted,
+            )
+
             concurrency = int(getattr(config.settings, "cache_prewarm_concurrency", 5))
             sem = asyncio.Semaphore(concurrency)
-            cache = get_cache()
 
             async def fetch_one(ep_id: str) -> None:
                 if self._stop.is_set():
@@ -176,21 +223,22 @@ class PrewarmWorker:
                     except Exception as exc:  # noqa: BLE001
                         logger.debug("prewarm: fetch fejlede id=%s: %s", ep_id, exc)
 
-            await asyncio.gather(*(fetch_one(i) for i in ordered))
+            await asyncio.gather(*(fetch_one(i) for i in to_fetch))
 
             elapsed = time.time() - scan_start
             self.status.last_full_scan_at = time.time()
             logger.info(
-                "prewarm: scan #%d færdig — %d/%d endpoints refreshet på %.1fs",
+                "prewarm: scan #%d færdig — %d fetched, %d skipped, %d slettet på %.1fs",
                 self.status.scan_number,
                 self.status.scanned,
-                self.status.total_endpoints,
+                self.status.skipped,
+                self.status.deleted,
                 elapsed,
             )
             await self._save_to_disk()
         except Exception as exc:  # noqa: BLE001
             self.status.last_error = str(exc)
-            logger.warning("prewarm: fuldt scan fejlede: %s", exc)
+            logger.warning("prewarm: scan fejlede: %s", exc)
         finally:
             self.status.scanning = False
             self.status.hot_queue_size = self._hot.qsize()

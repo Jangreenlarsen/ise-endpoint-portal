@@ -11,6 +11,8 @@ Alle nye features registreres her FØR implementering påbegyndes.
 
 - `[done 3.17.0] 2026-05-07 — Tier 1 skalerbarhedsforbedringer (10K endpoints)` — Fem kritiske fixes der bringer systemet til at håndtere 10.000 endpoints stabilt: (1) httpx.Limits + tenacity exponential-backoff retry på alle ISE-kald, (2) parallel page-fetching i list_all() (20s → ~5s), (3) FIFO-eviction i endpoint-cache ved konfigurerbart max, (4) parallel bulk_create() med Semaphore i stedet for seriel sleep, (5) nye konfigurerbare settings for alle fire parametre. **Lag:** backend (`ise/client.py`, `ise/endpoints.py`, `core/endpoint_cache.py`, `core/config.py`, `services/endpoint_service.py`, `pyproject.toml`).
 
+- `[done 3.22.0] 2026-05-07 — Inkrementel pre-warm (skip friske entries + detekter slettede endpoints)` — Pre-warm scanneren sammenligner ISE ID-listen med cache-tilstanden: (1) endpoints slettet fra ISE invalideres i cachen, (2) entries der allerede er friske (alder < `prewarm_skip_fresh_s`, default 1800s) springes over — kun nye/stale endpoints detail-hentes. Ny `PrewarmStatus.skipped` og `.deleted` tæller. Ny `/cache/stats` felter. Ny config-setting. **Lag:** backend (`services/cache_prewarm.py`, `core/config.py`, `api/cache.py`).
+
 - `[done 3.21.0] 2026-05-07 — Cache: memory-baseret eviction (300 MB grænse)` — Udvider FIFO-eviction i EndpointCache med en løbende byte-tæller og konfigurerbar `cache_max_memory_mb`-grænse (default 300 MB). Eviction-løkken tjekker nu **begge** grænser (max entries + max bytes) ved `put_detail`. Størrelse estimeres via `model_dump_json()` pr. entry og lagres i `CachedEntry.size_bytes`. Ny Prometheus gauge `ise_portal_cache_memory_bytes`. **Lag:** backend (`core/endpoint_cache.py`, `core/config.py`, `core/metrics.py`).
 
 ## Planlagt

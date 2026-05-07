@@ -5,6 +5,22 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.22.0 build 0176] — 2026-05-07 — feat(prewarm): inkrementel scan + detekter slettede endpoints
+
+**`backend/app/services/cache_prewarm.py`**:
+- `PrewarmStatus` får nye felter `skipped: int` og `deleted: int`
+- `_full_scan()` sammenligner ISE ID-liste med `cache.detail_ids()` og kalder `invalidate_detail()` for endpoints slettet fra ISE
+- Ny `should_fetch()` helper: springer detail-fetch over for entries friskere end `cache_prewarm_skip_fresh_s` (standard 1800s); hot-queue IDs fetchets altid; disk-loaded entries fetchets altid
+- Opdaterede log-beskeder viser fetches/skipped/slettet pr. scan
+
+**`backend/app/core/config.py`**:
+- Ny setting `cache_prewarm_skip_fresh_s: float = 1800.0` — threshold for inkrementel skip (0 = klassisk fuld-scan)
+
+**`backend/app/api/cache.py`**:
+- `/cache/stats` eksponerer nu `prewarm.skipped` og `prewarm.deleted`
+
+---
+
 ## [3.21.0 build 0175] — 2026-05-07 — feat(cache): memory-baseret eviction (300 MB grænse)
 
 **`backend/app/core/endpoint_cache.py`**:

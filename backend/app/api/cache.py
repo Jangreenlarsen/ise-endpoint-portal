@@ -22,16 +22,18 @@ async def cache_stats() -> dict:
         s = pw.status
         now = time.time()
         stats["prewarm"] = {
-            "running":           s.running,
-            "scanning":          s.scanning,
-            "scan_number":       s.scan_number,
-            "total_endpoints":   s.total_endpoints,
-            "scanned":           s.scanned,
-            "disk_loaded":       s.disk_loaded,
-            "hot_queue_size":    s.hot_queue_size,
-            "last_error":        s.last_error,
-            "last_full_scan_at": s.last_full_scan_at,
-            "last_disk_save_at": s.last_disk_save_at,
+            "running":             s.running,
+            "scanning":            s.scanning,
+            "scan_number":         s.scan_number,
+            "total_endpoints":     s.total_endpoints,
+            "scanned":             s.scanned,
+            "skipped":             s.skipped,
+            "deleted":             s.deleted,
+            "disk_loaded":         s.disk_loaded,
+            "hot_queue_size":      s.hot_queue_size,
+            "last_error":          s.last_error,
+            "last_full_scan_at":   s.last_full_scan_at,
+            "last_disk_save_at":   s.last_disk_save_at,
             "last_full_scan_age_s": round(now - s.last_full_scan_at, 0) if s.last_full_scan_at else None,
         }
     except Exception:  # noqa: BLE001
