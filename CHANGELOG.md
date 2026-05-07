@@ -5,6 +5,27 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.23.0 build 0177] — 2026-05-07 — test: bulk-operationer (13 tests)
+
+**`backend/tests/test_bulk_create.py`** (ny):
+- `test_bulk_all_succeed` — alle items succeeds + `invalidate_all()` kaldt
+- `test_bulk_skip_on_409_no_overwrite` — 409 → skipped, ingen cache-invalidation
+- `test_bulk_skip_on_500_already_exists` — ISE ERS 3.4 "already exists" 500 → skipped
+- `test_bulk_overwrite_on_conflict` — 409 + overwrite=True → overwritten + cache invalideret
+- `test_bulk_overwrite_fails_with_ise_error` — `_overwrite_existing` fejler → failed, ingen invalidation
+- `test_bulk_overwrite_fails_not_found` — `_overwrite_existing` kaster ValueError → failed
+- `test_bulk_non_conflict_error_goes_to_failed` — 400-fejl → failed (ikke conflict)
+- `test_bulk_mixed_outcomes` — success + overwritten + 2×failed i én request
+- `test_bulk_no_cache_invalidation_when_all_skipped` — kun skips → ingen invalidation
+- `test_bulk_no_cache_invalidation_when_all_failed` — kun fails → ingen invalidation
+- `test_bulk_semaphore_caps_concurrency` — max aktive tasks ≤ `bulk_create_concurrency`
+- `test_bulk_ensures_ca_definitions_when_custom_attrs_present` — `_ensure_ca_definitions` kaldt
+- `test_bulk_skips_ca_ensure_when_no_custom_attrs` — `_ensure_ca_definitions` ikke kaldt
+
+Total test-suite: **66 tests** (13 cache + 13 bulk + 7 retry + 7 parallel + 5 circuit-breaker + 6 rate-limiter + 7 audit-FTS + 2 health + 6 prewarm-adjacent).
+
+---
+
 ## [3.22.0 build 0176] — 2026-05-07 — feat(prewarm): inkrementel scan + detekter slettede endpoints
 
 **`backend/app/services/cache_prewarm.py`**:
