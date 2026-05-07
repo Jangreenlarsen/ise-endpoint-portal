@@ -519,6 +519,7 @@ export async function renderSettings(container) {
             <th>Brugernavn</th>
             <th style="width:9rem;">Rolle</th>
             <th>System adm</th>
+            <th>Skabeloner (registrar_templet)</th>
             <th style="width:11rem;">Sidst logget ind</th>
             <th style="width:9rem;">Oprettet</th>
             <th style="width:10rem;">Handlinger</th>
@@ -1439,6 +1440,12 @@ async function initUsersSection(container, currentUser, rolesState) {
   const tbody = container.querySelector("#users-tbody");
   const msg = container.querySelector("#users-msg");
 
+  let allTemplates = [];
+  try {
+    const tplResp = await api.listTemplates().catch(() => ({ templates: [] }));
+    allTemplates = tplResp.templates || [];
+  } catch { /* ignorer */ }
+
   function renderEndpointRoleCell(user) {
     const catalog = (rolesState ? rolesState.roles : []).filter((r) => r.name.toLowerCase() !== "admin");
     const assigned = new Set(user.assigned_endpoint_roles || []);
@@ -1454,6 +1461,19 @@ async function initUsersSection(container, currentUser, rolesState) {
     return `<div class="role-chips">${checks}</div>`;
   }
 
+  function renderTemplateCell(user) {
+    if (user.role !== "registrar_templet") return `<span style="color:var(--text-secondary,#94a3b8);">—</span>`;
+    if (!allTemplates.length) return `<span class="hint">Ingen skabeloner endnu</span>`;
+    const assigned = new Set(user.assigned_templates || []);
+    const checks = allTemplates
+      .map((t) => {
+        const checked = assigned.has(t.id) ? " checked" : "";
+        return `<label class="role-chip"><input type="checkbox" class="user-tpl-chip" value="${esc(t.id)}"${checked}/> ${esc(t.name)}</label>`;
+      })
+      .join("");
+    return `<div class="role-chips">${checks}</div>`;
+  }
+
   async function reload() {
     msg.innerHTML = "";
     try {
@@ -1461,9 +1481,6 @@ async function initUsersSection(container, currentUser, rolesState) {
       tbody.innerHTML = users
         .map((u) => {
           const isSelf = u.id === currentUser.id;
-          // 3.8.2: Admin har implicit alle System adm-roller (ser alt) —
-          // skjul rolle-pickeren og vis i stedet en hint så det er klart
-          // at rolle-tildeling ikke er relevant for admin-brugere.
           const isPortalAdmin = u.role === "admin";
           const adminCell = `<span class="hint" style="font-style:italic;">Admin — alle System adm implicit</span>`;
           return `
@@ -1477,6 +1494,7 @@ async function initUsersSection(container, currentUser, rolesState) {
                 </select>
               </td>
               <td>${isPortalAdmin ? adminCell : renderEndpointRoleCell(u)}</td>
+              <td>${renderTemplateCell(u)}</td>
               <td class="mono" style="font-size:0.78rem;">${esc(u.last_login || "—")}</td>
               <td class="mono" style="font-size:0.78rem;">${esc((u.created_at || "").slice(0, 10))}</td>
               <td>
@@ -1502,8 +1520,6 @@ async function initUsersSection(container, currentUser, rolesState) {
       try {
         await api.updateUser(id, { role: e.target.value });
         msg.innerHTML = `<div class="alert success">Rolle opdateret.</div>`;
-        // 3.8.2: rebuild rækken så System adm-cellen toggler mellem
-        // picker og admin-hint baseret på den nye rolle.
         await reload();
       } catch (err) {
         msg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
@@ -1513,12 +1529,22 @@ async function initUsersSection(container, currentUser, rolesState) {
     }
     if (e.target.classList.contains("user-role-chip")) {
       const checks = row.querySelectorAll(".user-role-chip");
-      const selected = Array.from(checks)
-        .filter((c) => c.checked)
-        .map((c) => c.value);
+      const selected = Array.from(checks).filter((c) => c.checked).map((c) => c.value);
       try {
         await api.setUserEndpointRoles(id, selected);
         msg.innerHTML = `<div class="alert success">System adm opdateret for ${esc(row.dataset.username)}.</div>`;
+      } catch (err) {
+        msg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
+        await reload();
+      }
+      return;
+    }
+    if (e.target.classList.contains("user-tpl-chip")) {
+      const checks = row.querySelectorAll(".user-tpl-chip");
+      const selected = Array.from(checks).filter((c) => c.checked).map((c) => c.value);
+      try {
+        await api.setUserTemplates(id, selected);
+        msg.innerHTML = `<div class="alert success">Skabeloner opdateret for ${esc(row.dataset.username)}.</div>`;
       } catch (err) {
         msg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
         await reload();

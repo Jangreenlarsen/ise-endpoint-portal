@@ -15,6 +15,7 @@ class User(BaseModel):
     created_at: str
     last_login: str | None = None
     assigned_endpoint_roles: list[str] = Field(default_factory=list)
+    assigned_templates: list[str] = Field(default_factory=list)
 
 
 class UserMe(User):
@@ -42,6 +43,12 @@ class UserEndpointRoles(BaseModel):
     """Body for PUT /api/users/{id}/endpoint-roles."""
 
     roles: list[str] = Field(default_factory=list)
+
+
+class UserTemplates(BaseModel):
+    """Body for PUT /api/users/{id}/templates."""
+
+    template_ids: list[str] = Field(default_factory=list)
 
 
 class LoginRequest(BaseModel):

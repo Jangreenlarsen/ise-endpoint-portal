@@ -32,9 +32,16 @@ async def list_templates(
 ) -> TemplateListResponse:
     records = template_store.load_templates()
     # Admin og editor ser alle skabeloner.
-    # Alle andre roller ser kun skabeloner hvor visible_to er tom (alle) eller
+    # registrar_templet: hvis brugeren har eksplicitte assigned_templates bruges
+    # den liste; ellers falder vi tilbage til visible_to-filtrering.
+    # Alle andre roller: kun skabeloner hvor visible_to er tom (alle) eller
     # indeholder deres rolle.
-    if user.role not in ("admin", "editor"):
+    if user.role in ("admin", "editor"):
+        pass
+    elif user.role == "registrar_templet" and user.assigned_templates:
+        assigned = set(user.assigned_templates)
+        records = [r for r in records if r.get("id") in assigned]
+    else:
         records = [
             r for r in records
             if not r.get("visible_to") or user.role in r.get("visible_to", [])

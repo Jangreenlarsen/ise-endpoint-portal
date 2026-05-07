@@ -290,6 +290,11 @@ export const api = {
       method: "PUT",
       body: JSON.stringify({ roles }),
     }),
+  setUserTemplates: (id, template_ids) =>
+    request(`/users/${encodeURIComponent(id)}/templates`, {
+      method: "PUT",
+      body: JSON.stringify({ template_ids }),
+    }),
   listEndpointRoles: () => request("/endpoint-roles"),
   createEndpointRole: (payload) =>
     request("/endpoint-roles", { method: "POST", body: JSON.stringify(payload) }),

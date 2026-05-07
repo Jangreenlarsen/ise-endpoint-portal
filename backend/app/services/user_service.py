@@ -41,6 +41,7 @@ def _to_public(record: dict) -> User:
         created_at=record["created_at"],
         last_login=record.get("last_login"),
         assigned_endpoint_roles=list(record.get("assigned_endpoint_roles") or []),
+        assigned_templates=list(record.get("assigned_templates") or []),
     )
 
 
@@ -195,6 +196,44 @@ async def update_user(user_id: str, payload: UserUpdate) -> User:
             "role": record["role"],
             "password_changed": pw_changed,
         },
+    )
+    return _to_public(record)
+
+
+async def set_user_templates(
+    user_id: str,
+    template_ids: list[str],
+    actor_username: str,
+) -> User:
+    """Admin tildeler specifikke skabelon-IDs til en registrar_templet-bruger."""
+    from app.core import template_store
+    users = load_users()
+    record = find_by_id(users, user_id)
+    if not record:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Bruger ikke fundet")
+    # Valider at alle IDs eksisterer
+    all_ids = {t["id"] for t in template_store.load_templates()}
+    invalid = [tid for tid in template_ids if tid not in all_ids]
+    if invalid:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"Ukendte skabelon-IDs: {', '.join(invalid)}",
+        )
+    before = list(record.get("assigned_templates") or [])
+    record["assigned_templates"] = list(dict.fromkeys(template_ids))
+    save_users(users)
+    logger.info(
+        "template assignments set: user=%s templates=%s by=%s",
+        record["username"],
+        record["assigned_templates"],
+        actor_username,
+    )
+    await audit_store.record(
+        "templates_assigned",
+        "user",
+        user_id,
+        before={"assigned_templates": before},
+        after={"assigned_templates": record["assigned_templates"]},
     )
     return _to_public(record)
 
