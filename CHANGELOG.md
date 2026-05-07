@@ -5,6 +5,14 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.15.4 build 0167] — 2026-05-07 — fix(logs+cache): korrekt log-sti i API + 502-fallback til cached data
+
+**`backend/app/api/logs.py`:**
+- `GET /logs`: resolverer relativ log-sti med `_BACKEND_DIR = Path(__file__).resolve().parents[2]` i stedet for `Path.cwd()`. Portalen viste `projekt-root/logs/app.log` (gammel fil, aldrig opdateret) mens logger skrev til `backend/logs/app.log`.
+
+**`backend/app/core/endpoint_cache.py`:**
+- `get_detail()` miss/force_fresh-path: fanger ISE transport-fejl og returnerer cached entry (markeret `cache_stale=True`) hvis en eksisterer. Brugeren ser cached data med ⏱ i stedet for 502. Kun ved totalt cache-miss propageres fejlen videre som 502.
+
 ## [3.15.3 build 0166] — 2026-05-07 — fix(cache): fjern "Task exception was never retrieved" + coalescer group-fetches
 
 **`backend/app/core/endpoint_cache.py`:**

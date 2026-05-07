@@ -9,6 +9,10 @@ from app.core.config import settings
 
 router = APIRouter(tags=["logs"], dependencies=[Depends(require_admin)])
 
+# Resolve relative to the backend package root — same logic as logging.py.
+# Using Path.cwd() would give the project root when uvicorn starts from there.
+_BACKEND_DIR = Path(__file__).resolve().parents[2]
+
 LINE_RE = re.compile(
     r"^(?P<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| "
     r"(?P<level>\S+)\s*\| "
@@ -36,7 +40,7 @@ async def get_logs(
 ) -> dict:
     log_path = Path(settings.log_file)
     if not log_path.is_absolute():
-        log_path = Path.cwd() / log_path
+        log_path = _BACKEND_DIR / log_path
 
     if not log_path.exists():
         return {"entries": [], "total_lines": 0, "path": str(log_path)}

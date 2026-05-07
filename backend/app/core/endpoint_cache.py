@@ -175,7 +175,19 @@ class EndpointCache:
         self._stats["misses"] += 1
         task = self._get_or_create_inflight(endpoint_id, fetch_fn)
         if task is not None:
-            return await task
+            try:
+                return await task
+            except Exception:
+                # ISE transport error / timeout: fall back to any cached entry
+                # (fresh, stale, or disk) so the user sees data instead of 502.
+                # The entry is marked cache_stale so the UI shows the ⏱ badge.
+                fallback = self._details.get(endpoint_id)
+                if fallback is not None:
+                    val = fallback.value
+                    if hasattr(val, "model_copy"):
+                        val = val.model_copy(update={"cache_stale": True})
+                    return val
+                raise  # no cached data at all — propagate so caller can 502
         # Fallback: no event loop (shouldn't happen at runtime).
         value = await fetch_fn()
         self._details[endpoint_id] = CachedEntry(value, self._now(), from_disk=False)
