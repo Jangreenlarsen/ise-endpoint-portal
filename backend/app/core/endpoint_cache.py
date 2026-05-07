@@ -71,6 +71,7 @@ class EndpointCache:
             "bg_refreshes": 0,
             "invalidations": 0,
             "disk_loads": 0,
+            "evictions": 0,
         }
         # roles_index maps lowercase role name → set of endpoint_ids that carry
         # that role in their HypervisionRoles custom attribute.  Maintained by
@@ -249,6 +250,19 @@ class EndpointCache:
     ) -> None:
         self._get_or_create_inflight(endpoint_id, fetch_fn)
 
+    @staticmethod
+    def _max_entries() -> int:
+        return int(getattr(config.settings, "cache_max_entries", 5000))
+
+    def _evict_oldest(self) -> None:
+        """Evict the oldest (first-inserted) entry. FIFO — O(1) with ordered dict."""
+        oldest_id, oldest_entry = next(iter(self._details.items()))
+        self._remove_from_roles_index(oldest_id, oldest_entry.value)
+        if oldest_entry.from_disk:
+            self._disk_stale_count -= 1
+        del self._details[oldest_id]
+        self._stats["evictions"] += 1
+
     def put_detail(self, endpoint_id: str, value: Any, from_disk: bool = False) -> None:
         if not self.enabled():
             return
@@ -257,6 +271,12 @@ class EndpointCache:
             self._remove_from_roles_index(endpoint_id, old.value)
             if old.from_disk:
                 self._disk_stale_count -= 1
+        else:
+            # New entry: enforce size limit before inserting.
+            max_entries = self._max_entries()
+            if max_entries > 0:
+                while len(self._details) >= max_entries:
+                    self._evict_oldest()
         if from_disk:
             self._disk_stale_count += 1
         self._details[endpoint_id] = CachedEntry(value, self._now(), from_disk=from_disk)
@@ -443,11 +463,13 @@ class EndpointCache:
         self._last_sync_error = err
 
     def stats(self) -> dict[str, Any]:
+        max_entries = self._max_entries()
         return {
             "enabled": self.enabled(),
             "ttl_seconds": self._ttl(),
             "stale_while_revalidate": self._swr(),
             "detail_entries": len(self._details),
+            "max_entries": max_entries if max_entries > 0 else "unlimited",
             "disk_stale_entries": self.disk_stale_count(),
             "groups_cached": self._groups is not None,
             "hits": self._stats["hits"],
@@ -456,6 +478,7 @@ class EndpointCache:
             "bg_refreshes": self._stats["bg_refreshes"],
             "invalidations": self._stats["invalidations"],
             "disk_loads": self._stats["disk_loads"],
+            "evictions": self._stats["evictions"],
             "last_sync_at": self._last_sync_at,
             "last_sync_error": self._last_sync_error,
             "roles_index_roles": len(self._roles_index),

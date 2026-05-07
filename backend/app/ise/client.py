@@ -4,6 +4,12 @@ import logging
 from typing import Any
 
 import httpx
+from tenacity import (
+    AsyncRetrying,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 from app.core import config
 from app.core.exceptions import IseApiError
@@ -20,16 +26,24 @@ class IseClient:
 
     def __init__(self) -> None:
         s = config.settings
+        max_conn = int(getattr(s, "ise_max_connections", 10))
         self._http = httpx.AsyncClient(
             base_url=s.ise_base_url.rstrip("/"),
             auth=(s.ise_username, s.ise_password),
             verify=s.ise_verify_tls,
             timeout=s.ise_timeout,
+            # Explicit connection limits prevent ISE connection-reset errors under load.
+            # ISE ERS accepts ~5-10 simultaneous connections per client.
+            limits=httpx.Limits(
+                max_connections=max_conn,
+                max_keepalive_connections=max(1, max_conn // 2),
+            ),
             headers={
                 "Accept": "application/json",
                 "Content-Type": "application/json",
             },
         )
+        self._retry_attempts = int(getattr(s, "ise_retry_attempts", 3))
 
     async def close(self) -> None:
         await self._http.aclose()
@@ -43,11 +57,30 @@ class IseClient:
         json: Any | None = None,
         return_response: bool = False,
     ) -> Any:
-        """Make an ISE request. If `return_response` is True, return (data, response)."""
+        """Make an ISE request. If `return_response` is True, return (data, response).
+
+        Transport-level errors (timeout, connection reset) are retried up to
+        `ise_retry_attempts` times with exponential back-off (1s → 8s).
+        HTTP 4xx/5xx are NOT retried — they are passed through as IseApiError.
+        """
         logger.info("ISE %s %s params=%s", method, path, params)
         try:
-            response = await self._http.request(method, path, params=params, json=json)
-        except httpx.HTTPError as exc:
+            async for attempt in AsyncRetrying(
+                retry=retry_if_exception_type(httpx.TransportError),
+                stop=stop_after_attempt(max(1, self._retry_attempts)),
+                wait=wait_exponential(multiplier=1, min=1, max=8),
+                reraise=True,
+            ):
+                with attempt:
+                    response = await self._http.request(
+                        method, path, params=params, json=json
+                    )
+                    if attempt.retry_state.attempt_number > 1:
+                        logger.info(
+                            "ISE retry #%d succeeded: %s %s",
+                            attempt.retry_state.attempt_number, method, path,
+                        )
+        except httpx.TransportError as exc:
             logger.error("ISE transport error on %s %s: %s", method, path, exc)
             raise IseApiError(0, f"transport error: {exc}") from exc
 

@@ -7,6 +7,10 @@ Alle nye features registreres her FØR implementering påbegyndes.
 
 ---
 
+## Under implementering
+
+- `[done 3.17.0] 2026-05-07 — Tier 1 skalerbarhedsforbedringer (10K endpoints)` — Fem kritiske fixes der bringer systemet til at håndtere 10.000 endpoints stabilt: (1) httpx.Limits + tenacity exponential-backoff retry på alle ISE-kald, (2) parallel page-fetching i list_all() (20s → ~5s), (3) FIFO-eviction i endpoint-cache ved konfigurerbart max, (4) parallel bulk_create() med Semaphore i stedet for seriel sleep, (5) nye konfigurerbare settings for alle fire parametre. **Lag:** backend (`ise/client.py`, `ise/endpoints.py`, `core/endpoint_cache.py`, `core/config.py`, `services/endpoint_service.py`, `pyproject.toml`).
+
 ## Planlagt
 
 - `[done 3.15.0] 2026-05-05 — Portal system opdatering via admin UI` — Admin kan uploade en ZIP-opdateringspakke direkte i Settings → Opdatering. Pakken valideres (version.json påkrævet, path-traversal og .env blokeres), preview viser hvilke filer der opdateres + blokerede filer. Anvend skriver filer til disk øjeblikkeligt (frontend aktivt med det samme). Genstart-knap kalder os._exit(0) og START.bat (nu loop-baseret) genstarter serveren. Kun tilgængelig for admin-brugere. **Lag:** backend (`services/update_service.py` ny, `api/update.py` ny, `main.py`), frontend (`api.js` +validateUpdate/applyUpdate/restartServer, `views/settings.js` +Opdatering-tab), `START.bat` (loop-genstart).

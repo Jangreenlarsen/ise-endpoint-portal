@@ -5,6 +5,39 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.17.0 build 0171] — 2026-05-07 — perf(scale): Tier 1 skalerbarhedsforbedringer (10K endpoints)
+
+**`backend/pyproject.toml`:**
+- Tilføjet `tenacity>=8.2.0` som dependency (retry-bibliotek)
+
+**`backend/app/core/config.py`:**
+- Tilføjet `ise_max_connections` (default 10) — styrer httpx connection pool mod ISE
+- Tilføjet `ise_retry_attempts` (default 3) — antal genforsøg ved transport-fejl
+- Tilføjet `cache_max_entries` (default 5000) — max entries i in-memory cache; 0 = ubegrænset
+- Tilføjet `bulk_create_concurrency` (default 3) — parallelle ISE-kald under bulk import
+
+**`backend/app/ise/client.py`:**
+- `httpx.AsyncClient` initialiseres nu med `httpx.Limits(max_connections, max_keepalive_connections)` — forhindrer connection-reset under load ved at begrænse concurrent ISE-forbindelser eksplicit
+- `request()` omgiver nu `self._http.request()` med `tenacity.AsyncRetrying` — retrier op til `ise_retry_attempts` gange på `httpx.TransportError` (timeout, connection reset) med exponential backoff 1s → 8s. HTTP 4xx/5xx retries IKKE.
+
+**`backend/app/ise/endpoints.py`:**
+- `IseEndpointRepository.list_all()`: parallel page-fetching — henter side 1 for at kende total, spawner derefter de resterende sider parallelt med `asyncio.Semaphore(5)`. Reducerer 10K endpoint scan fra ~20s (serial) til ~5s (parallel)
+- `IseEndpointGroupRepository.list_all()`: samme parallel strategi via ny `_list_groups_page()` helper
+- Tilføjet `import asyncio, math`
+
+**`backend/app/core/endpoint_cache.py`:**
+- Tilføjet `_evict_oldest()` — FIFO-eviction: fjerner første entry i `_details` (oldest by insertion order), rydder op i roles_index og disk_stale_count
+- `put_detail()`: hvis ny entry (ikke update) og `cache_max_entries > 0`, evictes ældste entries indtil `len(_details) < max_entries` inden insert
+- `stats()`: tilføjet `max_entries` og `evictions` felter
+- `_stats`: tilføjet `"evictions": 0` tæller
+
+**`backend/app/services/endpoint_service.py`:**
+- `bulk_create()`: erstattet seriel for-loop med `asyncio.gather()` + `asyncio.Semaphore(bulk_create_concurrency)`. Hvert item behandles i `_process_one()` coroutine — conflict/overwrite/fail-logik bevaret uændret. 150ms sleep per item fjernet; throttling sker naturligt via semaphore + ISE svartid (~10 req/s ved 3 concurrent + 100ms ISE). Import af 1000 endpoints: ~2,5 min → ~30s
+
+**`FEATURES.md`:** registreret som `in-progress 3.17.0`
+
+---
+
 ## [3.16.0 build 0170] — 2026-05-07 — perf(scale): roles-indeks + async disk-save + group-paginering (10K-fix)
 
 **`backend/app/core/endpoint_cache.py`:**

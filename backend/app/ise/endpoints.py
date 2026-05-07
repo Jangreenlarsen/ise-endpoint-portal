@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import logging
+import math
 from typing import Any
 
 from app.ise.client import IseClient
@@ -51,18 +53,34 @@ class IseEndpointRepository:
     async def list_all(
         self, filters: list[str] | None = None
     ) -> list[dict[str, Any]]:
-        """Fetch all endpoints across all ISE pages (ERS max 100 per page)."""
-        all_resources: list[dict[str, Any]] = []
-        page = 1
-        while True:
-            resources, total = await self.list_page(
-                page=page, size=100, filters=filters
-            )
-            all_resources.extend(resources)
-            if len(all_resources) >= total or not resources:
-                break
-            page += 1
-        return all_resources
+        """Fetch all endpoints across all ISE pages (ERS max 100 per page).
+
+        Page 1 is fetched first to learn the total count. Remaining pages are
+        fetched in parallel (Semaphore=5) — reduces 10K endpoint scan from
+        ~20s serial to ~5s parallel.
+        """
+        resources, total = await self.list_page(page=1, size=100, filters=filters)
+        if not resources or len(resources) >= total:
+            return resources
+
+        total_pages = math.ceil(total / 100)
+        if total_pages <= 1:
+            return resources
+
+        sem = asyncio.Semaphore(5)
+
+        async def _fetch_page(page: int) -> list[dict[str, Any]]:
+            async with sem:
+                result, _ = await self.list_page(page=page, size=100, filters=filters)
+                return result
+
+        remaining = await asyncio.gather(
+            *[_fetch_page(p) for p in range(2, total_pages + 1)],
+            return_exceptions=False,
+        )
+        for page_resources in remaining:
+            resources.extend(page_resources)
+        return resources
 
     async def get(self, endpoint_id: str) -> dict[str, Any]:
         data = await self.client.get(f"{ERS_ENDPOINTS}/{endpoint_id}")
@@ -161,25 +179,41 @@ class IseEndpointGroupRepository:
     def __init__(self, client: IseClient) -> None:
         self.client = client
 
+    async def _list_groups_page(self, page: int) -> tuple[list[dict[str, Any]], int]:
+        data = await self.client.get(
+            ERS_ENDPOINT_GROUPS,
+            params=[("size", 100), ("page", page)],
+        )
+        sr = data.get("SearchResult", {}) if data else {}
+        return sr.get("resources", []), sr.get("total", 0)
+
     async def list_all(self) -> list[dict[str, Any]]:
         """Fetch all endpoint groups across all ISE pages (ERS max 100 per page).
-        ISE deployments with >100 groups require pagination — a single size=100
-        call silently returns only the first 100."""
-        all_resources: list[dict[str, Any]] = []
-        page = 1
-        while True:
-            data = await self.client.get(
-                ERS_ENDPOINT_GROUPS,
-                params=[("size", 100), ("page", page)],
-            )
-            sr = data.get("SearchResult", {}) if data else {}
-            resources = sr.get("resources", [])
-            total = sr.get("total", len(resources))
-            all_resources.extend(resources)
-            if len(all_resources) >= total or not resources:
-                break
-            page += 1
-        return all_resources
+
+        Parallel fetch — same strategy as IseEndpointRepository.list_all().
+        """
+        resources, total = await self._list_groups_page(1)
+        if not resources or len(resources) >= total:
+            return resources
+
+        total_pages = math.ceil(total / 100)
+        if total_pages <= 1:
+            return resources
+
+        sem = asyncio.Semaphore(5)
+
+        async def _fetch_page(page: int) -> list[dict[str, Any]]:
+            async with sem:
+                result, _ = await self._list_groups_page(page)
+                return result
+
+        remaining = await asyncio.gather(
+            *[_fetch_page(p) for p in range(2, total_pages + 1)],
+            return_exceptions=False,
+        )
+        for page_resources in remaining:
+            resources.extend(page_resources)
+        return resources
 
     async def get_by_name(self, name: str) -> dict[str, Any] | None:
         data = await self.client.get(f"{ERS_ENDPOINT_GROUPS}/name/{name}")

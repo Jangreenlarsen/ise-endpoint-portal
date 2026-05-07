@@ -17,6 +17,21 @@ class Settings(BaseSettings):
     ise_verify_tls: bool = False
     ise_timeout: float = 30.0
     ise_api_type: str = Field(default="ers", description="'ers' or 'openapi'")
+    ise_max_connections: int = Field(
+        default=10,
+        description=(
+            "Max antal samtidige HTTP-forbindelser til ISE. ISE ERS accepterer "
+            "ca. 5-10 samtidige — over denne grænse ses connection-reset. "
+            "10 er sikkert maksimum; 5 er konservativt."
+        ),
+    )
+    ise_retry_attempts: int = Field(
+        default=3,
+        description=(
+            "Antal genforsøg ved ISE transport-fejl (timeout, connection reset). "
+            "Gælder ikke 4xx/5xx HTTP-svar. 0 = ingen retry."
+        ),
+    )
 
     # Change of Authorization (CoA) via MnT API
     # GET /admin/API/mnt/CoA/Reauth/{psn_name}/{mac}/{reauth_type}
@@ -71,12 +86,29 @@ class Settings(BaseSettings):
             "kan vise data øjeblikkeligt ved genstart. Tom streng = deaktiveret."
         ),
     )
+    cache_max_entries: int = Field(
+        default=5000,
+        description=(
+            "Max antal endpoint-entries i in-memory cachen. Når grænsen nås "
+            "evictes ældste (FIFO) entries ved næste put_detail. "
+            "0 = ubegrænset (default-adfærd frem til 3.17.0). "
+            "5000 entries ≈ 37 MB ved ~7,5 KB/endpoint."
+        ),
+    )
     cache_prewarm_concurrency: int = Field(
         default=5,
         description=(
             "Antal parallelle ISE-kald under baggrunds pre-warm scan. "
             "ISE ERS accepterer ca. 5 samtidige forbindelser pr. klient — "
             "overskridelse medfører connection-reset fejl. 3-5 anbefales."
+        ),
+    )
+    bulk_create_concurrency: int = Field(
+        default=3,
+        description=(
+            "Antal samtidige ISE-kald under bulk create/import. "
+            "Kombineret med ~100ms ISE-svartid giver 3 parallelle kald ≈ 10 req/s — "
+            "inden for Cisco's 5-10 req/s grænse. Øg kun med eksplicit ISE-godkendelse."
         ),
     )
     cache_prewarm_interval_s: float = Field(

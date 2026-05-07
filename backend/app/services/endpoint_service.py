@@ -598,46 +598,54 @@ class EndpointService:
         # Pre-ensure definitions if any item has custom attributes
         if any(item.custom_attributes for item in req.items):
             await self._ensure_ca_definitions()
+
+        concurrency = int(getattr(config.settings, "bulk_create_concurrency", 3))
+        sem = asyncio.Semaphore(concurrency)
+
+        # Result categories — appended from concurrent tasks; lists are safe
+        # because asyncio is cooperative (no true parallelism within one thread).
         succeeded: list[str] = []
         skipped: list[str] = []
         overwritten: list[str] = []
         failed: list[BulkFailure] = []
-        for idx, item in enumerate(req.items):
-            try:
-                await self.create_endpoint(item, auto_tag_username=auto_tag_username)
-                succeeded.append(item.mac)
-            except IseApiError as exc:
-                # ISE signalerer "findes allerede" som 409 ELLER som 500
-                # med "already exists" i fejlteksten (ERS-adfærd i 3.4).
-                is_conflict = exc.status_code == 409 or (
-                    exc.status_code == 500
-                    and "already exist" in str(exc).lower()
-                )
-                if is_conflict:
-                    if req.overwrite:
-                        try:
-                            await self._overwrite_existing(
-                                item, auto_tag_username=auto_tag_username
-                            )
-                            overwritten.append(item.mac)
-                        except IseApiError as update_exc:
-                            failed.append(
-                                BulkFailure(
-                                    mac=item.mac,
-                                    error=f"overwrite fejlede: {update_exc}",
+
+        async def _process_one(item: CreateEndpointRequest) -> None:
+            async with sem:
+                try:
+                    await self.create_endpoint(item, auto_tag_username=auto_tag_username)
+                    succeeded.append(item.mac)
+                except IseApiError as exc:
+                    # ISE signalerer "findes allerede" som 409 ELLER som 500
+                    # med "already exists" i fejlteksten (ERS-adfærd i 3.4).
+                    is_conflict = exc.status_code == 409 or (
+                        exc.status_code == 500
+                        and "already exist" in str(exc).lower()
+                    )
+                    if is_conflict:
+                        if req.overwrite:
+                            try:
+                                await self._overwrite_existing(
+                                    item, auto_tag_username=auto_tag_username
                                 )
-                            )
-                        except ValueError as not_found_exc:
-                            failed.append(
-                                BulkFailure(mac=item.mac, error=str(not_found_exc))
-                            )
+                                overwritten.append(item.mac)
+                            except IseApiError as update_exc:
+                                failed.append(
+                                    BulkFailure(
+                                        mac=item.mac,
+                                        error=f"overwrite fejlede: {update_exc}",
+                                    )
+                                )
+                            except ValueError as not_found_exc:
+                                failed.append(
+                                    BulkFailure(mac=item.mac, error=str(not_found_exc))
+                                )
+                        else:
+                            skipped.append(item.mac)
                     else:
-                        skipped.append(item.mac)
-                else:
-                    failed.append(BulkFailure(mac=item.mac, error=str(exc)))
-            # Throttle: 150ms between ISE calls to stay within Cisco's 5-10 req/sec limit
-            if idx < len(req.items) - 1:
-                await asyncio.sleep(0.15)
+                        failed.append(BulkFailure(mac=item.mac, error=str(exc)))
+
+        await asyncio.gather(*[_process_one(item) for item in req.items])
+
         logger.info(
             "bulk done: %d ok, %d skipped, %d overwritten, %d failed",
             len(succeeded), len(skipped), len(overwritten), len(failed),
