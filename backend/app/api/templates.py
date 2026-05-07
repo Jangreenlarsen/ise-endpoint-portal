@@ -28,9 +28,17 @@ logger = logging.getLogger(__name__)
 
 @router.get("", response_model=TemplateListResponse)
 async def list_templates(
-    _: User = Depends(require_register_lookup),
+    user: User = Depends(require_register_lookup),
 ) -> TemplateListResponse:
     records = template_store.load_templates()
+    # Admin og editor ser alle skabeloner.
+    # Alle andre roller ser kun skabeloner hvor visible_to er tom (alle) eller
+    # indeholder deres rolle.
+    if user.role not in ("admin", "editor"):
+        records = [
+            r for r in records
+            if not r.get("visible_to") or user.role in r.get("visible_to", [])
+        ]
     return TemplateListResponse(
         templates=[Template(**_coerce(r)) for r in records]
     )
@@ -52,6 +60,7 @@ async def create_template(
             description=payload.description,
             fields=payload.fields.model_dump(),
             created_by=user.username,
+            visible_to=payload.visible_to,
         )
     except ValueError as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
@@ -86,6 +95,7 @@ async def update_template(
             name=payload.name,
             description=payload.description,
             fields=payload.fields.model_dump() if payload.fields is not None else None,
+            visible_to=payload.visible_to,
         )
     except ValueError as exc:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
@@ -122,4 +132,6 @@ def _coerce(record: dict) -> dict:
         "static_group_assignment": f.get("static_group_assignment"),
         "custom_attributes": f.get("custom_attributes") or {},
     }
+    if not isinstance(r.get("visible_to"), list):
+        r["visible_to"] = []
     return r

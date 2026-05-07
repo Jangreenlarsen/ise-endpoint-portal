@@ -47,6 +47,7 @@ def add_template(
     description: str,
     fields: dict[str, Any],
     created_by: str,
+    visible_to: list[str] | None = None,
 ) -> dict[str, Any]:
     templates = load_templates()
     if any(t.get("name", "").lower() == name.lower() for t in templates):
@@ -56,6 +57,7 @@ def add_template(
         "name": name.strip(),
         "description": description or "",
         "fields": fields,
+        "visible_to": visible_to or [],
         "created_at": datetime.now(timezone.utc).isoformat(),
         "created_by": created_by,
     }
@@ -69,6 +71,7 @@ def update_template(
     name: str | None,
     description: str | None,
     fields: dict[str, Any] | None,
+    visible_to: list[str] | None = None,
 ) -> dict[str, Any] | None:
     templates = load_templates()
     idx = next(
@@ -91,6 +94,8 @@ def update_template(
         tpl["description"] = description
     if fields is not None:
         tpl["fields"] = fields
+    if visible_to is not None:
+        tpl["visible_to"] = visible_to
     templates[idx] = tpl
     save_templates(templates)
     return tpl

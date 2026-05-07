@@ -22,8 +22,8 @@ const routes = {
   logs:       { render: renderLogs,       roles: ["admin"] },
   audit:      { render: renderAudit,      roles: ["admin", "editor", "editor-psk", "viewer"] },
   metrics:    { render: renderMetrics,    roles: ["admin"] },
-  register:   { render: renderRegister,   roles: ["admin", "editor", "editor-psk", "registrar"] },
-  settings:   { render: renderSettings,   roles: ["admin", "editor", "editor-psk", "viewer", "registrar"] },
+  register:   { render: renderRegister,   roles: ["admin", "editor", "editor-psk", "registrar", "registrant"] },
+  settings:   { render: renderSettings,   roles: ["admin", "editor", "editor-psk", "viewer", "registrar", "registrant"] },
 };
 
 const REGISTRAR_DEFAULT_ROUTE = "register";
@@ -48,7 +48,8 @@ async function checkHealth() {
 
 function currentRoute() {
   const user = auth.getUser();
-  const fallback = user && user.role === "registrar" ? REGISTRAR_DEFAULT_ROUTE : "browse";
+  const isLimited = user && (user.role === "registrar" || user.role === "registrant");
+  const fallback = isLimited ? REGISTRAR_DEFAULT_ROUTE : "browse";
   const hash = (location.hash || `#/${fallback}`).replace("#/", "");
   if (!routes[hash]) return fallback;
   // Hvis brugeren ikke har adgang til ruten, fallback til en tilladt rute.
@@ -65,7 +66,7 @@ function isChromelessRoute() {
   if (hash !== "register") return false;
   const user = auth.getUser();
   if (!user) return true;
-  return user.role === "registrar";
+  return user.role === "registrar" || user.role === "registrant";
 }
 
 function applyChromeMode() {
@@ -121,9 +122,10 @@ function showLogin() {
   renderLogin((user) => {
     updateUserBadge(user);
     updateNavVisibility(user);
-    const landing = user.role === "registrar" ? REGISTRAR_DEFAULT_ROUTE : "browse";
+    const isLimited = user.role === "registrar" || user.role === "registrant";
+    const landing = isLimited ? REGISTRAR_DEFAULT_ROUTE : "browse";
     if (!location.hash || location.hash === "#/") location.hash = `#/${landing}`;
-    else if (user.role === "registrar" && !routes[location.hash.replace("#/", "")]?.roles.includes("registrar")) {
+    else if (isLimited && !routes[location.hash.replace("#/", "")]?.roles.includes(user.role)) {
       location.hash = `#/${landing}`;
     }
     renderView();

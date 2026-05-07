@@ -5,6 +5,43 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.25.0 build 0180] — 2026-05-07 — feat(templates): synlighed per rolle + registrant-systemrolle
+
+**`backend/app/schemas/user.py`**:
+- Tilføjet `"registrant"` til `Role` Literal og `ROLE_VALUES`
+
+**`backend/app/api/deps.py`**:
+- `require_create_endpoint` og `require_register_lookup` inkluderer nu `"registrant"`
+
+**`backend/app/schemas/template.py`**:
+- `Template`, `TemplateCreate`, `TemplateUpdate` — nyt felt `visible_to: list[str]`
+
+**`backend/app/core/template_store.py`**:
+- `add_template(visible_to=)` og `update_template(visible_to=)` — gemmer adgangslisten
+
+**`backend/app/api/templates.py`**:
+- `GET /api/templates` filtrerer nu: admin/editor ser alle; andre roller ser kun skabeloner hvor `visible_to` er tom (alle) eller indeholder deres rolle
+- `_coerce()` normaliserer `visible_to` til liste
+
+**`frontend/js/views/settings.js`**:
+- Skabelon-formular: checkboxes for `visible_to` (editor-psk, viewer, registrar, registrant) — tom = synlig for alle
+- Skabelon-tabel: ny "Synlig for"-kolonne
+- `fillForm()` / `resetForm()` / `buildPayload()` håndterer `visible_to`
+- Brugertabel og opret-form: `registrant` tilføjet til rolle-dropdowns
+- Hint-tekst opdateret med forklaring af `registrant`-rollen
+
+**`frontend/js/views/register.js`**:
+- `isRegistrant`-detektering baseret på `user.role === "registrant"`
+- Registrant: gruppe, custom attrs, PSK og System adm-sektion skjult via `r-advanced-section hidden`
+- Registrant: template-row altid synlig; "Ingen skabeloner"-blokeringsbesked hvis katalog er tomt
+- Submit-validering: registrant skal vælge skabelon inden indsendelse
+
+**`frontend/js/app.js`**:
+- `register` og `settings` routes inkluderer `registrant`
+- `currentRoute()`, `isChromelessRoute()`, `showLogin()` behandler `registrant` som `registrar`
+
+---
+
 ## [3.24.0 build 0178] — 2026-05-07 — feat(templates): endpoint-skabeloner Phase 3-5
 
 **`backend/app/core/template_store.py`** (ny):

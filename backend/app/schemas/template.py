@@ -17,6 +17,7 @@ class Template(BaseModel):
     name: str
     description: str = ""
     fields: TemplateFields
+    visible_to: list[str] = Field(default_factory=list)
     created_at: str
     created_by: str
 
@@ -25,12 +26,14 @@ class TemplateCreate(BaseModel):
     name: str
     description: str = ""
     fields: TemplateFields = Field(default_factory=TemplateFields)
+    visible_to: list[str] = Field(default_factory=list)
 
 
 class TemplateUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
     fields: TemplateFields | None = None
+    visible_to: list[str] | None = None
 
 
 class TemplateListResponse(BaseModel):

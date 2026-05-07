@@ -509,8 +509,8 @@ export async function renderSettings(container) {
       <p class="hint">
         Administrer lokale brugerkonti, system-roller og System adm-tildelinger.
         <b>admin</b> har fuld adgang. <b>editor</b> kan oprette/redigere endpoints. <b>viewer</b> kan kun læse.
-        <b>registrar</b> kan kun registrere nye endpoints. System adm bestemmer hvilke endpoints
-        ikke-admin-brugere kan se (deres username er altid implicit tildelt).
+        <b>registrar</b> kan registrere endpoints (alle formularfelter). <b>registrant</b> kan KUN vælge skabelon + indtaste MAC og beskrivelse.
+        System adm bestemmer hvilke endpoints ikke-admin-brugere kan se (deres username er altid implicit tildelt).
       </p>
       <div id="users-msg"></div>
       <table class="users-table">
@@ -534,7 +534,8 @@ export async function renderSettings(container) {
           <option value="editor">editor</option>
           <option value="editor-psk">editor-psk (PSK-redaktør)</option>
           <option value="admin">admin</option>
-          <option value="registrar">registrar (kun opret)</option>
+          <option value="registrar">registrar (opret — alle felter)</option>
+          <option value="registrant">registrant (skabelon + MAC + beskrivelse)</option>
         </select>
         <button type="submit">Opret bruger</button>
       </form>
@@ -620,6 +621,19 @@ export async function renderSettings(container) {
             <input type="checkbox" id="tpl-static-group" style="margin-right:0.4rem;" />
             Static Group Assignment
           </label>
+        </div>
+        <div class="field">
+          <label style="font-weight:600;">Synlig for roller</label>
+          <p class="hint" style="margin:0.2rem 0 0.5rem;">
+            Lad alle stå ukrydset = skabelonen er synlig for alle roller.
+            Krydses roller af = kun de valgte (plus admin/editor) kan se skabelonen.
+          </p>
+          <div style="display:flex;flex-wrap:wrap;gap:0.5rem 1.2rem;">
+            <label><input type="checkbox" class="tpl-visible-to" value="editor-psk" style="margin-right:0.3rem;" /> editor-psk</label>
+            <label><input type="checkbox" class="tpl-visible-to" value="viewer" style="margin-right:0.3rem;" /> viewer</label>
+            <label><input type="checkbox" class="tpl-visible-to" value="registrar" style="margin-right:0.3rem;" /> registrar</label>
+            <label><input type="checkbox" class="tpl-visible-to" value="registrant" style="margin-right:0.3rem;" /> registrant</label>
+          </div>
         </div>
         <div class="actions" style="margin-top:1rem;">
           <button type="button" id="tpl-save-btn" class="primary">Gem skabelon</button>
@@ -1457,7 +1471,7 @@ async function initUsersSection(container, currentUser, rolesState) {
               <td>${esc(u.username)}</td>
               <td>
                 <select class="user-role-select" ${isSelf ? "disabled title='Du kan ikke ændre din egen rolle her'" : ""}>
-                  ${["admin", "editor", "editor-psk", "viewer", "registrar"]
+                  ${["admin", "editor", "editor-psk", "viewer", "registrar", "registrant"]
                     .map((r) => `<option value="${r}"${r === u.role ? " selected" : ""}>${r}</option>`)
                     .join("")}
                 </select>
@@ -1791,6 +1805,10 @@ async function initTemplatesSection(container) {
   function showMsg(html) { msg.innerHTML = html; }
   function clearMsg() { msg.innerHTML = ""; }
 
+  function getVisibleToCheckboxes() {
+    return container.querySelectorAll(".tpl-visible-to");
+  }
+
   function resetForm() {
     editIdInp.value = "";
     nameInp.value = "";
@@ -1802,6 +1820,7 @@ async function initTemplatesSection(container) {
       const sel = container.querySelector(`#tpl-ca-${name}`);
       if (sel) sel.value = "";
     }
+    getVisibleToCheckboxes().forEach((cb) => { cb.checked = false; });
     formWrap.classList.add("hidden");
     formTitle.textContent = "Ny skabelon";
   }
@@ -1819,6 +1838,10 @@ async function initTemplatesSection(container) {
       const sel = container.querySelector(`#tpl-ca-${name}`);
       if (sel) sel.value = ca[name] || "";
     }
+    const visibleTo = tpl.visible_to || [];
+    getVisibleToCheckboxes().forEach((cb) => {
+      cb.checked = visibleTo.includes(cb.value);
+    });
     formTitle.textContent = `Redigér: ${esc(tpl.name)}`;
     formWrap.classList.remove("hidden");
     nameInp.focus();
@@ -1831,6 +1854,9 @@ async function initTemplatesSection(container) {
       const v = sel ? sel.value.trim() : "";
       if (v) ca[name] = v;
     }
+    const visibleTo = Array.from(getVisibleToCheckboxes())
+      .filter((cb) => cb.checked)
+      .map((cb) => cb.value);
     return {
       name: nameInp.value.trim(),
       description: descFieldInp.value.trim(),
@@ -1840,6 +1866,7 @@ async function initTemplatesSection(container) {
         static_group_assignment: staticCb.checked || null,
         custom_attributes: ca,
       },
+      visible_to: visibleTo,
     };
   }
 
@@ -1854,7 +1881,7 @@ async function initTemplatesSection(container) {
       listDiv.innerHTML = `
         <table class="data-table" style="width:100%;">
           <thead><tr>
-            <th>Navn</th><th>Beskrivelse</th><th>Gruppe</th><th>Custom attrs</th><th></th>
+            <th>Navn</th><th>Beskrivelse</th><th>Gruppe</th><th>Custom attrs</th><th>Synlig for</th><th></th>
           </tr></thead>
           <tbody>
           ${templates.map((t) => {
@@ -1863,11 +1890,14 @@ async function initTemplatesSection(container) {
             const caStr = Object.entries(ca).filter(([,v]) => v)
               .map(([k,v]) => `${k}=${v}`).join(", ") || "—";
             const grpName = groups.find((g) => g.id === f.group_id)?.name || f.group_id || "—";
+            const vt = (t.visible_to || []);
+            const vtStr = vt.length ? vt.join(", ") : "alle";
             return `<tr data-tpl-id="${esc(t.id)}">
               <td><b>${esc(t.name)}</b></td>
               <td>${esc(t.description || "—")}</td>
               <td>${esc(grpName)}</td>
               <td style="font-size:0.82rem;color:var(--text-secondary,#64748b);">${esc(caStr)}</td>
+              <td style="font-size:0.82rem;color:var(--text-secondary,#64748b);">${esc(vtStr)}</td>
               <td style="white-space:nowrap;">
                 <button type="button" class="secondary tpl-edit-btn" data-id="${esc(t.id)}" style="padding:2px 10px;margin-right:4px;">Redigér</button>
                 <button type="button" class="danger tpl-del-btn" data-id="${esc(t.id)}" style="padding:2px 10px;">Slet</button>

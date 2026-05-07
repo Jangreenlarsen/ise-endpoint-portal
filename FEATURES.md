@@ -9,6 +9,8 @@ Alle nye features registreres her FØR implementering påbegyndes.
 
 ## Planlagt / Under implementering
 
+- `[done 3.25.0] 2026-05-07 — Template synlighed per rolle + registrant-rolle` — Admin kan vælge hvilke roller der kan se hver skabelon via `visible_to`-checkboxes i Settings → Skabeloner (tom = alle). Ny `registrant`-systemrolle: kan KUN vælge skabelon + indtaste MAC + beskrivelse — gruppe, custom attrs, PSK og System adm er skjult. Skabelon er påkrævet ved submit for registrant. Chromeless UI som registrar. **Lag:** backend (`schemas/user.py` +registrant, `api/deps.py` +registrant, `schemas/template.py` +visible_to, `core/template_store.py` +visible_to, `api/templates.py` +filtrering), frontend (`app.js` routing, `views/register.js` registrant-mode, `views/settings.js` visible_to + registrant i bruger-dropdowns).
+
 - `[done 3.17.0] 2026-05-07 — Tier 1 skalerbarhedsforbedringer (10K endpoints)` — Fem kritiske fixes der bringer systemet til at håndtere 10.000 endpoints stabilt: (1) httpx.Limits + tenacity exponential-backoff retry på alle ISE-kald, (2) parallel page-fetching i list_all() (20s → ~5s), (3) FIFO-eviction i endpoint-cache ved konfigurerbart max, (4) parallel bulk_create() med Semaphore i stedet for seriel sleep, (5) nye konfigurerbare settings for alle fire parametre. **Lag:** backend (`ise/client.py`, `ise/endpoints.py`, `core/endpoint_cache.py`, `core/config.py`, `services/endpoint_service.py`, `pyproject.toml`).
 
 - `[done 3.23.0] 2026-05-07 — Test suite: bulk-operationer (13 tests)` — Dækker alle 4 outcome-typer (succeeded/skipped/overwritten/failed), mixed outcomes, cache-invalidation kun ved succeeded/overwritten, semaphore-concurrency cap, og CA-definition pre-ensure logik. **Lag:** backend (`tests/test_bulk_create.py` ny).

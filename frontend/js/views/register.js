@@ -42,7 +42,11 @@ export async function renderRegister(container) {
   container.classList.add("mobile-register-mode");
   const scanSupported = hasBarcodeDetector();
   const user = auth.getUser();
+  const isRegistrant = user?.role === "registrant";
   const userLabel = user ? `${user.username} (${user.role})` : "";
+  const subText = isRegistrant
+    ? "Vælg skabelon, scan MAC og indsend."
+    : "Scan eller indtast MAC og indsend.";
   container.innerHTML = `
     <div class="register-topbar">
       <span class="register-brand">ISE Register</span>
@@ -52,12 +56,12 @@ export async function renderRegister(container) {
     <div class="register-shell">
       <div class="register-header">
         <h1>Registrér endpoint</h1>
-        <div class="register-sub">Scan eller indtast MAC og indsend.</div>
+        <div class="register-sub">${subText}</div>
       </div>
       <div id="queue-banner" class="register-queue-banner" hidden></div>
       <div id="msg" class="register-msg"></div>
       <form id="register-form" class="register-form" autocomplete="off">
-        <div id="r-template-row" class="register-template-row" hidden>
+        <div id="r-template-row" class="register-template-row"${isRegistrant ? "" : " hidden"}>
           <label for="r-template" class="register-label">📋 Skabelon</label>
           <select id="r-template" class="register-input">
             <option value="">— ingen skabelon —</option>
@@ -74,29 +78,31 @@ export async function renderRegister(container) {
         </div>
         <div id="r-vendor" class="register-vendor" hidden></div>
 
-        <label for="r-group" class="register-label">Identity Group</label>
-        <select id="r-group" class="register-input">
-          <option value="">— ingen (ISE default) —</option>
-        </select>
+        <div id="r-advanced-section"${isRegistrant ? ' hidden' : ''}>
+          <label for="r-group" class="register-label">Identity Group</label>
+          <select id="r-group" class="register-input">
+            <option value="">— ingen (ISE default) —</option>
+          </select>
 
-        <div id="r-attrs"></div>
+          <div id="r-attrs"></div>
 
-        <div id="r-roles-section" class="register-roles-section" hidden>
-          <label class="register-label">System adm</label>
-          <div class="register-sub register-roles-hint">Vælg System adm fra kataloget. Hvis ingen vælges, tagges endpointet med dit brugernavn (din egen System adm-rolle).</div>
-          <div id="r-roles-chips" class="role-chips register-roles-chips"></div>
-        </div>
+          <div id="r-roles-section" class="register-roles-section" hidden>
+            <label class="register-label">System adm</label>
+            <div class="register-sub register-roles-hint">Vælg System adm fra kataloget. Hvis ingen vælges, tagges endpointet med dit brugernavn (din egen System adm-rolle).</div>
+            <div id="r-roles-chips" class="role-chips register-roles-chips"></div>
+          </div>
 
-        <div id="r-psk-section" hidden>
-          <label class="register-label">PSK Mode</label>
-          <label class="register-psk-mode-cb">
-            <input type="checkbox" id="r-psk-mode" /> MPSK/IPSK aktiveret
-          </label>
-          <label class="register-label">PSK Key</label>
-          <div class="psk-key-wrap register-psk-key-wrap">
-            <input type="password" id="r-psk-key" class="register-input" autocomplete="off" placeholder="(valgfri)" />
-            <button type="button" id="r-psk-show" class="register-tiny-btn">Vis</button>
-            <button type="button" id="r-psk-gen" class="register-tiny-btn">Generer</button>
+          <div id="r-psk-section" hidden>
+            <label class="register-label">PSK Mode</label>
+            <label class="register-psk-mode-cb">
+              <input type="checkbox" id="r-psk-mode" /> MPSK/IPSK aktiveret
+            </label>
+            <label class="register-label">PSK Key</label>
+            <div class="psk-key-wrap register-psk-key-wrap">
+              <input type="password" id="r-psk-key" class="register-input" autocomplete="off" placeholder="(valgfri)" />
+              <button type="button" id="r-psk-show" class="register-tiny-btn">Vis</button>
+              <button type="button" id="r-psk-gen" class="register-tiny-btn">Generer</button>
+            </div>
           </div>
         </div>
 
@@ -205,32 +211,41 @@ export async function renderRegister(container) {
 
   const templateRow = container.querySelector("#r-template-row");
   const templateSel = container.querySelector("#r-template");
-  if (templates.length) {
+
+  if (isRegistrant && !templates.length) {
+    // Registrant skal bruge skabelon — vis blokerende besked hvis ingen findes
+    templateSel.innerHTML = `<option value="">Ingen skabeloner tilgængelige</option>`;
+    templateSel.disabled = true;
+    container.querySelector("#r-submit").disabled = true;
+    container.querySelector("#msg").innerHTML =
+      `<div class="alert error">Ingen skabeloner er tilgængelige for din konto — kontakt administrator.</div>`;
+  } else if (templates.length) {
+    const noneLabel = isRegistrant ? "— vælg skabelon —" : "— ingen skabelon —";
     templateSel.innerHTML =
-      `<option value="">— ingen skabelon —</option>` +
+      `<option value="">${noneLabel}</option>` +
       templates.map((t) =>
         `<option value="${esc(t.id)}">${esc(t.name)}${t.description ? ` — ${esc(t.description)}` : ""}</option>`
       ).join("");
     templateRow.hidden = false;
+  }
 
-    function applyTemplate(tplId) {
-      const tpl = templates.find((t) => t.id === tplId);
-      if (!tpl) return;
-      const fields = tpl.fields || {};
-      if (fields.group_id) groupSel.value = fields.group_id;
-      const descInput = container.querySelector("#r-desc");
-      if (fields.description) descInput.value = fields.description;
-      const ca = fields.custom_attributes || {};
-      for (const name of Object.keys(attrLabels)) {
-        if (ca[name]) {
-          const sel = container.querySelector(`#r-ca-${name}`);
-          if (sel) sel.value = ca[name];
-        }
+  function applyTemplate(tplId) {
+    const tpl = templates.find((t) => t.id === tplId);
+    if (!tpl) return;
+    const fields = tpl.fields || {};
+    if (groupSel && fields.group_id) groupSel.value = fields.group_id;
+    const descInput = container.querySelector("#r-desc");
+    if (fields.description) descInput.value = fields.description;
+    const ca = fields.custom_attributes || {};
+    for (const name of Object.keys(attrLabels)) {
+      if (ca[name]) {
+        const sel = container.querySelector(`#r-ca-${name}`);
+        if (sel) sel.value = ca[name];
       }
     }
-
-    templateSel.addEventListener("change", () => applyTemplate(templateSel.value));
   }
+
+  templateSel.addEventListener("change", () => applyTemplate(templateSel.value));
 
   // PSK-sektion: kun for admin og editor-psk
   if (isPskEditor) {
@@ -352,6 +367,10 @@ export async function renderRegister(container) {
     const mac = normaliseMac(macInput.value.trim()).toUpperCase();
     if (!MAC_RE.test(mac)) {
       showError("Ugyldig MAC-adresse.");
+      return;
+    }
+    if (isRegistrant && !templateSel.value) {
+      showError("Vælg en skabelon inden registrering.");
       return;
     }
     const ca = {};
