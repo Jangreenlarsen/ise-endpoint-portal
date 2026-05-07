@@ -5,6 +5,56 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.19.0 build 0173] — 2026-05-07 — feat: circuit-breaker + rate limiting + FTS5 audit-søgning
+
+**`backend/app/ise/circuit_breaker.py`** (ny):
+- `CircuitBreaker` — tre-tilstands state-maskine (CLOSED/OPEN/HALF_OPEN). Tripper til OPEN
+  efter `ise_cb_failure_threshold` (default 5) på hinanden følgende request-fejl. Fast-failer
+  efterfølgende kald med IseApiError(503) i `ise_cb_recovery_timeout_s` (default 60s).
+  Skifter til HALF_OPEN efter recovery-vinduet, lader én probe-request igennem.
+  Succes → CLOSED, fejl → OPEN igen.
+
+**`backend/app/ise/client.py`:**
+- `__init__`: opretter `self._cb = CircuitBreaker(...)` fra settings
+- `request()`: tjekker `self._cb.is_open()` FØR retry-loop — open circuit hæver IseApiError(503)
+  med remaining_s i beskeden. `record_failure()` / `record_success()` efter henholdsvis
+  transport-fejl og succes. `CIRCUIT_STATE` gauge opdateres (0=closed, 1=half_open, 2=open)
+
+**`backend/app/core/rate_limiter.py`** (ny):
+- `_SlidingWindow`: sliding-window counter pr. IP (rullende 60s vindue)
+- `RateLimitMiddleware`: Starlette BaseHTTPMiddleware — tjekker X-Forwarded-For / client.host
+  mod `rate_limit_per_minute` (default 200, 0=deaktiveret). Blokerede requests returnerer
+  429 med Retry-After + X-RateLimit-* headers. Gælder kun `/api/`-stier.
+
+**`backend/app/main.py`:**
+- `app.add_middleware(RateLimitMiddleware)` — tilføjet FØR CORSMiddleware (ydre lag)
+
+**`backend/app/core/audit_store.py`:**
+- `_FTS_SCHEMA`: FTS5 virtual table `audit_fts` med `tokenize="trigram case_sensitive 0"` —
+  case-insensitiv substrings-søgning ækvivalent til `LIKE '%q%'` men O(log N) via indeks
+- `_ensure_fts()`: opretter tabel + triggers ved første opstart, backfiller eksisterende rækker.
+  Sætter modul-flag `_fts_available = True`
+- `init_db()`: kalder `_ensure_fts()` efter SCHEMA
+- `_query_sync()`: bruger `id IN (SELECT rowid FROM audit_fts WHERE audit_fts MATCH ?)` når
+  `_fts_available`. Fallback til LIKE hvis FTS5 ikke er tilgængeligt (graceful degradation)
+- INSERT/DELETE-triggers på `audit_events` holder FTS-indeks synkroniseret automatisk
+
+**`backend/app/core/config.py`:**
+- Tilføjet `ise_cb_failure_threshold` (default 5), `ise_cb_recovery_timeout_s` (default 60),
+  `rate_limit_per_minute` (default 200)
+
+**`backend/app/core/metrics.py`:**
+- Tilføjet `CIRCUIT_STATE` (Gauge, 0/1/2) og `RATE_LIMIT_BLOCKED` (Counter)
+
+**Tests (25 nye, 53 total — alle passed):**
+- `test_circuit_breaker.py` (13): CLOSED/OPEN/HALF_OPEN state-maskine, threshold, recovery,
+  probe success/failure, stats
+- `test_rate_limiter.py` (6): allow/block/independent-IPs/window-expire/remaining-counter
+- `test_audit_fts.py` (7): FTS-tabel oprettelse, MAC i JSON, case-insensitiv, false positives,
+  kombineret resource_type-filter
+
+---
+
 ## [3.18.0 build 0172] — 2026-05-07 — obs(metrics) + test: Prometheus + udvidet test-suite
 
 **`backend/pyproject.toml`:**

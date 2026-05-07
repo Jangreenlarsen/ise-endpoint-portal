@@ -14,7 +14,8 @@ from tenacity import (
 
 from app.core import config
 from app.core.exceptions import IseApiError
-from app.core.metrics import ISE_REQUEST_DURATION, ISE_REQUESTS, ISE_RETRIES
+from app.core.metrics import CIRCUIT_STATE, ISE_REQUEST_DURATION, ISE_REQUESTS, ISE_RETRIES
+from app.ise.circuit_breaker import CircuitBreaker
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +47,11 @@ class IseClient:
             },
         )
         self._retry_attempts = int(getattr(s, "ise_retry_attempts", 3))
+        self._cb = CircuitBreaker(
+            failure_threshold=int(getattr(s, "ise_cb_failure_threshold", 5)),
+            recovery_timeout=float(getattr(s, "ise_cb_recovery_timeout_s", 60.0)),
+        )
+        CIRCUIT_STATE.set(0)  # start closed
 
     async def close(self) -> None:
         await self._http.aclose()
@@ -66,6 +72,15 @@ class IseClient:
         HTTP 4xx/5xx are NOT retried — they are passed through as IseApiError.
         """
         logger.info("ISE %s %s params=%s", method, path, params)
+
+        if self._cb.is_open():
+            CIRCUIT_STATE.set(2)
+            raise IseApiError(
+                503,
+                "Circuit breaker open — ISE er utilgængelig, prøv igen om "
+                f"{self._cb.stats()['recovery_remaining_s']:.0f}s",
+            )
+
         _t0 = time.perf_counter()
 
         def _on_retry(retry_state: Any) -> None:
@@ -94,10 +109,15 @@ class IseClient:
         except httpx.TransportError as exc:
             ISE_REQUEST_DURATION.observe(time.perf_counter() - _t0)
             ISE_REQUESTS.labels(method=method, outcome="error").inc()
+            self._cb.record_failure()
+            _cb_state_map = {"closed": 0, "half_open": 1, "open": 2}
+            CIRCUIT_STATE.set(_cb_state_map.get(self._cb.state, 0))
             logger.error("ISE transport error on %s %s: %s", method, path, exc)
             raise IseApiError(0, f"transport error: {exc}") from exc
 
         ISE_REQUEST_DURATION.observe(time.perf_counter() - _t0)
+        self._cb.record_success()
+        CIRCUIT_STATE.set(0)
 
         if response.status_code >= 400:
             message = response.text

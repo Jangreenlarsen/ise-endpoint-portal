@@ -61,6 +61,28 @@ ISE_RETRIES = Counter(
 # Bulk operation metrics                                               #
 # ------------------------------------------------------------------ #
 
+# ------------------------------------------------------------------ #
+# Circuit-breaker metrics                                              #
+# ------------------------------------------------------------------ #
+
+CIRCUIT_STATE = Gauge(
+    "ise_portal_circuit_breaker_state",
+    "ISE circuit breaker state: 0=closed, 1=half_open, 2=open.",
+)
+
+# ------------------------------------------------------------------ #
+# Rate-limit metrics                                                   #
+# ------------------------------------------------------------------ #
+
+RATE_LIMIT_BLOCKED = Counter(
+    "ise_portal_rate_limit_blocked_total",
+    "Requests blocked by the per-IP rate limiter (429).",
+)
+
+# ------------------------------------------------------------------ #
+# Bulk operation metrics                                               #
+# ------------------------------------------------------------------ #
+
 BULK_ITEMS = Counter(
     "ise_portal_bulk_items_total",
     "Bulk create/import item outcomes.",

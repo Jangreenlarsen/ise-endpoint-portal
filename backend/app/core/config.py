@@ -17,6 +17,29 @@ class Settings(BaseSettings):
     ise_verify_tls: bool = False
     ise_timeout: float = 30.0
     ise_api_type: str = Field(default="ers", description="'ers' or 'openapi'")
+    ise_cb_failure_threshold: int = Field(
+        default=5,
+        description=(
+            "Antal på hinanden følgende request-fejl (transport-niveau) der "
+            "tripper circuit-breakeren til OPEN. En 'fejl' er en request der "
+            "udtømmer alle ise_retry_attempts."
+        ),
+    )
+    ise_cb_recovery_timeout_s: float = Field(
+        default=60.0,
+        description=(
+            "Sekunder i OPEN-tilstand inden circuit-breakeren skifter til "
+            "HALF_OPEN og tillader én probe-request igennem. "
+            "Sæt lavt (30s) for hurtig recovery, højt (120s) for konservativ."
+        ),
+    )
+    rate_limit_per_minute: int = Field(
+        default=200,
+        description=(
+            "Max API-requests pr. IP pr. minut. 0 = deaktiveret. "
+            "Gælder kun /api/-stier. Returnerer 429 ved overskridelse."
+        ),
+    )
     ise_max_connections: int = Field(
         default=10,
         description=(

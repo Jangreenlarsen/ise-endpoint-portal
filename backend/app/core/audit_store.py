@@ -65,6 +65,37 @@ CREATE INDEX IF NOT EXISTS idx_audit_resource
 CREATE INDEX IF NOT EXISTS idx_audit_actor ON audit_events(actor_username);
 """
 
+# FTS5 virtual table + triggers for søgning.
+# tokenize="trigram case_sensitive 0": case-insensitiv substrings-søgning,
+# ækvivalent til LOWER(...) LIKE '%q%' men med indeks (O(log N) i stedet for O(N)).
+# content=audit_events: FTS er en indeks-tabel, ikke en kopi — ingen data-duplikering.
+_FTS_SCHEMA = """
+CREATE VIRTUAL TABLE IF NOT EXISTS audit_fts USING fts5(
+    actor_username, action, resource_type, resource_id,
+    before_json, after_json, source_ip, ts,
+    content=audit_events,
+    content_rowid=id,
+    tokenize="trigram case_sensitive 0"
+);
+CREATE TRIGGER IF NOT EXISTS audit_fts_insert
+    AFTER INSERT ON audit_events BEGIN
+        INSERT INTO audit_fts(rowid, actor_username, action, resource_type,
+            resource_id, before_json, after_json, source_ip, ts)
+        VALUES (new.id, new.actor_username, new.action, new.resource_type,
+            new.resource_id, new.before_json, new.after_json, new.source_ip, new.ts);
+    END;
+CREATE TRIGGER IF NOT EXISTS audit_fts_delete
+    AFTER DELETE ON audit_events BEGIN
+        INSERT INTO audit_fts(audit_fts, rowid, actor_username, action,
+            resource_type, resource_id, before_json, after_json, source_ip, ts)
+        VALUES ('delete', old.id, old.actor_username, old.action, old.resource_type,
+            old.resource_id, old.before_json, old.after_json, old.source_ip, old.ts);
+    END;
+"""
+
+# Sættes til True af _ensure_fts() ved succesfuld migration.
+_fts_available: bool = False
+
 
 def _connect() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH)
@@ -72,11 +103,47 @@ def _connect() -> sqlite3.Connection:
     return conn
 
 
+def _ensure_fts(conn: sqlite3.Connection) -> bool:
+    """Opret FTS5-tabel og triggers hvis de mangler. Returnerer True ved succes.
+
+    Kører en one-time bulk INSERT af eksisterende rækker så historiske events
+    er søgbare med det samme. Efterfølgende inserts/deletes håndteres af triggers.
+    """
+    global _fts_available
+    fts_exists = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='audit_fts'"
+    ).fetchone()
+    if not fts_exists:
+        try:
+            conn.executescript(_FTS_SCHEMA)
+            # Backfill eksisterende rækker i FTS-indekset.
+            count = conn.execute("SELECT COUNT(*) FROM audit_events").fetchone()[0]
+            if count:
+                conn.execute(
+                    "INSERT INTO audit_fts(rowid, actor_username, action, resource_type,"
+                    "  resource_id, before_json, after_json, source_ip, ts)"
+                    " SELECT id, actor_username, action, resource_type,"
+                    "  resource_id, before_json, after_json, source_ip, ts"
+                    " FROM audit_events"
+                )
+                conn.commit()
+                logger.info("audit FTS5: backfilled %d existing events", count)
+            else:
+                conn.commit()
+            logger.info("audit FTS5: trigram-indeks oprettet")
+        except sqlite3.OperationalError as exc:
+            logger.warning("audit FTS5: kunne ikke oprette indeks: %s", exc)
+            return False
+    _fts_available = True
+    return True
+
+
 def init_db() -> None:
-    """Create the audit table + indexes if missing. Idempotent."""
+    """Create the audit table + indexes + FTS5 virtual table if missing. Idempotent."""
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     with _connect() as conn:
         conn.executescript(SCHEMA)
+        _ensure_fts(conn)
 
 
 def _enabled() -> bool:
@@ -188,23 +255,31 @@ def _query_sync(
         where.append("ts <= ?")
         params.append(to_ts)
     if search:
-        # Bredsøgning på alle relevante kolonner inkl. JSON-blobs.
-        # Case-insensitive via LOWER(); IFNULL beskytter mod NULL-felter
-        # (resource_id og JSON-blobs kan være NULL).
-        pattern = f"%{search.lower()}%"
-        where.append(
-            "("
-            "LOWER(actor_username) LIKE ? OR "
-            "LOWER(action) LIKE ? OR "
-            "LOWER(resource_type) LIKE ? OR "
-            "LOWER(IFNULL(resource_id, '')) LIKE ? OR "
-            "LOWER(IFNULL(before_json, '')) LIKE ? OR "
-            "LOWER(IFNULL(after_json, '')) LIKE ? OR "
-            "LOWER(IFNULL(source_ip, '')) LIKE ? OR "
-            "LOWER(ts) LIKE ?"
-            ")"
-        )
-        params.extend([pattern] * 8)
+        if _fts_available:
+            # FTS5 trigram: O(log N) case-insensitiv substrings-søgning via indeks.
+            # Wrapper søgeudtrykket i "" så det behandles som et literalt phrase
+            # (ingen FTS5-operatorer tolkes). Interne " escapes til "".
+            fts_q = '"' + search.replace('"', '""') + '"'
+            where.append(
+                "id IN (SELECT rowid FROM audit_fts WHERE audit_fts MATCH ?)"
+            )
+            params.append(fts_q)
+        else:
+            # Fallback: LIKE-søgning hvis FTS5 ikke er tilgængeligt.
+            pattern = f"%{search.lower()}%"
+            where.append(
+                "("
+                "LOWER(actor_username) LIKE ? OR "
+                "LOWER(action) LIKE ? OR "
+                "LOWER(resource_type) LIKE ? OR "
+                "LOWER(IFNULL(resource_id, '')) LIKE ? OR "
+                "LOWER(IFNULL(before_json, '')) LIKE ? OR "
+                "LOWER(IFNULL(after_json, '')) LIKE ? OR "
+                "LOWER(IFNULL(source_ip, '')) LIKE ? OR "
+                "LOWER(ts) LIKE ?"
+                ")"
+            )
+            params.extend([pattern] * 8)
     where_sql = f"WHERE {' AND '.join(where)}" if where else ""
     with _connect() as conn:
         total = conn.execute(

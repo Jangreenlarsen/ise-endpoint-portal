@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api import audit as audit_api
 from app.api import metrics_api
+from app.core.rate_limiter import RateLimitMiddleware
 from app.api import auth as auth_api
 from app.api import cache as cache_api
 from app.api import custom_attributes as custom_attrs_api
@@ -68,6 +69,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.add_middleware(RateLimitMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.backend_cors_origins,
