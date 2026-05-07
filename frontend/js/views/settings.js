@@ -47,6 +47,7 @@ export async function renderSettings(container) {
       <button class="settings-tab" data-tab="pxgrid">PxGrid</button>
       <button class="settings-tab" data-tab="ise-config">ISE-config</button>
       <button class="settings-tab" data-tab="access">Adgang</button>
+      <button class="settings-tab" data-tab="templates">Skabeloner</button>
       <button class="settings-tab" data-tab="system-update">Opdatering</button>
       ` : ""}
       ${isPskEditorUser ? `
@@ -582,6 +583,53 @@ export async function renderSettings(container) {
     ` : ""}
 
     ${isAdmin ? `
+    <div class="card" data-tab="templates">
+      <h3>Endpoint-skabeloner</h3>
+      <p class="hint">
+        Skabeloner forudfylder registreringsformularen med standardværdier —
+        registrar vælger en skabelon og scanner blot MAC-adressen.
+      </p>
+      <div id="tpl-msg"></div>
+      <div id="tpl-list" style="margin-bottom:1rem;"></div>
+      <button type="button" id="tpl-new-btn" class="secondary">+ Ny skabelon</button>
+
+      <div id="tpl-form-wrap" class="hidden" style="margin-top:1.5rem;border-top:1px solid var(--border,#e2e8f0);padding-top:1rem;">
+        <h4 id="tpl-form-title" style="margin:0 0 1rem;">Ny skabelon</h4>
+        <input type="hidden" id="tpl-edit-id" value="" />
+        <div class="field">
+          <label for="tpl-name">Navn <span style="color:#e11d48;">*</span></label>
+          <input type="text" id="tpl-name" placeholder="fx ESP32-Modbus" required style="max-width:320px;" />
+        </div>
+        <div class="field">
+          <label for="tpl-desc-field">Beskrivelse</label>
+          <input type="text" id="tpl-desc-field" placeholder="(valgfri)" style="max-width:480px;" />
+        </div>
+        <div class="field">
+          <label for="tpl-group">Identity Group</label>
+          <select id="tpl-group" style="max-width:320px;">
+            <option value="">— ingen (ISE default) —</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="tpl-ep-desc">Standard beskrivelse på endpoint</label>
+          <input type="text" id="tpl-ep-desc" placeholder="(valgfri)" style="max-width:480px;" />
+        </div>
+        <div id="tpl-attrs-wrap"></div>
+        <div class="field">
+          <label>
+            <input type="checkbox" id="tpl-static-group" style="margin-right:0.4rem;" />
+            Static Group Assignment
+          </label>
+        </div>
+        <div class="actions" style="margin-top:1rem;">
+          <button type="button" id="tpl-save-btn" class="primary">Gem skabelon</button>
+          <button type="button" id="tpl-cancel-btn" class="secondary">Annuller</button>
+        </div>
+      </div>
+    </div>
+    ` : ""}
+
+    ${isAdmin ? `
     <div class="card" data-tab="system-update">
       <h3>Portal system opdatering</h3>
       <p class="hint">
@@ -709,6 +757,7 @@ export async function renderSettings(container) {
     await initPskPolicySection(container);
   }
   if (isAdmin) {
+    await initTemplatesSection(container);
     initSystemUpdateSection(container);
   }
   initPasswordSection(container);
@@ -1686,6 +1735,211 @@ function initSettingsTabs(container, isAdmin, isPskEditorUser = false) {
 
   tabs.forEach(t => t.addEventListener("click", () => activate(t.dataset.tab)));
   activate(initial);
+}
+
+async function initTemplatesSection(container) {
+  const msg        = container.querySelector("#tpl-msg");
+  const listDiv    = container.querySelector("#tpl-list");
+  const formWrap   = container.querySelector("#tpl-form-wrap");
+  const formTitle  = container.querySelector("#tpl-form-title");
+  const editIdInp  = container.querySelector("#tpl-edit-id");
+  const nameInp    = container.querySelector("#tpl-name");
+  const descFieldInp = container.querySelector("#tpl-desc-field");
+  const groupSel   = container.querySelector("#tpl-group");
+  const epDescInp  = container.querySelector("#tpl-ep-desc");
+  const attrsWrap  = container.querySelector("#tpl-attrs-wrap");
+  const staticCb   = container.querySelector("#tpl-static-group");
+  const newBtn     = container.querySelector("#tpl-new-btn");
+  const saveBtn    = container.querySelector("#tpl-save-btn");
+  const cancelBtn  = container.querySelector("#tpl-cancel-btn");
+
+  const attrLabels = {
+    Type: "Type", Owner: "Ejer", Lokation: "Lokation",
+    AuthzVlan: "Authz VLAN", AuthzACL: "Authz ACL", PlatformType: "Platform",
+  };
+
+  // Hent grupper + custom-attr-værdier til form-dropdowns
+  let groups = [];
+  let attrMap = {};
+  try {
+    const [groupsResp, caResp, daclsResp] = await Promise.all([
+      api.listGroups().catch(() => []),
+      api.listCustomAttributes().catch(() => ({ attributes: [] })),
+      api.listDacls().catch(() => []),
+    ]);
+    groups = groupsResp || [];
+    for (const a of (caResp.attributes || [])) attrMap[a.name] = a.values || [];
+    attrMap.AuthzACL = (daclsResp || []).map((d) => d.name).filter(Boolean).sort();
+  } catch { /* ignorer */ }
+
+  groupSel.innerHTML =
+    `<option value="">— ingen (ISE default) —</option>` +
+    groups.map((g) => `<option value="${esc(g.id)}">${esc(g.name)}</option>`).join("");
+
+  attrsWrap.innerHTML = Object.entries(attrLabels).map(([name, label]) => {
+    const opts = (attrMap[name] || [])
+      .map((v) => `<option value="${esc(v)}">${esc(v)}</option>`).join("");
+    return `
+      <div class="field">
+        <label for="tpl-ca-${name}">${label}</label>
+        <select id="tpl-ca-${name}" style="max-width:320px;">
+          <option value="">— vælg —</option>${opts}
+        </select>
+      </div>`;
+  }).join("");
+
+  function showMsg(html) { msg.innerHTML = html; }
+  function clearMsg() { msg.innerHTML = ""; }
+
+  function resetForm() {
+    editIdInp.value = "";
+    nameInp.value = "";
+    descFieldInp.value = "";
+    groupSel.value = "";
+    epDescInp.value = "";
+    staticCb.checked = false;
+    for (const name of Object.keys(attrLabels)) {
+      const sel = container.querySelector(`#tpl-ca-${name}`);
+      if (sel) sel.value = "";
+    }
+    formWrap.classList.add("hidden");
+    formTitle.textContent = "Ny skabelon";
+  }
+
+  function fillForm(tpl) {
+    editIdInp.value = tpl.id;
+    nameInp.value = tpl.name;
+    descFieldInp.value = tpl.description || "";
+    const f = tpl.fields || {};
+    groupSel.value = f.group_id || "";
+    epDescInp.value = f.description || "";
+    staticCb.checked = !!f.static_group_assignment;
+    const ca = f.custom_attributes || {};
+    for (const name of Object.keys(attrLabels)) {
+      const sel = container.querySelector(`#tpl-ca-${name}`);
+      if (sel) sel.value = ca[name] || "";
+    }
+    formTitle.textContent = `Redigér: ${esc(tpl.name)}`;
+    formWrap.classList.remove("hidden");
+    nameInp.focus();
+  }
+
+  function buildPayload() {
+    const ca = {};
+    for (const name of Object.keys(attrLabels)) {
+      const sel = container.querySelector(`#tpl-ca-${name}`);
+      const v = sel ? sel.value.trim() : "";
+      if (v) ca[name] = v;
+    }
+    return {
+      name: nameInp.value.trim(),
+      description: descFieldInp.value.trim(),
+      fields: {
+        group_id: groupSel.value,
+        description: epDescInp.value.trim(),
+        static_group_assignment: staticCb.checked || null,
+        custom_attributes: ca,
+      },
+    };
+  }
+
+  async function loadAndRender() {
+    try {
+      const resp = await api.listTemplates();
+      const templates = resp.templates || [];
+      if (!templates.length) {
+        listDiv.innerHTML = `<p class="hint">Ingen skabeloner endnu.</p>`;
+        return;
+      }
+      listDiv.innerHTML = `
+        <table class="data-table" style="width:100%;">
+          <thead><tr>
+            <th>Navn</th><th>Beskrivelse</th><th>Gruppe</th><th>Custom attrs</th><th></th>
+          </tr></thead>
+          <tbody>
+          ${templates.map((t) => {
+            const f = t.fields || {};
+            const ca = f.custom_attributes || {};
+            const caStr = Object.entries(ca).filter(([,v]) => v)
+              .map(([k,v]) => `${k}=${v}`).join(", ") || "—";
+            const grpName = groups.find((g) => g.id === f.group_id)?.name || f.group_id || "—";
+            return `<tr data-tpl-id="${esc(t.id)}">
+              <td><b>${esc(t.name)}</b></td>
+              <td>${esc(t.description || "—")}</td>
+              <td>${esc(grpName)}</td>
+              <td style="font-size:0.82rem;color:var(--text-secondary,#64748b);">${esc(caStr)}</td>
+              <td style="white-space:nowrap;">
+                <button type="button" class="secondary tpl-edit-btn" data-id="${esc(t.id)}" style="padding:2px 10px;margin-right:4px;">Redigér</button>
+                <button type="button" class="danger tpl-del-btn" data-id="${esc(t.id)}" style="padding:2px 10px;">Slet</button>
+              </td>
+            </tr>`;
+          }).join("")}
+          </tbody>
+        </table>`;
+
+      listDiv.querySelectorAll(".tpl-edit-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const tpl = templates.find((t) => t.id === btn.dataset.id);
+          if (tpl) fillForm(tpl);
+          formWrap.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        });
+      });
+      listDiv.querySelectorAll(".tpl-del-btn").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const tpl = templates.find((t) => t.id === btn.dataset.id);
+          if (!tpl) return;
+          if (!confirm(`Slet skabelonen "${tpl.name}"?`)) return;
+          try {
+            await api.deleteTemplate(tpl.id);
+            showMsg(`<div class="alert success">Skabelon "${esc(tpl.name)}" slettet.</div>`);
+            resetForm();
+            await loadAndRender();
+          } catch (err) {
+            showMsg(`<div class="alert error">Fejl: ${esc(err.message)}</div>`);
+          }
+        });
+      });
+    } catch (err) {
+      listDiv.innerHTML = `<p class="hint" style="color:#e11d48;">Kunne ikke hente skabeloner: ${esc(err.message)}</p>`;
+    }
+  }
+
+  newBtn.addEventListener("click", () => {
+    resetForm();
+    formWrap.classList.remove("hidden");
+    formTitle.textContent = "Ny skabelon";
+    nameInp.focus();
+  });
+  cancelBtn.addEventListener("click", resetForm);
+
+  saveBtn.addEventListener("click", async () => {
+    clearMsg();
+    const payload = buildPayload();
+    if (!payload.name) {
+      showMsg(`<div class="alert error">Navn er påkrævet.</div>`);
+      nameInp.focus();
+      return;
+    }
+    saveBtn.disabled = true;
+    try {
+      const id = editIdInp.value;
+      if (id) {
+        await api.updateTemplate(id, payload);
+        showMsg(`<div class="alert success">Skabelon "${esc(payload.name)}" opdateret.</div>`);
+      } else {
+        await api.createTemplate(payload);
+        showMsg(`<div class="alert success">Skabelon "${esc(payload.name)}" oprettet.</div>`);
+      }
+      resetForm();
+      await loadAndRender();
+    } catch (err) {
+      showMsg(`<div class="alert error">Fejl: ${esc(err.message)}</div>`);
+    } finally {
+      saveBtn.disabled = false;
+    }
+  });
+
+  await loadAndRender();
 }
 
 function initSystemUpdateSection(container) {

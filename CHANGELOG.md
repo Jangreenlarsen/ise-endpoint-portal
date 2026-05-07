@@ -5,6 +5,43 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.24.0 build 0178] — 2026-05-07 — feat(templates): endpoint-skabeloner Phase 3-5
+
+**`backend/app/core/template_store.py`** (ny):
+- JSON-baseret skabelon-katalog (`backend/templates.json`); delt, ikke per-bruger
+- `load_templates()`, `save_templates()`, `get_template(id)`, `add_template()`, `update_template()`, `delete_template()`
+- Auto-genereret UUID + `created_at` ISO-timestamp pr. skabelon
+
+**`backend/app/schemas/template.py`** (ny):
+- `TemplateFields`: `group_id`, `description`, `static_group_assignment`, `custom_attributes: dict[str, str]`
+- `Template`, `TemplateCreate`, `TemplateUpdate`, `TemplateListResponse`
+
+**`backend/app/api/templates.py`** (ny):
+- `GET /api/templates` → `require_register_lookup` (alle inkl. registrar)
+- `POST /api/templates` → `require_editor` (admin + editor)
+- `GET /api/templates/{id}` → `require_register_lookup`
+- `PUT /api/templates/{id}` → `require_editor`
+- `DELETE /api/templates/{id}` → `require_editor`
+- `_coerce()` normaliserer store-records til TemplateFields-kompatibel dict
+
+**`backend/app/main.py`**:
+- Registreret `templates_api.router`
+
+**`frontend/js/api.js`**:
+- `listTemplates`, `getTemplate`, `createTemplate`, `updateTemplate`, `deleteTemplate`
+
+**`frontend/js/views/register.js`**:
+- "📋 Skabelon"-dropdown øverst i registreringsformularen
+- `applyTemplate(tplId)` pre-udfylder group, description og custom attributes
+- Dropdown skjult hvis ingen skabeloner er defineret
+
+**`frontend/js/views/settings.js`**:
+- Ny Settings-tab "Skabeloner" (kun synlig for admin/editor)
+- `initTemplatesSection()`: tabel med alle skabeloner, opret/redigér/slet
+- Formular med name, description, group-dropdown, endpoint-description, custom-attributes-dropdowns, static-group-assignment
+
+---
+
 ## [3.23.0 build 0177] — 2026-05-07 — test: bulk-operationer (13 tests)
 
 **`backend/tests/test_bulk_create.py`** (ny):

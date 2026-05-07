@@ -57,6 +57,13 @@ export async function renderRegister(container) {
       <div id="queue-banner" class="register-queue-banner" hidden></div>
       <div id="msg" class="register-msg"></div>
       <form id="register-form" class="register-form" autocomplete="off">
+        <div id="r-template-row" class="register-template-row" hidden>
+          <label for="r-template" class="register-label">📋 Skabelon</label>
+          <select id="r-template" class="register-input">
+            <option value="">— ingen skabelon —</option>
+          </select>
+        </div>
+
         <label for="r-mac" class="register-label">MAC-adresse</label>
         <div class="register-mac-row">
           <input type="text" id="r-mac" inputmode="text" autocapitalize="characters"
@@ -187,6 +194,42 @@ export async function renderRegister(container) {
       </label>`;
     }).join("");
     rolesSection.hidden = false;
+  }
+
+  // ── Skabeloner ────────────────────────────────────────────────────
+  let templates = [];
+  try {
+    const tplResp = await api.listTemplates().catch(() => ({ templates: [] }));
+    templates = (tplResp && tplResp.templates) ? tplResp.templates : [];
+  } catch { /* ignorer — skabeloner er valgfrie */ }
+
+  const templateRow = container.querySelector("#r-template-row");
+  const templateSel = container.querySelector("#r-template");
+  if (templates.length) {
+    templateSel.innerHTML =
+      `<option value="">— ingen skabelon —</option>` +
+      templates.map((t) =>
+        `<option value="${esc(t.id)}">${esc(t.name)}${t.description ? ` — ${esc(t.description)}` : ""}</option>`
+      ).join("");
+    templateRow.hidden = false;
+
+    function applyTemplate(tplId) {
+      const tpl = templates.find((t) => t.id === tplId);
+      if (!tpl) return;
+      const fields = tpl.fields || {};
+      if (fields.group_id) groupSel.value = fields.group_id;
+      const descInput = container.querySelector("#r-desc");
+      if (fields.description) descInput.value = fields.description;
+      const ca = fields.custom_attributes || {};
+      for (const name of Object.keys(attrLabels)) {
+        if (ca[name]) {
+          const sel = container.querySelector(`#r-ca-${name}`);
+          if (sel) sel.value = ca[name];
+        }
+      }
+    }
+
+    templateSel.addEventListener("change", () => applyTemplate(templateSel.value));
   }
 
   // PSK-sektion: kun for admin og editor-psk
@@ -341,6 +384,7 @@ export async function renderRegister(container) {
       await api.createEndpoint(payload);
       showOk(`✓ ${mac} oprettet`);
       e.target.reset();
+      if (templateSel) templateSel.value = "";
       if (isPskEditor) {
         const pskInp = container.querySelector("#r-psk-key");
         pskInp.type = "password";

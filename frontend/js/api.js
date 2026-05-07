@@ -309,4 +309,12 @@ export const api = {
     return request("/update/apply", { method: "POST", body: fd, _noContentType: true });
   },
   restartServer: () => request("/update/restart", { method: "POST" }),
+  listTemplates: () => request("/templates"),
+  getTemplate: (id) => request(`/templates/${encodeURIComponent(id)}`),
+  createTemplate: (payload) =>
+    request("/templates", { method: "POST", body: JSON.stringify(payload) }),
+  updateTemplate: (id, payload) =>
+    request(`/templates/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(payload) }),
+  deleteTemplate: (id) =>
+    request(`/templates/${encodeURIComponent(id)}`, { method: "DELETE" }),
 };
