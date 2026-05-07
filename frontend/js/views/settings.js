@@ -624,7 +624,7 @@ export async function renderSettings(container) {
           </div>
           <div class="field">
             <label>Synlig for roller</label>
-            <p class="hint" style="margin:0 0 0.5rem;">Tom = synlig for alle roller. Sæt hak = kun de valgte (plus admin/editor) kan se skabelonen.</p>
+            <p class="hint" style="margin:0 0 0.5rem;">Tom = synlig for alle roller. Sæt hak = kun de valgte (admin se alle roller default) kan se skabelonen.</p>
             <div style="display:flex;flex-wrap:wrap;gap:0.4rem 1.5rem;">
               <label class="checkbox-label"><input type="checkbox" class="tpl-visible-to" value="editor" /> editor</label>
               <label class="checkbox-label"><input type="checkbox" class="tpl-visible-to" value="editor-psk" /> editor-psk</label>
