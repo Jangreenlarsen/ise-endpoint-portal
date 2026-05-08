@@ -434,8 +434,8 @@ export async function renderSettings(container) {
 
     ${isAdmin ? `
     <nav class="settings-subtab-nav" data-for-tab="portal-bruger-config">
-      <button class="settings-subtab" data-subtab="pbc-roles">System adm</button>
-      <button class="settings-subtab" data-subtab="pbc-users">Brugere &amp; Roller</button>
+      <button class="settings-subtab" data-subtab="pbc-roles">Endpoint grupper</button>
+      <button class="settings-subtab" data-subtab="pbc-users">Brugere &amp; Bruger grupper</button>
       <button class="settings-subtab" data-subtab="pbc-templates">Skabeloner</button>
     </nav>
     <nav class="settings-subtab-nav" data-for-tab="portal-config">
@@ -483,7 +483,7 @@ export async function renderSettings(container) {
     </div>
 
     <div class="card" data-tab="portal-bruger-config" data-subtab="pbc-roles">
-      <h3>System adm</h3>
+      <h3>Endpoint grupper</h3>
       <p class="hint">
         System adm-tags der kan sættes på endpoints (CA <code>HypervisionRoles</code>) og
         tildeles brugere. Non-admin ser kun endpoints tagget med en af deres effektive
@@ -515,7 +515,7 @@ export async function renderSettings(container) {
     </div>
 
     <div class="card" data-tab="portal-bruger-config" data-subtab="pbc-users">
-      <h3>Brugere &amp; System adm</h3>
+      <h3>Brugere &amp; Bruger grupper</h3>
       <p class="hint">
         Administrer lokale brugerkonti, system-roller og System adm-tildelinger.
         <b>admin</b> har fuld adgang. <b>editor</b> kan oprette/redigere endpoints. <b>viewer</b> kan kun læse.

@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [3.30.0 build 0209] — 2026-05-08 — fix(settings): omdøb sub-tabs i Portal Bruger Config
+
+**Berørte filer**: `frontend/js/views/settings.js`, `version.json`
+
+**Ændring**: Sub-tab labels og kortoverskrifter i Portal Bruger Config omdøbt: "System adm" → "Endpoint grupper", "Brugere & Roller" → "Brugere & Bruger grupper".
+
 ## [3.30.0 build 0208] — 2026-05-08 — fix(settings): Skabeloner flyttet til Portal Bruger Config
 
 **Berørte filer**: `frontend/js/views/settings.js`, `version.json`
