@@ -56,11 +56,20 @@ class PrewarmWorker:
         self._hot: asyncio.Queue[str] = asyncio.Queue()
         self.status = PrewarmStatus()
 
+    def preload_disk_cache(self) -> None:
+        """Indlæs disk-cachen synkront. Kald FØR start() i lifespan så
+        alle entries er tilgængelige fra første HTTP-request."""
+        self._load_from_disk()
+
     def start(self) -> None:
         if self._task and not self._task.done():
             return
         self._stop.clear()
-        self.status = PrewarmStatus(running=True, started_at=time.time())
+        self.status = PrewarmStatus(
+            running=True,
+            started_at=time.time(),
+            disk_loaded=self.status.disk_loaded,  # bevar disk_loaded fra preload
+        )
         self._task = asyncio.create_task(self._run(), name="cache-prewarm-worker")
         logger.info("cache prewarm worker started")
 
@@ -85,8 +94,9 @@ class PrewarmWorker:
         self.status.hot_queue_size = self._hot.qsize()
 
     async def _run(self) -> None:
-        # Trin 1: Load disk cache øjeblikkeligt
-        self._load_from_disk()
+        # Trin 1: Load disk cache (kun hvis preload_disk_cache() ikke allerede kørte)
+        if self.status.disk_loaded == 0:
+            self._load_from_disk()
 
         # Trin 2: Første fulde scan (bag scenen, blokerer ikke UI)
         await self._full_scan()

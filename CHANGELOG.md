@@ -5,6 +5,18 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.25.5 build 0193] — 2026-05-08 — fix(cache): disk-cache indlæses synkront ved opstart — ingen race-condition
+
+**`backend/app/services/cache_prewarm.py`**:
+- Ny `preload_disk_cache()` metode der indlæser disk-cachen synkront
+- `_run()` springer disk-load over hvis `preload_disk_cache()` allerede kørte (tjekker `status.disk_loaded`)
+- `start()` bevarer `disk_loaded`-tæller fra preload i ny `PrewarmStatus`
+
+**`backend/app/main.py`**:
+- Kalder `get_prewarm_worker().preload_disk_cache()` synkront *før* `yield` — disk-entries er garanteret indlæst inden FastAPI begynder at serve HTTP-requests
+
+---
+
 ## [3.25.4 build 0192] — 2026-05-08 — fix(auth): token udløber nu korrekt — client-side exp-tjek + 8h TTL
 
 **`frontend/js/auth.js`**:

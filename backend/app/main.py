@@ -50,6 +50,9 @@ async def lifespan(_: FastAPI):
             )
     except Exception as exc:  # noqa: BLE001
         logger.warning("System adm-rolle backfill fejlede: %s", exc)
+    # Indlæs disk-cache synkront FØR yield så endpoints er tilgængelige
+    # fra allerførste HTTP-request (ingen race-condition med async task).
+    get_prewarm_worker().preload_disk_cache()
     get_cache_sync_worker().start()
     get_audit_retention_worker().start()
     get_pxgrid_worker().start()
