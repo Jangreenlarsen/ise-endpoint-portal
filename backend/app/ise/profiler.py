@@ -1,8 +1,14 @@
 """ISE Profiler profile name lookup.
 
 Resolves profileId (UUID) → human-readable profile name via the ERS
-profilerprofile resource. Results are cached in-memory for the lifetime of
-the process to avoid repeated ISE calls (profile definitions rarely change).
+profilerprofile resource. Results are cached in-memory.
+
+Design: callers NEVER block waiting for the cache to load.
+On first call the load is kicked off as a background asyncio task.
+Until it completes every lookup returns "". Subsequent Browse loads
+will show the resolved names once the task finishes (typically < 5s).
+This prevents the profiler load from serialising concurrent
+endpoint-detail fetches and triggering the ISE circuit breaker.
 """
 from __future__ import annotations
 
@@ -16,34 +22,54 @@ logger = logging.getLogger(__name__)
 
 ERS_PROFILER_PROFILES = "/ers/config/profilerprofile"
 
-# Process-level cache: profileId → name.
 _cache: dict[str, str] = {}
-_cache_lock = asyncio.Lock()
-_all_loaded = False
+_all_loaded: bool = False
+_loading: bool = False          # True while background task is running
+
+
+def resolve_name_sync(profile_id: str) -> str:
+    """Synchronous cache-only lookup — never triggers an ISE call.
+
+    Returns the profile name if already cached, otherwise "".
+    Call ``ensure_loaded(client)`` once to kick off the background load.
+    """
+    if not profile_id:
+        return ""
+    return _cache.get(profile_id, "")
 
 
 async def resolve_name(client: IseClient, profile_id: str) -> str:
     """Return the profile name for a given profileId UUID.
 
-    Fetches the full profile list on first call and caches it. Subsequent
-    calls are served from the in-memory cache (sub-millisecond). Returns an
-    empty string if the profile is not found or ISE returns an error.
+    Non-blocking: returns "" immediately if the cache is not yet populated
+    and schedules a background load. Subsequent calls after the load
+    completes will return the real name.
     """
     if not profile_id:
         return ""
-    global _all_loaded
+    if profile_id in _cache:
+        return _cache[profile_id]
+    # Kick off a background load if not already running or done.
+    ensure_loaded(client)
+    return ""
 
-    async with _cache_lock:
-        if profile_id in _cache:
-            return _cache[profile_id]
-        if not _all_loaded:
-            await _load_all(client)
-        return _cache.get(profile_id, "")
+
+def ensure_loaded(client: IseClient) -> None:
+    """Start the background profiler-cache load if not already running/done."""
+    global _loading, _all_loaded
+    if _all_loaded or _loading:
+        return
+    _loading = True
+    asyncio.ensure_future(_load_all(client))
 
 
 async def _load_all(client: IseClient) -> None:
-    """Fetch all profiler profiles from ISE and populate the cache."""
-    global _all_loaded
+    """Fetch all profiler profiles from ISE and populate the cache.
+
+    Runs as a background task — exceptions are logged and swallowed so a
+    broken/missing profiler endpoint never affects endpoint detail loading.
+    """
+    global _all_loaded, _loading
     try:
         page = 1
         while True:
@@ -53,23 +79,26 @@ async def _load_all(client: IseClient) -> None:
             )
             sr = (data or {}).get("SearchResult", {})
             resources: list[dict[str, Any]] = sr.get("resources", [])
-            total: int = sr.get("total", len(resources))
+            total: int = int(sr.get("total", len(resources)))
             for r in resources:
                 rid = r.get("id", "")
                 rname = r.get("name", "")
                 if rid:
                     _cache[rid] = rname
-            if len(_cache) >= total or not resources:
+            if not resources or len(_cache) >= total:
                 break
             page += 1
         _all_loaded = True
         logger.info("profiler cache loaded: %d profiles", len(_cache))
     except Exception as exc:  # noqa: BLE001
-        logger.warning("could not load profiler profiles from ISE: %s", exc)
+        logger.warning("profiler cache load failed (names will be empty): %s", exc)
+    finally:
+        _loading = False
 
 
 def invalidate() -> None:
-    """Clear the profiler name cache (e.g. after ISE settings change)."""
-    global _all_loaded
+    """Clear the profiler name cache (call after ISE settings change)."""
+    global _all_loaded, _loading
     _cache.clear()
     _all_loaded = False
+    _loading = False

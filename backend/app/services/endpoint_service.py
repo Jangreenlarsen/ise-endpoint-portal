@@ -44,10 +44,6 @@ from app.schemas.endpoint import (
 logger = logging.getLogger(__name__)
 
 PSK_MASKED = "****"
-
-
-async def _noop(value: Any) -> Any:
-    return value
 PSK_IPSK_PREFIX = "psk="
 
 
@@ -198,10 +194,13 @@ class EndpointService:
         group_id = raw.get("groupId", "")
         profile_id = raw.get("profileId", "") or ""
 
-        group_name, profiler_name = await asyncio.gather(
-            self._resolve_group_name(group_id) if group_id else _noop(""),
-            profiler_module.resolve_name(self.client, profile_id) if profile_id else _noop(""),
-        )
+        group_name = await self._resolve_group_name(group_id) if group_id else ""
+
+        # Profiler-navn: synkront cache-opslag (aldrig blokerende ISE-kald).
+        # ensure_loaded starter en baggrunds-load første gang så næste Browse
+        # viser det rigtige navn uden at dette kald forsinkes.
+        profiler_module.ensure_loaded(self.client)
+        profiler_name = profiler_module.resolve_name_sync(profile_id)
 
         mac_val = raw.get("mac", "") or raw.get("name", "")
 

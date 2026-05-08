@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [3.28.1 build 0198] — 2026-05-08 — fix(profiler): non-blokerende baggrunds-load
+
+**Berørte filer**: `backend/app/ise/profiler.py`, `backend/app/services/endpoint_service.py`
+
+**Bug**: `profiler._cache_lock` blev holdt mens `_load_all` lavede paginerede ISE-kald mod `/ers/config/profilerprofile` (100+ profiler = 5+ API-kald). Alle 5 samtidige `_fetch_endpoint_detail`-tasks ventede på låsen → browse hang på "Henter detaljer fra ISE..." og ISE-circuit-breakeren åbnede (503).
+
+**Fix**: `resolve_name` blokerer aldrig. `ensure_loaded(client)` starter en `asyncio.ensure_future`-baggrundstask første gang; `resolve_name_sync` er et rent dict-opslag (ingen lock, ingen ISE-kald). `_fetch_endpoint_detail` kalder `ensure_loaded` + `resolve_name_sync` — begge returner øjeblikkeligt. Profiler-navne vises fra næste Browse-load (typisk < 5s) når baggrundstasken er færdig.
+
 ## [3.28.0 build 0197] — 2026-05-08 — Endpoint-alder filter/sort + ISE Profiler-data
 
 **Berørte filer**: `backend/app/schemas/endpoint.py`, `backend/app/core/custom_attr_store.py`, `backend/app/ise/profiler.py` (ny), `backend/app/services/endpoint_service.py`, `frontend/js/views/browse.js`, `frontend/css/styles.css`
