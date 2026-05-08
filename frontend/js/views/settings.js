@@ -438,8 +438,8 @@ export async function renderSettings(container) {
       <button class="settings-subtab" data-subtab="pbc-users">Brugere &amp; Roller</button>
     </nav>
     <nav class="settings-subtab-nav" data-for-tab="portal-config">
-      <button class="settings-subtab" data-subtab="pc-templates">Skabeloner</button>
       <button class="settings-subtab" data-subtab="pc-psk">PSK-politik</button>
+      <button class="settings-subtab" data-subtab="pc-templates">Skabeloner</button>
       <button class="settings-subtab" data-subtab="pc-ise-config">ISE Purge Config</button>
       <button class="settings-subtab" data-subtab="pc-update">Opdatering</button>
       <button class="settings-subtab" data-subtab="pc-advanced">Avanceret</button>

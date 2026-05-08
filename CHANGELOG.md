@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [3.30.0 build 0207] — 2026-05-08 — fix(settings): PSK-politik som første sub-tab i Portal Config
+
+**Berørte filer**: `frontend/js/views/settings.js`, `version.json`
+
+**Ændring**: Rækkefølge i Portal Config sub-tabs rettet til PSK-politik · Skabeloner · ISE Purge Config · Opdatering · Avanceret.
+
 ## [3.30.0 build 0206] — 2026-05-08 — feat(settings): sub-tab navigation inden for hoved-tabs i Settings
 
 **Berørte filer**: `frontend/js/views/settings.js`, `frontend/css/styles.css`, `version.json`
