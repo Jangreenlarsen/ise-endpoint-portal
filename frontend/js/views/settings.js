@@ -436,10 +436,10 @@ export async function renderSettings(container) {
     <nav class="settings-subtab-nav" data-for-tab="portal-bruger-config">
       <button class="settings-subtab" data-subtab="pbc-roles">System adm</button>
       <button class="settings-subtab" data-subtab="pbc-users">Brugere &amp; Roller</button>
+      <button class="settings-subtab" data-subtab="pbc-templates">Skabeloner</button>
     </nav>
     <nav class="settings-subtab-nav" data-for-tab="portal-config">
       <button class="settings-subtab" data-subtab="pc-psk">PSK-politik</button>
-      <button class="settings-subtab" data-subtab="pc-templates">Skabeloner</button>
       <button class="settings-subtab" data-subtab="pc-ise-config">ISE Purge Config</button>
       <button class="settings-subtab" data-subtab="pc-update">Opdatering</button>
       <button class="settings-subtab" data-subtab="pc-advanced">Avanceret</button>
@@ -595,7 +595,7 @@ export async function renderSettings(container) {
     ` : ""}
 
     ${isAdmin ? `
-    <div class="card" data-tab="portal-config" data-subtab="pc-templates">
+    <div class="card" data-tab="portal-bruger-config" data-subtab="pbc-templates">
       <h3>Endpoint-skabeloner</h3>
       <p class="hint">
         Skabeloner forudfylder registreringsformularen med standardværdier —

@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [3.30.0 build 0208] — 2026-05-08 — fix(settings): Skabeloner flyttet til Portal Bruger Config
+
+**Berørte filer**: `frontend/js/views/settings.js`, `version.json`
+
+**Ændring**: Skabeloner (endpoint-skabeloner) er nu sub-tab under **Portal Bruger Config** (System adm · Brugere & Roller · Skabeloner). Portal Config sub-tabs er nu: PSK-politik · ISE Purge Config · Opdatering · Avanceret.
+
 ## [3.30.0 build 0207] — 2026-05-08 — fix(settings): PSK-politik som første sub-tab i Portal Config
 
 **Berørte filer**: `frontend/js/views/settings.js`, `version.json`
