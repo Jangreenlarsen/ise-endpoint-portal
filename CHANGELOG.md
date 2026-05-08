@@ -3,7 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
-## [3.26.0 build 0195] — 2026-05-08 — Kodebase-analyse + fremtidige features registreret
+## [3.27.0 build 0196] — 2026-05-08 — Versionsbump til 3.27.0
+
+**Berørte filer**: `version.json`
+
+- MINOR-bump fra 3.26.0 → 3.27.0
+
+## [3.27.0 build 0195] — 2026-05-08 — Kodebase-analyse + fremtidige features registreret
 
 **Berørte filer**: `FEATURES.md`
 
