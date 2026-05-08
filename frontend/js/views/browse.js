@@ -246,6 +246,20 @@ export async function renderBrowse(container) {
           <label>Identity store</label>
           <div class="detail-value" id="d-identity-store"></div>
         </div>
+        <div id="d-anc-section" class="hidden anc-section">
+          <div class="anc-status-row">
+            <span class="anc-label">ANC Quarantine</span>
+            <span id="d-anc-badge" class="anc-badge anc-free">Fri</span>
+            <span id="d-anc-loading" class="hint hidden">Henter status…</span>
+          </div>
+          <div id="d-anc-quarantine-row" class="anc-action-row">
+            <select id="d-anc-policy" class="anc-policy-select"><option value="">— Vælg ANC policy —</option></select>
+            <button id="d-anc-apply" class="danger small">Sæt i karantæne</button>
+          </div>
+          <div id="d-anc-clear-row" class="anc-action-row hidden">
+            <button id="d-anc-clear" class="secondary small">Fjern karantæne</button>
+          </div>
+        </div>
         <div class="modal-actions">
           <button id="d-save">Gem ændringer</button>
           <button id="d-disconnect" class="danger"
@@ -1729,6 +1743,14 @@ export async function renderBrowse(container) {
       const store = [d.identity_store, d.identity_store_id].filter(Boolean).join(" / ");
       container.querySelector("#d-identity-store").textContent = store || "—";
       detailMsg.innerHTML = "";
+      // ANC section — editor/admin only, loads async so modal opens fast
+      const ancSection = container.querySelector("#d-anc-section");
+      if (auth.isEditor()) {
+        ancSection.classList.remove("hidden");
+        loadAncStatus(id);
+      } else {
+        ancSection.classList.add("hidden");
+      }
     } catch (err) {
       const httpStatus = parseInt(err.message?.split(":")[0], 10) || 0;
       if (httpStatus === 503) {
@@ -1752,6 +1774,106 @@ export async function renderBrowse(container) {
     detailCurrentId = null;
     detailMsg.innerHTML = "";
   }
+
+  // ------------------------------------------------------------------ //
+  // ANC status + actions                                                //
+  // ------------------------------------------------------------------ //
+  let ancPoliciesCache = null;
+
+  async function ensureAncPolicies() {
+    if (!ancPoliciesCache) {
+      try {
+        const res = await api.listAncPolicies();
+        ancPoliciesCache = res?.policies || [];
+      } catch {
+        ancPoliciesCache = [];
+      }
+    }
+    return ancPoliciesCache;
+  }
+
+  async function loadAncStatus(id) {
+    const badge = container.querySelector("#d-anc-badge");
+    const loading = container.querySelector("#d-anc-loading");
+    const quarantineRow = container.querySelector("#d-anc-quarantine-row");
+    const clearRow = container.querySelector("#d-anc-clear-row");
+    const policySelect = container.querySelector("#d-anc-policy");
+
+    loading.classList.remove("hidden");
+    badge.classList.add("hidden");
+
+    const [statusRes, policies] = await Promise.all([
+      api.ancStatus(id).catch(() => null),
+      ensureAncPolicies(),
+    ]);
+
+    loading.classList.add("hidden");
+    badge.classList.remove("hidden");
+
+    if (statusRes?.quarantined) {
+      badge.textContent = `Karantæne: ${statusRes.policy}`;
+      badge.className = "anc-badge anc-quarantined";
+      quarantineRow.classList.add("hidden");
+      clearRow.classList.remove("hidden");
+    } else {
+      badge.textContent = "Fri";
+      badge.className = "anc-badge anc-free";
+      quarantineRow.classList.remove("hidden");
+      clearRow.classList.add("hidden");
+      policySelect.innerHTML = `<option value="">— Vælg ANC policy —</option>` +
+        policies.map((p) => `<option value="${esc(p)}">${esc(p)}</option>`).join("");
+    }
+  }
+
+  container.querySelector("#d-anc-apply").addEventListener("click", async () => {
+    if (!detailCurrentId) return;
+    const policySelect = container.querySelector("#d-anc-policy");
+    const policyName = policySelect.value;
+    if (!policyName) {
+      detailMsg.innerHTML = `<div class="alert error">Vælg en ANC policy først.</div>`;
+      return;
+    }
+    const mac = container.querySelector("#d-mac").textContent || "";
+    if (!confirm(`Sæt ${mac} i karantæne med ANC policy '${policyName}'?\n\nISE vil sende CoA til klienten.`)) return;
+    const btn = container.querySelector("#d-anc-apply");
+    btn.disabled = true;
+    detailMsg.innerHTML = `<div class="alert info">Sætter i karantæne…</div>`;
+    try {
+      const res = await api.ancQuarantine(detailCurrentId, policyName);
+      if (res?.ok) {
+        detailMsg.innerHTML = `<div class="alert success">ANC karantæne sat: ${esc(res.message || "OK")}</div>`;
+        await loadAncStatus(detailCurrentId);
+      } else {
+        detailMsg.innerHTML = `<div class="alert error">Karantæne fejlede: ${esc(res?.message || "ukendt fejl")}</div>`;
+      }
+    } catch (err) {
+      detailMsg.innerHTML = `<div class="alert error">Karantæne fejlede: ${esc(err.message)}</div>`;
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  container.querySelector("#d-anc-clear").addEventListener("click", async () => {
+    if (!detailCurrentId) return;
+    const mac = container.querySelector("#d-mac").textContent || "";
+    if (!confirm(`Fjern ANC karantæne fra ${mac}?`)) return;
+    const btn = container.querySelector("#d-anc-clear");
+    btn.disabled = true;
+    detailMsg.innerHTML = `<div class="alert info">Fjerner karantæne…</div>`;
+    try {
+      const res = await api.ancClear(detailCurrentId);
+      if (res?.ok) {
+        detailMsg.innerHTML = `<div class="alert success">ANC karantæne fjernet: ${esc(res.message || "OK")}</div>`;
+        await loadAncStatus(detailCurrentId);
+      } else {
+        detailMsg.innerHTML = `<div class="alert error">Fjern karantæne fejlede: ${esc(res?.message || "ukendt fejl")}</div>`;
+      }
+    } catch (err) {
+      detailMsg.innerHTML = `<div class="alert error">Fjern karantæne fejlede: ${esc(err.message)}</div>`;
+    } finally {
+      btn.disabled = false;
+    }
+  });
 
   tbody.addEventListener("click", (e) => {
     const link = e.target.closest(".mac-link");

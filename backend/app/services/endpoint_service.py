@@ -16,6 +16,7 @@ from app.core.custom_attr_store import (
 from app.core.endpoint_cache import get_cache
 from app.core.exceptions import IseApiError
 from app.core.oui_lookup import lookup as oui_lookup
+from app.ise import anc as anc_module
 from app.ise import coa as coa_module
 from app.ise import mnt_sessions
 from app.ise.client import IseClient
@@ -536,6 +537,55 @@ class EndpointService:
         if not mac:
             return False, "", "Endpoint har ingen MAC-adresse"
         ok, msg = await coa_module.disconnect(mac)
+        return ok, mac, msg
+
+    # ------------------------------------------------------------------ #
+    # ANC (Adaptive Network Control)                                       #
+    # ------------------------------------------------------------------ #
+
+    async def list_anc_policies(self) -> list[str]:
+        """Return all ANC policy names configured in ISE."""
+        return await anc_module.list_policies(self.client)
+
+    async def anc_status(self, endpoint_id: str) -> tuple[str, str | None]:
+        """Return (mac, policy_name) for the endpoint. policy_name is None if not quarantined."""
+        raw = await self.endpoints.get(endpoint_id)
+        mac = raw.get("mac") or raw.get("name") or ""
+        if not mac:
+            return "", None
+        policy = await anc_module.get_endpoint_status(self.client, mac)
+        return mac, policy
+
+    async def anc_quarantine(self, endpoint_id: str, policy_name: str) -> tuple[bool, str, str]:
+        """Apply ANC policy to an endpoint. Returns (ok, mac, message)."""
+        raw = await self.endpoints.get(endpoint_id)
+        mac = raw.get("mac") or raw.get("name") or ""
+        if not mac:
+            return False, "", "Endpoint har ingen MAC-adresse"
+        ok, msg = await anc_module.apply(self.client, mac, policy_name)
+        if ok:
+            await audit_store.record(
+                "anc_quarantine",
+                "endpoint",
+                endpoint_id,
+                after={"mac": mac, "anc_policy": policy_name},
+            )
+        return ok, mac, msg
+
+    async def anc_clear(self, endpoint_id: str) -> tuple[bool, str, str]:
+        """Clear ANC policy from an endpoint. Returns (ok, mac, message)."""
+        raw = await self.endpoints.get(endpoint_id)
+        mac = raw.get("mac") or raw.get("name") or ""
+        if not mac:
+            return False, "", "Endpoint har ingen MAC-adresse"
+        ok, msg = await anc_module.clear(self.client, mac)
+        if ok:
+            await audit_store.record(
+                "anc_clear",
+                "endpoint",
+                endpoint_id,
+                after={"mac": mac},
+            )
         return ok, mac, msg
 
     async def update_endpoint(

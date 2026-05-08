@@ -96,3 +96,23 @@ class CoaReauthResponse(BaseModel):
     ok: bool
     mac: str
     message: str = ""
+
+
+class AncPoliciesResponse(BaseModel):
+    policies: list[str]
+
+
+class AncStatusResponse(BaseModel):
+    mac: str
+    policy: str | None
+    quarantined: bool
+
+
+class AncQuarantineRequest(BaseModel):
+    policy_name: str
+
+
+class AncActionResponse(BaseModel):
+    ok: bool
+    mac: str
+    message: str = ""

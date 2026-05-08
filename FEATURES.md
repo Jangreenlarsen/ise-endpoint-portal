@@ -155,7 +155,7 @@ Alle nye features registreres her FØR implementering påbegyndes.
 
 ## Planlagte — Prioritet 3 (nice to have)
 
-- `[planned] — ANC quarantine actions` — "Quarantine" og "Clear" knapper per endpoint i Browse view. Bruger ERS `/ers/config/ancendpoint/apply` og `/clear`. Lag: backend (ise, services, api), frontend.
+- `[done 3.26.0] 2026-05-08 — ANC quarantine actions` — "Sæt i karantæne" og "Fjern karantæne" knapper i endpoint detail-modal (editor/admin). Lister ANC-policies fra ISE i dropdown. Viser nuværende ANC-status på endpoint. Audit-logger quarantine/clear. Bruger ERS `/ers/config/ancpolicy`, `/ers/config/ancendpoint/apply`, `/clear`. Lag: backend (`ise/anc.py` ny, `schemas/endpoint.py`, `services/endpoint_service.py`, `api/endpoints.py`), frontend (`api.js`, `views/browse.js`).
 - `[done] 2026-04-16 — ISE-kompatibel CSV import/export` — import forstår ISE Context Visibility CSV-format (MACAddress, IdentityGroup, Description, CUSTOM.* kolonner) + simpelt format. Export fra Browse genererer ISE-kompatibelt CSV med alle 100+ kolonner. Fælles CSV-modul i `js/csv.js`. Lag: frontend (csv.js, import view, browse view).
 - `[done] 2026-04-16 — Fuld Browse/Edit med alle felter` — browse-tabellen viser MAC, Group (dropdown), Description, Owner, Lokation, AuthzVlan med fuld inline redigering af alle felter. Filter søger i alle felter. Group valgfri ved oprettelse.
 - `[done] 2026-04-16 — Custom attributes i Browse/Edit view` — henter fuld endpoint-detalje inkl. custom attrs fra ISE. Nye routes: `GET /api/endpoints/details`, `GET /api/endpoints/{id}`. Lag: backend (api, services, schemas), frontend (api, browse view).

@@ -554,6 +554,55 @@ td.mac-cell.cache-stale {
   gap: 0.5rem;
   justify-content: flex-end;
 }
+
+/* ── ANC Quarantine section in detail modal ── */
+.anc-section {
+  border-top: 1px solid var(--border);
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+}
+.anc-status-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.anc-label {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text-muted, #6b7280);
+}
+.anc-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+}
+.anc-free {
+  background: #d1fae5;
+  color: #065f46;
+}
+.anc-quarantined {
+  background: #fee2e2;
+  color: #991b1b;
+}
+.anc-action-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.anc-policy-select {
+  flex: 1;
+  min-width: 0;
+}
+[data-theme="dark"] .anc-free {
+  background: #064e3b;
+  color: #6ee7b7;
+}
+[data-theme="dark"] .anc-quarantined {
+  background: #7f1d1d;
+  color: #fca5a5;
+}
 .modal.detail-modal {
   width: 560px;
   max-width: 95vw;

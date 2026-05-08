@@ -5,6 +5,37 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.26.0 build 0194] — 2026-05-08 — feat(anc): ANC quarantine actions i endpoint detail-modal
+
+**`backend/app/ise/anc.py`** (ny):
+- `list_policies()` — GET `/ers/config/ancpolicy` — henter alle ANC policy-navne fra ISE
+- `apply(mac, policy_name)` — POST `/ers/config/ancendpoint/apply` — sætter endpoint i karantæne
+- `clear(mac)` — POST `/ers/config/ancendpoint/clear` — fjerner karantæne
+- `get_endpoint_status(mac)` — GET `/ers/config/ancendpoint?filter=macAddress.EQ.{mac}` + detalje-GET — returnerer aktiv policy eller None
+
+**`backend/app/schemas/endpoint.py`**:
+- Ny `AncPoliciesResponse`, `AncStatusResponse`, `AncQuarantineRequest`, `AncActionResponse`
+
+**`backend/app/services/endpoint_service.py`**:
+- Ny `list_anc_policies()`, `anc_status()`, `anc_quarantine()`, `anc_clear()` — audit-logger quarantine/clear
+
+**`backend/app/api/endpoints.py`**:
+- `GET /api/endpoints/anc-policies` — lister policies (editor+)
+- `GET /api/endpoints/{id}/anc-status` — henter nuværende ANC-status
+- `POST /api/endpoints/{id}/anc-quarantine` — sætter karantæne (body: `{policy_name}`)
+- `POST /api/endpoints/{id}/anc-clear` — fjerner karantæne
+
+**`frontend/js/api.js`**: +`listAncPolicies`, `ancStatus`, `ancQuarantine`, `ancClear`
+
+**`frontend/js/views/browse.js`**:
+- ANC-sektion i endpoint detail-modal (editor/admin): viser badge (Fri/Karantæne: policy), policy-dropdown + "Sæt i karantæne"-knap, "Fjern karantæne"-knap
+- `loadAncStatus()` henter status async efter modal åbner — ingen forsinkelse af modal-åbning
+- ANC policy-liste caches pr. session
+
+**`frontend/css/styles.css`**: `.anc-section`, `.anc-badge`, `.anc-free`, `.anc-quarantined`, dark-mode varianter
+
+---
+
 ## [3.25.5 build 0193] — 2026-05-08 — fix(cache): disk-cache indlæses synkront ved opstart — ingen race-condition
 
 **`backend/app/services/cache_prewarm.py`**:

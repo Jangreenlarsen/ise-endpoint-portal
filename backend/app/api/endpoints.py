@@ -12,6 +12,10 @@ from app.api.deps import (
 from app.core.endpoint_cache import get_cache
 from app.core.exceptions import IseApiError
 from app.schemas.endpoint import (
+    AncActionResponse,
+    AncPoliciesResponse,
+    AncQuarantineRequest,
+    AncStatusResponse,
     BulkCreateRequest,
     BulkResult,
     CoaReauthResponse,
@@ -283,3 +287,59 @@ async def coa_disconnect(
     except IseApiError as exc:
         raise _ise_http_error(exc) from exc
     return CoaReauthResponse(ok=ok, mac=mac, message=msg)
+
+
+# ------------------------------------------------------------------ #
+# ANC (Adaptive Network Control) — editor/admin only                  #
+# ------------------------------------------------------------------ #
+
+@router.get("/anc-policies", response_model=AncPoliciesResponse, dependencies=[Depends(require_editor)])
+async def list_anc_policies(
+    service: EndpointService = Depends(get_endpoint_service),
+) -> AncPoliciesResponse:
+    """List all ANC policy names configured in ISE."""
+    try:
+        policies = await service.list_anc_policies()
+    except IseApiError as exc:
+        raise _ise_http_error(exc) from exc
+    return AncPoliciesResponse(policies=policies)
+
+
+@router.get("/{endpoint_id}/anc-status", response_model=AncStatusResponse, dependencies=[Depends(require_editor)])
+async def anc_status(
+    endpoint_id: str,
+    service: EndpointService = Depends(get_endpoint_service),
+) -> AncStatusResponse:
+    """Get the current ANC quarantine status for an endpoint."""
+    try:
+        mac, policy = await service.anc_status(endpoint_id)
+    except IseApiError as exc:
+        raise _ise_http_error(exc) from exc
+    return AncStatusResponse(mac=mac, policy=policy, quarantined=policy is not None)
+
+
+@router.post("/{endpoint_id}/anc-quarantine", response_model=AncActionResponse, dependencies=[Depends(require_editor)])
+async def anc_quarantine(
+    endpoint_id: str,
+    req: AncQuarantineRequest,
+    service: EndpointService = Depends(get_endpoint_service),
+) -> AncActionResponse:
+    """Apply an ANC quarantine policy to an endpoint."""
+    try:
+        ok, mac, msg = await service.anc_quarantine(endpoint_id, req.policy_name)
+    except IseApiError as exc:
+        raise _ise_http_error(exc) from exc
+    return AncActionResponse(ok=ok, mac=mac, message=msg)
+
+
+@router.post("/{endpoint_id}/anc-clear", response_model=AncActionResponse, dependencies=[Depends(require_editor)])
+async def anc_clear(
+    endpoint_id: str,
+    service: EndpointService = Depends(get_endpoint_service),
+) -> AncActionResponse:
+    """Clear the ANC quarantine policy from an endpoint."""
+    try:
+        ok, mac, msg = await service.anc_clear(endpoint_id)
+    except IseApiError as exc:
+        raise _ise_http_error(exc) from exc
+    return AncActionResponse(ok=ok, mac=mac, message=msg)

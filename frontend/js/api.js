@@ -314,6 +314,15 @@ export const api = {
     return request("/update/apply", { method: "POST", body: fd, _noContentType: true });
   },
   restartServer: () => request("/update/restart", { method: "POST" }),
+  listAncPolicies: () => request("/endpoints/anc-policies"),
+  ancStatus: (id) => request(`/endpoints/${encodeURIComponent(id)}/anc-status`),
+  ancQuarantine: (id, policyName) =>
+    request(`/endpoints/${encodeURIComponent(id)}/anc-quarantine`, {
+      method: "POST",
+      body: JSON.stringify({ policy_name: policyName }),
+    }),
+  ancClear: (id) =>
+    request(`/endpoints/${encodeURIComponent(id)}/anc-clear`, { method: "POST" }),
   listTemplates: () => request("/templates"),
   getTemplate: (id) => request(`/templates/${encodeURIComponent(id)}`),
   createTemplate: (payload) =>
