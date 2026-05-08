@@ -25,10 +25,10 @@ const COA_OPTIONS = [
 
 export async function renderAttributes(container) {
   container.innerHTML = `
-    <h2>Attribut-vaerdier</h2>
+    <h2>Custom attributter</h2>
     <p class="hint">
-      Administrer de tilladte vaerdier for hvert custom attribute.
-      Vaerdierne bruges i dropdowns ved oprettelse og redigering af endpoints.
+      Administrér de tilladte værdier for hvert custom attribut.
+      Værdierne bruges i dropdowns ved oprettelse og redigering af endpoints.
     </p>
     <div id="attr-msg"></div>
     <div id="attr-sections"></div>

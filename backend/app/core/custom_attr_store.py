@@ -106,7 +106,7 @@ def auto_discover_values(ca: dict[str, str]) -> bool:
     for attr, vals in new_found.items():
         current[attr] = sorted(set(current.get(attr, [])) | set(vals))
     save_values(current)
-    _log.info("auto_discover_values: ny(e) CA-værdier fundet og gemt: %s", new_found)
+    _log.info("auto_discover_values: nye custom attributter fundet og gemt: %s", new_found)
     return True
 
 

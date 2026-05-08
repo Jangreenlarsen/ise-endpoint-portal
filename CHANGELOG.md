@@ -3,19 +3,27 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
-## [3.29.2 build 0202] — 2026-05-08 — feat(ca): auto-opdagelse af CA-værdier ved endpoint-visning
+## [3.29.2 build 0203] — 2026-05-08 — chore: ret "CA-værdier" → "custom attributter" + stavefejl i attributes.js
 
-**Berørte filer**: `backend/app/core/custom_attr_store.py`, `backend/app/services/endpoint_service.py`, `FEATURES.md`
+**Berørte filer**: `frontend/js/views/settings.js`, `frontend/js/views/attributes.js`, `backend/app/core/custom_attr_store.py`, `CHANGELOG.md`, `FEATURES.md`
 
-**Ændring**: Passive CA-value discovery: når `_fetch_endpoint_detail` henter et endpoint fra ISE, sammenlignes dets CA-værdier for alle MANAGED_ATTRS (Type, Owner, Lokation, AuthzVlan, AuthzACL, PlatformType) med portalens kendte dropdown-værdier. Ukendte ikke-tomme værdier tilføjes automatisk til `custom_attr_values.json` og logges til `app.log`. In-memory cache i `custom_attr_store` (`_cache`) sikrer disk kun læses én gang pr. server-opstart — alle efterfølgende kald er dict-lookup. `load_values()` og `save_values()` opdaterer cachen in-place. Ny funktion `auto_discover_values(ca)` returnerer `True` hvis noget nyt blev gemt.
+**Ændring**: Konsekvente tekstrettelser: "CA-værdier" erstattet med "custom attributter" alle steder (UI, log, docs). Stavefejl i attributes.js rettet: "Attribut-vaerdier" → "Custom attributter", "Administrer de tilladte vaerdier" → "Administrér de tilladte værdier", "Vaerdierne" → "Værdierne".
 
 ---
 
-## [3.29.1 build 0201] — 2026-05-08 — refactor(sync): flyt "Sync fra ISE" til Settings → Avanceret
+## [3.29.2 build 0202] — 2026-05-08 — feat: auto-opdagelse af custom attributter ved endpoint-visning
+
+**Berørte filer**: `backend/app/core/custom_attr_store.py`, `backend/app/services/endpoint_service.py`, `FEATURES.md`
+
+**Ændring**: Passiv discovery af custom attributter: når `_fetch_endpoint_detail` henter et endpoint fra ISE, sammenlignes dets custom attributter for alle MANAGED_ATTRS (Type, Owner, Lokation, AuthzVlan, AuthzACL, PlatformType) med portalens kendte dropdown-værdier. Ukendte ikke-tomme værdier tilføjes automatisk til `custom_attr_values.json` og logges til `app.log`. In-memory cache i `custom_attr_store` (`_cache`) sikrer disk kun læses én gang pr. server-opstart — alle efterfølgende kald er dict-lookup. `load_values()` og `save_values()` opdaterer cachen in-place. Ny funktion `auto_discover_values(ca)` returnerer `True` hvis noget nyt blev gemt.
+
+---
+
+## [3.29.1 build 0201] — 2026-05-08 — refactor: flyt "Sync fra ISE" til Settings → Avanceret
 
 **Berørte filer**: `frontend/js/views/settings.js`, `frontend/js/views/attributes.js`
 
-**Ændring**: "Sync fra ISE"-knappen fjernet fra Attributter-siden (var en N×ISE-kald migrationsoperation, ikke løbende vedligehold). Genimplementeret som "Importér CA-værdier fra ISE" under Settings → Avanceret-fane (kun synlig for admin). Ny fane tilføjet i settings-nav. Bekræftelsesdialog advarer om omfang og belastning. Resultats-visning viser antal scannede endpoints og importerede værdier.
+**Ændring**: "Sync fra ISE"-knappen fjernet fra Attributter-siden (var en N×ISE-kald migrationsoperation, ikke løbende vedligehold). Genimplementeret som "Importér custom attributter fra ISE" under Settings → Avanceret-fane (kun synlig for admin). Ny fane tilføjet i settings-nav. Bekræftelsesdialog advarer om omfang og belastning. Resultats-visning viser antal scannede endpoints og importerede værdier.
 
 ---
 

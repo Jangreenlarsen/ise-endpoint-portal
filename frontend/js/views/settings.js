@@ -694,7 +694,7 @@ export async function renderSettings(container) {
 
     ${isAdmin ? `
     <div class="card" data-tab="advanced">
-      <h3>Importér CA-værdier fra ISE (migration)</h3>
+      <h3>Importér custom attributter fra ISE (migration)</h3>
       <div class="alert" style="background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:0.75rem 1rem;margin-bottom:1rem;color:#92400e;">
         ⚠ <strong>Migrationsværktøj — ikke til løbende brug.</strong><br>
         Funktionen scanner <em>alle</em> endpoints i ISE individuelt (ét API-kald pr. endpoint).
@@ -702,13 +702,13 @@ export async function renderSettings(container) {
         Brug kun ved initial opsætning eller ved migration fra et andet system.
       </div>
       <p class="hint">
-        Scanner endpoints i ISE og importerer fundne CA-værdier (Type, Owner, Lokation,
+        Scanner endpoints i ISE og importerer fundne custom attributter (Type, Owner, Lokation,
         AuthzVlan, PlatformType) til portalens dropdown-lister. Nødvendigt hvis endpoints
-        har CA-værdier sat direkte i ISE uden om portalen.
+        har custom attributter sat direkte i ISE uden om portalen.
       </p>
       <div id="migration-sync-result" style="margin-bottom:0.75rem;"></div>
       <div class="actions">
-        <button type="button" id="migration-sync-btn" class="secondary">Importér CA-værdier fra ISE</button>
+        <button type="button" id="migration-sync-btn" class="secondary">Importér custom attributter fra ISE</button>
       </div>
     </div>
     ` : ""}
