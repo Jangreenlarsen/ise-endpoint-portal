@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [3.29.2 build 0202] — 2026-05-08 — feat(ca): auto-opdagelse af CA-værdier ved endpoint-visning
+
+**Berørte filer**: `backend/app/core/custom_attr_store.py`, `backend/app/services/endpoint_service.py`, `FEATURES.md`
+
+**Ændring**: Passive CA-value discovery: når `_fetch_endpoint_detail` henter et endpoint fra ISE, sammenlignes dets CA-værdier for alle MANAGED_ATTRS (Type, Owner, Lokation, AuthzVlan, AuthzACL, PlatformType) med portalens kendte dropdown-værdier. Ukendte ikke-tomme værdier tilføjes automatisk til `custom_attr_values.json` og logges til `app.log`. In-memory cache i `custom_attr_store` (`_cache`) sikrer disk kun læses én gang pr. server-opstart — alle efterfølgende kald er dict-lookup. `load_values()` og `save_values()` opdaterer cachen in-place. Ny funktion `auto_discover_values(ca)` returnerer `True` hvis noget nyt blev gemt.
+
+---
+
 ## [3.29.1 build 0201] — 2026-05-08 — refactor(sync): flyt "Sync fra ISE" til Settings → Avanceret
 
 **Berørte filer**: `frontend/js/views/settings.js`, `frontend/js/views/attributes.js`

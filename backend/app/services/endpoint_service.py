@@ -14,6 +14,7 @@ from app.core.custom_attr_store import (
     PSK_MODE_ATTR,
     REGISTERED_AT_ATTR,
     ROLES_ATTR,
+    auto_discover_values as _discover_ca_values,
 )
 from app.core.endpoint_cache import get_cache
 from app.core.exceptions import IseApiError
@@ -191,6 +192,7 @@ class EndpointService:
     async def _fetch_endpoint_detail(self, endpoint_id: str) -> EndpointDetail:
         raw = await self.endpoints.get(endpoint_id)
         ca = _extract_custom_attrs(raw)
+        _discover_ca_values(ca)
         group_id = raw.get("groupId", "")
         profile_id = raw.get("profileId", "") or ""
 

@@ -7,8 +7,12 @@ File: backend/custom_attr_values.json (gitignored).
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 from typing import Any
+
+_log = logging.getLogger(__name__)
+_cache: dict[str, list[str]] | None = None
 
 STORE_FILE = Path(__file__).resolve().parents[2] / "custom_attr_values.json"
 
@@ -57,22 +61,53 @@ def _default() -> dict[str, list[str]]:
 
 
 def load_values() -> dict[str, list[str]]:
+    global _cache
     if not STORE_FILE.exists():
-        return _default()
+        result = _default()
+        _cache = result
+        return result
     try:
         data: dict[str, Any] = json.loads(STORE_FILE.read_text(encoding="utf-8"))
         result = _default()
         for attr in MANAGED_ATTRS:
             result[attr] = sorted(set(data.get(attr, [])))
+        _cache = result
         return result
     except Exception:
         return _default()
 
 
 def save_values(data: dict[str, list[str]]) -> None:
+    global _cache
     STORE_FILE.parent.mkdir(parents=True, exist_ok=True)
     clean = {attr: sorted(set(data.get(attr, []))) for attr in MANAGED_ATTRS}
     STORE_FILE.write_text(json.dumps(clean, indent=2, ensure_ascii=False), encoding="utf-8")
+    _cache = clean
+
+
+def auto_discover_values(ca: dict[str, str]) -> bool:
+    """Check MANAGED_ATTR values in ca; add unknown ones to the store.
+
+    Returns True if any new values were persisted.
+    Called on every _fetch_endpoint_detail — uses in-memory cache so disk is
+    only read once per server lifetime.
+    """
+    global _cache
+    if _cache is None:
+        load_values()
+    current = _cache  # type: ignore[assignment]
+    new_found: dict[str, list[str]] = {}
+    for attr in MANAGED_ATTRS:
+        val = (ca.get(attr) or "").strip()
+        if val and val not in current.get(attr, []):
+            new_found.setdefault(attr, []).append(val)
+    if not new_found:
+        return False
+    for attr, vals in new_found.items():
+        current[attr] = sorted(set(current.get(attr, [])) | set(vals))
+    save_values(current)
+    _log.info("auto_discover_values: ny(e) CA-værdier fundet og gemt: %s", new_found)
+    return True
 
 
 def add_value(attr_name: str, value: str) -> dict[str, list[str]]:
