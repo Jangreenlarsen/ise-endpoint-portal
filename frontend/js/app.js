@@ -161,11 +161,12 @@ async function boot() {
   window.addEventListener("hashchange", renderView);
 
   const user = auth.getUser();
-  if (!user) {
+  if (!user || auth.isTokenExpired()) {
+    auth.clear();
     showLogin();
     return;
   }
-  // Verify token still valid
+  // Verify token still valid against backend
   try {
     const status = await api.authStatus();
     if (!status.authenticated) {
@@ -178,10 +179,11 @@ async function boot() {
     updateNavVisibility(status.user || user);
     renderView();
   } catch {
-    // Backend unreachable — keep cached user but show a warning on next call.
-    updateUserBadge(user);
-    updateNavVisibility(user);
-    renderView();
+    // Backend unreachable — token is not expired but backend is down.
+    // Clear session and force login so user sees a proper error rather than
+    // a broken UI with stale data.
+    auth.clear();
+    showLogin();
   }
 }
 

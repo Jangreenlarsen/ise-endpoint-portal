@@ -5,6 +5,22 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 
 ---
 
+## [3.25.4 build 0192] — 2026-05-08 — fix(auth): token udløber nu korrekt — client-side exp-tjek + 8h TTL
+
+**`frontend/js/auth.js`**:
+- Tilføjet `isTokenExpired()` der dekoder token-payload client-side og tjekker `exp`-feltet uden at kalde backend
+
+**`frontend/js/app.js`**:
+- `boot()` kalder nu `auth.isTokenExpired()` inden `authStatus()`-kaldet — udløbet token ryddes straks uden at afvente backend-svar
+- catch-blok i `boot()` rydder nu session og viser login i stedet for blindt at bruge cached bruger når backend er utilgængelig
+
+**`backend/app/core/auth.py`**:
+- `TOKEN_TTL_SECONDS` reduceret fra 24 h til 8 h
+
+**`BUGS.md`**: Bug registreret og markeret fixed.
+
+---
+
 ## [3.25.3 build 0191] — 2026-05-07 — fix(templates): viewer fjernet fra skabelon-synlighed
 
 **`frontend/js/views/settings.js`**:
