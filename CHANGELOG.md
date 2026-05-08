@@ -3,6 +3,17 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [3.30.0 build 0206] — 2026-05-08 — feat(settings): sub-tab navigation inden for hoved-tabs i Settings
+
+**Berørte filer**: `frontend/js/views/settings.js`, `frontend/css/styles.css`, `version.json`
+
+**Ændring**: Indhold inden for hver Settings-hoved-tab er nu opdelt i separate sub-menu valg (kun ét underpunkt vises ad gangen):
+- **ISE Forbindelse Config**: REST API / PxGrid
+- **Portal Bruger Config**: System adm / Brugere & Roller
+- **Portal Config**: Skabeloner / PSK-politik / ISE Purge Config / Opdatering / Avanceret
+
+Implementeret med flydende `.settings-subtab-nav[data-for-tab]` bars og `.card[data-subtab]` attributter. Tab-navigations-logik udvidet med `activeSubTab`-map der tracker aktivt underpunkt pr. hoved-tab. Editor-psk brugere ser Portal Config uden sub-nav (kun PSK-politik kort direkte). CSS tilføjet for `.settings-subtab-nav` og `.settings-subtab` med dark-mode support.
+
 ## [3.30.0 build 0205] — 2026-05-08 — feat(settings): omstrukturering af Settings-menu + bruger-preferences i sidebar
 
 **Berørte filer**: `frontend/js/views/settings.js`, `frontend/js/views/user-prefs.js` (ny), `frontend/js/views/csv-template.js` (ny), `frontend/js/app.js`, `frontend/index.html`, `frontend/css/styles.css`, `FEATURES.md`, `version.json`

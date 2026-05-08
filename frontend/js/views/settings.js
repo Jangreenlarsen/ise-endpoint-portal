@@ -53,7 +53,11 @@ export async function renderSettings(container) {
     <div class="settings-panels" id="settings-panels">
 
     ${isAdmin ? `
-    <div class="card" data-tab="ise-connection">
+    <nav class="settings-subtab-nav" data-for-tab="ise-connection">
+      <button class="settings-subtab" data-subtab="ic-rest">REST API</button>
+      <button class="settings-subtab" data-subtab="ic-pxgrid">PxGrid</button>
+    </nav>
+    <div class="card" data-tab="ise-connection" data-subtab="ic-rest">
       <h3>Backend — Cisco ISE connection</h3>
       <p class="hint">
         Disse værdier persisteres i <code>backend/config.json</code> og overrider
@@ -198,7 +202,7 @@ export async function renderSettings(container) {
     ` : ""}
 
     ${isAdmin ? `
-    <div class="card" data-tab="ise-connection">
+    <div class="card" data-tab="ise-connection" data-subtab="ic-pxgrid">
       <h3>PxGrid 2.0 (real-time session push)</h3>
       <p class="hint">
         Erstatter MnT-poll med ægte server-push fra ISE pxGrid (port 8910).
@@ -429,7 +433,18 @@ export async function renderSettings(container) {
     ` : ""}
 
     ${isAdmin ? `
-    <div class="card" data-tab="portal-config">
+    <nav class="settings-subtab-nav" data-for-tab="portal-bruger-config">
+      <button class="settings-subtab" data-subtab="pbc-roles">System adm</button>
+      <button class="settings-subtab" data-subtab="pbc-users">Brugere &amp; Roller</button>
+    </nav>
+    <nav class="settings-subtab-nav" data-for-tab="portal-config">
+      <button class="settings-subtab" data-subtab="pc-templates">Skabeloner</button>
+      <button class="settings-subtab" data-subtab="pc-psk">PSK-politik</button>
+      <button class="settings-subtab" data-subtab="pc-ise-config">ISE Purge Config</button>
+      <button class="settings-subtab" data-subtab="pc-update">Opdatering</button>
+      <button class="settings-subtab" data-subtab="pc-advanced">Avanceret</button>
+    </nav>
+    <div class="card" data-tab="portal-config" data-subtab="pc-ise-config">
       <h3>Anbefalet ISE purge-config</h3>
       <p class="hint">
         ISE's default endpoint-purge-policy sletter endpoints efter inaktivitet — det er
@@ -467,7 +482,7 @@ export async function renderSettings(container) {
       <div id="purge-protect-msg" class="hint"></div>
     </div>
 
-    <div class="card" data-tab="portal-bruger-config">
+    <div class="card" data-tab="portal-bruger-config" data-subtab="pbc-roles">
       <h3>System adm</h3>
       <p class="hint">
         System adm-tags der kan sættes på endpoints (CA <code>HypervisionRoles</code>) og
@@ -499,7 +514,7 @@ export async function renderSettings(container) {
       </form>
     </div>
 
-    <div class="card" data-tab="portal-bruger-config">
+    <div class="card" data-tab="portal-bruger-config" data-subtab="pbc-users">
       <h3>Brugere &amp; System adm</h3>
       <p class="hint">
         Administrer lokale brugerkonti, system-roller og System adm-tildelinger.
@@ -539,7 +554,7 @@ export async function renderSettings(container) {
     ` : ""}
 
     ${isPskEditorUser ? `
-    <div class="card" data-tab="portal-config">
+    <div class="card" data-tab="portal-config" ${isAdmin ? 'data-subtab="pc-psk"' : ""}>
       <h3>PSK Pass Key Politik</h3>
       <p class="hint">
         Definerer krav til MPSK/IPSK pass keys. Nøgler valideres mod denne politik
@@ -580,7 +595,7 @@ export async function renderSettings(container) {
     ` : ""}
 
     ${isAdmin ? `
-    <div class="card" data-tab="portal-config">
+    <div class="card" data-tab="portal-config" data-subtab="pc-templates">
       <h3>Endpoint-skabeloner</h3>
       <p class="hint">
         Skabeloner forudfylder registreringsformularen med standardværdier —
@@ -637,7 +652,7 @@ export async function renderSettings(container) {
     ` : ""}
 
     ${isAdmin ? `
-    <div class="card" data-tab="portal-config">
+    <div class="card" data-tab="portal-config" data-subtab="pc-update">
       <h3>Portal system opdatering</h3>
       <p class="hint">
         Upload en opdateringspakke (ZIP) for at opdatere portalen.
@@ -687,7 +702,7 @@ export async function renderSettings(container) {
     ` : ""}
 
     ${isAdmin ? `
-    <div class="card" data-tab="portal-config">
+    <div class="card" data-tab="portal-config" data-subtab="pc-advanced">
       <h3>Importér custom attributter fra ISE (migration)</h3>
       <div class="alert" style="background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:0.75rem 1rem;margin-bottom:1rem;color:#92400e;">
         ⚠ <strong>Migrationsværktøj — ikke til løbende brug.</strong><br>
@@ -1731,29 +1746,61 @@ async function initPskPolicySection(container) {
   });
 }
 
-/* 3.8.3: Settings tab-navigation. Skjul/vis cards baseret på data-tab.
- * Persistér valgt tab i localStorage så bruger lander samme sted ved reload. */
+/* Settings tab + sub-tab navigation.
+ * Hoved-tabs: data-tab på .settings-tab knapper.
+ * Sub-tabs: .settings-subtab-nav[data-for-tab] med .settings-subtab[data-subtab] knapper.
+ * Kort med data-subtab vises kun når det matchende sub-tab er aktivt.
+ * Kort uden data-subtab vises altid når hoved-tab er aktiv. */
 const SETTINGS_TAB_KEY = "ise_portal_settings_tab";
 function initSettingsTabs(container, isAdmin, isPskEditorUser = false) {
   const tabs = container.querySelectorAll(".settings-tab");
-  const cards = container.querySelectorAll(".settings-panels [data-tab]");
   if (!tabs.length) return;
+
   const validTabs = Array.from(tabs).map(t => t.dataset.tab);
   const defaultTab = isAdmin ? "ise-connection" : "portal-config";
   let stored = null;
   try { stored = localStorage.getItem(SETTINGS_TAB_KEY); } catch { /* ignore */ }
   const initial = validTabs.includes(stored) ? stored : defaultTab;
 
-  function activate(tabId) {
+  // Aktive sub-tab pr. hoved-tab (initialiseres nedenfor)
+  const activeSubTab = {};
+
+  function activateTab(tabId) {
     tabs.forEach(t => t.classList.toggle("active", t.dataset.tab === tabId));
-    cards.forEach(c => {
-      c.style.display = c.dataset.tab === tabId ? "" : "none";
-    });
     try { localStorage.setItem(SETTINGS_TAB_KEY, tabId); } catch { /* ignore */ }
+
+    // Vis/skjul sub-nav barer
+    container.querySelectorAll(".settings-subtab-nav").forEach(nav => {
+      nav.style.display = nav.dataset.forTab === tabId ? "" : "none";
+    });
+
+    // Vis/skjul kort
+    container.querySelectorAll(".settings-panels .card[data-tab]").forEach(c => {
+      if (c.dataset.tab !== tabId) { c.style.display = "none"; return; }
+      const sub = c.dataset.subtab;
+      c.style.display = (!sub || !activeSubTab[tabId] || sub === activeSubTab[tabId]) ? "" : "none";
+    });
   }
 
-  tabs.forEach(t => t.addEventListener("click", () => activate(t.dataset.tab)));
-  activate(initial);
+  // Initialiser sub-tab navigationerne
+  container.querySelectorAll(".settings-subtab-nav").forEach(nav => {
+    const forTab = nav.dataset.forTab;
+    const btns = nav.querySelectorAll(".settings-subtab");
+    btns.forEach(btn => {
+      btn.addEventListener("click", () => {
+        activeSubTab[forTab] = btn.dataset.subtab;
+        btns.forEach(b => b.classList.toggle("active", b === btn));
+        activateTab(forTab);
+      });
+    });
+    if (btns.length) {
+      activeSubTab[forTab] = btns[0].dataset.subtab;
+      btns[0].classList.add("active");
+    }
+  });
+
+  tabs.forEach(t => t.addEventListener("click", () => activateTab(t.dataset.tab)));
+  activateTab(initial);
 }
 
 async function initTemplatesSection(container) {
