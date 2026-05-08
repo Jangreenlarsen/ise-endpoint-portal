@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [3.28.2 build 0199] — 2026-05-08 — fix(alder): audit-fallback for tomme timestamps
+
+**Berørte filer**: `backend/app/core/audit_store.py`, `backend/app/services/endpoint_service.py`
+
+**Bug**: Alder-kolonnen viste intet for eksisterende endpoints fordi ERS ikke returnerer timestamps og `HypervisionRegisteredAt` CA kun eksisterer på endpoints oprettet efter v3.28.0.
+
+**Fix**: `audit_store.get_endpoint_create_time(endpoint_id)` forespørger `MIN(ts)` fra `audit_events WHERE resource_type='endpoint' AND action='created' GROUP BY resource_id` og bygger et in-memory dict ved første opkald. `_fetch_endpoint_detail` bruger dette som tredje fallback (efter ISE-timestamps og CA). `record_endpoint_create_time()` opdaterer cachen synkront ved nye oprettelser så nye endpoints også straks får alder uden at reloade.
+
 ## [3.28.1 build 0198] — 2026-05-08 — fix(profiler): non-blokerende baggrunds-load
 
 **Berørte filer**: `backend/app/ise/profiler.py`, `backend/app/services/endpoint_service.py`

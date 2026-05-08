@@ -354,3 +354,50 @@ async def prune_older_than(retention_days: int) -> int:
     if removed:
         logger.info("audit: pruned %d events older than %s", removed, cutoff_iso)
     return removed
+
+
+# ---------------------------------------------------------------------------
+# Endpoint create-time lookup
+# ---------------------------------------------------------------------------
+
+_create_times_cache: dict[str, str] | None = None
+
+
+def _load_create_times_sync() -> dict[str, str]:
+    """Return {endpoint_id: earliest_ts} for all 'created' endpoint events."""
+    with _connect() as conn:
+        rows = conn.execute(
+            "SELECT resource_id, MIN(ts) AS first_ts "
+            "FROM audit_events "
+            "WHERE resource_type='endpoint' AND action='created' "
+            "  AND resource_id IS NOT NULL "
+            "GROUP BY resource_id"
+        ).fetchall()
+    return {row["resource_id"]: row["first_ts"] for row in rows}
+
+
+def get_endpoint_create_time(endpoint_id: str) -> str:
+    """Synchronous lookup of the earliest audit-recorded creation time.
+
+    Loads the full create-time index on first call and caches it in memory.
+    Returns "" if the endpoint has no 'created' audit event.
+    """
+    global _create_times_cache
+    if _create_times_cache is None:
+        try:
+            _create_times_cache = _load_create_times_sync()
+            logger.info(
+                "audit create-time cache loaded: %d endpoints",
+                len(_create_times_cache),
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("audit create-time cache load failed: %s", exc)
+            _create_times_cache = {}
+    return _create_times_cache.get(endpoint_id, "")
+
+
+def record_endpoint_create_time(endpoint_id: str, ts: str) -> None:
+    """Update the in-memory cache when a new endpoint is created via the portal."""
+    global _create_times_cache
+    if _create_times_cache is not None and endpoint_id and ts:
+        _create_times_cache.setdefault(endpoint_id, ts)

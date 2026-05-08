@@ -205,11 +205,13 @@ class EndpointService:
         mac_val = raw.get("mac", "") or raw.get("name", "")
 
         # Timestamps: Open API returnerer createTime/updateTime direkte.
-        # ERS returnerer ikke timestamps — brug HypervisionRegisteredAt CA i stedet.
+        # ERS returnerer ikke timestamps — brug HypervisionRegisteredAt CA,
+        # og som sidste udvej audit-loggens ældste 'created'-event for endpoint'et.
         create_time = (
             raw.get("createTime", "")
             or raw.get("createdAt", "")
             or ca.get(REGISTERED_AT_ATTR, "")
+            or audit_store.get_endpoint_create_time(endpoint_id)
             or ""
         )
         update_time = raw.get("updateTime", "") or raw.get("updatedAt", "") or ""
@@ -513,6 +515,8 @@ class EndpointService:
                 "custom_attributes": ca,
             },
         )
+        # Opdatér in-memory create-time cache så nye endpoints straks viser alder.
+        audit_store.record_endpoint_create_time(new_id or req.mac, ca[REGISTERED_AT_ATTR])
         return new_id
 
     async def delete_endpoint(self, endpoint_id: str) -> None:
