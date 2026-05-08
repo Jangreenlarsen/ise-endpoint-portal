@@ -3,6 +3,17 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [3.26.0 build 0195] — 2026-05-08 — Kodebase-analyse + fremtidige features registreret
+
+**Berørte filer**: `FEATURES.md`
+
+- Fuld kodebase-analyse gennemført: kortlagt alle API-endpoints, services, ISE-integrationer, frontend-views og teknisk gæld
+- Tilføjet 12 nye planlagte features til `FEATURES.md` fordelt på tre prioritetsniveauer:
+  - **Prioritet 1**: Endpoint-alder filter/sort, SGT-tildeling, Webhook til CMDB, ISE Profiler-data
+  - **Prioritet 2**: Multi-ISE HA failover, Metrics-historik, Bulk template-anvendelse, Decommission-flow, Filter-deling via URL, JSON-eksport
+  - **Prioritet 3**: browse.js modularisering, Session anomali-detektion, Access token silent refresh
+- Endpoint-alder feature analyseret i detalje: Open API-mode bruger `createTime`/`updateTime` fra ISE; ERS-mode bruger ny skjult custom attr `HypervisionRegisteredAt` stemplet ved oprettelse
+
 ---
 
 ## [3.26.0 build 0194] — 2026-05-08 — feat(anc): ANC quarantine actions i endpoint detail-modal
