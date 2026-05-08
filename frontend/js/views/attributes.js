@@ -32,11 +32,6 @@ export async function renderAttributes(container) {
     </p>
     <div id="attr-msg"></div>
     <div id="attr-sections"></div>
-    <div class="card" style="margin-top:1rem;">
-      <button id="sync-btn">Sync fra ISE</button>
-      <span class="hint" style="margin-left:0.5rem;">Scanner endpoints i ISE og importerer fundne vaerdier.</span>
-      <div id="sync-result"></div>
-    </div>
   `;
 
   const sections = container.querySelector("#attr-sections");
@@ -253,21 +248,6 @@ export async function renderAttributes(container) {
       e.preventDefault();
       const btn = sections.querySelector(`.attr-add-btn[data-attr="${e.target.dataset.attr}"]`);
       btn.click();
-    }
-  });
-
-  container.querySelector("#sync-btn").addEventListener("click", async () => {
-    const syncResult = container.querySelector("#sync-result");
-    syncResult.innerHTML = `<div class="alert info">Synkroniserer...</div>`;
-    try {
-      const res = await api.syncCustomAttributes();
-      const newCount = Object.values(res.new_values_found).reduce((s, v) => s + v.length, 0);
-      syncResult.innerHTML = `<div class="alert success">
-        Scannet ${res.scanned_endpoints} endpoints. ${newCount} nye vaerdier fundet.
-      </div>`;
-      await render();
-    } catch (err) {
-      syncResult.innerHTML = `<div class="alert error">${err.message}</div>`;
     }
   });
 

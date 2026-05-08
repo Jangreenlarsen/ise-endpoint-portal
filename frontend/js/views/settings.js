@@ -49,6 +49,7 @@ export async function renderSettings(container) {
       <button class="settings-tab" data-tab="access">Adgang</button>
       <button class="settings-tab" data-tab="templates">Skabeloner</button>
       <button class="settings-tab" data-tab="system-update">Opdatering</button>
+      <button class="settings-tab" data-tab="advanced">Avanceret</button>
       ` : ""}
       ${isPskEditorUser ? `
       <button class="settings-tab" data-tab="psk-policy">PSK-politik</button>
@@ -691,6 +692,27 @@ export async function renderSettings(container) {
     </div>
     ` : ""}
 
+    ${isAdmin ? `
+    <div class="card" data-tab="advanced">
+      <h3>Importér CA-værdier fra ISE (migration)</h3>
+      <div class="alert" style="background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:0.75rem 1rem;margin-bottom:1rem;color:#92400e;">
+        ⚠ <strong>Migrationsværktøj — ikke til løbende brug.</strong><br>
+        Funktionen scanner <em>alle</em> endpoints i ISE individuelt (ét API-kald pr. endpoint).
+        Ved 10.000 endpoints svarer det til 10.000+ ISE-kald og kan tage flere minutter.
+        Brug kun ved initial opsætning eller ved migration fra et andet system.
+      </div>
+      <p class="hint">
+        Scanner endpoints i ISE og importerer fundne CA-værdier (Type, Owner, Lokation,
+        AuthzVlan, PlatformType) til portalens dropdown-lister. Nødvendigt hvis endpoints
+        har CA-værdier sat direkte i ISE uden om portalen.
+      </p>
+      <div id="migration-sync-result" style="margin-bottom:0.75rem;"></div>
+      <div class="actions">
+        <button type="button" id="migration-sync-btn" class="secondary">Importér CA-værdier fra ISE</button>
+      </div>
+    </div>
+    ` : ""}
+
     <div class="card" data-tab="account">
       <h3>Skift dit password</h3>
       <p class="hint">Logget ind som <b>${esc(currentUser?.username || "")}</b> (rolle: ${esc(currentUser?.role || "")}).</p>
@@ -775,6 +797,7 @@ export async function renderSettings(container) {
   if (isAdmin) {
     await initTemplatesSection(container);
     initSystemUpdateSection(container);
+    initAdvancedSection(container);
   }
   initPasswordSection(container);
   initCsvAndPrefsSections(container);
@@ -2138,6 +2161,34 @@ function initSystemUpdateSection(container) {
       // Serveren lukker ned — det er forventet at kaldet fejler
       msgEl.innerHTML = `<div class="alert info">Server genstarter... siden genindlæses automatisk om 8 sekunder.</div>`;
       setTimeout(() => window.location.reload(), 8000);
+    }
+  });
+}
+
+function initAdvancedSection(container) {
+  const btn    = container.querySelector("#migration-sync-btn");
+  const result = container.querySelector("#migration-sync-result");
+  if (!btn) return;
+
+  btn.addEventListener("click", async () => {
+    if (!confirm(
+      "Dette vil scanne ALLE endpoints i ISE individuelt.\n\n" +
+      "Ved mange endpoints kan dette tage lang tid og belaste ISE.\n\n" +
+      "Fortsæt?"
+    )) return;
+
+    btn.disabled = true;
+    result.innerHTML = `<div class="alert" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:0.6rem 1rem;color:#1e40af;">Importerer — vent venligst...</div>`;
+    try {
+      const res = await api.syncCustomAttributes();
+      const newCount = Object.values(res.new_values_found || {}).reduce((s, v) => s + (v?.length || 0), 0);
+      result.innerHTML = `<div class="alert" style="background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:0.6rem 1rem;color:#166534;">
+        Scannet ${res.scanned_endpoints} endpoints. ${newCount} nye værdier importeret.
+      </div>`;
+    } catch (err) {
+      result.innerHTML = `<div class="alert" style="background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;padding:0.6rem 1rem;color:#991b1b;">${esc(err.message)}</div>`;
+    } finally {
+      btn.disabled = false;
     }
   });
 }

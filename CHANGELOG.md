@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [3.29.1 build 0201] — 2026-05-08 — refactor(sync): flyt "Sync fra ISE" til Settings → Avanceret
+
+**Berørte filer**: `frontend/js/views/settings.js`, `frontend/js/views/attributes.js`
+
+**Ændring**: "Sync fra ISE"-knappen fjernet fra Attributter-siden (var en N×ISE-kald migrationsoperation, ikke løbende vedligehold). Genimplementeret som "Importér CA-værdier fra ISE" under Settings → Avanceret-fane (kun synlig for admin). Ny fane tilføjet i settings-nav. Bekræftelsesdialog advarer om omfang og belastning. Resultats-visning viser antal scannede endpoints og importerede værdier.
+
+---
+
 ## [3.29.0 build 0200] — 2026-05-08 — feat(modularisering): browse.js opdelt i 6 moduler
 
 **Berørte filer**: `frontend/js/views/browse.js` (rewritten), `browse-utils.js` (ny), `browse-filter.js` (ny), `browse-table.js` (ny), `browse-detail.js` (ny), `browse-bulk.js` (ny), `FEATURES.md`
