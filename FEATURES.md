@@ -47,7 +47,7 @@ Alle nye features registreres her FØR implementering påbegyndes.
 
 ### Prioritet 3 — Vedligehold og teknisk gæld
 
-- `[planned] — browse.js modularisering` — 2235-linje monolitfil opdeles i selvstændige moduler: `browse-detail-modal.js` (detail-modal + CoA + ANC), `browse-filter.js` (filter-toolbar + saved views), `browse-bulk.js` (bulk-edit-modal, bulk-delete, bulk-apply), `browse-table.js` (render + inline-edit). Ingen funktionsændringer — ren refaktor der gør filen maintainable inden næste feature. **Lag**: frontend (ny modulstruktur, `app.js` import-update).
+- `[done 3.29.0] 2026-05-08 — browse.js modularisering` — 2236-linje monolitfil opdelt i 6 selvstændige moduler: `browse-utils.js` (pure utilities + COLUMNS), `browse-filter.js` (filter-toolbar + saved views), `browse-table.js` (render + inline-edit + pagination + save), `browse-detail.js` (detail-modal + ANC + CoA), `browse-bulk.js` (bulk-edit-modal, bulk-delete, bulk-disconnect). Delt mutable state-objekt + `cb`-callbacks-objekt til krydskald. Ingen funktionsændringer. **Lag**: frontend (6 nye filer, `browse.js` er nu ren orchestrator på 465 linjer ned fra 2236).
 
 - `[planned] — Session anomali-detektion` — Regelbaseret alerting på pxGrid-session-stream: flag usædvanlige mønstre som pludselig bulk-disconnect (>N endpoints på <30s), MAC der skifter NAS-IP hurtigere end X/min, eller endpoints der kobler til uden aktiv ISE-session. Alerts vises som banner i Browse og gemmes i audit-log. **Lag**: backend (`pxgrid/anomaly_detector.py` ny, `api/pxgrid.py` +alert-endpoint), frontend (`views/browse.js` +alert-banner).
 

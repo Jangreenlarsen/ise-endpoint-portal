@@ -1,0 +1,548 @@
+// Table rendering, inline-edit, pagination, col-vis, save, export.
+// initTable wires all table DOM events and returns its public API.
+// Cross-module calls go via `cb` (populated in browse.js after all inits).
+
+import {
+  COLUMNS, esc,
+  endpointCreateTime, fmtRelativeAge, fmtDateTime,
+  normalizeMac, coaSummaryText, optionsHtml,
+  loadColVis, saveColVis, savePageSize,
+} from "./browse-utils.js";
+import { toIseCsv, downloadCsv } from "../csv.js";
+
+export function initTable(container, state, api, cb) {
+  const tbody          = container.querySelector("#tbody");
+  const msg            = container.querySelector("#msg");
+  const countEl        = container.querySelector("#count");
+  const saveAllBtn     = container.querySelector("#save-all-btn");
+  const selectAllCb    = container.querySelector("#select-all");
+  const bulkSaveBtn    = container.querySelector("#bulk-save-btn");
+  const bulkDelBtn     = container.querySelector("#bulk-del-btn");
+  const bulkDisconnBtn = container.querySelector("#bulk-disconnect-btn");
+  const bulkEditBtn    = container.querySelector("#bulk-edit-btn");
+  const selectionCount = container.querySelector("#selection-count");
+  const pagePrev       = container.querySelector("#page-prev");
+  const pageNext       = container.querySelector("#page-next");
+  const pageInfo       = container.querySelector("#page-info");
+  const pageSizeSelect = container.querySelector("#page-size-select");
+  const colVisBtn      = container.querySelector("#col-vis-btn");
+  const colVisMenu     = container.querySelector("#col-vis-menu");
+  const exportBtn      = container.querySelector("#export-btn");
+  const refreshBtn     = container.querySelector("#refresh-btn");
+
+  // ── Render helpers (need state.groups / state.roleCatalog) ───────────────
+  function groupOptionsHtml(selectedId) {
+    const opts = [`<option value="">— ingen —</option>`];
+    for (const g of state.groups) {
+      opts.push(`<option value="${esc(g.id)}"${g.id === selectedId ? " selected" : ""}>${esc(g.name)}</option>`);
+    }
+    return opts.join("");
+  }
+
+  function rolesChipsHtml(selected, opts = {}) {
+    const editable   = opts.editable !== false && state.canEditRoles;
+    const sel        = (selected || []).filter((r) => r.toLowerCase() !== "admin");
+    const selLower   = new Set(sel.map((s) => (s || "").toLowerCase()));
+    const catalogLow = new Set(state.roleCatalog.map((r) => r.name.toLowerCase()));
+    const items      = [];
+    for (const r of state.roleCatalog) {
+      const checked = selLower.has(r.name.toLowerCase()) ? "checked" : "";
+      const dis     = editable ? "" : "disabled";
+      items.push(
+        `<label class="role-chip" title="${esc(r.description || r.name)}">` +
+        `<input type="checkbox" class="row-role-chip" data-role="${esc(r.name)}" ${checked} ${dis} />` +
+        `<span>${esc(r.name)}</span></label>`,
+      );
+    }
+    for (const r of sel) {
+      if (!catalogLow.has(r.toLowerCase())) {
+        items.push(
+          `<span class="role-chip role-chip-extern" title="Bruger-tag eller rolle uden for katalog">` +
+          `${esc(r)}</span>`,
+        );
+      }
+    }
+    return items.length ? `<div class="role-chips">${items.join("")}</div>` : `<span class="hint">—</span>`;
+  }
+
+  // ── Column visibility ────────────────────────────────────────────────────
+  function applyColVis() {
+    const table = container.querySelector(".browse-table-wrap table");
+    if (!table) return;
+    COLUMNS.forEach((c, i) => {
+      const visible = state.colVis[c.key] !== false;
+      const nth     = i + 2;
+      table.querySelectorAll(`thead tr > th:nth-child(${nth})`).forEach((el) =>
+        el.classList.toggle("col-hidden", !visible));
+      table.querySelectorAll(`tbody tr > td:nth-child(${nth})`).forEach((el) =>
+        el.classList.toggle("col-hidden", !visible));
+    });
+  }
+
+  function renderColVisMenu() {
+    colVisMenu.innerHTML = COLUMNS.map((c) => `
+      <label class="col-vis-item">
+        <input type="checkbox" class="col-vis-cb" data-col="${c.key}"
+               ${state.colVis[c.key] !== false ? "checked" : ""} />
+        ${esc(c.label)}
+      </label>`).join("");
+    colVisMenu.querySelectorAll(".col-vis-cb").forEach((cb) => {
+      cb.addEventListener("change", () => {
+        state.colVis[cb.dataset.col] = cb.checked;
+        saveColVis(state.colVis);
+        applyColVis();
+      });
+    });
+  }
+
+  colVisBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    renderColVisMenu();
+    colVisMenu.classList.toggle("hidden");
+  });
+  document.addEventListener("click", (e) => {
+    if (!colVisMenu.contains(e.target) && e.target !== colVisBtn) colVisMenu.classList.add("hidden");
+  });
+
+  // ── Auth-status colors ───────────────────────────────────────────────────
+  function applyAuthStatusColors() {
+    const macs = state.activeSessionMacs || (state.pxgridLive && state.pxgridSessionMacs) || null;
+    tbody.querySelectorAll("tr[data-id]").forEach((tr) => {
+      const macCell = tr.querySelector(".mac-cell");
+      if (!macCell) return;
+      macCell.classList.remove("auth-active", "auth-failed");
+      if (!macs) return;
+      const mac = normalizeMac(macCell.textContent);
+      if (mac) macCell.classList.add(macs.has(mac) ? "auth-active" : "auth-failed");
+    });
+  }
+
+  // ── Row rendering ────────────────────────────────────────────────────────
+  function renderRows(rows) {
+    const cols = COLUMNS.length + 2;
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="${cols}" class="empty">Ingen resultater</td></tr>`;
+      selectAllCb.checked = false;
+      selectAllCb.indeterminate = false;
+      return;
+    }
+    tbody.innerHTML = rows.map((r) => `
+      <tr data-id="${esc(r.id)}"${state.dirtyIds.has(r.id) ? ' class="dirty"' : ''}>
+        <td class="select-cell"><input type="checkbox" class="row-select" /></td>
+        <td class="mac-cell${r.cache_stale ? " cache-stale" : ""}"><a href="#" class="mac-link" title="Vis detaljer">${esc(r.mac || r.name)}</a>${r.cache_stale ? '<span class="stale-badge" title="Data fra gammel cache — opdateres i baggrunden">⏱</span>' : ""}</td>
+        <td class="vendor-cell-td">${esc(r.vendor || "")}</td>
+        <td><select class="grp-select">${groupOptionsHtml(r.group_id)}</select></td>
+        <td class="assign-cell">${r.static_group ? "Statisk" : "Dynamisk"}</td>
+        <td><input type="text" class="desc-input" value="${esc(r.description || "")}" /></td>
+        <td><select class="ca-type">${optionsHtml(state.caValues.Type, r.endpoint_type)}</select></td>
+        <td><select class="ca-owner">${optionsHtml(state.caValues.Owner, r.owner)}</select></td>
+        <td><select class="ca-lokation">${optionsHtml(state.caValues.Lokation, r.lokation)}</select></td>
+        <td><select class="ca-platformtype">${optionsHtml(state.caValues.PlatformType, r.platform_type)}</select></td>
+        <td class="psk-mode-cell"><input type="checkbox" class="psk-mode-cb"${r.psk_mode ? " checked" : ""}${state.isPskEditor ? "" : " disabled"} title="MPSK/IPSK" /></td>
+        <td class="authz-col psk-key-cell mono">${state.pskShowKey ? esc(r.psk_key || "") : (r.psk_key ? "••••••" : "")}</td>
+        <td class="authz-col"><select class="ca-authzvlan">${optionsHtml(state.caValues.AuthzVlan, r.authz_vlan)}</select></td>
+        <td class="authz-col"><select class="ca-authzacl">${optionsHtml(state.caValues.AuthzACL, r.authz_acl)}</select></td>
+        <td class="roles-cell">${rolesChipsHtml(r.roles)}</td>
+        <td class="age-cell" title="${esc(fmtDateTime(endpointCreateTime(r)))}">${esc(fmtRelativeAge(endpointCreateTime(r)))}</td>
+      </tr>`).join("");
+    updateSelectionUI();
+    updateDirtyUI();
+    applyColVis();
+    applyAuthStatusColors();
+  }
+
+  async function refreshRows(ids) {
+    if (!ids || !ids.length) return;
+    const fresh = await Promise.all(ids.map((id) => api.getEndpoint(id).catch(() => null)));
+    const byId  = new Map();
+    for (const r of fresh) if (r && r.id) byId.set(r.id, r);
+    if (!byId.size) return;
+    for (let i = 0; i < state.allRows.length; i++) {
+      const upd = byId.get(state.allRows[i].id);
+      if (upd) state.allRows[i] = upd;
+    }
+    if (state.allRowsCache) {
+      for (let i = 0; i < state.allRowsCache.length; i++) {
+        const upd = byId.get(state.allRowsCache[i].id);
+        if (upd) state.allRowsCache[i] = upd;
+      }
+    }
+    for (const [id, r] of byId) {
+      const tr = tbody.querySelector(`tr[data-id="${CSS.escape(id)}"]`);
+      if (!tr) continue;
+      const macLink = tr.querySelector(".mac-cell .mac-link");
+      if (macLink) macLink.textContent = r.mac || r.name;
+      const vendorCell = tr.querySelector(".vendor-cell-td");
+      if (vendorCell) vendorCell.textContent = r.vendor || "";
+      const grpSel = tr.querySelector(".grp-select");
+      if (grpSel) grpSel.innerHTML = groupOptionsHtml(r.group_id);
+      const assignCell = tr.querySelector(".assign-cell");
+      if (assignCell) assignCell.textContent = r.static_group ? "Statisk" : "Dynamisk";
+      const descInput = tr.querySelector(".desc-input");
+      if (descInput) descInput.value = r.description || "";
+      const setSel = (cls, val, vals) => {
+        const el = tr.querySelector(`.${cls}`);
+        if (el) el.innerHTML = optionsHtml(vals, val);
+      };
+      setSel("ca-type",       r.endpoint_type, state.caValues.Type);
+      setSel("ca-owner",      r.owner,          state.caValues.Owner);
+      setSel("ca-lokation",   r.lokation,       state.caValues.Lokation);
+      setSel("ca-authzvlan",  r.authz_vlan,     state.caValues.AuthzVlan);
+      setSel("ca-authzacl",   r.authz_acl,      state.caValues.AuthzACL);
+      setSel("ca-platformtype", r.platform_type, state.caValues.PlatformType);
+      const rolesCell = tr.querySelector(".roles-cell");
+      if (rolesCell) rolesCell.innerHTML = rolesChipsHtml(r.roles);
+      const pskModeCb = tr.querySelector(".psk-mode-cb");
+      if (pskModeCb) pskModeCb.checked = !!r.psk_mode;
+      const pskKeyCell = tr.querySelector(".psk-key-cell");
+      if (pskKeyCell) pskKeyCell.textContent = state.pskShowKey ? (r.psk_key || "") : (r.psk_key ? "••••••" : "");
+      delete tr.dataset.beStaticGroup;
+      delete tr.dataset.bePskKey;
+      tr.classList.remove("dirty");
+      state.dirtyIds.delete(id);
+    }
+    applyColVis();
+    applyAuthStatusColors();
+    updateDirtyUI();
+    updateSelectionUI();
+  }
+
+  // ── Dirty tracking ───────────────────────────────────────────────────────
+  function updateDirtyUI() {
+    saveAllBtn.disabled  = state.dirtyIds.size === 0;
+    saveAllBtn.textContent = state.dirtyIds.size ? `Gem alle (${state.dirtyIds.size})` : "Gem alle";
+  }
+
+  function markDirty(tr) {
+    const id = tr.dataset.id;
+    if (!id) return;
+    state.dirtyIds.add(id);
+    tr.classList.add("dirty");
+    const cbEl = tr.querySelector(".row-select");
+    if (cbEl && !cbEl.checked) { cbEl.checked = true; updateSelectionUI(); }
+    updateDirtyUI();
+  }
+
+  // ── Selection ────────────────────────────────────────────────────────────
+  function getSelectedIds() {
+    return Array.from(tbody.querySelectorAll(".row-select:checked")).map(
+      (cbEl) => cbEl.closest("tr").dataset.id,
+    );
+  }
+
+  function updateSelectionUI() {
+    const selected     = getSelectedIds();
+    const hasSelection = selected.length > 0;
+    bulkSaveBtn.disabled    = !hasSelection;
+    bulkDelBtn.disabled     = !hasSelection;
+    bulkDisconnBtn.disabled = !hasSelection;
+    bulkEditBtn.disabled    = !hasSelection;
+    selectionCount.textContent = hasSelection ? `${selected.length} valgt` : "";
+    selectAllCb.indeterminate  = selected.length > 0 && selected.length < tbody.querySelectorAll(".row-select").length;
+  }
+
+  // ── Save payload builder ─────────────────────────────────────────────────
+  function buildSavePayload(tr) {
+    const id              = tr.dataset.id;
+    const description     = tr.querySelector(".desc-input").value;
+    const selectedGroupId = tr.querySelector(".grp-select").value;
+    const endpointType    = tr.querySelector(".ca-type").value;
+    const owner           = tr.querySelector(".ca-owner").value;
+    const lokation        = tr.querySelector(".ca-lokation").value;
+    const authzVlan       = tr.querySelector(".ca-authzvlan").value;
+    const authzAcl        = tr.querySelector(".ca-authzacl").value;
+    const platformType    = tr.querySelector(".ca-platformtype").value;
+    const pskModeCb       = tr.querySelector(".psk-mode-cb");
+    const pskMode         = pskModeCb ? pskModeCb.checked : null;
+    const row             = state.allRows.find((r) => r.id === id);
+    const originalGroupId = row ? (row.group_id || "") : "";
+    const groupChanged    = selectedGroupId !== originalGroupId;
+
+    const checkedChips        = tr.querySelectorAll(".row-role-chip:checked");
+    const selectedCatalogRoles = Array.from(checkedChips).map((cb) => cb.dataset.role);
+    const catalogLower         = new Set(state.roleCatalog.map((c) => c.name.toLowerCase()));
+    const externalRoles        = ((row && row.roles) || []).filter(
+      (r) => !catalogLower.has((r || "").toLowerCase()),
+    );
+    const hypervisionRoles = [...externalRoles, ...selectedCatalogRoles].join(",");
+
+    let group_id = null, static_group_assignment = null;
+    if (groupChanged) {
+      if (!selectedGroupId) {
+        const unknownGroup = state.groups.find((g) => g.name.toLowerCase() === "unknown");
+        if (unknownGroup) { group_id = unknownGroup.id; static_group_assignment = false; }
+      } else { group_id = selectedGroupId; }
+    }
+    if (tr.dataset.beStaticGroup !== undefined) {
+      static_group_assignment = tr.dataset.beStaticGroup === "1";
+    }
+    const bePskKey = state.isPskEditor && tr.dataset.bePskKey !== undefined ? tr.dataset.bePskKey : undefined;
+
+    return {
+      id,
+      mac: tr.querySelector(".mac-cell").textContent,
+      payload: {
+        description, group_id, static_group_assignment,
+        custom_attributes: {
+          Type: endpointType, Owner: owner, Lokation: lokation,
+          AuthzVlan: authzVlan, AuthzACL: authzAcl, PlatformType: platformType,
+          HypervisionRoles: hypervisionRoles,
+          ...(state.isPskEditor && pskMode !== null ? { PSK_Mode: pskMode ? "true" : "false" } : {}),
+          ...(bePskKey !== undefined && bePskKey !== "****" ? { PSK_Key: bePskKey } : {}),
+        },
+      },
+      localUpdate: { description, group_id, static_group_assignment, groupChanged, endpointType, owner, lokation, authzVlan, authzAcl, platformType, pskMode },
+      platformType,
+    };
+  }
+
+  // ── Pagination ───────────────────────────────────────────────────────────
+  function totalPages() {
+    return Math.max(1, Math.ceil(state.totalEndpoints / state.currentSize));
+  }
+
+  function updatePaginationUI() {
+    const tp = totalPages();
+    pagePrev.disabled     = state.currentPage <= 1;
+    pageNext.disabled     = state.currentPage >= tp;
+    pageInfo.textContent  = `Side ${state.currentPage} af ${tp} (${state.totalEndpoints} total)`;
+  }
+
+  // ── applyFilter (client-side pagination over full dataset) ───────────────
+  function applyFilter() {
+    if (state.filterMode) {
+      const filtered = cb.applyFiltersToRows(state.allRows);
+      state.totalEndpoints = filtered.length;
+      const tp = totalPages();
+      if (state.currentPage > tp) state.currentPage = tp;
+      const start    = (state.currentPage - 1) * state.currentSize;
+      const pageRows = filtered.slice(start, start + state.currentSize);
+      renderRows(pageRows);
+      updatePaginationUI();
+      if (cb.hasActiveFilterText() || state.portalOnly) {
+        countEl.textContent = `${filtered.length} / ${state.allRows.length} endpoints (filtreret)`;
+      } else {
+        countEl.textContent = `${state.allRows.length} endpoints`;
+      }
+    } else {
+      renderRows(state.allRows);
+      updatePaginationUI();
+      countEl.textContent = `${state.allRows.length} / ${state.totalEndpoints} endpoints`;
+    }
+  }
+
+  // ── Load (full page refresh) ─────────────────────────────────────────────
+  async function load(force = false) {
+    const cols = COLUMNS.length + 2;
+    tbody.innerHTML = `<tr><td colspan="${cols}" class="empty">Henter detaljer fra ISE...</td></tr>`;
+    msg.innerHTML = "";
+    state.dirtyIds.clear();
+    updateDirtyUI();
+    state.filterMode  = false;
+    state.allRowsCache = null;
+    try {
+      const [caData, grps, result, dacls, mapping, roles, me, pskPolicy] = await Promise.all([
+        api.listCustomAttributes(),
+        api.listGroups(),
+        api.listEndpointDetails(state.currentPage, state.currentSize, "", state.currentFilters),
+        api.listDacls().catch(() => []),
+        api.getPlatformMapping().catch(() => ({ mappings: [] })),
+        api.listEndpointRoles().catch(() => ({ roles: [] })),
+        api.authMe().catch(() => null),
+        api.getPskPolicy().catch(() => null),
+      ]);
+      state.pskShowKey   = !!(pskPolicy && pskPolicy.show_key_in_table);
+      state.groups       = grps;
+      const allRoles     = (roles && Array.isArray(roles.roles)) ? roles.roles : [];
+      state.canEditRoles = !!me && (me.role === "admin" || me.role === "editor" || me.role === "editor-psk");
+      state.isPskEditor  = !!me && (me.role === "admin" || me.role === "editor-psk");
+      const nonAdminRoles = allRoles.filter((r) => r.name.toLowerCase() !== "admin");
+      if (!me || me.role === "admin") {
+        state.roleCatalog = nonAdminRoles;
+      } else {
+        const assigned = new Set((me.assigned_endpoint_roles || []).map((r) => r.toLowerCase()));
+        state.roleCatalog = nonAdminRoles.filter((r) => assigned.has(r.name.toLowerCase()));
+      }
+      for (const a of caData.attributes) {
+        if (a.name in state.caValues) state.caValues[a.name] = a.values;
+      }
+      state.caValues.AuthzACL = (dacls || []).map((d) => d.name).filter(Boolean).sort();
+      state.coaByLocal = new Map(
+        (mapping.mappings || []).filter((m) => m.local).map((m) => [m.local, m.coa || "reauth"]),
+      );
+      state.allRows       = result.items;
+      state.totalEndpoints = result.total;
+      if (cb.needsFilterMode()) await cb.enterFilterMode();
+      await cb.refreshActiveSessionMacs(force);
+      applyFilter();
+    } catch (err) {
+      msg.innerHTML = `<div class="alert error">${err.message}</div>`;
+      tbody.innerHTML = "";
+    }
+  }
+
+  // ── Event handlers ───────────────────────────────────────────────────────
+  selectAllCb.addEventListener("change", () => {
+    tbody.querySelectorAll(".row-select").forEach((cbEl) => { cbEl.checked = selectAllCb.checked; });
+    updateSelectionUI();
+  });
+
+  tbody.addEventListener("change", (e) => {
+    if (e.target.classList.contains("row-select")) { updateSelectionUI(); return; }
+    const tr = e.target.closest("tr");
+    if (tr && (e.target.matches("select") || e.target.matches("input:not(.row-select)"))) markDirty(tr);
+  });
+
+  tbody.addEventListener("input", (e) => {
+    const tr = e.target.closest("tr");
+    if (tr && e.target.matches("input:not(.row-select)")) markDirty(tr);
+  });
+
+  tbody.addEventListener("click", (e) => {
+    const link = e.target.closest(".mac-link");
+    if (!link) return;
+    e.preventDefault();
+    const tr = link.closest("tr");
+    if (tr && tr.dataset.id) cb.openDetail(tr.dataset.id);
+  });
+
+  // Save all dirty rows
+  saveAllBtn.addEventListener("click", async () => {
+    if (!state.dirtyIds.size) return;
+    saveAllBtn.disabled = true;
+    const ids = [...state.dirtyIds];
+    msg.innerHTML = `<div class="alert info">Gemmer ${ids.length} ændrede endpoints...</div>`;
+    let ok = 0, fail = 0;
+    const savedEntries = [];
+    for (const id of ids) {
+      const tr = tbody.querySelector(`tr[data-id="${id}"]`);
+      if (!tr) continue;
+      const { payload, platformType } = buildSavePayload(tr);
+      try {
+        await api.updateEndpoint(id, payload);
+        state.dirtyIds.delete(id);
+        savedEntries.push({ id, platformType });
+        ok++;
+      } catch { fail++; }
+    }
+    let coaSummary = "";
+    if (state.coaOnSave && savedEntries.length) {
+      msg.innerHTML = `<div class="alert info">Udløser CoA for ${savedEntries.length} endpoints...</div>`;
+      const coa = await cb.runCoaForIds(savedEntries);
+      coaSummary = coaSummaryText(coa);
+    }
+    await refreshRows(savedEntries.map((s) => s.id));
+    const parts = [];
+    if (ok)   parts.push(`${ok} gemt`);
+    if (fail) parts.push(`${fail} fejlede`);
+    msg.innerHTML = `<div class="alert ${fail ? "error" : "success"}">${parts.join(", ")}${coaSummary}</div>`;
+  });
+
+  // Bulk save selected rows
+  bulkSaveBtn.addEventListener("click", async () => {
+    const ids = getSelectedIds();
+    if (!ids.length) return;
+    bulkSaveBtn.disabled = true;
+    msg.innerHTML = `<div class="alert info">Gemmer ${ids.length} endpoints...</div>`;
+    let ok = 0, fail = 0;
+    const savedEntries = [];
+    for (const id of ids) {
+      const tr = tbody.querySelector(`tr[data-id="${id}"]`);
+      if (!tr) continue;
+      const { payload, platformType } = buildSavePayload(tr);
+      try {
+        await api.updateEndpoint(id, payload);
+        state.dirtyIds.delete(id);
+        savedEntries.push({ id, platformType });
+        ok++;
+      } catch { fail++; }
+    }
+    let coaSummary = "";
+    if (state.coaOnSave && savedEntries.length) {
+      msg.innerHTML = `<div class="alert info">Udløser CoA for ${savedEntries.length} endpoints...</div>`;
+      const coa = await cb.runCoaForIds(savedEntries);
+      coaSummary = coaSummaryText(coa);
+    }
+    await refreshRows(savedEntries.map((s) => s.id));
+    const parts = [];
+    if (ok)   parts.push(`${ok} gemt`);
+    if (fail) parts.push(`${fail} fejlede`);
+    msg.innerHTML = `<div class="alert ${fail ? "error" : "success"}">${parts.join(", ")}${coaSummary}</div>`;
+    bulkSaveBtn.disabled = false;
+  });
+
+  // Refresh button
+  refreshBtn.addEventListener("click", async () => {
+    refreshBtn.disabled    = true;
+    refreshBtn.textContent = "Opdaterer…";
+    try {
+      await api.invalidateCache().catch(() => {});
+      await load(true);
+    } finally {
+      refreshBtn.disabled    = false;
+      refreshBtn.textContent = "Refresh";
+    }
+  });
+
+  // Export CSV
+  exportBtn.addEventListener("click", async () => {
+    const selectedIds = getSelectedIds();
+    let exportRows;
+    let allLabel = "";
+    if (selectedIds.length) {
+      const selSet = new Set(selectedIds);
+      exportRows   = state.allRows.filter((r) => selSet.has(r.id));
+    } else if (state.filterMode) {
+      exportRows = cb.applyFiltersToRows(state.allRows);
+    } else {
+      exportBtn.disabled = true;
+      msg.innerHTML = `<div class="alert info">Henter alle endpoints fra ISE for export...</div>`;
+      try {
+        exportRows = state.allRowsCache || (state.allRowsCache = await api.listAllEndpointDetails("", state.currentFilters));
+        allLabel   = " (alle)";
+      } catch (err) {
+        msg.innerHTML = `<div class="alert error">Kunne ikke hente alle endpoints: ${err.message}</div>`;
+        exportBtn.disabled = false;
+        return;
+      }
+      exportBtn.disabled = false;
+    }
+    if (!exportRows.length) {
+      msg.innerHTML = `<div class="alert info">Ingen endpoints at eksportere.</div>`;
+      return;
+    }
+    const csv  = toIseCsv(exportRows);
+    const date = new Date().toISOString().slice(0, 10);
+    downloadCsv(csv, `ise-endpoints-${date}.csv`);
+    const label = selectedIds.length ? `${exportRows.length} valgte` : `${exportRows.length}${allLabel}`;
+    msg.innerHTML = `<div class="alert success">Eksporteret ${label} endpoints.</div>`;
+  });
+
+  // Pagination
+  pagePrev.addEventListener("click", () => {
+    if (state.currentPage > 1) {
+      state.currentPage--;
+      if (state.filterMode) applyFilter(); else load();
+    }
+  });
+  pageNext.addEventListener("click", () => {
+    if (state.currentPage < totalPages()) {
+      state.currentPage++;
+      if (state.filterMode) applyFilter(); else load();
+    }
+  });
+  pageSizeSelect.addEventListener("change", () => {
+    state.currentSize = parseInt(pageSizeSelect.value, 10);
+    savePageSize(state.currentSize);
+    state.currentPage = 1;
+    cb.clearActiveView?.();
+    if (state.filterMode) applyFilter(); else load();
+  });
+
+  return {
+    renderRows, refreshRows, buildSavePayload,
+    getSelectedIds, updateDirtyUI, markDirty, updateSelectionUI,
+    applyColVis, renderColVisMenu, applyFilter, load,
+    applyAuthStatusColors, rolesChipsHtml, groupOptionsHtml,
+  };
+}

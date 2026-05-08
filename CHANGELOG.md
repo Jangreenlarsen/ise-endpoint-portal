@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [3.29.0 build 0200] — 2026-05-08 — feat(modularisering): browse.js opdelt i 6 moduler
+
+**Berørte filer**: `frontend/js/views/browse.js` (rewritten), `browse-utils.js` (ny), `browse-filter.js` (ny), `browse-table.js` (ny), `browse-detail.js` (ny), `browse-bulk.js` (ny), `FEATURES.md`
+
+**Ændring**: 2236-linje monolitfil opdelt i 6 selvstændige ES-moduler uden funktionsændringer. Delt mutable `state`-objekt indeholder al runtime-data (allRows, groups, caValues, dirtyIds, pxGrid-state m.fl.). `cb`-callbacks-objekt populeres efter alle modul-inits og bruges til krydskald (late binding løser cirkulære afhæniggheder). Moduler: `browse-utils.js` (106 linjer, pure utilities + COLUMNS), `browse-filter.js` (409 linjer, filter-toolbar + saved views), `browse-table.js` (516 linjer, render + inline-edit + pagination + col-vis + save/export), `browse-detail.js` (273 linjer, detail-modal + ANC + CoA + d-save), `browse-bulk.js` (190 linjer, bulk-edit-modal + bulk-delete + bulk-disconnect). `browse.js` er nu 465-linje orchestrator (HTML-template + state-oprettelse + pxGrid-stream + CoA-toggle + module-init).
+
 ## [3.28.2 build 0199] — 2026-05-08 — fix(alder): audit-fallback for tomme timestamps
 
 **Berørte filer**: `backend/app/core/audit_store.py`, `backend/app/services/endpoint_service.py`

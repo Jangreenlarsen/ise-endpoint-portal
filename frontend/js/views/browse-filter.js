@@ -1,0 +1,440 @@
+// Filter-toolbar + saved views logic for Browse.
+// initFilter wires all filter-related DOM events and returns its public API.
+// Cross-module calls go via the `cb` object (populated in browse.js after all inits).
+
+import {
+  COLUMNS, esc,
+  endpointCreateTime,
+  loadBrowseFilters, saveBrowseFilters,
+  loadColVis, saveColVis,
+  savePageSize,
+} from "./browse-utils.js";
+
+export function initFilter(container, state, api, cb) {
+  const filterRow       = container.querySelector(".filter-row");
+  const filterFieldSel  = container.querySelector("#filter-field");
+  const filterOpSel     = container.querySelector("#filter-op");
+  const filterValueInp  = container.querySelector("#filter-value");
+  const portalFilterBtn = container.querySelector("#portal-filter-btn");
+  const ageFilterMode   = container.querySelector("#age-filter-mode");
+  const ageFilterDays   = container.querySelector("#age-filter-days");
+  const pageSizeSelect  = container.querySelector("#page-size-select");
+  const viewsBtn        = container.querySelector("#views-btn");
+  const viewsMenu       = container.querySelector("#views-menu");
+  const msg             = container.querySelector("#msg");
+
+  pageSizeSelect.value = String(state.currentSize);
+
+  // ── Column filters ──────────────────────────────────────────────────────
+  function getColumnFilters() {
+    const active = [];
+    filterRow.querySelectorAll(".col-filter-cb:checked").forEach((cb) => {
+      const col   = cb.dataset.col;
+      const input = filterRow.querySelector(`.col-filter-input[data-col="${col}"]`);
+      const q     = (input.value || "").trim();
+      if (q) {
+        const colDef = COLUMNS.find((c) => c.key === col);
+        if (colDef) {
+          try { active.push({ field: colDef.field, re: new RegExp(q, "i") }); }
+          catch {
+            const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            active.push({ field: colDef.field, re: new RegExp(escaped, "i") });
+          }
+        }
+      }
+    });
+    return active;
+  }
+
+  function hasActiveFilterText() {
+    return Array.from(filterRow.querySelectorAll(".col-filter-input")).some(
+      (i) => !i.disabled && i.value.trim(),
+    );
+  }
+
+  function needsFilterMode() {
+    return state.portalOnly
+      || filterRow.querySelector(".col-filter-cb:checked") !== null
+      || state.ageDaysFilter !== null
+      || state.ageSort !== null;
+  }
+
+  function anyFilterActive() {
+    return needsFilterMode() || state.currentFilters.length > 0;
+  }
+
+  function buildServerFilters() {
+    const value = filterValueInp.value.trim();
+    if (!value) return [];
+    return [`${filterFieldSel.value}.${filterOpSel.value}.${value}`];
+  }
+
+  function applyFiltersToRows(rows) {
+    if (state.portalOnly) rows = rows.filter((r) => r.hypervision === "true");
+    const filters = getColumnFilters();
+    if (filters.length) rows = rows.filter((r) => filters.every((f) => f.re.test(f.field(r) || "")));
+    if (state.ageDaysFilter) {
+      const cutoffMs = Date.now() - state.ageDaysFilter.days * 86400000;
+      rows = rows.filter((r) => {
+        const ts = endpointCreateTime(r);
+        if (!ts) return state.ageDaysFilter.mode === "older";
+        const t = new Date(ts).getTime();
+        if (isNaN(t)) return false;
+        return state.ageDaysFilter.mode === "older" ? t < cutoffMs : t >= cutoffMs;
+      });
+    }
+    if (state.ageSort) {
+      rows = [...rows].sort((a, b) => {
+        const ta = new Date(endpointCreateTime(a) || 0).getTime();
+        const tb = new Date(endpointCreateTime(b) || 0).getTime();
+        return state.ageSort === "asc" ? ta - tb : tb - ta;
+      });
+    }
+    return rows;
+  }
+
+  // ── Filter mode (client-side) ────────────────────────────────────────────
+  async function enterFilterMode() {
+    if (state.filterMode || state.loadingAll) return;
+    if (state.allRowsCache) {
+      state.allRows = state.allRowsCache;
+      state.filterMode = true;
+      state.currentPage = 1;
+      return;
+    }
+    state.loadingAll = true;
+    const cols = COLUMNS.length + 2;
+    container.querySelector("#tbody").innerHTML =
+      `<tr><td colspan="${cols}" class="empty">Henter alle endpoints fra ISE...</td></tr>`;
+    msg.innerHTML = `<div class="alert info">Henter alle endpoints for at kunne filtrere på tværs af sider...</div>`;
+    try {
+      const all = await api.listAllEndpointDetails("", state.currentFilters);
+      state.allRowsCache = all;
+      state.allRows = all;
+      state.filterMode = true;
+      state.currentPage = 1;
+      msg.innerHTML = "";
+    } catch (err) {
+      msg.innerHTML = `<div class="alert error">Kunne ikke hente alle endpoints: ${err.message}</div>`;
+    } finally {
+      state.loadingAll = false;
+    }
+  }
+
+  function exitFilterMode() {
+    if (!state.filterMode) return;
+    state.filterMode = false;
+    state.currentPage = 1;
+    cb.load();
+  }
+
+  async function onFilterChange() {
+    if (needsFilterMode()) {
+      await enterFilterMode();
+      await cb.refreshActiveSessionMacs();
+      cb.applyFilter();
+    } else {
+      state.activeSessionMacs = null;
+      exitFilterMode();
+    }
+  }
+
+  // ── Age filter ───────────────────────────────────────────────────────────
+  function applyAgeFilter() {
+    const mode = ageFilterMode.value;
+    const days = parseInt(ageFilterDays.value, 10);
+    state.ageDaysFilter = (mode && days > 0) ? { mode, days } : null;
+    clearActiveView();
+    onFilterChange();
+  }
+  ageFilterMode.addEventListener("change", applyAgeFilter);
+  ageFilterDays.addEventListener("input", () => {
+    if (state.searchDebounce) clearTimeout(state.searchDebounce);
+    state.searchDebounce = setTimeout(applyAgeFilter, 400);
+  });
+
+  // Age-column header sort toggle
+  const ageColIdx = COLUMNS.findIndex((c) => c.key === "create_time");
+  if (ageColIdx >= 0) {
+    const ageTh = container.querySelector(`thead tr:first-child th:nth-child(${ageColIdx + 2})`);
+    if (ageTh) {
+      ageTh.style.cursor = "pointer";
+      ageTh.title = "Klik for at sortere efter alder";
+      function updateAgeSortHeader() {
+        ageTh.textContent = state.ageSort === "asc" ? "Alder ↑" : state.ageSort === "desc" ? "Alder ↓" : "Alder";
+      }
+      ageTh.addEventListener("click", async () => {
+        state.ageSort = state.ageSort === null ? "desc" : state.ageSort === "desc" ? "asc" : null;
+        updateAgeSortHeader();
+        clearActiveView();
+        if (state.ageSort !== null) {
+          if (!state.filterMode) await enterFilterMode();
+          cb.applyFilter();
+        } else {
+          await onFilterChange();
+        }
+      });
+    }
+  }
+
+  // ── Filter persistence ───────────────────────────────────────────────────
+  function snapshotFilters() {
+    const cols = [];
+    filterRow.querySelectorAll(".col-filter-cb:checked").forEach((cb) => {
+      const input = filterRow.querySelector(`.col-filter-input[data-col="${cb.dataset.col}"]`);
+      cols.push({ col: cb.dataset.col, value: input ? input.value : "" });
+    });
+    return {
+      portalOnly: state.portalOnly,
+      server: { field: filterFieldSel.value, op: filterOpSel.value, value: filterValueInp.value },
+      cols,
+      colVis: { ...state.colVis },
+      pageSize: state.currentSize,
+    };
+  }
+
+  function persistFilters() { saveBrowseFilters(snapshotFilters()); }
+
+  function applyFilterSnapshot(s) {
+    if (!s) return;
+    state.portalOnly = false;
+    portalFilterBtn.classList.remove("active-toggle");
+    filterValueInp.value = "";
+    state.currentFilters = [];
+    filterRow.querySelectorAll(".col-filter-cb").forEach((cb) => {
+      const input = filterRow.querySelector(`.col-filter-input[data-col="${cb.dataset.col}"]`);
+      cb.checked = false;
+      if (input) { input.value = ""; input.disabled = true; }
+    });
+    if (s.portalOnly) { state.portalOnly = true; portalFilterBtn.classList.add("active-toggle"); }
+    if (s.server) {
+      if (s.server.field) filterFieldSel.value = s.server.field;
+      if (s.server.op)    filterOpSel.value    = s.server.op;
+      if (s.server.value) filterValueInp.value = s.server.value;
+      state.currentFilters = buildServerFilters();
+    }
+    if (Array.isArray(s.cols)) {
+      for (const { col, value } of s.cols) {
+        const cbEl  = filterRow.querySelector(`.col-filter-cb[data-col="${col}"]`);
+        const input = filterRow.querySelector(`.col-filter-input[data-col="${col}"]`);
+        if (cbEl && input) { cbEl.checked = true; input.disabled = false; input.value = value || ""; }
+      }
+    }
+    if (s.colVis && typeof s.colVis === "object") {
+      for (const c of COLUMNS) {
+        if (c.key in s.colVis) state.colVis[c.key] = s.colVis[c.key] !== false;
+      }
+      saveColVis(state.colVis);
+      cb.renderColVisMenu?.();
+      cb.applyColVis?.();
+    }
+    if (typeof s.pageSize === "number" && s.pageSize > 0) {
+      state.currentSize = s.pageSize;
+      savePageSize(state.currentSize);
+      pageSizeSelect.value = String(state.currentSize);
+    }
+  }
+
+  function restoreFilters() { applyFilterSnapshot(loadBrowseFilters()); }
+
+  // ── Debounced server-filter change ──────────────────────────────────────
+  function triggerFilterChange(immediate = false) {
+    if (state.searchDebounce) clearTimeout(state.searchDebounce);
+    const fire = () => {
+      const next    = buildServerFilters();
+      const nextKey = next.join("|");
+      const curKey  = state.currentFilters.join("|");
+      if (nextKey === curKey) return;
+      state.currentFilters = next;
+      state.currentPage = 1;
+      cb.load();
+    };
+    if (immediate) fire();
+    else state.searchDebounce = setTimeout(fire, 400);
+  }
+
+  // ── Event handlers ───────────────────────────────────────────────────────
+  filterRow.querySelectorAll(".col-filter-cb").forEach((cbEl) => {
+    const input = filterRow.querySelector(`.col-filter-input[data-col="${cbEl.dataset.col}"]`);
+    cbEl.addEventListener("change", async () => {
+      input.disabled = !cbEl.checked;
+      if (!cbEl.checked) input.value = "";
+      persistFilters();
+      clearActiveView();
+      await onFilterChange();
+      if (cbEl.checked) input.focus();
+    });
+  });
+  filterRow.querySelectorAll(".col-filter-input").forEach((input) => {
+    input.addEventListener("input", () => {
+      persistFilters();
+      clearActiveView();
+      if (state.filterMode) cb.applyFilter();
+    });
+  });
+
+  portalFilterBtn.addEventListener("click", async () => {
+    state.portalOnly = !state.portalOnly;
+    portalFilterBtn.classList.toggle("active-toggle", state.portalOnly);
+    persistFilters();
+    clearActiveView();
+    await onFilterChange();
+  });
+
+  filterValueInp.addEventListener("input", () => {
+    persistFilters();
+    clearActiveView();
+    triggerFilterChange(false);
+  });
+  filterFieldSel.addEventListener("change", () => {
+    persistFilters();
+    clearActiveView();
+    triggerFilterChange(true);
+  });
+  filterOpSel.addEventListener("change", () => {
+    persistFilters();
+    clearActiveView();
+    triggerFilterChange(true);
+  });
+
+  // ── Saved views ──────────────────────────────────────────────────────────
+  function updateViewsBtnLabel() {
+    const active = state.savedViews.find((v) => v.id === state.activeViewId);
+    viewsBtn.innerHTML = active ? `📁 <strong>${esc(active.name)}</strong> ▾` : `📁 Views ▾`;
+    viewsBtn.classList.toggle("active-view", !!active);
+  }
+
+  async function reloadViews() {
+    try {
+      const r = await api.listMyViews();
+      state.savedViews = r.views || [];
+    } catch (err) {
+      console.warn("Kunne ikke hente saved views:", err.message);
+      state.savedViews = [];
+    }
+    if (state.activeViewId && !state.savedViews.find((v) => v.id === state.activeViewId)) {
+      state.activeViewId = null;
+    }
+    renderViewsMenu();
+    updateViewsBtnLabel();
+  }
+
+  function renderViewsMenu() {
+    const items = state.savedViews.length === 0
+      ? `<div class="views-empty">Ingen gemte views endnu</div>`
+      : state.savedViews.map((v) => {
+          const isActive = v.id === state.activeViewId;
+          return `
+            <div class="views-item${isActive ? " views-item-active" : ""}" data-view-id="${esc(v.id)}">
+              <button type="button" class="views-apply" data-view-id="${esc(v.id)}"
+                      title="Aktivér dette view">${isActive ? "✓ " : ""}${esc(v.name)}</button>
+              <button type="button" class="views-del" data-view-id="${esc(v.id)}"
+                      title="Slet view">×</button>
+            </div>`;
+        }).join("");
+    viewsMenu.innerHTML = `
+      <button type="button" class="views-clear" title="Ryd alle filtre og aktivt view">
+        🚫 Ryd alle filtre (ingen view)
+      </button>
+      <div class="views-divider"></div>
+      ${items}
+      <div class="views-divider"></div>
+      <button type="button" class="views-save" title="Gem nuværende filter-kombination">
+        💾 Gem nuværende filtre som view…
+      </button>`;
+  }
+
+  function clearActiveView() {
+    if (!state.activeViewId) return;
+    state.activeViewId = null;
+    renderViewsMenu();
+    updateViewsBtnLabel();
+  }
+
+  viewsBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    viewsMenu.classList.toggle("hidden");
+  });
+  document.addEventListener("click", (e) => {
+    if (!viewsMenu.contains(e.target) && e.target !== viewsBtn) viewsMenu.classList.add("hidden");
+  });
+
+  viewsMenu.addEventListener("click", async (e) => {
+    e.stopPropagation();
+    const tgt = e.target;
+
+    if (tgt.classList.contains("views-clear")) {
+      applyFilterSnapshot({ portalOnly: false, server: { field: filterFieldSel.value, op: filterOpSel.value, value: "" }, cols: [] });
+      persistFilters();
+      state.activeViewId = null;
+      renderViewsMenu();
+      updateViewsBtnLabel();
+      msg.innerHTML = `<div class="alert info">Alle filtre nulstillet.</div>`;
+      viewsMenu.classList.add("hidden");
+      await onFilterChange();
+      return;
+    }
+    if (tgt.classList.contains("views-apply")) {
+      const v = state.savedViews.find((x) => x.id === tgt.dataset.viewId);
+      if (!v) return;
+      applyFilterSnapshot(v.query || {});
+      persistFilters();
+      state.activeViewId = v.id;
+      renderViewsMenu();
+      updateViewsBtnLabel();
+      msg.innerHTML = `<div class="alert info">View "${esc(v.name)}" anvendt.</div>`;
+      viewsMenu.classList.add("hidden");
+      await onFilterChange();
+      return;
+    }
+    if (tgt.classList.contains("views-del")) {
+      const v = state.savedViews.find((x) => x.id === tgt.dataset.viewId);
+      if (!v || !confirm(`Slet view "${v.name}"?`)) return;
+      try {
+        await api.deleteMyView(v.id);
+        await reloadViews();
+        msg.innerHTML = `<div class="alert success">View "${esc(v.name)}" slettet.</div>`;
+      } catch (err) {
+        msg.innerHTML = `<div class="alert error">Kunne ikke slette: ${esc(err.message)}</div>`;
+      }
+      return;
+    }
+    if (tgt.classList.contains("views-save")) {
+      const name = prompt(
+        "Navn på view (fx 'Mine printere', 'PLC-HalA aktive')\n" +
+        "Gemmer nuværende filterkombination — Kun portal, server-MAC-filter, kolonnefiltre."
+      );
+      if (!name || !name.trim()) return;
+      const trimmed = name.trim();
+      const snap     = snapshotFilters();
+      const existing = state.savedViews.find((v) => (v.name || "").toLowerCase() === trimmed.toLowerCase());
+      try {
+        let savedId;
+        if (existing) {
+          if (!confirm(`Et view med navnet "${existing.name}" findes allerede.\n\nOverskriv det med nuværende filtre?`)) return;
+          await api.updateMyView(existing.id, { name: trimmed, query: snap });
+          savedId = existing.id;
+          msg.innerHTML = `<div class="alert success">View "${esc(trimmed)}" overskrevet.</div>`;
+        } else {
+          const created = await api.createMyView(trimmed, snap);
+          savedId = created && created.id;
+          msg.innerHTML = `<div class="alert success">View "${esc(trimmed)}" gemt.</div>`;
+        }
+        state.activeViewId = savedId || null;
+        await reloadViews();
+        viewsMenu.classList.add("hidden");
+      } catch (err) {
+        msg.innerHTML = `<div class="alert error">Kunne ikke gemme: ${esc(err.message)}</div>`;
+      }
+    }
+  });
+
+  reloadViews();
+
+  return {
+    applyFiltersToRows, needsFilterMode, anyFilterActive, hasActiveFilterText,
+    buildServerFilters, getColumnFilters, onFilterChange, enterFilterMode,
+    exitFilterMode, triggerFilterChange, clearActiveView,
+    snapshotFilters, persistFilters, applyFilterSnapshot, restoreFilters,
+  };
+}
