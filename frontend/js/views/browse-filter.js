@@ -13,8 +13,6 @@ import {
 export function initFilter(container, state, api, cb) {
   const filterRow       = container.querySelector(".filter-row");
   const portalFilterBtn = container.querySelector("#portal-filter-btn");
-  const ageFilterMode   = container.querySelector("#age-filter-mode");
-  const ageFilterDays   = container.querySelector("#age-filter-days");
   const pageSizeSelect  = container.querySelector("#page-size-select");
   const viewsBtn        = container.querySelector("#views-btn");
   const viewsMenu       = container.querySelector("#views-menu");
@@ -52,8 +50,7 @@ export function initFilter(container, state, api, cb) {
   function needsFilterMode() {
     return state.portalOnly
       || filterRow.querySelector(".col-filter-cb:checked") !== null
-      || state.ageDaysFilter !== null
-      || state.ageSort !== null;
+      || state.sortCol !== null;
   }
 
   function anyFilterActive() {
@@ -64,22 +61,20 @@ export function initFilter(container, state, api, cb) {
     if (state.portalOnly) rows = rows.filter((r) => r.hypervision === "true");
     const filters = getColumnFilters();
     if (filters.length) rows = rows.filter((r) => filters.every((f) => f.re.test(f.field(r) || "")));
-    if (state.ageDaysFilter) {
-      const cutoffMs = Date.now() - state.ageDaysFilter.days * 86400000;
-      rows = rows.filter((r) => {
-        const ts = endpointCreateTime(r);
-        if (!ts) return state.ageDaysFilter.mode === "older";
-        const t = new Date(ts).getTime();
-        if (isNaN(t)) return false;
-        return state.ageDaysFilter.mode === "older" ? t < cutoffMs : t >= cutoffMs;
-      });
-    }
-    if (state.ageSort) {
-      rows = [...rows].sort((a, b) => {
-        const ta = new Date(endpointCreateTime(a) || 0).getTime();
-        const tb = new Date(endpointCreateTime(b) || 0).getTime();
-        return state.ageSort === "asc" ? ta - tb : tb - ta;
-      });
+    if (state.sortCol) {
+      const colDef = COLUMNS.find((c) => c.key === state.sortCol);
+      if (colDef) {
+        rows = [...rows].sort((a, b) => {
+          if (state.sortCol === "create_time") {
+            const ta = new Date(endpointCreateTime(a) || 0).getTime();
+            const tb = new Date(endpointCreateTime(b) || 0).getTime();
+            return state.sortDir === "asc" ? ta - tb : tb - ta;
+          }
+          const va = (colDef.field(a) || "").toLowerCase();
+          const vb = (colDef.field(b) || "").toLowerCase();
+          return state.sortDir === "asc" ? va.localeCompare(vb) : vb.localeCompare(va);
+        });
+      }
     }
     return rows;
   }
@@ -130,43 +125,43 @@ export function initFilter(container, state, api, cb) {
     }
   }
 
-  // ── Age filter ───────────────────────────────────────────────────────────
-  function applyAgeFilter() {
-    const mode = ageFilterMode.value;
-    const days = parseInt(ageFilterDays.value, 10);
-    state.ageDaysFilter = (mode && days > 0) ? { mode, days } : null;
-    clearActiveView();
-    onFilterChange();
-  }
-  ageFilterMode.addEventListener("change", applyAgeFilter);
-  ageFilterDays.addEventListener("input", () => {
-    if (state.searchDebounce) clearTimeout(state.searchDebounce);
-    state.searchDebounce = setTimeout(applyAgeFilter, 400);
-  });
-
-  // Age-column header sort toggle
-  const ageColIdx = COLUMNS.findIndex((c) => c.key === "create_time");
-  if (ageColIdx >= 0) {
-    const ageTh = container.querySelector(`thead tr:first-child th:nth-child(${ageColIdx + 2})`);
-    if (ageTh) {
-      ageTh.style.cursor = "pointer";
-      ageTh.title = "Klik for at sortere efter alder";
-      function updateAgeSortHeader() {
-        ageTh.textContent = state.ageSort === "asc" ? "Alder ↑" : state.ageSort === "desc" ? "Alder ↓" : "Alder";
+  // ── Column sort (alle kolonner) ──────────────────────────────────────────
+  function updateSortHeaders() {
+    container.querySelectorAll("thead tr:first-child th[data-col]").forEach((th) => {
+      const colDef = COLUMNS.find((c) => c.key === th.dataset.col);
+      if (!colDef) return;
+      if (state.sortCol === th.dataset.col) {
+        th.textContent = `${colDef.label} ${state.sortDir === "asc" ? "↑" : "↓"}`;
+        th.classList.add("sort-active");
+      } else {
+        th.textContent = colDef.label;
+        th.classList.remove("sort-active");
       }
-      ageTh.addEventListener("click", async () => {
-        state.ageSort = state.ageSort === null ? "desc" : state.ageSort === "desc" ? "asc" : null;
-        updateAgeSortHeader();
-        clearActiveView();
-        if (state.ageSort !== null) {
-          if (!state.filterMode) await enterFilterMode();
-          cb.applyFilter();
-        } else {
-          await onFilterChange();
-        }
-      });
-    }
+    });
   }
+
+  container.querySelectorAll("thead tr:first-child th[data-col]").forEach((th) => {
+    th.classList.add("sortable-col");
+    th.title = "Klik for at sortere";
+    th.addEventListener("click", async () => {
+      const col = th.dataset.col;
+      if (state.sortCol === col) {
+        if (state.sortDir === "asc") { state.sortDir = "desc"; }
+        else { state.sortCol = null; state.sortDir = null; }
+      } else {
+        state.sortCol = col;
+        state.sortDir = "asc";
+      }
+      updateSortHeaders();
+      clearActiveView();
+      if (state.sortCol !== null) {
+        if (!state.filterMode) await enterFilterMode();
+        cb.applyFilter();
+      } else {
+        await onFilterChange();
+      }
+    });
+  });
 
   // ── Filter persistence ───────────────────────────────────────────────────
   function snapshotFilters() {

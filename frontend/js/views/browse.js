@@ -40,15 +40,6 @@ export async function renderBrowse(container) {
           </div>
           <button id="portal-filter-btn" class="secondary"
                   title="Vis kun endpoints oprettet af HyperVision ISE Portal">Kun portal</button>
-          <div class="age-filter-wrap" title="Filtrer på endpoint-alder (registreringsdato — kræver ISE Open API eller portal-oprettet endpoint)">
-            <select id="age-filter-mode" class="age-filter-mode">
-              <option value="">— Alder —</option>
-              <option value="older">Ældre end</option>
-              <option value="newer">Nyere end</option>
-            </select>
-            <input type="number" id="age-filter-days" min="1" max="3650"
-                   placeholder="dage" class="age-filter-days" />
-          </div>
         </div>
         <div class="spacer"></div>
         <div class="toolbar-group" title="Gem-handlinger">
@@ -86,7 +77,7 @@ export async function renderBrowse(container) {
           <thead>
             <tr>
               <th style="width:36px;"><input type="checkbox" id="select-all" title="Vælg alle" /></th>
-              ${COLUMNS.map((c) => `<th${c.cls ? ` class="${c.cls}"` : ""}>${c.label}</th>`).join("")}
+              ${COLUMNS.map((c) => `<th data-col="${c.key}"${c.cls ? ` class="${c.cls}"` : ""}>${c.label}</th>`).join("")}
             </tr>
             <tr class="filter-row">
               <th></th>
@@ -245,7 +236,7 @@ export async function renderBrowse(container) {
     groups: [],
     caValues: { Type: [], Owner: [], Lokation: [], AuthzVlan: [], AuthzACL: [], PlatformType: [] },
     roleCatalog: [], canEditRoles: false, isPskEditor: false, pskShowKey: false,
-    portalOnly: false, ageSort: null, ageDaysFilter: null,
+    portalOnly: false, sortCol: null, sortDir: null,
     dirtyIds: new Set(),
     currentPage: 1, currentSize: getPageSize(), totalEndpoints: 0,
     filterMode: false, loadingAll: false,

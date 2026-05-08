@@ -687,35 +687,23 @@ td.mac-cell.cache-stale {
 .detail-grid div.hidden {
   display: none;
 }
-/* Alder-filter toolbar (3.27.0) */
-.age-filter-wrap {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
+/* Sortable column headers */
+th.sortable-col {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
 }
-.age-filter-mode {
-  font-size: 0.8rem;
-  padding: 0.2rem 0.35rem;
-  border: 1px solid var(--border, #d1d5db);
-  border-radius: 4px;
-  background: var(--bg, #fff);
-  color: var(--text, #1a2330);
-  max-width: 110px;
+th.sortable-col:hover {
+  background: var(--hover, #f1f5f9);
 }
-.age-filter-days {
-  width: 56px;
-  font-size: 0.8rem;
-  padding: 0.2rem 0.35rem;
-  border: 1px solid var(--border, #d1d5db);
-  border-radius: 4px;
-  background: var(--bg, #fff);
-  color: var(--text, #1a2330);
+th.sort-active {
+  color: var(--accent, #2563eb);
 }
-[data-theme="dark"] .age-filter-mode,
-[data-theme="dark"] .age-filter-days {
+[data-theme="dark"] th.sortable-col:hover {
   background: #1e293b;
-  color: #e2e8f0;
-  border-color: #334155;
+}
+[data-theme="dark"] th.sort-active {
+  color: #60a5fa;
 }
 
 /* Alder-kolonne */
