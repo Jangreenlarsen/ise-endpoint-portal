@@ -3,6 +3,15 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [3.30.1 build 0214] — 2026-05-08 — chore: PATCH-bump + tilføj manglende FEATURES.md-entries for browse-features
+
+**Berørte filer**: `version.json`, `FEATURES.md`, `CHANGELOG.md`
+
+- Bumpet version 3.30.0 → 3.30.1 (PATCH for bugfix i b0213 manglede PATCH-increment)
+- Tilføjet FEATURES.md-entries for: fjern ISE server-side MAC-filter (b0210) og klik-sortering på alle kolonner (b0212)
+
+---
+
 ## [3.30.0 build 0213] — 2026-05-08 — fix(browse): "Ryd alle filtre" nulstiller nu filtre og sort korrekt
 
 **Berørte filer**: `frontend/js/views/browse-filter.js`, `BUGS.md`, `version.json`
