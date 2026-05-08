@@ -384,8 +384,8 @@ export function initFilter(container, state, api, cb) {
 
   return {
     applyFiltersToRows, needsFilterMode, anyFilterActive, hasActiveFilterText,
-    buildServerFilters, getColumnFilters, onFilterChange, enterFilterMode,
-    exitFilterMode, triggerFilterChange, clearActiveView,
+    getColumnFilters, onFilterChange, enterFilterMode,
+    exitFilterMode, clearActiveView,
     snapshotFilters, persistFilters, applyFilterSnapshot, restoreFilters,
   };
 }

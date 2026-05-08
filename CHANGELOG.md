@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [3.30.0 build 0211] — 2026-05-08 — fix(browse): fjern tilbageværende referencer til buildServerFilters/triggerFilterChange i return-objekt
+
+**Berørte filer**: `frontend/js/views/browse-filter.js`, `version.json`
+
+- Fjernet `buildServerFilters` og `triggerFilterChange` fra return-objektet i `initFilter()` — begge funktioner er slettet i b0210
+
+---
+
 ## [3.30.0 build 0210] — 2026-05-08 — feat(browse): fjern ISE server-side MAC-filter fra browse-toolbar
 
 **Berørte filer**: `frontend/js/views/browse.js`, `frontend/js/views/browse-filter.js`, `version.json`
