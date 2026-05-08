@@ -3,6 +3,22 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [3.30.0 build 0205] — 2026-05-08 — feat(settings): omstrukturering af Settings-menu + bruger-preferences i sidebar
+
+**Berørte filer**: `frontend/js/views/settings.js`, `frontend/js/views/user-prefs.js` (ny), `frontend/js/views/csv-template.js` (ny), `frontend/js/app.js`, `frontend/index.html`, `frontend/css/styles.css`, `FEATURES.md`, `version.json`
+
+**Ændring**: Settings-faner reduceret fra 10 til 4 via logisk konsolidering:
+- **ISE Forbindelse Config** — REST API-forbindelsen + PxGrid samlet i én fane
+- **Portal Performance** — omdøbt fra "Performance"
+- **Portal Bruger Config** — omdøbt fra "Adgang"
+- **Portal Config** — ny samlet fane med: Skabeloner, PSK-politik, ISE-config, Opdatering, Avanceret
+
+Konto-fanen fjernet fra Settings:
+- Password-skift + frontend-præferencer → ny `#/user-prefs` route (link "Præferencer" i sidebar bruger-info-sektion)
+- CSV Export Template → ny `#/csv-template` route (sidebar som indrykket sub-link under "Import fra CSV")
+
+Settings-siden er nu kun synlig for admin og editor-psk. Alle andre roller har `#/user-prefs` til personlige indstillinger.
+
 ## [3.29.3 build 0204] — 2026-05-08 — fix(browse): custom attribut-dropdowns forældede ved aktivt filter
 
 **Berørte filer**: `frontend/js/views/browse-detail.js`, `BUGS.md`

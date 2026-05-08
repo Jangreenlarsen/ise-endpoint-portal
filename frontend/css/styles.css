@@ -59,6 +59,14 @@ body {
   border-left-color: #6ee7b7;
 }
 
+.sidebar nav a.nav-sub {
+  padding-left: 2.5rem;
+  font-size: 0.82rem;
+  color: #94a3b8;
+}
+.sidebar nav a.nav-sub:hover { color: #fff; }
+.sidebar nav a.nav-sub.active { border-left-color: #6ee7b7; color: #fff; }
+
 .backend-status {
   padding: 1rem 1.5rem;
   font-size: 0.8rem;
@@ -899,7 +907,7 @@ body.auth-mode .content {
 }
 .login-card #login-msg { margin-top: 0.8rem; }
 
-/* ── User badge + logout ── */
+/* ── User badge + logout + preferences ── */
 .user-info {
   margin-top: 0.4rem;
   font-size: 0.78rem;
@@ -908,6 +916,13 @@ body.auth-mode .content {
   align-items: center;
   gap: 0.4rem;
   flex-wrap: wrap;
+}
+.user-prefs-link {
+  color: #94a3b8;
+  text-decoration: underline;
+  font-size: 0.75rem;
+  width: 100%;
+  margin-top: 0.15rem;
 }
 .role-badge {
   display: inline-block;

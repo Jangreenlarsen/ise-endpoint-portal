@@ -42,24 +42,18 @@ export async function renderSettings(container) {
     </div>
     <nav class="settings-tabs" id="settings-tabs">
       ${isAdmin ? `
-      <button class="settings-tab" data-tab="connection">Forbindelse</button>
-      <button class="settings-tab" data-tab="performance">Performance</button>
-      <button class="settings-tab" data-tab="pxgrid">PxGrid</button>
-      <button class="settings-tab" data-tab="ise-config">ISE-config</button>
-      <button class="settings-tab" data-tab="access">Adgang</button>
-      <button class="settings-tab" data-tab="templates">Skabeloner</button>
-      <button class="settings-tab" data-tab="system-update">Opdatering</button>
-      <button class="settings-tab" data-tab="advanced">Avanceret</button>
+      <button class="settings-tab" data-tab="ise-connection">ISE Forbindelse Config</button>
+      <button class="settings-tab" data-tab="portal-performance">Portal Performance</button>
+      <button class="settings-tab" data-tab="portal-bruger-config">Portal Bruger Config</button>
       ` : ""}
       ${isPskEditorUser ? `
-      <button class="settings-tab" data-tab="psk-policy">PSK-politik</button>
+      <button class="settings-tab" data-tab="portal-config">Portal Config</button>
       ` : ""}
-      <button class="settings-tab" data-tab="account">Konto</button>
     </nav>
     <div class="settings-panels" id="settings-panels">
 
     ${isAdmin ? `
-    <div class="card" data-tab="connection">
+    <div class="card" data-tab="ise-connection">
       <h3>Backend — Cisco ISE connection</h3>
       <p class="hint">
         Disse værdier persisteres i <code>backend/config.json</code> og overrider
@@ -135,7 +129,7 @@ export async function renderSettings(container) {
     ` : ""}
 
     ${isAdmin ? `
-    <div class="card" data-tab="performance">
+    <div class="card" data-tab="portal-performance">
       <h3>Endpoint-cache</h3>
       <p class="hint">
         Intelligent to-lags cache: en <strong>pre-warm worker</strong> scanner alle ISE-endpoints i baggrunden og
@@ -204,7 +198,7 @@ export async function renderSettings(container) {
     ` : ""}
 
     ${isAdmin ? `
-    <div class="card" data-tab="pxgrid">
+    <div class="card" data-tab="ise-connection">
       <h3>PxGrid 2.0 (real-time session push)</h3>
       <p class="hint">
         Erstatter MnT-poll med ægte server-push fra ISE pxGrid (port 8910).
@@ -435,7 +429,7 @@ export async function renderSettings(container) {
     ` : ""}
 
     ${isAdmin ? `
-    <div class="card" data-tab="ise-config">
+    <div class="card" data-tab="portal-config">
       <h3>Anbefalet ISE purge-config</h3>
       <p class="hint">
         ISE's default endpoint-purge-policy sletter endpoints efter inaktivitet — det er
@@ -473,7 +467,7 @@ export async function renderSettings(container) {
       <div id="purge-protect-msg" class="hint"></div>
     </div>
 
-    <div class="card" data-tab="access">
+    <div class="card" data-tab="portal-bruger-config">
       <h3>System adm</h3>
       <p class="hint">
         System adm-tags der kan sættes på endpoints (CA <code>HypervisionRoles</code>) og
@@ -505,7 +499,7 @@ export async function renderSettings(container) {
       </form>
     </div>
 
-    <div class="card" data-tab="access">
+    <div class="card" data-tab="portal-bruger-config">
       <h3>Brugere &amp; System adm</h3>
       <p class="hint">
         Administrer lokale brugerkonti, system-roller og System adm-tildelinger.
@@ -545,7 +539,7 @@ export async function renderSettings(container) {
     ` : ""}
 
     ${isPskEditorUser ? `
-    <div class="card" data-tab="psk-policy">
+    <div class="card" data-tab="portal-config">
       <h3>PSK Pass Key Politik</h3>
       <p class="hint">
         Definerer krav til MPSK/IPSK pass keys. Nøgler valideres mod denne politik
@@ -586,7 +580,7 @@ export async function renderSettings(container) {
     ` : ""}
 
     ${isAdmin ? `
-    <div class="card" data-tab="templates">
+    <div class="card" data-tab="portal-config">
       <h3>Endpoint-skabeloner</h3>
       <p class="hint">
         Skabeloner forudfylder registreringsformularen med standardværdier —
@@ -643,7 +637,7 @@ export async function renderSettings(container) {
     ` : ""}
 
     ${isAdmin ? `
-    <div class="card" data-tab="system-update">
+    <div class="card" data-tab="portal-config">
       <h3>Portal system opdatering</h3>
       <p class="hint">
         Upload en opdateringspakke (ZIP) for at opdatere portalen.
@@ -693,7 +687,7 @@ export async function renderSettings(container) {
     ` : ""}
 
     ${isAdmin ? `
-    <div class="card" data-tab="advanced">
+    <div class="card" data-tab="portal-config">
       <h3>Importér custom attributter fra ISE (migration)</h3>
       <div class="alert" style="background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:0.75rem 1rem;margin-bottom:1rem;color:#92400e;">
         ⚠ <strong>Migrationsværktøj — ikke til løbende brug.</strong><br>
@@ -713,71 +707,6 @@ export async function renderSettings(container) {
     </div>
     ` : ""}
 
-    <div class="card" data-tab="account">
-      <h3>Skift dit password</h3>
-      <p class="hint">Logget ind som <b>${esc(currentUser?.username || "")}</b> (rolle: ${esc(currentUser?.role || "")}).</p>
-      <div id="pw-msg"></div>
-      <form id="pw-form" class="pw-form">
-        <div class="field">
-          <label for="pw-current">Nuværende password</label>
-          <input type="password" id="pw-current" autocomplete="current-password" required />
-        </div>
-        <div class="field">
-          <label for="pw-new">Nyt password (min. 8 tegn)</label>
-          <input type="password" id="pw-new" autocomplete="new-password" minlength="8" required />
-        </div>
-        <div class="field">
-          <label for="pw-new2">Bekræft nyt password</label>
-          <input type="password" id="pw-new2" autocomplete="new-password" minlength="8" required />
-        </div>
-        <div class="actions">
-          <button type="submit">Skift password</button>
-        </div>
-      </form>
-    </div>
-
-    <div class="card" data-tab="account">
-      <h3>CSV Export Template</h3>
-      <p class="hint">
-        Definerer hvilke kolonner der inkluderes ved CSV-eksport fra Browse view.
-        Importér en CSV-fil (kun header-rækken bruges) for at sætte en ny template.
-      </p>
-      <div id="csv-tpl-msg"></div>
-      <div class="field">
-        <label>Aktiv template (<span id="csv-tpl-count">0</span> kolonner)</label>
-        <textarea id="csv-tpl-preview" rows="3" readonly
-                  style="font-size:0.82rem;background:#f9fafb;"></textarea>
-      </div>
-      <div class="field">
-        <label for="csv-tpl-file">Importér template fra CSV-fil</label>
-        <input type="file" id="csv-tpl-file" accept=".csv,text/csv,text/plain" />
-      </div>
-      <div class="actions">
-        <button type="button" id="csv-tpl-reset">Nulstil til standard</button>
-      </div>
-    </div>
-
-    <div class="card" data-tab="account">
-      <h3>Frontend — preferences</h3>
-      <p class="hint">Gemmes lokalt i browser <code>localStorage</code>.</p>
-      <div id="frontend-msg"></div>
-      <form id="frontend-form">
-        <div class="field">
-          <label for="page_size">Default page size (browse view)</label>
-          <input type="number" id="page_size" min="10" max="500" step="10" />
-        </div>
-        <div class="field">
-          <label for="theme">Tema</label>
-          <select id="theme">
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
-          </select>
-        </div>
-        <div class="actions">
-          <button type="submit">Gem frontend settings</button>
-        </div>
-      </form>
-    </div>
     </div><!-- /settings-panels -->
   `;
 
@@ -799,8 +728,6 @@ export async function renderSettings(container) {
     initSystemUpdateSection(container);
     initAdvancedSection(container);
   }
-  initPasswordSection(container);
-  initCsvAndPrefsSections(container);
 }
 
 async function initPxGridSection(container) {
@@ -1812,7 +1739,7 @@ function initSettingsTabs(container, isAdmin, isPskEditorUser = false) {
   const cards = container.querySelectorAll(".settings-panels [data-tab]");
   if (!tabs.length) return;
   const validTabs = Array.from(tabs).map(t => t.dataset.tab);
-  const defaultTab = isAdmin ? "connection" : isPskEditorUser ? "psk-policy" : "account";
+  const defaultTab = isAdmin ? "ise-connection" : "portal-config";
   let stored = null;
   try { stored = localStorage.getItem(SETTINGS_TAB_KEY); } catch { /* ignore */ }
   const initial = validTabs.includes(stored) ? stored : defaultTab;

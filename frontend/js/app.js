@@ -10,6 +10,8 @@ import { renderLogin } from "./views/login.js";
 import { renderRegister } from "./views/register.js";
 import { renderSettings, initTheme } from "./views/settings.js";
 import { renderMetrics } from "./views/metrics.js";
+import { renderUserPrefs } from "./views/user-prefs.js";
+import { renderCsvTemplate } from "./views/csv-template.js";
 
 const statusDot = document.getElementById("status-dot");
 const container = document.getElementById("view-container");
@@ -23,7 +25,9 @@ const routes = {
   audit:      { render: renderAudit,      roles: ["admin", "editor", "editor-psk", "viewer"] },
   metrics:    { render: renderMetrics,    roles: ["admin"] },
   register:   { render: renderRegister,   roles: ["admin", "editor", "editor-psk", "registrar", "registrar_templet"] },
-  settings:   { render: renderSettings,   roles: ["admin", "editor", "editor-psk", "viewer"] },
+  settings:     { render: renderSettings,     roles: ["admin", "editor-psk"] },
+  "user-prefs": { render: renderUserPrefs,    roles: ["admin", "editor", "editor-psk", "viewer", "registrar", "registrar_templet"] },
+  "csv-template": { render: renderCsvTemplate, roles: ["admin", "editor", "editor-psk"] },
 };
 
 const REGISTRAR_DEFAULT_ROUTE = "register";
