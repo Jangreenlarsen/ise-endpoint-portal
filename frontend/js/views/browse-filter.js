@@ -185,6 +185,9 @@ export function initFilter(container, state, api, cb) {
     state.portalOnly = false;
     portalFilterBtn.classList.remove("active-toggle");
     state.currentFilters = [];
+    state.sortCol = null;
+    state.sortDir = null;
+    updateSortHeaders();
     filterRow.querySelectorAll(".col-filter-cb").forEach((cb) => {
       const input = filterRow.querySelector(`.col-filter-input[data-col="${cb.dataset.col}"]`);
       cb.checked = false;
@@ -310,7 +313,7 @@ export function initFilter(container, state, api, cb) {
     const tgt = e.target;
 
     if (tgt.classList.contains("views-clear")) {
-      applyFilterSnapshot({ portalOnly: false, server: { field: filterFieldSel.value, op: filterOpSel.value, value: "" }, cols: [] });
+      applyFilterSnapshot({ portalOnly: false, cols: [] });
       persistFilters();
       state.activeViewId = null;
       renderViewsMenu();

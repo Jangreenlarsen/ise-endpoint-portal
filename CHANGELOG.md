@@ -3,6 +3,15 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [3.30.0 build 0213] — 2026-05-08 — fix(browse): "Ryd alle filtre" nulstiller nu filtre og sort korrekt
+
+**Berørte filer**: `frontend/js/views/browse-filter.js`, `BUGS.md`, `version.json`
+
+- Fjernet ugyldig reference til `filterFieldSel`/`filterOpSel` (fjernet i b0210) i `views-clear`-handler
+- Tilføjet `state.sortCol`/`state.sortDir` reset + `updateSortHeaders()` i `applyFilterSnapshot()` — nulstiller nu sort ved Ryd alle, Apply view og Restore
+
+---
+
 ## [3.30.0 build 0212] — 2026-05-08 — feat(browse): klik-sortering på alle kolonner, fjern Alder-filter fra toolbar
 
 **Berørte filer**: `frontend/js/views/browse.js`, `frontend/js/views/browse-filter.js`, `frontend/css/styles.css`, `version.json`
