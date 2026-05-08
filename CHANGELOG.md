@@ -3,6 +3,15 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [3.30.2 build 0216] — 2026-05-08 — fix(nav): saml Log/Audit/Metrics under "Overvågning"-gruppe i sidebar
+
+**Berørte filer**: `frontend/index.html`, `frontend/css/styles.css`, `version.json`
+
+- Tilføjet `.nav-group` CSS: ikke-klikbar sektion-label i sidebar (uppercase, dæmpet farve)
+- Log, Audit og Metrics er nu sub-links under "Overvågning"-headeren
+
+---
+
 ## [3.30.1 build 0215] — 2026-05-08 — fix(nav): omdøb "ACL" → "DACL" i sidebar
 
 **Berørte filer**: `frontend/index.html`, `version.json`
