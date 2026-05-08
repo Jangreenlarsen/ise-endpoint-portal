@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [3.30.1 build 0215] — 2026-05-08 — fix(nav): omdøb "ACL" → "DACL" i sidebar
+
+**Berørte filer**: `frontend/index.html`, `version.json`
+
+- Sidebar-link `#/dacls` label ændret fra "ACL" til "DACL"
+
+---
+
 ## [3.30.1 build 0214] — 2026-05-08 — chore: PATCH-bump + tilføj manglende FEATURES.md-entries for browse-features
 
 **Berørte filer**: `version.json`, `FEATURES.md`, `CHANGELOG.md`
