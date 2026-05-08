@@ -49,21 +49,6 @@ export async function renderBrowse(container) {
             <input type="number" id="age-filter-days" min="1" max="3650"
                    placeholder="dage" class="age-filter-days" />
           </div>
-          <div class="server-filter"
-               title="Server-side ERS filter på MAC — for Name/Description brug kolonnefilter-rækken nedenfor">
-            <select id="filter-field" class="filter-field">
-              <option value="mac">MAC</option>
-            </select>
-            <select id="filter-op" class="filter-op">
-              <option value="CONTAINS">CONTAINS</option>
-              <option value="EQ">EQ</option>
-              <option value="NEQ">NEQ</option>
-              <option value="STARTSW">STARTSW</option>
-              <option value="ENDSW">ENDSW</option>
-            </select>
-            <input type="search" id="filter-value" class="mac-search filter-value"
-                   placeholder="Værdi (server-side MAC)" autocomplete="off" />
-          </div>
         </div>
         <div class="spacer"></div>
         <div class="toolbar-group" title="Gem-handlinger">

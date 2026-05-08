@@ -12,9 +12,6 @@ import {
 
 export function initFilter(container, state, api, cb) {
   const filterRow       = container.querySelector(".filter-row");
-  const filterFieldSel  = container.querySelector("#filter-field");
-  const filterOpSel     = container.querySelector("#filter-op");
-  const filterValueInp  = container.querySelector("#filter-value");
   const portalFilterBtn = container.querySelector("#portal-filter-btn");
   const ageFilterMode   = container.querySelector("#age-filter-mode");
   const ageFilterDays   = container.querySelector("#age-filter-days");
@@ -60,13 +57,7 @@ export function initFilter(container, state, api, cb) {
   }
 
   function anyFilterActive() {
-    return needsFilterMode() || state.currentFilters.length > 0;
-  }
-
-  function buildServerFilters() {
-    const value = filterValueInp.value.trim();
-    if (!value) return [];
-    return [`${filterFieldSel.value}.${filterOpSel.value}.${value}`];
+    return needsFilterMode();
   }
 
   function applyFiltersToRows(rows) {
@@ -186,7 +177,6 @@ export function initFilter(container, state, api, cb) {
     });
     return {
       portalOnly: state.portalOnly,
-      server: { field: filterFieldSel.value, op: filterOpSel.value, value: filterValueInp.value },
       cols,
       colVis: { ...state.colVis },
       pageSize: state.currentSize,
@@ -199,7 +189,6 @@ export function initFilter(container, state, api, cb) {
     if (!s) return;
     state.portalOnly = false;
     portalFilterBtn.classList.remove("active-toggle");
-    filterValueInp.value = "";
     state.currentFilters = [];
     filterRow.querySelectorAll(".col-filter-cb").forEach((cb) => {
       const input = filterRow.querySelector(`.col-filter-input[data-col="${cb.dataset.col}"]`);
@@ -207,12 +196,6 @@ export function initFilter(container, state, api, cb) {
       if (input) { input.value = ""; input.disabled = true; }
     });
     if (s.portalOnly) { state.portalOnly = true; portalFilterBtn.classList.add("active-toggle"); }
-    if (s.server) {
-      if (s.server.field) filterFieldSel.value = s.server.field;
-      if (s.server.op)    filterOpSel.value    = s.server.op;
-      if (s.server.value) filterValueInp.value = s.server.value;
-      state.currentFilters = buildServerFilters();
-    }
     if (Array.isArray(s.cols)) {
       for (const { col, value } of s.cols) {
         const cbEl  = filterRow.querySelector(`.col-filter-cb[data-col="${col}"]`);
@@ -236,22 +219,6 @@ export function initFilter(container, state, api, cb) {
   }
 
   function restoreFilters() { applyFilterSnapshot(loadBrowseFilters()); }
-
-  // ── Debounced server-filter change ──────────────────────────────────────
-  function triggerFilterChange(immediate = false) {
-    if (state.searchDebounce) clearTimeout(state.searchDebounce);
-    const fire = () => {
-      const next    = buildServerFilters();
-      const nextKey = next.join("|");
-      const curKey  = state.currentFilters.join("|");
-      if (nextKey === curKey) return;
-      state.currentFilters = next;
-      state.currentPage = 1;
-      cb.load();
-    };
-    if (immediate) fire();
-    else state.searchDebounce = setTimeout(fire, 400);
-  }
 
   // ── Event handlers ───────────────────────────────────────────────────────
   filterRow.querySelectorAll(".col-filter-cb").forEach((cbEl) => {
@@ -279,22 +246,6 @@ export function initFilter(container, state, api, cb) {
     persistFilters();
     clearActiveView();
     await onFilterChange();
-  });
-
-  filterValueInp.addEventListener("input", () => {
-    persistFilters();
-    clearActiveView();
-    triggerFilterChange(false);
-  });
-  filterFieldSel.addEventListener("change", () => {
-    persistFilters();
-    clearActiveView();
-    triggerFilterChange(true);
-  });
-  filterOpSel.addEventListener("change", () => {
-    persistFilters();
-    clearActiveView();
-    triggerFilterChange(true);
   });
 
   // ── Saved views ──────────────────────────────────────────────────────────

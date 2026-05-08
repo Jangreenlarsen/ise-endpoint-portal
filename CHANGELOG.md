@@ -3,6 +3,19 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [3.30.0 build 0210] — 2026-05-08 — feat(browse): fjern ISE server-side MAC-filter fra browse-toolbar
+
+**Berørte filer**: `frontend/js/views/browse.js`, `frontend/js/views/browse-filter.js`, `version.json`
+
+- Fjernet `<div class="server-filter">` HTML-blok (MAC/CONTAINS dropdown + value input) fra browse-toolbar
+- Fjernet DOM-selectors: `filterFieldSel`, `filterOpSel`, `filterValueInp`
+- Fjernet `buildServerFilters()` og `triggerFilterChange()` funktioner
+- Forenklet `anyFilterActive()`: server-filter-led fjernet
+- Ryddet `snapshotFilters()` og `applyFilterSnapshot()` for server-filter persistens
+- `state.currentFilters` fastholdes som `[]` (bruges stadig i API-kald i browse-table.js)
+
+---
+
 ## [3.30.0 build 0209] — 2026-05-08 — fix(settings): omdøb sub-tabs i Portal Bruger Config
 
 **Berørte filer**: `frontend/js/views/settings.js`, `version.json`
