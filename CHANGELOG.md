@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [3.29.3 build 0204] — 2026-05-08 — fix(browse): custom attribut-dropdowns forældede ved aktivt filter
+
+**Berørte filer**: `frontend/js/views/browse-detail.js`, `BUGS.md`
+
+**Ændring**: `openDetail` hentede endpoint-detail og tegnede dropdowns med det samme `state.caValues` der lå i hukommelsen fra sidst `load()` kørte. Hvis backenden opdagede nye custom attributter under `_fetch_endpoint_detail` (via `auto_discover_values`), så afspejlede dropdowns dem ikke — fordi `load()` ikke kørte igen ved aktivt filter. Fix: efter `api.getEndpoint(id)` hentes `api.listCustomAttributes()` sekventielt (ikke parallelt — JSON-skrivet skal nå at lande), og `state.caValues` opdateres in-place inden dropdowns renderes. Næste `renderRows`/`refreshRows` bruger også de friske værdier.
+
+---
+
 ## [3.29.2 build 0203] — 2026-05-08 — chore: ret "CA-værdier" → "custom attributter" + stavefejl i attributes.js
 
 **Berørte filer**: `frontend/js/views/settings.js`, `frontend/js/views/attributes.js`, `backend/app/core/custom_attr_store.py`, `CHANGELOG.md`, `FEATURES.md`

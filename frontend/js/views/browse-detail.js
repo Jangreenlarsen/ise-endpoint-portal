@@ -16,6 +16,17 @@ export function initDetail(container, state, api, cb) {
     detailOverlay.classList.remove("hidden");
     try {
       const d = await api.getEndpoint(id);
+
+      // Refresh caValues after the detail fetch — auto_discover_values may have
+      // written new values to the store during the ISE call above. Must be
+      // sequential (not parallel) so the JSON write lands before we read it.
+      const caData = await api.listCustomAttributes().catch(() => null);
+      if (caData && Array.isArray(caData.attributes)) {
+        for (const a of caData.attributes) {
+          if (a.name in state.caValues) state.caValues[a.name] = a.values;
+        }
+      }
+
       state.detailOriginalGroupId = d.group_id || "";
       container.querySelector("#d-mac").textContent    = d.mac || d.name || "";
       container.querySelector("#d-vendor").textContent = d.vendor || "—";
