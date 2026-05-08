@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from datetime import datetime, timezone
 from typing import Any
 
 from app.core import audit_store, config
@@ -11,6 +12,7 @@ from app.core.custom_attr_store import (
     HIDDEN_ATTR,
     PSK_KEY_ATTR,
     PSK_MODE_ATTR,
+    REGISTERED_AT_ATTR,
     ROLES_ATTR,
 )
 from app.core.endpoint_cache import get_cache
@@ -19,6 +21,7 @@ from app.core.oui_lookup import lookup as oui_lookup
 from app.ise import anc as anc_module
 from app.ise import coa as coa_module
 from app.ise import mnt_sessions
+from app.ise import profiler as profiler_module
 from app.ise.client import IseClient
 from app.ise.custom_attributes import IseCustomAttributeRepository
 from app.ise.endpoints import IseEndpointGroupRepository, IseEndpointRepository
@@ -41,6 +44,10 @@ from app.schemas.endpoint import (
 logger = logging.getLogger(__name__)
 
 PSK_MASKED = "****"
+
+
+async def _noop(value: Any) -> Any:
+    return value
 PSK_IPSK_PREFIX = "psk="
 
 
@@ -78,6 +85,7 @@ class EndpointService:
             self.groups = IseEndpointGroupRepository(client)
         self.api_type = api_type
         self.custom_attrs = IseCustomAttributeRepository(client)
+        self.client = client
 
     async def _ensure_ca_definitions(self) -> None:
         """Ensure all custom attribute definitions exist in ISE (once per session)."""
@@ -188,8 +196,25 @@ class EndpointService:
         raw = await self.endpoints.get(endpoint_id)
         ca = _extract_custom_attrs(raw)
         group_id = raw.get("groupId", "")
-        group_name = await self._resolve_group_name(group_id) if group_id else ""
+        profile_id = raw.get("profileId", "") or ""
+
+        group_name, profiler_name = await asyncio.gather(
+            self._resolve_group_name(group_id) if group_id else _noop(""),
+            profiler_module.resolve_name(self.client, profile_id) if profile_id else _noop(""),
+        )
+
         mac_val = raw.get("mac", "") or raw.get("name", "")
+
+        # Timestamps: Open API returnerer createTime/updateTime direkte.
+        # ERS returnerer ikke timestamps — brug HypervisionRegisteredAt CA i stedet.
+        create_time = (
+            raw.get("createTime", "")
+            or raw.get("createdAt", "")
+            or ca.get(REGISTERED_AT_ATTR, "")
+            or ""
+        )
+        update_time = raw.get("updateTime", "") or raw.get("updatedAt", "") or ""
+
         return EndpointDetail(
             id=raw.get("id", endpoint_id),
             name=raw.get("name", ""),
@@ -206,7 +231,8 @@ class EndpointService:
             platform_type=ca.get("PlatformType", ""),
             hypervision=ca.get("HypervisionISEPortal", ""),
             roles=_parse_roles_csv(ca.get(ROLES_ATTR, "")),
-            profile_id=raw.get("profileId", "") or "",
+            profile_id=profile_id,
+            profiler_name=profiler_name,
             static_profile=bool(raw.get("staticProfileAssignment", False)),
             portal_user=raw.get("portalUser", "") or "",
             identity_store=raw.get("identityStore", "") or "",
@@ -214,6 +240,8 @@ class EndpointService:
             vendor=oui_lookup(mac_val),
             psk_mode=ca.get(PSK_MODE_ATTR, "").lower() == "true",
             psk_key=_psk_decode(ca.get(PSK_KEY_ATTR, "")),
+            create_time=create_time,
+            update_time=update_time,
         )
 
     async def _resolve_group_name(self, group_id: str) -> str:
@@ -451,6 +479,11 @@ class EndpointService:
         # Always stamp endpoints created by this portal
         ca[HIDDEN_ATTR] = "true"
         _apply_auto_tag(ca, auto_tag_username)
+        # ERS-mode: stamp registreringsdato da ISE ikke returnerer createTime via ERS.
+        # Open API-mode: createTime returneres direkte af ISE — CA er overflødig men
+        # harmless (fungerer som fallback og giver konsistens ved eventuel API-skift).
+        if not ca.get(REGISTERED_AT_ATTR):
+            ca[REGISTERED_AT_ATTR] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         _validate_psk(ca)
         _psk_encode_ca(ca)
         await self._ensure_ca_definitions()

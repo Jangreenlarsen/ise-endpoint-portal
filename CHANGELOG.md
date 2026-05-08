@@ -3,6 +3,27 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [3.28.0 build 0197] — 2026-05-08 — Endpoint-alder filter/sort + ISE Profiler-data
+
+**Berørte filer**: `backend/app/schemas/endpoint.py`, `backend/app/core/custom_attr_store.py`, `backend/app/ise/profiler.py` (ny), `backend/app/services/endpoint_service.py`, `frontend/js/views/browse.js`, `frontend/css/styles.css`
+
+### Endpoint-alder: sort og filter (3.28.0)
+- **Open API-mode**: ISE `createTime` + `updateTime` parses direkte fra endpoint-svar og gemmes i `EndpointDetail.create_time` / `update_time`
+- **ERS-mode**: ny skjult custom attr `HypervisionRegisteredAt` (ISO 8601 UTC) stemples automatisk ved `create_endpoint` og `bulk_create` — fungerer som permanent fallback-timestamp
+- `REGISTERED_AT_ATTR = "HypervisionRegisteredAt"` tilføjet til `HIDDEN_ATTRS` (auto-bootstrappes i ISE)
+- **Browse — ny "Alder"-kolonne**: viser relativ tid (fx "3 mdr.", "45 dage") med fuldt dato+tid som tooltip
+- **Klik på "Alder"-header**: toggle sort nyeste ↓ / ældste ↑ / ingen (→ filter-mode aktiveres automatisk)
+- **Toolbar age-filter**: dropdown "Ældre end" / "Nyere end" + dage-input; client-side filter i filter-mode
+- `applyFiltersToRows` udvidet med age-filter + age-sort logik
+- `needsFilterMode` opdateret til at inkludere age-filter + age-sort
+
+### ISE Profiler-data i detail-modal (3.28.0)
+- **Ny `backend/app/ise/profiler.py`**: slår profil-navn op fra `profileId` UUID via `/ers/config/profilerprofile` — in-memory cache loaded on first use, invalidated ved settings-change
+- **`EndpointDetail.profiler_name`**: nyt felt populeret ved `_fetch_endpoint_detail` via `profiler_module.resolve_name()`
+- **Group-name + profiler-name fetches parallelt** via `asyncio.gather` for nul overhead
+- **Detail-modal**: nye rækker "Profil-navn", "Registreret" (create_time) og "Sidst opdateret" (update_time)
+- CSS: `.age-filter-wrap`, `.age-filter-mode`, `.age-filter-days`, `td.age-cell` + dark-mode varianter
+
 ## [3.27.0 build 0196] — 2026-05-08 — Versionsbump til 3.27.0
 
 **Berørte filer**: `version.json`

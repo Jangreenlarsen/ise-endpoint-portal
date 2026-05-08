@@ -46,6 +46,34 @@ function esc(s) {
   return (s || "").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 }
 
+// Returnér registreringstidspunktet for et endpoint — foretrækker create_time
+// (Open API-mode), falder tilbage til update_time.
+function endpointCreateTime(r) {
+  return r.create_time || r.update_time || "";
+}
+
+// Formater ISO 8601-streng som relativ tid (fx "3 mdr.", "45 dage", "I dag").
+function fmtRelativeAge(isoStr) {
+  if (!isoStr) return "";
+  const d = new Date(isoStr);
+  if (isNaN(d.getTime())) return isoStr;
+  const days = Math.floor((Date.now() - d.getTime()) / 86400000);
+  if (days < 1) return "I dag";
+  if (days === 1) return "I går";
+  if (days < 30) return `${days} dage`;
+  if (days < 365) return `${Math.floor(days / 30)} mdr.`;
+  return `${Math.floor(days / 365)} år`;
+}
+
+// Formater ISO 8601-streng som dansk dato + tid (fx "08-05-2026 14:32").
+function fmtDateTime(isoStr) {
+  if (!isoStr) return "";
+  const d = new Date(isoStr);
+  if (isNaN(d.getTime())) return isoStr;
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${pad(d.getDate())}-${pad(d.getMonth() + 1)}-${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 // Column definitions: key = data field accessor, label = header text
 const COLUMNS = [
   { key: "mac",            label: "MAC",            field: (r) => r.mac || r.name },
@@ -62,6 +90,7 @@ const COLUMNS = [
   { key: "authz_vlan",     label: "AuthzVlan",      field: (r) => r.authz_vlan,                    cls: "authz-col" },
   { key: "authz_acl",      label: "AuthzACL",       field: (r) => r.authz_acl,                     cls: "authz-col" },
   { key: "roles",          label: "System adm",     field: (r) => (r.roles || []).join(", ") },
+  { key: "create_time",   label: "Alder",          field: (r) => fmtRelativeAge(endpointCreateTime(r)) },
 ];
 
 const COLVIS_KEY = "ise_portal_browse_colvis";
@@ -110,6 +139,15 @@ export async function renderBrowse(container) {
           </div>
           <button id="portal-filter-btn" class="secondary"
                   title="Vis kun endpoints oprettet af HyperVision ISE Portal">Kun portal</button>
+          <div class="age-filter-wrap" title="Filtrer på endpoint-alder (registreringsdato — kræver ISE Open API eller portal-oprettet endpoint)">
+            <select id="age-filter-mode" class="age-filter-mode">
+              <option value="">— Alder —</option>
+              <option value="older">Ældre end</option>
+              <option value="newer">Nyere end</option>
+            </select>
+            <input type="number" id="age-filter-days" min="1" max="3650"
+                   placeholder="dage" class="age-filter-days" />
+          </div>
           <div class="server-filter"
                title="Server-side ERS filter på MAC — for Name/Description brug kolonnefilter-rækken nedenfor">
             <select id="filter-field" class="filter-field">
@@ -239,12 +277,18 @@ export async function renderBrowse(container) {
           <div class="detail-value mono" id="d-hypervision"></div>
           <label>Profile ID</label>
           <div class="detail-value mono" id="d-profile-id"></div>
+          <label>Profil-navn</label>
+          <div class="detail-value" id="d-profiler-name"></div>
           <label>Static profile</label>
           <div class="detail-value" id="d-static-profile"></div>
           <label>Portal user</label>
           <div class="detail-value" id="d-portal-user"></div>
           <label>Identity store</label>
           <div class="detail-value" id="d-identity-store"></div>
+          <label>Registreret</label>
+          <div class="detail-value" id="d-create-time"></div>
+          <label>Sidst opdateret</label>
+          <div class="detail-value" id="d-update-time"></div>
         </div>
         <div id="d-anc-section" class="hidden anc-section">
           <div class="anc-status-row">
@@ -391,6 +435,10 @@ export async function renderBrowse(container) {
   let isPskEditor = auth.hasRole("admin", "editor-psk");
   let pskShowKey = false;
   let portalOnly = false;
+  // Alder-sort: null = ingen sortering, "asc" = ældste først, "desc" = nyeste først.
+  let ageSort = null;
+  // Alder-datofilter: null = ingen, {mode: "older"|"newer", days: number}.
+  let ageDaysFilter = null;
   const dirtyIds = new Set();
   let currentPage = 1;
   let currentSize = getPageSize();
@@ -484,6 +532,46 @@ export async function renderBrowse(container) {
       colVisMenu.classList.add("hidden");
     }
   });
+
+  // Age filter toolbar — mode select + days input
+  const ageFilterMode = container.querySelector("#age-filter-mode");
+  const ageFilterDays = container.querySelector("#age-filter-days");
+  function applyAgeFilter() {
+    const mode = ageFilterMode.value;
+    const days = parseInt(ageFilterDays.value, 10);
+    ageDaysFilter = (mode && days > 0) ? { mode, days } : null;
+    if (typeof clearActiveView === "function") clearActiveView();
+    onFilterChange();
+  }
+  ageFilterMode.addEventListener("change", applyAgeFilter);
+  ageFilterDays.addEventListener("input", () => {
+    if (searchDebounce) clearTimeout(searchDebounce);
+    searchDebounce = setTimeout(applyAgeFilter, 400);
+  });
+
+  // Alder-kolonne header: klik for at sortere (ældste ↑ / nyeste ↓ / ingen).
+  const ageColIdx = COLUMNS.findIndex((c) => c.key === "create_time");
+  if (ageColIdx >= 0) {
+    const ageTh = container.querySelector(`thead tr:first-child th:nth-child(${ageColIdx + 2})`);
+    if (ageTh) {
+      ageTh.style.cursor = "pointer";
+      ageTh.title = "Klik for at sortere efter alder";
+      function updateAgeSortHeader() {
+        ageTh.textContent = ageSort === "asc" ? "Alder ↑" : ageSort === "desc" ? "Alder ↓" : "Alder";
+      }
+      ageTh.addEventListener("click", async () => {
+        ageSort = ageSort === null ? "desc" : ageSort === "desc" ? "asc" : null;
+        updateAgeSortHeader();
+        if (typeof clearActiveView === "function") clearActiveView();
+        if (ageSort !== null) {
+          if (!filterMode) await enterFilterMode();
+          applyFilter();
+        } else {
+          await onFilterChange();
+        }
+      });
+    }
+  }
 
   function snapshotFilters() {
     const cols = [];
@@ -715,8 +803,11 @@ export async function renderBrowse(container) {
   }
 
   function needsFilterMode() {
-    // Any column filter checkbox checked (even without text yet) or portal toggle on
-    return portalOnly || filterRow.querySelector(".col-filter-cb:checked") !== null;
+    // Any column filter checkbox checked (even without text yet), portal toggle, or age filter
+    return portalOnly
+      || filterRow.querySelector(".col-filter-cb:checked") !== null
+      || ageDaysFilter !== null
+      || ageSort !== null;
   }
 
   function anyFilterActive() {
@@ -966,6 +1057,25 @@ export async function renderBrowse(container) {
     if (filters.length) {
       rows = rows.filter((r) => filters.every((f) => f.re.test(f.field(r) || "")));
     }
+    // Alder-datofilter
+    if (ageDaysFilter) {
+      const cutoffMs = Date.now() - ageDaysFilter.days * 86400000;
+      rows = rows.filter((r) => {
+        const ts = endpointCreateTime(r);
+        if (!ts) return ageDaysFilter.mode === "older";
+        const t = new Date(ts).getTime();
+        if (isNaN(t)) return false;
+        return ageDaysFilter.mode === "older" ? t < cutoffMs : t >= cutoffMs;
+      });
+    }
+    // Alder-sort
+    if (ageSort) {
+      rows = [...rows].sort((a, b) => {
+        const ta = new Date(endpointCreateTime(a) || 0).getTime();
+        const tb = new Date(endpointCreateTime(b) || 0).getTime();
+        return ageSort === "asc" ? ta - tb : tb - ta;
+      });
+    }
     return rows;
   }
 
@@ -1050,6 +1160,7 @@ export async function renderBrowse(container) {
         <td class="authz-col"><select class="ca-authzvlan">${optionsHtml(caValues.AuthzVlan, r.authz_vlan)}</select></td>
         <td class="authz-col"><select class="ca-authzacl">${optionsHtml(caValues.AuthzACL, r.authz_acl)}</select></td>
         <td class="roles-cell">${rolesChipsHtml(r.roles)}</td>
+        <td class="age-cell" title="${esc(fmtDateTime(endpointCreateTime(r)))}">${esc(fmtRelativeAge(endpointCreateTime(r)))}</td>
       </tr>
     `).join("");
     updateSelectionUI();
@@ -1738,10 +1849,16 @@ export async function renderBrowse(container) {
       container.querySelector("#d-roles").dataset.original = JSON.stringify(d.roles || []);
       container.querySelector("#d-hypervision").textContent = d.hypervision || "—";
       container.querySelector("#d-profile-id").textContent = d.profile_id || "—";
+      const profilerEl = container.querySelector("#d-profiler-name");
+      if (profilerEl) profilerEl.textContent = d.profiler_name || "—";
       container.querySelector("#d-static-profile").textContent = d.static_profile ? "Ja" : "Nej";
       container.querySelector("#d-portal-user").textContent = d.portal_user || "—";
       const store = [d.identity_store, d.identity_store_id].filter(Boolean).join(" / ");
       container.querySelector("#d-identity-store").textContent = store || "—";
+      const createEl = container.querySelector("#d-create-time");
+      if (createEl) createEl.textContent = fmtDateTime(d.create_time) || "—";
+      const updateEl = container.querySelector("#d-update-time");
+      if (updateEl) updateEl.textContent = fmtDateTime(d.update_time) || "—";
       detailMsg.innerHTML = "";
       // ANC section — editor/admin only, loads async so modal opens fast
       const ancSection = container.querySelector("#d-anc-section");

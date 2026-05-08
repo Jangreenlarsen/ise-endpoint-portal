@@ -25,6 +25,7 @@ class EndpointDetail(BaseModel):
     hypervision: str = ""
     roles: list[str] = Field(default_factory=list)
     profile_id: str = ""
+    profiler_name: str = ""
     static_profile: bool = False
     portal_user: str = ""
     identity_store: str = ""
@@ -33,6 +34,10 @@ class EndpointDetail(BaseModel):
     psk_mode: bool = False
     psk_key: str = ""
     cache_stale: bool = False
+    # Timestamps: ISO 8601 string fra ISE Open API createTime/updateTime,
+    # eller HypervisionRegisteredAt custom attr i ERS-mode.
+    create_time: str = ""
+    update_time: str = ""
 
 
 class EndpointGroupSummary(BaseModel):

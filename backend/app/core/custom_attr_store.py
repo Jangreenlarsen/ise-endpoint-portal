@@ -39,8 +39,14 @@ PSK_MODE_ATTR = "PSK_Mode"
 PSK_KEY_ATTR = "PSK_Key"
 PSK_ATTRS = [PSK_MODE_ATTR, PSK_KEY_ATTR]
 
+# Registreringstidsstempel (3.27.0) — sættes ved ERS-create/import da ERS ikke
+# returnerer timestamps. Open API returnerer createTime/updateTime direkte, så
+# denne attr bruges kun som fallback i ERS-mode og ved import.
+# Format: ISO 8601 UTC, fx "2026-05-08T12:34:56Z".
+REGISTERED_AT_ATTR = "HypervisionRegisteredAt"
+
 # Alle skjulte (ikke-UI-dropdown) CAs der skal have ISE-definition.
-HIDDEN_ATTRS = [HIDDEN_ATTR, ROLES_ATTR] + PSK_ATTRS
+HIDDEN_ATTRS = [HIDDEN_ATTR, ROLES_ATTR, REGISTERED_AT_ATTR] + PSK_ATTRS
 
 # All attributes that need ISE definitions (managed + hidden).
 ALL_ATTRS = MANAGED_ATTRS + HIDDEN_ATTRS

@@ -649,6 +649,46 @@ td.mac-cell.cache-stale {
 .detail-grid div.hidden {
   display: none;
 }
+/* Alder-filter toolbar (3.27.0) */
+.age-filter-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.age-filter-mode {
+  font-size: 0.8rem;
+  padding: 0.2rem 0.35rem;
+  border: 1px solid var(--border, #d1d5db);
+  border-radius: 4px;
+  background: var(--bg, #fff);
+  color: var(--text, #1a2330);
+  max-width: 110px;
+}
+.age-filter-days {
+  width: 56px;
+  font-size: 0.8rem;
+  padding: 0.2rem 0.35rem;
+  border: 1px solid var(--border, #d1d5db);
+  border-radius: 4px;
+  background: var(--bg, #fff);
+  color: var(--text, #1a2330);
+}
+[data-theme="dark"] .age-filter-mode,
+[data-theme="dark"] .age-filter-days {
+  background: #1e293b;
+  color: #e2e8f0;
+  border-color: #334155;
+}
+
+/* Alder-kolonne */
+td.age-cell {
+  font-size: 0.8rem;
+  color: var(--text-muted, #6b7280);
+  white-space: nowrap;
+}
+th[title*="alder"] { cursor: pointer; user-select: none; }
+th[title*="alder"]:hover { background: var(--row-hover, #f0f4ff); }
+
 /* AuthzVlan + AuthzACL kolonne-highlight */
 th.authz-col,
 td.authz-col {
