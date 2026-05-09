@@ -15,6 +15,7 @@ dependencies = [
     "websockets>=12.0",
     "tenacity>=8.2.0",
     "prometheus-client>=0.20.0",
+    "tacacs-plus>=2.6",
 ]
 
 [project.optional-dependencies]

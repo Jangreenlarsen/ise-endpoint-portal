@@ -24,9 +24,9 @@ const routes = {
   logs:       { render: renderLogs,       roles: ["admin"] },
   audit:      { render: renderAudit,      roles: ["admin", "editor", "editor-psk", "viewer"] },
   metrics:    { render: renderMetrics,    roles: ["admin"] },
-  register:   { render: renderRegister,   roles: ["admin", "editor", "editor-psk", "registrar", "registrar_templet"] },
+  register:   { render: renderRegister,   roles: ["admin", "editor", "editor-psk", "registrant", "registrant_templet"] },
   settings:     { render: renderSettings,     roles: ["admin", "editor-psk"] },
-  "user-prefs": { render: renderUserPrefs,    roles: ["admin", "editor", "editor-psk", "viewer", "registrar", "registrar_templet"] },
+  "user-prefs": { render: renderUserPrefs,    roles: ["admin", "editor", "editor-psk", "viewer", "registrant", "registrant_templet"] },
   "csv-template": { render: renderCsvTemplate, roles: ["admin", "editor", "editor-psk"] },
 };
 
@@ -52,7 +52,7 @@ async function checkHealth() {
 
 function currentRoute() {
   const user = auth.getUser();
-  const isLimited = user && (user.role === "registrar" || user.role === "registrar_templet");
+  const isLimited = user && (user.role === "registrant" || user.role === "registrant_templet");
   const fallback = isLimited ? REGISTRAR_DEFAULT_ROUTE : "browse";
   const hash = (location.hash || `#/${fallback}`).replace("#/", "");
   if (!routes[hash]) return fallback;
@@ -70,7 +70,7 @@ function isChromelessRoute() {
   if (hash !== "register") return false;
   const user = auth.getUser();
   if (!user) return true;
-  return user.role === "registrar" || user.role === "registrar_templet";
+  return user.role === "registrant" || user.role === "registrant_templet";
 }
 
 function applyChromeMode() {
@@ -126,7 +126,7 @@ function showLogin() {
   renderLogin((user) => {
     updateUserBadge(user);
     updateNavVisibility(user);
-    const isLimited = user.role === "registrar" || user.role === "registrar_templet";
+    const isLimited = user.role === "registrant" || user.role === "registrant_templet";
     const landing = isLimited ? REGISTRAR_DEFAULT_ROUTE : "browse";
     if (!location.hash || location.hash === "#/") location.hash = `#/${landing}`;
     else if (isLimited && !routes[location.hash.replace("#/", "")]?.roles.includes(user.role)) {

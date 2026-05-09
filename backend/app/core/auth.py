@@ -85,6 +85,30 @@ def create_token(user_id: str, username: str, role: str, ttl: int = TOKEN_TTL_SE
     return f"{payload_b64}.{sig}"
 
 
+def create_tacacs_token(
+    username: str,
+    role: str,
+    operator_profile: str | None,
+    endpoint_roles: list[str],
+    ttl: int = TOKEN_TTL_SECONDS,
+) -> str:
+    """Create a token for a TACACS+-authenticated user (no local user record)."""
+    now = int(time.time())
+    payload = {
+        "sub": username,
+        "username": username,
+        "role": role,
+        "auth_type": "tacacs",
+        "operator_profile": operator_profile or "",
+        "endpoint_roles": endpoint_roles,
+        "iat": now,
+        "exp": now + ttl,
+    }
+    payload_b64 = _b64url_encode(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
+    sig = hmac.new(_secret(), payload_b64.encode("ascii"), hashlib.sha256).hexdigest()
+    return f"{payload_b64}.{sig}"
+
+
 def verify_token(token: str) -> dict | None:
     """Return the payload if the token is valid and unexpired, else None."""
     try:

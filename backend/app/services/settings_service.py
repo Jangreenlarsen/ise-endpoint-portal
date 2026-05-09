@@ -18,12 +18,16 @@ from app.schemas.settings import (
     BackendSettingsResponse,
     BackendSettingsUpdate,
     GeneratedPskKey,
+    PortalAuthConfigResponse,
+    PortalAuthConfigUpdate,
     PskPolicy,
     PxGridAccountCreateResponse,
     PxGridSettingsResponse,
     PxGridSettingsUpdate,
     PxGridStatusResponse,
     PxGridTestResponse,
+    TacacsTestRequest,
+    TacacsTestResponse,
     TestConnectionRequest,
     TestConnectionResponse,
 )
@@ -565,3 +569,90 @@ def generate_psk_key(policy: PskPolicy | None = None) -> GeneratedPskKey:
 
     random.shuffle(required)
     return GeneratedPskKey(key="".join(required))
+
+
+# ── Portal Auth Config (TACACS+) ─────────────────────────────────────────────
+
+def get_portal_auth_config() -> PortalAuthConfigResponse:
+    from app.core.auth_config_store import load as load_auth_config
+    data = load_auth_config()
+    return PortalAuthConfigResponse(
+        auth_mode=data["auth_mode"],
+        tacacs_server_host=data["tacacs_server_host"],
+        tacacs_server_port=data["tacacs_server_port"],
+        tacacs_secret_set=bool(data.get("tacacs_secret")),
+        tacacs_timeout_seconds=data["tacacs_timeout_seconds"],
+        tacacs_fallback_to_local=data["tacacs_fallback_to_local"],
+        tacacs_role_attribute=data["tacacs_role_attribute"],
+        tacacs_operator_profile_attribute=data["tacacs_operator_profile_attribute"],
+    )
+
+
+async def update_portal_auth_config(new: PortalAuthConfigUpdate) -> PortalAuthConfigResponse:
+    from app.core.auth_config_store import load as load_auth_config, save as save_auth_config
+    before = get_portal_auth_config().model_dump()
+    data = load_auth_config()
+    data["auth_mode"] = new.auth_mode
+    data["tacacs_server_host"] = new.tacacs_server_host
+    data["tacacs_server_port"] = new.tacacs_server_port
+    data["tacacs_timeout_seconds"] = new.tacacs_timeout_seconds
+    data["tacacs_fallback_to_local"] = new.tacacs_fallback_to_local
+    data["tacacs_role_attribute"] = new.tacacs_role_attribute
+    data["tacacs_operator_profile_attribute"] = new.tacacs_operator_profile_attribute
+    if new.tacacs_secret:
+        data["tacacs_secret"] = new.tacacs_secret
+    save_auth_config(data)
+    logger.info(
+        "portal auth config updated: mode=%s tacacs_host=%s",
+        new.auth_mode,
+        new.tacacs_server_host or "(none)",
+    )
+    after = get_portal_auth_config().model_dump()
+    await audit_store.record(
+        "updated",
+        "portal_auth_config",
+        None,
+        before=before,
+        after={**after, "tacacs_secret_changed": bool(new.tacacs_secret)},
+    )
+    return get_portal_auth_config()
+
+
+def test_tacacs_connection(req: TacacsTestRequest) -> TacacsTestResponse:
+    """Test TACACS+ auth+authz without persisting settings."""
+    from app.core.auth_config_store import load as load_auth_config
+    from app.services.tacacs_service import authenticate_and_authorize
+
+    data = load_auth_config()
+    host = req.server_host or data["tacacs_server_host"]
+    port = req.server_port or data["tacacs_server_port"]
+    secret = req.secret or data.get("tacacs_secret", "")
+    timeout = req.timeout_seconds or data["tacacs_timeout_seconds"]
+    role_attr = data["tacacs_role_attribute"]
+    profile_attr = data["tacacs_operator_profile_attribute"]
+
+    if not host or not secret:
+        return TacacsTestResponse(
+            ok=False,
+            message="TACACS+ server host og secret skal være konfigureret",
+        )
+
+    result = authenticate_and_authorize(
+        username=req.username,
+        password=req.password,
+        server_host=host,
+        server_port=port,
+        secret=secret,
+        timeout=timeout,
+        role_attribute=role_attr,
+        operator_profile_attribute=profile_attr,
+    )
+    if not result.success:
+        return TacacsTestResponse(ok=False, message=result.error or "Auth fejlede")
+
+    return TacacsTestResponse(
+        ok=True,
+        message="TACACS+ auth og authz lykkedes",
+        role=result.role,
+        operator_profile=result.operator_profile_name,
+    )

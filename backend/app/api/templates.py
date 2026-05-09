@@ -1,8 +1,8 @@
 """Endpoint-skabelon API (3.24.0).
 
-GET    /api/templates          -> alle autentiserede inkl. registrar
+GET    /api/templates          -> alle autentiserede inkl. registrant
 POST   /api/templates          -> admin + editor
-GET    /api/templates/{id}     -> alle autentiserede inkl. registrar
+GET    /api/templates/{id}     -> alle autentiserede inkl. registrant
 PUT    /api/templates/{id}     -> admin + editor
 DELETE /api/templates/{id}     -> admin + editor
 """
@@ -32,13 +32,13 @@ async def list_templates(
 ) -> TemplateListResponse:
     records = template_store.load_templates()
     # Admin og editor ser alle skabeloner.
-    # registrar_templet: hvis brugeren har eksplicitte assigned_templates bruges
+    # registrant_templet: hvis brugeren har eksplicitte assigned_templates bruges
     # den liste; ellers falder vi tilbage til visible_to-filtrering.
     # Alle andre roller: kun skabeloner hvor visible_to er tom (alle) eller
     # indeholder deres rolle.
     if user.role in ("admin", "editor"):
         pass
-    elif user.role == "registrar_templet" and user.assigned_templates:
+    elif user.role == "registrant_templet" and user.assigned_templates:
         assigned = set(user.assigned_templates)
         records = [r for r in records if r.get("id") in assigned]
     else:

@@ -14,6 +14,7 @@ from app.api import custom_attributes as custom_attrs_api
 from app.api import dacls as dacls_api
 from app.api import endpoint_roles as endpoint_roles_api
 from app.api import endpoints, groups, health, logs, me, oui, users
+from app.api import operator_profiles as operator_profiles_api
 from app.api import templates as templates_api
 from app.api import pxgrid as pxgrid_api
 from app.api import settings as settings_api
@@ -38,6 +39,21 @@ async def lifespan(_: FastAPI):
     init_audit_db()
     # 3.8.0: backfill System adm-rolle for hver eksisterende bruger så admin
     # kan tagge endpoints med username via rolle-katalogen. Idempotent.
+    # Migrate legacy role names: registrar→registrant, registrar_templet→registrant_templet.
+    try:
+        from app.core.user_store import load_users, save_users as _save_users
+        _users = load_users()
+        _role_renames = {"registrar": "registrant", "registrar_templet": "registrant_templet"}
+        _migrated = 0
+        for _u in _users:
+            if _u.get("role") in _role_renames:
+                _u["role"] = _role_renames[_u["role"]]
+                _migrated += 1
+        if _migrated:
+            _save_users(_users)
+            logger.info("role migration: renamed %d user(s) registrar→registrant", _migrated)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("role migration fejlede: %s", exc)
     try:
         from app.core import role_catalog
         from app.core.user_store import load_users
@@ -96,6 +112,8 @@ app.include_router(cache_api.router, prefix="/api")
 app.include_router(audit_api.router, prefix="/api")
 app.include_router(oui.router, prefix="/api")
 app.include_router(endpoint_roles_api.router, prefix="/api")
+app.include_router(operator_profiles_api.router, prefix="/api")
+app.include_router(settings_api.auth_config_router, prefix="/api")
 app.include_router(pxgrid_api.router, prefix="/api")
 app.include_router(me.router, prefix="/api")
 app.include_router(update_api.router, prefix="/api")

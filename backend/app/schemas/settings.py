@@ -2,6 +2,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+AuthMode = Literal["local", "tacacs"]
+
 
 class BackendSettingsUpdate(BaseModel):
     """Payload for PUT /api/settings/backend.
@@ -261,3 +263,51 @@ class PxGridResetResponse(BaseModel):
     ok: bool
     files_deleted: list[str] = Field(default_factory=list)
     message: str
+
+
+# ── Portal Auth Config (TACACS+) ─────────────────────────────────────────────
+
+
+class PortalAuthConfigUpdate(BaseModel):
+    """Payload for PUT /api/settings/auth-config."""
+
+    auth_mode: AuthMode = "local"
+    tacacs_server_host: str = ""
+    tacacs_server_port: int = Field(default=49, ge=1, le=65535)
+    tacacs_secret: str = ""
+    tacacs_timeout_seconds: int = Field(default=5, ge=1, le=60)
+    tacacs_fallback_to_local: bool = True
+    tacacs_role_attribute: str = "portal-role"
+    tacacs_operator_profile_attribute: str = "portal-operator-profile"
+
+
+class PortalAuthConfigResponse(BaseModel):
+    """Response for GET /api/settings/auth-config — secret is masked."""
+
+    auth_mode: AuthMode
+    tacacs_server_host: str
+    tacacs_server_port: int
+    tacacs_secret_set: bool = Field(..., description="true hvis en shared secret er gemt")
+    tacacs_timeout_seconds: int
+    tacacs_fallback_to_local: bool
+    tacacs_role_attribute: str
+    tacacs_operator_profile_attribute: str
+
+
+class TacacsTestRequest(BaseModel):
+    """Payload for POST /api/settings/auth-config/test."""
+
+    username: str
+    password: str
+    server_host: str | None = None
+    server_port: int | None = None
+    secret: str | None = None
+    timeout_seconds: int | None = None
+
+
+class TacacsTestResponse(BaseModel):
+    ok: bool
+    message: str
+    role: str | None = None
+    operator_profile: str | None = None
+    attributes: dict[str, str] = Field(default_factory=dict)

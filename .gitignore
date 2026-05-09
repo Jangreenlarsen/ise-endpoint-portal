@@ -20,6 +20,8 @@ backend/platform_mapping.json
 backend/users.json
 backend/endpoint_roles.json
 backend/auth_secret.key
+backend/auth_config.json
+backend/operator_profiles.json
 backend/audit.db
 backend/audit.db-journal
 backend/audit.db-wal

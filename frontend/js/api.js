@@ -331,4 +331,20 @@ export const api = {
     request(`/templates/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(payload) }),
   deleteTemplate: (id) =>
     request(`/templates/${encodeURIComponent(id)}`, { method: "DELETE" }),
+
+  // Portal Auth Config + TACACS+
+  getPortalAuthConfig: () => request("/settings/auth-config"),
+  updatePortalAuthConfig: (payload) =>
+    request("/settings/auth-config", { method: "PUT", body: JSON.stringify(payload) }),
+  testTacacs: (payload) =>
+    request("/settings/auth-config/test", { method: "POST", body: JSON.stringify(payload) }),
+
+  // Operator Profiles
+  getOperatorProfiles: () => request("/operator-profiles"),
+  createOperatorProfile: (payload) =>
+    request("/operator-profiles", { method: "POST", body: JSON.stringify(payload) }),
+  updateOperatorProfile: (id, payload) =>
+    request(`/operator-profiles/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(payload) }),
+  deleteOperatorProfile: (id) =>
+    request(`/operator-profiles/${encodeURIComponent(id)}`, { method: "DELETE" }),
 };

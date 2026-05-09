@@ -7,6 +7,8 @@ from app.schemas.settings import (
     BackendSettingsResponse,
     BackendSettingsUpdate,
     GeneratedPskKey,
+    PortalAuthConfigResponse,
+    PortalAuthConfigUpdate,
     PskPolicy,
     PxGridAccountCreateResponse,
     PxGridResetResponse,
@@ -15,6 +17,8 @@ from app.schemas.settings import (
     PxGridStatusResponse,
     PxGridStompProbeResponse,
     PxGridTestResponse,
+    TacacsTestRequest,
+    TacacsTestResponse,
     TestConnectionRequest,
     TestConnectionResponse,
 )
@@ -296,3 +300,28 @@ async def update_psk_policy(req: PskPolicy) -> PskPolicy:
 async def generate_psk_key() -> GeneratedPskKey:
     """Generér én PSK-nøgle der overholder den aktive PSK-politik."""
     return settings_service.generate_psk_key()
+
+
+# ── Portal Auth Config (TACACS+) ─────────────────────────────────────────────
+
+auth_config_router = APIRouter(
+    prefix="/settings", tags=["settings"], dependencies=[Depends(require_admin)]
+)
+
+
+@auth_config_router.get("/auth-config", response_model=PortalAuthConfigResponse)
+async def read_portal_auth_config() -> PortalAuthConfigResponse:
+    return settings_service.get_portal_auth_config()
+
+
+@auth_config_router.put("/auth-config", response_model=PortalAuthConfigResponse)
+async def update_portal_auth_config(
+    req: PortalAuthConfigUpdate,
+) -> PortalAuthConfigResponse:
+    return await settings_service.update_portal_auth_config(req)
+
+
+@auth_config_router.post("/auth-config/test", response_model=TacacsTestResponse)
+async def test_tacacs_connection(req: TacacsTestRequest) -> TacacsTestResponse:
+    """Test TACACS+ auth + authz med givne credentials (gemmer ikke settings)."""
+    return settings_service.test_tacacs_connection(req)

@@ -309,10 +309,90 @@ def setup_first_admin(payload: SetupRequest) -> LoginResponse:
 
 
 def login(payload: LoginRequest) -> LoginResponse:
+    from app.core.auth_config_store import load as load_auth_config
+    from app.core.operator_profile_store import find_by_name, load_profiles
+
     users = load_users()
     record = find_by_username(users, payload.username)
+
+    # Admin-brugere valideres ALTID lokalt, uanset TACACS+-konfiguration.
+    is_admin_user = record and record.get("role") == "admin"
+
+    auth_cfg = load_auth_config()
+    use_tacacs = (
+        auth_cfg.get("auth_mode") == "tacacs"
+        and bool(auth_cfg.get("tacacs_server_host"))
+        and bool(auth_cfg.get("tacacs_secret"))
+        and not is_admin_user
+    )
+
+    if use_tacacs:
+        from app.services.tacacs_service import authenticate_and_authorize
+        result = authenticate_and_authorize(
+            username=payload.username,
+            password=payload.password,
+            server_host=auth_cfg["tacacs_server_host"],
+            server_port=auth_cfg["tacacs_server_port"],
+            secret=auth_cfg["tacacs_secret"],
+            timeout=auth_cfg["tacacs_timeout_seconds"],
+            role_attribute=auth_cfg["tacacs_role_attribute"],
+            operator_profile_attribute=auth_cfg["tacacs_operator_profile_attribute"],
+        )
+
+        if result.success:
+            # Resolve operator profile for endpoint_roles
+            endpoint_roles: list[str] = []
+            effective_role = result.role
+
+            if result.operator_profile_name:
+                profiles = load_profiles()
+                profile = find_by_name(profiles, result.operator_profile_name)
+                if profile:
+                    endpoint_roles = list(profile.get("assigned_endpoint_roles") or [])
+                    if not effective_role:
+                        effective_role = profile.get("default_role", "viewer")
+                else:
+                    logger.warning(
+                        "TACACS+ operatørprofil '%s' ikke fundet i katalog — bruger viewer",
+                        result.operator_profile_name,
+                    )
+
+            if not effective_role:
+                effective_role = "viewer"
+
+            # Implicit endpoint role = username (samme som lokale brugere)
+            if payload.username not in endpoint_roles:
+                endpoint_roles.append(payload.username)
+
+            token = auth_core.create_tacacs_token(
+                username=payload.username,
+                role=effective_role,
+                operator_profile=result.operator_profile_name,
+                endpoint_roles=endpoint_roles,
+            )
+            tacacs_user = User(
+                id=f"tacacs:{payload.username}",
+                username=payload.username,
+                role=effective_role,  # type: ignore[arg-type]
+                created_at="",
+                last_login=_now_iso(),
+                assigned_endpoint_roles=endpoint_roles,
+                assigned_templates=[],
+            )
+            logger.info("tacacs login: %s role=%s profile=%s", payload.username, effective_role, result.operator_profile_name)
+            return LoginResponse(token=token, user=tacacs_user)
+
+        # TACACS+ auth fejlede
+        fallback = auth_cfg.get("tacacs_fallback_to_local", True)
+        if not fallback:
+            logger.warning("tacacs auth failed (no fallback) for %s: %s", payload.username, result.error)
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Forkert brugernavn eller password")
+        logger.warning("tacacs auth failed (falling back to local) for %s: %s", payload.username, result.error)
+        # Fald igennem til lokal auth nedenfor
+
+    # Lokal auth (altid for admin, fallback for øvrige hvis TACACS+ fejler)
     if not record or not auth_core.verify_password(
-        payload.password, record["password_hash"]
+        payload.password, record.get("password_hash", "")
     ):
         logger.warning("failed login attempt for username=%s", payload.username)
         raise HTTPException(
@@ -322,5 +402,5 @@ def login(payload: LoginRequest) -> LoginResponse:
     record["last_login"] = _now_iso()
     save_users(users)
     token = auth_core.create_token(record["id"], record["username"], record["role"])
-    logger.info("login: %s role=%s", record["username"], record["role"])
+    logger.info("local login: %s role=%s", record["username"], record["role"])
     return LoginResponse(token=token, user=_to_public(record))

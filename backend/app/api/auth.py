@@ -29,7 +29,23 @@ async def auth_status(request: Request) -> AuthStatus:
     if not payload:
         return AuthStatus(setup_required=False, authenticated=False, user=None)
     try:
-        user = user_service.get_user(payload["sub"])
+        if payload.get("auth_type") == "tacacs":
+            from app.schemas.user import ROLE_VALUES
+            role = payload.get("role")
+            if not role or role not in ROLE_VALUES:
+                return AuthStatus(setup_required=False, authenticated=False, user=None)
+            from app.schemas.user import User as UserModel
+            user = UserModel(
+                id=f"tacacs:{payload.get('username', '')}",
+                username=payload.get("username", ""),
+                role=role,
+                created_at="",
+                last_login=None,
+                assigned_endpoint_roles=list(payload.get("endpoint_roles") or []),
+                assigned_templates=[],
+            )
+        else:
+            user = user_service.get_user(payload["sub"])
     except Exception:
         return AuthStatus(setup_required=False, authenticated=False, user=None)
     return AuthStatus(setup_required=False, authenticated=True, user=user)
@@ -53,6 +69,12 @@ async def setup(req: SetupRequest) -> LoginResponse:
 
 @router.get("/me", response_model=UserMe)
 async def me(user: User = Depends(get_current_user)) -> UserMe:
+    if user.id.startswith("tacacs:"):
+        from app.services.user_service import effective_roles
+        return UserMe(
+            **user.model_dump(),
+            effective_roles=effective_roles(user),
+        )
     return user_service.get_user_me(user.id)
 
 
@@ -61,5 +83,11 @@ async def change_password(
     req: ChangePasswordRequest,
     user: User = Depends(get_current_user),
 ) -> dict[str, str]:
+    if user.id.startswith("tacacs:"):
+        from fastapi import HTTPException, status as http_status
+        raise HTTPException(
+            http_status.HTTP_400_BAD_REQUEST,
+            "TACACS+-autentiserede brugere kan ikke skifte password her — kontakt din netværksadministrator",
+        )
     await user_service.change_password(user.id, req)
     return {"status": "ok"}

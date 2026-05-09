@@ -45,6 +45,7 @@ export async function renderSettings(container) {
       <button class="settings-tab" data-tab="ise-connection">ISE Forbindelse Config</button>
       <button class="settings-tab" data-tab="portal-performance">Portal Performance</button>
       <button class="settings-tab" data-tab="portal-bruger-config">Portal Bruger Config</button>
+      <button class="settings-tab" data-tab="portal-auth-config">Portal Auth Config</button>
       ` : ""}
       ${isPskEditorUser ? `
       <button class="settings-tab" data-tab="portal-config">Portal Config</button>
@@ -515,21 +516,25 @@ export async function renderSettings(container) {
     </div>
 
     <div class="card" data-tab="portal-bruger-config" data-subtab="pbc-users">
-      <h3>Brugere &amp; Bruger grupper</h3>
-      <p class="hint">
+      <h3 id="users-section-title">Brugere &amp; Bruger grupper</h3>
+      <p class="hint" id="users-section-hint">
         Administrer lokale brugerkonti, system-roller og System adm-tildelinger.
         <b>admin</b> har fuld adgang. <b>editor</b> kan oprette/redigere endpoints. <b>viewer</b> kan kun læse.
-        <b>registrar</b> kan registrere endpoints (alle formularfelter). <b>registrar_templet</b> kan KUN vælge skabelon + indtaste MAC og beskrivelse.
+        <b>registrant</b> kan registrere endpoints (alle formularfelter). <b>registrant_templet</b> kan KUN vælge skabelon + indtaste MAC og beskrivelse.
         System adm bestemmer hvilke endpoints ikke-admin-brugere kan se (deres username er altid implicit tildelt).
+      </p>
+      <p class="hint" id="users-tacacs-hint" style="display:none;background:var(--bg-alt,#f8f9fa);border-left:3px solid var(--accent,#3b82f6);padding:0.5rem 0.75rem;border-radius:4px;">
+        Auth-mode er sat til <strong>TACACS+</strong>. Operatørprofiler defineres under <em>Portal Auth Config</em>-tabben.
+        Lokale brugere nedenfor er kun aktive som fallback (og admin bruges altid lokalt).
       </p>
       <div id="users-msg"></div>
       <table class="users-table">
         <thead>
           <tr>
-            <th>Brugernavn</th>
+            <th id="users-col-username">Brugernavn/Operatør profil</th>
             <th style="width:9rem;">Rolle</th>
             <th>System adm</th>
-            <th>Skabeloner (registrar_templet)</th>
+            <th>Skabeloner (registrant_templet)</th>
             <th style="width:11rem;">Sidst logget ind</th>
             <th style="width:9rem;">Oprettet</th>
             <th style="width:10rem;">Handlinger</th>
@@ -545,11 +550,120 @@ export async function renderSettings(container) {
           <option value="editor">editor</option>
           <option value="editor-psk">editor-psk (PSK-redaktør)</option>
           <option value="admin">admin</option>
-          <option value="registrar">registrar (opret — alle felter)</option>
-          <option value="registrar_templet">registrar_templet (skabelon + MAC + beskrivelse)</option>
+          <option value="registrant">registrant (opret — alle felter)</option>
+          <option value="registrant_templet">registrant_templet (skabelon + MAC + beskrivelse)</option>
         </select>
         <button type="submit">Opret bruger</button>
       </form>
+    </div>
+    ` : ""}
+
+    ${isAdmin ? `
+    <div class="card" data-tab="portal-auth-config">
+      <h3>Portal Auth Config</h3>
+      <p class="hint">
+        Konfigurer om portal-brugere autentiseres lokalt eller via en ekstern TACACS+-server.
+        Admin-brugere valideres <strong>altid lokalt</strong> uanset denne indstilling.
+      </p>
+      <div id="auth-cfg-msg"></div>
+      <form id="auth-cfg-form">
+        <div class="field">
+          <label for="auth_mode">Auth mode</label>
+          <select id="auth_mode">
+            <option value="local">Lokal — brugere defineret i portalen</option>
+            <option value="tacacs">Ekstern TACACS+ server</option>
+          </select>
+          <div class="hint">
+            <strong>Lokal:</strong> Login valideres mod bruger-listen i portalen (Brugernavn/Operatør profil).<br>
+            <strong>TACACS+:</strong> Login sendes til TACACS+-server. Serveren returnerer rolle og operatørprofil via attributter.
+          </div>
+        </div>
+
+        <fieldset id="tacacs-fields" style="border:1px solid var(--border);border-radius:6px;padding:1rem;margin-top:0.75rem;">
+          <legend style="padding:0 0.5rem;font-weight:600;">TACACS+ server</legend>
+          <div class="field">
+            <label for="tacacs_host">Server host (IP eller FQDN)</label>
+            <input type="text" id="tacacs_host" placeholder="10.0.0.10" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label for="tacacs_port">TCP port</label>
+            <input type="number" id="tacacs_port" value="49" min="1" max="65535" />
+          </div>
+          <div class="field">
+            <label for="tacacs_secret">Shared secret</label>
+            <input type="password" id="tacacs_secret" placeholder="(lad tom for at beholde)" autocomplete="new-password" />
+            <div class="hint" id="tacacs-secret-hint"></div>
+          </div>
+          <div class="field">
+            <label for="tacacs_timeout">Timeout (sekunder)</label>
+            <input type="number" id="tacacs_timeout" value="5" min="1" max="60" />
+          </div>
+          <div class="field">
+            <label>
+              <input type="checkbox" id="tacacs_fallback" />
+              Fallback til lokal auth hvis TACACS+-server ikke kan nås
+            </label>
+            <div class="hint">Hvis slået til: admin (og andre lokale brugere) kan stadig logge ind ved TACACS+ nedbrud.</div>
+          </div>
+
+          <fieldset style="border:1px solid var(--border);border-radius:4px;padding:0.75rem;margin-top:0.75rem;">
+            <legend style="padding:0 0.5rem;font-size:0.85rem;color:var(--text-muted);">Attribut-mapping</legend>
+            <p class="hint" style="margin-top:0;">
+              TACACS+-serveren skal returnere disse attributter i Access-Accept svaret.
+              Konfigurér attributnavnene så de matcher din TACACS+-servers profil.
+            </p>
+            <div class="field">
+              <label for="tacacs_role_attr">Rolle-attribut navn</label>
+              <input type="text" id="tacacs_role_attr" placeholder="portal-role" autocomplete="off" />
+              <div class="hint">
+                Mulige værdier serveren kan returnere:
+                <code>super_admin</code>, <code>editor</code>, <code>editor_psk</code>,
+                <code>viewer</code>, <code>registrant</code>
+              </div>
+            </div>
+            <div class="field">
+              <label for="tacacs_profile_attr">Operatørprofil-attribut navn</label>
+              <input type="text" id="tacacs_profile_attr" placeholder="portal-operator-profile" autocomplete="off" />
+              <div class="hint">Serverens returnerede profilnavn slås op i Operatørprofil-kataloget nedenfor.</div>
+            </div>
+          </fieldset>
+        </fieldset>
+
+        <div style="margin-top:1rem;display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+          <button type="submit">Gem Auth Config</button>
+          <button type="button" id="tacacs-test-btn" class="secondary">Test TACACS+ forbindelse…</button>
+        </div>
+      </form>
+
+      <div id="tacacs-test-panel" style="display:none;margin-top:1rem;">
+        <fieldset style="border:1px solid var(--border);border-radius:6px;padding:1rem;">
+          <legend style="padding:0 0.5rem;font-weight:600;">Test TACACS+ login</legend>
+          <p class="hint">Angiv et test-sæt credentials — bruges kun til at verificere forbindelsen, gemmer ingenting.</p>
+          <div class="field">
+            <label for="test-tacacs-user">Brugernavn</label>
+            <input type="text" id="test-tacacs-user" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label for="test-tacacs-pw">Password</label>
+            <input type="password" id="test-tacacs-pw" autocomplete="new-password" />
+          </div>
+          <button type="button" id="tacacs-run-test-btn">Kør TACACS+ test</button>
+          <div id="tacacs-test-result" style="margin-top:0.75rem;"></div>
+        </fieldset>
+      </div>
+    </div>
+
+    <div class="card" data-tab="portal-auth-config" style="margin-top:1rem;">
+      <h3>Operatørprofiler</h3>
+      <p class="hint">
+        Operatørprofiler bruges når auth-mode er <strong>TACACS+</strong>.
+        TACACS+-serveren returnerer et profilnavn i attributten <em>portal-operator-profile</em>.
+        Portalen slår profilnavnet op her og tildeler de konfigurerede endpoint-roller og standard-rolle.
+      </p>
+      <div id="op-profile-msg"></div>
+      <div id="op-profile-list"></div>
+      <button type="button" id="op-profile-new-btn" class="secondary" style="margin-top:0.75rem;">+ Ny operatørprofil</button>
+      <div id="op-profile-form-wrap" style="display:none;margin-top:1rem;"></div>
     </div>
     ` : ""}
 
@@ -599,7 +713,7 @@ export async function renderSettings(container) {
       <h3>Endpoint-skabeloner</h3>
       <p class="hint">
         Skabeloner forudfylder registreringsformularen med standardværdier —
-        registrar vælger en skabelon og scanner blot MAC-adressen.
+        registrant vælger en skabelon og scanner blot MAC-adressen.
       </p>
       <div id="tpl-msg"></div>
       <div id="tpl-list" style="margin-bottom:1rem;"></div>
@@ -638,8 +752,8 @@ export async function renderSettings(container) {
             <div style="display:flex;flex-wrap:wrap;gap:0.4rem 1.5rem;">
               <label class="checkbox-label"><input type="checkbox" class="tpl-visible-to" value="editor" /> editor</label>
               <label class="checkbox-label"><input type="checkbox" class="tpl-visible-to" value="editor-psk" /> editor-psk</label>
-              <label class="checkbox-label"><input type="checkbox" class="tpl-visible-to" value="registrar" /> registrar</label>
-              <label class="checkbox-label"><input type="checkbox" class="tpl-visible-to" value="registrar_templet" /> registrar_templet</label>
+              <label class="checkbox-label"><input type="checkbox" class="tpl-visible-to" value="registrant" /> registrant</label>
+              <label class="checkbox-label"><input type="checkbox" class="tpl-visible-to" value="registrant_templet" /> registrant_templet</label>
             </div>
           </div>
           <div class="actions" style="margin-top:1.25rem;">
@@ -734,6 +848,7 @@ export async function renderSettings(container) {
     await initPurgeProtectSection(container);
     const rolesState = await initRolesSection(container);
     await initUsersSection(container, currentUser, rolesState);
+    await initPortalAuthConfigSection(container);
   }
   if (isPskEditorUser) {
     await initPskPolicySection(container);
@@ -1406,6 +1521,23 @@ async function initUsersSection(container, currentUser, rolesState) {
   const tbody = container.querySelector("#users-tbody");
   const msg = container.querySelector("#users-msg");
 
+  // Hent auth-mode og opdater kosmetiske labels
+  try {
+    const authCfg = await api.getPortalAuthConfig();
+    const isTacacs = authCfg.auth_mode === "tacacs";
+    const titleEl = container.querySelector("#users-section-title");
+    const hintEl = container.querySelector("#users-section-hint");
+    const tacacsHintEl = container.querySelector("#users-tacacs-hint");
+    const colHeader = container.querySelector("#users-col-username");
+    if (isTacacs) {
+      if (titleEl) titleEl.innerHTML = "Brugere &amp; Bruger grupper — <span style='font-size:0.85em;font-weight:normal;color:var(--text-muted);'>Operatør profil mode (TACACS+)</span>";
+      if (tacacsHintEl) tacacsHintEl.style.display = "";
+      if (colHeader) colHeader.textContent = "Operatør profil / Brugernavn";
+    } else {
+      if (colHeader) colHeader.textContent = "Brugernavn/Operatør profil";
+    }
+  } catch { /* non-critical */ }
+
   let allTemplates = [];
 
   function renderEndpointRoleCell(user) {
@@ -1441,7 +1573,7 @@ async function initUsersSection(container, currentUser, rolesState) {
       return `<span class="hint" style="font-style:italic;">Alle (${allTemplates.length})</span>`;
     }
 
-    if (user.role === "registrar_templet") {
+    if (user.role === "registrant_templet") {
       // Redigerbare checkboxes — admin tildeler eksplicit
       const assigned = new Set(user.assigned_templates || []);
       const checks = allTemplates
@@ -1482,7 +1614,7 @@ async function initUsersSection(container, currentUser, rolesState) {
               <td>${esc(u.username)}</td>
               <td>
                 <select class="user-role-select" ${isSelf ? "disabled title='Du kan ikke ændre din egen rolle her'" : ""}>
-                  ${["admin", "editor", "editor-psk", "viewer", "registrar", "registrar_templet"]
+                  ${["admin", "editor", "editor-psk", "viewer", "registrant", "registrant_templet"]
                     .map((r) => `<option value="${r}"${r === u.role ? " selected" : ""}>${r}</option>`)
                     .join("")}
                 </select>
@@ -2137,6 +2269,228 @@ function initSystemUpdateSection(container) {
       setTimeout(() => window.location.reload(), 8000);
     }
   });
+}
+
+async function initPortalAuthConfigSection(container) {
+  const form = container.querySelector("#auth-cfg-form");
+  const msg = container.querySelector("#auth-cfg-msg");
+  const authModeSel = container.querySelector("#auth_mode");
+  const tacacsFields = container.querySelector("#tacacs-fields");
+  const testBtn = container.querySelector("#tacacs-test-btn");
+  const testPanel = container.querySelector("#tacacs-test-panel");
+  const runTestBtn = container.querySelector("#tacacs-run-test-btn");
+  const testResult = container.querySelector("#tacacs-test-result");
+  const opProfileMsg = container.querySelector("#op-profile-msg");
+  const opProfileList = container.querySelector("#op-profile-list");
+  const opProfileNewBtn = container.querySelector("#op-profile-new-btn");
+  const opProfileFormWrap = container.querySelector("#op-profile-form-wrap");
+
+  if (!form) return;
+
+  function showMsg(html) { if (msg) msg.innerHTML = html; }
+  function clearMsg() { if (msg) msg.innerHTML = ""; }
+  function showOpMsg(html) { if (opProfileMsg) opProfileMsg.innerHTML = html; }
+
+  function toggleTacacsFields() {
+    if (!tacacsFields || !authModeSel) return;
+    tacacsFields.style.display = authModeSel.value === "tacacs" ? "" : "none";
+  }
+
+  authModeSel?.addEventListener("change", toggleTacacsFields);
+
+  async function loadAuthConfig() {
+    try {
+      const s = await api.getPortalAuthConfig();
+      authModeSel.value = s.auth_mode || "local";
+      container.querySelector("#tacacs_host").value = s.tacacs_server_host || "";
+      container.querySelector("#tacacs_port").value = s.tacacs_server_port || 49;
+      container.querySelector("#tacacs_secret").value = "";
+      container.querySelector("#tacacs_timeout").value = s.tacacs_timeout_seconds || 5;
+      container.querySelector("#tacacs_fallback").checked = !!s.tacacs_fallback_to_local;
+      container.querySelector("#tacacs_role_attr").value = s.tacacs_role_attribute || "portal-role";
+      container.querySelector("#tacacs_profile_attr").value = s.tacacs_operator_profile_attribute || "portal-operator-profile";
+      const hint = container.querySelector("#tacacs-secret-hint");
+      if (hint) hint.textContent = s.tacacs_secret_set ? "Shared secret er sat. Lad tomt for at beholde." : "";
+      toggleTacacsFields();
+    } catch (err) {
+      showMsg(`<div class="alert error">Kunne ikke hente auth config: ${esc(err.message)}</div>`);
+    }
+  }
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    clearMsg();
+    const payload = {
+      auth_mode: authModeSel.value,
+      tacacs_server_host: container.querySelector("#tacacs_host").value,
+      tacacs_server_port: parseInt(container.querySelector("#tacacs_port").value, 10) || 49,
+      tacacs_secret: container.querySelector("#tacacs_secret").value,
+      tacacs_timeout_seconds: parseInt(container.querySelector("#tacacs_timeout").value, 10) || 5,
+      tacacs_fallback_to_local: container.querySelector("#tacacs_fallback").checked,
+      tacacs_role_attribute: container.querySelector("#tacacs_role_attr").value || "portal-role",
+      tacacs_operator_profile_attribute: container.querySelector("#tacacs_profile_attr").value || "portal-operator-profile",
+    };
+    try {
+      await api.updatePortalAuthConfig(payload);
+      showMsg(`<div class="alert success">Auth config gemt.</div>`);
+      await loadAuthConfig();
+    } catch (err) {
+      showMsg(`<div class="alert error">Fejl: ${esc(err.message)}</div>`);
+    }
+  });
+
+  testBtn?.addEventListener("click", () => {
+    if (testPanel) testPanel.style.display = testPanel.style.display === "none" ? "" : "none";
+  });
+
+  runTestBtn?.addEventListener("click", async () => {
+    if (!testResult) return;
+    testResult.innerHTML = `<div class="alert info">Tester TACACS+...</div>`;
+    const testUser = container.querySelector("#test-tacacs-user")?.value || "";
+    const testPw = container.querySelector("#test-tacacs-pw")?.value || "";
+    if (!testUser || !testPw) {
+      testResult.innerHTML = `<div class="alert error">Angiv brugernavn og password.</div>`;
+      return;
+    }
+    try {
+      const res = await api.testTacacs({ username: testUser, password: testPw });
+      if (res.ok) {
+        testResult.innerHTML = `
+          <div class="alert success">
+            TACACS+ test OK!<br>
+            ${res.role ? `Rolle: <strong>${esc(res.role)}</strong><br>` : ""}
+            ${res.operator_profile ? `Operatørprofil: <strong>${esc(res.operator_profile)}</strong>` : "Ingen operatørprofil returneret"}
+          </div>`;
+      } else {
+        testResult.innerHTML = `<div class="alert error">${esc(res.message)}</div>`;
+      }
+    } catch (err) {
+      testResult.innerHTML = `<div class="alert error">Fejl: ${esc(err.message)}</div>`;
+    }
+  });
+
+  // Operatørprofiler
+  const ROLES_DISPLAY = ["admin", "editor", "editor-psk", "viewer", "registrant", "registrant_templet"];
+
+  async function loadOperatorProfiles() {
+    try {
+      const profiles = await api.getOperatorProfiles();
+      if (!profiles.length) {
+        opProfileList.innerHTML = `<p class="hint">Ingen operatørprofiler konfigureret endnu.</p>`;
+        return;
+      }
+      opProfileList.innerHTML = `<table class="data-table">
+        <thead><tr><th>Navn</th><th>Visningsnavn</th><th>Standard-rolle</th><th>Endpoint-roller</th><th></th></tr></thead>
+        <tbody>
+          ${profiles.map(p => `
+            <tr data-profile-id="${esc(p.id)}">
+              <td><code>${esc(p.name)}</code></td>
+              <td>${esc(p.display_name)}</td>
+              <td><span class="role-badge">${esc(p.default_role)}</span></td>
+              <td style="font-size:0.8rem;">${(p.assigned_endpoint_roles || []).map(r => `<span class="role-chip">${esc(r)}</span>`).join(" ") || "—"}</td>
+              <td style="white-space:nowrap;">
+                <button type="button" class="op-edit-btn secondary" style="padding:2px 8px;font-size:0.8rem;">Redigér</button>
+                <button type="button" class="op-delete-btn" style="padding:2px 8px;font-size:0.8rem;background:#ef4444;color:#fff;border:none;border-radius:4px;cursor:pointer;">Slet</button>
+              </td>
+            </tr>`).join("")}
+        </tbody>
+      </table>`;
+
+      opProfileList.querySelectorAll(".op-delete-btn").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const id = btn.closest("tr").dataset.profileId;
+          if (!confirm("Slet denne operatørprofil?")) return;
+          try {
+            await api.deleteOperatorProfile(id);
+            showOpMsg(`<div class="alert success">Profil slettet.</div>`);
+            await loadOperatorProfiles();
+          } catch (err) {
+            showOpMsg(`<div class="alert error">Fejl: ${esc(err.message)}</div>`);
+          }
+        });
+      });
+
+      opProfileList.querySelectorAll(".op-edit-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const row = btn.closest("tr");
+          const id = row.dataset.profileId;
+          const profile = profiles.find(p => p.id === id);
+          if (profile) showOperatorProfileForm(profile);
+        });
+      });
+    } catch (err) {
+      opProfileList.innerHTML = `<div class="alert error">Fejl: ${esc(err.message)}</div>`;
+    }
+  }
+
+  function showOperatorProfileForm(profile = null) {
+    if (!opProfileFormWrap) return;
+    opProfileFormWrap.style.display = "";
+    opProfileFormWrap.innerHTML = `
+      <fieldset style="border:1px solid var(--border);border-radius:6px;padding:1rem;">
+        <legend style="padding:0 0.5rem;font-weight:600;">${profile ? "Redigér" : "Ny"} operatørprofil</legend>
+        <div class="field">
+          <label>Profil-ID (TACACS+ sender dette navn i attributten)</label>
+          <input type="text" id="op-name" value="${esc(profile?.name || "")}" ${profile ? "readonly" : ""} placeholder="network-admin" />
+          <div class="hint">Kun A-Z, a-z, 0-9, bindestreg og underscore. Skal matche TACACS+-serverens attribut-værdi præcist.</div>
+        </div>
+        <div class="field">
+          <label>Visningsnavn</label>
+          <input type="text" id="op-display-name" value="${esc(profile?.display_name || "")}" placeholder="Netværk Administrator" />
+        </div>
+        <div class="field">
+          <label>Standard-rolle (bruges hvis TACACS+ ikke returnerer portal-role attributten)</label>
+          <select id="op-default-role">
+            ${ROLES_DISPLAY.map(r => `<option value="${r}"${r === (profile?.default_role || "viewer") ? " selected" : ""}>${r}</option>`).join("")}
+          </select>
+        </div>
+        <div class="field">
+          <label>Endpoint-roller (kommasepareret)</label>
+          <input type="text" id="op-endpoint-roles" value="${esc((profile?.assigned_endpoint_roles || []).join(", "))}" placeholder="core-net, access-net" />
+          <div class="hint">Roller fra endpoint-rolle-kataloget der tildeles denne operatørprofil.</div>
+        </div>
+        <div style="display:flex;gap:0.5rem;margin-top:0.75rem;">
+          <button type="button" id="op-save-btn">Gem profil</button>
+          <button type="button" id="op-cancel-btn" class="secondary">Annuller</button>
+        </div>
+        <div id="op-form-msg" style="margin-top:0.5rem;"></div>
+      </fieldset>`;
+
+    opProfileFormWrap.querySelector("#op-cancel-btn").addEventListener("click", () => {
+      opProfileFormWrap.style.display = "none";
+    });
+
+    opProfileFormWrap.querySelector("#op-save-btn").addEventListener("click", async () => {
+      const formMsg = opProfileFormWrap.querySelector("#op-form-msg");
+      const name = opProfileFormWrap.querySelector("#op-name").value.trim();
+      const displayName = opProfileFormWrap.querySelector("#op-display-name").value.trim();
+      const defaultRole = opProfileFormWrap.querySelector("#op-default-role").value;
+      const rolesRaw = opProfileFormWrap.querySelector("#op-endpoint-roles").value;
+      const endpointRoles = rolesRaw.split(",").map(r => r.trim()).filter(Boolean);
+
+      if (!name || !displayName) {
+        formMsg.innerHTML = `<div class="alert error">Profil-ID og visningsnavn er påkrævet.</div>`;
+        return;
+      }
+      try {
+        if (profile) {
+          await api.updateOperatorProfile(profile.id, { display_name: displayName, default_role: defaultRole, assigned_endpoint_roles: endpointRoles });
+        } else {
+          await api.createOperatorProfile({ name, display_name: displayName, default_role: defaultRole, assigned_endpoint_roles: endpointRoles, assigned_templates: [] });
+        }
+        opProfileFormWrap.style.display = "none";
+        showOpMsg(`<div class="alert success">Profil "${esc(displayName)}" gemt.</div>`);
+        await loadOperatorProfiles();
+      } catch (err) {
+        formMsg.innerHTML = `<div class="alert error">Fejl: ${esc(err.message)}</div>`;
+      }
+    });
+  }
+
+  opProfileNewBtn?.addEventListener("click", () => showOperatorProfileForm(null));
+
+  await loadAuthConfig();
+  await loadOperatorProfiles();
 }
 
 function initAdvancedSection(container) {

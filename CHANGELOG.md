@@ -3,6 +3,47 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [4.0.0 build 0217] — 2026-05-09 — feat(auth): TACACS+ portal-autentisering + operatørprofiler + registrar→registrant rename
+
+**Berørte filer**:
+- `backend/app/services/tacacs_service.py` (ny)
+- `backend/app/core/auth_config_store.py` (ny)
+- `backend/app/core/operator_profile_store.py` (ny)
+- `backend/app/schemas/operator_profile.py` (ny)
+- `backend/app/api/operator_profiles.py` (ny)
+- `backend/app/core/auth.py` (+create_tacacs_token)
+- `backend/app/api/deps.py` (+TACACS+ transient user)
+- `backend/app/api/auth.py` (+TACACS+ login-gren, auth_status, change_password)
+- `backend/app/services/user_service.py` (+TACACS+ login flow)
+- `backend/app/api/settings.py` (+auth_config_router)
+- `backend/app/services/settings_service.py` (+portal auth config service)
+- `backend/app/schemas/settings.py` (+PortalAuthConfig*, TacacsTest*)
+- `backend/app/schemas/user.py` (registrar→registrant, registrar_templet→registrant_templet)
+- `backend/app/api/templates.py` (registrar_templet→registrant_templet)
+- `backend/app/main.py` (+operator_profiles router, +auth_config_router, +role migration)
+- `backend/pyproject.toml` (+tacacs-plus>=2.8)
+- `frontend/js/views/settings.js` (+Portal Auth Config tab, +operator profil UI, +mode-aware labels)
+- `frontend/js/api.js` (+getPortalAuthConfig, +updatePortalAuthConfig, +testTacacs, +operatørprofil CRUD)
+- `frontend/js/app.js` (registrar→registrant)
+- `frontend/js/views/register.js` (registrar_templet→registrant_templet)
+- `version.json`
+
+**Ændringer**:
+- TACACS+ auth: portal sender credentials til TACACS+-server (TCP/49). Ved Access-Accept hentes rolle (`portal-role`) og operatørprofil (`portal-operator-profile`) fra server-attributter.
+- Admin-brugere: valideres ALTID lokalt uanset TACACS+-konfiguration.
+- Fallback til lokal auth ved TACACS+-nedbrud (konfigurerbart `tacacs_fallback_to_local`).
+- Operatørprofiler: katalog med profilnavn → standard-rolle + endpoint-roller. TACACS+-login slår profil op og arver roller.
+- TACACS+-brugere: ingen lokal record — al info i JWT (transient session). Saved views og per-bruger overrides ikke tilgængelige.
+- Ny `create_tacacs_token()` med `auth_type=tacacs` og `endpoint_roles` i payload.
+- `get_current_user()` i deps.py: TACACS+-token path opretter transient User-objekt fra token uden users.json-opslag.
+- Ny settings-tab "Portal Auth Config": server-host/port/secret/timeout, fallback-toggle, attribut-mapping, TACACS+ test-login, operatørprofil-katalog.
+- Startup-migration: eksisterende `users.json` med rolle "registrar"/"registrar_templet" omdøbes til "registrant"/"registrant_templet".
+- Rolleomdøbning: `registrar`→`registrant`, `registrar_templet`→`registrant_templet` overalt i backend + frontend for konsistens med TACACS+-attribut-konvention.
+- UI: "Brugernavn"-kolonne i bruger-tabel omdøbt til "Brugernavn/Operatør profil" med mode-aware tekst.
+- Oprettet `backend/auth_config.json` og `backend/operator_profiles.json` (gitignored).
+
+---
+
 ## [3.30.2 build 0216] — 2026-05-08 — fix(nav): saml Log/Audit/Metrics under "Overvågning"-gruppe i sidebar
 
 **Berørte filer**: `frontend/index.html`, `frontend/css/styles.css`, `version.json`

@@ -46,6 +46,34 @@ async def get_current_user(request: Request) -> User:
             "Ugyldigt eller udløbet token",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    client_host = request.client.host if request.client else ""
+
+    # TACACS+-autentiserede brugere har ingen lokal record — al info er i token.
+    if payload.get("auth_type") == "tacacs":
+        username = payload.get("username", "")
+        role = payload.get("role")
+        if not username or not role:
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Ugyldigt TACACS+ token")
+        if role not in ROLE_VALUES:
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, f"Ukendt rolle i token: {role}")
+        actor_ctx.set(
+            ActorContext(
+                actor_id=f"tacacs:{username}",
+                actor_username=username,
+                source_ip=client_host,
+            )
+        )
+        return User(
+            id=f"tacacs:{username}",
+            username=username,
+            role=role,
+            created_at="",
+            last_login=None,
+            assigned_endpoint_roles=list(payload.get("endpoint_roles") or []),
+            assigned_templates=[],
+        )
+
+    # Lokal bruger — verificer mod users.json.
     user_id = payload.get("sub")
     if not isinstance(user_id, str):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Ugyldigt token")
@@ -57,7 +85,6 @@ async def get_current_user(request: Request) -> User:
             status.HTTP_401_UNAUTHORIZED,
             "Rolle er ændret — login igen",
         )
-    client_host = request.client.host if request.client else ""
     actor_ctx.set(
         ActorContext(
             actor_id=record["id"],
@@ -97,8 +124,8 @@ require_editor = require_roles("admin", "editor")
 require_any = require_roles("admin", "editor", "editor-psk", "viewer")
 # editor-psk: kan se og skrive PSK-attributter på endpoints + PSK-politik i settings.
 require_psk_editor = require_roles("admin", "editor-psk")
-# Registrar/registrar_templet må KUN oprette endpoints — ingen browse/edit/delete/audit/admin.
-# registrar_templet er yderligere begrænset: skal bruge skabelon, ingen gruppe/attrs-valg i UI.
+# registrant/registrant_templet må KUN oprette endpoints — ingen browse/edit/delete/audit/admin.
+# registrant_templet er yderligere begrænset: skal bruge skabelon, ingen gruppe/attrs-valg i UI.
 require_edit_endpoint = require_roles("admin", "editor", "editor-psk")
-require_create_endpoint = require_roles("admin", "editor", "editor-psk", "registrar", "registrar_templet")
-require_register_lookup = require_roles("admin", "editor", "editor-psk", "viewer", "registrar", "registrar_templet")
+require_create_endpoint = require_roles("admin", "editor", "editor-psk", "registrant", "registrant_templet")
+require_register_lookup = require_roles("admin", "editor", "editor-psk", "viewer", "registrant", "registrant_templet")
