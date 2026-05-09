@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [4.0.1 build 0219] — 2026-05-09 — fix(tacacs): TAC_PLUS_AUTHEN_TYPE_ASCII importeres fra tacacs_plus.client, ikke .packet
+
+**Berørte filer**: `backend/app/services/tacacs_service.py`, `version.json`, `CHANGELOG.md`
+
+Konstanten lever i `tacacs_plus.client` i version 2.6 — ikke i `tacacs_plus.packet`. Rettede import så TACACS+-test og login ikke fejler med `AttributeError`.
+
+---
+
 ## [4.0.1 build 0218] — 2026-05-09 — fix(auth): fjern separat operatørprofil-katalog, brugere i users.json er nu profiler i TACACS+-mode
 
 **Berørte filer**:

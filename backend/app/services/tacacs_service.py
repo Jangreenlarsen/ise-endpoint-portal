@@ -56,8 +56,7 @@ def authenticate_and_authorize(
     or success=False with an error description on failure.
     """
     try:
-        from tacacs_plus.client import TACACSClient
-        import tacacs_plus.packet as tp
+        from tacacs_plus.client import TACACSClient, TAC_PLUS_AUTHEN_TYPE_ASCII
     except ImportError:
         return TacacsAuthResult(
             success=False,
@@ -77,7 +76,7 @@ def authenticate_and_authorize(
         auth_reply = client.authenticate(
             username=username,
             password=password,
-            authen_type=tp.TAC_PLUS_AUTHEN_TYPE_ASCII,
+            authen_type=TAC_PLUS_AUTHEN_TYPE_ASCII,
         )
         if not auth_reply.valid:
             logger.warning("TACACS+ auth failed for user=%s", username)
