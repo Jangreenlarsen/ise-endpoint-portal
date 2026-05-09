@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [4.0.1 build 0220] — 2026-05-09 — fix(tacacs): send secret som str, ikke bytes (six.b() kalder .encode() internt)
+
+**Berørte filer**: `backend/app/services/tacacs_service.py`, `version.json`, `CHANGELOG.md`
+
+`crypt()` i tacacs-plus 2.6 pakker secret via `six.b(secret)` som kalder `.encode()`. Sendes secret allerede som bytes, fejler det med `'bytes' object has no attribute 'encode'`. Rettede til at sende secret som plain str.
+
+---
+
 ## [4.0.1 build 0219] — 2026-05-09 — fix(tacacs): TAC_PLUS_AUTHEN_TYPE_ASCII importeres fra tacacs_plus.client, ikke .packet
 
 **Berørte filer**: `backend/app/services/tacacs_service.py`, `version.json`, `CHANGELOG.md`

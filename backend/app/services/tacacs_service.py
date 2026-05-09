@@ -67,7 +67,7 @@ def authenticate_and_authorize(
         client = TACACSClient(
             host=server_host,
             port=server_port,
-            secret=secret.encode("utf-8"),
+            secret=secret,
             timeout=timeout,
             family=socket.AF_INET,
         )
