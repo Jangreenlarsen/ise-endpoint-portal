@@ -14,7 +14,6 @@ from app.api import custom_attributes as custom_attrs_api
 from app.api import dacls as dacls_api
 from app.api import endpoint_roles as endpoint_roles_api
 from app.api import endpoints, groups, health, logs, me, oui, users
-from app.api import operator_profiles as operator_profiles_api
 from app.api import templates as templates_api
 from app.api import pxgrid as pxgrid_api
 from app.api import settings as settings_api
@@ -112,7 +111,6 @@ app.include_router(cache_api.router, prefix="/api")
 app.include_router(audit_api.router, prefix="/api")
 app.include_router(oui.router, prefix="/api")
 app.include_router(endpoint_roles_api.router, prefix="/api")
-app.include_router(operator_profiles_api.router, prefix="/api")
 app.include_router(settings_api.auth_config_router, prefix="/api")
 app.include_router(pxgrid_api.router, prefix="/api")
 app.include_router(me.router, prefix="/api")

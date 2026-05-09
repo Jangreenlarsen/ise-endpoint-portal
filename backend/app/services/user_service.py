@@ -132,13 +132,35 @@ def get_user(user_id: str) -> User:
 
 
 async def create_user(payload: UserCreate) -> User:
+    from app.core.auth_config_store import load as load_auth_config
     users = load_users()
     if find_by_username(users, payload.username):
         raise HTTPException(status.HTTP_409_CONFLICT, "Brugernavn findes allerede")
+
+    auth_cfg = load_auth_config()
+    is_tacacs_mode = auth_cfg.get("auth_mode") == "tacacs"
+
+    if payload.password:
+        if len(payload.password) < 8:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                "Password skal være mindst 8 tegn",
+            )
+        password_hash = auth_core.hash_password(payload.password)
+    elif not is_tacacs_mode:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Password er påkrævet i lokal auth-mode",
+        )
+    else:
+        # TACACS+-mode: generer ubrugt tilfældig hash (login sker via TACACS+)
+        import secrets as _secrets
+        password_hash = auth_core.hash_password(_secrets.token_hex(32))
+
     record = {
         "id": str(uuid.uuid4()),
         "username": payload.username,
-        "password_hash": auth_core.hash_password(payload.password),
+        "password_hash": password_hash,
         "role": payload.role,
         "created_at": _now_iso(),
         "last_login": None,
@@ -310,7 +332,6 @@ def setup_first_admin(payload: SetupRequest) -> LoginResponse:
 
 def login(payload: LoginRequest) -> LoginResponse:
     from app.core.auth_config_store import load as load_auth_config
-    from app.core.operator_profile_store import find_by_name, load_profiles
 
     users = load_users()
     record = find_by_username(users, payload.username)
@@ -335,30 +356,28 @@ def login(payload: LoginRequest) -> LoginResponse:
             server_port=auth_cfg["tacacs_server_port"],
             secret=auth_cfg["tacacs_secret"],
             timeout=auth_cfg["tacacs_timeout_seconds"],
-            role_attribute=auth_cfg["tacacs_role_attribute"],
             operator_profile_attribute=auth_cfg["tacacs_operator_profile_attribute"],
         )
 
         if result.success:
-            # Resolve operator profile for endpoint_roles
-            endpoint_roles: list[str] = []
-            effective_role = result.role
+            # Slå operator-profil op i users.json (brugernavn = profilnavn).
+            # TACACS+ klarer auth — portal-profilen bestemmer rolle + endpoint-roller.
+            profile_name = result.operator_profile_name or payload.username
+            profile_record = find_by_username(users, profile_name)
+            if not profile_record:
+                logger.warning(
+                    "TACACS+ auth OK men operatørprofil '%s' ikke fundet i portal — afviser login",
+                    profile_name,
+                )
+                raise HTTPException(
+                    status.HTTP_401_UNAUTHORIZED,
+                    f"Operatørprofil '{profile_name}' er ikke konfigureret i portalen. "
+                    "Kontakt din administrator.",
+                )
 
-            if result.operator_profile_name:
-                profiles = load_profiles()
-                profile = find_by_name(profiles, result.operator_profile_name)
-                if profile:
-                    endpoint_roles = list(profile.get("assigned_endpoint_roles") or [])
-                    if not effective_role:
-                        effective_role = profile.get("default_role", "viewer")
-                else:
-                    logger.warning(
-                        "TACACS+ operatørprofil '%s' ikke fundet i katalog — bruger viewer",
-                        result.operator_profile_name,
-                    )
-
-            if not effective_role:
-                effective_role = "viewer"
+            effective_role = profile_record["role"]
+            endpoint_roles = list(profile_record.get("assigned_endpoint_roles") or [])
+            assigned_templates = list(profile_record.get("assigned_templates") or [])
 
             # Implicit endpoint role = username (samme som lokale brugere)
             if payload.username not in endpoint_roles:
@@ -367,19 +386,24 @@ def login(payload: LoginRequest) -> LoginResponse:
             token = auth_core.create_tacacs_token(
                 username=payload.username,
                 role=effective_role,
-                operator_profile=result.operator_profile_name,
+                operator_profile=profile_name,
                 endpoint_roles=endpoint_roles,
             )
             tacacs_user = User(
                 id=f"tacacs:{payload.username}",
                 username=payload.username,
                 role=effective_role,  # type: ignore[arg-type]
-                created_at="",
+                created_at=profile_record.get("created_at", ""),
                 last_login=_now_iso(),
                 assigned_endpoint_roles=endpoint_roles,
-                assigned_templates=[],
+                assigned_templates=assigned_templates,
             )
-            logger.info("tacacs login: %s role=%s profile=%s", payload.username, effective_role, result.operator_profile_name)
+            logger.info(
+                "tacacs login: user=%s profile=%s role=%s",
+                payload.username,
+                profile_name,
+                effective_role,
+            )
             return LoginResponse(token=token, user=tacacs_user)
 
         # TACACS+ auth fejlede

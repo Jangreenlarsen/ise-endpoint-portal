@@ -30,7 +30,7 @@ class UserMe(User):
 
 class UserCreate(BaseModel):
     username: str = Field(min_length=3, max_length=64)
-    password: str = Field(min_length=8, max_length=256)
+    password: str = Field(default="", max_length=256)
     role: Role = "viewer"
 
 

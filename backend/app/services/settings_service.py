@@ -583,7 +583,6 @@ def get_portal_auth_config() -> PortalAuthConfigResponse:
         tacacs_secret_set=bool(data.get("tacacs_secret")),
         tacacs_timeout_seconds=data["tacacs_timeout_seconds"],
         tacacs_fallback_to_local=data["tacacs_fallback_to_local"],
-        tacacs_role_attribute=data["tacacs_role_attribute"],
         tacacs_operator_profile_attribute=data["tacacs_operator_profile_attribute"],
     )
 
@@ -597,7 +596,6 @@ async def update_portal_auth_config(new: PortalAuthConfigUpdate) -> PortalAuthCo
     data["tacacs_server_port"] = new.tacacs_server_port
     data["tacacs_timeout_seconds"] = new.tacacs_timeout_seconds
     data["tacacs_fallback_to_local"] = new.tacacs_fallback_to_local
-    data["tacacs_role_attribute"] = new.tacacs_role_attribute
     data["tacacs_operator_profile_attribute"] = new.tacacs_operator_profile_attribute
     if new.tacacs_secret:
         data["tacacs_secret"] = new.tacacs_secret
@@ -628,7 +626,6 @@ def test_tacacs_connection(req: TacacsTestRequest) -> TacacsTestResponse:
     port = req.server_port or data["tacacs_server_port"]
     secret = req.secret or data.get("tacacs_secret", "")
     timeout = req.timeout_seconds or data["tacacs_timeout_seconds"]
-    role_attr = data["tacacs_role_attribute"]
     profile_attr = data["tacacs_operator_profile_attribute"]
 
     if not host or not secret:
@@ -644,7 +641,6 @@ def test_tacacs_connection(req: TacacsTestRequest) -> TacacsTestResponse:
         server_port=port,
         secret=secret,
         timeout=timeout,
-        role_attribute=role_attr,
         operator_profile_attribute=profile_attr,
     )
     if not result.success:
@@ -652,7 +648,6 @@ def test_tacacs_connection(req: TacacsTestRequest) -> TacacsTestResponse:
 
     return TacacsTestResponse(
         ok=True,
-        message="TACACS+ auth og authz lykkedes",
-        role=result.role,
+        message="TACACS+ auth lykkedes",
         operator_profile=result.operator_profile_name,
     )

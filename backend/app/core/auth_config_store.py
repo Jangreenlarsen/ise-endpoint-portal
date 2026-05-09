@@ -18,7 +18,6 @@ _DEFAULTS: dict[str, Any] = {
     "tacacs_secret": "",
     "tacacs_timeout_seconds": 5,
     "tacacs_fallback_to_local": True,
-    "tacacs_role_attribute": "portal-role",
     "tacacs_operator_profile_attribute": "portal-operator-profile",
 }
 

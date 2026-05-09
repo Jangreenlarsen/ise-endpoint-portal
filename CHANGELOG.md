@@ -3,6 +3,18 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [4.0.1 build 0218] — 2026-05-09 — fix(auth): fjern separat operatørprofil-katalog, brugere i users.json er nu profiler i TACACS+-mode
+
+**Berørte filer**:
+- `frontend/js/views/settings.js` — fjernet Operatørprofiler-CRUD-blok fra Portal Auth Config; password-felt valgfrit i TACACS+-mode
+- `backend/app/main.py` — fjernet operator_profiles_api router (ubrugt)
+- `version.json`, `CHANGELOG.md`
+
+**Beskrivelse**:
+Droppes det separate `operator_profiles.json`-katalog. Brugere i `users.json` fungerer nu direkte som operatørprofiler i TACACS+-mode: TACACS+-serveren returnerer `portal-operator-profile`-attributten, portalen slår brugernavnet op og bruger rolle + endpoint-roller + skabeloner derfra. Password-feltet i opret-bruger-formularen er ikke påkrævet i TACACS+-mode.
+
+---
+
 ## [4.0.0 build 0217] — 2026-05-09 — feat(auth): TACACS+ portal-autentisering + operatørprofiler + registrar→registrant rename
 
 **Berørte filer**:

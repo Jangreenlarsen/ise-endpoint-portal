@@ -277,7 +277,6 @@ class PortalAuthConfigUpdate(BaseModel):
     tacacs_secret: str = ""
     tacacs_timeout_seconds: int = Field(default=5, ge=1, le=60)
     tacacs_fallback_to_local: bool = True
-    tacacs_role_attribute: str = "portal-role"
     tacacs_operator_profile_attribute: str = "portal-operator-profile"
 
 
@@ -290,7 +289,6 @@ class PortalAuthConfigResponse(BaseModel):
     tacacs_secret_set: bool = Field(..., description="true hvis en shared secret er gemt")
     tacacs_timeout_seconds: int
     tacacs_fallback_to_local: bool
-    tacacs_role_attribute: str
     tacacs_operator_profile_attribute: str
 
 
@@ -308,6 +306,4 @@ class TacacsTestRequest(BaseModel):
 class TacacsTestResponse(BaseModel):
     ok: bool
     message: str
-    role: str | None = None
     operator_profile: str | None = None
-    attributes: dict[str, str] = Field(default_factory=dict)

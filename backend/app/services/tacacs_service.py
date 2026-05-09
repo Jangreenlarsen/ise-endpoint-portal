@@ -3,15 +3,15 @@
 Authentication flow:
   1. Send Authentication START to TACACS+ server with username + password.
   2. If PASS: send Authorization REQUEST to retrieve portal attributes.
-  3. Map returned attributes to portal role + operator profile name.
-  4. Caller resolves operator profile name to endpoint roles / templates.
+  3. Return the operator-profile attribute — caller looks up the matching
+     portal user record (users.json) to get role, endpoint roles and templates.
 
-TACACS+ attribute conventions (configure on your TACACS+ server):
-  portal-role            = editor | editor_psk | viewer | super_admin | registrant
-  portal-operator-profile = <profile name as defined in portal operator catalog>
+TACACS+ attribute convention (configure on your TACACS+ server):
+  portal-operator-profile = <username as defined in portal user catalog>
 
-If only portal-operator-profile is returned, the profile's default_role is used.
-If portal-role is also returned it overrides the profile's default_role.
+The operator profile name returned by the TACACS+ server must match a username
+in the portal user catalog exactly (case-insensitive). That user's role,
+endpoint roles and templates are applied — no role is negotiated via TACACS+.
 """
 from __future__ import annotations
 
@@ -21,20 +21,10 @@ from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
-# Maps TACACS+ attribute value → portal Role literal
-_ROLE_MAP: dict[str, str] = {
-    "super_admin": "admin",
-    "editor": "editor",
-    "editor_psk": "editor-psk",
-    "viewer": "viewer",
-    "registrant": "registrant",
-}
-
 
 @dataclass
 class TacacsAuthResult:
     success: bool
-    role: str | None = None
     operator_profile_name: str | None = None
     error: str | None = None
 
@@ -58,12 +48,11 @@ def authenticate_and_authorize(
     server_port: int,
     secret: str,
     timeout: int,
-    role_attribute: str,
     operator_profile_attribute: str,
 ) -> TacacsAuthResult:
     """Perform TACACS+ authentication then authorization.
 
-    Returns TacacsAuthResult with success=True and role/profile on PASS,
+    Returns TacacsAuthResult with success=True and operator_profile_name on PASS,
     or success=False with an error description on failure.
     """
     try:
@@ -94,7 +83,7 @@ def authenticate_and_authorize(
             logger.warning("TACACS+ auth failed for user=%s", username)
             return TacacsAuthResult(success=False, error="Forkert brugernavn eller password")
 
-        # Step 2: Authorization — fetch portal attributes
+        # Step 2: Authorization — fetch operator-profile attribute
         authz_reply = client.authorize(
             username=username,
             arguments=[
@@ -110,32 +99,25 @@ def authenticate_and_authorize(
         attrs = _parse_attributes(raw_attrs)
         logger.debug("TACACS+ authz attrs for %s: %s", username, attrs)
 
-        role_attr_key = role_attribute.lower()
         profile_attr_key = operator_profile_attribute.lower()
-
-        tacacs_role_value = attrs.get(role_attr_key)
         operator_profile_name = attrs.get(profile_attr_key)
 
-        # Map TACACS+ role value to portal role
-        role: str | None = None
-        if tacacs_role_value:
-            role = _ROLE_MAP.get(tacacs_role_value.lower())
-            if not role:
-                logger.warning(
-                    "Ukendt TACACS+ rolle '%s' for user=%s — ignorerer",
-                    tacacs_role_value,
-                    username,
-                )
+        if not operator_profile_name:
+            # Fallback: brug selve brugernavnet som profil-lookup
+            operator_profile_name = username
+            logger.debug(
+                "TACACS+ returnerede ingen %s attribut for %s — bruger username som profil",
+                profile_attr_key,
+                username,
+            )
 
         logger.info(
-            "TACACS+ login ok: user=%s role=%s operator_profile=%s",
+            "TACACS+ login ok: user=%s operator_profile=%s",
             username,
-            role,
             operator_profile_name,
         )
         return TacacsAuthResult(
             success=True,
-            role=role,
             operator_profile_name=operator_profile_name,
         )
 
