@@ -2,7 +2,7 @@
 
 Web-baseret administrationssystem til Cisco ISE 3.4 endpoint-management via REST API og pxGrid 2.0.
 
-**Version 3.15.5 build 0168** — [Fuld manual](docs/INDEX.md) — [Changelog](CHANGELOG.md)
+**Version 4.0.1 build 0220** — [Fuld manual](docs/INDEX.md) — [Changelog](CHANGELOG.md)
 
 ---
 
@@ -40,9 +40,10 @@ De to protokoller supplerer hinanden: REST til management, pxGrid til observabil
 - MnT-poll fallback naar pxGrid ikke er aktiveret
 
 ### Adgangskontrol
-- Roller: `admin`, `editor`, `editor-psk`, `viewer`, `registrar`
+- Roller: `admin`, `editor`, `editor-psk`, `viewer`, `registrant`, `registrant_templet`
 - System adm — tag-baseret scopning: brugere ser og redigerer kun endpoints tagget med deres system adm-rolle
 - PSK-management — MPSK/IPSK mode, PSK_Key og PSK_Mode custom attributes, editor-psk rolle
+- **TACACS+-autentisering** — portal-login via ekstern TACACS+-server; brugerprofiler i portalen bestemmer rolle og adgang (admin logges altid lokalt)
 
 ### Cache og ydelse
 - To-lags cache — in-memory (TTL + stale-while-revalidate) og disk-persistens
@@ -86,7 +87,8 @@ Abn `http://localhost:8000` — forste gang vises setup-flow til oprettelse af a
 | Open API | Aktiveret samme sted |
 | ISE-bruger | Rollen ERS Admin (laes + skriv); MnT Admin til session-status og CoA |
 | pxGrid (valgfri) | pxGrid Services aktiveret i ISE; certifikat-opsaetning beskrives i manualen |
-| Netvaerk | Backend skal naes ISE pa port 443 (REST) og 8910 (pxGrid) |
+| TACACS+ (valgfri) | Ekstern TACACS+-server paa TCP/49; shared secret og attribut-konfiguration beskrevet i manualen |
+| Netvaerk | Backend skal naes ISE pa port 443 (REST) og 8910 (pxGrid); TACACS+-server pa port 49 |
 
 ---
 
@@ -98,7 +100,7 @@ Abn `http://localhost:8000` — forste gang vises setup-flow til oprettelse af a
 | [docs/01-OVERBLIK.md](docs/01-OVERBLIK.md) | Systemoverblik, arkitektur, protokoller, roller, dataflow |
 | [docs/02-INSTALLATION.md](docs/02-INSTALLATION.md) | Installation, ISE-konfiguration, opstart |
 | [docs/03-BRUGERGUIDE.md](docs/03-BRUGERGUIDE.md) | Brugervejledning for alle portal-sider |
-| [docs/04-ADMIN.md](docs/04-ADMIN.md) | Administratorvejledning: brugere, settings, opdatering, logs |
+| [docs/04-ADMIN.md](docs/04-ADMIN.md) | Administratorvejledning: brugere, settings, TACACS+, opdatering, logs |
 | [docs/05-DRIFT.md](docs/05-DRIFT.md) | Drift, backup, fejlsoegning, ydelsestuning |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Teknisk lag-arkitektur og regler |
 | [ISE_API_REFERENCE.md](ISE_API_REFERENCE.md) | Cisco ISE 3.4 ERS og Open API reference |
@@ -108,5 +110,5 @@ Abn `http://localhost:8000` — forste gang vises setup-flow til oprettelse af a
 
 ## Teknologier
 
-Backend: Python 3.11+, FastAPI, httpx (async), Pydantic v2, PyJWT, bcrypt.
+Backend: Python 3.11+, FastAPI, httpx (async), Pydantic v2, PyJWT, bcrypt, tacacs-plus.
 Frontend: Vanilla HTML/CSS/JS — ingen build-trin, ingen externe afhangigheder.

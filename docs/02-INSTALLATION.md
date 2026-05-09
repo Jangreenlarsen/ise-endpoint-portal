@@ -1,4 +1,4 @@
-<!-- Version: 3.15.5 | Opdateret: 2026-05-07 -->
+<!-- Version: 4.0.1 | Opdateret: 2026-05-09 -->
 
 # 02 — Installation og første opsætning
 
@@ -27,6 +27,17 @@
 | Netværk | Backend skal nå ISE på port **443** (REST) og port **8910** (pxGrid) |
 
 Det anbefales at oprette en dedikeret ISE service-account til portalen fremfor at genbruge en personlig admin-konto. Kontoen behøver ikke *SUPER ADMIN* — kun ERS Admin og MnT Admin.
+
+### TACACS+-server (valgfri)
+
+Kræves kun hvis portal-login skal gå via TACACS+ i stedet for lokal auth.
+
+| Krav | Detaljer |
+|---|---|
+| TACACS+-server | Cisco ISE TACACS+, Cisco ACS, tac_plus eller tilsvarende |
+| TCP-port | Backend skal nå TACACS+-serveren på port **49** |
+| Shared secret | Konfigureres i Settings → Portal Auth Config |
+| Attribut | Serveren skal returnere `portal-operator-profile = <profilnavn>` i Authorization-svar |
 
 ---
 
@@ -62,7 +73,7 @@ source .venv/bin/activate
 pip install -e .
 ```
 
-`pip install -e .` installerer portalen i editérbar tilstand via `pyproject.toml`. Alle afhængigheder (FastAPI, httpx, Pydantic v2, PyJWT, bcrypt m.fl.) hentes automatisk.
+`pip install -e .` installerer portalen i editérbar tilstand via `pyproject.toml`. Alle afhængigheder (FastAPI, httpx, Pydantic v2, PyJWT, bcrypt, tacacs-plus m.fl.) hentes automatisk.
 
 ### 4. Start portalen
 
@@ -87,6 +98,8 @@ python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --app-dir backend
 1. Udfyld brugernavn og adgangskode for den første admin-konto.
 2. Klik **Opret admin-bruger**.
 3. Du logges automatisk ind og dirigeres til Settings.
+
+Admin-brugeren valideres altid lokalt — også når TACACS+ er aktiveret.
 
 ### 6. Konfigurér ISE-forbindelsen
 
@@ -134,14 +147,16 @@ Tjek at kontoen kan autentificere ved at kalde `https://<ISE>:9060/ers/config/en
 
 ## Konfigurationsfiler
 
-Portalen gemmer sin tilstand i to filer under `backend/data/`:
+Portalen gemmer sin tilstand i filer under `backend/data/` (eller `backend/` afhængig af build):
 
 | Fil | Indhold |
 |---|---|
-| `users.json` | Portal-brugere (bcrypt-hashede passwords, roller, system adm-tags) |
-| `settings_overrides.json` | Alle Settings der er gemt via UI (ISE-host, timeouts, cache-parametre, m.m.) |
+| `users.json` | Portal-brugere (bcrypt-hashede passwords, roller, System adm-tags, skabeloner) |
+| `settings_overrides.json` | ISE-forbindelsesindstillinger, cache-parametre, pxGrid-config m.m. |
+| `auth_config.json` | Portal Auth Config: auth-mode, TACACS+-server, secret (maskeret ved visning) |
+| `roles.json` | System adm-katalog (brugerdefinerede tags) |
 
-Disse filer oprettes automatisk ved første opstart. De er ikke versioneret i git (`.gitignore`). Sørg for at tage backup af `backend/data/` regelmæssigt — se [05-DRIFT.md](05-DRIFT.md#backup).
+Disse filer oprettes automatisk ved første opstart. De er ikke versioneret i git (`.gitignore`). Sørg for at tage backup af disse filer regelmæssigt — se [05-DRIFT.md](05-DRIFT.md#backup).
 
 DiskCache gemmes som standard i `backend/cache/endpoints.json`. Stien kan ændres i Settings → Cache.
 
@@ -183,3 +198,4 @@ Efter opsætning kan følgende tjekkes:
 | Browse-farvning | Grøn/rød farve vises (kræver pxGrid eller MnT) |
 | `http://localhost:8000/api/health` | `{"status": "ok"}` |
 | `backend/logs/app.log` | ISE-kald logges uden CRITICAL-fejl |
+| Settings → Portal Auth Config → Test TACACS+ | "TACACS+ auth OK" (kun ved TACACS+-mode) |

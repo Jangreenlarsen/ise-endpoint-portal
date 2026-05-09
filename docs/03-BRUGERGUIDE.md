@@ -1,4 +1,4 @@
-<!-- Version: 3.15.5 | Opdateret: 2026-05-07 -->
+<!-- Version: 4.0.1 | Opdateret: 2026-05-09 -->
 
 # 03 — Brugervejledning
 
@@ -199,17 +199,20 @@ Kun brugere med rollen **editor-psk** (og admin) kan se umaskerede PSK-nøgler o
 
 ---
 
-## Register-view (registrar)
+## Register-view (registrant / registrant_templet)
 
-Registrar-rollen har adgang til et mobiloptimeret register-view tilpasset fieldteknikere der registrerer nyt udstyr on-the-spot.
+Rollerne `registrant` og `registrant_templet` har adgang til et mobiloptimeret register-view tilpasset fieldteknikere der registrerer nyt udstyr on-the-spot.
+
+**registrant** ser det fulde opret-formular med alle felter.
+
+**registrant_templet** ser et forenklet formular — kun valg af skabelon, MAC-adresse og beskrivelse. Admin tildeler hvilke skabeloner den pågældende bruger har adgang til.
 
 Viewet viser:
 
 - Kun de endpoints der er tagget med brugerens username (egne endpoints)
-- Et forenklet opret-formular med kun de nødvendige felter
 - En "Mine endpoints"-liste som henter data på tværs af alle ISE-sider
 
-Registrar kan ikke redigere endpoints eller se andre brugeres data.
+Registrant kan ikke redigere endpoints eller se andre brugeres data.
 
 ---
 

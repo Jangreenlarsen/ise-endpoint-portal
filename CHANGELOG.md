@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [4.0.1 build 0221] — 2026-05-09 — docs: opdater README + docs/ til v4 (TACACS+, registrant-roller, Portal Auth Config)
+
+**Berørte filer**: `README.md`, `docs/INDEX.md`, `docs/01-OVERBLIK.md`, `docs/02-INSTALLATION.md`, `docs/03-BRUGERGUIDE.md`, `docs/04-ADMIN.md`, `docs/05-DRIFT.md`, `version.json`, `CHANGELOG.md`
+
+Dokumentation opdateret til version 4.0.1: TACACS+-autentisering forklaret (principper, konfiguration, TACACS+-serveropsætning, dataflow-scenarie), Portal Auth Config-sektion tilføjet til 04-ADMIN, registrar → registrant + registrant_templet opdateret overalt, tacacs-plus tilføjet til teknologiliste og forudsætninger, auth_config.json tilføjet til konfigurationsfil-oversigt.
+
+---
+
 ## [4.0.1 build 0220] — 2026-05-09 — fix(tacacs): send secret som str, ikke bytes (six.b() kalder .encode() internt)
 
 **Berørte filer**: `backend/app/services/tacacs_service.py`, `version.json`, `CHANGELOG.md`

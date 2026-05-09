@@ -1,4 +1,4 @@
-<!-- Version: 3.15.5 | Opdateret: 2026-05-07 -->
+<!-- Version: 4.0.1 | Opdateret: 2026-05-09 -->
 
 # 04 — Administratorvejledning
 
@@ -6,18 +6,17 @@
 
 ## Brugerstyring
 
-Brugere administreres under Settings → Brugere. Kun admin-brugere har adgang til denne sektion.
+Brugere administreres under Settings → Brugere & Bruger grupper. Kun admin-brugere har adgang til denne sektion.
 
 ### Opret bruger
 
-1. Klik "Opret bruger".
-2. Angiv brugernavn (unikt, kun alfanumeriske tegn og bindestreg).
-3. Angiv initialt password. Password hashes med bcrypt inden lagring.
+1. Klik "Opret bruger" (formularen nederst i brugertabellen).
+2. Angiv brugernavn (unikt, kun alfanumeriske tegn og bindestreg, 3–64 tegn).
+3. Angiv initialt password (min. 8 tegn). I **TACACS+-mode** er password-feltet valgfrit — TACACS+-serveren håndterer autentiseringen. Lades det tomt genereres et tilfældigt hash der aldrig bruges.
 4. Vælg rolle.
-5. Tildel eventuelt System adm-tags (se nedenfor).
-6. Klik Gem.
+5. Klik **Opret bruger**.
 
-Portalen opretter automatisk et System adm-tag i kataloget med navn = brugerens username. Tagget kan bruges til at mærke endpoints så den pågældende bruger altid kan se sine egne endpoints.
+Portalen opretter automatisk et System adm-tag i kataloget med navn = brugerens username. Tagget kan bruges til at mærke endpoints så den pågældende bruger altid kan se sine egne endpoints. Tagget tildeles også brugeren automatisk.
 
 ### Roller
 
@@ -27,7 +26,8 @@ Portalen opretter automatisk et System adm-tag i kataloget med navn = brugerens 
 | **editor** | Opret, rediger og slet endpoints, attributter og DACL'er; send CoA |
 | **editor-psk** | Som editor, plus kan se og redigere umaskerede PSK-nøgler |
 | **viewer** | Læseadgang til Browse; ingen skrivning |
-| **registrar** | Kan kun oprette endpoints via det mobiloptimerede register-view |
+| **registrant** | Kan kun oprette endpoints via det mobiloptimerede register-view (alle formularfelter) |
+| **registrant_templet** | Begrænset registrering — vælger en skabelon og udfylder kun MAC og beskrivelse |
 
 ### Slet bruger
 
@@ -35,11 +35,21 @@ Klik skraldespands-ikonet ud for brugeren og bekræft. Sletning er permanent; en
 
 ### Skift password
 
-Alle brugere kan skifte eget password via Settings → Skift password. Admin kan sætte et nyt password på enhver bruger via Users-siden uden at kende det gamle.
+Alle brugere kan skifte eget password via Settings → Skift password. Admin kan sætte et nyt password på enhver bruger via Users-siden uden at kende det gamle. TACACS+-brugere kan ikke skifte password via portalen (TACACS+-serveren administrerer passwords).
 
 ### System adm-tildeling
 
-Under hver bruger i Users-siden kan admin vælge hvilke System adm-tags brugeren er tildelt. En bruger med tag `PLC-HalA` ser kun endpoints der er tagget med `PLC-HalA` (samt endpoints tagget med brugerens eget username). Admin ser altid alle endpoints.
+Under hver bruger i Users-siden kan admin vælge hvilke System adm-tags brugeren er tildelt via checkboxe. En bruger med tag `PLC-HalA` ser kun endpoints der er tagget med `PLC-HalA` (samt endpoints tagget med brugerens eget username). Admin ser altid alle endpoints.
+
+### Skabelon-tildeling (registrant_templet)
+
+Brugere med rollen `registrant_templet` tildeles specifikke skabeloner via checkboxe i brugertabellen. Kun de tildelte skabeloner er tilgængelige i brugerens register-view.
+
+### Brugere som operatørprofiler (TACACS+-mode)
+
+Når TACACS+-autentisering er aktiveret, fungerer portal-brugerne som **operatørprofiler**: TACACS+-serveren sender attributten `portal-operator-profile = <profilnavn>` i sit Authorization-svar. Portalen slår profilnavnet op som et brugernavn i Users-listen og bruger den matchede brugers rolle, System adm-tags og skabeloner.
+
+Profilnavn i TACACS+-serveren skal matche brugernavnet i portalen **præcist**. Admin-brugere logges altid ind lokalt.
 
 ---
 
@@ -97,9 +107,68 @@ Viser kataloget over System adm-tags. Admin kan:
 
 Tags der er i brug på ISE-endpoints bør fjernes fra endpoints før tagget slettes, ellers forbliver `HypervisionRoles`-attributten på endpoints uændret.
 
+### Portal Auth Config (TACACS+)
+
+Se [Portal Auth Config (TACACS+)](#portal-auth-config-tacacs) nedenfor.
+
 ### Portal-opdatering
 
 Se [System-opdatering](#system-opdatering) nedenfor.
+
+---
+
+## Portal Auth Config (TACACS+)
+
+Settings → Portal Auth Config giver mulighed for at vælge om portal-brugere autentiseres lokalt (standard) eller via en ekstern TACACS+-server.
+
+### Auth-mode
+
+| Valg | Beskrivelse |
+|---|---|
+| **Lokal** | Portalen validerer password mod det lokalt gemte bcrypt-hash. Standard. |
+| **TACACS+** | Portalen sender credentials til TACACS+-serveren. Profil og adgangsrettigheder hentes fra den matchede portal-bruger. |
+
+Admin-brugere valideres **altid lokalt** uanset auth-mode. Det sikrer adgang selv ved TACACS+-serverfejl.
+
+### TACACS+-indstillinger
+
+| Felt | Default | Beskrivelse |
+|---|---|---|
+| **TACACS+ server host** | — | Hostname eller IP på TACACS+-serveren |
+| **Port** | 49 | TCP-port. Cisco standard er 49 |
+| **Shared secret** | — | Fælles nøgle konfigureret på TACACS+-serveren. Gemmes krypteret; vises ikke igen |
+| **Timeout (sek.)** | 5 | Sekunder portalen venter på TACACS+-svar. Øg ved langsom forbindelse |
+| **Fallback til lokal auth** | Ja | Hvis TACACS+-serveren er utilgængelig: forsøg lokal auth. Deaktivér for at blokere login ved TACACS+-fejl |
+| **Operator-profil attribut** | `portal-operator-profile` | Det TACACS+-attributnavn der indeholder profilnavnet. Ændres kun ved afvigelse fra standard |
+
+### Test TACACS+-forbindelsen
+
+Klik **Test TACACS+** og angiv et testbrugernavn og -password. Portalen udfører et komplet auth + authorization-flow mod TACACS+-serveren og viser:
+
+- **OK**: returneret operatørprofil-navn. Kontrollér at dette navn matcher et brugernavn i "Brugere & Bruger grupper".
+- **Fejl**: fejlbeskrivelse — typisk forkerte credentials, forkert server/port, forkert shared secret eller netværksproblem.
+
+### TACACS+-server konfiguration
+
+TACACS+-serveren skal returnere `portal-operator-profile`-attributten i Authorization-svaret. Attributten sættes per bruger eller per gruppe. Eksempel (Cisco ISE TACACS+ Shell Profile):
+
+```
+Shell Profile: portal-netadmin
+  Custom Attributes:
+    Attribute: portal-operator-profile
+    Value: netadmin
+```
+
+Profilnavnet (`netadmin`) skal præcist matche brugernavnet i portalen. Portalen er case-sensitive i opslaget.
+
+Hvis TACACS+-serveren ikke returnerer attributten, bruges selve login-brugernavnet som fallback-profil.
+
+### Aktivering af TACACS+-mode
+
+1. Opret portal-brugere der matcher TACACS+-profilnavne (Settings → Brugere).
+2. Udfyld TACACS+-indstillinger og klik **Test TACACS+** for at verificere.
+3. Gem indstillingerne — auth-mode skifter øjeblikkeligt.
+4. Eksisterende lokal-auth-sessioner beholdes til token-udløb.
 
 ---
 
@@ -212,14 +281,14 @@ Logs-siden (kun admin) viser de seneste entries fra `backend/logs/app.log` i rea
 
 | Log-niveau | Typisk indhold | Handling |
 |---|---|---|
-| **INFO** | Vellykkede ISE-operationer, opstart, cache-events | Ingen — normal drift |
-| **WARNING** | Stale cache-hits, ISE-svartider over threshold, rate-limit-signaler | Overvåg — kan eskalere |
+| **INFO** | Vellykkede ISE-operationer, opstart, cache-events, TACACS+-login | Ingen — normal drift |
+| **WARNING** | Stale cache-hits, ISE-svartider over threshold, TACACS+-fejl, ukendte operatørprofiler | Overvåg — kan eskalere |
 | **ERROR** | Fejlede ISE-kald, auth-fejl, pxGrid-fejl | Undersøg årsag |
 | **CRITICAL** | Ubehandlede exceptions, disk-fejl | Handl straks |
 
 ### Filtrering
 
-Filtrér på log-niveau (DEBUG/INFO/WARNING/ERROR) og fritekst. Søg f.eks. på `pxgrid` for at isolere pxGrid-relaterede hændelser, eller på et specifikt endpoint-ID for at følge en operationssekvens.
+Filtrér på log-niveau (DEBUG/INFO/WARNING/ERROR) og fritekst. Søg f.eks. på `pxgrid` for at isolere pxGrid-relaterede hændelser, på `tacacs` for TACACS+-hændelser, eller på et specifikt endpoint-ID for at følge en operationssekvens.
 
 ### Log-rotation
 

@@ -1,4 +1,4 @@
-<!-- Version: 3.15.5 | Opdateret: 2026-05-07 -->
+<!-- Version: 4.0.1 | Opdateret: 2026-05-09 -->
 
 # 01 — Systemoverblik
 
@@ -24,17 +24,17 @@ Portalen løser tre konkrete problemer med ISE's native GUI:
 |   (HTML/JS)       | < ─────────────────────── |   (Python 3.11+)    |
 +-------------------+    SSE (pxGrid events)    +----------+----------+
                                                            |
-                          +────────────────────────────────+
-                          |                                |
-                          v  HTTPS port 443                v  WSS port 8910
-               +──────────────────────+        +──────────────────────+
-               |   Cisco ISE 3.4      |        |   ISE pxGrid 2.0     |
-               |   ERS / Open API /   |        |   pubsub-node        |
-               |   MnT API            |        |   (WebSocket/STOMP)  |
-               +──────────────────────+        +──────────────────────+
+                          +────────────────────────────────+──────────────────+
+                          |                                |                  |
+                          v  HTTPS port 443                v  WSS port 8910   v  TCP port 49
+               +──────────────────────+        +──────────────────────+   +──────────────+
+               |   Cisco ISE 3.4      |        |   ISE pxGrid 2.0     |   |  TACACS+     |
+               |   ERS / Open API /   |        |   pubsub-node        |   |  server      |
+               |   MnT API            |        |   (WebSocket/STOMP)  |   |  (valgfri)   |
+               +──────────────────────+        +──────────────────────+   +──────────────+
 ```
 
-Frontend taler udelukkende med backend. Backend er den eneste komponent der kommunikerer med ISE. Ingen ISE-credentials eksponeres til browseren.
+Frontend taler udelukkende med backend. Backend er den eneste komponent der kommunikerer med ISE og TACACS+. Ingen ISE-credentials eller TACACS+-secrets eksponeres til browseren.
 
 Backend er opdelt i fire lag:
 
@@ -141,7 +141,7 @@ Når portalen opretter, opdaterer eller sletter et endpoint opdateres cache-entr
 
 ## Bruger-roller og adgangskontrol
 
-Portalen har fem bruger-roller:
+Portalen har seks bruger-roller:
 
 | Rolle | Adgang |
 |---|---|
@@ -149,13 +149,47 @@ Portalen har fem bruger-roller:
 | **editor** | Opret, rediger og slet endpoints, attributter, DACL'er, CoA |
 | **editor-psk** | Som editor, plus kan se og redigere PSK-nøgler (umaskerede) |
 | **viewer** | Kun læsning — kan se Browse men ikke redigere |
-| **registrar** | Kan kun oprette endpoints via det mobiloptimerede register-view |
+| **registrant** | Kan oprette endpoints via det mobiloptimerede register-view (alle formularfelter) |
+| **registrant_templet** | Begrænset registrering — vælger skabelon og udfylder kun MAC og beskrivelse |
 
 ### System adm (endpoint-scoping)
 
-Ud over de fem portal-roller har portalen et tag-baseret endpoint-scoping-system kaldet "System adm". Admin definerer et katalog af tags (f.eks. `PLC-HalA`, `alle-Printer`). Tags tildeles endpoints via `HypervisionRoles`-custom-attributten i ISE. Brugere tildeles et eller flere tags; de ser kun endpoints der matcher mindst ét af deres tags. Admin ser altid alle endpoints uanset tags.
+Ud over de seks portal-roller har portalen et tag-baseret endpoint-scoping-system kaldet "System adm". Admin definerer et katalog af tags (f.eks. `PLC-HalA`, `alle-Printer`). Tags tildeles endpoints via `HypervisionRoles`-custom-attributten i ISE. Brugere tildeles et eller flere tags; de ser kun endpoints der matcher mindst ét af deres tags. Admin ser altid alle endpoints uanset tags.
 
-Hver bruger har desuden automatisk sit eget username som implicit tag, så endpoints tagget med brugerens username altid er synlige for den pågældende bruger.
+Hver bruger har desuden automatisk sit eget username som implicit tag, så endpoints tagget med brugerens username altid er synlige for den pågældende bruger. Ved oprettelse af en ny bruger oprettes automatisk et System adm-tag med navn = brugerens username.
+
+---
+
+## TACACS+-autentisering
+
+Fra version 4.0.0 understøtter portalen ekstern TACACS+-autentisering som alternativ til lokal passwordvalidering.
+
+### Principper
+
+- **TACACS+-serveren autentiserer** — portalen sender brugernavn og password til TACACS+-serveren via TCP/49. Kun serveren validerer credentials.
+- **Portalen bestemmer adgang** — TACACS+-serveren returnerer et profilnavn via attributten `portal-operator-profile`. Portalen slår det op i sin lokale brugerliste (`users.json`) og bruger den matchede brugers rolle, System adm-tags og skabeloner.
+- **Admin er altid lokal** — brugere med rollen `admin` valideres altid mod det lokale bcrypt-hashedede password, uanset TACACS+-konfigurationen. Det sikrer nødadgang selv hvis TACACS+-serveren er utilgængelig.
+- **Fallback til lokal auth** — hvis TACACS+-serveren er utilgængelig eller afviser, kan portalen konfigureres til at forsøge lokal auth som fallback (konfigurerbar).
+
+### Brugere som operatørprofiler
+
+I TACACS+-mode fungerer de eksisterende portal-brugere som operatørprofiler. Brugernavn i portalen skal matche den profilværdi TACACS+-serveren sender i `portal-operator-profile`-attributten. Passwordfeltet på portalprofiler er ikke i brug i TACACS+-mode — TACACS+-serveren håndterer autentiseringen.
+
+### Konfiguration af TACACS+-server
+
+TACACS+-serveren skal konfigureres til at returnere attributten `portal-operator-profile` med den ønskede profilværdi i Authorization-responsen. Eksempel (Cisco ACS / ISE TACACS):
+
+```
+Shell Profile:
+  Custom Attributes:
+    portal-operator-profile = netadmin
+```
+
+Profilnavnet `netadmin` skal matche et brugernavn i portalen præcist.
+
+### Sessionsmodel
+
+TACACS+-brugere får et JWT-token med `auth_type=tacacs`. Portalen opretter ingen permanent session i `users.json` — sessionens rolle og adgang er indlejret i tokenet og udløber med det. Password-skift via portalen er ikke muligt for TACACS+-brugere.
 
 ---
 
@@ -189,3 +223,13 @@ Hver bruger har desuden automatisk sit eget username som implicit tag, så endpo
 5. Worker broadcaster `upsert`-event på SSE-bus.
 6. Alle åbne Browse-faner modtager SSE-event og farver den pågældende rækkes checkbox grøn.
 7. Ingen ISE-kald fra frontend; ingen polling.
+
+### Scenarie 4: TACACS+-login
+
+1. Bruger indtaster brugernavn og password i portalens login-side.
+2. Backend tjekker om bruger er admin i `users.json` — i så fald bruges lokal auth.
+3. Ellers sender backend brugernavn + password til TACACS+-serveren via TCP/49.
+4. TACACS+-serveren returnerer PASS med attributten `portal-operator-profile = netadmin`.
+5. Backend slår `netadmin` op i `users.json`, henter rolle og System adm-tags.
+6. Backend udsteder JWT-token med `auth_type=tacacs` og brugerens rettigheder.
+7. Bruger er logget ind; alle efterfølgende API-kald valideres mod tokenet.

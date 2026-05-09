@@ -1,8 +1,8 @@
-<!-- Version: 3.15.5 | Opdateret: 2026-05-07 -->
+<!-- Version: 4.0.1 | Opdateret: 2026-05-09 -->
 
 # HyperVision ISE Portal — Dokumentationsindeks
 
-Dette er hoveddokumentet for HyperVision ISE Portal version **3.15.5 build 0168**. Alle sektioner i manualen er selvstændige filer; dette dokument fungerer som navigationspunkt og overblik over dokumentationsstrukturen.
+Dette er hoveddokumentet for HyperVision ISE Portal version **4.0.1 build 0220**. Alle sektioner i manualen er selvstændige filer; dette dokument fungerer som navigationspunkt og overblik over dokumentationsstrukturen.
 
 ---
 
@@ -16,7 +16,7 @@ docs/
   01-OVERBLIK.md      — systemkomponenter, arkitektur, integrationer, roller
   02-INSTALLATION.md  — forudsætninger, installation, ISE-konfiguration
   03-BRUGERGUIDE.md   — vejledning for alle portal-sider
-  04-ADMIN.md         — administration, settings, pxGrid, opdatering
+  04-ADMIN.md         — administration, settings, TACACS+, pxGrid, opdatering
   05-DRIFT.md         — drift, backup, fejlsøgning, ydelsestuning
 ```
 
@@ -32,6 +32,7 @@ docs/
 - [pxGrid 2.0](01-OVERBLIK.md#pxgrid-20)
 - [Cache-arkitektur](01-OVERBLIK.md#cache-arkitektur)
 - [Bruger-roller og adgangskontrol](01-OVERBLIK.md#bruger-roller-og-adgangskontrol)
+- [TACACS+-autentisering](01-OVERBLIK.md#tacacs-autentisering)
 - [Dataflow-eksempler](01-OVERBLIK.md#dataflow-eksempler)
 
 ### [02 — Installation](02-INSTALLATION.md)
@@ -57,6 +58,7 @@ docs/
 
 - [Brugerstyring](04-ADMIN.md#brugerstyring)
 - [Settings-sektioner](04-ADMIN.md#settings-sektioner)
+- [Portal Auth Config (TACACS+)](04-ADMIN.md#portal-auth-config-tacacs)
 - [Cache-indstillinger](04-ADMIN.md#cache-indstillinger)
 - [pxGrid-opsætning](04-ADMIN.md#pxgrid-opsætning)
 - [System-opdatering](04-ADMIN.md#system-opdatering)
@@ -79,4 +81,5 @@ Nyeste øverst. Kun ændringer i selve dokumentationen registreres her — for k
 
 | Version | Dato | Ændring |
 |---|---|---|
+| 4.0.1 build 0220 | 2026-05-09 | Opdateret til v4: TACACS+-autentisering, registrant-roller, Portal Auth Config, ny afhængighed tacacs-plus |
 | 3.15.5 build 0168 | 2026-05-07 | Komplet dokumentations-suite oprettet: INDEX + 01–05. Erstatter den tidligere INSTALL.md |
