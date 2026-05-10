@@ -3,6 +3,18 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [4.1.0 build 0234] — 2026-05-10 — feat(ui): fire frontend-temaer: Light, Dark, Midnight, Slate
+
+**Berørte filer**: `frontend/css/styles.css`, `frontend/js/views/user-prefs.js`, `version.json`, `CHANGELOG.md`
+
+To nye temaer tilføjet via `[data-theme]`-CSS-blokke:
+- **Midnight**: dyb marineblå/sort (GitHub Dark-inspireret) med hvid tekst og blå accenter
+- **Slate**: neutral grå/blå med mørk sidebar og lyst indholdsareal — professionel mellemtone
+
+Tema-dropdown i Præferencer udvidet med "Midnight" og "Slate". `applyTheme()` kræver ingen ændring.
+
+---
+
 ## [4.0.5 build 0233] — 2026-05-10 — docs: opdater al dokumentation til v4.0.5
 
 **Berørte filer**: `README.md`, `docs/INDEX.md`, `docs/01-OVERBLIK.md`, `docs/02-INSTALLATION.md`, `docs/03-BRUGERGUIDE.md`, `docs/04-ADMIN.md`, `docs/05-DRIFT.md`, `version.json`, `CHANGELOG.md`

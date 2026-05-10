@@ -72,6 +72,8 @@ export async function renderUserPrefs(container) {
           <select id="theme">
             <option value="light">Light</option>
             <option value="dark">Dark</option>
+            <option value="midnight">Midnight</option>
+            <option value="slate">Slate</option>
           </select>
         </div>
         <div class="actions">
