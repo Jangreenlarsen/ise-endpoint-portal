@@ -1629,6 +1629,7 @@ async function initUsersSection(container, currentUser, rolesState) {
               <td class="mono" style="font-size:0.78rem;">${esc(u.last_login || "—")}</td>
               <td class="mono" style="font-size:0.78rem;">${esc((u.created_at || "").slice(0, 10))}</td>
               <td>
+                <button class="small user-copy">Kopiér</button>
                 <button class="small user-reset-pw" ${isSelf ? "disabled" : ""}>Nyt password</button>
                 <button class="small danger user-del" ${isSelf ? "disabled" : ""}>Slet</button>
               </td>
@@ -1711,6 +1712,82 @@ async function initUsersSection(container, currentUser, rolesState) {
       } catch (err) {
         msg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
       }
+    }
+
+    if (e.target.classList.contains("user-copy")) {
+      // Fjern evt. eksisterende copy-række
+      tbody.querySelector(".user-copy-row")?.remove();
+
+      const users = await api.listUsers().catch(() => []);
+      const srcUser = users.find((u) => u.id === id);
+      if (!srcUser) return;
+
+      const suggestedName = srcUser.username.replace(/_copy(\d*)$/, "") + "_copy";
+      const pwRequired = !_isTacacs;
+      const pwHint = _isTacacs ? "valgfri i TACACS+-mode" : "påkrævet, min. 8 tegn";
+
+      const copyRow = document.createElement("tr");
+      copyRow.className = "user-copy-row";
+      copyRow.innerHTML = `
+        <td colspan="7" style="padding:0.6rem 0.5rem;background:var(--bg-alt,#f8fafc);border-top:2px solid var(--accent,#3b82f6);">
+          <div style="display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center;">
+            <span style="font-size:0.82rem;color:var(--text-secondary,#64748b);white-space:nowrap;">
+              Kopi af <strong>${esc(srcUser.username)}</strong> (rolle: ${esc(srcUser.role)}):
+            </span>
+            <input type="text" class="copy-username" value="${esc(suggestedName)}"
+              placeholder="nyt brugernavn" minlength="3" maxlength="64"
+              style="width:16rem;" />
+            <input type="password" class="copy-password"
+              placeholder="password (${pwHint})"
+              ${pwRequired ? 'minlength="8"' : ""}
+              style="width:16rem;" />
+            <button type="button" class="copy-confirm">Opret kopi</button>
+            <button type="button" class="copy-cancel secondary">Annuller</button>
+            <span class="copy-msg" style="font-size:0.82rem;"></span>
+          </div>
+        </td>`;
+
+      row.after(copyRow);
+      copyRow.querySelector(".copy-username").focus();
+
+      copyRow.querySelector(".copy-cancel").addEventListener("click", () => copyRow.remove());
+
+      copyRow.querySelector(".copy-confirm").addEventListener("click", async () => {
+        const copyMsg = copyRow.querySelector(".copy-msg");
+        const newUsername = copyRow.querySelector(".copy-username").value.trim();
+        const newPassword = copyRow.querySelector(".copy-password").value;
+
+        if (!newUsername || newUsername.length < 3) {
+          copyMsg.innerHTML = `<span style="color:var(--error,#ef4444);">Brugernavn skal være mindst 3 tegn.</span>`;
+          return;
+        }
+        if (pwRequired && newPassword.length < 8) {
+          copyMsg.innerHTML = `<span style="color:var(--error,#ef4444);">Password skal være mindst 8 tegn.</span>`;
+          return;
+        }
+
+        copyMsg.textContent = "Opretter…";
+        try {
+          const created = await api.createUser({
+            username: newUsername,
+            password: newPassword,
+            role: srcUser.role,
+          });
+          // Kopiér endpoint-roller og skabeloner
+          if (srcUser.assigned_endpoint_roles?.length) {
+            await api.setUserEndpointRoles(created.id, srcUser.assigned_endpoint_roles).catch(() => {});
+          }
+          if (srcUser.assigned_templates?.length) {
+            await api.setUserTemplates(created.id, srcUser.assigned_templates).catch(() => {});
+          }
+          copyRow.remove();
+          msg.innerHTML = `<div class="alert success">Kopi oprettet: <strong>${esc(newUsername)}</strong> (rolle: ${esc(srcUser.role)}).</div>`;
+          if (rolesState && typeof rolesState.reload === "function") await rolesState.reload();
+          await reload();
+        } catch (err) {
+          copyMsg.innerHTML = `<span style="color:var(--error,#ef4444);">${esc(err.message)}</span>`;
+        }
+      });
     }
   });
 

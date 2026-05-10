@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [4.0.3 build 0225] — 2026-05-10 — feat(users): kopiér bruger/operatørprofil med præudfyldt navn og kopierede roller/skabeloner
+
+**Berørte filer**: `frontend/js/views/settings.js`, `version.json`, `CHANGELOG.md`
+
+"Kopiér"-knap på hver bruger-række åbner en inline form direkte under rækken. Brugernavn præudfyldes med `<original>_copy` (redigerbart). Rolle, System adm-tags og skabeloner kopieres automatisk til den nye bruger. Password-felt er valgfrit i TACACS+-mode. Duplikerede `_copy`-suffikser undgås (kun ét `_copy` uanset hvor mange gange man kopierer).
+
+---
+
 ## [4.0.2 build 0224] — 2026-05-10 — feat(ui): omstrukturér sidebar brugerinfo til struktureret layout
 
 **Berørte filer**: `frontend/index.html`, `frontend/js/app.js`, `frontend/css/styles.css`, `version.json`, `CHANGELOG.md`
