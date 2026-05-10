@@ -939,20 +939,43 @@ body.auth-mode .content {
 
 /* ── User badge + logout + preferences ── */
 .user-info {
-  margin-top: 0.4rem;
+  margin-top: 0.5rem;
   font-size: 0.78rem;
   color: #cbd5e1;
   display: flex;
-  align-items: center;
-  gap: 0.4rem;
+  flex-direction: column;
+  gap: 0.18rem;
+}
+.user-info-line {
+  display: flex;
+  gap: 0.3rem;
+  align-items: baseline;
+}
+.user-info-label {
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+.user-info-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.3rem;
   flex-wrap: wrap;
+}
+.auth-type-tacacs {
+  color: #7dd3fc;
+  font-weight: 700;
+  font-size: 0.75rem;
+  letter-spacing: 0.03em;
+}
+.auth-type-local {
+  color: #86efac;
+  font-weight: 600;
+  font-size: 0.75rem;
 }
 .user-prefs-link {
   color: #94a3b8;
   text-decoration: underline;
   font-size: 0.75rem;
-  width: 100%;
-  margin-top: 0.15rem;
 }
 .role-badge {
   display: inline-block;
@@ -967,18 +990,6 @@ body.auth-mode .content {
 .role-editor    { background: #1e40af; color: #bfdbfe; }
 .role-viewer    { background: #374151; color: #d1d5db; }
 .role-registrar { background: #065f46; color: #d1fae5; }
-.tacacs-badge {
-  display: inline-block;
-  padding: 0.05rem 0.35rem;
-  border-radius: 3px;
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  background: #1e3a5f;
-  color: #7dd3fc;
-  border: 1px solid #2563eb;
-  text-transform: uppercase;
-}
 .linkish {
   background: none !important;
   border: none !important;

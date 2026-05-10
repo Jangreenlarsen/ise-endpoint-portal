@@ -3,6 +3,20 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [4.0.2 build 0224] — 2026-05-10 — feat(ui): omstrukturér sidebar brugerinfo til struktureret layout
+
+**Berørte filer**: `frontend/index.html`, `frontend/js/app.js`, `frontend/css/styles.css`, `version.json`, `CHANGELOG.md`
+
+Sidebar brugerinfo viser nu:
+  backend STATUS: ok / down
+  vX.Y.Z build NNNN
+  User: <brugernavn>
+  Rolle: <rolle>
+  Login auth: TACACS+ (blå) / LOCAL (grøn)
+  [Log ud]  [Præferencer]
+
+---
+
 ## [4.0.2 build 0223] — 2026-05-10 — fix(ui): Præferencer-link synligt for TACACS-brugere — kun password-formular skjules
 
 **Berørte filer**: `frontend/js/app.js`, `version.json`, `CHANGELOG.md`

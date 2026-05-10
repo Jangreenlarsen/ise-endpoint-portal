@@ -36,6 +36,7 @@ const versionEl = document.getElementById("version-info");
 const userInfoEl = document.getElementById("user-info");
 const userNameEl = document.getElementById("user-name");
 const userRoleEl = document.getElementById("user-role");
+const userAuthTypeEl = document.getElementById("user-auth-type");
 const logoutBtn = document.getElementById("logout-btn");
 
 async function checkHealth() {
@@ -93,18 +94,9 @@ function updateUserBadge(user) {
     const isTacacs = auth.isTacacs();
     userNameEl.textContent = user.username;
     userRoleEl.textContent = user.role;
-    userRoleEl.className = `role-badge role-${user.role}`;
-    const tacacsEl = userInfoEl.querySelector(".tacacs-badge");
-    if (isTacacs) {
-      if (!tacacsEl) {
-        const badge = document.createElement("span");
-        badge.className = "tacacs-badge";
-        badge.title = "Autentiseret via TACACS+";
-        badge.textContent = "TACACS+";
-        userRoleEl.after(badge);
-      }
-    } else {
-      tacacsEl?.remove();
+    if (userAuthTypeEl) {
+      userAuthTypeEl.textContent = isTacacs ? "TACACS+" : "LOCAL";
+      userAuthTypeEl.className = isTacacs ? "auth-type-tacacs" : "auth-type-local";
     }
   }
 }

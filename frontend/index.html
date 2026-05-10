@@ -28,13 +28,16 @@
           <a href="#/settings" data-view="settings">Settings</a>
         </nav>
         <div class="backend-status">
-          backend: <span id="status-dot">...</span>
+          backend STATUS: <span id="status-dot">...</span>
           <div id="version-info" class="version-label"></div>
           <div id="user-info" class="user-info" hidden>
-            <span id="user-name"></span>
-            <span id="user-role" class="role-badge"></span>
-            <button id="logout-btn" class="linkish" type="button">Log ud</button>
-            <a href="#/user-prefs" class="linkish user-prefs-link">Præferencer</a>
+            <div class="user-info-line"><span class="user-info-label">User:</span> <span id="user-name"></span></div>
+            <div class="user-info-line"><span class="user-info-label">Rolle:</span> <span id="user-role"></span></div>
+            <div class="user-info-line"><span class="user-info-label">Login auth:</span> <span id="user-auth-type"></span></div>
+            <div class="user-info-actions">
+              <button id="logout-btn" class="linkish" type="button">Log ud</button>
+              <a href="#/user-prefs" class="linkish user-prefs-link">Præferencer</a>
+            </div>
           </div>
         </div>
       </aside>
