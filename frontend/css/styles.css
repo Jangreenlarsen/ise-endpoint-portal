@@ -1047,23 +1047,23 @@ body.auth-mode .content {
 }
 .role-chip:has(input:disabled) { cursor: default; opacity: 0.85; }
 .own-role-chip {
-  background: #e0f2fe;
-  border-color: #38bdf8;
-  color: #0369a1;
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #b91c1c;
   font-weight: 600;
 }
 .own-role-chip:has(input:checked) {
-  background: #bae6fd;
-  border-color: #0ea5e9;
+  background: #fecaca;
+  border-color: #f87171;
 }
 [data-theme="dark"] .own-role-chip {
-  background: #0c4a6e;
-  border-color: #0ea5e9;
-  color: #7dd3fc;
+  background: #4c0519;
+  border-color: #f87171;
+  color: #fca5a5;
 }
 [data-theme="dark"] .own-role-chip:has(input:checked) {
-  background: #075985;
-  border-color: #38bdf8;
+  background: #7f1d1d;
+  border-color: #fca5a5;
 }
 .role-chip-extern {
   background: #f3e8ff;
