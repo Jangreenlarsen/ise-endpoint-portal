@@ -1,7 +1,7 @@
 import { api } from "../api.js";
 import { t } from "../i18n.js";
 import {
-  COLUMNS, esc,
+  getColumns, esc,
   getPageSize, getCoaReauthOnSave, setCoaReauthOnSave,
   loadColVis, saveColVis,
   normalizeMac, fmtAgo, coaSummaryText,
@@ -78,14 +78,14 @@ export async function renderBrowse(container) {
           <thead>
             <tr>
               <th style="width:36px;"><input type="checkbox" id="select-all" title="${t("browse.select_all_title")}" /></th>
-              ${COLUMNS.map((c) => `<th data-col="${c.key}"${c.cls ? ` class="${c.cls}"` : ""}>${c.label}</th>`).join("")}
+              ${getColumns().map((c) => `<th data-col="${c.key}"${c.cls ? ` class="${c.cls}"` : ""}>${c.label}</th>`).join("")}
             </tr>
             <tr class="filter-row">
               <th></th>
-              ${COLUMNS.map((c) => `
+              ${getColumns().map((c) => `
                 <th${c.cls ? ` class="${c.cls}"` : ""}>
                   <div class="col-filter">
-                    <label class="col-filter-toggle" title="Aktivér filter for ${c.label}">
+                    <label class="col-filter-toggle" title="${c.label}">
                       <input type="checkbox" class="col-filter-cb" data-col="${c.key}" />
                     </label>
                     <input type="text" class="col-filter-input" data-col="${c.key}"
@@ -95,19 +95,19 @@ export async function renderBrowse(container) {
             </tr>
           </thead>
           <tbody id="tbody">
-            <tr><td colspan="${COLUMNS.length + 2}" class="empty">Indlæser...</td></tr>
+            <tr><td colspan="${getColumns().length + 2}" class="empty">${t("browse.loading_rows")}</td></tr>
           </tbody>
         </table>
       </div>
       <div class="pagination-bar" id="pagination-bar">
-        <button id="page-prev" class="secondary small" disabled>&laquo; Forrige</button>
+        <button id="page-prev" class="secondary small" disabled>&laquo; ${t("browse.page_prev")}</button>
         <span id="page-info" class="hint"></span>
-        <button id="page-next" class="secondary small" disabled>Næste &raquo;</button>
+        <button id="page-next" class="secondary small" disabled>${t("browse.page_next")} &raquo;</button>
       </div>
     </div>
     <div id="detail-overlay" class="modal-overlay hidden">
       <div class="modal detail-modal">
-        <h3>Endpoint detaljer</h3>
+        <h3>${t("detail.title")}</h3>
         <div id="detail-msg"></div>
         <div class="detail-grid">
           <label>MAC</label><div class="detail-value" id="d-mac"></div>
@@ -116,15 +116,15 @@ export async function renderBrowse(container) {
           <label>ID</label><div class="detail-value mono" id="d-id"></div>
           <label>Identity Group</label>
           <select id="d-group"></select>
-          <label>Tilknytning</label>
-          <label class="inline-cb"><input type="checkbox" id="d-static-group" /> Statisk gruppetildeling</label>
+          <label>${t("detail.assignment")}</label>
+          <label class="inline-cb"><input type="checkbox" id="d-static-group" /> ${t("detail.static_assign")}</label>
           <label>Description</label>
           <input type="text" id="d-description" />
           <label>Type</label>
           <select id="d-type"></select>
           <label>Owner</label>
           <select id="d-owner"></select>
-          <label>Lokation</label>
+          <label>${t("col.lokation")}</label>
           <select id="d-lokation"></select>
           <label>AuthzVlan</label>
           <select id="d-authzvlan"></select>
@@ -133,20 +133,20 @@ export async function renderBrowse(container) {
           <label>Platform</label>
           <select id="d-platformtype"></select>
           <label>PSK Mode</label>
-          <label class="inline-cb"><input type="checkbox" id="d-psk-mode" /> MPSK/IPSK aktiveret</label>
+          <label class="inline-cb"><input type="checkbox" id="d-psk-mode" /> ${t("detail.psk_mode_lbl")}</label>
           <label id="d-psk-key-label">PSK Key</label>
           <div id="d-psk-key-wrap" class="psk-key-wrap">
             <input type="password" id="d-psk-key" autocomplete="off" />
-            <button type="button" id="d-psk-show" class="secondary small">Vis</button>
-            <button type="button" id="d-psk-gen" class="secondary small">Generer</button>
+            <button type="button" id="d-psk-show" class="secondary small">${t("detail.btn_show")}</button>
+            <button type="button" id="d-psk-gen" class="secondary small">${t("detail.btn_generate")}</button>
           </div>
-          <label>System adm</label>
+          <label>${t("col.roles")}</label>
           <div id="d-roles"></div>
           <label>HypervisionISEPortal</label>
           <div class="detail-value mono" id="d-hypervision"></div>
           <label>Profile ID</label>
           <div class="detail-value mono" id="d-profile-id"></div>
-          <label>Profil-navn</label>
+          <label>${t("detail.profile_name")}</label>
           <div class="detail-value" id="d-profiler-name"></div>
           <label>Static profile</label>
           <div class="detail-value" id="d-static-profile"></div>
@@ -154,43 +154,43 @@ export async function renderBrowse(container) {
           <div class="detail-value" id="d-portal-user"></div>
           <label>Identity store</label>
           <div class="detail-value" id="d-identity-store"></div>
-          <label>Registreret</label>
+          <label>${t("detail.registered")}</label>
           <div class="detail-value" id="d-create-time"></div>
-          <label>Sidst opdateret</label>
+          <label>${t("detail.last_updated")}</label>
           <div class="detail-value" id="d-update-time"></div>
         </div>
         <div id="d-anc-section" class="hidden anc-section">
           <div class="anc-status-row">
             <span class="anc-label">ANC Quarantine</span>
-            <span id="d-anc-badge" class="anc-badge anc-free">Fri</span>
-            <span id="d-anc-loading" class="hint hidden">Henter status…</span>
+            <span id="d-anc-badge" class="anc-badge anc-free">${t("detail.anc_free")}</span>
+            <span id="d-anc-loading" class="hint hidden">${t("detail.anc_loading")}</span>
           </div>
           <div id="d-anc-quarantine-row" class="anc-action-row">
-            <select id="d-anc-policy" class="anc-policy-select"><option value="">— Vælg ANC policy —</option></select>
-            <button id="d-anc-apply" class="danger small">Sæt i karantæne</button>
+            <select id="d-anc-policy" class="anc-policy-select"><option value="">${t("detail.anc_select")}</option></select>
+            <button id="d-anc-apply" class="danger small">${t("detail.anc_quarantine")}</button>
           </div>
           <div id="d-anc-clear-row" class="anc-action-row hidden">
-            <button id="d-anc-clear" class="secondary small">Fjern karantæne</button>
+            <button id="d-anc-clear" class="secondary small">${t("detail.anc_clear")}</button>
           </div>
         </div>
         <div class="modal-actions">
-          <button id="d-save">Gem ændringer</button>
+          <button id="d-save">${t("detail.btn_save")}</button>
           <button id="d-disconnect" class="danger"
-                  title="CoA Disconnect — deautentificér klienten på WLC/switch (tvinger ny DHCP ved re-associate)">Disconnect</button>
-          <button id="d-close" class="secondary">Luk</button>
+                  title="CoA Disconnect">${t("detail.btn_disconnect")}</button>
+          <button id="d-close" class="secondary">${t("detail.btn_close")}</button>
         </div>
       </div>
     </div>
     <div id="bulk-edit-overlay" class="modal-overlay hidden">
       <div class="modal detail-modal">
-        <h3>Rediger valgte endpoints</h3>
+        <h3>${t("bulk.title")}</h3>
         <p class="hint" id="bulk-edit-count"></p>
         <div class="modal-body">
           <label><input type="checkbox" class="be-cb" data-field="group" /> Identity Group</label>
           <select id="be-group" disabled></select>
-          <label><input type="checkbox" class="be-cb" data-field="static-group" /> Tilknytning</label>
+          <label><input type="checkbox" class="be-cb" data-field="static-group" /> ${t("detail.assignment")}</label>
           <div id="be-static-group" class="be-inner-wrap disabled-overlay">
-            <label class="inline-cb"><input type="checkbox" id="be-static-group-cb" disabled /> Statisk gruppetildeling</label>
+            <label class="inline-cb"><input type="checkbox" id="be-static-group-cb" disabled /> ${t("detail.static_assign")}</label>
           </div>
           <label><input type="checkbox" class="be-cb" data-field="description" /> Description</label>
           <input type="text" id="be-description" disabled />
@@ -198,7 +198,7 @@ export async function renderBrowse(container) {
           <select id="be-type" disabled></select>
           <label><input type="checkbox" class="be-cb" data-field="owner" /> Owner</label>
           <select id="be-owner" disabled></select>
-          <label><input type="checkbox" class="be-cb" data-field="lokation" /> Lokation</label>
+          <label><input type="checkbox" class="be-cb" data-field="lokation" /> ${t("col.lokation")}</label>
           <select id="be-lokation" disabled></select>
           <label><input type="checkbox" class="be-cb" data-field="authzvlan" /> AuthzVlan</label>
           <select id="be-authzvlan" disabled></select>
@@ -208,20 +208,20 @@ export async function renderBrowse(container) {
           <select id="be-platformtype" disabled></select>
           <label id="be-psk-mode-row" class="hidden"><input type="checkbox" class="be-cb" data-field="psk-mode" /> PSK Mode</label>
           <div id="be-psk-mode" class="be-inner-wrap disabled-overlay hidden">
-            <label class="inline-cb"><input type="checkbox" id="be-psk-mode-cb" disabled /> MPSK/IPSK aktiveret</label>
+            <label class="inline-cb"><input type="checkbox" id="be-psk-mode-cb" disabled /> ${t("detail.psk_mode_lbl")}</label>
           </div>
           <label id="be-psk-key-row" class="hidden"><input type="checkbox" class="be-cb" data-field="psk-key" /> PSK Key</label>
           <div id="be-psk-key" class="psk-key-wrap disabled-overlay hidden">
             <input type="password" id="be-psk-key-inp" autocomplete="off" disabled />
-            <button type="button" id="be-psk-show" class="secondary small" disabled>Vis</button>
-            <button type="button" id="be-psk-gen" class="secondary small" disabled>Generer</button>
+            <button type="button" id="be-psk-show" class="secondary small" disabled>${t("bulk.btn_show")}</button>
+            <button type="button" id="be-psk-gen" class="secondary small" disabled>${t("bulk.btn_generate")}</button>
           </div>
-          <label><input type="checkbox" class="be-cb" data-field="roles" /> System adm</label>
+          <label><input type="checkbox" class="be-cb" data-field="roles" /> ${t("col.roles")}</label>
           <div id="be-roles" class="be-roles-wrap disabled-overlay"></div>
         </div>
         <div class="modal-actions">
-          <button id="be-apply">Anvend</button>
-          <button id="be-cancel" class="secondary">Annuller</button>
+          <button id="be-apply">${t("bulk.btn_apply")}</button>
+          <button id="be-cancel" class="secondary">${t("bulk.btn_cancel")}</button>
         </div>
       </div>
     </div>
@@ -230,7 +230,7 @@ export async function renderBrowse(container) {
   // ── Shared mutable state ──────────────────────────────────────────────────
   const savedColVis = loadColVis() || {};
   const colVis = {};
-  for (const c of COLUMNS) colVis[c.key] = savedColVis[c.key] !== false;
+  for (const c of getColumns()) colVis[c.key] = savedColVis[c.key] !== false;
 
   const state = {
     allRows: [], allRowsCache: null, activeSessionMacs: null,

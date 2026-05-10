@@ -3,7 +3,7 @@
 // Cross-module calls go via the `cb` object (populated in browse.js after all inits).
 
 import {
-  COLUMNS, esc,
+  getColumns, esc,
   endpointCreateTime,
   loadBrowseFilters, saveBrowseFilters,
   loadColVis, saveColVis,
@@ -28,7 +28,7 @@ export function initFilter(container, state, api, cb) {
       const input = filterRow.querySelector(`.col-filter-input[data-col="${col}"]`);
       const q     = (input.value || "").trim();
       if (q) {
-        const colDef = COLUMNS.find((c) => c.key === col);
+        const colDef = getColumns().find((c) => c.key === col);
         if (colDef) {
           try { active.push({ field: colDef.field, re: new RegExp(q, "i") }); }
           catch {
@@ -62,7 +62,7 @@ export function initFilter(container, state, api, cb) {
     const filters = getColumnFilters();
     if (filters.length) rows = rows.filter((r) => filters.every((f) => f.re.test(f.field(r) || "")));
     if (state.sortCol) {
-      const colDef = COLUMNS.find((c) => c.key === state.sortCol);
+      const colDef = getColumns().find((c) => c.key === state.sortCol);
       if (colDef) {
         rows = [...rows].sort((a, b) => {
           if (state.sortCol === "create_time") {
@@ -89,7 +89,7 @@ export function initFilter(container, state, api, cb) {
       return;
     }
     state.loadingAll = true;
-    const cols = COLUMNS.length + 2;
+    const cols = getColumns().length + 2;
     container.querySelector("#tbody").innerHTML =
       `<tr><td colspan="${cols}" class="empty">Henter alle endpoints fra ISE...</td></tr>`;
     msg.innerHTML = `<div class="alert info">Henter alle endpoints for at kunne filtrere på tværs af sider...</div>`;
@@ -128,7 +128,7 @@ export function initFilter(container, state, api, cb) {
   // ── Column sort (alle kolonner) ──────────────────────────────────────────
   function updateSortHeaders() {
     container.querySelectorAll("thead tr:first-child th[data-col]").forEach((th) => {
-      const colDef = COLUMNS.find((c) => c.key === th.dataset.col);
+      const colDef = getColumns().find((c) => c.key === th.dataset.col);
       if (!colDef) return;
       if (state.sortCol === th.dataset.col) {
         th.textContent = `${colDef.label} ${state.sortDir === "asc" ? "↑" : "↓"}`;
@@ -202,7 +202,7 @@ export function initFilter(container, state, api, cb) {
       }
     }
     if (s.colVis && typeof s.colVis === "object") {
-      for (const c of COLUMNS) {
+      for (const c of getColumns()) {
         if (c.key in s.colVis) state.colVis[c.key] = s.colVis[c.key] !== false;
       }
       saveColVis(state.colVis);

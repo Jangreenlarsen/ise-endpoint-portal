@@ -1,6 +1,7 @@
 // Bulk-edit modal, bulk-delete, and bulk-disconnect for Browse.
 // initBulk wires all bulk-action event handlers (no public API returned).
 
+import { t } from "../i18n.js";
 import { esc, optionsHtml } from "./browse-utils.js";
 
 export function initBulk(container, state, api, cb) {
@@ -15,7 +16,7 @@ export function initBulk(container, state, api, cb) {
   bulkEditBtn.addEventListener("click", () => {
     const ids = cb.getSelectedIds();
     if (!ids.length) return;
-    container.querySelector("#bulk-edit-count").textContent = `${ids.length} endpoints valgt`;
+    container.querySelector("#bulk-edit-count").textContent = `${ids.length} ${t("bulk.count_suffix")}`;
     container.querySelector("#be-group").innerHTML      = cb.groupOptionsHtml("");
     container.querySelector("#be-type").innerHTML       = optionsHtml(state.caValues.Type, "");
     container.querySelector("#be-owner").innerHTML      = optionsHtml(state.caValues.Owner, "");
@@ -28,7 +29,7 @@ export function initBulk(container, state, api, cb) {
     container.querySelector("#be-static-group-cb").checked = false;
     container.querySelector("#be-psk-mode-cb").checked = false;
     container.querySelector("#be-psk-key-inp").value   = "";
-    container.querySelector("#be-psk-show").textContent = "Vis";
+    container.querySelector("#be-psk-show").textContent = t("bulk.btn_show");
     ["be-psk-mode-row", "be-psk-mode", "be-psk-key-row", "be-psk-key"].forEach((id) => {
       container.querySelector(`#${id}`).classList.toggle("hidden", !state.isPskEditor);
     });
@@ -60,7 +61,7 @@ export function initBulk(container, state, api, cb) {
     const inp = container.querySelector("#be-psk-key-inp");
     const btn = container.querySelector("#be-psk-show");
     inp.type = inp.type === "password" ? "text" : "password";
-    btn.textContent = inp.type === "password" ? "Vis" : "Skjul";
+    btn.textContent = inp.type === "password" ? t("bulk.btn_show") : t("bulk.btn_hide");
   });
 
   container.querySelector("#be-psk-gen").addEventListener("click", async () => {
@@ -68,7 +69,7 @@ export function initBulk(container, state, api, cb) {
       const result = await api.generatePskKey();
       const inp = container.querySelector("#be-psk-key-inp");
       inp.value = result.key; inp.type = "text";
-      container.querySelector("#be-psk-show").textContent = "Skjul";
+      container.querySelector("#be-psk-show").textContent = t("bulk.btn_hide");
     } catch (err) {
       msg.innerHTML = `<div class="alert error">Kunne ikke generere PSK: ${err.message}</div>`;
     }
@@ -103,7 +104,7 @@ export function initBulk(container, state, api, cb) {
       if ("group" in fields) tr.querySelector(".grp-select").value = fields.group;
       if ("static-group" in fields) {
         const assignCell = tr.querySelector(".assign-cell");
-        if (assignCell) assignCell.textContent = fields["static-group"] ? "Statisk" : "Dynamisk";
+        if (assignCell) assignCell.textContent = fields["static-group"] ? t("cell.static") : t("cell.dynamic");
         tr.dataset.beStaticGroup = fields["static-group"] ? "1" : "0";
       }
       if ("description" in fields) tr.querySelector(".desc-input").value  = fields.description;
@@ -135,7 +136,7 @@ export function initBulk(container, state, api, cb) {
       cb.markDirty(tr);
     }
     bulkEditOverlay.classList.add("hidden");
-    msg.innerHTML = `<div class="alert info">${ids.length} endpoints opdateret lokalt — tryk "Gem alle" eller "Gem valgte" for at gemme til ISE.</div>`;
+    msg.innerHTML = `<div class="alert info">${ids.length} ${t("bulk.updated_local")}</div>`;
   });
 
   // ── Bulk delete ───────────────────────────────────────────────────────────
@@ -146,9 +147,9 @@ export function initBulk(container, state, api, cb) {
       const tr = tbody.querySelector(`tr[data-id="${id}"]`);
       return tr ? tr.querySelector(".mac-cell").textContent : id;
     });
-    if (!confirm(`Slet ${ids.length} endpoints?\n\n${macs.join("\n")}`)) return;
+    if (!confirm(t("bulk.confirm_delete").replace("{n}", ids.length).replace("{macs}", macs.join("\n")))) return;
     bulkDelBtn.disabled = true;
-    msg.innerHTML = `<div class="alert info">Sletter ${ids.length} endpoints...</div>`;
+    msg.innerHTML = `<div class="alert info">${t("bulk.deleting")} ${ids.length} endpoints...</div>`;
     let ok = 0, fail = 0;
     for (const id of ids) {
       try {
@@ -160,8 +161,8 @@ export function initBulk(container, state, api, cb) {
     }
     cb.applyFilter();
     const parts = [];
-    if (ok)   parts.push(`${ok} slettet`);
-    if (fail) parts.push(`${fail} fejlede`);
+    if (ok)   parts.push(`${ok} ${t("bulk.deleted")}`);
+    if (fail) parts.push(`${fail} ${t("bulk.failed")}`);
     msg.innerHTML = `<div class="alert ${fail ? "error" : "success"}">${parts.join(", ")}</div>`;
     bulkDelBtn.disabled = false;
   });
@@ -175,24 +176,22 @@ export function initBulk(container, state, api, cb) {
       return tr ? tr.querySelector(".mac-cell").textContent : id;
     });
     if (!confirm(
-      `CoA Disconnect ${ids.length} klient(er)?\n\n${macs.join("\n")}\n\n` +
-      `De bliver deautentificeret på WLC/switch og skal gen-associere. ` +
-      `Ny IP kun hvis VLAN/subnet er ændret eller DHCP-lease er udløbet.`,
+      t("bulk.confirm_disconnect").replace("{n}", ids.length).replace("{macs}", macs.join("\n")),
     )) return;
     bulkDisconnBtn.disabled = true;
-    msg.innerHTML = `<div class="alert info">Sender CoA Disconnect til ${ids.length} klient(er)...</div>`;
+    msg.innerHTML = `<div class="alert info">CoA Disconnect → ${ids.length}...</div>`;
     let ok = 0, fail = 0;
     const failures = [];
     for (const id of ids) {
       try {
         const res = await api.coaDisconnect(id);
         if (res?.ok) ok++;
-        else { fail++; failures.push(`${res?.mac || id}: ${res?.message || "fejlede"}`); }
+        else { fail++; failures.push(`${res?.mac || id}: ${res?.message || t("bulk.failed")}`); }
       } catch (err) { fail++; failures.push(`${id}: ${err.message}`); }
     }
     const parts = [];
     if (ok)   parts.push(`${ok} disconnected`);
-    if (fail) parts.push(`${fail} fejlede`);
+    if (fail) parts.push(`${fail} ${t("bulk.failed")}`);
     const cls    = fail ? (ok ? "info" : "error") : "success";
     const detail = failures.length ? `<br><small>${failures.slice(0, 5).map(esc).join("<br>")}</small>` : "";
     msg.innerHTML = `<div class="alert ${cls}">${parts.join(", ")}${detail}</div>`;

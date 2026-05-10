@@ -52,7 +52,7 @@ export function initDetail(container, state, api, cb) {
       pskKeyEl.value     = d.psk_key || "";
       pskKeyEl.type      = "password";
       pskKeyEl.disabled  = !state.isPskEditor;
-      container.querySelector("#d-psk-show").textContent = "Vis";
+      container.querySelector("#d-psk-show").textContent = t("detail.btn_show");
       const showPskKey = state.isPskEditor || !!d.psk_mode;
       pskKeyLbl.classList.toggle("hidden",  !showPskKey);
       pskKeyWrap.classList.toggle("hidden", !showPskKey);
@@ -143,11 +143,11 @@ export function initDetail(container, state, api, cb) {
       quarantineRow.classList.add("hidden");
       clearRow.classList.remove("hidden");
     } else {
-      badge.textContent = "Fri";
+      badge.textContent = t("detail.anc_free");
       badge.className   = "anc-badge anc-free";
       quarantineRow.classList.remove("hidden");
       clearRow.classList.add("hidden");
-      policySelect.innerHTML = `<option value="">— Vælg ANC policy —</option>` +
+      policySelect.innerHTML = `<option value="">${t("detail.anc_select")}</option>` +
         policies.map((p) => `<option value="${esc(p)}">${esc(p)}</option>`).join("");
     }
   }
@@ -201,8 +201,8 @@ export function initDetail(container, state, api, cb) {
   container.querySelector("#d-psk-show").addEventListener("click", () => {
     const inp = container.querySelector("#d-psk-key");
     const btn = container.querySelector("#d-psk-show");
-    if (inp.type === "password") { inp.type = "text"; btn.textContent = "Skjul"; }
-    else { inp.type = "password"; btn.textContent = "Vis"; }
+    if (inp.type === "password") { inp.type = "text"; btn.textContent = t("detail.btn_hide"); }
+    else { inp.type = "password"; btn.textContent = t("detail.btn_show"); }
   });
 
   container.querySelector("#d-psk-gen").addEventListener("click", async () => {
@@ -212,7 +212,7 @@ export function initDetail(container, state, api, cb) {
       const { key } = await api.generatePskKey();
       const inp = container.querySelector("#d-psk-key");
       inp.value = key; inp.type = "text";
-      container.querySelector("#d-psk-show").textContent = "Skjul";
+      container.querySelector("#d-psk-show").textContent = t("detail.btn_hide");
     } catch (err) {
       detailMsg.innerHTML = `<div class="alert error">Kunne ikke generere nøgle: ${err.message}</div>`;
     } finally { btn.disabled = false; }

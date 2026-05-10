@@ -2,8 +2,9 @@
 // initTable wires all table DOM events and returns its public API.
 // Cross-module calls go via `cb` (populated in browse.js after all inits).
 
+import { t } from "../i18n.js";
 import {
-  COLUMNS, esc,
+  getColumns, esc,
   endpointCreateTime, fmtRelativeAge, fmtDateTime,
   normalizeMac, coaSummaryText, optionsHtml,
   loadColVis, saveColVis, savePageSize,
@@ -32,7 +33,7 @@ export function initTable(container, state, api, cb) {
 
   // ── Render helpers (need state.groups / state.roleCatalog) ───────────────
   function groupOptionsHtml(selectedId) {
-    const opts = [`<option value="">— ingen —</option>`];
+    const opts = [`<option value="">${t("cell.no_group")}</option>`];
     for (const g of state.groups) {
       opts.push(`<option value="${esc(g.id)}"${g.id === selectedId ? " selected" : ""}>${esc(g.name)}</option>`);
     }
@@ -57,7 +58,7 @@ export function initTable(container, state, api, cb) {
     for (const r of sel) {
       if (!catalogLow.has(r.toLowerCase())) {
         items.push(
-          `<span class="role-chip role-chip-extern" title="Bruger-tag eller rolle uden for katalog">` +
+          `<span class="role-chip role-chip-extern" title="${t("browse.extern_role_title")}">` +
           `${esc(r)}</span>`,
         );
       }
@@ -69,7 +70,7 @@ export function initTable(container, state, api, cb) {
   function applyColVis() {
     const table = container.querySelector(".browse-table-wrap table");
     if (!table) return;
-    COLUMNS.forEach((c, i) => {
+    getColumns().forEach((c, i) => {
       const visible = state.colVis[c.key] !== false;
       const nth     = i + 2;
       table.querySelectorAll(`thead tr > th:nth-child(${nth})`).forEach((el) =>
@@ -80,7 +81,7 @@ export function initTable(container, state, api, cb) {
   }
 
   function renderColVisMenu() {
-    colVisMenu.innerHTML = COLUMNS.map((c) => `
+    colVisMenu.innerHTML = getColumns().map((c) => `
       <label class="col-vis-item">
         <input type="checkbox" class="col-vis-cb" data-col="${c.key}"
                ${state.colVis[c.key] !== false ? "checked" : ""} />
@@ -119,9 +120,9 @@ export function initTable(container, state, api, cb) {
 
   // ── Row rendering ────────────────────────────────────────────────────────
   function renderRows(rows) {
-    const cols = COLUMNS.length + 2;
+    const cols = getColumns().length + 2;
     if (!rows.length) {
-      tbody.innerHTML = `<tr><td colspan="${cols}" class="empty">Ingen resultater</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="${cols}" class="empty">${t("browse.no_results")}</td></tr>`;
       selectAllCb.checked = false;
       selectAllCb.indeterminate = false;
       return;
@@ -129,10 +130,10 @@ export function initTable(container, state, api, cb) {
     tbody.innerHTML = rows.map((r) => `
       <tr data-id="${esc(r.id)}"${state.dirtyIds.has(r.id) ? ' class="dirty"' : ''}>
         <td class="select-cell"><input type="checkbox" class="row-select" /></td>
-        <td class="mac-cell${r.cache_stale ? " cache-stale" : ""}"><a href="#" class="mac-link" title="Vis detaljer">${esc(r.mac || r.name)}</a>${r.cache_stale ? '<span class="stale-badge" title="Data fra gammel cache — opdateres i baggrunden">⏱</span>' : ""}</td>
+        <td class="mac-cell${r.cache_stale ? " cache-stale" : ""}"><a href="#" class="mac-link" title="${t("browse.mac_link_title")}">${esc(r.mac || r.name)}</a>${r.cache_stale ? `<span class="stale-badge" title="${t("browse.stale_badge_title")}">⏱</span>` : ""}</td>
         <td class="vendor-cell-td">${esc(r.vendor || "")}</td>
         <td><select class="grp-select">${groupOptionsHtml(r.group_id)}</select></td>
-        <td class="assign-cell">${r.static_group ? "Statisk" : "Dynamisk"}</td>
+        <td class="assign-cell">${r.static_group ? t("cell.static") : t("cell.dynamic")}</td>
         <td><input type="text" class="desc-input" value="${esc(r.description || "")}" /></td>
         <td><select class="ca-type">${optionsHtml(state.caValues.Type, r.endpoint_type)}</select></td>
         <td><select class="ca-owner">${optionsHtml(state.caValues.Owner, r.owner)}</select></td>
@@ -177,7 +178,7 @@ export function initTable(container, state, api, cb) {
       const grpSel = tr.querySelector(".grp-select");
       if (grpSel) grpSel.innerHTML = groupOptionsHtml(r.group_id);
       const assignCell = tr.querySelector(".assign-cell");
-      if (assignCell) assignCell.textContent = r.static_group ? "Statisk" : "Dynamisk";
+      if (assignCell) assignCell.textContent = r.static_group ? t("cell.static") : t("cell.dynamic");
       const descInput = tr.querySelector(".desc-input");
       if (descInput) descInput.value = r.description || "";
       const setSel = (cls, val, vals) => {
@@ -333,7 +334,7 @@ export function initTable(container, state, api, cb) {
 
   // ── Load (full page refresh) ─────────────────────────────────────────────
   async function load(force = false) {
-    const cols = COLUMNS.length + 2;
+    const cols = getColumns().length + 2;
     tbody.innerHTML = `<tr><td colspan="${cols}" class="empty">Henter detaljer fra ISE...</td></tr>`;
     msg.innerHTML = "";
     state.dirtyIds.clear();

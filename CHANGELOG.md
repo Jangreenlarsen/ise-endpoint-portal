@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [4.2.1 build 0236] — 2026-05-10 — fix(i18n): COLUMNS→getColumns() + oversæt alle browse-strenge
+
+**Berørte filer**: `frontend/js/i18n.js`, `frontend/js/views/browse-utils.js`, `frontend/js/views/browse.js`, `frontend/js/views/browse-table.js`, `frontend/js/views/browse-filter.js`, `frontend/js/views/browse-bulk.js`, `frontend/js/views/browse-detail.js`, `version.json`, `CHANGELOG.md`
+
+Bugfix: Kolonneoverskrifter og celleværdier i browse-tabellen blev ikke oversat ved sprogskift fordi `COLUMNS` var et statisk modul-level array evalueret ved import-tid. Rettet ved at konvertere til `getColumns()` funktion der returnerer et nyt array med `t()`-kald ved hvert render. Samme mønster: `fmtRelativeAge()` bruger nu `t("age.*)` i stedet for hardkodede danske strenge. Alle resterende browse-strenge oversat: celleværdier (Statisk/Dynamisk, Ja/Nej), modal-titler og labels (detail + bulk-edit), ANC-badges, PSK-knaptekster, bekræftelsesdialogs og fejlbeskeder. Tilføjet ca. 40 nye i18n-nøgler i begge sprogfiler.
+
 ## [4.2.0 build 0235] — 2026-05-10 — feat(i18n): lokalisering dansk/engelsk per bruger + global portal-default
 
 **Berørte filer**: `backend/app/schemas/user.py`, `backend/app/schemas/settings.py`, `backend/app/api/me.py`, `backend/app/api/settings.py`, `backend/app/api/auth.py`, `backend/app/services/settings_service.py`, `backend/app/main.py`, `frontend/js/i18n.js` (ny), `frontend/js/api.js`, `frontend/js/app.js`, `frontend/js/views/login.js`, `frontend/js/views/user-prefs.js`, `frontend/js/views/settings.js`, `frontend/js/views/browse.js`, `frontend/js/views/browse-detail.js`, `version.json`, `CHANGELOG.md`, `FEATURES.md`

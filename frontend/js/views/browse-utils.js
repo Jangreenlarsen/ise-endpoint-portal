@@ -1,4 +1,5 @@
 // Pure utility functions and constants shared across browse modules.
+import { t } from "../i18n.js";
 
 export const FRONTEND_PREFS_KEY = "ise_portal_prefs";
 export function getPageSize() {
@@ -56,11 +57,11 @@ export function fmtRelativeAge(isoStr) {
   const d = new Date(isoStr);
   if (isNaN(d.getTime())) return isoStr;
   const days = Math.floor((Date.now() - d.getTime()) / 86400000);
-  if (days < 1) return "I dag";
-  if (days === 1) return "I går";
-  if (days < 30) return `${days} dage`;
-  if (days < 365) return `${Math.floor(days / 30)} mdr.`;
-  return `${Math.floor(days / 365)} år`;
+  if (days < 1) return t("age.today");
+  if (days === 1) return t("age.yesterday");
+  if (days < 30) return `${days} ${t("age.days")}`;
+  if (days < 365) return `${Math.floor(days / 30)} ${t("age.months")}`;
+  return `${Math.floor(days / 365)} ${t("age.years")}`;
 }
 export function fmtDateTime(isoStr) {
   if (!isoStr) return "";
@@ -92,20 +93,23 @@ export function optionsHtml(values, selected) {
   return opts.join("");
 }
 
-export const COLUMNS = [
-  { key: "mac",           label: "MAC",            field: (r) => r.mac || r.name },
-  { key: "vendor",        label: "Vendor",         field: (r) => r.vendor || "" },
-  { key: "group_name",    label: "Identity Group", field: (r) => r.group_name },
-  { key: "static_group",  label: "Tilknytning",    field: (r) => r.static_group ? "Statisk" : "Dynamisk" },
-  { key: "description",   label: "Description",    field: (r) => r.description },
-  { key: "endpoint_type", label: "Type",           field: (r) => r.endpoint_type },
-  { key: "owner",         label: "Owner",          field: (r) => r.owner },
-  { key: "lokation",      label: "Lokation",       field: (r) => r.lokation },
-  { key: "platform_type", label: "Platform",       field: (r) => r.platform_type },
-  { key: "psk_mode",      label: "PSK Mode",       field: (r) => r.psk_mode ? "Ja" : "" },
-  { key: "psk_key",       label: "PSK Key",        field: (r) => r.psk_key || "",       cls: "authz-col" },
-  { key: "authz_vlan",    label: "AuthzVlan",      field: (r) => r.authz_vlan,          cls: "authz-col" },
-  { key: "authz_acl",     label: "AuthzACL",       field: (r) => r.authz_acl,           cls: "authz-col" },
-  { key: "roles",         label: "System adm",     field: (r) => (r.roles || []).join(", ") },
-  { key: "create_time",   label: "Alder",          field: (r) => fmtRelativeAge(endpointCreateTime(r)) },
-];
+// getColumns() evalueres ved hvert kald så labels afspejler aktivt sprog.
+export function getColumns() {
+  return [
+    { key: "mac",           label: t("col.mac"),          field: (r) => r.mac || r.name },
+    { key: "vendor",        label: t("col.vendor"),       field: (r) => r.vendor || "" },
+    { key: "group_name",    label: t("col.group_name"),   field: (r) => r.group_name },
+    { key: "static_group",  label: t("col.static_group"), field: (r) => r.static_group ? t("cell.static") : t("cell.dynamic") },
+    { key: "description",   label: t("col.description"),  field: (r) => r.description },
+    { key: "endpoint_type", label: t("col.endpoint_type"),field: (r) => r.endpoint_type },
+    { key: "owner",         label: t("col.owner"),        field: (r) => r.owner },
+    { key: "lokation",      label: t("col.lokation"),     field: (r) => r.lokation },
+    { key: "platform_type", label: t("col.platform_type"),field: (r) => r.platform_type },
+    { key: "psk_mode",      label: t("col.psk_mode"),     field: (r) => r.psk_mode ? t("cell.yes") : "" },
+    { key: "psk_key",       label: t("col.psk_key"),      field: (r) => r.psk_key || "",       cls: "authz-col" },
+    { key: "authz_vlan",    label: t("col.authz_vlan"),   field: (r) => r.authz_vlan,          cls: "authz-col" },
+    { key: "authz_acl",     label: t("col.authz_acl"),    field: (r) => r.authz_acl,           cls: "authz-col" },
+    { key: "roles",         label: t("col.roles"),        field: (r) => (r.roles || []).join(", ") },
+    { key: "create_time",   label: t("col.create_time"),  field: (r) => fmtRelativeAge(endpointCreateTime(r)) },
+  ];
+}
