@@ -1,5 +1,6 @@
 import { api } from "../api.js";
 import { auth } from "../auth.js";
+import { t } from "../i18n.js";
 import { getCsvTemplate, setCsvTemplate, resetCsvTemplate, parseTemplateHeader, extendTemplateWithPortalColumns } from "../csv.js";
 
 function esc(s) {
@@ -441,6 +442,7 @@ export async function renderSettings(container) {
     </nav>
     <nav class="settings-subtab-nav" data-for-tab="portal-config">
       <button class="settings-subtab" data-subtab="pc-psk">PSK-politik</button>
+      <button class="settings-subtab" data-subtab="pc-locale">Sprog</button>
       <button class="settings-subtab" data-subtab="pc-ise-config">ISE Purge Config</button>
       <button class="settings-subtab" data-subtab="pc-update">Opdatering</button>
       <button class="settings-subtab" data-subtab="pc-advanced">Avanceret</button>
@@ -765,6 +767,26 @@ export async function renderSettings(container) {
     ` : ""}
 
     ${isAdmin ? `
+    <div class="card" data-tab="portal-config" data-subtab="pc-locale">
+      <h3 id="locale-card-title">Portalsrog</h3>
+      <p class="hint" id="locale-card-hint">Standardsprog for brugere uden personligt sprogvalg.</p>
+      <div id="locale-msg"></div>
+      <form id="locale-form">
+        <div class="field">
+          <label for="portal-language" id="locale-label">Standard sprog</label>
+          <select id="portal-language">
+            <option value="da">Dansk</option>
+            <option value="en">English</option>
+          </select>
+        </div>
+        <div class="actions">
+          <button type="submit" id="locale-submit">Gem sprogindstilling</button>
+        </div>
+      </form>
+    </div>
+    ` : ""}
+
+    ${isAdmin ? `
     <div class="card" data-tab="portal-config" data-subtab="pc-update">
       <h3>Portal system opdatering</h3>
       <p class="hint">
@@ -853,10 +875,44 @@ export async function renderSettings(container) {
     await initPskPolicySection(container);
   }
   if (isAdmin) {
+    await initLocaleSection(container);
     await initTemplatesSection(container);
     initSystemUpdateSection(container);
     initAdvancedSection(container);
   }
+}
+
+async function initLocaleSection(container) {
+  const form = container.querySelector("#locale-form");
+  if (!form) return;
+  const msg = container.querySelector("#locale-msg");
+  const sel = container.querySelector("#portal-language");
+
+  // Opdater panel-tekster med aktiv locale
+  const cardTitle = container.querySelector("#locale-card-title");
+  const cardHint = container.querySelector("#locale-card-hint");
+  const localeLabel = container.querySelector("#locale-label");
+  const submitBtn = container.querySelector("#locale-submit");
+  if (cardTitle) cardTitle.textContent = t("settings.locale_card");
+  if (cardHint) cardHint.textContent = t("settings.locale_hint");
+  if (localeLabel) localeLabel.textContent = t("settings.locale_label");
+  if (submitBtn) submitBtn.textContent = t("settings.locale_submit");
+
+  try {
+    const data = await api.getPortalLocale();
+    if (sel && data?.default_language) sel.value = data.default_language;
+  } catch { /* ignore */ }
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    msg.innerHTML = "";
+    try {
+      await api.updatePortalLocale({ default_language: sel.value });
+      msg.innerHTML = `<div class="alert success">${t("settings.locale_success")}</div>`;
+    } catch (err) {
+      msg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
+    }
+  });
 }
 
 async function initPxGridSection(container) {

@@ -1,5 +1,6 @@
 import { api } from "../api.js";
 import { auth } from "../auth.js";
+import { t } from "../i18n.js";
 
 function esc(s) {
   return (s || "").replace(/[&<>"']/g, (c) => ({
@@ -15,15 +16,15 @@ export async function renderLogin(onSuccess) {
   try {
     status = await api.authStatus();
   } catch (err) {
-    root.innerHTML = `<div class="login-wrap"><div class="alert error">Kan ikke kontakte backend: ${esc(err.message)}</div></div>`;
+    root.innerHTML = `<div class="login-wrap"><div class="alert error">${t("login.err_backend")}: ${esc(err.message)}</div></div>`;
     return;
   }
 
   const isSetup = !!status.setup_required;
-  const title = isSetup ? "Første-gangs opsætning" : "Log ind";
-  const submitLabel = isSetup ? "Opret admin & log ind" : "Log ind";
+  const title = isSetup ? t("login.setup_title") : t("login.title");
+  const submitLabel = isSetup ? t("login.setup_submit") : t("login.submit");
   const hint = isSetup
-    ? `<p class="hint">Der er ingen brugere endnu. Opret en administrator for at komme i gang.</p>`
+    ? `<p class="hint">${t("login.setup_hint")}</p>`
     : "";
 
   root.innerHTML = `
@@ -32,12 +33,12 @@ export async function renderLogin(onSuccess) {
         <h2>${esc(title)}</h2>
         ${hint}
         <form id="login-form">
-          <label for="login-username">Brugernavn</label>
+          <label for="login-username">${t("login.username")}</label>
           <input type="text" id="login-username" autocomplete="username" required minlength="3" />
-          <label for="login-password">Password</label>
+          <label for="login-password">${t("login.password")}</label>
           <input type="password" id="login-password" autocomplete="${isSetup ? "new-password" : "current-password"}" required minlength="${isSetup ? 8 : 1}" />
           ${isSetup ? `
-            <label for="login-password2">Bekræft password</label>
+            <label for="login-password2">${t("login.password2")}</label>
             <input type="password" id="login-password2" autocomplete="new-password" required minlength="8" />
           ` : ""}
           <button type="submit" id="login-submit">${esc(submitLabel)}</button>
@@ -59,7 +60,7 @@ export async function renderLogin(onSuccess) {
     if (isSetup) {
       const pw2 = root.querySelector("#login-password2").value;
       if (password !== pw2) {
-        msg.innerHTML = `<div class="alert error">Passwords matcher ikke</div>`;
+        msg.innerHTML = `<div class="alert error">${t("login.err_pw_match")}</div>`;
         return;
       }
     }
@@ -70,7 +71,7 @@ export async function renderLogin(onSuccess) {
         : await api.login(username, password);
       auth.save(result.token, result.user);
       document.body.classList.remove("auth-mode");
-      onSuccess(result.user);
+      onSuccess(result.user, status.default_language);
     } catch (err) {
       msg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
       submit.disabled = false;

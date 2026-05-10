@@ -2,6 +2,7 @@
 // initDetail wires the detail overlay event handlers and returns { openDetail, closeDetail }.
 
 import { auth } from "../auth.js";
+import { t } from "../i18n.js";
 import { esc, fmtDateTime, optionsHtml } from "./browse-utils.js";
 
 export function initDetail(container, state, api, cb) {
@@ -12,7 +13,7 @@ export function initDetail(container, state, api, cb) {
   // ── Open / close ─────────────────────────────────────────────────────────
   async function openDetail(id) {
     state.detailCurrentId = id;
-    detailMsg.innerHTML   = `<div class="alert info">Henter detaljer fra ISE...</div>`;
+    detailMsg.innerHTML   = `<div class="alert info">${t("alert.loading")}</div>`;
     detailOverlay.classList.remove("hidden");
     try {
       const d = await api.getEndpoint(id);

@@ -1,4 +1,5 @@
 import { api } from "../api.js";
+import { t } from "../i18n.js";
 import {
   COLUMNS, esc,
   getPageSize, getCoaReauthOnSave, setCoaReauthOnSave,
@@ -13,21 +14,21 @@ import { initBulk   } from "./browse-bulk.js";
 export async function renderBrowse(container) {
   container.innerHTML = `
     <div class="page-header">
-      <h2 style="margin:0;">Browse / Edit endpoints</h2>
+      <h2 style="margin:0;">${t("browse.title")}</h2>
       <span id="pxgrid-source-badge"
-            title="Hvor auth-status kommer fra: pxGrid push (live) eller MnT pull (5-15s forsinkelse)"
+            title="${t("browse.pxgrid_badge_title")}"
             style="padding:3px 10px; border-radius:12px; font-size:0.8em; background:#e5e7eb; color:#374151; white-space:nowrap;">
-        ⚪ Auth-status: ukendt
+        ${t("browse.pxgrid_badge")}
       </span>
     </div>
     <div class="card">
       <div class="toolbar">
         <div class="toolbar-group" title="Data-handlinger">
-          <button id="refresh-btn">Refresh</button>
-          <button id="export-btn" class="secondary">Export CSV</button>
+          <button id="refresh-btn">${t("browse.btn_refresh")}</button>
+          <button id="export-btn" class="secondary">${t("browse.btn_export")}</button>
           <div class="col-vis-wrap">
             <button id="col-vis-btn" class="secondary small" type="button"
-                    title="Vis/skjul kolonner">Kolonner ▾</button>
+                    title="Vis/skjul kolonner">${t("browse.btn_columns")}</button>
             <div id="col-vis-menu" class="col-vis-menu hidden"></div>
           </div>
         </div>
@@ -35,30 +36,30 @@ export async function renderBrowse(container) {
         <div class="toolbar-group" title="Filtre">
           <div class="views-wrap">
             <button id="views-btn" class="secondary small" type="button"
-                    title="Gemte filter-views — én-klik gendan filterkombination">📁 Views ▾</button>
+                    title="Gemte filter-views — én-klik gendan filterkombination">${t("browse.btn_views")}</button>
             <div id="views-menu" class="views-menu hidden"></div>
           </div>
           <button id="portal-filter-btn" class="secondary"
-                  title="Vis kun endpoints oprettet af HyperVision ISE Portal">Kun portal</button>
+                  title="Vis kun endpoints oprettet af HyperVision ISE Portal">${t("browse.btn_portal_filter")}</button>
         </div>
         <div class="spacer"></div>
         <div class="toolbar-group" title="Gem-handlinger">
           <button id="coa-toggle-btn" class="secondary"
-                  title="Udløs CoA reauth på ISE efter hver gemt ændring">CoA reauth: FRA</button>
-          <button id="save-all-btn" disabled title="Gem alle ændrede endpoints">Gem alle</button>
+                  title="Udløs CoA reauth på ISE efter hver gemt ændring">${t("browse.btn_coa_off")}</button>
+          <button id="save-all-btn" disabled title="Gem alle ændrede endpoints">${t("browse.btn_save_all")}</button>
         </div>
         <span class="toolbar-divider"></span>
         <div class="toolbar-group" title="Handlinger på valgte rækker">
           <span id="selection-count" class="hint"></span>
-          <button id="bulk-edit-btn" class="secondary small" disabled>Rediger valgte</button>
-          <button id="bulk-save-btn" class="small" disabled>Gem valgte</button>
+          <button id="bulk-edit-btn" class="secondary small" disabled>${t("browse.btn_bulk_edit")}</button>
+          <button id="bulk-save-btn" class="small" disabled>${t("browse.btn_bulk_save")}</button>
           <button id="bulk-disconnect-btn" class="danger small" disabled
-                  title="CoA Disconnect — deautentificér valgte klienter på WLC/switch (tvinger ny DHCP ved re-associate)">Disconnect</button>
-          <button id="bulk-del-btn" class="danger small" disabled>Slet</button>
+                  title="CoA Disconnect — deautentificér valgte klienter på WLC/switch (tvinger ny DHCP ved re-associate)">${t("browse.btn_bulk_disconnect")}</button>
+          <button id="bulk-del-btn" class="danger small" disabled>${t("browse.btn_bulk_delete")}</button>
         </div>
         <span class="toolbar-divider"></span>
         <div class="toolbar-group" title="Visning">
-          <label class="hint page-size-label">Vis
+          <label class="hint page-size-label">${t("browse.label_show")}
             <select id="page-size-select">
               <option value="10">10</option>
               <option value="25">25</option>
@@ -76,7 +77,7 @@ export async function renderBrowse(container) {
         <table>
           <thead>
             <tr>
-              <th style="width:36px;"><input type="checkbox" id="select-all" title="Vælg alle" /></th>
+              <th style="width:36px;"><input type="checkbox" id="select-all" title="${t("browse.select_all_title")}" /></th>
               ${COLUMNS.map((c) => `<th data-col="${c.key}"${c.cls ? ` class="${c.cls}"` : ""}>${c.label}</th>`).join("")}
             </tr>
             <tr class="filter-row">
@@ -421,7 +422,7 @@ export async function renderBrowse(container) {
   // ── CoA toggle ────────────────────────────────────────────────────────────
   const coaToggleBtn = container.querySelector("#coa-toggle-btn");
   function renderCoaToggle() {
-    coaToggleBtn.textContent = `CoA reauth: ${state.coaOnSave ? "TIL" : "FRA"}`;
+    coaToggleBtn.textContent = state.coaOnSave ? t("browse.btn_coa_on") : t("browse.btn_coa_off");
     coaToggleBtn.classList.toggle("active-toggle", state.coaOnSave);
   }
   renderCoaToggle();

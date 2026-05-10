@@ -9,6 +9,8 @@ from app.schemas.settings import (
     GeneratedPskKey,
     PortalAuthConfigResponse,
     PortalAuthConfigUpdate,
+    PortalLocaleResponse,
+    PortalLocaleUpdate,
     PskPolicy,
     PxGridAccountCreateResponse,
     PxGridResetResponse,
@@ -325,3 +327,20 @@ async def update_portal_auth_config(
 async def test_tacacs_connection(req: TacacsTestRequest) -> TacacsTestResponse:
     """Test TACACS+ auth + authz med givne credentials (gemmer ikke settings)."""
     return settings_service.test_tacacs_connection(req)
+
+
+# ── Portal locale (i18n) ─────────────────────────────────────────────────────
+
+locale_router = APIRouter(
+    prefix="/settings", tags=["settings"], dependencies=[Depends(require_admin)]
+)
+
+
+@locale_router.get("/locale", response_model=PortalLocaleResponse)
+async def read_portal_locale() -> PortalLocaleResponse:
+    return settings_service.get_portal_locale()
+
+
+@locale_router.put("/locale", response_model=PortalLocaleResponse)
+async def update_portal_locale(req: PortalLocaleUpdate) -> PortalLocaleResponse:
+    return await settings_service.update_portal_locale(req)

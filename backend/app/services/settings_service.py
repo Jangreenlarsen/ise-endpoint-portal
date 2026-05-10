@@ -20,6 +20,8 @@ from app.schemas.settings import (
     GeneratedPskKey,
     PortalAuthConfigResponse,
     PortalAuthConfigUpdate,
+    PortalLocaleResponse,
+    PortalLocaleUpdate,
     PskPolicy,
     PxGridAccountCreateResponse,
     PxGridSettingsResponse,
@@ -651,3 +653,33 @@ def test_tacacs_connection(req: TacacsTestRequest) -> TacacsTestResponse:
         message="TACACS+ auth lykkedes",
         operator_profile=result.operator_profile_name,
     )
+
+
+# ── Portal locale (i18n) ─────────────────────────────────────────────────────
+
+_LOCALE_KEY = "default_language"
+_VALID_LOCALES = {"da", "en"}
+
+
+def get_portal_locale() -> PortalLocaleResponse:
+    overrides = load_overrides()
+    lang = overrides.get(_LOCALE_KEY, "en")
+    if lang not in _VALID_LOCALES:
+        lang = "en"
+    return PortalLocaleResponse(default_language=lang)  # type: ignore[arg-type]
+
+
+async def update_portal_locale(new: PortalLocaleUpdate) -> PortalLocaleResponse:
+    before = get_portal_locale().model_dump()
+    overrides = load_overrides()
+    overrides[_LOCALE_KEY] = new.default_language
+    save_overrides(overrides)
+    logger.info("portal default language updated: %s", new.default_language)
+    await audit_store.record(
+        "updated",
+        "portal_locale",
+        None,
+        before=before,
+        after={"default_language": new.default_language},
+    )
+    return get_portal_locale()

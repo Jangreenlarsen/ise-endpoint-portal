@@ -3,6 +3,18 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [4.2.0 build 0235] — 2026-05-10 — feat(i18n): lokalisering dansk/engelsk per bruger + global portal-default
+
+**Berørte filer**: `backend/app/schemas/user.py`, `backend/app/schemas/settings.py`, `backend/app/api/me.py`, `backend/app/api/settings.py`, `backend/app/api/auth.py`, `backend/app/services/settings_service.py`, `backend/app/main.py`, `frontend/js/i18n.js` (ny), `frontend/js/api.js`, `frontend/js/app.js`, `frontend/js/views/login.js`, `frontend/js/views/user-prefs.js`, `frontend/js/views/settings.js`, `frontend/js/views/browse.js`, `frontend/js/views/browse-detail.js`, `version.json`, `CHANGELOG.md`, `FEATURES.md`
+
+Fase 1 i18n-implementering. Portalen understøtter nu dansk og engelsk med følgende prioritetsrækkefølge:
+1. Brugerens personlige præference (server-side i `users.json` via `GET/PUT /api/me/prefs`)
+2. Portal global default (admin-konfigurerbar via `GET/PUT /api/settings/locale`, gemt i `config.json`)
+3. Browser-sprog (`navigator.language`)
+4. Hardcoded fallback: `"en"`
+
+`AuthStatus`-response bundler `default_language` (tilgængeligt pre-login). Sprogskift sker øjeblikkeligt via re-render. TACACS+-brugere: server-side `PUT /api/me/prefs` returnerer 403 — præference gemmes i `localStorage` som fallback. Nyt `Sprog`-panel under Settings → Portal Config (kun admin). Sprogvælger i Præferencer for alle brugere.
+
 ## [4.1.0 build 0234] — 2026-05-10 — feat(ui): fire frontend-temaer: Light, Dark, Midnight, Slate
 
 **Berørte filer**: `frontend/css/styles.css`, `frontend/js/views/user-prefs.js`, `version.json`, `CHANGELOG.md`

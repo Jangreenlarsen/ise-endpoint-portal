@@ -13,7 +13,7 @@ from app.schemas.user import (
     User,
     UserMe,
 )
-from app.services import user_service
+from app.services import settings_service, user_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -21,19 +21,20 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 @router.get("/status", response_model=AuthStatus)
 async def auth_status(request: Request) -> AuthStatus:
     setup = user_service.setup_required()
+    default_lang = settings_service.get_portal_locale().default_language
     header = request.headers.get("Authorization", "")
     if setup or not header.startswith("Bearer "):
-        return AuthStatus(setup_required=setup, authenticated=False, user=None)
+        return AuthStatus(setup_required=setup, authenticated=False, user=None, default_language=default_lang)
     token = header[7:].strip()
     payload = auth_core.verify_token(token)
     if not payload:
-        return AuthStatus(setup_required=False, authenticated=False, user=None)
+        return AuthStatus(setup_required=False, authenticated=False, user=None, default_language=default_lang)
     try:
         if payload.get("auth_type") == "tacacs":
             from app.schemas.user import ROLE_VALUES
             role = payload.get("role")
             if not role or role not in ROLE_VALUES:
-                return AuthStatus(setup_required=False, authenticated=False, user=None)
+                return AuthStatus(setup_required=False, authenticated=False, user=None, default_language=default_lang)
             from app.schemas.user import User as UserModel
             user = UserModel(
                 id=f"tacacs:{payload.get('username', '')}",
@@ -47,8 +48,8 @@ async def auth_status(request: Request) -> AuthStatus:
         else:
             user = user_service.get_user(payload["sub"])
     except Exception:
-        return AuthStatus(setup_required=False, authenticated=False, user=None)
-    return AuthStatus(setup_required=False, authenticated=True, user=user)
+        return AuthStatus(setup_required=False, authenticated=False, user=None, default_language=default_lang)
+    return AuthStatus(setup_required=False, authenticated=True, user=user, default_language=default_lang)
 
 
 @router.post("/login", response_model=LoginResponse)

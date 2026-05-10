@@ -1,5 +1,6 @@
 import { api, setUnauthorizedHandler } from "./api.js";
 import { auth } from "./auth.js";
+import { t, resolveLocale, initLocaleFromStorage, registerRerenderCallback } from "./i18n.js";
 import { renderImport } from "./views/import.js";
 import { renderBrowse } from "./views/browse.js";
 import { renderAttributes } from "./views/attributes.js";
@@ -78,6 +79,14 @@ function applyChromeMode() {
   document.body.classList.toggle("register-route", isChromelessRoute());
 }
 
+function updateNavLabels() {
+  document.querySelectorAll(".sidebar nav a[data-view]").forEach((a) => {
+    const key = `nav.${a.dataset.view}`;
+    const translated = t(key);
+    if (translated !== key) a.textContent = translated;
+  });
+}
+
 function updateNavVisibility(user) {
   document.querySelectorAll(".sidebar nav a").forEach((a) => {
     const route = routes[a.dataset.view];
@@ -85,6 +94,7 @@ function updateNavVisibility(user) {
     const allowed = route.roles.includes(user.role);
     a.style.display = allowed ? "" : "none";
   });
+  updateNavLabels();
 }
 
 function updateUserBadge(user) {
@@ -128,7 +138,9 @@ async function renderView() {
 function showLogin() {
   updateUserBadge(null);
   applyChromeMode();
-  renderLogin((user) => {
+  renderLogin(async (user, portalDefault) => {
+    // Resolve sprog efter login: bruger-præference → portal default → browser → "en"
+    await resolveLocale(portalDefault, () => api.getMyPrefs()).catch(() => {});
     updateUserBadge(user);
     updateNavVisibility(user);
     const isLimited = user.role === "registrant" || user.role === "registrant_templet";
@@ -143,6 +155,18 @@ function showLogin() {
 
 async function boot() {
   initTheme();
+  // Anvend evt. gemt locale fra localStorage FØR login (viser korrekt sprog på login-siden)
+  try {
+    const status = await api.authStatus();
+    initLocaleFromStorage(status.default_language);
+  } catch {
+    initLocaleFromStorage("en");
+  }
+  // Re-render callback: kaldes af setLocale() efter brugeren skifter sprog
+  registerRerenderCallback(() => {
+    updateNavLabels();
+    renderView();
+  });
   checkHealth();
   setInterval(checkHealth, 15000);
 
@@ -184,6 +208,8 @@ async function boot() {
       return;
     }
     if (status.user) auth.save(auth.getToken(), status.user);
+    // Resolve sprog: bruger-præference → portal default → browser → "en"
+    await resolveLocale(status.default_language, () => api.getMyPrefs());
     updateUserBadge(status.user || user);
     updateNavVisibility(status.user || user);
     renderView();

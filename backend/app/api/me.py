@@ -22,6 +22,7 @@ from app.schemas.user import (
     SavedViewUpdate,
     SavedViewsResponse,
     User,
+    UserPrefs,
 )
 
 logger = logging.getLogger(__name__)
@@ -134,3 +135,51 @@ async def delete_my_view(
         "deleted", "saved_view", view_id,
         before={"name": target.get("name")},
     )
+
+
+# ── Per-bruger præferencer (i18n m.m.) ───────────────────────────────────────
+
+_VALID_LANGUAGES = {"da", "en"}
+
+
+@router.get("/prefs", response_model=UserPrefs)
+async def get_my_prefs(user: User = Depends(get_current_user)) -> UserPrefs:
+    if user.id.startswith("tacacs:"):
+        return UserPrefs(language=None)
+    users = load_users()
+    record = find_by_id(users, user.id)
+    if not record:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Bruger ikke fundet")
+    lang = record.get("prefs", {}).get("language")
+    if lang not in _VALID_LANGUAGES:
+        lang = None
+    return UserPrefs(language=lang)  # type: ignore[arg-type]
+
+
+@router.put("/prefs", response_model=UserPrefs)
+async def update_my_prefs(
+    payload: UserPrefs,
+    user: User = Depends(get_current_user),
+) -> UserPrefs:
+    if user.id.startswith("tacacs:"):
+        from fastapi import HTTPException as _HTTPException
+        raise _HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "TACACS+-brugere kan ikke gemme præferencer server-side — indstillingen gemmes lokalt i browseren",
+        )
+    users = load_users()
+    record = find_by_id(users, user.id)
+    if not record:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Bruger ikke fundet")
+    prefs = record.get("prefs") or {}
+    if payload.language is None:
+        prefs.pop("language", None)
+    elif payload.language in _VALID_LANGUAGES:
+        prefs["language"] = payload.language
+    record["prefs"] = prefs
+    save_users(users)
+    logger.info("user %s updated prefs: %s", user.username, prefs)
+    lang = prefs.get("language")
+    if lang not in _VALID_LANGUAGES:
+        lang = None
+    return UserPrefs(language=lang)  # type: ignore[arg-type]

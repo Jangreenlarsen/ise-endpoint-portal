@@ -236,6 +236,14 @@ class PxGridWorkerStatusResponse(BaseModel):
     cache_size: int = 0
 
 
+class PortalLocaleUpdate(BaseModel):
+    default_language: Literal["da", "en"] = "en"
+
+
+class PortalLocaleResponse(BaseModel):
+    default_language: Literal["da", "en"]
+
+
 class PskPolicy(BaseModel):
     """PSK-nøgle politik — validerings-regler for MPSK/IPSK PSK Key attributten."""
 

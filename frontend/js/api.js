@@ -339,6 +339,16 @@ export const api = {
   testTacacs: (payload) =>
     request("/settings/auth-config/test", { method: "POST", body: JSON.stringify(payload) }),
 
+  // Per-bruger præferencer (i18n)
+  getMyPrefs: () => request("/me/prefs"),
+  updateMyPrefs: (payload) =>
+    request("/me/prefs", { method: "PUT", body: JSON.stringify(payload) }),
+
+  // Portal locale (i18n — admin)
+  getPortalLocale: () => request("/settings/locale"),
+  updatePortalLocale: (payload) =>
+    request("/settings/locale", { method: "PUT", body: JSON.stringify(payload) }),
+
   // Operator Profiles
   getOperatorProfiles: () => request("/operator-profiles"),
   createOperatorProfile: (payload) =>

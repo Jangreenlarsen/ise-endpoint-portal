@@ -64,10 +64,15 @@ class LoginResponse(BaseModel):
     user: User
 
 
+class UserPrefs(BaseModel):
+    language: Literal["da", "en"] | None = None  # None = brug portal/browser default
+
+
 class AuthStatus(BaseModel):
     setup_required: bool
     authenticated: bool
     user: User | None = None
+    default_language: Literal["da", "en"] = "en"  # portal global default — bundled here for pre-login access
 
 
 class SetupRequest(BaseModel):
