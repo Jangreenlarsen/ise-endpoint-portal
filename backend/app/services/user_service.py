@@ -38,6 +38,7 @@ def _to_public(record: dict) -> User:
         id=record["id"],
         username=record["username"],
         role=record["role"],
+        user_type=record.get("user_type", "user"),
         created_at=record["created_at"],
         last_login=record.get("last_login"),
         assigned_endpoint_roles=list(record.get("assigned_endpoint_roles") or []),
@@ -200,9 +201,11 @@ async def update_user(user_id: str, payload: UserUpdate) -> User:
     record = find_by_id(users, user_id)
     if not record:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Bruger ikke fundet")
-    before = {"username": record["username"], "role": record["role"]}
+    before = {"username": record["username"], "role": record["role"], "user_type": record.get("user_type", "user")}
     if payload.role is not None:
         record["role"] = payload.role
+    if payload.user_type is not None:
+        record["user_type"] = payload.user_type
     pw_changed = bool(payload.password)
     if pw_changed:
         record["password_hash"] = auth_core.hash_password(payload.password)
@@ -415,6 +418,14 @@ def login(payload: LoginRequest) -> LoginResponse:
         # Fald igennem til lokal auth nedenfor
 
     # Lokal auth (altid for admin, fallback for øvrige hvis TACACS+ fejler)
+    # Operatørprofiler (user_type=operator) kan ikke logge ind lokalt — kun via TACACS+.
+    # Admin-rollen er undtaget: en fejlkonfigureret admin-konto må aldrig låses ude.
+    if record and record.get("user_type") == "operator" and record.get("role") != "admin":
+        logger.warning("local login blocked for operator-type user=%s", payload.username)
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            "Denne konto er konfigureret som TACACS+-operatørprofil og kan ikke bruges til lokal login.",
+        )
     if not record or not auth_core.verify_password(
         payload.password, record.get("password_hash", "")
     ):

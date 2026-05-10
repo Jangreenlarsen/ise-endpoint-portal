@@ -3,6 +3,18 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [4.0.4 build 0227] — 2026-05-10 — feat(users): Operatør/Bruger-markering med lokal-login-spærring for operatørprofiler
+
+**Berørte filer**: `backend/app/schemas/user.py`, `backend/app/services/user_service.py`, `frontend/js/views/settings.js`, `frontend/css/styles.css`, `version.json`, `CHANGELOG.md`
+
+- Nyt felt `user_type: "user" | "operator"` på bruger-records (default "user", bagud-kompatibelt)
+- `UserUpdate` accepterer `user_type` — toggling via eksisterende PUT /api/users/{id}
+- Login: operatørprofiler (`user_type=operator`) blokeres fra lokal auth med klar besked; admin-rollen er undtaget
+- Brugertabel viser klikkbar type-badge: "Operatør" (amber) / "Bruger" (grå) — klik toggler med confirm-dialog
+- Dark mode styling til begge badge-varianter
+
+---
+
 ## [4.0.3 build 0226] — 2026-05-10 — fix(users): copy-række styling matcher øvrige inline-former (blå venstre-kant)
 
 **Berørte filer**: `frontend/js/views/settings.js`, `version.json`, `CHANGELOG.md`

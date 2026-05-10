@@ -6,12 +6,14 @@ from pydantic import BaseModel, Field
 
 Role = Literal["admin", "editor", "editor-psk", "viewer", "registrant", "registrant_templet"]
 ROLE_VALUES: tuple[Role, ...] = ("admin", "editor", "editor-psk", "viewer", "registrant", "registrant_templet")
+UserType = Literal["user", "operator"]
 
 
 class User(BaseModel):
     id: str
     username: str
     role: Role
+    user_type: UserType = "user"
     created_at: str
     last_login: str | None = None
     assigned_endpoint_roles: list[str] = Field(default_factory=list)
@@ -37,6 +39,7 @@ class UserCreate(BaseModel):
 class UserUpdate(BaseModel):
     role: Role | None = None
     password: str | None = Field(default=None, min_length=8, max_length=256)
+    user_type: UserType | None = None
 
 
 class UserEndpointRoles(BaseModel):
