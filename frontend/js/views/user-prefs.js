@@ -21,33 +21,42 @@ function saveFrontendPrefs(prefs) {
 
 export async function renderUserPrefs(container) {
   const currentUser = auth.getUser();
+  const isTacacs = auth.isTacacs();
+
+  const passwordCard = isTacacs
+    ? `<div class="card">
+        <h3>Password</h3>
+        <p class="hint">Logget ind som <b>${esc(currentUser?.username || "")}</b> via <strong>TACACS+</strong>.</p>
+        <p>Password administreres af TACACS+-serveren — det kan ikke skiftes her i portalen.</p>
+      </div>`
+    : `<div class="card">
+        <h3>Skift dit password</h3>
+        <p class="hint">Logget ind som <b>${esc(currentUser?.username || "")}</b> (rolle: ${esc(currentUser?.role || "")}).</p>
+        <div id="pw-msg"></div>
+        <form id="pw-form" class="pw-form">
+          <div class="field">
+            <label for="pw-current">Nuværende password</label>
+            <input type="password" id="pw-current" autocomplete="current-password" required />
+          </div>
+          <div class="field">
+            <label for="pw-new">Nyt password (min. 8 tegn)</label>
+            <input type="password" id="pw-new" autocomplete="new-password" minlength="8" required />
+          </div>
+          <div class="field">
+            <label for="pw-new2">Bekræft nyt password</label>
+            <input type="password" id="pw-new2" autocomplete="new-password" minlength="8" required />
+          </div>
+          <div class="actions">
+            <button type="submit">Skift password</button>
+          </div>
+        </form>
+      </div>`;
+
   container.innerHTML = `
     <div class="page-header">
-      <h2 style="margin:0;">Bruger Preferences</h2>
+      <h2 style="margin:0;">Præferencer</h2>
     </div>
-
-    <div class="card">
-      <h3>Skift dit password</h3>
-      <p class="hint">Logget ind som <b>${esc(currentUser?.username || "")}</b> (rolle: ${esc(currentUser?.role || "")}).</p>
-      <div id="pw-msg"></div>
-      <form id="pw-form" class="pw-form">
-        <div class="field">
-          <label for="pw-current">Nuværende password</label>
-          <input type="password" id="pw-current" autocomplete="current-password" required />
-        </div>
-        <div class="field">
-          <label for="pw-new">Nyt password (min. 8 tegn)</label>
-          <input type="password" id="pw-new" autocomplete="new-password" minlength="8" required />
-        </div>
-        <div class="field">
-          <label for="pw-new2">Bekræft nyt password</label>
-          <input type="password" id="pw-new2" autocomplete="new-password" minlength="8" required />
-        </div>
-        <div class="actions">
-          <button type="submit">Skift password</button>
-        </div>
-      </form>
-    </div>
+    ${passwordCard}
 
     <div class="card">
       <h3>Frontend — preferences</h3>
@@ -72,25 +81,27 @@ export async function renderUserPrefs(container) {
     </div>
   `;
 
-  const pwMsg = container.querySelector("#pw-msg");
-  container.querySelector("#pw-form").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    pwMsg.innerHTML = "";
-    const current = container.querySelector("#pw-current").value;
-    const newPw = container.querySelector("#pw-new").value;
-    const newPw2 = container.querySelector("#pw-new2").value;
-    if (newPw !== newPw2) {
-      pwMsg.innerHTML = `<div class="alert error">De to nye passwords matcher ikke.</div>`;
-      return;
-    }
-    try {
-      await api.changePassword(current, newPw);
-      container.querySelector("#pw-form").reset();
-      pwMsg.innerHTML = `<div class="alert success">Password skiftet.</div>`;
-    } catch (err) {
-      pwMsg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
-    }
-  });
+  if (!isTacacs) {
+    const pwMsg = container.querySelector("#pw-msg");
+    container.querySelector("#pw-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      pwMsg.innerHTML = "";
+      const current = container.querySelector("#pw-current").value;
+      const newPw = container.querySelector("#pw-new").value;
+      const newPw2 = container.querySelector("#pw-new2").value;
+      if (newPw !== newPw2) {
+        pwMsg.innerHTML = `<div class="alert error">De to nye passwords matcher ikke.</div>`;
+        return;
+      }
+      try {
+        await api.changePassword(current, newPw);
+        container.querySelector("#pw-form").reset();
+        pwMsg.innerHTML = `<div class="alert success">Password skiftet.</div>`;
+      } catch (err) {
+        pwMsg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
+      }
+    });
+  }
 
   const prefs = loadFrontendPrefs();
   container.querySelector("#page_size").value = prefs.pageSize || 100;

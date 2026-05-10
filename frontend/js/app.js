@@ -90,9 +90,24 @@ function updateUserBadge(user) {
   if (!userInfoEl) return;
   userInfoEl.hidden = !user;
   if (user) {
+    const isTacacs = auth.isTacacs();
     userNameEl.textContent = user.username;
     userRoleEl.textContent = user.role;
     userRoleEl.className = `role-badge role-${user.role}`;
+    const tacacsEl = userInfoEl.querySelector(".tacacs-badge");
+    if (isTacacs) {
+      if (!tacacsEl) {
+        const badge = document.createElement("span");
+        badge.className = "tacacs-badge";
+        badge.title = "Autentiseret via TACACS+";
+        badge.textContent = "TACACS+";
+        userRoleEl.after(badge);
+      }
+    } else {
+      tacacsEl?.remove();
+    }
+    const prefsLink = userInfoEl.querySelector(".user-prefs-link");
+    if (prefsLink) prefsLink.style.display = isTacacs ? "none" : "";
   }
 }
 

@@ -967,6 +967,18 @@ body.auth-mode .content {
 .role-editor    { background: #1e40af; color: #bfdbfe; }
 .role-viewer    { background: #374151; color: #d1d5db; }
 .role-registrar { background: #065f46; color: #d1fae5; }
+.tacacs-badge {
+  display: inline-block;
+  padding: 0.05rem 0.35rem;
+  border-radius: 3px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  background: #1e3a5f;
+  color: #7dd3fc;
+  border: 1px solid #2563eb;
+  text-transform: uppercase;
+}
 .linkish {
   background: none !important;
   border: none !important;

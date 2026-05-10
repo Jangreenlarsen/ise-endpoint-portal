@@ -3,6 +3,18 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [4.0.2 build 0222] — 2026-05-10 — feat(ui): TACACS+-badge i sidebar + skjul Præferencer/password-skift for TACACS-brugere
+
+**Berørte filer**: `frontend/js/auth.js`, `frontend/js/app.js`, `frontend/js/views/user-prefs.js`, `frontend/css/styles.css`, `version.json`, `CHANGELOG.md`
+
+- `auth.isTacacs()` dekoder JWT-payload og returnerer true ved `auth_type=tacacs`
+- Sidebar viser blåt "TACACS+"-badge ved siden af rolle-badgen for TACACS-brugere
+- "Præferencer"-linket i sidebar skjules for TACACS-brugere (ingen password at skifte)
+- Præferencer-siden viser informationsbesked i stedet for password-formular for TACACS-brugere
+- Frontend-preferences (tema, page size) stadig tilgængeligt for alle
+
+---
+
 ## [4.0.1 build 0221] — 2026-05-09 — docs: opdater README + docs/ til v4 (TACACS+, registrant-roller, Portal Auth Config)
 
 **Berørte filer**: `README.md`, `docs/INDEX.md`, `docs/01-OVERBLIK.md`, `docs/02-INSTALLATION.md`, `docs/03-BRUGERGUIDE.md`, `docs/04-ADMIN.md`, `docs/05-DRIFT.md`, `version.json`, `CHANGELOG.md`

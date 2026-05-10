@@ -33,6 +33,20 @@ export const auth = {
     const u = this.getUser();
     return u && roles.includes(u.role);
   },
+  isTacacs() {
+    const token = this.getToken();
+    if (!token) return false;
+    try {
+      const [payloadB64] = token.split(".");
+      const padding = "=".repeat((4 - (payloadB64.length % 4)) % 4);
+      const payload = JSON.parse(
+        atob(payloadB64.replace(/-/g, "+").replace(/_/g, "/") + padding),
+      );
+      return payload.auth_type === "tacacs";
+    } catch {
+      return false;
+    }
+  },
   // Decodes the token payload locally (no signature check) and returns true if
   // the token is missing, malformed, or past its exp claim.
   isTokenExpired() {
