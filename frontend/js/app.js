@@ -106,8 +106,6 @@ function updateUserBadge(user) {
     } else {
       tacacsEl?.remove();
     }
-    const prefsLink = userInfoEl.querySelector(".user-prefs-link");
-    if (prefsLink) prefsLink.style.display = isTacacs ? "none" : "";
   }
 }
 

@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [4.0.2 build 0223] — 2026-05-10 — fix(ui): Præferencer-link synligt for TACACS-brugere — kun password-formular skjules
+
+**Berørte filer**: `frontend/js/app.js`, `version.json`, `CHANGELOG.md`
+
+Præferencer-linket i sidebar vises for alle brugere. Kun selve password-formularen på Præferencer-siden er skjult for TACACS+-brugere.
+
+---
+
 ## [4.0.2 build 0222] — 2026-05-10 — feat(ui): TACACS+-badge i sidebar + skjul Præferencer/password-skift for TACACS-brugere
 
 **Berørte filer**: `frontend/js/auth.js`, `frontend/js/app.js`, `frontend/js/views/user-prefs.js`, `frontend/css/styles.css`, `version.json`, `CHANGELOG.md`
