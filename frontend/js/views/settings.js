@@ -1616,8 +1616,8 @@ async function initUsersSection(container, currentUser, rolesState) {
           const adminCell = `<span class="hint" style="font-style:italic;">Admin — alle System adm implicit</span>`;
           const isOperator = u.user_type === "operator";
           const typeBadge = `<button type="button" class="user-type-toggle small ${isOperator ? "operator-badge" : "user-badge"}"
-            title="${isOperator ? "Operatørprofil — klik for at skifte til Bruger" : "Bruger — klik for at skifte til Operatørprofil"}"
-            >${isOperator ? "Operatør" : "Bruger"}</button>`;
+            title="${isOperator ? "Profil (TACACS+-operatørprofil) — klik for at skifte til Bruger" : "Bruger (lokal login) — klik for at skifte til Profil"}"
+            >${isOperator ? "Profil" : "Bruger"}</button>`;
           return `
             <tr data-user-id="${esc(u.id)}" data-username="${esc(u.username)}" data-user-type="${isOperator ? "operator" : "user"}">
               <td>${esc(u.username)} ${typeBadge}</td>
@@ -1696,11 +1696,11 @@ async function initUsersSection(container, currentUser, rolesState) {
     if (e.target.classList.contains("user-type-toggle")) {
       const currentType = row.dataset.userType;
       const newType = currentType === "operator" ? "user" : "operator";
-      const label = newType === "operator" ? "Operatørprofil" : "Bruger";
-      if (!confirm(`Skift "${username}" til ${label}?\n\n${newType === "operator" ? "Kontoen vil ikke længere kunne bruges til lokal login — kun via TACACS+." : "Kontoen kan igen bruges til lokal login."}`)) return;
+      const label = newType === "operator" ? "Profil" : "Bruger";
+      if (!confirm(`Skift "${username}" til ${label}?\n\n${newType === "operator" ? "Kontoen sættes som TACACS+-operatørprofil og kan ikke bruges til lokal login." : "Kontoen sættes som Bruger og kan igen bruges til lokal login."}`)) return;
       try {
         await api.updateUser(id, { user_type: newType });
-        msg.innerHTML = `<div class="alert success">${esc(username)} er nu markeret som <strong>${label}</strong>.</div>`;
+        msg.innerHTML = `<div class="alert success">${esc(username)} er nu sat til <strong>${label}</strong>.</div>`;
         await reload();
       } catch (err) {
         msg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;

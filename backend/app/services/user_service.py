@@ -424,7 +424,7 @@ def login(payload: LoginRequest) -> LoginResponse:
         logger.warning("local login blocked for operator-type user=%s", payload.username)
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED,
-            "Denne konto er konfigureret som TACACS+-operatørprofil og kan ikke bruges til lokal login.",
+            "Denne konto er konfigureret som Profil (TACACS+-operatørprofil) og kan ikke bruges til lokal login.",
         )
     if not record or not auth_core.verify_password(
         payload.password, record.get("password_hash", "")

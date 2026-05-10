@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [4.0.4 build 0228] — 2026-05-10 — fix(users): omdøb type-label Operatør → Profil i UI og fejlbeskeder
+
+**Berørte filer**: `frontend/js/views/settings.js`, `backend/app/services/user_service.py`, `version.json`, `CHANGELOG.md`
+
+Badge-label og confirm-dialog bruger nu "Profil" (TACACS+-operatørprofil) i stedet for "Operatør". Intern `user_type`-værdi uændret ("operator"/"user").
+
+---
+
 ## [4.0.4 build 0227] — 2026-05-10 — feat(users): Operatør/Bruger-markering med lokal-login-spærring for operatørprofiler
 
 **Berørte filer**: `backend/app/schemas/user.py`, `backend/app/services/user_service.py`, `frontend/js/views/settings.js`, `frontend/css/styles.css`, `version.json`, `CHANGELOG.md`
