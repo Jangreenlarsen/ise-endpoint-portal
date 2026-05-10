@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [4.0.5 build 0230] — 2026-05-10 — feat(users): fremhæv brugerens egen System adm-rolle med lysblå farve
+
+**Berørte filer**: `frontend/js/views/settings.js`, `frontend/css/styles.css`, `version.json`, `CHANGELOG.md`
+
+System adm-tagget der matcher brugerens eget username (den implicitte/auto-oprettede rolle) vises med lysblå baggrund og fed skrift — både checked og unchecked tilstand, med dark mode variant.
+
+---
+
 ## [4.0.4 build 0229] — 2026-05-10 — fix(users): type-valg som dropdown (select) i stedet for klikbar badge
 
 **Berørte filer**: `frontend/js/views/settings.js`, `frontend/css/styles.css`, `version.json`, `CHANGELOG.md`

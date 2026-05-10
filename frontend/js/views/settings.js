@@ -1555,7 +1555,8 @@ async function initUsersSection(container, currentUser, rolesState) {
     const checks = catalog
       .map((r) => {
         const checked = assigned.has(r.name) ? " checked" : "";
-        return `<label class="role-chip"><input type="checkbox" class="user-role-chip" value="${esc(r.name)}"${checked}/> ${esc(r.name)}</label>`;
+        const isOwn = r.name.toLowerCase() === user.username.toLowerCase();
+        return `<label class="role-chip${isOwn ? " own-role-chip" : ""}"><input type="checkbox" class="user-role-chip" value="${esc(r.name)}"${checked}/> ${esc(r.name)}</label>`;
       })
       .join("");
     return `<div class="role-chips">${checks}</div>`;
