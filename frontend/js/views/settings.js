@@ -1729,7 +1729,7 @@ async function initUsersSection(container, currentUser, rolesState) {
       const copyRow = document.createElement("tr");
       copyRow.className = "user-copy-row";
       copyRow.innerHTML = `
-        <td colspan="7" style="padding:0.6rem 0.5rem;background:var(--bg-alt,#f8fafc);border-top:2px solid var(--accent,#3b82f6);">
+        <td colspan="7" style="padding:0.6rem 0.75rem;background:var(--bg-alt,#f8fafc);border-left:3px solid var(--accent,#3b82f6);border-top:1px dashed #e5e7eb;">
           <div style="display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center;">
             <span style="font-size:0.82rem;color:var(--text-secondary,#64748b);white-space:nowrap;">
               Kopi af <strong>${esc(srcUser.username)}</strong> (rolle: ${esc(srcUser.role)}):

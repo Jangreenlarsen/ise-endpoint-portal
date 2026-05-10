@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [4.0.3 build 0226] — 2026-05-10 — fix(users): copy-række styling matcher øvrige inline-former (blå venstre-kant)
+
+**Berørte filer**: `frontend/js/views/settings.js`, `version.json`, `CHANGELOG.md`
+
+Copy-rækkens `<td>` bruger nu `border-left: 3px solid var(--accent)` + stiplet top-kant — samme visuelle mønster som øvrige inline-sektioner i portalen.
+
+---
+
 ## [4.0.3 build 0225] — 2026-05-10 — feat(users): kopiér bruger/operatørprofil med præudfyldt navn og kopierede roller/skabeloner
 
 **Berørte filer**: `frontend/js/views/settings.js`, `version.json`, `CHANGELOG.md`
