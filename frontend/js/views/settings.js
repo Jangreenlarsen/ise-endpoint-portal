@@ -535,6 +535,7 @@ export async function renderSettings(container) {
           <tr>
             <th id="users-col-username">Brugernavn/Operatør profil</th>
             <th style="width:9rem;">Rolle</th>
+            <th style="width:7rem;">Type</th>
             <th>System adm</th>
             <th>Skabeloner (registrant_templet)</th>
             <th style="width:11rem;">Sidst logget ind</th>
@@ -1615,17 +1616,20 @@ async function initUsersSection(container, currentUser, rolesState) {
           const isPortalAdmin = u.role === "admin";
           const adminCell = `<span class="hint" style="font-style:italic;">Admin — alle System adm implicit</span>`;
           const isOperator = u.user_type === "operator";
-          const typeBadge = `<button type="button" class="user-type-toggle small ${isOperator ? "operator-badge" : "user-badge"}"
-            title="${isOperator ? "Profil (TACACS+-operatørprofil) — klik for at skifte til Bruger" : "Bruger (lokal login) — klik for at skifte til Profil"}"
-            >${isOperator ? "Profil" : "Bruger"}</button>`;
           return `
-            <tr data-user-id="${esc(u.id)}" data-username="${esc(u.username)}" data-user-type="${isOperator ? "operator" : "user"}">
-              <td>${esc(u.username)} ${typeBadge}</td>
+            <tr data-user-id="${esc(u.id)}" data-username="${esc(u.username)}">
+              <td>${esc(u.username)}</td>
               <td>
                 <select class="user-role-select" ${isSelf ? "disabled title='Du kan ikke ændre din egen rolle her'" : ""}>
                   ${["admin", "editor", "editor-psk", "viewer", "registrant", "registrant_templet"]
                     .map((r) => `<option value="${r}"${r === u.role ? " selected" : ""}>${r}</option>`)
                     .join("")}
+                </select>
+              </td>
+              <td>
+                <select class="user-type-select" ${isSelf ? "disabled title='Du kan ikke ændre din egen type her'" : ""}>
+                  <option value="user"${!isOperator ? " selected" : ""}>Bruger</option>
+                  <option value="operator"${isOperator ? " selected" : ""}>Profil</option>
                 </select>
               </td>
               <td>${isPortalAdmin ? adminCell : renderEndpointRoleCell(u)}</td>
@@ -1663,6 +1667,19 @@ async function initUsersSection(container, currentUser, rolesState) {
       }
       return;
     }
+    if (e.target.classList.contains("user-type-select")) {
+      const newType = e.target.value;
+      const label = newType === "operator" ? "Profil" : "Bruger";
+      try {
+        await api.updateUser(id, { user_type: newType });
+        msg.innerHTML = `<div class="alert success">${esc(row.dataset.username)} er nu sat til <strong>${label}</strong>.</div>`;
+        await reload();
+      } catch (err) {
+        msg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
+        await reload();
+      }
+      return;
+    }
     if (e.target.classList.contains("user-role-chip")) {
       const checks = row.querySelectorAll(".user-role-chip");
       const selected = Array.from(checks).filter((c) => c.checked).map((c) => c.value);
@@ -1693,21 +1710,6 @@ async function initUsersSection(container, currentUser, rolesState) {
     if (!row) return;
     const id = row.dataset.userId;
     const username = row.querySelector("td").textContent;
-    if (e.target.classList.contains("user-type-toggle")) {
-      const currentType = row.dataset.userType;
-      const newType = currentType === "operator" ? "user" : "operator";
-      const label = newType === "operator" ? "Profil" : "Bruger";
-      if (!confirm(`Skift "${username}" til ${label}?\n\n${newType === "operator" ? "Kontoen sættes som TACACS+-operatørprofil og kan ikke bruges til lokal login." : "Kontoen sættes som Bruger og kan igen bruges til lokal login."}`)) return;
-      try {
-        await api.updateUser(id, { user_type: newType });
-        msg.innerHTML = `<div class="alert success">${esc(username)} er nu sat til <strong>${label}</strong>.</div>`;
-        await reload();
-      } catch (err) {
-        msg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
-      }
-      return;
-    }
-
     if (e.target.classList.contains("user-del")) {
       if (!confirm(`Slet brugeren "${username}"?`)) return;
       try {

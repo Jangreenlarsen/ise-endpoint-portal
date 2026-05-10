@@ -961,39 +961,7 @@ body.auth-mode .content {
   margin-top: 0.3rem;
   flex-wrap: wrap;
 }
-.operator-badge, .user-badge {
-  display: inline-block;
-  padding: 0.05rem 0.4rem;
-  border-radius: 3px;
-  font-size: 0.7rem;
-  font-weight: 600;
-  cursor: pointer;
-  border: 1px solid transparent;
-  vertical-align: middle;
-  margin-left: 0.3rem;
-  letter-spacing: 0.02em;
-  background: none;
-}
-.operator-badge {
-  background: #fef3c7;
-  color: #92400e;
-  border-color: #f59e0b;
-}
-.user-badge {
-  background: #f1f5f9;
-  color: #64748b;
-  border-color: #cbd5e1;
-}
-[data-theme="dark"] .operator-badge {
-  background: #451a03;
-  color: #fcd34d;
-  border-color: #d97706;
-}
-[data-theme="dark"] .user-badge {
-  background: #1e293b;
-  color: #94a3b8;
-  border-color: #334155;
-}
+
 .auth-type-tacacs {
   color: #7dd3fc;
   font-weight: 700;
@@ -1052,7 +1020,8 @@ body.auth-mode .content {
   border-bottom: 1px solid #eef0f3;
   vertical-align: middle;
 }
-.users-table .user-role-select { padding: 0.25rem 0.4rem; }
+.users-table .user-role-select,
+.users-table .user-type-select { padding: 0.25rem 0.4rem; }
 .role-chips {
   display: flex;
   flex-wrap: wrap;

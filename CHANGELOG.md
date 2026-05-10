@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [4.0.4 build 0229] — 2026-05-10 — fix(users): type-valg som dropdown (select) i stedet for klikbar badge
+
+**Berørte filer**: `frontend/js/views/settings.js`, `frontend/css/styles.css`, `version.json`, `CHANGELOG.md`
+
+Type-kolonnen bruger nu en `<select>` med "Bruger" / "Profil" — samme interaktionsmønster som Rolle-kolonnen. Badge-CSS fjernet. Change-handler i tbody trigger API-kald ved valg.
+
+---
+
 ## [4.0.4 build 0228] — 2026-05-10 — fix(users): omdøb type-label Operatør → Profil i UI og fejlbeskeder
 
 **Berørte filer**: `frontend/js/views/settings.js`, `backend/app/services/user_service.py`, `version.json`, `CHANGELOG.md`
