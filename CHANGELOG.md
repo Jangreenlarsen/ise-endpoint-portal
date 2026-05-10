@@ -3,6 +3,30 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [4.0.5 build 0233] — 2026-05-10 — docs: opdater al dokumentation til v4.0.5
+
+**Berørte filer**: `README.md`, `docs/INDEX.md`, `docs/01-OVERBLIK.md`, `docs/02-INSTALLATION.md`, `docs/03-BRUGERGUIDE.md`, `docs/04-ADMIN.md`, `docs/05-DRIFT.md`, `version.json`, `CHANGELOG.md`
+
+Komplet dokumentationsopdatering for v4.0.x-serien: Bruger/Operatør-type, kopiér bruger, sidebar Login auth-badge, Præferencer-adfærd for TACACS-brugere, eget System adm-tag fremhævet i lyserød.
+
+---
+
+## [4.0.5 build 0232] — 2026-05-10 — fix(ui): omdøb "Profil" → "Operatør" i type-dropdown for brugere
+
+**Berørte filer**: `frontend/js/views/settings.js`, `version.json`, `CHANGELOG.md`
+
+Type-dropdown viser nu "Bruger" / "Operatør". Bekræftelsestekst ved ændring opdateret tilsvarende.
+
+---
+
+## [4.0.5 build 0231] — 2026-05-10 — fix(ui): farv egen System adm-rolle lyserød i stedet for lyseblå
+
+**Berørte filer**: `frontend/css/styles.css`, `version.json`, `CHANGELOG.md`
+
+`.own-role-chip` ændret fra lyseblå (`#e0f2fe`) til lyserød (`#fee2e2`) med tilsvarende checked- og dark mode-varianter.
+
+---
+
 ## [4.0.5 build 0230] — 2026-05-10 — feat(users): fremhæv brugerens egen System adm-rolle med lysblå farve
 
 **Berørte filer**: `frontend/js/views/settings.js`, `frontend/css/styles.css`, `version.json`, `CHANGELOG.md`

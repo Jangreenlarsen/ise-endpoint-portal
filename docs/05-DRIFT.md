@@ -1,4 +1,4 @@
-<!-- Version: 4.0.1 | Opdateret: 2026-05-09 -->
+<!-- Version: 4.0.5 | Opdateret: 2026-05-10 -->
 
 # 05 — Drift og vedligeholdelse
 

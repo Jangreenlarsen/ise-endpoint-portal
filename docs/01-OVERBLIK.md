@@ -1,4 +1,4 @@
-<!-- Version: 4.0.1 | Opdateret: 2026-05-09 -->
+<!-- Version: 4.0.5 | Opdateret: 2026-05-10 -->
 
 # 01 — Systemoverblik
 
@@ -152,11 +152,22 @@ Portalen har seks bruger-roller:
 | **registrant** | Kan oprette endpoints via det mobiloptimerede register-view (alle formularfelter) |
 | **registrant_templet** | Begrænset registrering — vælger skabelon og udfylder kun MAC og beskrivelse |
 
+### Bruger- og operatørtype
+
+Ud over rollen har hver bruger en **type**:
+
+| Type | Beskrivelse |
+|---|---|
+| **Bruger** | Standard lokalt login med password valideret mod bcrypt-hash i portalen |
+| **Operatør** | Login sker kun via TACACS+-serveren. Lokal login er blokeret (kan ikke bruges til nødadgang). Admin-rollen er undtaget og kan altid logge ind lokalt uanset type |
+
+Typen sættes via en dropdown i Users-tabellen (Settings → Brugere & Bruger grupper). Brugere af type Operatør svarer til TACACS+-operatørprofiler — portalen bestemmer rolle og adgang, TACACS+-serveren autentiserer.
+
 ### System adm (endpoint-scoping)
 
 Ud over de seks portal-roller har portalen et tag-baseret endpoint-scoping-system kaldet "System adm". Admin definerer et katalog af tags (f.eks. `PLC-HalA`, `alle-Printer`). Tags tildeles endpoints via `HypervisionRoles`-custom-attributten i ISE. Brugere tildeles et eller flere tags; de ser kun endpoints der matcher mindst ét af deres tags. Admin ser altid alle endpoints uanset tags.
 
-Hver bruger har desuden automatisk sit eget username som implicit tag, så endpoints tagget med brugerens username altid er synlige for den pågældende bruger. Ved oprettelse af en ny bruger oprettes automatisk et System adm-tag med navn = brugerens username.
+Hver bruger har desuden automatisk sit eget username som implicit tag, så endpoints tagget med brugerens username altid er synlige for den pågældende bruger. Ved oprettelse af en ny bruger oprettes automatisk et System adm-tag med navn = brugerens username. Dette auto-oprettede tag vises fremhævet i lyserød i tagudvælgelsen under brugeren.
 
 ---
 
@@ -173,7 +184,7 @@ Fra version 4.0.0 understøtter portalen ekstern TACACS+-autentisering som alter
 
 ### Brugere som operatørprofiler
 
-I TACACS+-mode fungerer de eksisterende portal-brugere som operatørprofiler. Brugernavn i portalen skal matche den profilværdi TACACS+-serveren sender i `portal-operator-profile`-attributten. Passwordfeltet på portalprofiler er ikke i brug i TACACS+-mode — TACACS+-serveren håndterer autentiseringen.
+I TACACS+-mode fungerer portal-brugere med type **Operatør** som operatørprofiler. Brugernavn i portalen skal matche den profilværdi TACACS+-serveren sender i `portal-operator-profile`-attributten. Passwordfeltet på operatørprofiler er ikke i brug — TACACS+-serveren håndterer autentiseringen.
 
 ### Konfiguration af TACACS+-server
 

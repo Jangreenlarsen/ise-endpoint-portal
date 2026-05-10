@@ -1,8 +1,8 @@
-<!-- Version: 4.0.1 | Opdateret: 2026-05-09 -->
+<!-- Version: 4.0.5 | Opdateret: 2026-05-10 -->
 
 # HyperVision ISE Portal — Dokumentationsindeks
 
-Dette er hoveddokumentet for HyperVision ISE Portal version **4.0.1 build 0220**. Alle sektioner i manualen er selvstændige filer; dette dokument fungerer som navigationspunkt og overblik over dokumentationsstrukturen.
+Dette er hoveddokumentet for HyperVision ISE Portal version **4.0.5 build 0232**. Alle sektioner i manualen er selvstændige filer; dette dokument fungerer som navigationspunkt og overblik over dokumentationsstrukturen.
 
 ---
 
@@ -81,5 +81,6 @@ Nyeste øverst. Kun ændringer i selve dokumentationen registreres her — for k
 
 | Version | Dato | Ændring |
 |---|---|---|
+| 4.0.5 build 0232 | 2026-05-10 | Bruger/Operatør-type, kopiér bruger, Login auth-badge i sidebar, Præferencer for TACACS-brugere, eget System adm-tag fremhævet i lyserød |
 | 4.0.1 build 0220 | 2026-05-09 | Opdateret til v4: TACACS+-autentisering, registrant-roller, Portal Auth Config, ny afhængighed tacacs-plus |
 | 3.15.5 build 0168 | 2026-05-07 | Komplet dokumentations-suite oprettet: INDEX + 01–05. Erstatter den tidligere INSTALL.md |

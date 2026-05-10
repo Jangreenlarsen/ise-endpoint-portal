@@ -1,6 +1,27 @@
-<!-- Version: 4.0.1 | Opdateret: 2026-05-09 -->
+<!-- Version: 4.0.5 | Opdateret: 2026-05-10 -->
 
 # 03 — Brugervejledning
+
+---
+
+## Sidebar og brugerinfo
+
+Sidebarens nederste del viser tre linjer om den aktuelle session:
+
+| Linje | Indhold |
+|---|---|
+| **User** | Brugernavn du er logget ind med |
+| **Rolle** | Din portal-rolle (admin, editor, viewer osv.) |
+| **Login auth** | `TACACS+` (blå) hvis logget ind via TACACS+-server, `LOCAL` (grøn) hvis lokal passwordauth |
+
+Herunder er der links til **Log ud** og **Præferencer**.
+
+### Præferencer
+
+Præferencer-siden er tilgængelig for alle brugere uanset auth-metode.
+
+- **Brugere med lokal auth** kan skifte password samt justere frontend-præferencer (tema, sidestørrelse).
+- **TACACS+-brugere** kan justere frontend-præferencer, men kan ikke skifte password — passwords administreres af TACACS+-serveren. Passwordformularen erstattes af en informationsbesked.
 
 ---
 

@@ -1,4 +1,4 @@
-<!-- Version: 4.0.1 | Opdateret: 2026-05-09 -->
+<!-- Version: 4.0.5 | Opdateret: 2026-05-10 -->
 
 # 04 — Administratorvejledning
 
@@ -29,6 +29,18 @@ Portalen opretter automatisk et System adm-tag i kataloget med navn = brugerens 
 | **registrant** | Kan kun oprette endpoints via det mobiloptimerede register-view (alle formularfelter) |
 | **registrant_templet** | Begrænset registrering — vælger en skabelon og udfylder kun MAC og beskrivelse |
 
+### Kopiér bruger
+
+Klik **Kopiér**-knappen ud for en bruger for at åbne et inline-kopiérsformular direkte under rækken (markeret med blå venstre streng). Formularen er forudfyldt med:
+
+- **Brugernavn**: originalt navn + postfix `_copy` (gentaget kopiering giver ikke `_copy_copy`)
+- **Rolle**: kopieret fra kildebrugeren
+- Endpoint-roller (System adm) og skabeloner kopieres automatisk ved oprettelse
+
+Tilpas brugernavn og evt. password og klik **Opret kopi**. Annullér med **Annullér**-knappen.
+
+I TACACS+-mode er password valgfrit — lades det tomt genereres et tilfældigt hash der aldrig bruges til lokal auth.
+
 ### Slet bruger
 
 Klik skraldespands-ikonet ud for brugeren og bekræft. Sletning er permanent; endpoints ejerskab flyttes ikke. Admin-kontoen der udfører sletningen kan ikke slettes af sig selv.
@@ -41,15 +53,32 @@ Alle brugere kan skifte eget password via Settings → Skift password. Admin kan
 
 Under hver bruger i Users-siden kan admin vælge hvilke System adm-tags brugeren er tildelt via checkboxe. En bruger med tag `PLC-HalA` ser kun endpoints der er tagget med `PLC-HalA` (samt endpoints tagget med brugerens eget username). Admin ser altid alle endpoints.
 
+### Bruger- og operatørtype
+
+Hver bruger har en **Type** der bestemmer login-metode:
+
+| Type | Beskrivelse |
+|---|---|
+| **Bruger** | Standard — lokal passwordvalidering. Default for nye brugere |
+| **Operatør** | Kun TACACS+-login. Lokal login er blokeret. Admin-rollen er undtaget |
+
+Typen sættes via dropdown i **Type**-kolonnen i Users-tabellen. Ændringen gemmes øjeblikkeligt. Eksisterende aktive sessioner påvirkes ikke.
+
+Operatør-typen er primært beregnet til brugere der repræsenterer TACACS+-operatørprofiler: TACACS+-serveren autentiserer, portalen bestemmer adgang via den matchede brugerpost.
+
+### System adm-visning
+
+Det auto-oprettede System adm-tag med navn = brugerens username vises fremhævet i **lyserød** i tag-listen under brugeren. Dette gør det let at skelne det personlige tag fra tildelte gruppe-tags.
+
 ### Skabelon-tildeling (registrant_templet)
 
 Brugere med rollen `registrant_templet` tildeles specifikke skabeloner via checkboxe i brugertabellen. Kun de tildelte skabeloner er tilgængelige i brugerens register-view.
 
 ### Brugere som operatørprofiler (TACACS+-mode)
 
-Når TACACS+-autentisering er aktiveret, fungerer portal-brugerne som **operatørprofiler**: TACACS+-serveren sender attributten `portal-operator-profile = <profilnavn>` i sit Authorization-svar. Portalen slår profilnavnet op som et brugernavn i Users-listen og bruger den matchede brugers rolle, System adm-tags og skabeloner.
+Når TACACS+-autentisering er aktiveret, fungerer portal-brugere med type **Operatør** som **operatørprofiler**: TACACS+-serveren sender attributten `portal-operator-profile = <profilnavn>` i sit Authorization-svar. Portalen slår profilnavnet op som et brugernavn i Users-listen og bruger den matchede brugers rolle, System adm-tags og skabeloner.
 
-Profilnavn i TACACS+-serveren skal matche brugernavnet i portalen **præcist**. Admin-brugere logges altid ind lokalt.
+Profilnavn i TACACS+-serveren skal matche brugernavnet i portalen **præcist**. Admin-brugere (uanset type) logges altid ind lokalt.
 
 ---
 

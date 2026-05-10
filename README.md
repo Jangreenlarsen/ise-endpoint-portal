@@ -2,7 +2,7 @@
 
 Web-baseret administrationssystem til Cisco ISE 3.4 endpoint-management via REST API og pxGrid 2.0.
 
-**Version 4.0.1 build 0220** — [Fuld manual](docs/INDEX.md) — [Changelog](CHANGELOG.md)
+**Version 4.0.5 build 0232** — [Fuld manual](docs/INDEX.md) — [Changelog](CHANGELOG.md)
 
 ---
 
@@ -44,6 +44,9 @@ De to protokoller supplerer hinanden: REST til management, pxGrid til observabil
 - System adm — tag-baseret scopning: brugere ser og redigerer kun endpoints tagget med deres system adm-rolle
 - PSK-management — MPSK/IPSK mode, PSK_Key og PSK_Mode custom attributes, editor-psk rolle
 - **TACACS+-autentisering** — portal-login via ekstern TACACS+-server; brugerprofiler i portalen bestemmer rolle og adgang (admin logges altid lokalt)
+- **Bruger/Operatør-type** — brugere klassificeres som Bruger (lokal login) eller Operatør (kun TACACS+); dropdown i Users-tabellen
+- **Kopiér bruger** — kopiér eksisterende bruger/operatør til ny med auto-postfix `_copy`, inkl. rolle, System adm og skabeloner
+- **Login auth-badge i sidebar** — viser TACACS+ eller LOCAL samt struktureret User / Rolle / Login auth-visning
 
 ### Cache og ydelse
 - To-lags cache — in-memory (TTL + stale-while-revalidate) og disk-persistens
