@@ -1630,7 +1630,7 @@ async function initUsersSection(container, currentUser, rolesState) {
               <td>
                 <select class="user-type-select" ${isSelf ? "disabled title='Du kan ikke ændre din egen type her'" : ""}>
                   <option value="user"${!isOperator ? " selected" : ""}>Bruger</option>
-                  <option value="operator"${isOperator ? " selected" : ""}>Profil</option>
+                  <option value="operator"${isOperator ? " selected" : ""}>Operatør</option>
                 </select>
               </td>
               <td>${isPortalAdmin ? adminCell : renderEndpointRoleCell(u)}</td>
@@ -1670,7 +1670,7 @@ async function initUsersSection(container, currentUser, rolesState) {
     }
     if (e.target.classList.contains("user-type-select")) {
       const newType = e.target.value;
-      const label = newType === "operator" ? "Profil" : "Bruger";
+      const label = newType === "operator" ? "Operatør" : "Bruger";
       try {
         await api.updateUser(id, { user_type: newType });
         msg.innerHTML = `<div class="alert success">${esc(row.dataset.username)} er nu sat til <strong>${label}</strong>.</div>`;
