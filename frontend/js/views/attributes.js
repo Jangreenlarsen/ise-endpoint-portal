@@ -22,10 +22,12 @@ function getAttrLabels() {
 
 // Faste raw-værdier som ISE MnT kan rapportere — bruges i mapping-editoren.
 const KNOWN_RAW = ["airos", "iosxe", "iossw", "nxos", "meraki"];
-const COA_OPTIONS = [
-  { value: "reauth", label: "CoA Reauth" },
-  { value: "disconnect", label: "CoA Disconnect" },
-];
+function getCoaOptions() {
+  return [
+    { value: "reauth",     label: t("attr.coa_reauth") },
+    { value: "disconnect", label: t("attr.coa_disconnect") },
+  ];
+}
 
 export async function renderAttributes(container) {
   container.innerHTML = `
@@ -48,7 +50,7 @@ export async function renderAttributes(container) {
       return opts.join("");
     };
     const coaOptions = (selected) =>
-      COA_OPTIONS.map((o) => {
+      getCoaOptions().map((o) => {
         const sel = o.value === selected ? " selected" : "";
         return `<option value="${o.value}"${sel}>${o.label}</option>`;
       }).join("");

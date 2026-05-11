@@ -414,6 +414,68 @@ const TRANSLATIONS = {
     "metrics.bulk_overwritten":"Overskrevet",
     "metrics.bulk_skipped":    "Sprunget over",
     "metrics.bulk_failed":     "Fejlet",
+    "metrics.cb_closed":       "CLOSED",
+    "metrics.cb_halfopen":     "HALF-OPEN",
+    "metrics.cb_open":         "OPEN",
+    "metrics.hit_rate":        "hit-rate",
+
+    // ── Browse — toolbar tooltips ─────────────────────────────────────────────
+    "browse.tooltip_data":      "Data-handlinger",
+    "browse.tooltip_columns":   "Vis/skjul kolonner",
+    "browse.tooltip_filters":   "Filtre",
+    "browse.tooltip_save":      "Gem-handlinger",
+    "browse.tooltip_selection": "Handlinger på valgte rækker",
+    "browse.tooltip_view":      "Visning",
+
+    // ── Browse — pxGrid badge ─────────────────────────────────────────────────
+    "browse.pxgrid_push":       "🟢 PUSH (pxGrid · {n} aktive · sidste session-event {ago} siden){ep}",
+    "browse.pxgrid_pull":       "🟡 PULL (MnT-poll · {n} aktive){ep}",
+    "browse.pxgrid_inactive":   "⚪ inaktiv (intet filter + pxGrid offline){ep}",
+    "browse.pxgrid_ep_part":    " · endpoint-events: {n}{agopart}",
+    "browse.pxgrid_ep_ago":     " (sidst {ago} siden)",
+
+    // ── Browse — dynamiske strenge ────────────────────────────────────────────
+    "browse.save_all_n":           "Gem alle ({n})",
+    "browse.selection_n":          "{n} valgt",
+    "browse.page_info":            "Side {page} af {total} ({count} total)",
+    "browse.filtered_info":        "{filtered} / {all} endpoints (filtreret)",
+    "browse.all_info":             "{n} endpoints",
+    "browse.server_info":          "{n} / {total} endpoints",
+    "browse.fetching_ise":         "Henter detaljer fra ISE...",
+    "browse.saving_n":             "Gemmer {n} ændrede endpoints...",
+    "browse.saving_selected_n":    "Gemmer {n} endpoints...",
+    "browse.coa_n":                "Udløser CoA for {n} endpoints...",
+    "browse.saved_n":              "{n} gemt",
+    "browse.failed_n":             "{n} fejlede",
+    "browse.refreshing":           "Opdaterer…",
+    "browse.export_fetching":      "Henter alle endpoints fra ISE for export...",
+    "browse.export_error":         "Kunne ikke hente alle endpoints: {msg}",
+    "browse.export_none":          "Ingen endpoints at eksportere.",
+    "browse.export_done_selected": "Eksporteret {n} valgte endpoints.",
+    "browse.export_done_all":      "Eksporteret {n} endpoints (alle).",
+    "browse.export_done_filtered": "Eksporteret {n} endpoints.",
+
+    // ── App ───────────────────────────────────────────────────────────────────
+    "app.status_ok":    "ok",
+    "app.status_down":  "down",
+    "app.no_access":    "Din rolle (<b>{role}</b>) har ikke adgang til denne side.",
+
+    // ── CSV Template ──────────────────────────────────────────────────────────
+    "csv_tpl.title":          "CSV Export Skabelon",
+    "csv_tpl.hint":           "Definerer hvilke kolonner der inkluderes ved CSV-eksport fra Browse view. Importér en CSV-fil (kun header-rækken bruges) for at sætte en ny skabelon.",
+    "csv_tpl.active_prefix":  "Aktiv skabelon (",
+    "csv_tpl.active_suffix":  " kolonner)",
+    "csv_tpl.import_label":   "Importér skabelon fra CSV-fil",
+    "csv_tpl.btn_reset":      "Nulstil til standard",
+    "csv_tpl.err_no_cols":    "Ingen kolonner fundet i filen — kontrollér at første linje er en header-række.",
+    "csv_tpl.err_read":       "Kunne ikke læse filen: {msg}",
+    "csv_tpl.imported":       "Skabelon importeret — {n} kolonner{extra}. Fremtidige exports bruger denne skabelon.",
+    "csv_tpl.portal_added":   " (+{n} portal-kolonner tilføjet)",
+    "csv_tpl.reset_done":     "Skabelon nulstillet til standard ({n} kolonner).",
+
+    // ── Attributes — CoA ─────────────────────────────────────────────────────
+    "attr.coa_reauth":    "CoA Reauth",
+    "attr.coa_disconnect":"CoA Disconnect",
   },
 
   en: {
@@ -823,6 +885,68 @@ const TRANSLATIONS = {
     "metrics.bulk_overwritten":"Overwritten",
     "metrics.bulk_skipped":    "Skipped",
     "metrics.bulk_failed":     "Failed",
+    "metrics.cb_closed":       "CLOSED",
+    "metrics.cb_halfopen":     "HALF-OPEN",
+    "metrics.cb_open":         "OPEN",
+    "metrics.hit_rate":        "hit-rate",
+
+    // ── Browse — toolbar tooltips ─────────────────────────────────────────────
+    "browse.tooltip_data":      "Data actions",
+    "browse.tooltip_columns":   "Show/hide columns",
+    "browse.tooltip_filters":   "Filters",
+    "browse.tooltip_save":      "Save actions",
+    "browse.tooltip_selection": "Actions on selected rows",
+    "browse.tooltip_view":      "View",
+
+    // ── Browse — pxGrid badge ─────────────────────────────────────────────────
+    "browse.pxgrid_push":       "🟢 PUSH (pxGrid · {n} active · last session event {ago} ago){ep}",
+    "browse.pxgrid_pull":       "🟡 PULL (MnT-poll · {n} active){ep}",
+    "browse.pxgrid_inactive":   "⚪ inactive (no filter + pxGrid offline){ep}",
+    "browse.pxgrid_ep_part":    " · endpoint-events: {n}{agopart}",
+    "browse.pxgrid_ep_ago":     " ({ago} ago)",
+
+    // ── Browse — dynamic strings ──────────────────────────────────────────────
+    "browse.save_all_n":           "Save all ({n})",
+    "browse.selection_n":          "{n} selected",
+    "browse.page_info":            "Page {page} of {total} ({count} total)",
+    "browse.filtered_info":        "{filtered} / {all} endpoints (filtered)",
+    "browse.all_info":             "{n} endpoints",
+    "browse.server_info":          "{n} / {total} endpoints",
+    "browse.fetching_ise":         "Fetching details from ISE...",
+    "browse.saving_n":             "Saving {n} modified endpoints...",
+    "browse.saving_selected_n":    "Saving {n} endpoints...",
+    "browse.coa_n":                "Triggering CoA for {n} endpoints...",
+    "browse.saved_n":              "{n} saved",
+    "browse.failed_n":             "{n} failed",
+    "browse.refreshing":           "Refreshing…",
+    "browse.export_fetching":      "Fetching all endpoints from ISE for export...",
+    "browse.export_error":         "Could not fetch all endpoints: {msg}",
+    "browse.export_none":          "No endpoints to export.",
+    "browse.export_done_selected": "Exported {n} selected endpoints.",
+    "browse.export_done_all":      "Exported {n} endpoints (all).",
+    "browse.export_done_filtered": "Exported {n} endpoints.",
+
+    // ── App ───────────────────────────────────────────────────────────────────
+    "app.status_ok":    "ok",
+    "app.status_down":  "down",
+    "app.no_access":    "Your role (<b>{role}</b>) does not have access to this page.",
+
+    // ── CSV Template ──────────────────────────────────────────────────────────
+    "csv_tpl.title":          "CSV Export Template",
+    "csv_tpl.hint":           "Defines which columns are included when exporting CSV from Browse view. Import a CSV file (only the header row is used) to set a new template.",
+    "csv_tpl.active_prefix":  "Active template (",
+    "csv_tpl.active_suffix":  " columns)",
+    "csv_tpl.import_label":   "Import template from CSV file",
+    "csv_tpl.btn_reset":      "Reset to default",
+    "csv_tpl.err_no_cols":    "No columns found in file — check that the first line is a header row.",
+    "csv_tpl.err_read":       "Could not read file: {msg}",
+    "csv_tpl.imported":       "Template imported — {n} columns{extra}. Future exports will use this template.",
+    "csv_tpl.portal_added":   " (+{n} portal columns added)",
+    "csv_tpl.reset_done":     "Template reset to default ({n} columns).",
+
+    // ── Attributes — CoA ─────────────────────────────────────────────────────
+    "attr.coa_reauth":    "CoA Reauth",
+    "attr.coa_disconnect":"CoA Disconnect",
   },
 };
 

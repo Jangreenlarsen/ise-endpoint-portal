@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [4.2.3 build 0238] — 2026-05-11 — fix(i18n): oversæt resterende hardkodede strenge i browse, app, csv-template, metrics, attributes
+
+**Berørte filer**: `frontend/js/i18n.js`, `frontend/js/views/browse.js`, `frontend/js/views/browse-table.js`, `frontend/js/app.js`, `frontend/js/views/csv-template.js`, `frontend/js/views/attributes.js`, `frontend/js/views/metrics.js`, `version.json`, `CHANGELOG.md`
+
+Fase 3 i18n: fuld codebase-audit. Alle resterende hardkodede DA/EN strenge oversat. Browse toolbar-tooltip `title=""`-attributter på alle 6 grupper samt pxGrid-status-badge (PUSH/PULL/inaktiv + endpoint-events) oversættes nu via `t()`. Browse-table: alle dynamiske strenge — save all / gem valgte / CoA-progress / gemt/fejlede, pagination (Side X af Y), filtered/total count, load-spinner og export-beskeder — oversat med `{n}`/`{total}`/`{msg}`-placeholders. App.js: status-dot tekst ("ok"/"down") og rolle-adgangsfejl-besked bruger `t()`. csv-template.js: hele filen oversættes (importerede t() som manglede). metrics.js: circuit-breaker-labels (CLOSED/HALF-OPEN/OPEN) og "hit-rate" oversat. attributes.js: `COA_OPTIONS` konverteret til `getCoaOptions()` der kalder `t()` ved render-tid. Tilføjet ~70 nye nøgler i begge sprogfiler.
+
 ## [4.2.2 build 0237] — 2026-05-11 — fix(i18n): oversæt register, import, attributes, dacls, audit, logs, metrics
 
 **Berørte filer**: `frontend/js/i18n.js`, `frontend/js/views/register.js`, `frontend/js/views/import.js`, `frontend/js/views/attributes.js`, `frontend/js/views/dacls.js`, `frontend/js/views/audit.js`, `frontend/js/views/logs.js`, `frontend/js/views/metrics.js`, `version.json`, `CHANGELOG.md`

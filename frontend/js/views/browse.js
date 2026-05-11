@@ -23,17 +23,17 @@ export async function renderBrowse(container) {
     </div>
     <div class="card">
       <div class="toolbar">
-        <div class="toolbar-group" title="Data-handlinger">
+        <div class="toolbar-group" title="${t("browse.tooltip_data")}">
           <button id="refresh-btn">${t("browse.btn_refresh")}</button>
           <button id="export-btn" class="secondary">${t("browse.btn_export")}</button>
           <div class="col-vis-wrap">
             <button id="col-vis-btn" class="secondary small" type="button"
-                    title="Vis/skjul kolonner">${t("browse.btn_columns")}</button>
+                    title="${t("browse.tooltip_columns")}">${t("browse.btn_columns")}</button>
             <div id="col-vis-menu" class="col-vis-menu hidden"></div>
           </div>
         </div>
         <span class="toolbar-divider"></span>
-        <div class="toolbar-group" title="Filtre">
+        <div class="toolbar-group" title="${t("browse.tooltip_filters")}">
           <div class="views-wrap">
             <button id="views-btn" class="secondary small" type="button"
                     title="Gemte filter-views — én-klik gendan filterkombination">${t("browse.btn_views")}</button>
@@ -43,13 +43,13 @@ export async function renderBrowse(container) {
                   title="Vis kun endpoints oprettet af HyperVision ISE Portal">${t("browse.btn_portal_filter")}</button>
         </div>
         <div class="spacer"></div>
-        <div class="toolbar-group" title="Gem-handlinger">
+        <div class="toolbar-group" title="${t("browse.tooltip_save")}">
           <button id="coa-toggle-btn" class="secondary"
                   title="Udløs CoA reauth på ISE efter hver gemt ændring">${t("browse.btn_coa_off")}</button>
           <button id="save-all-btn" disabled title="Gem alle ændrede endpoints">${t("browse.btn_save_all")}</button>
         </div>
         <span class="toolbar-divider"></span>
-        <div class="toolbar-group" title="Handlinger på valgte rækker">
+        <div class="toolbar-group" title="${t("browse.tooltip_selection")}">
           <span id="selection-count" class="hint"></span>
           <button id="bulk-edit-btn" class="secondary small" disabled>${t("browse.btn_bulk_edit")}</button>
           <button id="bulk-save-btn" class="small" disabled>${t("browse.btn_bulk_save")}</button>
@@ -58,7 +58,7 @@ export async function renderBrowse(container) {
           <button id="bulk-del-btn" class="danger small" disabled>${t("browse.btn_bulk_delete")}</button>
         </div>
         <span class="toolbar-divider"></span>
-        <div class="toolbar-group" title="Visning">
+        <div class="toolbar-group" title="${t("browse.tooltip_view")}">
           <label class="hint page-size-label">${t("browse.label_show")}
             <select id="page-size-select">
               <option value="10">10</option>
@@ -282,19 +282,26 @@ export async function renderBrowse(container) {
   function updatePxGridSourceBadge() {
     const el = container.querySelector("#pxgrid-source-badge");
     if (!el) return;
-    const epAgo  = fmtAgo(state.pxgridLastEndpointEventTs);
-    const epPart = state.pxgridEndpointEventCount > 0
-      ? ` · endpoint-events: ${state.pxgridEndpointEventCount}${epAgo ? ` (sidste ${epAgo} siden)` : ""}`
-      : " · endpoint-events: 0";
+    const epAgo    = fmtAgo(state.pxgridLastEndpointEventTs);
+    const agopart  = (state.pxgridEndpointEventCount > 0 && epAgo)
+      ? t("browse.pxgrid_ep_ago").replace("{ago}", epAgo) : "";
+    const epPart   = t("browse.pxgrid_ep_part")
+      .replace("{n}", state.pxgridEndpointEventCount)
+      .replace("{agopart}", state.pxgridEndpointEventCount > 0 ? agopart : "");
     if (state.pxgridLive && state.pxgridSessionMacs) {
       const sessAgo = fmtAgo(state.pxgridLastEventTs);
-      el.innerHTML  = `🟢 PUSH (pxGrid · ${state.pxgridSessionMacs.size} aktive · sidste session-event ${sessAgo || "—"} siden)${epPart}`;
+      el.innerHTML  = t("browse.pxgrid_push")
+        .replace("{n}", state.pxgridSessionMacs.size)
+        .replace("{ago}", sessAgo || "—")
+        .replace("{ep}", epPart);
       el.style.background = "#dcfce7"; el.style.color = "#166534";
     } else if (state.activeSessionMacs) {
-      el.innerHTML  = `🟡 PULL (MnT-poll · ${state.activeSessionMacs.size} aktive)${epPart}`;
+      el.innerHTML  = t("browse.pxgrid_pull")
+        .replace("{n}", state.activeSessionMacs.size)
+        .replace("{ep}", epPart);
       el.style.background = "#fef3c7"; el.style.color = "#92400e";
     } else {
-      el.innerHTML  = `⚪ inaktiv (intet filter + pxGrid offline)${epPart}`;
+      el.innerHTML  = t("browse.pxgrid_inactive").replace("{ep}", epPart);
       el.style.background = "#e5e7eb"; el.style.color = "#374151";
     }
   }

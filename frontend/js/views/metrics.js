@@ -71,9 +71,9 @@ function pct(a, b) {
 }
 
 function cbLabel(state) {
-  if (state === 0) return { text: "CLOSED", cls: "cb-closed" };
-  if (state === 1) return { text: "HALF-OPEN", cls: "cb-halfopen" };
-  return { text: "OPEN", cls: "cb-open" };
+  if (state === 0) return { text: t("metrics.cb_closed"),  cls: "cb-closed" };
+  if (state === 1) return { text: t("metrics.cb_halfopen"), cls: "cb-halfopen" };
+  return { text: t("metrics.cb_open"), cls: "cb-open" };
 }
 
 // ------------------------------------------------------------------ //
@@ -134,7 +134,7 @@ function renderData(parsed) {
     <div class="metrics-grid">
       ${buildStatCard(t("metrics.card_ise"), [
         { label: t("metrics.total_requests"),  value: fmt(iseTotal) },
-        { label: t("metrics.successful_2xx"),  value: fmt(ise2xx), sub: pct(ise2xx, iseTotal - ise2xx) + " hit-rate" },
+        { label: t("metrics.successful_2xx"),  value: fmt(ise2xx), sub: pct(ise2xx, iseTotal - ise2xx) + " " + t("metrics.hit_rate") },
         { label: t("metrics.errors_4xx"),      value: fmt(ise4xx) },
         { label: t("metrics.errors_5xx"),      value: fmt(ise5xx) },
         { label: t("metrics.transport_errors"),value: fmt(iseErr) },
@@ -144,7 +144,7 @@ function renderData(parsed) {
 
       ${buildStatCard(t("metrics.card_cache"), [
         { label: t("metrics.cache_entries"),   value: fmt(cacheEntries) },
-        { label: t("metrics.cache_hits"),      value: fmt(hits), sub: pct(hits, misses) + " hit-rate" },
+        { label: t("metrics.cache_hits"),      value: fmt(hits), sub: pct(hits, misses) + " " + t("metrics.hit_rate") },
         { label: t("metrics.cache_misses"),    value: fmt(misses) },
         { label: t("metrics.cache_stale"),     value: fmt(stale) },
         { label: t("metrics.cache_evictions"), value: fmt(evictions) },

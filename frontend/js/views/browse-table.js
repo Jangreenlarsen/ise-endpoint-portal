@@ -211,7 +211,9 @@ export function initTable(container, state, api, cb) {
   // ── Dirty tracking ───────────────────────────────────────────────────────
   function updateDirtyUI() {
     saveAllBtn.disabled  = state.dirtyIds.size === 0;
-    saveAllBtn.textContent = state.dirtyIds.size ? `Gem alle (${state.dirtyIds.size})` : "Gem alle";
+    saveAllBtn.textContent = state.dirtyIds.size
+      ? t("browse.save_all_n").replace("{n}", state.dirtyIds.size)
+      : t("browse.btn_save_all");
   }
 
   function markDirty(tr) {
@@ -238,7 +240,7 @@ export function initTable(container, state, api, cb) {
     bulkDelBtn.disabled     = !hasSelection;
     bulkDisconnBtn.disabled = !hasSelection;
     bulkEditBtn.disabled    = !hasSelection;
-    selectionCount.textContent = hasSelection ? `${selected.length} valgt` : "";
+    selectionCount.textContent = hasSelection ? t("browse.selection_n").replace("{n}", selected.length) : "";
     selectAllCb.indeterminate  = selected.length > 0 && selected.length < tbody.querySelectorAll(".row-select").length;
   }
 
@@ -306,7 +308,10 @@ export function initTable(container, state, api, cb) {
     const tp = totalPages();
     pagePrev.disabled     = state.currentPage <= 1;
     pageNext.disabled     = state.currentPage >= tp;
-    pageInfo.textContent  = `Side ${state.currentPage} af ${tp} (${state.totalEndpoints} total)`;
+    pageInfo.textContent  = t("browse.page_info")
+      .replace("{page}", state.currentPage)
+      .replace("{total}", tp)
+      .replace("{count}", state.totalEndpoints);
   }
 
   // ── applyFilter (client-side pagination over full dataset) ───────────────
@@ -321,21 +326,25 @@ export function initTable(container, state, api, cb) {
       renderRows(pageRows);
       updatePaginationUI();
       if (cb.hasActiveFilterText() || state.portalOnly) {
-        countEl.textContent = `${filtered.length} / ${state.allRows.length} endpoints (filtreret)`;
+        countEl.textContent = t("browse.filtered_info")
+          .replace("{filtered}", filtered.length)
+          .replace("{all}", state.allRows.length);
       } else {
-        countEl.textContent = `${state.allRows.length} endpoints`;
+        countEl.textContent = t("browse.all_info").replace("{n}", state.allRows.length);
       }
     } else {
       renderRows(state.allRows);
       updatePaginationUI();
-      countEl.textContent = `${state.allRows.length} / ${state.totalEndpoints} endpoints`;
+      countEl.textContent = t("browse.server_info")
+        .replace("{n}", state.allRows.length)
+        .replace("{total}", state.totalEndpoints);
     }
   }
 
   // ── Load (full page refresh) ─────────────────────────────────────────────
   async function load(force = false) {
     const cols = getColumns().length + 2;
-    tbody.innerHTML = `<tr><td colspan="${cols}" class="empty">Henter detaljer fra ISE...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="${cols}" class="empty">${t("browse.fetching_ise")}</td></tr>`;
     msg.innerHTML = "";
     state.dirtyIds.clear();
     updateDirtyUI();
@@ -412,7 +421,7 @@ export function initTable(container, state, api, cb) {
     if (!state.dirtyIds.size) return;
     saveAllBtn.disabled = true;
     const ids = [...state.dirtyIds];
-    msg.innerHTML = `<div class="alert info">Gemmer ${ids.length} ændrede endpoints...</div>`;
+    msg.innerHTML = `<div class="alert info">${t("browse.saving_n").replace("{n}", ids.length)}</div>`;
     let ok = 0, fail = 0;
     const savedEntries = [];
     for (const id of ids) {
@@ -428,14 +437,14 @@ export function initTable(container, state, api, cb) {
     }
     let coaSummary = "";
     if (state.coaOnSave && savedEntries.length) {
-      msg.innerHTML = `<div class="alert info">Udløser CoA for ${savedEntries.length} endpoints...</div>`;
+      msg.innerHTML = `<div class="alert info">${t("browse.coa_n").replace("{n}", savedEntries.length)}</div>`;
       const coa = await cb.runCoaForIds(savedEntries);
       coaSummary = coaSummaryText(coa);
     }
     await refreshRows(savedEntries.map((s) => s.id));
     const parts = [];
-    if (ok)   parts.push(`${ok} gemt`);
-    if (fail) parts.push(`${fail} fejlede`);
+    if (ok)   parts.push(t("browse.saved_n").replace("{n}", ok));
+    if (fail) parts.push(t("browse.failed_n").replace("{n}", fail));
     msg.innerHTML = `<div class="alert ${fail ? "error" : "success"}">${parts.join(", ")}${coaSummary}</div>`;
   });
 
@@ -444,7 +453,7 @@ export function initTable(container, state, api, cb) {
     const ids = getSelectedIds();
     if (!ids.length) return;
     bulkSaveBtn.disabled = true;
-    msg.innerHTML = `<div class="alert info">Gemmer ${ids.length} endpoints...</div>`;
+    msg.innerHTML = `<div class="alert info">${t("browse.saving_selected_n").replace("{n}", ids.length)}</div>`;
     let ok = 0, fail = 0;
     const savedEntries = [];
     for (const id of ids) {
@@ -460,14 +469,14 @@ export function initTable(container, state, api, cb) {
     }
     let coaSummary = "";
     if (state.coaOnSave && savedEntries.length) {
-      msg.innerHTML = `<div class="alert info">Udløser CoA for ${savedEntries.length} endpoints...</div>`;
+      msg.innerHTML = `<div class="alert info">${t("browse.coa_n").replace("{n}", savedEntries.length)}</div>`;
       const coa = await cb.runCoaForIds(savedEntries);
       coaSummary = coaSummaryText(coa);
     }
     await refreshRows(savedEntries.map((s) => s.id));
     const parts = [];
-    if (ok)   parts.push(`${ok} gemt`);
-    if (fail) parts.push(`${fail} fejlede`);
+    if (ok)   parts.push(t("browse.saved_n").replace("{n}", ok));
+    if (fail) parts.push(t("browse.failed_n").replace("{n}", fail));
     msg.innerHTML = `<div class="alert ${fail ? "error" : "success"}">${parts.join(", ")}${coaSummary}</div>`;
     bulkSaveBtn.disabled = false;
   });
@@ -475,13 +484,13 @@ export function initTable(container, state, api, cb) {
   // Refresh button
   refreshBtn.addEventListener("click", async () => {
     refreshBtn.disabled    = true;
-    refreshBtn.textContent = "Opdaterer…";
+    refreshBtn.textContent = t("browse.refreshing");
     try {
       await api.invalidateCache().catch(() => {});
       await load(true);
     } finally {
       refreshBtn.disabled    = false;
-      refreshBtn.textContent = "Refresh";
+      refreshBtn.textContent = t("browse.btn_refresh");
     }
   });
 
@@ -497,26 +506,33 @@ export function initTable(container, state, api, cb) {
       exportRows = cb.applyFiltersToRows(state.allRows);
     } else {
       exportBtn.disabled = true;
-      msg.innerHTML = `<div class="alert info">Henter alle endpoints fra ISE for export...</div>`;
+      msg.innerHTML = `<div class="alert info">${t("browse.export_fetching")}</div>`;
       try {
         exportRows = state.allRowsCache || (state.allRowsCache = await api.listAllEndpointDetails("", state.currentFilters));
-        allLabel   = " (alle)";
+        allLabel   = true;
       } catch (err) {
-        msg.innerHTML = `<div class="alert error">Kunne ikke hente alle endpoints: ${err.message}</div>`;
+        msg.innerHTML = `<div class="alert error">${t("browse.export_error").replace("{msg}", err.message)}</div>`;
         exportBtn.disabled = false;
         return;
       }
       exportBtn.disabled = false;
     }
     if (!exportRows.length) {
-      msg.innerHTML = `<div class="alert info">Ingen endpoints at eksportere.</div>`;
+      msg.innerHTML = `<div class="alert info">${t("browse.export_none")}</div>`;
       return;
     }
     const csv  = toIseCsv(exportRows);
     const date = new Date().toISOString().slice(0, 10);
     downloadCsv(csv, `ise-endpoints-${date}.csv`);
-    const label = selectedIds.length ? `${exportRows.length} valgte` : `${exportRows.length}${allLabel}`;
-    msg.innerHTML = `<div class="alert success">Eksporteret ${label} endpoints.</div>`;
+    let doneMsg;
+    if (selectedIds.length) {
+      doneMsg = t("browse.export_done_selected").replace("{n}", exportRows.length);
+    } else if (allLabel) {
+      doneMsg = t("browse.export_done_all").replace("{n}", exportRows.length);
+    } else {
+      doneMsg = t("browse.export_done_filtered").replace("{n}", exportRows.length);
+    }
+    msg.innerHTML = `<div class="alert success">${doneMsg}</div>`;
   });
 
   // Pagination

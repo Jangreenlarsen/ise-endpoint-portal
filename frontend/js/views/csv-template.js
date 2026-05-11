@@ -1,4 +1,5 @@
 import { getCsvTemplate, setCsvTemplate, resetCsvTemplate, parseTemplateHeader, extendTemplateWithPortalColumns } from "../csv.js";
+import { t } from "../i18n.js";
 
 function esc(s) {
   return (s || "").replace(/[&<>"']/g, (c) => ({
@@ -9,27 +10,24 @@ function esc(s) {
 export async function renderCsvTemplate(container) {
   container.innerHTML = `
     <div class="page-header">
-      <h2 style="margin:0;">CSV Export Template</h2>
+      <h2 style="margin:0;">${t("csv_tpl.title")}</h2>
     </div>
 
     <div class="card">
-      <h3>CSV Export Template</h3>
-      <p class="hint">
-        Definerer hvilke kolonner der inkluderes ved CSV-eksport fra Browse view.
-        Importér en CSV-fil (kun header-rækken bruges) for at sætte en ny template.
-      </p>
+      <h3>${t("csv_tpl.title")}</h3>
+      <p class="hint">${t("csv_tpl.hint")}</p>
       <div id="csv-tpl-msg"></div>
       <div class="field">
-        <label>Aktiv template (<span id="csv-tpl-count">0</span> kolonner)</label>
+        <label>${t("csv_tpl.active_prefix")}<span id="csv-tpl-count">0</span>${t("csv_tpl.active_suffix")}</label>
         <textarea id="csv-tpl-preview" rows="3" readonly
                   style="font-size:0.82rem;background:#f9fafb;"></textarea>
       </div>
       <div class="field">
-        <label for="csv-tpl-file">Importér template fra CSV-fil</label>
+        <label for="csv-tpl-file">${t("csv_tpl.import_label")}</label>
         <input type="file" id="csv-tpl-file" accept=".csv,text/csv,text/plain" />
       </div>
       <div class="actions">
-        <button type="button" id="csv-tpl-reset">Nulstil til standard</button>
+        <button type="button" id="csv-tpl-reset">${t("csv_tpl.btn_reset")}</button>
       </div>
     </div>
   `;
@@ -53,17 +51,19 @@ export async function renderCsvTemplate(container) {
       const text = await file.text();
       const columns = parseTemplateHeader(text);
       if (!columns.length) {
-        csvTplMsg.innerHTML = `<div class="alert error">Ingen kolonner fundet i filen — kontrollér at første linje er en header-række.</div>`;
+        csvTplMsg.innerHTML = `<div class="alert error">${t("csv_tpl.err_no_cols")}</div>`;
         return;
       }
       const extended = extendTemplateWithPortalColumns(columns);
       setCsvTemplate(extended);
       refreshTplPreview();
       const added = extended.length - columns.length;
-      const addedNote = added ? ` (+${added} portal-kolonner tilføjet)` : "";
-      csvTplMsg.innerHTML = `<div class="alert success">Template importeret — ${extended.length} kolonner${addedNote}. Fremtidige exports bruger denne template.</div>`;
+      const extra = added
+        ? t("csv_tpl.portal_added").replace("{n}", added)
+        : "";
+      csvTplMsg.innerHTML = `<div class="alert success">${t("csv_tpl.imported").replace("{n}", extended.length).replace("{extra}", extra)}</div>`;
     } catch (err) {
-      csvTplMsg.innerHTML = `<div class="alert error">Kunne ikke læse filen: ${esc(err.message)}</div>`;
+      csvTplMsg.innerHTML = `<div class="alert error">${t("csv_tpl.err_read").replace("{msg}", esc(err.message))}</div>`;
     } finally {
       e.target.value = "";
     }
@@ -73,6 +73,6 @@ export async function renderCsvTemplate(container) {
     resetCsvTemplate();
     csvTplFile.value = "";
     refreshTplPreview();
-    csvTplMsg.innerHTML = `<div class="alert success">Template nulstillet til standard (${getCsvTemplate().length} kolonner).</div>`;
+    csvTplMsg.innerHTML = `<div class="alert success">${t("csv_tpl.reset_done").replace("{n}", getCsvTemplate().length)}</div>`;
   });
 }

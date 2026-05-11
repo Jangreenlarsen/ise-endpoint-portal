@@ -43,11 +43,11 @@ const logoutBtn = document.getElementById("logout-btn");
 async function checkHealth() {
   try {
     const data = await api.health();
-    statusDot.textContent = "ok";
+    statusDot.textContent = t("app.status_ok");
     statusDot.className = "ok";
     if (data?.full && versionEl) versionEl.textContent = `v${data.full}`;
   } catch {
-    statusDot.textContent = "down";
+    statusDot.textContent = t("app.status_down");
     statusDot.className = "err";
   }
 }
@@ -125,7 +125,7 @@ async function renderView() {
     a.classList.toggle("active", a.dataset.view === route);
   });
   if (!def.roles.includes(user.role)) {
-    container.innerHTML = `<div class="alert error">Din rolle (<b>${user.role}</b>) har ikke adgang til denne side.</div>`;
+    container.innerHTML = `<div class="alert error">${t("app.no_access").replace("{role}", user.role)}</div>`;
     return;
   }
   try {
