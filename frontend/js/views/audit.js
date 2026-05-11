@@ -1,5 +1,6 @@
 import { api } from "../api.js";
 import { auth } from "../auth.js";
+import { t, getLocale } from "../i18n.js";
 
 function esc(s) {
   return (s ?? "").toString().replace(/[&<>"']/g, (c) => ({
@@ -12,33 +13,22 @@ const RESOURCE_TYPES = [
   "platform_mapping", "backend_settings",
 ];
 
-const ACTION_LABEL = {
-  created: "Oprettet",
-  updated: "Opdateret",
-  deleted: "Slettet",
-  value_added: "Værdi tilføjet",
-  value_removed: "Værdi fjernet",
-  mapping_updated: "Mapping opdateret",
-  password_changed: "Password ændret",
-  rolled_back: "Rullet tilbage",
-};
-
 const ROLLBACK_SUPPORTED = new Set(["endpoint", "dacl"]);
 
 function fmtTs(iso) {
   if (!iso) return "—";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString("da-DK", { hour12: false });
+  return d.toLocaleString(getLocale() === "da" ? "da-DK" : "en-GB", { hour12: false });
 }
 
 function actionLabel(a) {
-  return ACTION_LABEL[a] || a;
+  return t(`audit.action_${a}`) !== `audit.action_${a}` ? t(`audit.action_${a}`) : a;
 }
 
 function renderJson(value) {
   if (value === null || value === undefined) {
-    return `<span class="audit-none">(ingen)</span>`;
+    return `<span class="audit-none">${t("audit.none")}</span>`;
   }
   try {
     return `<pre class="audit-json">${esc(JSON.stringify(value, null, 2))}</pre>`;
@@ -59,31 +49,27 @@ export async function renderAudit(container) {
   const isAdmin = user && user.role === "admin";
 
   container.innerHTML = `
-    <h2>Audit-log</h2>
-    <p class="hint">
-      Append-only log af alle skrive-operationer (2.9.0). Admins kan rulle
-      Endpoints og DACL'er tilbage til tidligere tilstand; rollbacks bliver
-      selv logget, så historikken forbliver komplet.
-    </p>
+    <h2>${t("audit.title")}</h2>
+    <p class="hint">${t("audit.hint")}</p>
     <div class="card">
       <div class="logs-toolbar">
         <label>
-          Ressource
+          ${t("audit.label_resource")}
           <select id="audit-type">
-            ${RESOURCE_TYPES.map((t) => `<option value="${t}">${t || "Alle"}</option>`).join("")}
+            ${RESOURCE_TYPES.map((tp) => `<option value="${tp}">${tp || t("audit.all_resources")}</option>`).join("")}
           </select>
         </label>
         <label class="log-search-label">
-          Søg
-          <input type="text" id="audit-search" placeholder="aktør, id, MAC, JSON, IP, dato…" />
+          ${t("audit.label_search")}
+          <input type="text" id="audit-search" placeholder="${t("audit.search_placeholder")}" />
         </label>
         <label>
-          Antal
+          ${t("audit.label_count")}
           <select id="audit-limit">
             ${[50, 100, 250, 500].map((n) => `<option value="${n}"${n === 100 ? " selected" : ""}>${n}</option>`).join("")}
           </select>
         </label>
-        <button id="audit-refresh">Opdater</button>
+        <button id="audit-refresh">${t("audit.btn_refresh")}</button>
         <span id="audit-meta" class="hint"></span>
       </div>
       <div id="audit-msg"></div>
@@ -91,17 +77,17 @@ export async function renderAudit(container) {
         <table class="log-table">
           <thead>
             <tr>
-              <th style="width:12rem;">Tidspunkt</th>
-              <th style="width:8rem;">Aktør</th>
-              <th style="width:7rem;">Handling</th>
-              <th style="width:9rem;">Ressource</th>
-              <th style="width:13rem;">ID</th>
-              <th>Detaljer</th>
+              <th style="width:12rem;">${t("audit.col_time")}</th>
+              <th style="width:8rem;">${t("audit.col_actor")}</th>
+              <th style="width:7rem;">${t("audit.col_action")}</th>
+              <th style="width:9rem;">${t("audit.col_resource")}</th>
+              <th style="width:13rem;">${t("audit.col_id")}</th>
+              <th>${t("audit.col_details")}</th>
               <th class="audit-actions-col">&nbsp;</th>
             </tr>
           </thead>
           <tbody id="audit-tbody">
-            <tr><td colspan="7" class="empty">Henter…</td></tr>
+            <tr><td colspan="7" class="empty">${t("audit.loading")}</td></tr>
           </tbody>
         </table>
       </div>
@@ -109,8 +95,8 @@ export async function renderAudit(container) {
 
     <div id="audit-drawer" class="audit-drawer" hidden>
       <div class="audit-drawer-header">
-        <h3 id="audit-drawer-title">Audit-event</h3>
-        <button id="audit-drawer-close" type="button">Luk</button>
+        <h3 id="audit-drawer-title">Audit</h3>
+        <button id="audit-drawer-close" type="button">${t("audit.drawer_close")}</button>
       </div>
       <div id="audit-drawer-body"></div>
     </div>
@@ -133,7 +119,7 @@ export async function renderAudit(container) {
 
   async function load() {
     msg.innerHTML = "";
-    tbody.innerHTML = `<tr><td colspan="7" class="empty">Henter…</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="empty">${t("audit.loading")}</td></tr>`;
     try {
       const params = {
         resource_type: typeSel.value || undefined,
@@ -143,7 +129,7 @@ export async function renderAudit(container) {
       const data = await api.listAuditEvents(params);
       events = data.events || [];
       if (!events.length) {
-        tbody.innerHTML = `<tr><td colspan="7" class="empty">Ingen events matcher filtrene.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="empty">${t("audit.no_events")}</td></tr>`;
         meta.textContent = `0 af ${data.total || 0} events`;
         return;
       }
@@ -151,7 +137,7 @@ export async function renderAudit(container) {
         .map((e) => {
           const summary = summarize(e);
           const rbBtn = isAdmin && canRollback(e)
-            ? `<button class="audit-rollback" data-id="${e.id}">Rollback</button>`
+            ? `<button class="audit-rollback" data-id="${e.id}">${t("audit.btn_rollback")}</button>`
             : "";
           return `
             <tr data-id="${e.id}">
@@ -162,7 +148,7 @@ export async function renderAudit(container) {
               <td class="mono">${esc(e.resource_id || "—")}</td>
               <td class="audit-summary">${summary}</td>
               <td class="audit-actions-cell">
-                <button class="audit-view" data-id="${e.id}">Vis</button>
+                <button class="audit-view" data-id="${e.id}">${t("audit.btn_view")}</button>
                 ${rbBtn}
               </td>
             </tr>`;
@@ -199,20 +185,20 @@ export async function renderAudit(container) {
   function openDrawer(evt) {
     drawerTitle.textContent = `#${evt.id} — ${actionLabel(evt.action)} ${evt.resource_type}${evt.resource_id ? " " + evt.resource_id : ""}`;
     const rbBtn = isAdmin && canRollback(evt)
-      ? `<button id="audit-drawer-rollback" data-id="${evt.id}" class="primary">Rul tilbage</button>`
+      ? `<button id="audit-drawer-rollback" data-id="${evt.id}" class="primary">${t("audit.btn_rollback_confirm")}</button>`
       : "";
     drawerBody.innerHTML = `
       <div class="audit-meta-grid">
-        <div><b>Tidspunkt:</b> ${esc(fmtTs(evt.ts))}</div>
-        <div><b>Aktør:</b> ${esc(evt.actor_username)} ${evt.source_ip ? `(${esc(evt.source_ip)})` : ""}</div>
+        <div><b>${t("audit.drawer_time")}</b> ${esc(fmtTs(evt.ts))}</div>
+        <div><b>${t("audit.drawer_actor")}</b> ${esc(evt.actor_username)} ${evt.source_ip ? `(${esc(evt.source_ip)})` : ""}</div>
       </div>
       <div class="audit-diff">
         <div class="audit-pane">
-          <h4>Før</h4>
+          <h4>${t("audit.drawer_before")}</h4>
           ${renderJson(evt.before)}
         </div>
         <div class="audit-pane">
-          <h4>Efter</h4>
+          <h4>${t("audit.drawer_after")}</h4>
           ${renderJson(evt.after)}
         </div>
       </div>
@@ -233,9 +219,7 @@ export async function renderAudit(container) {
   }
 
   async function runRollback(id) {
-    if (!window.confirm(`Rul audit-event #${id} tilbage? Handlingen logges som et nyt event.`)) {
-      return;
-    }
+    if (!window.confirm(t("audit.confirm_rollback").replace("{id}", id))) return;
     msg.innerHTML = "";
     try {
       const result = await api.rollbackAuditEvent(id);
@@ -243,7 +227,7 @@ export async function renderAudit(container) {
       drawer.hidden = true;
       await load();
     } catch (err) {
-      msg.innerHTML = `<div class="alert error">Rollback fejlede: ${esc(err.message)}</div>`;
+      msg.innerHTML = `<div class="alert error">${t("audit.rollback_error").replace("{msg}", esc(err.message))}</div>`;
     }
   }
 

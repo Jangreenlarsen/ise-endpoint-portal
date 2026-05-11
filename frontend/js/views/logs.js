@@ -1,4 +1,5 @@
 import { api } from "../api.js";
+import { t } from "../i18n.js";
 
 function esc(s) {
   return (s || "").replace(/[&<>"']/g, (c) => ({
@@ -11,29 +12,27 @@ const LINE_OPTIONS = [100, 250, 500, 1000, 2500, 5000];
 
 export async function renderLogs(container) {
   container.innerHTML = `
-    <h2>Log</h2>
-    <p class="hint">
-      Viser entries fra backend-loggen (<code>backend/logs/app.log</code>) — nyeste øverst.
-    </p>
+    <h2>${t("logs.title")}</h2>
+    <p class="hint">${t("logs.hint")}</p>
     <div class="card">
       <div class="logs-toolbar">
         <label>
-          Niveau
+          ${t("logs.label_level")}
           <select id="log-level">
-            ${LEVELS.map((l) => `<option value="${l}">${l || "Alle"}</option>`).join("")}
+            ${LEVELS.map((l) => `<option value="${l}">${l || t("logs.all_levels")}</option>`).join("")}
           </select>
         </label>
         <label>
-          Linjer
+          ${t("logs.label_lines")}
           <select id="log-lines">
             ${LINE_OPTIONS.map((n) => `<option value="${n}"${n === 500 ? " selected" : ""}>${n}</option>`).join("")}
           </select>
         </label>
         <label class="log-search-label">
-          Søg
-          <input type="text" id="log-search" placeholder="fritekst (MAC, logger, besked…)" />
+          ${t("logs.label_search")}
+          <input type="text" id="log-search" placeholder="${t("logs.search_placeholder")}" />
         </label>
-        <button id="log-refresh">Opdater</button>
+        <button id="log-refresh">${t("logs.btn_refresh")}</button>
         <span id="log-meta" class="hint"></span>
       </div>
       <div id="log-msg"></div>
@@ -41,14 +40,14 @@ export async function renderLogs(container) {
         <table class="log-table">
           <thead>
             <tr>
-              <th style="width:11rem;">Tidspunkt</th>
-              <th style="width:5.5rem;">Niveau</th>
-              <th style="width:14rem;">Logger</th>
-              <th>Besked</th>
+              <th style="width:11rem;">${t("logs.col_time")}</th>
+              <th style="width:5.5rem;">${t("logs.col_level")}</th>
+              <th style="width:14rem;">${t("logs.col_logger")}</th>
+              <th>${t("logs.col_msg")}</th>
             </tr>
           </thead>
           <tbody id="log-tbody">
-            <tr><td colspan="4" class="empty">Henter…</td></tr>
+            <tr><td colspan="4" class="empty">${t("logs.loading")}</td></tr>
           </tbody>
         </table>
       </div>
@@ -67,7 +66,7 @@ export async function renderLogs(container) {
 
   async function load() {
     msg.innerHTML = "";
-    tbody.innerHTML = `<tr><td colspan="4" class="empty">Henter…</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="4" class="empty">${t("logs.loading")}</td></tr>`;
     try {
       const data = await api.getLogs(
         parseInt(linesSel.value, 10),
@@ -76,7 +75,7 @@ export async function renderLogs(container) {
       );
       const entries = data.entries || [];
       if (!entries.length) {
-        tbody.innerHTML = `<tr><td colspan="4" class="empty">Ingen entries matcher filtrene.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="4" class="empty">${t("logs.no_entries")}</td></tr>`;
         meta.textContent = `0 entries`;
         return;
       }

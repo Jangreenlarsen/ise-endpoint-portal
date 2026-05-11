@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [4.2.2 build 0237] — 2026-05-11 — fix(i18n): oversæt register, import, attributes, dacls, audit, logs, metrics
+
+**Berørte filer**: `frontend/js/i18n.js`, `frontend/js/views/register.js`, `frontend/js/views/import.js`, `frontend/js/views/attributes.js`, `frontend/js/views/dacls.js`, `frontend/js/views/audit.js`, `frontend/js/views/logs.js`, `frontend/js/views/metrics.js`, `version.json`, `CHANGELOG.md`
+
+Fase 2 i18n: alle resterende views oversættes til DA/EN. i18n.js ryddet for duplikerede nøgler og udvidet med ~150 nye nøgler fordelt på 7 sektioner (reg.*, import.*, attr.*, dacl.*, audit.*, logs.*, metrics.*). Alle 7 view-filer importerer nu `t()` og anvender det konsekvent. Statiske opslag som `ACTION_LABEL` i audit og `ATTR_LABELS` i attributes er konverteret til funktioner der kalder `t()` ved render-tid. Dato/tid-formattering i audit og metrics bruger `getLocale()` til at vælge korrekt locale-string (da-DK / en-GB). Metrics-tal-formattering følger ligeledes aktivt locale.
+
 ## [4.2.1 build 0236] — 2026-05-10 — fix(i18n): COLUMNS→getColumns() + oversæt alle browse-strenge
 
 **Berørte filer**: `frontend/js/i18n.js`, `frontend/js/views/browse-utils.js`, `frontend/js/views/browse.js`, `frontend/js/views/browse-table.js`, `frontend/js/views/browse-filter.js`, `frontend/js/views/browse-bulk.js`, `frontend/js/views/browse-detail.js`, `version.json`, `CHANGELOG.md`

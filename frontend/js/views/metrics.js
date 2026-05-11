@@ -3,6 +3,8 @@
  * Parser Prometheus text format direkte i browseren uden externe biblioteker.
  */
 
+import { t, getLocale } from "../i18n.js";
+
 const BASE = window.location.origin.startsWith("file://")
   ? "http://localhost:8000"
   : "";
@@ -49,19 +51,14 @@ function getLabeled(parsed, name, labelKey, labelValue) {
   return match ? match.value : 0;
 }
 
-function sumSeries(parsed, name) {
-  const series = parsed[name];
-  if (!series) return 0;
-  return series.reduce((acc, s) => acc + s.value, 0);
-}
-
 // ------------------------------------------------------------------ //
 // Formatting helpers                                                   //
 // ------------------------------------------------------------------ //
 
 function fmt(n, decimals = 0) {
   if (n === null || n === undefined) return "–";
-  return Number(n).toLocaleString("da-DK", {
+  const locale = getLocale() === "da" ? "da-DK" : "en-GB";
+  return Number(n).toLocaleString(locale, {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   });
@@ -98,11 +95,9 @@ function buildStatCard(title, stats) {
 }
 
 function renderData(parsed) {
-  // Circuit breaker
   const cbState = getScalar(parsed, "ise_portal_circuit_breaker_state") ?? 0;
   const { text: cbText, cls: cbCls } = cbLabel(cbState);
 
-  // ISE requests
   const ise2xx = getLabeled(parsed, "ise_portal_ise_requests_total", "outcome", "2xx");
   const ise4xx = getLabeled(parsed, "ise_portal_ise_requests_total", "outcome", "4xx");
   const ise5xx = getLabeled(parsed, "ise_portal_ise_requests_total", "outcome", "5xx");
@@ -110,12 +105,10 @@ function renderData(parsed) {
   const iseTotal = ise2xx + ise4xx + ise5xx + iseErr;
   const retries = getScalar(parsed, "ise_portal_ise_retries_total") ?? 0;
 
-  // Duration: sum(bucket) gives nothing useful, use _sum/_count for mean
   const durSum = getScalar(parsed, "ise_portal_ise_request_duration_seconds_sum") ?? 0;
   const durCount = getScalar(parsed, "ise_portal_ise_request_duration_seconds_count") ?? 0;
   const durMean = durCount > 0 ? durSum / durCount : null;
 
-  // Cache
   const cacheEntries = getScalar(parsed, "ise_portal_cache_entries") ?? 0;
   const hits = getScalar(parsed, "ise_portal_cache_hits_total") ?? 0;
   const misses = getScalar(parsed, "ise_portal_cache_misses_total") ?? 0;
@@ -123,10 +116,8 @@ function renderData(parsed) {
   const evictions = getScalar(parsed, "ise_portal_cache_evictions_total") ?? 0;
   const diskStale = getScalar(parsed, "ise_portal_cache_disk_stale_entries") ?? 0;
 
-  // Rate limiter
   const blocked = getScalar(parsed, "ise_portal_rate_limit_blocked_total") ?? 0;
 
-  // Bulk
   const bulkOk = getLabeled(parsed, "ise_portal_bulk_items_total", "outcome", "succeeded");
   const bulkFail = getLabeled(parsed, "ise_portal_bulk_items_total", "outcome", "failed");
   const bulkSkip = getLabeled(parsed, "ise_portal_bulk_items_total", "outcome", "skipped");
@@ -136,39 +127,39 @@ function renderData(parsed) {
     <div class="metrics-hero">
       <div class="cb-badge ${cbCls}">
         <span class="cb-dot"></span>
-        <span>Circuit Breaker: <strong>${cbText}</strong></span>
+        <span>${t("metrics.card_cb")}: <strong>${cbText}</strong></span>
       </div>
     </div>
 
     <div class="metrics-grid">
-      ${buildStatCard("ISE API", [
-        { label: "Total requests", value: fmt(iseTotal) },
-        { label: "Succesful (2xx)", value: fmt(ise2xx), sub: pct(ise2xx, iseTotal - ise2xx) + " hit-rate" },
-        { label: "4xx fejl", value: fmt(ise4xx) },
-        { label: "5xx fejl", value: fmt(ise5xx) },
-        { label: "Transport-fejl", value: fmt(iseErr) },
-        { label: "Retries", value: fmt(retries) },
-        { label: "Gennemsn. svartid", value: durMean !== null ? fmt(durMean * 1000, 1) + " ms" : "–" },
+      ${buildStatCard(t("metrics.card_ise"), [
+        { label: t("metrics.total_requests"),  value: fmt(iseTotal) },
+        { label: t("metrics.successful_2xx"),  value: fmt(ise2xx), sub: pct(ise2xx, iseTotal - ise2xx) + " hit-rate" },
+        { label: t("metrics.errors_4xx"),      value: fmt(ise4xx) },
+        { label: t("metrics.errors_5xx"),      value: fmt(ise5xx) },
+        { label: t("metrics.transport_errors"),value: fmt(iseErr) },
+        { label: t("metrics.retries"),         value: fmt(retries) },
+        { label: t("metrics.avg_response"),    value: durMean !== null ? fmt(durMean * 1000, 1) + " ms" : "–" },
       ])}
 
-      ${buildStatCard("Cache", [
-        { label: "Entries i hukommelse", value: fmt(cacheEntries) },
-        { label: "Hits", value: fmt(hits), sub: pct(hits, misses) + " hit-rate" },
-        { label: "Misses", value: fmt(misses) },
-        { label: "Stale-while-revalidate", value: fmt(stale) },
-        { label: "Evictions (FIFO)", value: fmt(evictions) },
-        { label: "Disk-stale ved opstart", value: fmt(diskStale) },
+      ${buildStatCard(t("metrics.card_cache"), [
+        { label: t("metrics.cache_entries"),   value: fmt(cacheEntries) },
+        { label: t("metrics.cache_hits"),      value: fmt(hits), sub: pct(hits, misses) + " hit-rate" },
+        { label: t("metrics.cache_misses"),    value: fmt(misses) },
+        { label: t("metrics.cache_stale"),     value: fmt(stale) },
+        { label: t("metrics.cache_evictions"), value: fmt(evictions) },
+        { label: t("metrics.cache_disk_stale"),value: fmt(diskStale) },
       ])}
 
-      ${buildStatCard("Rate Limiter", [
-        { label: "Blokerede requests (429)", value: fmt(blocked) },
+      ${buildStatCard(t("metrics.card_rate"), [
+        { label: t("metrics.rate_blocked"), value: fmt(blocked) },
       ])}
 
-      ${buildStatCard("Bulk-operationer", [
-        { label: "Oprettet", value: fmt(bulkOk) },
-        { label: "Overskrevet", value: fmt(bulkOver) },
-        { label: "Sprunget over", value: fmt(bulkSkip) },
-        { label: "Fejlet", value: fmt(bulkFail) },
+      ${buildStatCard(t("metrics.card_bulk"), [
+        { label: t("metrics.bulk_created"),    value: fmt(bulkOk) },
+        { label: t("metrics.bulk_overwritten"),value: fmt(bulkOver) },
+        { label: t("metrics.bulk_skipped"),    value: fmt(bulkSkip) },
+        { label: t("metrics.bulk_failed"),     value: fmt(bulkFail) },
       ])}
     </div>
   `;
@@ -180,16 +171,13 @@ function renderData(parsed) {
 
 export async function renderMetrics(container) {
   container.innerHTML = `
-    <h2>Metrics</h2>
-    <p class="hint">
-      Live Prometheus-data fra backend. Tæller akkumuleres fra seneste genstart
-      — absolutte totaler, ikke rate per sekund. Auto-opdaterer hvert 15 sek.
-    </p>
+    <h2>${t("metrics.title")}</h2>
+    <p class="hint">${t("metrics.hint")}</p>
     <div class="metrics-toolbar">
-      <button id="metrics-refresh">Opdater nu</button>
+      <button id="metrics-refresh">${t("metrics.btn_refresh")}</button>
       <span id="metrics-ts" class="hint"></span>
     </div>
-    <div id="metrics-body"><div class="alert info">Henter…</div></div>
+    <div id="metrics-body"><div class="alert info">${t("metrics.loading")}</div></div>
   `;
 
   const body = container.querySelector("#metrics-body");
@@ -204,15 +192,15 @@ export async function renderMetrics(container) {
       const text = await res.text();
       const parsed = parsePrometheus(text);
       body.innerHTML = renderData(parsed);
-      tsEl.textContent = `Sidst opdateret: ${new Date().toLocaleTimeString("da-DK")}`;
+      const locale = getLocale() === "da" ? "da-DK" : "en-GB";
+      tsEl.textContent = t("metrics.last_updated") + new Date().toLocaleTimeString(locale);
     } catch (err) {
-      body.innerHTML = `<div class="alert error">Kunne ikke hente metrics: ${err.message}</div>`;
+      body.innerHTML = `<div class="alert error">${t("metrics.error").replace("{msg}", err.message)}</div>`;
     }
   }
 
   refreshBtn.addEventListener("click", load);
 
-  // Auto-refresh — stopper når containeren fjernes fra DOM (hashchange)
   function startTimer() {
     timer = setInterval(() => {
       if (!container.isConnected) {

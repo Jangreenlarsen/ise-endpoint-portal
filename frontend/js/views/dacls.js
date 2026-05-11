@@ -1,4 +1,5 @@
 import { api } from "../api.js";
+import { t } from "../i18n.js";
 
 function esc(s) {
   return (s || "").replace(/[&<>"']/g, (c) => ({
@@ -22,7 +23,7 @@ const EMPTY_DACL = {
 
 export async function renderDacls(container) {
   container.innerHTML = `
-    <h2>ACL — Cisco ISE Downloadable ACLs</h2>
+    <h2>${t("dacl.title")}</h2>
     <p class="hint">
       Listen viser alle DACL'er fra ISE — både dem oprettet i denne portal og dem
       en ISE-administrator har lagt ind direkte. Editoren bruger Cisco IOS
@@ -33,10 +34,10 @@ export async function renderDacls(container) {
     <div class="dacl-layout">
       <aside class="dacl-list-pane">
         <div class="dacl-list-toolbar">
-          <button id="dacl-new-btn">Ny ACL</button>
-          <button id="dacl-refresh-btn" class="secondary small">Refresh</button>
+          <button id="dacl-new-btn">${t("dacl.btn_new")}</button>
+          <button id="dacl-refresh-btn" class="secondary small">${t("dacl.btn_refresh")}</button>
         </div>
-        <input type="search" id="dacl-filter" placeholder="Filter..." class="dacl-filter" />
+        <input type="search" id="dacl-filter" placeholder="${t("dacl.filter_placeholder")}" class="dacl-filter" />
         <div id="dacl-list" class="dacl-list"></div>
       </aside>
       <section class="dacl-editor-pane">
@@ -52,8 +53,8 @@ export async function renderDacls(container) {
   const filterEl = container.querySelector("#dacl-filter");
 
   let dacls = [];
-  let selected = null;          // currently displayed DaclDetail
-  let dirty = false;            // editor has unsaved changes
+  let selected = null;
+  let dirty = false;
   let validateTimer = null;
 
   function setMsg(html) {
@@ -70,7 +71,7 @@ export async function renderDacls(container) {
         )
       : dacls;
     if (!filtered.length) {
-      listEl.innerHTML = `<div class="empty hint">Ingen DACL'er.</div>`;
+      listEl.innerHTML = `<div class="empty hint">${t("dacl.list_empty")}</div>`;
       return;
     }
     listEl.innerHTML = filtered.map((d) => {
@@ -85,7 +86,7 @@ export async function renderDacls(container) {
   }
 
   async function loadList(preserveSelection = true) {
-    listEl.innerHTML = `<div class="empty hint">Indlæser fra ISE...</div>`;
+    listEl.innerHTML = `<div class="empty hint">${t("dacl.list_loading")}</div>`;
     try {
       dacls = await api.listDacls();
       if (preserveSelection && selected) {
@@ -102,7 +103,7 @@ export async function renderDacls(container) {
     if (!selected) {
       editorEl.innerHTML = `
         <div class="card empty-editor">
-          <p class="hint">Vælg en ACL til venstre eller klik <strong>Ny ACL</strong>.</p>
+          <p class="hint">${t("dacl.editor_empty")}</p>
         </div>
       `;
       return;
@@ -112,35 +113,35 @@ export async function renderDacls(container) {
       <div class="card">
         <div class="dacl-form">
           <div class="field">
-            <label for="dacl-name">Navn</label>
+            <label for="dacl-name">${t("dacl.label_name")}</label>
             <input type="text" id="dacl-name" value="${esc(selected.name)}"
                    ${isNew ? "" : "readonly"} placeholder="MIN_ACL"
                    pattern="[A-Za-z0-9_\\-]+" maxlength="100" />
-            ${isNew ? '<div class="hint">Bogstaver, tal, _ og -. Kan ikke ændres efter oprettelse.</div>' : ""}
+            ${isNew ? `<div class="hint">${t("dacl.name_hint")}</div>` : ""}
           </div>
           <div class="field">
-            <label for="dacl-description">Beskrivelse</label>
+            <label for="dacl-description">${t("dacl.label_description")}</label>
             <input type="text" id="dacl-description" value="${esc(selected.description)}" />
           </div>
           <div class="field">
-            <label for="dacl-type">Type</label>
+            <label for="dacl-type">${t("dacl.label_type")}</label>
             <select id="dacl-type">
-              ${DACL_TYPES.map((t) =>
-                `<option value="${t.value}"${t.value === selected.dacl_type ? " selected" : ""}>${t.label}</option>`,
+              ${DACL_TYPES.map((tp) =>
+                `<option value="${tp.value}"${tp.value === selected.dacl_type ? " selected" : ""}>${tp.label}</option>`,
               ).join("")}
             </select>
           </div>
           <div class="field">
-            <label for="dacl-body">Access-list (Cisco IOS syntaks)</label>
+            <label for="dacl-body">${t("dacl.label_body")}</label>
             <textarea id="dacl-body" class="dacl-body mono" spellcheck="false"
                       placeholder="permit tcp any any eq 80\npermit udp any any eq 53\ndeny ip any any log">${esc(selected.dacl)}</textarea>
           </div>
           <div id="dacl-validation" class="dacl-validation"></div>
           <div class="actions">
-            <button id="dacl-save">${isNew ? "Opret" : "Gem ændringer"}</button>
+            <button id="dacl-save">${isNew ? t("dacl.btn_create") : t("dacl.btn_save")}</button>
             ${isNew
-              ? '<button id="dacl-cancel" class="secondary">Annuller</button>'
-              : '<button id="dacl-delete" class="danger">Slet ACL</button>'}
+              ? `<button id="dacl-cancel" class="secondary">${t("dacl.btn_cancel")}</button>`
+              : `<button id="dacl-delete" class="danger">${t("dacl.btn_delete")}</button>`}
           </div>
         </div>
       </div>
@@ -167,7 +168,7 @@ export async function renderDacls(container) {
         renderValidation(res);
       } catch (err) {
         const box = editorEl.querySelector("#dacl-validation");
-        if (box) box.innerHTML = `<div class="alert error">Validering fejlede: ${esc(err.message)}</div>`;
+        if (box) box.innerHTML = `<div class="alert error">${t("dacl.err_validation").replace("{msg}", esc(err.message))}</div>`;
       }
     };
     if (immediate) fire();
@@ -178,17 +179,17 @@ export async function renderDacls(container) {
     const box = editorEl.querySelector("#dacl-validation");
     if (!box) return;
     if (!res.issues.length) {
-      box.innerHTML = `<div class="alert success small">Syntaks OK.</div>`;
+      box.innerHTML = `<div class="alert success small">${t("dacl.syntax_ok")}</div>`;
       return;
     }
     const errors = res.issues.filter((i) => i.severity === "error");
     const warns = res.issues.filter((i) => i.severity === "warning");
     const banner = errors.length
-      ? `<div class="alert error small">${errors.length} fejl, ${warns.length} advarsler</div>`
-      : `<div class="alert info small">${warns.length} advarsler (ingen fejl)</div>`;
+      ? `<div class="alert error small">${t("dacl.validation_errors").replace("{n}", errors.length).replace("{w}", warns.length)}</div>`
+      : `<div class="alert info small">${t("dacl.validation_warnings").replace("{w}", warns.length)}</div>`;
     const items = res.issues.map((i) => `
       <li class="dacl-issue dacl-issue-${esc(i.severity)}">
-        <span class="dacl-issue-line">${i.line ? `linje ${i.line}` : "—"}</span>
+        <span class="dacl-issue-line">${i.line ? t("dacl.issue_line").replace("{n}", i.line) : "—"}</span>
         <span class="dacl-issue-text">${esc(i.message)}</span>
         ${i.text ? `<code>${esc(i.text)}</code>` : ""}
       </li>
@@ -213,11 +214,11 @@ export async function renderDacls(container) {
     saveBtn.addEventListener("click", async () => {
       const payload = readEditor();
       if (!payload.name) {
-        setMsg(`<div class="alert error">Navn er påkrævet.</div>`);
+        setMsg(`<div class="alert error">${t("dacl.err_name_required")}</div>`);
         return;
       }
       saveBtn.disabled = true;
-      setMsg(`<div class="alert info">Gemmer i ISE...</div>`);
+      setMsg(`<div class="alert info">${t("dacl.saving")}</div>`);
       try {
         let result;
         if (selected.id) {
@@ -233,7 +234,7 @@ export async function renderDacls(container) {
         dirty = false;
         await loadList(true);
         renderEditor();
-        setMsg(`<div class="alert success">ACL "${esc(result.name)}" gemt.</div>`);
+        setMsg(`<div class="alert success">${t("dacl.saved").replace("{name}", esc(result.name))}</div>`);
       } catch (err) {
         setMsg(`<div class="alert error">${esc(err.message)}</div>`);
       } finally {
@@ -243,20 +244,16 @@ export async function renderDacls(container) {
 
     if (delBtn) {
       delBtn.addEventListener("click", async () => {
-        if (!confirm(
-          `Slet ACL "${selected.name}" i ISE?\n\n` +
-          `Endpoints der refererer til navnet via AuthzACL bliver IKKE ` +
-          `automatisk ryddet — de vil bare miste opslag indtil navnet eksisterer igen.`,
-        )) return;
+        if (!confirm(t("dacl.confirm_delete").replace("{name}", selected.name))) return;
         delBtn.disabled = true;
-        setMsg(`<div class="alert info">Sletter...</div>`);
+        setMsg(`<div class="alert info">${t("dacl.deleting")}</div>`);
         try {
           await api.deleteDacl(selected.id);
           selected = null;
           dirty = false;
           await loadList(false);
           renderEditor();
-          setMsg(`<div class="alert success">ACL slettet.</div>`);
+          setMsg(`<div class="alert success">${t("dacl.deleted")}</div>`);
         } catch (err) {
           setMsg(`<div class="alert error">${esc(err.message)}</div>`);
           delBtn.disabled = false;
@@ -275,9 +272,8 @@ export async function renderDacls(container) {
     }
   }
 
-  // Wire global controls
   container.querySelector("#dacl-new-btn").addEventListener("click", () => {
-    if (dirty && !confirm("Du har ugemte ændringer. Forkast og opret ny?")) return;
+    if (dirty && !confirm(t("dacl.confirm_discard"))) return;
     selected = { ...EMPTY_DACL };
     dirty = false;
     renderEditor();
@@ -292,9 +288,9 @@ export async function renderDacls(container) {
   listEl.addEventListener("click", async (e) => {
     const item = e.target.closest(".dacl-item");
     if (!item) return;
-    if (dirty && !confirm("Du har ugemte ændringer. Forkast og åbn anden ACL?")) return;
+    if (dirty && !confirm(t("dacl.confirm_discard_open"))) return;
     const id = item.dataset.id;
-    setMsg(`<div class="alert info">Henter ACL...</div>`);
+    setMsg(`<div class="alert info">${t("alert.loading")}</div>`);
     try {
       selected = await api.getDacl(id);
       dirty = false;

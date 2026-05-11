@@ -1,5 +1,6 @@
 import { api } from "../api.js";
 import { auth } from "../auth.js";
+import { t } from "../i18n.js";
 import { offlineQueue } from "../offline_queue.js";
 
 const MAC_RE = /^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$/;
@@ -44,31 +45,29 @@ export async function renderRegister(container) {
   const user = auth.getUser();
   const isRegistrant = user?.role === "registrant_templet";
   const userLabel = user ? `${user.username} (${user.role})` : "";
-  const subText = isRegistrant
-    ? "Vælg skabelon, scan MAC og indsend."
-    : "Scan eller indtast MAC og indsend.";
+  const subText = isRegistrant ? t("reg.sub_template") : t("reg.sub_normal");
   container.innerHTML = `
     <div class="register-topbar">
       <span class="register-brand">ISE Register</span>
       <span class="register-user">${userLabel}</span>
-      <button type="button" id="r-logout" class="register-tiny-btn">Log ud</button>
+      <button type="button" id="r-logout" class="register-tiny-btn">${t("reg.logout")}</button>
     </div>
     <div class="register-shell">
       <div class="register-header">
-        <h1>Registrér endpoint</h1>
+        <h1>${t("reg.title")}</h1>
         <div class="register-sub">${subText}</div>
       </div>
       <div id="queue-banner" class="register-queue-banner" hidden></div>
       <div id="msg" class="register-msg"></div>
       <form id="register-form" class="register-form" autocomplete="off">
         <div id="r-template-row" class="register-template-row"${isRegistrant ? "" : " hidden"}>
-          <label for="r-template" class="register-label">📋 Skabelon</label>
+          <label for="r-template" class="register-label">${t("reg.label_template")}</label>
           <select id="r-template" class="register-input">
-            <option value="">— ingen skabelon —</option>
+            <option value="">${t("reg.template_none")}</option>
           </select>
         </div>
 
-        <label for="r-mac" class="register-label">MAC-adresse</label>
+        <label for="r-mac" class="register-label">${t("reg.label_mac")}</label>
         <div class="register-mac-row">
           <input type="text" id="r-mac" inputmode="text" autocapitalize="characters"
                  placeholder="AA:BB:CC:DD:EE:FF" required class="register-input mac" />
@@ -79,42 +78,42 @@ export async function renderRegister(container) {
         <div id="r-vendor" class="register-vendor" hidden></div>
 
         <div id="r-advanced-section"${isRegistrant ? ' hidden' : ''}>
-          <label for="r-group" class="register-label">Identity Group</label>
+          <label for="r-group" class="register-label">${t("reg.label_group")}</label>
           <select id="r-group" class="register-input">
-            <option value="">— ingen (ISE default) —</option>
+            <option value="">${t("reg.group_none")}</option>
           </select>
 
           <div id="r-attrs"></div>
 
           <div id="r-roles-section" class="register-roles-section" hidden>
-            <label class="register-label">System adm</label>
-            <div class="register-sub register-roles-hint">Vælg System adm fra kataloget. Hvis ingen vælges, tagges endpointet med dit brugernavn (din egen System adm-rolle).</div>
+            <label class="register-label">${t("reg.label_roles")}</label>
+            <div class="register-sub register-roles-hint">${t("reg.roles_hint")}</div>
             <div id="r-roles-chips" class="role-chips register-roles-chips"></div>
           </div>
 
           <div id="r-psk-section" hidden>
-            <label class="register-label">PSK Mode</label>
+            <label class="register-label">${t("reg.psk_mode_label")}</label>
             <label class="register-psk-mode-cb">
-              <input type="checkbox" id="r-psk-mode" /> MPSK/IPSK aktiveret
+              <input type="checkbox" id="r-psk-mode" /> ${t("reg.psk_mode_cb")}
             </label>
-            <label class="register-label">PSK Key</label>
+            <label class="register-label">${t("reg.psk_key_label")}</label>
             <div class="psk-key-wrap register-psk-key-wrap">
-              <input type="password" id="r-psk-key" class="register-input" autocomplete="off" placeholder="(valgfri)" />
-              <button type="button" id="r-psk-show" class="register-tiny-btn">Vis</button>
-              <button type="button" id="r-psk-gen" class="register-tiny-btn">Generer</button>
+              <input type="password" id="r-psk-key" class="register-input" autocomplete="off" placeholder="${t("reg.optional")}" />
+              <button type="button" id="r-psk-show" class="register-tiny-btn">${t("reg.btn_show")}</button>
+              <button type="button" id="r-psk-gen" class="register-tiny-btn">${t("reg.btn_generate")}</button>
             </div>
           </div>
         </div>
 
-        <label for="r-desc" class="register-label">Beskrivelse</label>
-        <input type="text" id="r-desc" class="register-input" placeholder="(valgfri)" />
+        <label for="r-desc" class="register-label">${t("reg.label_desc")}</label>
+        <input type="text" id="r-desc" class="register-input" placeholder="${t("reg.optional")}" />
 
-        <button type="submit" id="r-submit" class="register-submit">Registrér</button>
+        <button type="submit" id="r-submit" class="register-submit">${t("reg.btn_submit")}</button>
       </form>
       <div class="register-mine-section">
         <button type="button" id="r-mine-toggle" class="register-mine-btn">
           <span class="register-mine-icon">📋</span>
-          <span id="r-mine-label">Mine endpoints</span>
+          <span id="r-mine-label">${t("reg.mine_label")}</span>
         </button>
         <div id="r-mine-list" class="register-mine-list" hidden></div>
       </div>
@@ -132,19 +131,19 @@ export async function renderRegister(container) {
   try {
     const groups = await api.listGroups();
     groupSel.innerHTML =
-      `<option value="">— ingen (ISE default) —</option>` +
+      `<option value="">${t("reg.group_none")}</option>` +
       groups.map((g) => `<option value="${g.id}">${g.name}</option>`).join("");
   } catch (err) {
-    showError(`Kunne ikke hente groups: ${err.message}`);
+    showError(t("reg.err_groups").replace("{msg}", err.message));
   }
 
   const attrLabels = {
-    Type: "Type",
-    Owner: "Ejer",
-    Lokation: "Lokation",
-    AuthzVlan: "Authz VLAN",
-    AuthzACL: "Authz ACL",
-    PlatformType: "Platform",
+    Type:        t("reg.attr_type"),
+    Owner:       t("reg.attr_owner"),
+    Lokation:    t("reg.attr_lokation"),
+    AuthzVlan:   t("reg.attr_authzvlan"),
+    AuthzACL:    t("reg.attr_authzacl"),
+    PlatformType:t("reg.attr_platform"),
   };
   let caData = { attributes: [] };
   let dacls = [];
@@ -159,7 +158,6 @@ export async function renderRegister(container) {
       api.authMe().catch(() => null),
     ]);
     const allRoles = (rolesResp && Array.isArray(rolesResp.roles)) ? rolesResp.roles : [];
-    // Admin ser hele kataloget; alle andre ser kun deres tildelte roller.
     if (!me || me.role === "admin") {
       roleCatalog = allRoles;
     } else {
@@ -167,13 +165,12 @@ export async function renderRegister(container) {
       roleCatalog = allRoles.filter((r) => assigned.has(r.name.toLowerCase()));
     }
   } catch (err) {
-    showError(`Kunne ikke hente attributter: ${err.message}`);
+    showError(t("reg.err_attrs").replace("{msg}", err.message));
   }
   const canPickRoles = !!me && (me.role === "admin" || me.role === "editor" || me.role === "editor-psk");
   const isPskEditor = !!me && (me.role === "admin" || me.role === "editor-psk");
   const attrMap = {};
   for (const a of caData.attributes || []) attrMap[a.name] = a.values;
-  // AuthzACL hentes fra ISE DACLs, ikke fra det lokale CA-store.
   attrMap.AuthzACL = (dacls || []).map((d) => d.name).filter(Boolean).sort();
   for (const [name, label] of Object.entries(attrLabels)) {
     const opts = (attrMap[name] || [])
@@ -181,13 +178,11 @@ export async function renderRegister(container) {
     attrsDiv.insertAdjacentHTML("beforeend", `
       <label for="r-ca-${name}" class="register-label">${label}</label>
       <select id="r-ca-${name}" class="register-input">
-        <option value="">— vælg —</option>${opts}
+        <option value="">${t("reg.attr_select")}</option>${opts}
       </select>
     `);
   }
 
-  // Roller-picker: kun synlig for admin/editor. Viewer/registrar får
-  // automatisk deres username som tag (auto-tag i backend Phase 5).
   if (canPickRoles && roleCatalog.length) {
     const rolesSection = container.querySelector("#r-roles-section");
     const rolesChips = container.querySelector("#r-roles-chips");
@@ -213,24 +208,23 @@ export async function renderRegister(container) {
   const templateSel = container.querySelector("#r-template");
 
   if (isRegistrant && !templates.length) {
-    // Registrant skal bruge skabelon — vis blokerende besked hvis ingen findes
-    templateSel.innerHTML = `<option value="">Ingen skabeloner tilgængelige</option>`;
+    templateSel.innerHTML = `<option value="">${t("reg.no_templates")}</option>`;
     templateSel.disabled = true;
     container.querySelector("#r-submit").disabled = true;
     container.querySelector("#msg").innerHTML =
-      `<div class="alert error">Ingen skabeloner er tilgængelige for din konto — kontakt administrator.</div>`;
+      `<div class="alert error">${t("reg.no_templates_msg")}</div>`;
   } else if (templates.length) {
-    const noneLabel = isRegistrant ? "— vælg skabelon —" : "— ingen skabelon —";
+    const noneLabel = isRegistrant ? t("reg.template_select") : t("reg.template_none");
     templateSel.innerHTML =
       `<option value="">${noneLabel}</option>` +
-      templates.map((t) =>
-        `<option value="${esc(t.id)}">${esc(t.name)}${t.description ? ` — ${esc(t.description)}` : ""}</option>`
+      templates.map((tpl) =>
+        `<option value="${esc(tpl.id)}">${esc(tpl.name)}${tpl.description ? ` — ${esc(tpl.description)}` : ""}</option>`
       ).join("");
     templateRow.hidden = false;
   }
 
   function applyTemplate(tplId) {
-    const tpl = templates.find((t) => t.id === tplId);
+    const tpl = templates.find((tpl) => tpl.id === tplId);
     if (!tpl) return;
     const fields = tpl.fields || {};
     if (groupSel && fields.group_id) groupSel.value = fields.group_id;
@@ -256,10 +250,10 @@ export async function renderRegister(container) {
       const btn = container.querySelector("#r-psk-show");
       if (inp.type === "password") {
         inp.type = "text";
-        btn.textContent = "Skjul";
+        btn.textContent = t("reg.btn_hide");
       } else {
         inp.type = "password";
-        btn.textContent = "Vis";
+        btn.textContent = t("reg.btn_show");
       }
     });
 
@@ -271,9 +265,9 @@ export async function renderRegister(container) {
         const inp = container.querySelector("#r-psk-key");
         inp.value = key;
         inp.type = "text";
-        container.querySelector("#r-psk-show").textContent = "Skjul";
+        container.querySelector("#r-psk-show").textContent = t("reg.btn_hide");
       } catch (err) {
-        showError(`Kunne ikke generere nøgle: ${err.message}`);
+        showError(t("reg.err_psk").replace("{msg}", err.message));
       } finally {
         btn.disabled = false;
       }
@@ -303,7 +297,7 @@ export async function renderRegister(container) {
       const vendor = res && res.vendor ? res.vendor : "";
       if (!vendor) {
         vendorDiv.hidden = false;
-        vendorDiv.innerHTML = `<span class="register-vendor-unknown">Ukendt vendor</span>`;
+        vendorDiv.innerHTML = `<span class="register-vendor-unknown">${t("reg.vendor_unknown")}</span>`;
         return;
       }
       const platform = VENDOR_TO_PLATFORM[vendor] || "";
@@ -313,14 +307,14 @@ export async function renderRegister(container) {
       vendorDiv.hidden = false;
       vendorDiv.innerHTML = `
         <span class="register-vendor-tag">${vendor}</span>
-        ${hasPlatform ? `<button type="button" id="r-apply-pt" class="register-tiny-btn">Sæt Platform=${platform}</button>` : ""}
+        ${hasPlatform ? `<button type="button" id="r-apply-pt" class="register-tiny-btn">${t("reg.apply_platform").replace("{p}", platform)}</button>` : ""}
       `;
       const applyBtn = container.querySelector("#r-apply-pt");
       if (applyBtn) {
         applyBtn.addEventListener("click", () => {
           ptSel.value = platform;
           applyBtn.disabled = true;
-          applyBtn.textContent = "✓ Sat";
+          applyBtn.textContent = t("reg.platform_set");
         });
       }
     } catch {
@@ -335,7 +329,7 @@ export async function renderRegister(container) {
     msg.innerHTML = `<div class="alert success">${text}</div>`;
   }
 
-  // Offline-kø: vis banner hvis der ligger items, og auto-flush ved 'online'.
+  // Offline-kø
   const queueBanner = container.querySelector("#queue-banner");
   function refreshQueueBanner() {
     const n = offlineQueue.size();
@@ -345,15 +339,15 @@ export async function renderRegister(container) {
     } else {
       queueBanner.hidden = false;
       queueBanner.innerHTML = `
-        <span>${n} registrering(er) venter på at blive sendt…</span>
-        <button type="button" id="q-flush" class="register-tiny-btn">Send nu</button>
+        <span>${t("reg.queue_n").replace("{n}", n)}</span>
+        <button type="button" id="q-flush" class="register-tiny-btn">${t("reg.queue_send")}</button>
       `;
       const flushBtn = container.querySelector("#q-flush");
       if (flushBtn) flushBtn.addEventListener("click", async () => {
         flushBtn.disabled = true;
         const res = await offlineQueue.flushAll();
-        if (res.sent > 0) showOk(`Sendte ${res.sent} fra kø.`);
-        if (res.failed > 0) showError(`${res.failed} fra kø blev afvist af serveren.`);
+        if (res.sent > 0) showOk(t("reg.queue_sent").replace("{n}", res.sent));
+        if (res.failed > 0) showError(t("reg.queue_failed").replace("{n}", res.failed));
         refreshQueueBanner();
       });
     }
@@ -366,11 +360,11 @@ export async function renderRegister(container) {
     msg.innerHTML = "";
     const mac = normaliseMac(macInput.value.trim()).toUpperCase();
     if (!MAC_RE.test(mac)) {
-      showError("Ugyldig MAC-adresse.");
+      showError(t("reg.err_invalid_mac"));
       return;
     }
     if (isRegistrant && !templateSel.value) {
-      showError("Vælg en skabelon inden registrering.");
+      showError(t("reg.err_no_template"));
       return;
     }
     const ca = {};
@@ -398,38 +392,37 @@ export async function renderRegister(container) {
     if (Object.keys(ca).length) payload.custom_attributes = ca;
 
     submitBtn.disabled = true;
-    submitBtn.textContent = "Registrerer…";
+    submitBtn.textContent = t("reg.btn_submitting");
     try {
       await api.createEndpoint(payload);
-      showOk(`✓ ${mac} oprettet`);
+      showOk(t("reg.success").replace("{mac}", mac));
       e.target.reset();
       if (templateSel) templateSel.value = "";
       if (isPskEditor) {
         const pskInp = container.querySelector("#r-psk-key");
         pskInp.type = "password";
-        container.querySelector("#r-psk-show").textContent = "Vis";
+        container.querySelector("#r-psk-show").textContent = t("reg.btn_show");
       }
       vendorDiv.hidden = true;
       vendorDiv.innerHTML = "";
       macInput.focus();
     } catch (err) {
-      // Netværksfejl (ingen "NNN:" prefix) → læg i offline-kø.
       const isNetwork = err && typeof err.message === "string"
         && !/^\d{3}:/.test(err.message);
       if (isNetwork) {
         offlineQueue.enqueue(payload);
-        showOk(`Offline — ${mac} er gemt i kø og sendes når der er forbindelse.`);
+        showOk(t("reg.offline").replace("{mac}", mac));
         e.target.reset();
         vendorDiv.hidden = true;
         vendorDiv.innerHTML = "";
         refreshQueueBanner();
         macInput.focus();
       } else {
-        showError(`Fejl: ${err.message}`);
+        showError(t("reg.err_generic").replace("{msg}", err.message));
       }
     } finally {
       submitBtn.disabled = false;
-      submitBtn.textContent = "Registrér";
+      submitBtn.textContent = t("reg.btn_submit");
     }
   });
 
@@ -443,14 +436,12 @@ export async function renderRegister(container) {
           macInput.dispatchEvent(new Event("input", { bubbles: true }));
         });
       } catch (err) {
-        showError(`Kamera kunne ikke startes: ${err.message}`);
+        showError(t("reg.err_camera").replace("{msg}", err.message));
       }
     });
   }
 
-  // ── Mine endpoints — mobil-venlig oversigt over endpoints brugeren
-  // har adgang til. Backend filterer allerede pr. effektive roller, så
-  // listen indeholder kun det brugeren må se.
+  // ── Mine endpoints ────────────────────────────────────────────────
   const mineToggle = container.querySelector("#r-mine-toggle");
   const mineList = container.querySelector("#r-mine-list");
   const mineLabel = container.querySelector("#r-mine-label");
@@ -459,7 +450,7 @@ export async function renderRegister(container) {
 
   function renderMineList(rows) {
     if (!rows.length) {
-      mineList.innerHTML = `<div class="register-mine-empty">Ingen endpoints synlige for dig.</div>`;
+      mineList.innerHTML = `<div class="register-mine-empty">${t("reg.mine_empty")}</div>`;
       return;
     }
     mineList.innerHTML = rows.map((r) => {
@@ -470,9 +461,9 @@ export async function renderRegister(container) {
       return `
         <div class="register-mine-card">
           <div class="register-mine-mac">${mac}</div>
-          <div class="register-mine-row"><span class="register-mine-key">Gruppe</span><span>${grp}</span></div>
-          ${desc ? `<div class="register-mine-row"><span class="register-mine-key">Beskr.</span><span>${desc}</span></div>` : ""}
-          ${roles ? `<div class="register-mine-row"><span class="register-mine-key">System adm</span><span class="register-mine-roles">${roles}</span></div>` : ""}
+          <div class="register-mine-row"><span class="register-mine-key">${t("reg.mine_key_group")}</span><span>${grp}</span></div>
+          ${desc ? `<div class="register-mine-row"><span class="register-mine-key">${t("reg.mine_key_desc")}</span><span>${desc}</span></div>` : ""}
+          ${roles ? `<div class="register-mine-row"><span class="register-mine-key">${t("reg.mine_key_roles")}</span><span class="register-mine-roles">${roles}</span></div>` : ""}
         </div>
       `;
     }).join("");
@@ -481,42 +472,38 @@ export async function renderRegister(container) {
   mineToggle.addEventListener("click", async () => {
     if (!mineList.hidden) {
       mineList.hidden = true;
-      mineLabel.textContent = "Mine endpoints";
+      mineLabel.textContent = t("reg.mine_label");
       return;
     }
     if (!mineLoaded) {
       mineList.hidden = false;
-      mineList.innerHTML = `<div class="register-mine-empty">Henter…</div>`;
-      mineLabel.textContent = "Mine endpoints (henter…)";
+      mineList.innerHTML = `<div class="register-mine-empty">${t("alert.loading")}</div>`;
+      mineLabel.textContent = t("reg.mine_loading");
       try {
         mineRows = await api.listAllEndpointDetails("", []);
         mineLoaded = true;
       } catch (err) {
-        mineList.innerHTML = `<div class="register-mine-empty register-mine-error">Kunne ikke hente: ${esc(err.message)}</div>`;
-        mineLabel.textContent = "Mine endpoints";
+        mineList.innerHTML = `<div class="register-mine-empty register-mine-error">${t("reg.err_fetch_mine").replace("{msg}", esc(err.message))}</div>`;
+        mineLabel.textContent = t("reg.mine_label");
         return;
       }
     } else {
       mineList.hidden = false;
     }
     renderMineList(mineRows);
-    mineLabel.textContent = `Mine endpoints (${mineRows.length})`;
+    mineLabel.textContent = t("reg.mine_count").replace("{n}", mineRows.length);
   });
 
-  // Logout-knap i topbar — registrar har ingen sidebar at logge ud fra.
   const logoutBtn = container.querySelector("#r-logout");
   if (logoutBtn) {
     logoutBtn.addEventListener("click", async () => {
       logoutBtn.disabled = true;
       try { await api.logout(); } catch { /* ignore */ }
       auth.clear();
-      // app.js's setUnauthorizedHandler vil normalt overtage; her kalder vi
-      // direkte for at sikre at login-siden vises i samme chromeless mode.
       location.reload();
     });
   }
 
-  // Cleanup mode-class hvis brugeren navigerer væk
   window.addEventListener("hashchange", function once() {
     container.classList.remove("mobile-register-mode");
     window.removeEventListener("hashchange", once);
@@ -525,17 +512,11 @@ export async function renderRegister(container) {
   macInput.focus();
 }
 
-/**
- * Open a fullscreen camera scanner overlay. Uses the browser-native
- * BarcodeDetector to read QR/Code128/Code39/DataMatrix/PDF417 from the
- * live video feed; the first match that contains a MAC-shaped substring
- * is normalised and passed to onMatch().
- */
 async function openScanner(onMatch) {
-  if (!hasBarcodeDetector()) throw new Error("Browseren understøtter ikke scanning.");
+  if (!hasBarcodeDetector()) throw new Error(t("reg.scan_no_detector"));
   const supported = await window.BarcodeDetector.getSupportedFormats?.() || [];
   const formats = SCAN_FORMATS.filter((f) => supported.includes(f));
-  if (!formats.length) throw new Error("Ingen understøttede barcode-formater.");
+  if (!formats.length) throw new Error(t("reg.scan_no_formats"));
   const detector = new window.BarcodeDetector({ formats });
 
   const overlay = document.createElement("div");
@@ -544,8 +525,8 @@ async function openScanner(onMatch) {
     <video class="scan-video" autoplay muted playsinline></video>
     <div class="scan-hud">
       <div class="scan-frame"></div>
-      <div class="scan-status">Peg kameraet på en MAC-stregkode eller QR…</div>
-      <button type="button" class="scan-cancel">Annuller</button>
+      <div class="scan-status">${t("reg.scan_status")}</div>
+      <button type="button" class="scan-cancel">${t("reg.scan_cancel")}</button>
     </div>
   `;
   document.body.appendChild(overlay);
@@ -558,7 +539,7 @@ async function openScanner(onMatch) {
   function cleanup() {
     stopped = true;
     overlay.remove();
-    if (stream) stream.getTracks().forEach((t) => t.stop());
+    if (stream) stream.getTracks().forEach((tr) => tr.stop());
   }
 
   overlay.querySelector(".scan-cancel").addEventListener("click", cleanup);
