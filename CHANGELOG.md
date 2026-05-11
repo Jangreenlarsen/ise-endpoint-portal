@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [4.2.6 build 0241] — 2026-05-11 — fix(i18n): fuldfør i18n-dækning af settings.js (Advanced, adminCell, TACACS-hint)
+
+**Berørte filer**: `frontend/js/views/settings.js`, `frontend/js/i18n.js`, `version.json`, `CHANGELOG.md`
+
+`initAdvancedSection`: h3 og knaptekst sættes via `t()`, confirm/loading/done-beskeder oversættes. `adminCell` i `renderEndpointRoleCell` bruger nu `t("settings.users_admin_roles")`. `users-section-hint` og `users-tacacs-hint` populeres i `initUsersSection`. Nye i18n-nøgler: `settings.users_section_hint`, `settings.users_tacacs_hint` (DA + EN).
+
 ## [4.2.5 build 0240] — 2026-05-11 — fix(i18n): oversæt sidebar "Overvågning" + settings-faner/-undertabs
 
 **Berørte filer**: `frontend/js/i18n.js`, `frontend/index.html`, `frontend/js/app.js`, `frontend/js/views/settings.js`, `version.json`, `CHANGELOG.md`
