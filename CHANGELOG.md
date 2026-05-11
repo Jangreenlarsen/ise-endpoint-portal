@@ -3,6 +3,18 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [4.2.5 build 0240] — 2026-05-11 — fix(i18n): oversæt sidebar "Overvågning" + settings-faner/-undertabs
+
+**Berørte filer**: `frontend/js/i18n.js`, `frontend/index.html`, `frontend/js/app.js`, `frontend/js/views/settings.js`, `version.json`, `CHANGELOG.md`
+
+`nav.monitoring`-nøgle tilføjet (DA: "Overvågning", EN: "Monitoring"). `<span class="nav-group">` i index.html tildelt `data-i18n="nav.monitoring"`. `updateNavLabels()` i app.js opdaterer nu også alle `[data-i18n]`-elementer. Settings-sidens titel, alle 5 hoved-faner og alle undertabs oversættes via nye `settings.tab_*`/`settings.subtab_*`-nøgler.
+
+## [4.2.4 build 0239] — 2026-05-11 — fix(i18n): oversæt hardkodet hint-tekst i DACL-view
+
+**Berørte filer**: `frontend/js/i18n.js`, `frontend/js/views/dacls.js`, `version.json`, `CHANGELOG.md`
+
+`dacl.hint`-nøgle tilføjet i DA og EN; hardkodet dansk paragraf i DACL-view erstattet med `t("dacl.hint")`.
+
 ## [4.2.3 build 0238] — 2026-05-11 — fix(i18n): oversæt resterende hardkodede strenge i browse, app, csv-template, metrics, attributes
 
 **Berørte filer**: `frontend/js/i18n.js`, `frontend/js/views/browse.js`, `frontend/js/views/browse-table.js`, `frontend/js/app.js`, `frontend/js/views/csv-template.js`, `frontend/js/views/attributes.js`, `frontend/js/views/metrics.js`, `version.json`, `CHANGELOG.md`

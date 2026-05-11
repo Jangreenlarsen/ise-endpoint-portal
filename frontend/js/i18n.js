@@ -20,6 +20,7 @@ const TRANSLATIONS = {
     "nav.settings":     "Indstillinger",
     "nav.user-prefs":   "Præferencer",
     "nav.csv-template": "CSV Skabelon",
+    "nav.monitoring":   "Overvågning",
 
     // Fælles knapper / labels
     "btn.save":    "Gem",
@@ -168,6 +169,21 @@ const TRANSLATIONS = {
     "prefs.submit":          "Gem præferencer",
     "prefs.success":         "Præferencer gemt.",
 
+    // Settings — faner og undertitler
+    "settings.title":              "Indstillinger",
+    "settings.tab_ise_connection": "ISE Forbindelses Config",
+    "settings.tab_performance":    "Portal Performance",
+    "settings.tab_user_config":    "Portal Bruger Config",
+    "settings.tab_auth_config":    "Portal Auth Config",
+    "settings.tab_portal_config":  "Portal Config",
+    "settings.subtab_roles":       "Endpoint grupper",
+    "settings.subtab_users":       "Brugere & Bruger grupper",
+    "settings.subtab_templates":   "Skabeloner",
+    "settings.subtab_psk":         "PSK-politik",
+    "settings.subtab_locale":      "Sprog",
+    "settings.subtab_update":      "Opdatering",
+    "settings.subtab_advanced":    "Avanceret",
+
     // Settings — locale panel
     "settings.locale_card":    "Portalsprog",
     "settings.locale_hint":    "Standardsprog for brugere uden personligt sprogvalg.",
@@ -302,6 +318,7 @@ const TRANSLATIONS = {
 
     // ── DACLs ─────────────────────────────────────────────────────────────────
     "dacl.title":               "ACL — Cisco ISE Downloadable ACLs",
+    "dacl.hint":                "Listen viser alle DACL'er fra ISE — både dem oprettet i denne portal og dem en ISE-administrator har lagt ind direkte. Editoren bruger Cisco IOS access-list syntaks (én ACE per linje). Kommentarer starter med <code>!</code>. Backend tjekker syntaksen mens du skriver; ISE laver det endelige tjek når du gemmer.",
     "dacl.btn_new":             "Ny ACL",
     "dacl.btn_refresh":         "Refresh",
     "dacl.filter_placeholder":  "Filter...",
@@ -491,6 +508,7 @@ const TRANSLATIONS = {
     "nav.settings":     "Settings",
     "nav.user-prefs":   "Preferences",
     "nav.csv-template": "CSV Template",
+    "nav.monitoring":   "Monitoring",
 
     // Common buttons / labels
     "btn.save":    "Save",
@@ -639,6 +657,21 @@ const TRANSLATIONS = {
     "prefs.submit":          "Save preferences",
     "prefs.success":         "Preferences saved.",
 
+    // Settings — tabs and subtitles
+    "settings.title":              "Settings",
+    "settings.tab_ise_connection": "ISE Connection Config",
+    "settings.tab_performance":    "Portal Performance",
+    "settings.tab_user_config":    "Portal User Config",
+    "settings.tab_auth_config":    "Portal Auth Config",
+    "settings.tab_portal_config":  "Portal Config",
+    "settings.subtab_roles":       "Endpoint groups",
+    "settings.subtab_users":       "Users & User groups",
+    "settings.subtab_templates":   "Templates",
+    "settings.subtab_psk":         "PSK policy",
+    "settings.subtab_locale":      "Language",
+    "settings.subtab_update":      "Update",
+    "settings.subtab_advanced":    "Advanced",
+
     // Settings — locale panel
     "settings.locale_card":    "Portal language",
     "settings.locale_hint":    "Default language for users without a personal language selection.",
@@ -773,6 +806,7 @@ const TRANSLATIONS = {
 
     // ── DACLs ─────────────────────────────────────────────────────────────────
     "dacl.title":               "ACL — Cisco ISE Downloadable ACLs",
+    "dacl.hint":                "The list shows all DACLs from ISE — both those created in this portal and those added directly by an ISE administrator. The editor uses Cisco IOS access-list syntax (one ACE per line). Comments start with <code>!</code>. The backend checks syntax as you type; ISE performs the final check when you save.",
     "dacl.btn_new":             "New ACL",
     "dacl.btn_refresh":         "Refresh",
     "dacl.filter_placeholder":  "Filter...",

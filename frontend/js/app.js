@@ -85,6 +85,10 @@ function updateNavLabels() {
     const translated = t(key);
     if (translated !== key) a.textContent = translated;
   });
+  document.querySelectorAll("[data-i18n]").forEach((el) => {
+    const translated = t(el.dataset.i18n);
+    if (translated !== el.dataset.i18n) el.textContent = translated;
+  });
 }
 
 function updateNavVisibility(user) {

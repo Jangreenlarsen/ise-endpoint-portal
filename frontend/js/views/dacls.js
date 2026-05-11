@@ -24,13 +24,7 @@ const EMPTY_DACL = {
 export async function renderDacls(container) {
   container.innerHTML = `
     <h2>${t("dacl.title")}</h2>
-    <p class="hint">
-      Listen viser alle DACL'er fra ISE — både dem oprettet i denne portal og dem
-      en ISE-administrator har lagt ind direkte. Editoren bruger Cisco IOS
-      access-list syntaks (én ACE per linje). Kommentarer starter med
-      <code>!</code>. Backend tjekker syntaksen mens du skriver; ISE laver det
-      endelige tjek når du gemmer.
-    </p>
+    <p class="hint">${t("dacl.hint")}</p>
     <div class="dacl-layout">
       <aside class="dacl-list-pane">
         <div class="dacl-list-toolbar">

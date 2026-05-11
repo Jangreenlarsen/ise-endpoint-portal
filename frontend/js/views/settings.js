@@ -39,17 +39,17 @@ export async function renderSettings(container) {
 
   container.innerHTML = `
     <div class="page-header">
-      <h2 style="margin:0;">Settings</h2>
+      <h2 style="margin:0;">${t("settings.title")}</h2>
     </div>
     <nav class="settings-tabs" id="settings-tabs">
       ${isAdmin ? `
-      <button class="settings-tab" data-tab="ise-connection">ISE Forbindelse Config</button>
-      <button class="settings-tab" data-tab="portal-performance">Portal Performance</button>
-      <button class="settings-tab" data-tab="portal-bruger-config">Portal Bruger Config</button>
-      <button class="settings-tab" data-tab="portal-auth-config">Portal Auth Config</button>
+      <button class="settings-tab" data-tab="ise-connection">${t("settings.tab_ise_connection")}</button>
+      <button class="settings-tab" data-tab="portal-performance">${t("settings.tab_performance")}</button>
+      <button class="settings-tab" data-tab="portal-bruger-config">${t("settings.tab_user_config")}</button>
+      <button class="settings-tab" data-tab="portal-auth-config">${t("settings.tab_auth_config")}</button>
       ` : ""}
       ${isPskEditorUser ? `
-      <button class="settings-tab" data-tab="portal-config">Portal Config</button>
+      <button class="settings-tab" data-tab="portal-config">${t("settings.tab_portal_config")}</button>
       ` : ""}
     </nav>
     <div class="settings-panels" id="settings-panels">
@@ -436,16 +436,16 @@ export async function renderSettings(container) {
 
     ${isAdmin ? `
     <nav class="settings-subtab-nav" data-for-tab="portal-bruger-config">
-      <button class="settings-subtab" data-subtab="pbc-roles">Endpoint grupper</button>
-      <button class="settings-subtab" data-subtab="pbc-users">Brugere &amp; Bruger grupper</button>
-      <button class="settings-subtab" data-subtab="pbc-templates">Skabeloner</button>
+      <button class="settings-subtab" data-subtab="pbc-roles">${t("settings.subtab_roles")}</button>
+      <button class="settings-subtab" data-subtab="pbc-users">${t("settings.subtab_users")}</button>
+      <button class="settings-subtab" data-subtab="pbc-templates">${t("settings.subtab_templates")}</button>
     </nav>
     <nav class="settings-subtab-nav" data-for-tab="portal-config">
-      <button class="settings-subtab" data-subtab="pc-psk">PSK-politik</button>
-      <button class="settings-subtab" data-subtab="pc-locale">Sprog</button>
+      <button class="settings-subtab" data-subtab="pc-psk">${t("settings.subtab_psk")}</button>
+      <button class="settings-subtab" data-subtab="pc-locale">${t("settings.subtab_locale")}</button>
       <button class="settings-subtab" data-subtab="pc-ise-config">ISE Purge Config</button>
-      <button class="settings-subtab" data-subtab="pc-update">Opdatering</button>
-      <button class="settings-subtab" data-subtab="pc-advanced">Avanceret</button>
+      <button class="settings-subtab" data-subtab="pc-update">${t("settings.subtab_update")}</button>
+      <button class="settings-subtab" data-subtab="pc-advanced">${t("settings.subtab_advanced")}</button>
     </nav>
     <div class="card" data-tab="portal-config" data-subtab="pc-ise-config">
       <h3>Anbefalet ISE purge-config</h3>
