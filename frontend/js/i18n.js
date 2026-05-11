@@ -632,6 +632,9 @@ const TRANSLATIONS = {
     "settings.pxgrid_restart_err":    "Restart fejlede: {msg}",
     "settings.pxgrid_csr_confirm":    "Generér nyt RSA-2048 keypair + CSR? Eksisterende key for samme node-navn overskrives.",
     "settings.pxgrid_csr_generating": "Genererer CSR...",
+    "settings.pxgrid_csr_done":       "CSR genereret. Key gemt på {path}.{dl_note} Indsend CSR-filen til ISE internal CA og upload det signerede cert som \"Klient-certifikat\" herover.",
+    "settings.pxgrid_csr_dl_ok_note": " CSR downloadet som {filename}.",
+    "settings.pxgrid_csr_dl_fail_note":" (Auto-download fejlede — brug \"Download CSR-fil\"-knappen.)",
     "settings.pxgrid_csr_dl_loading": "Henter CSR...",
     "settings.pxgrid_csr_dl_done":    "CSR downloadet som {filename}.",
     "settings.pxgrid_csr_dl_err":     "Download af CSR fejlede: {msg}",
@@ -807,6 +810,9 @@ const TRANSLATIONS = {
     "settings.update_fail":           "Opdatering fejlede: {msg}",
     "settings.update_restart_confirm":"Genstart serveren nu?\n\nPortalen vil være utilgængelig i et par sekunder.",
     "settings.update_restarting":     "Server genstarter... siden genindlæses automatisk om 8 sekunder.",
+    "settings.update_pkg_info_lbl":   "Pakke-info",
+    "settings.update_file_list_lbl":  "Filer der opdateres ({n})",
+    "settings.update_blocked_lbl":    "⚠ Blokerede filer (overskrives ikke)",
 
     // ── Settings — Advanced/Migration ───────────────────────────────────────
     "settings.adv_card":              "Importér custom attributter fra ISE (migration)",
@@ -1450,6 +1456,9 @@ const TRANSLATIONS = {
     "settings.pxgrid_restart_err":    "Restart failed: {msg}",
     "settings.pxgrid_csr_confirm":    "Generate new RSA-2048 keypair + CSR? Existing key for the same node name will be overwritten.",
     "settings.pxgrid_csr_generating": "Generating CSR...",
+    "settings.pxgrid_csr_done":       "CSR generated. Key saved at {path}.{dl_note} Submit the CSR to the ISE internal CA and upload the signed cert as \"Client certificate\" above.",
+    "settings.pxgrid_csr_dl_ok_note": " CSR downloaded as {filename}.",
+    "settings.pxgrid_csr_dl_fail_note":" (Auto-download failed — use the \"Download CSR file\" button.)",
     "settings.pxgrid_csr_dl_loading": "Fetching CSR...",
     "settings.pxgrid_csr_dl_done":    "CSR downloaded as {filename}.",
     "settings.pxgrid_csr_dl_err":     "CSR download failed: {msg}",
@@ -1625,6 +1634,9 @@ const TRANSLATIONS = {
     "settings.update_fail":           "Update failed: {msg}",
     "settings.update_restart_confirm":"Restart the server now?\n\nThe portal will be unavailable for a few seconds.",
     "settings.update_restarting":     "Server restarting... page will reload automatically in 8 seconds.",
+    "settings.update_pkg_info_lbl":   "Package info",
+    "settings.update_file_list_lbl":  "Files to update ({n})",
+    "settings.update_blocked_lbl":    "⚠ Blocked files (will not be overwritten)",
 
     // ── Settings — Advanced/Migration ───────────────────────────────────────
     "settings.adv_card":              "Import custom attributes from ISE (migration)",

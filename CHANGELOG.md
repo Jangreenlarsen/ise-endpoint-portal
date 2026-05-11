@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [4.2.6 build 0242] — 2026-05-11 — fix(i18n): fuldfør settings.js oversættelse (update-labels, CSR-beskeder, csv-tpl, pw, dup-ID)
+
+**Berørte filer**: `frontend/js/views/settings.js`, `frontend/js/i18n.js`, `version.json`, `CHANGELOG.md`
+
+Fjernet hardkodet DA fra settings.js: update-card preview-labels (Pakke-info, Filer der opdateres, Blokerede filer) får IDs + t()-binding; CSR-success/download-beskeder bruger `pxgrid_csr_done`/`pxgrid_csr_dl_ok_note`/`pxgrid_csr_dl_fail_note`; csv-template-fejlbeskeder bruger `csv_tpl.*`; frontend-prefs og password-beskeder bruger `prefs.*`; duplikat `id="adv-btn"` på migration-knap fjernet. Nye i18n-nøgler (DA + EN): `settings.update_pkg_info_lbl`, `settings.update_file_list_lbl`, `settings.update_blocked_lbl`, `settings.pxgrid_csr_done`, `settings.pxgrid_csr_dl_ok_note`, `settings.pxgrid_csr_dl_fail_note`.
+
 ## [4.2.6 build 0241] — 2026-05-11 — fix(i18n): fuldfør i18n-dækning af settings.js (Advanced, adminCell, TACACS-hint)
 
 **Berørte filer**: `frontend/js/views/settings.js`, `frontend/js/i18n.js`, `version.json`, `CHANGELOG.md`

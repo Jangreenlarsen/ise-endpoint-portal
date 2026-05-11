@@ -749,15 +749,15 @@ export async function renderSettings(container) {
 
       <div id="update-preview" class="hidden" style="margin-top:1rem;">
         <div class="field">
-          <label>Pakke-info</label>
+          <label id="update-pkg-info-lbl"></label>
           <div id="update-pkg-info" style="font-family:monospace;font-size:0.85rem;background:var(--bg-secondary,#f8fafc);border:1px solid var(--border,#e2e8f0);border-radius:6px;padding:0.75rem;"></div>
         </div>
         <div id="update-file-list-wrap" class="field hidden">
-          <label>Filer der opdateres (<span id="update-file-count">0</span>)</label>
+          <label id="update-file-list-lbl"></label>
           <div id="update-file-list" style="font-family:monospace;font-size:0.78rem;max-height:180px;overflow-y:auto;background:var(--bg-secondary,#f8fafc);border:1px solid var(--border,#e2e8f0);border-radius:6px;padding:0.5rem;white-space:pre;"></div>
         </div>
         <div id="update-blocked-wrap" class="field hidden">
-          <label style="color:#b45309;">⚠ Blokerede filer (overskrives ikke)</label>
+          <label style="color:#b45309;" id="update-blocked-lbl"></label>
           <div id="update-blocked-list" style="font-family:monospace;font-size:0.78rem;background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:0.5rem;white-space:pre;color:#92400e;"></div>
         </div>
         <div class="actions" style="margin-top:1rem;">
@@ -784,7 +784,7 @@ export async function renderSettings(container) {
       <h3 id="adv-card-h3"></h3>
       <div id="migration-sync-result" style="margin-bottom:0.75rem;"></div>
       <div class="actions">
-        <button type="button" id="migration-sync-btn" class="secondary" id="adv-btn"></button>
+        <button type="button" id="migration-sync-btn" class="secondary"></button>
       </div>
     </div>
     ` : ""}
@@ -1183,9 +1183,9 @@ async function initPxGridSection(container) {
       // Auto-trigger download so admin har CSR-filen i Downloads med det samme.
       const filename = await downloadCsr({ silentOnError: true });
       const dlNote = filename
-        ? ` CSR downloadet som <code>${esc(filename)}</code>.`
-        : ` (Auto-download fejlede — brug "Download CSR-fil"-knappen.)`;
-      msg.innerHTML = `<div class="alert success">CSR genereret. Key gemt på <code>${esc(s.pxgrid_key_path)}</code>.${dlNote} Indsend CSR-filen til ISE internal CA og upload det signerede cert som "Klient-certifikat" herover.</div>`;
+        ? t("settings.pxgrid_csr_dl_ok_note").replace("{filename}", `<code>${esc(filename)}</code>`)
+        : t("settings.pxgrid_csr_dl_fail_note");
+      msg.innerHTML = `<div class="alert success">${t("settings.pxgrid_csr_done").replace("{path}", `<code>${esc(s.pxgrid_key_path)}</code>`).replace("{dl_note}", dlNote)}</div>`;
       await loadSettings();
     } catch (err) {
       msg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
@@ -1196,7 +1196,7 @@ async function initPxGridSection(container) {
     msg.innerHTML = `<div class="alert info">${t("settings.pxgrid_csr_dl_loading")}</div>`;
     const filename = await downloadCsr();
     if (filename) {
-      msg.innerHTML = `<div class="alert success">CSR downloadet som <code>${esc(filename)}</code>.</div>`;
+      msg.innerHTML = `<div class="alert success">${t("settings.pxgrid_csr_dl_done").replace("{filename}", `<code>${esc(filename)}</code>`)}</div>`;
     }
   });
 
@@ -2043,13 +2043,13 @@ function initPasswordSection(container) {
     const newPw = container.querySelector("#pw-new").value;
     const newPw2 = container.querySelector("#pw-new2").value;
     if (newPw !== newPw2) {
-      msg.innerHTML = `<div class="alert error">De to nye passwords matcher ikke.</div>`;
+      msg.innerHTML = `<div class="alert error">${t("prefs.pw_err_match")}</div>`;
       return;
     }
     try {
       await api.changePassword(current, newPw);
       container.querySelector("#pw-form").reset();
-      msg.innerHTML = `<div class="alert success">Password skiftet.</div>`;
+      msg.innerHTML = `<div class="alert success">${t("prefs.pw_success")}</div>`;
     } catch (err) {
       msg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
     }
@@ -2077,17 +2077,17 @@ function initCsvAndPrefsSections(container) {
       const text = await file.text();
       const columns = parseTemplateHeader(text);
       if (!columns.length) {
-        csvTplMsg.innerHTML = `<div class="alert error">Ingen kolonner fundet i filen — kontrollér at første linje er en header-række.</div>`;
+        csvTplMsg.innerHTML = `<div class="alert error">${t("csv_tpl.err_no_cols")}</div>`;
         return;
       }
       const extended = extendTemplateWithPortalColumns(columns);
       setCsvTemplate(extended);
       refreshTplPreview();
       const added = extended.length - columns.length;
-      const addedNote = added ? ` (+${added} portal-kolonner tilføjet)` : "";
-      csvTplMsg.innerHTML = `<div class="alert success">Template importeret — ${extended.length} kolonner${addedNote}. Fremtidige exports bruger denne template.</div>`;
+      const addedNote = added ? t("csv_tpl.portal_added").replace("{n}", added) : "";
+      csvTplMsg.innerHTML = `<div class="alert success">${t("csv_tpl.imported").replace("{n}", extended.length).replace("{extra}", addedNote)}</div>`;
     } catch (err) {
-      csvTplMsg.innerHTML = `<div class="alert error">Kunne ikke læse filen: ${esc(err.message)}</div>`;
+      csvTplMsg.innerHTML = `<div class="alert error">${t("csv_tpl.err_read").replace("{msg}", esc(err.message))}</div>`;
     } finally {
       // Nulstil input så samme fil kan vælges igen efter fejl/reset.
       e.target.value = "";
@@ -2098,7 +2098,7 @@ function initCsvAndPrefsSections(container) {
     resetCsvTemplate();
     csvTplFile.value = "";
     refreshTplPreview();
-    csvTplMsg.innerHTML = `<div class="alert success">Template nulstillet til standard (${getCsvTemplate().length} kolonner).</div>`;
+    csvTplMsg.innerHTML = `<div class="alert success">${t("csv_tpl.reset_done").replace("{n}", getCsvTemplate().length)}</div>`;
   });
 
   // Frontend prefs
@@ -2114,7 +2114,7 @@ function initCsvAndPrefsSections(container) {
     };
     saveFrontendPrefs(newPrefs);
     applyTheme(newPrefs.theme);
-    frontendMsg.innerHTML = `<div class="alert success">Frontend preferences gemt.</div>`;
+    frontendMsg.innerHTML = `<div class="alert success">${t("prefs.success")}</div>`;
   });
 }
 
@@ -2526,6 +2526,10 @@ function initSystemUpdateSection(container) {
   const updateRestartHint = container.querySelector("#update-restart-hint");
   if (updateRestartHint) updateRestartHint.textContent = t("settings.update_restart_hint");
   if (restartBtn) restartBtn.textContent = t("settings.update_btn_restart");
+  const pkgInfoLbl = container.querySelector("#update-pkg-info-lbl");
+  if (pkgInfoLbl) pkgInfoLbl.textContent = t("settings.update_pkg_info_lbl");
+  const blockedLbl = container.querySelector("#update-blocked-lbl");
+  if (blockedLbl) blockedLbl.textContent = t("settings.update_blocked_lbl");
 
   let validatedFile = null;
 
@@ -2563,7 +2567,8 @@ function initSystemUpdateSection(container) {
       // Fil-liste
       if (info.files.length) {
         fileListEl.textContent = info.files.join("\n");
-        fileCountEl.textContent = info.file_count;
+        const fileListLbl = container.querySelector("#update-file-list-lbl");
+        if (fileListLbl) fileListLbl.textContent = t("settings.update_file_list_lbl").replace("{n}", info.file_count);
         fileListWrap.classList.remove("hidden");
       } else {
         fileListWrap.classList.add("hidden");
