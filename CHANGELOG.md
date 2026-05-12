@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [4.2.6 build 0243] — 2026-05-11 — refactor: opsplit settings.js (2788 linjer) i 13 sektionsfiler
+
+**Berørte filer**: `frontend/js/views/settings.js` (ny: 797 linjer), `frontend/js/views/settings/` (ny mappe med 13 filer), `version.json`, `CHANGELOG.md`
+
+`settings.js` er nu en tynd orkestrator med HTML-skabelon + imports. Sektionerne er flyttet til `settings/`: `shared.js` (hjælpefunktioner + tema), `tabs.js`, `section-backend.js`, `section-cache.js`, `section-pxgrid.js`, `section-purge.js`, `section-roles.js`, `section-users.js`, `section-templates.js`, `section-psk.js`, `section-auth.js`, `section-update.js`, `section-prefs.js`. `applyTheme`/`initTheme` re-eksporteres fra `settings.js` så `app.js` er uændret. Ingen funktionel ændring.
+
 ## [4.2.6 build 0242] — 2026-05-11 — fix(i18n): fuldfør settings.js oversættelse (update-labels, CSR-beskeder, csv-tpl, pw, dup-ID)
 
 **Berørte filer**: `frontend/js/views/settings.js`, `frontend/js/i18n.js`, `version.json`, `CHANGELOG.md`
