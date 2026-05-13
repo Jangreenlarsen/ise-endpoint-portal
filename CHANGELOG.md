@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.0.3 build 0252] — 2026-05-13 — fix: autoriseringsprofiler viser nu "AuthzVlan: værdi" + "AuthzACL: værdi"
+
+**Berørte filer**: `frontend/js/views/browse-detail.js`, `version.json`
+
+Profil-tags i wizard viste kun den rå værdi uden kontekst. Nu formateres de som "AuthzVlan: VLAN_100" og "AuthzACL: ACL_PERMIT" så det er tydeligt hvorfra de stammer.
+
 ## [5.0.3 build 0251] — 2026-05-13 — fix: AuthzVlan/AuthzACL fjernet fra betingelsessektion i policy wizard
 
 **Berørte filer**: `frontend/js/views/browse-detail.js`, `version.json`

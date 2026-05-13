@@ -341,7 +341,9 @@ export function initDetail(container, state, api, cb) {
     // Pre-fill authorization profiles from the endpoint's AuthzVlan / AuthzACL values.
     const authzVlan = container.querySelector("#d-authzvlan")?.value || "";
     const authzAcl  = container.querySelector("#d-authzacl")?.value  || "";
-    const initProfiles = [authzVlan, authzAcl].filter(Boolean);
+    const initProfiles = [];
+    if (authzVlan) initProfiles.push(`AuthzVlan: ${authzVlan}`);
+    if (authzAcl)  initProfiles.push(`AuthzACL: ${authzAcl}`);
 
     wizardArea.innerHTML = `
       <div class="policy-wizard-card">
