@@ -13,7 +13,6 @@ export const DICTIONARIES = [
   { name: "EndPoints",     attrs: ["Owner", "Type", "Lokation", "AuthzVlan", "AuthzACL", "PlatformType", "PSK_Mode", "Description"] },
   { name: "IdentityGroup", attrs: ["Name"] },
   { name: "Radius",        attrs: ["Called-Station-ID", "NAS-Port-Type", "NAS-Identifier", "User-Name", "Framed-IP-Address"] },
-  { name: "Network",       attrs: ["Device Name", "Location", "Device Type"] },
 ];
 
 export const OPERATORS = [

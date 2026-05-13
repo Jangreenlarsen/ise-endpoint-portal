@@ -3,6 +3,17 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.0.4 build 0259] — 2026-05-14 — fix: fjern Network-dictionary fra condition-builder
+
+**Berørte filer**: `frontend/js/views/policy-condition-builder.js`, `version.json`
+
+ISE afviser `Network:Device Name` (og øvrige Network-attributter) i autorisationsregler med
+"Condition attributes are illegal for requested scope". Network-dictionary er kun gyldig i
+autentificeringspolitikker. Fjernet `Network` fra `DICTIONARIES` så brugeren ikke kan vælge
+ulovlige betingelser.
+
+---
+
 ## [5.0.4 build 0258] — 2026-05-14 — fix: simuler match returnerede altid "ingen regel matchede"
 
 **Berørte filer**: `backend/app/services/policy_service.py`, `version.json`
