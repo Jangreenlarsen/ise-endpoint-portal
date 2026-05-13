@@ -68,23 +68,26 @@ def _condition_summary(cond: dict | None) -> str:
     return ct or "—"
 
 
-def _rule_summary(rule: dict) -> AuthzRuleSummary:
-    profiles = rule.get("profile") or []
+def _rule_summary(entry: dict) -> AuthzRuleSummary:
+    # ISE returns {"rule": {id, name, rank, state, condition}, "profile": [...]}
+    inner = entry.get("rule") or entry
+    profiles = entry.get("profile") or inner.get("profile") or []
     if isinstance(profiles, str):
         profiles = [profiles]
     return AuthzRuleSummary(
-        id=rule.get("id", ""),
-        name=rule.get("name", ""),
-        rank=rule.get("rank", 0),
-        state=rule.get("state", "enabled"),
+        id=inner.get("id", ""),
+        name=inner.get("name", ""),
+        rank=inner.get("rank", 0),
+        state=inner.get("state", "enabled"),
         profiles=profiles,
-        condition_summary=_condition_summary(rule.get("condition")),
+        condition_summary=_condition_summary(inner.get("condition")),
     )
 
 
-def _rule_detail(rule: dict) -> AuthzRuleDetail:
-    s = _rule_summary(rule)
-    return AuthzRuleDetail(**s.model_dump(), condition=rule.get("condition"))
+def _rule_detail(entry: dict) -> AuthzRuleDetail:
+    inner = entry.get("rule") or entry
+    s = _rule_summary(entry)
+    return AuthzRuleDetail(**s.model_dump(), condition=inner.get("condition"))
 
 
 def _ps_summary(ps: dict) -> PolicySetSummary:
@@ -290,19 +293,20 @@ class PolicyService:
                 no_rules=True,
             )
 
-        for rule in rules:
-            cond = rule.get("condition")
+        for entry in rules:
+            inner = entry.get("rule") or entry
+            cond = inner.get("condition")
             matched, details = _eval_condition(cond, ep)
             if matched:
-                profiles = rule.get("profile") or []
+                profiles = entry.get("profile") or inner.get("profile") or []
                 if isinstance(profiles, str):
                     profiles = [profiles]
                 return PolicyMatchResult(
                     policy_set_id=policy_set_id,
                     policy_set_name=ps_name,
-                    matched_rule_id=rule.get("id"),
-                    matched_rule_name=rule.get("name"),
-                    matched_rule_rank=rule.get("rank"),
+                    matched_rule_id=inner.get("id"),
+                    matched_rule_name=inner.get("name"),
+                    matched_rule_rank=inner.get("rank"),
                     profiles=profiles,
                     condition_details=details,
                 )

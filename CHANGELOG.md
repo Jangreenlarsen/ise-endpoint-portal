@@ -3,6 +3,17 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.0.4 build 0258] — 2026-05-14 — fix: simuler match returnerede altid "ingen regel matchede"
+
+**Berørte filer**: `backend/app/services/policy_service.py`, `version.json`
+
+ISE Open API returnerer autorisationsregler som `{"rule": {id, name, rank, condition}, "profile": [...]}`.
+`_rule_summary`, `_rule_detail` og `match_endpoint` læste fejlagtigt felter direkte fra det ydre objekt
+(`rule.get("id")` → `""`) i stedet for fra det indre `rule["rule"]`-objekt.
+Alle tre funktioner bruger nu `inner = entry.get("rule") or entry` som unwrap-mønster.
+
+---
+
 ## [5.0.4 build 0257] — 2026-05-13 — fix: make_update_package.py fjerner doc-filer og START.bat fra INCLUDE_PATHS
 
 **Berørte filer**: `make_update_package.py`, `version.json`
