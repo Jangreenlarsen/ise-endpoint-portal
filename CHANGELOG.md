@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.0.3 build 0253] — 2026-05-13 — fix: policy wizard profiler mapper til korrekte ISE-profilnavne
+
+**Berørte filer**: `frontend/js/views/browse-detail.js`, `frontend/js/views/policy-condition-builder.js`, `version.json`
+
+AuthzVlan → `Endpoint_VLAN`, AuthzACL → `Endpoint_DACL`, PSK_Mode → `Endpoint_PSK-KEY`. Tilføjet `Endpoint_DACL` til `KNOWN_PROFILES` dropdown. Brugeren kan fortsat tilføje egne profiler via preset-dropdown eller fritekst.
+
 ## [5.0.3 build 0252] — 2026-05-13 — fix: autoriseringsprofiler viser nu "AuthzVlan: værdi" + "AuthzACL: værdi"
 
 **Berørte filer**: `frontend/js/views/browse-detail.js`, `version.json`

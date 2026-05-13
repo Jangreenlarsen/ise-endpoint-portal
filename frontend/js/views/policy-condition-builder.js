@@ -27,8 +27,8 @@ export const OPERATORS = [
 ];
 
 export const KNOWN_PROFILES = [
-  "PermitAccess", "DenyAccess", "Endpoint_VLAN", "Endpoint_AirSpaceACL",
-  "Endpoint_PSK-KEY", "Permit_TEMP_ACCESS",
+  "PermitAccess", "DenyAccess", "Endpoint_VLAN", "Endpoint_DACL",
+  "Endpoint_AirSpaceACL", "Endpoint_PSK-KEY", "Permit_TEMP_ACCESS",
 ];
 
 // ── Option HTML builders ──────────────────────────────────────────────────────

@@ -338,12 +338,14 @@ export function initDetail(container, state, api, cb) {
       __IdentityGroup_Name__: (state.groups || []).map((g) => g.name).filter(Boolean),
     };
 
-    // Pre-fill authorization profiles from the endpoint's AuthzVlan / AuthzACL values.
+    // Pre-fill authorization profiles based on endpoint's authz attributes.
     const authzVlan = container.querySelector("#d-authzvlan")?.value || "";
     const authzAcl  = container.querySelector("#d-authzacl")?.value  || "";
+    const pskMode   = container.querySelector("#d-psk-mode")?.checked;
     const initProfiles = [];
-    if (authzVlan) initProfiles.push(`AuthzVlan: ${authzVlan}`);
-    if (authzAcl)  initProfiles.push(`AuthzACL: ${authzAcl}`);
+    if (authzVlan) initProfiles.push("Endpoint_VLAN");
+    if (authzAcl)  initProfiles.push("Endpoint_DACL");
+    if (pskMode)   initProfiles.push("Endpoint_PSK-KEY");
 
     wizardArea.innerHTML = `
       <div class="policy-wizard-card">
