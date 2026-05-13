@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.0.2 build 0249] — 2026-05-13 — feat: policy wizard preudfylder alle endpoint-attributter + reaktivt detail-vindue
+
+**Berørte filer**: `frontend/js/views/browse-detail.js`, `frontend/css/styles.css`, `version.json`
+
+Policy-wizard (Idé 2) preudfylder nu **alle** endpoint-attributter som betingelser: Owner, Type, Lokation, AuthzVlan, AuthzACL, PlatformType, PSK_Mode (kun hvis aktivt) og IdentityGroup:Name (undtagen Unknown/tomt). Detail-modal har fået `max-height: 90vh; overflow-y: auto` så vinduet aldrig overskrider viewport-højden — scrollbar aktiveres automatisk ved langt indhold (mange betingelser, wizard åben osv.).
+
 ## [5.0.1 build 0248] — 2026-05-13 — fix: deployment-opdatering fejler ved PermissionError på read-only filer
 
 **Berørte filer**: `backend/app/services/update_service.py`, `version.json`

@@ -310,15 +310,28 @@ export function initDetail(container, state, api, cb) {
 
   // ── Idé 2: Rule wizard pre-filled from endpoint ───────────────────────────
   function showRuleWizard(setId, setName) {
-    const owner    = container.querySelector("#d-owner")?.value || "";
-    const type     = container.querySelector("#d-type")?.value || "";
-    const lokation = container.querySelector("#d-lokation")?.value || "";
-    const mac      = container.querySelector("#d-mac")?.textContent || "";
+    const mac = container.querySelector("#d-mac")?.textContent || "";
 
-    const initConds = [];
-    if (owner)    initConds.push({ dict: "EndPoints", attr: "Owner",    op: "equals", val: owner });
-    if (type)     initConds.push({ dict: "EndPoints", attr: "Type",     op: "equals", val: type });
-    if (lokation) initConds.push({ dict: "EndPoints", attr: "Lokation", op: "equals", val: lokation });
+    const epAttrs = [
+      { attr: "Owner",       val: container.querySelector("#d-owner")?.value || "" },
+      { attr: "Type",        val: container.querySelector("#d-type")?.value || "" },
+      { attr: "Lokation",    val: container.querySelector("#d-lokation")?.value || "" },
+      { attr: "AuthzVlan",   val: container.querySelector("#d-authzvlan")?.value || "" },
+      { attr: "AuthzACL",    val: container.querySelector("#d-authzacl")?.value || "" },
+      { attr: "PlatformType",val: container.querySelector("#d-platformtype")?.value || "" },
+      { attr: "PSK_Mode",    val: container.querySelector("#d-psk-mode")?.checked ? "true" : "" },
+    ];
+
+    const groupName = container.querySelector("#d-group")?.selectedOptions[0]?.text || "";
+
+    const initConds = epAttrs
+      .filter((x) => x.val)
+      .map((x) => ({ dict: "EndPoints", attr: x.attr, op: "equals", val: x.val }));
+
+    if (groupName && groupName !== "—" && groupName.toLowerCase() !== "unknown") {
+      initConds.push({ dict: "IdentityGroup", attr: "Name", op: "equals", val: groupName });
+    }
+
     if (!initConds.length) initConds.push({ dict: "EndPoints", attr: "Owner", op: "equals", val: "" });
 
     wizardArea.innerHTML = `

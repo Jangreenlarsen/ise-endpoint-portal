@@ -656,6 +656,8 @@ td.mac-cell.cache-stale {
 .modal.detail-modal {
   width: 560px;
   max-width: 95vw;
+  max-height: 90vh;
+  overflow-y: auto;
 }
 .detail-grid {
   display: grid;
