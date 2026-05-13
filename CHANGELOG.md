@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.0.3 build 0254] — 2026-05-13 — fix: PSK_Mode condition + Endpoint_PSK-KEY profil synkroniseret via fælles flag
+
+**Berørte filer**: `frontend/js/views/browse-detail.js`, `version.json`
+
+Refaktoreret wizard-attribut-læsning: ét fælles `pskActive`-flag (`=== true` strict check) bruges til BÅDE at tilføje betingelsen `EndPoints:PSK_Mode = true` og profilen `Endpoint_PSK-KEY`. De to kan aldrig komme ud af sync. `authzVlan`, `authzAcl` og `groupName` læses også øverst i ét pass.
+
 ## [5.0.3 build 0253] — 2026-05-13 — fix: policy wizard profiler mapper til korrekte ISE-profilnavne
 
 **Berørte filer**: `frontend/js/views/browse-detail.js`, `frontend/js/views/policy-condition-builder.js`, `version.json`

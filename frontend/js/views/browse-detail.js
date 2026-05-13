@@ -312,24 +312,29 @@ export function initDetail(container, state, api, cb) {
   function showRuleWizard(setId, setName) {
     const mac = container.querySelector("#d-mac")?.textContent || "";
 
+    // Read all endpoint attribute values once.
+    const pskActive  = container.querySelector("#d-psk-mode")?.checked === true;
+    const authzVlan  = container.querySelector("#d-authzvlan")?.value || "";
+    const authzAcl   = container.querySelector("#d-authzacl")?.value  || "";
+    const groupName  = container.querySelector("#d-group")?.selectedOptions[0]?.text || "";
+
     const epAttrs = [
       { attr: "Owner",       val: container.querySelector("#d-owner")?.value || "" },
       { attr: "Type",        val: container.querySelector("#d-type")?.value || "" },
       { attr: "Lokation",    val: container.querySelector("#d-lokation")?.value || "" },
       { attr: "PlatformType",val: container.querySelector("#d-platformtype")?.value || "" },
-      { attr: "PSK_Mode",    val: container.querySelector("#d-psk-mode")?.checked ? "true" : "" },
     ];
-
-    const groupName = container.querySelector("#d-group")?.selectedOptions[0]?.text || "";
 
     const initConds = epAttrs
       .filter((x) => x.val)
       .map((x) => ({ dict: "EndPoints", attr: x.attr, op: "equals", val: x.val }));
 
+    if (pskActive) {
+      initConds.push({ dict: "EndPoints", attr: "PSK_Mode", op: "equals", val: "true" });
+    }
     if (groupName && groupName !== "—" && groupName.toLowerCase() !== "unknown") {
       initConds.push({ dict: "IdentityGroup", attr: "Name", op: "equals", val: groupName });
     }
-
     if (!initConds.length) initConds.push({ dict: "EndPoints", attr: "Owner", op: "equals", val: "" });
 
     // Extend caValues with group names so the IdentityGroup:Name condition gets a dropdown.
@@ -338,14 +343,12 @@ export function initDetail(container, state, api, cb) {
       __IdentityGroup_Name__: (state.groups || []).map((g) => g.name).filter(Boolean),
     };
 
-    // Pre-fill authorization profiles based on endpoint's authz attributes.
-    const authzVlan = container.querySelector("#d-authzvlan")?.value || "";
-    const authzAcl  = container.querySelector("#d-authzacl")?.value  || "";
-    const pskMode   = container.querySelector("#d-psk-mode")?.checked;
+    // Authorization profiles derived from endpoint's authz attributes.
+    // pskActive uses the SAME flag as the condition above — they can never be out of sync.
     const initProfiles = [];
     if (authzVlan) initProfiles.push("Endpoint_VLAN");
     if (authzAcl)  initProfiles.push("Endpoint_DACL");
-    if (pskMode)   initProfiles.push("Endpoint_PSK-KEY");
+    if (pskActive) initProfiles.push("Endpoint_PSK-KEY");
 
     wizardArea.innerHTML = `
       <div class="policy-wizard-card">
