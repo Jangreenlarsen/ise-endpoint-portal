@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.0.4 build 0257] — 2026-05-13 — fix: make_update_package.py fjerner doc-filer og START.bat fra INCLUDE_PATHS
+
+**Berørte filer**: `make_update_package.py`, `version.json`
+
+`INCLUDE_PATHS` synkroniseret med `_ALLOWED_PREFIXES` — de 6 filer (CHANGELOG.md, FEATURES.md, BUGS.md, ARCHITECTURE.md, ISE_API_REFERENCE.md, START.bat) er fjernet. BUILD_PACKAGE.bat genererer nu pakker der kun indeholder `frontend/`, `backend/app/`, `backend/pyproject.toml` og `version.json`.
+
 ## [5.0.4 build 0256] — 2026-05-13 — fix: fjern CHANGELOG/FEATURES/BUGS/ARCHITECTURE/ISE_API_REFERENCE/START.bat fra update-pakken
 
 **Berørte filer**: `backend/app/services/update_service.py`, `version.json`

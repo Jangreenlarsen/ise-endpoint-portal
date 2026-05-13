@@ -30,12 +30,6 @@ INCLUDE_PATHS: list[str] = [
     "backend/app",
     "backend/pyproject.toml",
     "version.json",
-    "CHANGELOG.md",
-    "FEATURES.md",
-    "BUGS.md",
-    "ARCHITECTURE.md",
-    "ISE_API_REFERENCE.md",
-    "START.bat",
 ]
 
 # ------------------------------------------------------------------ #
