@@ -3,6 +3,18 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.0.0 build 0244] — 2026-05-13 — feat: RADIUS Policy Builder (Idé 1 + 2 + 3)
+
+**Berørte filer**: `backend/app/ise/policy.py` (ny), `backend/app/schemas/policy.py` (ny), `backend/app/services/policy_service.py` (ny), `backend/app/api/policy.py` (ny), `backend/app/api/deps.py` (+get_policy_service), `backend/app/main.py` (+policy_router), `frontend/js/views/policy.js` (ny), `frontend/js/views/browse-detail.js` (+policy-sektion), `frontend/js/views/browse.js` (+policy HTML), `frontend/js/api.js` (+policy-metoder), `frontend/js/app.js` (+policy-route), `frontend/index.html` (+nav-link), `frontend/css/styles.css` (+policy CSS), `version.json`, `FEATURES.md`
+
+**Idé 1 — Policy Match Preview**: I browse-detail tilføjet en "RADIUS Policy"-accordion. Brugeren vælger et policy set og klikker "Simuler match" — backend evaluerer endpointets EndPoints-attributter (Owner, Type, Lokation, PSK_Mode, AuthzVlan m.fl.) og IdentityGroup mod policy settets autoriseringsregler (rank-rækkefølge) og returnerer den første regel der matcher, med profiler og per-betingelse OK/FAIL-status. RADIUS-attributter og ConditionReferences markeres som "ikke evalueret (kræver live session)".
+
+**Idé 2 — Rule Builder Wizard**: Fra policy-preview-sektionen i browse-detail: "Opret regel baseret på dette endpoint" åbner en inline wizard med betingelserne preudfyldt fra endpointets Owner, Type og Lokation. Brugeren kan tilrette AND/OR-logik, tilføje/fjerne betingelser, vælge autoriseringsprofiler og oprette reglen direkte i ISE via Open API.
+
+**Idé 3 — Policy Dashboard**: Nyt menupunkt "Politikker" (tilgængeligt for viewer/editor/admin). Tre-pane-layout: policy sets → autoriseringsregler → regeldetalje/editor. Viser conditions som træ (ConditionAndBlock/OrBlock/Reference/Attributes). Editor/admin kan oprette nye regler, redigere og slette (sletning kræver admin). Condition builder med AND/OR-blokke, dictionary/attribut/operator/værdi dropdowns og profilmærker.
+
+**Backend**: ISE Open API `/api/v1/policy/network-access/policy-set` + `{id}/authorization`. Condition-match-simulator i `policy_service.py` evaluerer EndPoints- og IdentityGroup-attributter; unevaluable dicts (Radius, Network) springer over med `skipped=True`. 7 nye API-endpoints under `/api/policy/`.
+
 ## [4.2.6 build 0243] — 2026-05-11 — refactor: opsplit settings.js (2788 linjer) i 13 sektionsfiler
 
 **Berørte filer**: `frontend/js/views/settings.js` (ny: 797 linjer), `frontend/js/views/settings/` (ny mappe med 13 filer), `version.json`, `CHANGELOG.md`

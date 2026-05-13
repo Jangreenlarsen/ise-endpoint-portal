@@ -357,4 +357,28 @@ export const api = {
     request(`/operator-profiles/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(payload) }),
   deleteOperatorProfile: (id) =>
     request(`/operator-profiles/${encodeURIComponent(id)}`, { method: "DELETE" }),
+
+  // RADIUS Policy (5.0.0)
+  listPolicySets: () => request("/policy/policy-sets"),
+  getPolicySet: (id) => request(`/policy/policy-sets/${encodeURIComponent(id)}`),
+  listPolicyRules: (setId) => request(`/policy/policy-sets/${encodeURIComponent(setId)}/rules`),
+  createPolicyRule: (setId, payload) =>
+    request(`/policy/policy-sets/${encodeURIComponent(setId)}/rules`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  updatePolicyRule: (setId, ruleId, payload) =>
+    request(`/policy/policy-sets/${encodeURIComponent(setId)}/rules/${encodeURIComponent(ruleId)}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+  deletePolicyRule: (setId, ruleId) =>
+    request(`/policy/policy-sets/${encodeURIComponent(setId)}/rules/${encodeURIComponent(ruleId)}`, {
+      method: "DELETE",
+    }),
+  matchPolicyEndpoint: (setId, epAttrs) =>
+    request(`/policy/policy-sets/${encodeURIComponent(setId)}/match`, {
+      method: "POST",
+      body: JSON.stringify(epAttrs),
+    }),
 };

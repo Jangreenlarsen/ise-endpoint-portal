@@ -35,6 +35,8 @@ Alle nye features registreres her FØR implementering påbegyndes.
 
 - `[done 3.21.0] 2026-05-07 — Cache: memory-baseret eviction (300 MB grænse)` — Udvider FIFO-eviction i EndpointCache med en løbende byte-tæller og konfigurerbar `cache_max_memory_mb`-grænse (default 300 MB). Eviction-løkken tjekker nu **begge** grænser (max entries + max bytes) ved `put_detail`. Størrelse estimeres via `model_dump_json()` pr. entry og lagres i `CachedEntry.size_bytes`. Ny Prometheus gauge `ise_portal_cache_memory_bytes`. **Lag:** backend (`core/endpoint_cache.py`, `core/config.py`, `core/metrics.py`).
 
+- `[done 5.0.0] 2026-05-13 — RADIUS Policy Builder` — Tre-delt feature: **(1) Policy Match Preview (Idé 1)**: I browse-detail vises hvilke eksisterende autoriseringsregler der ville matche det aktuelle endpoint baseret på EndPoints-attributter og IdentityGroup. **(2) Rule Builder Wizard (Idé 2)**: Fra browse-detail kan man oprette en ny autoriseringsregel i ISE med endpoint-attributterne preudfyldt — wizard styrer condition-opbygning (AND/OR-blokke), profilvalg og rank. **(3) Policy Dashboard (Idé 3)**: Nyt menupunkt "Politikker" med komplet overblik over alle RADIUS policy sets og deres autoriseringsregler, plus regel-oprettelse og -sletning direkte fra dashboardet. Bruger ISE Open API `/api/v1/policy/network-access/...`. **Lag**: backend (`ise/policy.py` ny, `schemas/policy.py` ny, `services/policy_service.py` ny, `api/policy.py` ny, `api/deps.py` +get_policy_service, `main.py` +policy_router), frontend (`views/policy.js` ny, `views/browse-detail.js` +policy-sektion, `api.js` +policy-metoder, `app.js` +route, `index.html` +nav-link).
+
 ## Planlagt — Fremtidige features (prioriteret)
 
 ### Prioritet 1 — Høj forretningsmæssig værdi

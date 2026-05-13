@@ -173,6 +173,16 @@ export async function renderBrowse(container) {
             <button id="d-anc-clear" class="secondary small">${t("detail.anc_clear")}</button>
           </div>
         </div>
+        <div id="d-policy-section" class="hidden policy-section">
+          <div class="policy-section-header">
+            <span class="policy-section-label">RADIUS Policy</span>
+            <button id="d-policy-toggle" class="secondary small">▶ Vis</button>
+          </div>
+          <div id="d-policy-body" class="hidden">
+            <div id="d-policy-match-area"></div>
+            <div id="d-policy-wizard-area"></div>
+          </div>
+        </div>
         <div class="modal-actions">
           <button id="d-save">${t("detail.btn_save")}</button>
           <button id="d-disconnect" class="danger"

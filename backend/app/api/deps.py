@@ -10,6 +10,7 @@ from app.schemas.user import ROLE_VALUES, Role, User
 from app.services.custom_attribute_service import CustomAttributeService
 from app.services.dacl_service import DaclService
 from app.services.endpoint_service import EndpointService
+from app.services.policy_service import PolicyService
 
 
 def get_endpoint_service() -> EndpointService:
@@ -22,6 +23,10 @@ def get_custom_attribute_service() -> CustomAttributeService:
 
 def get_dacl_service() -> DaclService:
     return DaclService(get_ise_client())
+
+
+def get_policy_service() -> PolicyService:
+    return PolicyService(get_ise_client())
 
 
 def _extract_token(request: Request) -> str | None:

@@ -13,6 +13,7 @@ import { renderSettings, initTheme } from "./views/settings.js";
 import { renderMetrics } from "./views/metrics.js";
 import { renderUserPrefs } from "./views/user-prefs.js";
 import { renderCsvTemplate } from "./views/csv-template.js";
+import { renderPolicy } from "./views/policy.js";
 
 const statusDot = document.getElementById("status-dot");
 const container = document.getElementById("view-container");
@@ -22,6 +23,7 @@ const routes = {
   browse:     { render: renderBrowse,     roles: ["admin", "editor", "editor-psk", "viewer"] },
   attributes: { render: renderAttributes, roles: ["admin", "editor"] },
   dacls:      { render: renderDacls,      roles: ["admin", "editor"] },
+  policy:     { render: renderPolicy,     roles: ["admin", "editor", "editor-psk", "viewer"] },
   logs:       { render: renderLogs,       roles: ["admin"] },
   audit:      { render: renderAudit,      roles: ["admin", "editor", "editor-psk", "viewer"] },
   metrics:    { render: renderMetrics,    roles: ["admin"] },

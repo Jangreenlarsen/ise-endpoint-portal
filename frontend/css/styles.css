@@ -2312,3 +2312,182 @@ body.register-route .login-card {
 [data-theme="dark"] .cb-halfopen { background: #451a03; color: #fcd34d; }
 [data-theme="dark"] .cb-open    { background: #450a0a; color: #fca5a5; }
 
+
+/* ── Policy Dashboard (Idé 3) ── */
+.policy-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr 1fr;
+  gap: 0;
+  height: calc(100vh - 60px);
+  overflow: hidden;
+}
+.policy-sets-pane,
+.policy-rules-pane,
+.policy-detail-pane {
+  overflow-y: auto;
+  padding: 0.75rem;
+  border-right: 1px solid var(--border);
+}
+.policy-detail-pane { border-right: none; }
+.policy-pane-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+.policy-pane-header h3 { margin: 0; font-size: 0.95rem; }
+.policy-set-item {
+  padding: 0.5rem 0.6rem;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  margin-bottom: 0.25rem;
+}
+.policy-set-item:hover { background: var(--hover-bg, #f3f4f6); }
+.policy-set-item.active { background: #dbeafe; border-color: #3b82f6; }
+.ps-name { font-weight: 600; font-size: 0.85rem; }
+.ps-meta { font-size: 0.75rem; color: var(--text-muted, #6b7280); }
+.ps-state.enabled  { color: #16a34a; font-size: 0.75rem; }
+.ps-state.disabled { color: #dc2626; font-size: 0.75rem; }
+.policy-rule-item {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  margin-bottom: 0.35rem;
+}
+.policy-rule-item:hover { background: var(--hover-bg, #f3f4f6); }
+.policy-rule-item.active { background: #dbeafe; border-color: #3b82f6; }
+.pr-rank { font-weight: 700; font-size: 0.75rem; color: #6b7280; min-width: 28px; }
+.pr-body { flex: 1; min-width: 0; }
+.pr-name { font-weight: 600; font-size: 0.85rem; }
+.pr-cond { font-size: 0.72rem; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pr-profiles { display: flex; flex-wrap: wrap; gap: 0.2rem; margin-top: 0.2rem; }
+.pr-state { font-size: 0.72rem; align-self: flex-start; margin-top: 2px; }
+.profile-chip {
+  font-size: 0.7rem;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-radius: 10px;
+  padding: 0 0.4rem;
+  border: 1px solid #bfdbfe;
+}
+.policy-detail-card,
+.policy-editor-card,
+.policy-wizard-card {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1rem;
+}
+.detail-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+.detail-card-header h4 { margin: 0; font-size: 0.9rem; flex: 1; }
+.detail-row { margin-bottom: 0.4rem; font-size: 0.85rem; }
+.detail-lbl { font-weight: 600; margin-right: 0.4rem; color: #374151; }
+.detail-cond-block { margin-top: 0.5rem; }
+.detail-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
+/* Condition tree */
+.cond-tree { font-size: 0.8rem; font-family: monospace; margin-top: 0.25rem; }
+.cond-tree-single { padding: 2px 0; }
+.cond-tree-block  { padding-left: 4px; }
+.cond-tree-sep    { color: #6b7280; font-size: 0.72rem; margin: 1px 0; }
+.cond-tree-ref    { color: #7c3aed; font-style: italic; }
+.cond-dict-lbl    { color: #0369a1; font-weight: 600; }
+.cond-attr-lbl    { color: #1d4ed8; }
+.cond-op-lbl      { color: #6b7280; }
+.cond-val-lbl     { color: #065f46; }
+.cond-neg         { color: #b91c1c; }
+/* Condition editor rows */
+.cond-row {
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
+  margin-bottom: 0.3rem;
+  flex-wrap: wrap;
+}
+.cond-row select, .cond-row input { font-size: 0.8rem; padding: 0.2rem 0.3rem; }
+.cond-val { max-width: 140px; }
+/* Profile tags */
+.profile-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.78rem;
+  margin: 0.1rem;
+}
+.profile-tag-del { background: none; border: none; cursor: pointer; color: #6b7280; padding: 0; font-size: 0.75rem; }
+.profiles-add-row { display: flex; gap: 0.3rem; align-items: center; flex-wrap: wrap; margin-top: 0.3rem; }
+.profiles-add-row select, .profiles-add-row input { font-size: 0.8rem; }
+#profiles-tags { display: flex; flex-wrap: wrap; min-height: 24px; }
+.editor-section-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #374151;
+  margin: 0.75rem 0 0.3rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* ── Policy section in browse-detail (Idé 1 + 2) ── */
+.policy-section {
+  border-top: 1px solid var(--border);
+  margin-top: 0.75rem;
+  padding-top: 0.5rem;
+}
+.policy-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+}
+.policy-section-label { font-weight: 600; font-size: 0.85rem; color: var(--text-muted, #6b7280); }
+.policy-match-bar { display: flex; gap: 0.4rem; align-items: center; margin-bottom: 0.4rem; flex-wrap: wrap; }
+.policy-match-bar select { font-size: 0.8rem; }
+.match-result-card {
+  border-radius: 5px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.82rem;
+  margin-top: 0.25rem;
+}
+.match-hit  { background: #f0fdf4; border: 1px solid #86efac; }
+.match-miss { background: #fff7ed; border: 1px solid #fed7aa; }
+.match-rule-name { font-weight: 600; margin-bottom: 0.25rem; }
+.match-profiles  { margin-bottom: 0.25rem; }
+.match-cond-row  { padding: 1px 0; font-size: 0.78rem; font-family: monospace; }
+.match-ok   { color: #16a34a; }
+.match-fail { color: #dc2626; }
+/* Wizard in detail */
+.policy-wizard-card {
+  margin-top: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.75rem;
+  font-size: 0.85rem;
+}
+.wizard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+[data-theme="dark"] .policy-set-item.active  { background: #1e3a5f; border-color: #3b82f6; }
+[data-theme="dark"] .policy-rule-item.active { background: #1e3a5f; border-color: #3b82f6; }
+[data-theme="dark"] .profile-chip     { background: #1e3a5f; color: #93c5fd; border-color: #1e40af; }
+[data-theme="dark"] .profile-tag      { background: #1e3a5f; border-color: #1e40af; }
+[data-theme="dark"] .match-hit        { background: #052e16; border-color: #166534; }
+[data-theme="dark"] .policy-detail-card,
+[data-theme="dark"] .policy-editor-card,
+[data-theme="dark"] .policy-wizard-card { border-color: #2a2a4a; }

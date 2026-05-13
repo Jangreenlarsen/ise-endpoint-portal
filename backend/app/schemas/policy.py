@@ -1,0 +1,108 @@
+"""Pydantic schemas for RADIUS Policy Sets and Authorization Rules."""
+from __future__ import annotations
+
+from typing import Any
+
+from pydantic import BaseModel
+
+
+# ── Condition building blocks ────────────────────────────────────────────────
+
+class ConditionAttribute(BaseModel):
+    conditionType: str = "ConditionAttributes"
+    isNegate: bool = False
+    dictionaryName: str
+    attributeName: str
+    operator: str          # equals, contains, startsWith, endsWith, matches
+    attributeValue: str
+
+
+class ConditionBlock(BaseModel):
+    conditionType: str     # ConditionAndBlock | ConditionOrBlock
+    isNegate: bool = False
+    children: list[Any] = []
+
+
+class ConditionReference(BaseModel):
+    conditionType: str = "ConditionReference"
+    isNegate: bool = False
+    id: str = ""
+    name: str = ""
+
+
+# ── Authorization rule schemas ───────────────────────────────────────────────
+
+class AuthzRuleSummary(BaseModel):
+    id: str
+    name: str
+    rank: int
+    state: str
+    profiles: list[str] = []
+    condition_summary: str = ""   # human-readable one-liner for UI
+
+
+class AuthzRuleDetail(AuthzRuleSummary):
+    condition: dict | None = None
+
+
+class CreateAuthzRuleRequest(BaseModel):
+    policy_set_id: str
+    name: str
+    rank: int = 0
+    state: str = "enabled"
+    condition: dict
+    profiles: list[str]
+
+
+class UpdateAuthzRuleRequest(BaseModel):
+    name: str
+    rank: int
+    state: str = "enabled"
+    condition: dict
+    profiles: list[str]
+
+
+# ── Policy set schemas ───────────────────────────────────────────────────────
+
+class PolicySetSummary(BaseModel):
+    id: str
+    name: str
+    rank: int
+    state: str
+    service_name: str = ""
+    condition_summary: str = ""
+
+
+class PolicySetDetail(PolicySetSummary):
+    rules: list[AuthzRuleSummary] = []
+
+
+# ── Match preview schemas ────────────────────────────────────────────────────
+
+class MatchedCondition(BaseModel):
+    attribute: str
+    operator: str
+    value: str
+    matched: bool
+    skipped: bool = False   # True for conditions we can't evaluate (RADIUS, references)
+
+
+class PolicyMatchResult(BaseModel):
+    policy_set_id: str
+    policy_set_name: str
+    matched_rule_id: str | None = None
+    matched_rule_name: str | None = None
+    matched_rule_rank: int | None = None
+    profiles: list[str] = []
+    condition_details: list[MatchedCondition] = []
+    no_rules: bool = False
+
+
+# ── List response ────────────────────────────────────────────────────────────
+
+class PolicySetListResponse(BaseModel):
+    policy_sets: list[PolicySetSummary]
+
+
+class PolicySetDetailResponse(BaseModel):
+    policy_set: PolicySetDetail

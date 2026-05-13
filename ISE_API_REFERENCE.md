@@ -237,6 +237,113 @@ POST /ers/config/ancendpoint/clear
 
 ---
 
+## Open API — RADIUS Policy Sets og Authorization Rules
+
+Tilføjet i 5.0.0. Kræver Open API aktiveret i ISE.
+
+### Paths
+
+| Metode | Path | Bemærkninger |
+|---|---|---|
+| GET | `/api/v1/policy/network-access/policy-set` | Liste alle policy sets |
+| GET | `/api/v1/policy/network-access/policy-set/{id}` | Enkelt policy set |
+| GET | `/api/v1/policy/network-access/policy-set/{id}/authorization` | Liste auth regler (sorteret efter rank) |
+| POST | `/api/v1/policy/network-access/policy-set/{id}/authorization` | Opret auth regel |
+| PUT | `/api/v1/policy/network-access/policy-set/{id}/authorization/{ruleId}` | Opdater auth regel |
+| DELETE | `/api/v1/policy/network-access/policy-set/{id}/authorization/{ruleId}` | Slet auth regel |
+
+### Response envelope
+
+```json
+{ "response": [...], "version": "1.0.0" }
+```
+
+`response` er altid en liste, selv for enkelt-ressource GET.
+
+### Policy set objekt
+
+```json
+{
+  "id": "uuid",
+  "name": "MAC ByPass",
+  "rank": 0,
+  "state": "enabled",
+  "serviceName": "MACByPass_HOSTLOOKUP",
+  "condition": { "conditionType": "ConditionReference", "name": "Wireless_MAB", ... }
+}
+```
+
+### Authorization rule objekt
+
+```json
+{
+  "id": "uuid",
+  "name": "SSID 802 PSK Mode",
+  "rank": 0,
+  "state": "enabled",
+  "profile": ["Endpoint_AirSpaceACL", "PermitAccess"],
+  "condition": { "conditionType": "ConditionAndBlock", "children": [...] },
+  "securityGroup": null
+}
+```
+
+### Condition typer
+
+| conditionType | Beskrivelse |
+|---|---|
+| `ConditionAttributes` | Enkelt attribut-tjek: `dictionaryName`, `attributeName`, `operator`, `attributeValue` |
+| `ConditionAndBlock` | Alle `children` skal matche |
+| `ConditionOrBlock` | Mindst ét barn skal matche |
+| `ConditionReference` | Reference til navngivet condition-bibliotek — kun `id` + `name` tilgængeligt via API |
+
+**Operators**: `equals`, `notEquals`, `contains`, `notContains`, `startsWith`, `endsWith`, `matches` (regex)
+
+**Dictionaries (empirisk)**:
+- `EndPoints` — custom endpoint-attributter (Owner, Type, Lokation, PSK_Mode, m.fl.)
+- `IdentityGroup` — attribut `Name` matcher identity group path, fx `Endpoint Identity Groups:Profiled:ADM-Apple-iPhone`
+- `Radius` — RADIUS-protokolfelter (Called-Station-ID, NAS-Port-Type, m.fl.) — kun tilgængelige ved live session
+- `Network`, `Device`, `NetworkAccess` — netværksenheds- og sessionskontekst
+
+### POST payload (opret regel)
+
+```json
+{
+  "rule": {
+    "name": "Min regel",
+    "rank": 0,
+    "state": "enabled",
+    "condition": {
+      "conditionType": "ConditionAndBlock",
+      "isNegate": false,
+      "children": [
+        {
+          "conditionType": "ConditionAttributes",
+          "isNegate": false,
+          "dictionaryName": "EndPoints",
+          "attributeName": "Owner",
+          "operator": "equals",
+          "attributeValue": "IT"
+        }
+      ]
+    }
+  },
+  "profile": ["PermitAccess"],
+  "securityGroup": null
+}
+```
+
+Response: `200 OK` med oprettet regel i `response[0]`.
+
+### Gotchas
+
+- **Open API skal være aktiveret**: Administration → System → Settings → API Settings → Enable Open API.
+- **`response` wrapper**: Altid en liste — brug `data["response"][0]` for enkelt-ressource.
+- **Rank**: Lavere tal = højere prioritet. Default-reglen (ingen betingelse) er typisk højest rangerede.
+- **ConditionReference kan ikke oprettes via API** — references peger på ISE's condition-bibliotek der kun kan redigeres via GUI. Portalen kan læse dem (navn synligt), men ikke expandere til fulde betingelser.
+- **`profile` vs `profiles`**: Feltet hedder `profile` (ikke `profiles`) i ISE response — portalen normaliserer dette.
+
+---
+
 ## Open API — `/api/v1/endpoint`
 
 Open API er den strategiske vej for ISE 3.4+. Payload- og response-shapes afviger fra ERS.
