@@ -1,6 +1,8 @@
 """RADIUS Policy API — policy sets, authorization rules, and match simulation."""
 from __future__ import annotations
 
+import re
+
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.deps import get_policy_service, require_admin, require_any, require_editor
@@ -18,8 +20,19 @@ from app.services.policy_service import PolicyService
 router = APIRouter(prefix="/policy", tags=["policy"])
 
 
+_RULE_NAME_RE = re.compile(r'^[\w\-\.\(\) ]+$')
+
+
 def _502(exc: IseApiError) -> HTTPException:
     return HTTPException(status_code=502, detail=str(exc))
+
+
+def _validate_rule_name(name: str) -> None:
+    if not name or not _RULE_NAME_RE.match(name):
+        raise HTTPException(
+            status_code=400,
+            detail="Regelnavn må kun indeholde bogstaver, tal, mellemrum, bindestreg, punktum og parenteser — ingen kolon eller specialtegn.",
+        )
 
 
 # ── Policy sets ──────────────────────────────────────────────────────────────
@@ -83,6 +96,7 @@ async def create_rule(
     req: CreateAuthzRuleRequest,
     svc: PolicyService = Depends(get_policy_service),
 ) -> AuthzRuleDetail:
+    _validate_rule_name(req.name)
     try:
         return await svc.create_rule(
             policy_set_id,
@@ -107,6 +121,7 @@ async def update_rule(
     req: UpdateAuthzRuleRequest,
     svc: PolicyService = Depends(get_policy_service),
 ) -> AuthzRuleDetail:
+    _validate_rule_name(req.name)
     try:
         return await svc.update_rule(
             policy_set_id, rule_id, req.name, req.rank, req.condition, req.profiles, req.state

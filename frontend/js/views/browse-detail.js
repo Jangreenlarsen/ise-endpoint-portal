@@ -331,7 +331,7 @@ export function initDetail(container, state, api, cb) {
         <p class="hint">Betingelserne er preudfyldt fra ${esc(mac)}. Tilret og gem.</p>
 
         <label>Regelnavn
-          <input type="text" id="wiz-name" value="Regel for ${esc(mac)}" />
+          <input type="text" id="wiz-name" value="${esc("Regel for " + mac.replace(/:/g, "-"))}" />
         </label>
         <label>Rank
           <input type="number" id="wiz-rank" value="0" min="0" />

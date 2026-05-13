@@ -124,11 +124,15 @@ class IseClient:
             payload: Any = response.text
             try:
                 payload = response.json()
-                message = (
+                # ERS format: {"ERSResponse": {"messages": [{"title": "..."}]}}
+                ers_title = (
                     payload.get("ERSResponse", {})
                     .get("messages", [{}])[0]
-                    .get("title", message)
+                    .get("title", "")
                 )
+                # Open API format: {"message": "...", "code": 400}
+                open_api_msg = payload.get("message", "")
+                message = ers_title or open_api_msg or message
             except Exception:
                 pass
             logger.warning(

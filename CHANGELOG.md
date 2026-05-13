@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.0.1 build 0247] — 2026-05-13 — fix: policy regel-oprettelse 400 ved kolon i navn + Open API fejlparsing
+
+**Berørte filer**: `frontend/js/views/browse-detail.js`, `backend/app/api/policy.py`, `backend/app/ise/client.py`, `BUGS.md`, `version.json`
+
+ISE Open API kræver regelnavne matcher `^[\w\-\.\(\)\ ]+$`. Tre fixes: (1) standardnavnet i wizard bruger nu `AA-BB-CC-DD-EE-FF` (kolon erstattet med bindestreg). (2) Backend validerer navn mod regex og returnerer 400 med dansk fejlbesked inden ISE-kald. (3) `client.py` parser nu begge fejlformater: ERS (`ERSResponse.messages[0].title`) og Open API (`message`-felt).
+
 ## [5.0.1 build 0246] — 2026-05-13 — chore: version bump til 5.0.1
 
 **Berørte filer**: `version.json`, `CHANGELOG.md`
