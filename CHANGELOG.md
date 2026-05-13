@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.0.3 build 0255] — 2026-05-13 — feat: detail-modal bredere (760px) + condition rows bryder ikke linje
+
+**Berørte filer**: `frontend/css/styles.css`, `version.json`
+
+`.modal.detail-modal` udvidet fra 560px til 760px (`max-width: 96vw`). `.cond-row` ændret fra `flex-wrap: wrap` til `flex-wrap: nowrap` — condition rows (dict/attr/op/val/slet) forbliver nu på én linje. Faste bredder på `.cond-dict` (120px), `.cond-attr` (120px), `.cond-op` (110px) og flex-1 på value-widget.
+
 ## [5.0.3 build 0254] — 2026-05-13 — fix: PSK_Mode condition + Endpoint_PSK-KEY profil synkroniseret via fælles flag
 
 **Berørte filer**: `frontend/js/views/browse-detail.js`, `version.json`
