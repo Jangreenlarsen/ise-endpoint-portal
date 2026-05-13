@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.0.1 build 0248] — 2026-05-13 — fix: deployment-opdatering fejler ved PermissionError på read-only filer
+
+**Berørte filer**: `backend/app/services/update_service.py`, `version.json`
+
+`apply_package` kastede fejl ved `[Errno 13] Permission denied` på root-niveau dokumentationsfiler og `START.bat` i Linux-deployment (`/opt/hypervision/`), hvilket markerede hele opdateringen som fejlet. Fix: `PermissionError` fanges nu separat og tilføjes `skipped`-listen (med log-advarsel) i stedet for `errors`-listen — opdateringen fortsætter og lykkes for de filer der kan skrives.
+
 ## [5.0.1 build 0247] — 2026-05-13 — fix: policy regel-oprettelse 400 ved kolon i navn + Open API fejlparsing
 
 **Berørte filer**: `frontend/js/views/browse-detail.js`, `backend/app/api/policy.py`, `backend/app/ise/client.py`, `BUGS.md`, `version.json`

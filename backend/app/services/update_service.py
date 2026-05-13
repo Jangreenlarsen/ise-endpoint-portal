@@ -161,6 +161,9 @@ def apply_package(zip_bytes: bytes) -> dict[str, Any]:
                     target.write_bytes(zf.read(name))
                     applied.append(name)
                     logger.info("update: skrev %s", target.relative_to(PROJECT_ROOT))
+                except PermissionError:
+                    skipped.append(name)
+                    logger.warning("update: springer %s over — ingen skriveadgang (ok på Linux-deployment)", name)
                 except Exception as exc:  # noqa: BLE001
                     errors.append(f"{name}: {exc}")
                     logger.error("update: fejl ved skrivning af %s: %s", name, exc)
