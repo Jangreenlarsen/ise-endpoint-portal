@@ -43,18 +43,14 @@ _BLOCKED_PREFIXES = (
     "backend/data/",
 )
 
-# Kun disse prefixes accepteres fra en pakke
+# Kun disse prefixes accepteres fra en pakke.
+# Dokumentationsfiler (*.md) og START.bat er udeladt — de er ikke runtime-kritiske
+# og er typisk read-only for portal-processen på Linux-deployment.
 _ALLOWED_PREFIXES = (
     "frontend/",
     "backend/app/",
     "backend/pyproject.toml",
     "version.json",
-    "CHANGELOG.md",
-    "FEATURES.md",
-    "BUGS.md",
-    "ARCHITECTURE.md",
-    "ISE_API_REFERENCE.md",
-    "START.bat",
 )
 
 

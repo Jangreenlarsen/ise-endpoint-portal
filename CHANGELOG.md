@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.0.4 build 0256] — 2026-05-13 — fix: fjern CHANGELOG/FEATURES/BUGS/ARCHITECTURE/ISE_API_REFERENCE/START.bat fra update-pakken
+
+**Berørte filer**: `backend/app/services/update_service.py`, `version.json`
+
+Disse seks filer var i `_ALLOWED_PREFIXES` og blev forsøgt skrevet ved deployment — men `/opt/hypervision/` giver portal-processen `[Errno 13] Permission denied` på dem. Fjernet fra listen så de behandles som blokerede (vises i validerings-info, forsøges aldrig skrevet). Update-pakken indeholder nu kun `frontend/`, `backend/app/`, `backend/pyproject.toml` og `version.json`.
+
 ## [5.0.3 build 0255] — 2026-05-13 — feat: detail-modal bredere (760px) + condition rows bryder ikke linje
 
 **Berørte filer**: `frontend/css/styles.css`, `version.json`
