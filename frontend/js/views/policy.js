@@ -3,6 +3,11 @@
 
 import { api } from "../api.js";
 import { auth } from "../auth.js";
+import {
+  condRowHtml, readCondRows, wireCondRowEvents, buildCondition, flattenConditionToRows,
+  renderConditionTree,
+  profilesHtml, readProfiles, wireProfileEvents,
+} from "./policy-condition-builder.js";
 
 function esc(s) {
   return (s || "").replace(/[&<>"']/g, (c) => ({
@@ -11,155 +16,6 @@ function esc(s) {
 }
 
 const STATE_LABEL = { enabled: "Aktiv", disabled: "Inaktiv" };
-
-// ── Condition builder helpers ─────────────────────────────────────────────────
-
-const DICTIONARIES = [
-  { name: "EndPoints",      attrs: ["Owner", "Type", "Lokation", "AuthzVlan", "AuthzACL", "PlatformType", "PSK_Mode", "Description"] },
-  { name: "IdentityGroup",  attrs: ["Name"] },
-  { name: "Radius",         attrs: ["Called-Station-ID", "NAS-Port-Type", "NAS-Identifier", "User-Name", "Framed-IP-Address"] },
-  { name: "Network",        attrs: ["Device Name", "Location", "Device Type"] },
-];
-
-const OPERATORS = [
-  { value: "equals",       label: "=" },
-  { value: "notEquals",    label: "≠" },
-  { value: "contains",     label: "indeholder" },
-  { value: "notContains",  label: "indeholder ikke" },
-  { value: "startsWith",   label: "starter med" },
-  { value: "endsWith",     label: "slutter med" },
-  { value: "matches",      label: "matcher (regex)" },
-];
-
-function operatorOptions(sel = "equals") {
-  return OPERATORS.map((o) =>
-    `<option value="${o.value}"${o.value === sel ? " selected" : ""}>${esc(o.label)}</option>`
-  ).join("");
-}
-
-function dictionaryOptions(sel = "EndPoints") {
-  return DICTIONARIES.map((d) =>
-    `<option value="${d.name}"${d.name === sel ? " selected" : ""}>${esc(d.name)}</option>`
-  ).join("");
-}
-
-function attrOptions(dictName, sel = "") {
-  const d = DICTIONARIES.find((x) => x.name === dictName);
-  const attrs = d ? d.attrs : [];
-  return attrs.map((a) =>
-    `<option value="${a}"${a === sel ? " selected" : ""}>${esc(a)}</option>`
-  ).join("");
-}
-
-// Render a condition row (single attribute)
-function condRowHtml(idx, cond = {}) {
-  const dn = cond.dictionaryName || "EndPoints";
-  const an = cond.attributeName || "";
-  const op = cond.operator || "equals";
-  const av = cond.attributeValue || "";
-  return `
-    <div class="cond-row" data-idx="${idx}">
-      <select class="cond-dict" data-idx="${idx}">${dictionaryOptions(dn)}</select>
-      <select class="cond-attr" data-idx="${idx}">${attrOptions(dn, an)}</select>
-      <select class="cond-op"   data-idx="${idx}">${operatorOptions(op)}</select>
-      <input  class="cond-val"  data-idx="${idx}" type="text" value="${esc(av)}" placeholder="verdi" />
-      <button class="cond-del secondary small" data-idx="${idx}" type="button">✕</button>
-    </div>`;
-}
-
-// Build a condition object from editor state
-function buildCondition(rows, blockType) {
-  if (rows.length === 0) return null;
-  if (rows.length === 1) {
-    const r = rows[0];
-    return {
-      conditionType: "ConditionAttributes",
-      isNegate: false,
-      dictionaryName: r.dict,
-      attributeName: r.attr,
-      operator: r.op,
-      attributeValue: r.val,
-    };
-  }
-  return {
-    conditionType: blockType === "OR" ? "ConditionOrBlock" : "ConditionAndBlock",
-    isNegate: false,
-    children: rows.map((r) => ({
-      conditionType: "ConditionAttributes",
-      isNegate: false,
-      dictionaryName: r.dict,
-      attributeName: r.attr,
-      operator: r.op,
-      attributeValue: r.val,
-    })),
-  };
-}
-
-function readCondRows(editor) {
-  return [...editor.querySelectorAll(".cond-row")].map((row) => {
-    const idx = row.dataset.idx;
-    return {
-      dict: editor.querySelector(`.cond-dict[data-idx="${idx}"]`)?.value || "EndPoints",
-      attr: editor.querySelector(`.cond-attr[data-idx="${idx}"]`)?.value || "",
-      op:   editor.querySelector(`.cond-op[data-idx="${idx}"]`)?.value || "equals",
-      val:  editor.querySelector(`.cond-val[data-idx="${idx}"]`)?.value || "",
-    };
-  });
-}
-
-// ── Condition summary renderer ────────────────────────────────────────────────
-
-function renderConditionTree(cond, depth = 0) {
-  if (!cond) return "<em>ingen betingelse</em>";
-  const ct = cond.conditionType || "";
-  const indent = depth * 12;
-  const style = `style="margin-left:${indent}px"`;
-
-  if (ct === "ConditionReference") {
-    return `<div class="cond-tree-ref" ${style}>[Ref: ${esc(cond.name || "")}]</div>`;
-  }
-  if (ct === "ConditionAttributes") {
-    const neg = cond.isNegate ? "<span class='cond-neg'>IKKE</span> " : "";
-    return `<div class="cond-tree-single" ${style}>${neg}<span class="cond-dict-lbl">${esc(cond.dictionaryName)}</span>.<span class="cond-attr-lbl">${esc(cond.attributeName)}</span> <span class="cond-op-lbl">${esc(cond.operator)}</span> <span class="cond-val-lbl">${esc(cond.attributeValue)}</span></div>`;
-  }
-  if (ct === "ConditionAndBlock" || ct === "ConditionOrBlock") {
-    const sep = ct === "ConditionAndBlock" ? "AND" : "OR";
-    const children = (cond.children || []).map((c) => renderConditionTree(c, depth + 1)).join(
-      `<div class="cond-tree-sep" ${style}>— ${sep} —</div>`
-    );
-    return `<div class="cond-tree-block" ${style}>${children}</div>`;
-  }
-  return `<div ${style}>${esc(ct)}</div>`;
-}
-
-// ── Profiles input helper ─────────────────────────────────────────────────────
-
-const KNOWN_PROFILES = [
-  "PermitAccess", "DenyAccess", "Endpoint_VLAN", "Endpoint_AirSpaceACL",
-  "Endpoint_PSK-KEY", "Permit_TEMP_ACCESS",
-];
-
-function profilesInputHtml(existing = []) {
-  const tags = existing.map((p) =>
-    `<span class="profile-tag">${esc(p)}<button type="button" class="profile-tag-del" data-p="${esc(p)}">✕</button></span>`
-  ).join("");
-  const opts = KNOWN_PROFILES.map((p) =>
-    `<option value="${p}">${esc(p)}</option>`
-  ).join("");
-  return `
-    <div id="profiles-tags">${tags}</div>
-    <div class="profiles-add-row">
-      <select id="profile-preset"><option value="">+ vælg profil…</option>${opts}</select>
-      <input type="text" id="profile-custom" placeholder="eller skriv navn…" />
-      <button type="button" id="profile-add-btn" class="secondary small">Tilføj</button>
-    </div>`;
-}
-
-function readProfiles(editor) {
-  return [...editor.querySelectorAll(".profile-tag")].map((t) =>
-    t.dataset.p || t.textContent.replace("✕", "").trim()
-  ).filter(Boolean);
-}
 
 // ── Main render ───────────────────────────────────────────────────────────────
 
@@ -192,23 +48,30 @@ export async function renderPolicy(container) {
     </div>
   `;
 
-  let selectedSetId = null;
+  let selectedSetId   = null;
   let selectedSetName = "";
-  let condRowIdx = 0;
+  let caValues        = {};
 
-  const setsList    = container.querySelector("#pol-sets-list");
-  const rulesTitle  = container.querySelector("#pol-rules-title");
-  const rulesMsg    = container.querySelector("#pol-rules-msg");
-  const rulesList   = container.querySelector("#pol-rules-list");
-  const detailMsg   = container.querySelector("#pol-detail-msg");
+  const setsList      = container.querySelector("#pol-sets-list");
+  const rulesTitle    = container.querySelector("#pol-rules-title");
+  const rulesMsg      = container.querySelector("#pol-rules-msg");
+  const rulesList     = container.querySelector("#pol-rules-list");
+  const detailMsg     = container.querySelector("#pol-detail-msg");
   const detailContent = container.querySelector("#pol-detail-content");
-  const newRuleBtn  = container.querySelector("#pol-new-rule-btn");
+  const newRuleBtn    = container.querySelector("#pol-new-rule-btn");
 
-  // ── Load policy sets ──────────────────────────────────────────────────────
+  // Fetch custom attribute values for dropdown suggestions in condition builder
+  api.listCustomAttributes().then((res) => {
+    if (res?.attributes) {
+      for (const a of res.attributes) caValues[a.name] = a.values || [];
+    }
+  }).catch(() => {});
+
+  // ── Policy sets ───────────────────────────────────────────────────────────
   async function loadSets() {
     setsList.innerHTML = `<div class="alert info">Henter policy sets…</div>`;
     try {
-      const res = await api.listPolicySets();
+      const res  = await api.listPolicySets();
       const sets = res?.policy_sets || [];
       if (!sets.length) {
         setsList.innerHTML = `<div class="hint">Ingen policy sets fundet i ISE.</div>`;
@@ -220,16 +83,14 @@ export async function renderPolicy(container) {
           <div class="ps-meta">${esc(s.service_name || "")} · <span class="ps-state ${s.state}">${STATE_LABEL[s.state] || s.state}</span></div>
         </div>
       `).join("");
-
-      setsList.querySelectorAll(".policy-set-item").forEach((el) => {
-        el.addEventListener("click", () => selectSet(el.dataset.id, el.dataset.name));
-      });
+      setsList.querySelectorAll(".policy-set-item").forEach((el) =>
+        el.addEventListener("click", () => selectSet(el.dataset.id, el.dataset.name))
+      );
     } catch (err) {
-      setsList.innerHTML = `<div class="alert error">Fejl ved hentning af policy sets: ${esc(err.message)}</div>`;
+      setsList.innerHTML = `<div class="alert error">Fejl: ${esc(err.message)}</div>`;
     }
   }
 
-  // ── Select a policy set → load rules ─────────────────────────────────────
   async function selectSet(id, name) {
     selectedSetId   = id;
     selectedSetName = name;
@@ -239,14 +100,14 @@ export async function renderPolicy(container) {
     rulesTitle.textContent = name;
     newRuleBtn?.classList.remove("hidden");
     detailContent.innerHTML = "";
-    detailMsg.innerHTML = "";
+    detailMsg.innerHTML     = "";
     await loadRules(id);
   }
 
-  // ── Load rules for selected set ───────────────────────────────────────────
+  // ── Authorization rules ───────────────────────────────────────────────────
   async function loadRules(setId) {
     rulesList.innerHTML = `<div class="alert info">Henter regler…</div>`;
-    rulesMsg.innerHTML = "";
+    rulesMsg.innerHTML  = "";
     try {
       const rules = await api.listPolicyRules(setId);
       if (!rules.length) {
@@ -264,18 +125,17 @@ export async function renderPolicy(container) {
           <div class="pr-state ${r.state}">${STATE_LABEL[r.state] || r.state}</div>
         </div>
       `).join("");
-
-      rulesList.querySelectorAll(".policy-rule-item").forEach((el) => {
-        el.addEventListener("click", () => selectRule(el.dataset.id, setId));
-      });
+      rulesList.querySelectorAll(".policy-rule-item").forEach((el) =>
+        el.addEventListener("click", () => selectRule(el.dataset.id, setId))
+      );
     } catch (err) {
       rulesList.innerHTML = `<div class="alert error">Fejl: ${esc(err.message)}</div>`;
     }
   }
 
-  // ── Show rule detail ──────────────────────────────────────────────────────
+  // ── Rule detail ───────────────────────────────────────────────────────────
   async function selectRule(ruleId, setId) {
-    detailMsg.innerHTML = `<div class="alert info">Henter regeldetaljer…</div>`;
+    detailMsg.innerHTML     = `<div class="alert info">Henter regeldetaljer…</div>`;
     detailContent.innerHTML = "";
     rulesList.querySelectorAll(".policy-rule-item").forEach((el) =>
       el.classList.toggle("active", el.dataset.id === ruleId)
@@ -329,12 +189,10 @@ export async function renderPolicy(container) {
     }
   }
 
-  // ── Rule editor (new + edit) ──────────────────────────────────────────────
+  // ── Rule editor ───────────────────────────────────────────────────────────
   function showRuleEditor(existing = null, setId) {
-    const isNew = !existing;
-    condRowIdx = 0;
-
-    const existingRows = existing?.condition
+    const isNew    = !existing;
+    const initRows = existing?.condition
       ? flattenConditionToRows(existing.condition)
       : [{ dict: "EndPoints", attr: "Owner", op: "equals", val: "" }];
     const blockType = existing?.condition?.conditionType === "ConditionOrBlock" ? "OR" : "AND";
@@ -348,7 +206,7 @@ export async function renderPolicy(container) {
         <label>Navn
           <input type="text" id="pol-rule-name" value="${esc(existing?.name || "")}" placeholder="Regelnavn…" />
         </label>
-        <label>Rank (prioritet — lavere = højere prioritet)
+        <label>Rank <small>(lavere tal = højere prioritet)</small>
           <input type="number" id="pol-rule-rank" value="${existing?.rank ?? 0}" min="0" />
         </label>
         <label>Status
@@ -365,12 +223,12 @@ export async function renderPolicy(container) {
           </select>
         </div>
         <div id="pol-cond-rows">
-          ${existingRows.map((r, i) => { condRowIdx = i; return condRowHtml(i, r); }).join("")}
+          ${initRows.map((r, i) => condRowHtml(i, r, caValues)).join("")}
         </div>
         <button type="button" id="pol-add-cond" class="secondary small">+ Tilføj betingelse</button>
 
         <div class="editor-section-label">Autoriseringsprofiler</div>
-        <div id="pol-profiles-wrap">${profilesInputHtml(existing?.profiles || [])}</div>
+        <div id="pol-profiles-wrap">${profilesHtml(existing?.profiles || [])}</div>
 
         <div class="detail-actions">
           <button type="button" id="pol-save-rule-btn">${isNew ? "Opret regel i ISE" : "Gem ændringer"}</button>
@@ -378,60 +236,23 @@ export async function renderPolicy(container) {
         </div>
       </div>`;
 
-    // ── Condition row events ────────────────────────────────────────────────
-    const condRows = detailContent.querySelector("#pol-cond-rows");
-
-    condRows.addEventListener("change", (e) => {
-      if (e.target.classList.contains("cond-dict")) {
-        const idx = e.target.dataset.idx;
-        const attrSel = condRows.querySelector(`.cond-attr[data-idx="${idx}"]`);
-        if (attrSel) attrSel.innerHTML = attrOptions(e.target.value);
-      }
-    });
-
-    condRows.addEventListener("click", (e) => {
-      if (e.target.classList.contains("cond-del")) {
-        const idx = e.target.dataset.idx;
-        condRows.querySelector(`.cond-row[data-idx="${idx}"]`)?.remove();
-      }
-    });
-
-    detailContent.querySelector("#pol-add-cond").addEventListener("click", () => {
-      condRowIdx++;
-      condRows.insertAdjacentHTML("beforeend", condRowHtml(condRowIdx));
-    });
-
-    // ── Profile tag events ──────────────────────────────────────────────────
+    const condRowsEl   = detailContent.querySelector("#pol-cond-rows");
     const profilesWrap = detailContent.querySelector("#pol-profiles-wrap");
 
-    profilesWrap.addEventListener("click", (e) => {
-      if (e.target.classList.contains("profile-tag-del")) {
-        e.target.closest(".profile-tag")?.remove();
-      }
-      if (e.target.id === "profile-add-btn") {
-        const preset = profilesWrap.querySelector("#profile-preset")?.value;
-        const custom = profilesWrap.querySelector("#profile-custom")?.value.trim();
-        const name   = preset || custom;
-        if (!name) return;
-        const tags = profilesWrap.querySelector("#profiles-tags");
-        tags.insertAdjacentHTML("beforeend",
-          `<span class="profile-tag" data-p="${esc(name)}">${esc(name)}<button type="button" class="profile-tag-del" data-p="${esc(name)}">✕</button></span>`
-        );
-        if (profilesWrap.querySelector("#profile-preset")) profilesWrap.querySelector("#profile-preset").value = "";
-        if (profilesWrap.querySelector("#profile-custom")) profilesWrap.querySelector("#profile-custom").value = "";
-      }
-    });
+    const addRow = wireCondRowEvents(condRowsEl, caValues);
+    wireProfileEvents(profilesWrap);
 
-    // ── Save ────────────────────────────────────────────────────────────────
+    detailContent.querySelector("#pol-add-cond").addEventListener("click", () => addRow());
+
     detailContent.querySelector("#pol-save-rule-btn").addEventListener("click", async () => {
       const editorMsg = detailContent.querySelector("#pol-editor-msg");
       const name  = detailContent.querySelector("#pol-rule-name")?.value.trim();
       const rank  = parseInt(detailContent.querySelector("#pol-rule-rank")?.value || "0", 10);
       const state = detailContent.querySelector("#pol-rule-state")?.value || "enabled";
       const bt    = detailContent.querySelector("#pol-block-type")?.value || "AND";
-      const rows  = readCondRows(detailContent);
+      const rows  = readCondRows(condRowsEl);
       const cond  = buildCondition(rows, bt);
-      const profs = readProfiles(detailContent);
+      const profs = readProfiles(profilesWrap);
 
       if (!name) { editorMsg.innerHTML = `<div class="alert error">Angiv et regelnavn.</div>`; return; }
       if (!cond) { editorMsg.innerHTML = `<div class="alert error">Tilføj mindst én betingelse.</div>`; return; }
@@ -440,7 +261,6 @@ export async function renderPolicy(container) {
       editorMsg.innerHTML = `<div class="alert info">Gemmer…</div>`;
       const btn = detailContent.querySelector("#pol-save-rule-btn");
       btn.disabled = true;
-
       try {
         if (isNew) {
           await api.createPolicyRule(setId, { policy_set_id: setId, name, rank, state, condition: cond, profiles: profs });
@@ -461,7 +281,6 @@ export async function renderPolicy(container) {
     });
   }
 
-  // ── New rule button ───────────────────────────────────────────────────────
   newRuleBtn?.addEventListener("click", () => {
     if (!selectedSetId) return;
     showRuleEditor(null, selectedSetId);
@@ -470,23 +289,4 @@ export async function renderPolicy(container) {
   container.querySelector("#pol-refresh").addEventListener("click", loadSets);
 
   await loadSets();
-}
-
-// ── Flatten condition tree to editable rows ───────────────────────────────────
-
-function flattenConditionToRows(cond) {
-  if (!cond) return [];
-  const ct = cond.conditionType;
-  if (ct === "ConditionAttributes") {
-    return [{
-      dict: cond.dictionaryName || "EndPoints",
-      attr: cond.attributeName || "",
-      op:   cond.operator || "equals",
-      val:  cond.attributeValue || "",
-    }];
-  }
-  if (ct === "ConditionAndBlock" || ct === "ConditionOrBlock") {
-    return (cond.children || []).flatMap((c) => flattenConditionToRows(c));
-  }
-  return [];
 }

@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.0.0 build 0245] — 2026-05-13 — refactor: policy condition builder delt modul + caValues-dropdowns
+
+**Berørte filer**: `frontend/js/views/policy-condition-builder.js` (ny), `frontend/js/views/policy.js` (refaktoreret), `frontend/js/views/browse-detail.js` (refaktoreret), `frontend/css/styles.css` (+cond-val-wrap/sel/custom), `version.json`
+
+Udtrukket al condition-builder-logik til delt modul `policy-condition-builder.js` der importeres af både `policy.js` og `browse-detail.js`. Fjernede duplikeret kode (~150 linjer). Værdifelt i condition rows bruger nu kendte værdier fra `caValues` (custom attribute værdier) som dropdown med autocomplete-select for EndPoints-attributter (Owner, Type, Lokation, AuthzVlan m.fl.) — viser alle kendte værdier + "Andet…"-option med fri tekst. `policy.js` fetcher `caValues` via `api.listCustomAttributes()` ved opstart. `browse-detail.js` wizard bruger `state.caValues` der allerede er tilgængeligt. CSS tilføjet for `.cond-val-wrap`, `.cond-val-sel`, `.cond-val-custom`. `#profiles-tags` id erstattet af `.profiles-tags` class.
+
 ## [5.0.0 build 0244] — 2026-05-13 — feat: RADIUS Policy Builder (Idé 1 + 2 + 3)
 
 **Berørte filer**: `backend/app/ise/policy.py` (ny), `backend/app/schemas/policy.py` (ny), `backend/app/services/policy_service.py` (ny), `backend/app/api/policy.py` (ny), `backend/app/api/deps.py` (+get_policy_service), `backend/app/main.py` (+policy_router), `frontend/js/views/policy.js` (ny), `frontend/js/views/browse-detail.js` (+policy-sektion), `frontend/js/views/browse.js` (+policy HTML), `frontend/js/api.js` (+policy-metoder), `frontend/js/app.js` (+policy-route), `frontend/index.html` (+nav-link), `frontend/css/styles.css` (+policy CSS), `version.json`, `FEATURES.md`

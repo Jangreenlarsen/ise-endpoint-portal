@@ -4,6 +4,10 @@
 import { auth } from "../auth.js";
 import { t } from "../i18n.js";
 import { esc, fmtDateTime, optionsHtml } from "./browse-utils.js";
+import {
+  condRowHtml, readCondRows, wireCondRowEvents, buildCondition,
+  profilesHtml, readProfiles, wireProfileEvents,
+} from "./policy-condition-builder.js";
 
 export function initDetail(container, state, api, cb) {
   const detailOverlay = container.querySelector("#detail-overlay");
@@ -309,14 +313,12 @@ export function initDetail(container, state, api, cb) {
     const owner    = container.querySelector("#d-owner")?.value || "";
     const type     = container.querySelector("#d-type")?.value || "";
     const lokation = container.querySelector("#d-lokation")?.value || "";
-    const group    = container.querySelector("#d-group")?.selectedOptions[0]?.text || "";
     const mac      = container.querySelector("#d-mac")?.textContent || "";
 
-    // Build initial conditions from endpoint attributes
     const initConds = [];
-    if (owner)    initConds.push({ dict: "EndPoints", attr: "Owner",   op: "equals", val: owner });
-    if (type)     initConds.push({ dict: "EndPoints", attr: "Type",    op: "equals", val: type });
-    if (lokation) initConds.push({ dict: "EndPoints", attr: "Lokation",op: "equals", val: lokation });
+    if (owner)    initConds.push({ dict: "EndPoints", attr: "Owner",    op: "equals", val: owner });
+    if (type)     initConds.push({ dict: "EndPoints", attr: "Type",     op: "equals", val: type });
+    if (lokation) initConds.push({ dict: "EndPoints", attr: "Lokation", op: "equals", val: lokation });
     if (!initConds.length) initConds.push({ dict: "EndPoints", attr: "Owner", op: "equals", val: "" });
 
     wizardArea.innerHTML = `
@@ -343,12 +345,12 @@ export function initDetail(container, state, api, cb) {
 
         <div class="editor-section-label">Betingelser</div>
         <div id="wiz-cond-rows">
-          ${initConds.map((c, i) => wizCondRowHtml(i, c)).join("")}
+          ${initConds.map((c, i) => condRowHtml(i, c, state.caValues)).join("")}
         </div>
         <button type="button" id="wiz-add-cond" class="secondary small">+ Tilføj betingelse</button>
 
         <div class="editor-section-label">Autoriseringsprofiler</div>
-        <div id="wiz-profiles-wrap">${wizProfilesHtml([])}</div>
+        <div id="wiz-profiles-wrap">${profilesHtml([])}</div>
 
         <div class="detail-actions">
           <button type="button" id="wiz-save-btn">Opret regel i ISE</button>
@@ -356,50 +358,28 @@ export function initDetail(container, state, api, cb) {
         </div>
       </div>`;
 
-    let wizRowIdx = initConds.length - 1;
-    const condRows = wizardArea.querySelector("#wiz-cond-rows");
+    const condRowsEl   = wizardArea.querySelector("#wiz-cond-rows");
+    const profilesWrap = wizardArea.querySelector("#wiz-profiles-wrap");
 
-    condRows.addEventListener("change", (e) => {
-      if (e.target.classList.contains("wiz-cond-dict")) {
-        const idx = e.target.dataset.idx;
-        const attrSel = condRows.querySelector(`.wiz-cond-attr[data-idx="${idx}"]`);
-        if (attrSel) attrSel.innerHTML = wizAttrOptions(e.target.value);
-      }
-    });
-    condRows.addEventListener("click", (e) => {
-      if (e.target.classList.contains("wiz-cond-del")) {
-        condRows.querySelector(`.wiz-cond-row[data-idx="${e.target.dataset.idx}"]`)?.remove();
-      }
-    });
-    wizardArea.querySelector("#wiz-add-cond").addEventListener("click", () => {
-      wizRowIdx++;
-      condRows.insertAdjacentHTML("beforeend", wizCondRowHtml(wizRowIdx));
-    });
+    const addRow = wireCondRowEvents(condRowsEl, state.caValues);
+    wireProfileEvents(profilesWrap);
 
-    // Profile events
-    const profWrap = wizardArea.querySelector("#wiz-profiles-wrap");
-    profWrap.addEventListener("click", (e) => {
-      if (e.target.classList.contains("profile-tag-del")) e.target.closest(".profile-tag")?.remove();
-      if (e.target.id === "wiz-profile-add-btn") {
-        const name = profWrap.querySelector("#wiz-profile-preset")?.value ||
-                     profWrap.querySelector("#wiz-profile-custom")?.value.trim();
-        if (!name) return;
-        profWrap.querySelector("#profiles-tags").insertAdjacentHTML("beforeend",
-          `<span class="profile-tag" data-p="${esc(name)}">${esc(name)}<button type="button" class="profile-tag-del" data-p="${esc(name)}">✕</button></span>`
-        );
-        const preset = profWrap.querySelector("#wiz-profile-preset"); if (preset) preset.value = "";
-        const custom = profWrap.querySelector("#wiz-profile-custom"); if (custom) custom.value = "";
-      }
+    wizardArea.querySelector("#wiz-add-cond").addEventListener("click", () => addRow());
+    wizardArea.querySelector("#d-pol-wizard-close").addEventListener("click", () => {
+      wizardArea.innerHTML = "";
+    });
+    wizardArea.querySelector("#wiz-cancel-btn").addEventListener("click", () => {
+      wizardArea.innerHTML = "";
     });
 
     wizardArea.querySelector("#wiz-save-btn").addEventListener("click", async () => {
-      const msgEl  = wizardArea.querySelector("#d-pol-wizard-msg");
-      const name   = wizardArea.querySelector("#wiz-name")?.value.trim();
-      const rank   = parseInt(wizardArea.querySelector("#wiz-rank")?.value || "0", 10);
-      const bt     = wizardArea.querySelector("#wiz-block-type")?.value || "AND";
-      const rows   = readWizRows(wizardArea);
-      const cond   = buildWizCondition(rows, bt);
-      const profs  = [...wizardArea.querySelectorAll(".profile-tag")].map((t) => t.dataset.p).filter(Boolean);
+      const msgEl = wizardArea.querySelector("#d-pol-wizard-msg");
+      const name  = wizardArea.querySelector("#wiz-name")?.value.trim();
+      const rank  = parseInt(wizardArea.querySelector("#wiz-rank")?.value || "0", 10);
+      const bt    = wizardArea.querySelector("#wiz-block-type")?.value || "AND";
+      const rows  = readCondRows(condRowsEl);
+      const cond  = buildCondition(rows, bt);
+      const profs = readProfiles(profilesWrap);
 
       if (!name) { msgEl.innerHTML = `<div class="alert error">Angiv et regelnavn.</div>`; return; }
       if (!cond) { msgEl.innerHTML = `<div class="alert error">Tilføj mindst én betingelse.</div>`; return; }
@@ -415,10 +395,6 @@ export function initDetail(container, state, api, cb) {
       } catch (err) {
         msgEl.innerHTML = `<div class="alert error">Fejl: ${esc(err.message)}</div>`;
       } finally { btn.disabled = false; }
-    });
-
-    wizardArea.querySelector("#wiz-wizard-close, #wiz-cancel-btn, #d-pol-wizard-close")?.addEventListener("click", () => {
-      wizardArea.innerHTML = "";
     });
   }
 
@@ -540,88 +516,3 @@ export function initDetail(container, state, api, cb) {
   return { openDetail, closeDetail };
 }
 
-// ── Wizard helpers (module-level) ─────────────────────────────────────────────
-
-const _WIZ_DICTS = [
-  { name: "EndPoints",     attrs: ["Owner", "Type", "Lokation", "AuthzVlan", "AuthzACL", "PlatformType", "PSK_Mode"] },
-  { name: "IdentityGroup", attrs: ["Name"] },
-  { name: "Radius",        attrs: ["Called-Station-ID", "NAS-Port-Type", "User-Name"] },
-];
-const _WIZ_OPS = [
-  { value: "equals",      label: "=" },
-  { value: "notEquals",   label: "≠" },
-  { value: "contains",    label: "indeholder" },
-  { value: "startsWith",  label: "starter med" },
-  { value: "endsWith",    label: "slutter med" },
-];
-const _KNOWN_PROFILES = ["PermitAccess", "DenyAccess", "Endpoint_VLAN", "Endpoint_AirSpaceACL", "Endpoint_PSK-KEY", "Permit_TEMP_ACCESS"];
-
-function _esc(s) {
-  return (s || "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-}
-
-function wizAttrOptions(dictName, sel = "") {
-  const d = _WIZ_DICTS.find((x) => x.name === dictName);
-  return (d ? d.attrs : []).map((a) => `<option value="${a}"${a === sel ? " selected" : ""}>${a}</option>`).join("");
-}
-
-function wizCondRowHtml(idx, cond = {}) {
-  const dn = cond.dict || "EndPoints";
-  const an = cond.attr || "";
-  const op = cond.op || "equals";
-  const av = cond.val || "";
-  const dictOpts = _WIZ_DICTS.map((d) => `<option value="${d.name}"${d.name === dn ? " selected" : ""}>${d.name}</option>`).join("");
-  const opOpts   = _WIZ_OPS.map((o) => `<option value="${o.value}"${o.value === op ? " selected" : ""}>${o.label}</option>`).join("");
-  return `
-    <div class="cond-row wiz-cond-row" data-idx="${idx}">
-      <select class="cond-dict wiz-cond-dict" data-idx="${idx}">${dictOpts}</select>
-      <select class="cond-attr wiz-cond-attr" data-idx="${idx}">${wizAttrOptions(dn, an)}</select>
-      <select class="cond-op  wiz-cond-op"   data-idx="${idx}">${opOpts}</select>
-      <input  class="cond-val wiz-cond-val"  data-idx="${idx}" type="text" value="${_esc(av)}" placeholder="værdi" />
-      <button class="cond-del secondary small wiz-cond-del" data-idx="${idx}" type="button">✕</button>
-    </div>`;
-}
-
-function readWizRows(editor) {
-  return [...editor.querySelectorAll(".wiz-cond-row")].map((row) => {
-    const idx = row.dataset.idx;
-    return {
-      dict: editor.querySelector(`.wiz-cond-dict[data-idx="${idx}"]`)?.value || "EndPoints",
-      attr: editor.querySelector(`.wiz-cond-attr[data-idx="${idx}"]`)?.value || "",
-      op:   editor.querySelector(`.wiz-cond-op[data-idx="${idx}"]`)?.value || "equals",
-      val:  editor.querySelector(`.wiz-cond-val[data-idx="${idx}"]`)?.value || "",
-    };
-  });
-}
-
-function buildWizCondition(rows, blockType) {
-  if (!rows.length) return null;
-  const makeAttr = (r) => ({
-    conditionType: "ConditionAttributes",
-    isNegate: false,
-    dictionaryName: r.dict,
-    attributeName: r.attr,
-    operator: r.op,
-    attributeValue: r.val,
-  });
-  if (rows.length === 1) return makeAttr(rows[0]);
-  return {
-    conditionType: blockType === "OR" ? "ConditionOrBlock" : "ConditionAndBlock",
-    isNegate: false,
-    children: rows.map(makeAttr),
-  };
-}
-
-function wizProfilesHtml(existing = []) {
-  const tags = existing.map((p) =>
-    `<span class="profile-tag" data-p="${_esc(p)}">${_esc(p)}<button type="button" class="profile-tag-del" data-p="${_esc(p)}">✕</button></span>`
-  ).join("");
-  const opts = _KNOWN_PROFILES.map((p) => `<option value="${p}">${_esc(p)}</option>`).join("");
-  return `
-    <div id="profiles-tags">${tags}</div>
-    <div class="profiles-add-row">
-      <select id="wiz-profile-preset"><option value="">+ vælg profil…</option>${opts}</select>
-      <input type="text" id="wiz-profile-custom" placeholder="eller skriv navn…" />
-      <button type="button" id="wiz-profile-add-btn" class="secondary small">Tilføj</button>
-    </div>`;
-}
