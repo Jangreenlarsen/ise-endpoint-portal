@@ -316,8 +316,6 @@ export function initDetail(container, state, api, cb) {
       { attr: "Owner",       val: container.querySelector("#d-owner")?.value || "" },
       { attr: "Type",        val: container.querySelector("#d-type")?.value || "" },
       { attr: "Lokation",    val: container.querySelector("#d-lokation")?.value || "" },
-      { attr: "AuthzVlan",   val: container.querySelector("#d-authzvlan")?.value || "" },
-      { attr: "AuthzACL",    val: container.querySelector("#d-authzacl")?.value || "" },
       { attr: "PlatformType",val: container.querySelector("#d-platformtype")?.value || "" },
       { attr: "PSK_Mode",    val: container.querySelector("#d-psk-mode")?.checked ? "true" : "" },
     ];

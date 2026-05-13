@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.0.3 build 0251] — 2026-05-13 — fix: AuthzVlan/AuthzACL fjernet fra betingelsessektion i policy wizard
+
+**Berørte filer**: `frontend/js/views/browse-detail.js`, `version.json`
+
+AuthzVlan og AuthzACL hørte ikke til i betingelseslisten — de er autoriseringsprofil-værdier og preudfyldes korrekt i profil-sektionen. Fjernet fra `epAttrs`-arrayet.
+
 ## [5.0.3 build 0250] — 2026-05-13 — fix: policy wizard IdentityGroup dropdown + autoriseringsprofiler preudfyldt
 
 **Berørte filer**: `frontend/js/views/policy-condition-builder.js`, `frontend/js/views/browse-detail.js`, `version.json`
