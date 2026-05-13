@@ -3,6 +3,10 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.0.1 build 0246] — 2026-05-13 — chore: version bump til 5.0.1
+
+**Berørte filer**: `version.json`, `CHANGELOG.md`
+
 ## [5.0.0 build 0245] — 2026-05-13 — refactor: policy condition builder delt modul + caValues-dropdowns
 
 **Berørte filer**: `frontend/js/views/policy-condition-builder.js` (ny), `frontend/js/views/policy.js` (refaktoreret), `frontend/js/views/browse-detail.js` (refaktoreret), `frontend/css/styles.css` (+cond-val-wrap/sel/custom), `version.json`
