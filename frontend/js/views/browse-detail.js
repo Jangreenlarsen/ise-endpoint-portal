@@ -334,6 +334,17 @@ export function initDetail(container, state, api, cb) {
 
     if (!initConds.length) initConds.push({ dict: "EndPoints", attr: "Owner", op: "equals", val: "" });
 
+    // Extend caValues with group names so the IdentityGroup:Name condition gets a dropdown.
+    const wizCaValues = {
+      ...state.caValues,
+      __IdentityGroup_Name__: (state.groups || []).map((g) => g.name).filter(Boolean),
+    };
+
+    // Pre-fill authorization profiles from the endpoint's AuthzVlan / AuthzACL values.
+    const authzVlan = container.querySelector("#d-authzvlan")?.value || "";
+    const authzAcl  = container.querySelector("#d-authzacl")?.value  || "";
+    const initProfiles = [authzVlan, authzAcl].filter(Boolean);
+
     wizardArea.innerHTML = `
       <div class="policy-wizard-card">
         <div class="wizard-header">
@@ -358,12 +369,12 @@ export function initDetail(container, state, api, cb) {
 
         <div class="editor-section-label">Betingelser</div>
         <div id="wiz-cond-rows">
-          ${initConds.map((c, i) => condRowHtml(i, c, state.caValues)).join("")}
+          ${initConds.map((c, i) => condRowHtml(i, c, wizCaValues)).join("")}
         </div>
         <button type="button" id="wiz-add-cond" class="secondary small">+ Tilføj betingelse</button>
 
         <div class="editor-section-label">Autoriseringsprofiler</div>
-        <div id="wiz-profiles-wrap">${profilesHtml([])}</div>
+        <div id="wiz-profiles-wrap">${profilesHtml(initProfiles)}</div>
 
         <div class="detail-actions">
           <button type="button" id="wiz-save-btn">Opret regel i ISE</button>
@@ -374,7 +385,7 @@ export function initDetail(container, state, api, cb) {
     const condRowsEl   = wizardArea.querySelector("#wiz-cond-rows");
     const profilesWrap = wizardArea.querySelector("#wiz-profiles-wrap");
 
-    const addRow = wireCondRowEvents(condRowsEl, state.caValues);
+    const addRow = wireCondRowEvents(condRowsEl, wizCaValues);
     wireProfileEvents(profilesWrap);
 
     wizardArea.querySelector("#wiz-add-cond").addEventListener("click", () => addRow());

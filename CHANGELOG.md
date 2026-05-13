@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.0.3 build 0250] — 2026-05-13 — fix: policy wizard IdentityGroup dropdown + autoriseringsprofiler preudfyldt
+
+**Berørte filer**: `frontend/js/views/policy-condition-builder.js`, `frontend/js/views/browse-detail.js`, `version.json`
+
+To fejl i browse-detail policy wizard: (1) `IdentityGroup:Name`-betingelse viste kun et fritekst-input — nu renderes en `<select>` med alle kendte identity groups (fra `state.groups`) via en generisk lookup-mekanisme i `valueWidgetHtml` (synthetic key `__DictName_AttrName__` i caValues-objektet). (2) Autoriseringsprofiler var altid tomme — wizard preudfylder nu profilerne med endpointets `AuthzVlan`- og `AuthzACL`-værdier.
+
 ## [5.0.2 build 0249] — 2026-05-13 — feat: policy wizard preudfylder alle endpoint-attributter + reaktivt detail-vindue
 
 **Berørte filer**: `frontend/js/views/browse-detail.js`, `frontend/css/styles.css`, `version.json`
