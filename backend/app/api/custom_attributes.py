@@ -144,12 +144,14 @@ async def get_nas_devices_by_platform() -> dict:
                 "device_type_path": dev.device_type_path,
             })
         else:
-            unmatched.append({
-                "name": dev.name,
-                "ip": ip,
-                "device_type": dev.device_type,
-                "device_type_path": dev.device_type_path,
-            })
+            # Vis kun devices der HAR en device_type — dem uden NDG kan vi ikke hjælpe
+            if dev.device_type or dev.device_type_path:
+                unmatched.append({
+                    "name": dev.name,
+                    "ip": ip,
+                    "device_type": dev.device_type,
+                    "device_type_path": dev.device_type_path,
+                })
 
     logger.info(
         "nas-devices: loaded=%s devices=%d matched=%d unmatched=%d unmatched_types=%s",

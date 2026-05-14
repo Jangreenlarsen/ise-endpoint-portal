@@ -40,7 +40,7 @@ export async function renderAttributes(container) {
   const sections = container.querySelector("#attr-sections");
   const attrMsg = container.querySelector("#attr-msg");
 
-  function renderMappingEditor(localValues, mapping, nasDevices = {}, nasLoaded = false, nasLoading = false) {
+  function renderMappingEditor(localValues, mapping, nasDevices = {}, nasLoaded = false, nasLoading = false, nasUnmatched = []) {
     const localOptions = (selected) => {
       const opts = [`<option value="">${t("attr.mapping_none")}</option>`];
       for (const v of localValues) {
@@ -99,6 +99,10 @@ export async function renderAttributes(container) {
           <button class="small platform-mapping-save" type="button">${t("attr.mapping_save")}</button>
           <span class="platform-mapping-result hint"></span>
         </div>
+        ${nasUnmatched.length ? `<div class="alert warn" style="margin-top:0.5rem;font-size:0.85em;">
+          ${t("attr.nas_unmatched_hint")}<br>
+          ${nasUnmatched.map(d => `<span class="nas-device-tag" title="${esc(d.ip)}">${esc(d.name)} <span style="opacity:0.7;">(${esc(d.device_type_path || d.device_type)})</span></span>`).join(" ")}
+        </div>` : ""}
       </div>`;
   }
 
@@ -113,6 +117,7 @@ export async function renderAttributes(container) {
       const nasDevices = nasResp.devices || {};
       const nasLoaded = nasResp.loaded;
       const nasLoading = nasResp.loading;
+      const nasUnmatched = nasResp.unmatched || [];
       const attrMap = {};
       for (const a of data.attributes) attrMap[a.name] = a.values;
       const ATTR_LABELS = getAttrLabels();
@@ -144,7 +149,7 @@ export async function renderAttributes(container) {
               <span class="hint">${t("attr.sync_hint")}</span>
               <div class="platform-sync-result" style="flex-basis:100%;"></div>
             </div>
-            ${renderMappingEditor(values, mapping, nasDevices, nasLoaded, nasLoading)}`;
+            ${renderMappingEditor(values, mapping, nasDevices, nasLoaded, nasLoading, nasUnmatched)}`;
         }
         return `
           <div class="card" style="margin-bottom:0.75rem;" data-attr-card="${esc(name)}">

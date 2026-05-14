@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.7 build 0303] — 2026-05-14 — fix: tilføj Airspace-WLC synonym + vis unmatched devices
+
+**Berørte filer**: `backend/app/core/platform_types.py`, `backend/app/api/custom_attributes.py`, `frontend/js/views/attributes.js`, `frontend/js/i18n.js`, `version.json`
+
+`"airspace-wlc"` og `"airespace-wlc"` tilføjet som synonymer for `"airos"` i `platform_types.normalize()`. API filtrerer nu devices uden NDG fra unmatched-listen. Frontend viser unmatched devices med Device Type NDG som gul advarsel under tabellen.
+
 ## [5.3.7 build 0302] — 2026-05-14 — debug: nas-devices logger unmatched device types
 
 **Berørte filer**: `backend/app/api/custom_attributes.py`, `version.json`

@@ -37,7 +37,9 @@ def normalize(value: str | None) -> str | None:
     synonyms = {
         "aire-os": "airos",
         "aireos": "airos",
-        "wlc": "airos",          # bare WLC marker → AireOS er det vi vil have at portalen falder tilbage til (matcher CoA-Disconnect-flowet)
+        "wlc": "airos",
+        "airspace-wlc": "airos",  # ISE NDG device type navn fra "Device Type" gruppe
+        "airespace-wlc": "airos", # alternativ stavemåde (Cisco Airespace → AireOS)
         "ios-xe": "iosxe",
         "ios_xe": "iosxe",
         "iosxe-sw": "iosxe",
