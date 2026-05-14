@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.2.1 build 0272] — 2026-05-14 — fix: Endpoint_VLAN 500 — common task vlan.nameID accepterer ikke EndPoints
+
+**Berørte filer**: `backend/app/services/authz_profile_service.py`, `BUGS.md`, `version.json`
+
+Fjernet `vlan`-common-task-feltet; erstattet med `advancedAttributes`: `Radius:Tunnel-Type=13`, `Radius:Tunnel-Medium-Type=6`, `Radius:Tunnel-Private-Group-ID=EndPoints:AuthzVlan` (dynamisk).
+
 ## [5.2.1 build 0271] — 2026-05-14 — fix: Endpoint_PSK-KEY 500 — forkert RADIUS dictionary navn
 
 **Berørte filer**: `backend/app/services/authz_profile_service.py`, `BUGS.md`, `version.json`

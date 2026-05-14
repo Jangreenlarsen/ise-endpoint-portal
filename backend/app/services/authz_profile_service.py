@@ -30,10 +30,42 @@ STANDARD_PROFILES: list[dict[str, Any]] = [
         "description": "Dynamic VLAN from EndPoints:AuthzVlan attribute",
         "accessType": "ACCESS_ACCEPT",
         "authzProfileType": "SWITCH",
-        "vlan": {
-            "nameID": "EndPoints:AuthzVlan",
-            "tagID": 1,
-        },
+        "advancedAttributes": [
+            {
+                "leftHandSideDictionaryAttribue": {
+                    "AdvancedAttributeValueType": "AdvancedDictionaryAttribute",
+                    "dictionaryName": "Radius",
+                    "attributeName": "Tunnel-Type",
+                },
+                "rightHandSideAttribueValue": {
+                    "AdvancedAttributeValueType": "AttributeValue",
+                    "value": "13",
+                },
+            },
+            {
+                "leftHandSideDictionaryAttribue": {
+                    "AdvancedAttributeValueType": "AdvancedDictionaryAttribute",
+                    "dictionaryName": "Radius",
+                    "attributeName": "Tunnel-Medium-Type",
+                },
+                "rightHandSideAttribueValue": {
+                    "AdvancedAttributeValueType": "AttributeValue",
+                    "value": "6",
+                },
+            },
+            {
+                "leftHandSideDictionaryAttribue": {
+                    "AdvancedAttributeValueType": "AdvancedDictionaryAttribute",
+                    "dictionaryName": "Radius",
+                    "attributeName": "Tunnel-Private-Group-ID",
+                },
+                "rightHandSideAttribueValue": {
+                    "AdvancedAttributeValueType": "AdvancedDictionaryAttribute",
+                    "dictionaryName": "EndPoints",
+                    "attributeName": "AuthzVlan",
+                },
+            },
+        ],
     },
     {
         "name": "Endpoint_DACL",
@@ -98,7 +130,7 @@ STANDARD_PROFILES: list[dict[str, Any]] = [
 # Human-readable summary of what each profile configures
 STANDARD_PROFILE_DETAILS: dict[str, str] = {
     "Endpoint_VLAN":
-        "Access-Type: ACCESS_ACCEPT · Tunnel-Private-Group-ID = 1:EndPoints:AuthzVlan · Tunnel-Medium-Type = 1:6 · Tunnel-Type = 1:13",
+        "Access-Type: ACCESS_ACCEPT · Tunnel-Type = 13 (VLAN) · Tunnel-Medium-Type = 6 (802) · Tunnel-Private-Group-ID = EndPoints:AuthzVlan",
     "Endpoint_DACL":
         "Access-Type: ACCESS_ACCEPT · DACL = EndPoints:AuthzACL",
     "Endpoint_PSK-KEY":
