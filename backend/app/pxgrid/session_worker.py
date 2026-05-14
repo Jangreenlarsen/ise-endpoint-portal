@@ -468,8 +468,20 @@ def _build_session_info(d: dict[str, Any]) -> SessionInfo:
         azn_raw = [azn_raw]
     elif not isinstance(azn_raw, list):
         azn_raw = []
+    from app.core.platform_mapping_store import raw_to_local as _r2l
+    from app.core.platform_types import normalize as _normalize
     nas_ip = str(d.get("nasIpAddress", "") or d.get("nasIp", ""))
     dev = _nd.get_device_info(nas_ip)
+    if dev:
+        # Kæde: NDG last-segment → normalize() → raw_to_local() → brugerens lokale label.
+        # Fallback: fuld NDG-sti hvis ingen lokal mapping endnu er sat.
+        _norm = _normalize(dev.device_type)
+        _local = (_norm and _r2l().get(_norm)) or ""
+        nas_device_type = _local or dev.device_type_path or dev.device_type
+        nas_name = dev.name
+    else:
+        nas_device_type = ""
+        nas_name = ""
     return SessionInfo(
         mac=str(mac),
         state=str(d.get("state", "") or d.get("sessionEvent", "")),
@@ -479,8 +491,8 @@ def _build_session_info(d: dict[str, Any]) -> SessionInfo:
         policy_set_name=str(d.get("policySetName", "")),
         authz_profiles=[str(p) for p in azn_raw if p],
         use_case=str(d.get("useCase", "")),
-        nas_name=dev.name if dev else "",
-        nas_device_type=dev.device_type if dev else "",
+        nas_name=nas_name,
+        nas_device_type=nas_device_type,
         raw=d,
     )
 

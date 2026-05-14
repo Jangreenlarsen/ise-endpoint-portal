@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.5 build 0299] — 2026-05-14 — feat: NAS device type linket til platform_mapping local labels
+
+**Berørte filer**: `backend/app/ise/network_devices.py`, `backend/app/pxgrid/session_worker.py`, `version.json`
+
+NDG device type kædes nu: NDG last-segment → `platform_types.normalize()` → `platform_mapping_store.raw_to_local()` → brugerens lokale label. Eks: NDG "Wireless > WLC" → last="WLC" → normalize("WLC")="airos" → raw_to_local["airos"]="Wireless-AireOS". Fallback til fuld NDG-sti hvis ingen lokal mapping er sat. `DeviceInfo` tilføjet `device_type_path` (fuld sti) og `device_type` (last segment).
+
 ## [5.3.5 build 0298] — 2026-05-14 — feat: NAS device name + type fra ISE Network Device Groups i ISE Session kolonne
 
 **Berørte filer**: `backend/app/ise/network_devices.py` (ny), `backend/app/pxgrid/session_cache.py`, `backend/app/pxgrid/session_worker.py`, `backend/app/schemas/settings.py`, `backend/app/api/pxgrid.py`, `backend/app/services/settings_service.py`, `frontend/js/views/browse-table.js`, `frontend/css/styles.css`, `version.json`

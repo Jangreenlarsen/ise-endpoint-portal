@@ -24,8 +24,9 @@ ERS_NETWORK_DEVICES = "/ers/config/networkdevice"
 @dataclass(frozen=True)
 class DeviceInfo:
     name: str = ""
-    device_type: str = ""   # from NDG "Device Type#..." path, e.g. "WLC" or "Switch > IOS"
-    location: str = ""      # from NDG "Location#..." path
+    device_type: str = ""       # last NDG segment — used for platform_types.normalize()
+    device_type_path: str = ""  # full NDG path for display fallback, e.g. "Wireless > WLC"
+    location: str = ""          # from NDG "Location#..." path
 
 
 _by_ip: dict[str, DeviceInfo] = {}
@@ -84,9 +85,11 @@ async def _load_all() -> None:
                 name = str(nd.get("name", ""))
                 groups: list[str] = nd.get("NetworkDeviceGroupList", [])
                 ip_list: list[dict] = nd.get("NetworkDeviceIPList", [])
+                dtype, dpath = _device_type_from_groups(groups)
                 info = DeviceInfo(
                     name=name,
-                    device_type=_device_type_from_groups(groups),
+                    device_type=dtype,
+                    device_type_path=dpath,
                     location=_location_from_groups(groups),
                 )
                 for entry in ip_list:
@@ -108,12 +111,19 @@ async def _load_all() -> None:
         _loading = False
 
 
-def _device_type_from_groups(groups: list[str]) -> str:
-    """Extract the most specific device type from NDG list.
+def _device_type_from_groups(groups: list[str]) -> tuple[str, str]:
+    """Extract device type from NDG list.
 
-    E.g. "Device Type#All Device Types#Wireless#WLC" → "Wireless > WLC"
-         "Device Type#All Device Types#Switch"        → "Switch"
-         "Device Type#All Device Types"               → ""
+    Returns (last_segment, full_path) so callers can:
+      - pass last_segment to platform_types.normalize() for local-label lookup
+      - fall back to full_path for display when no local mapping exists
+
+    E.g. "Device Type#All Device Types#Wireless#WLC"
+         → ("WLC", "Wireless > WLC")
+         "Device Type#All Device Types#Switch#IOS"
+         → ("IOS", "Switch > IOS")
+         "Device Type#All Device Types"
+         → ("", "")
     """
     for g in groups:
         if not g.startswith("Device Type#"):
@@ -121,8 +131,8 @@ def _device_type_from_groups(groups: list[str]) -> str:
         parts = [p.strip() for p in g.split("#")]
         specific = [p for p in parts[2:] if p and not p.lower().startswith("all ")]
         if specific:
-            return " > ".join(specific)
-    return ""
+            return specific[-1], " > ".join(specific)
+    return "", ""
 
 
 def _location_from_groups(groups: list[str]) -> str:
