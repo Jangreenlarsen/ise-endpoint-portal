@@ -56,11 +56,13 @@ export async function renderAttributes(container) {
       }).join("");
     const nasCell = (raw) => {
       if (nasLoading && !nasLoaded) return `<span class="hint" style="font-size:0.8em;">${t("attr.nas_loading")}</span>`;
-      const devs = nasDevices[raw] || [];
-      if (!devs.length) return `<span class="hint" style="font-size:0.8em;">—</span>`;
-      return devs.map(d =>
-        `<span class="nas-device-tag" title="${esc(d.device_type_path || d.ip)}">${esc(d.name || d.ip)}</span>`
-      ).join(" ");
+      const groups = nasDevices[raw] || [];
+      if (!groups.length) return `<span class="hint" style="font-size:0.8em;">—</span>`;
+      return groups.map(g => {
+        const label = g.path || raw;
+        const suffix = g.count > 1 ? ` (${g.count})` : "";
+        return `<span class="nas-device-tag">${esc(label)}${esc(suffix)}</span>`;
+      }).join(" ");
     };
     const nasHeader = nasLoaded
       ? t("attr.mapping_col_nas")
@@ -101,7 +103,10 @@ export async function renderAttributes(container) {
         </div>
         ${nasUnmatched.length ? `<div class="alert warn" style="margin-top:0.5rem;font-size:0.85em;">
           ${t("attr.nas_unmatched_hint")}<br>
-          ${nasUnmatched.map(d => `<span class="nas-device-tag" title="${esc(d.ip)}">${esc(d.name)} <span style="opacity:0.7;">(${esc(d.device_type_path || d.device_type)})</span></span>`).join(" ")}
+          ${nasUnmatched.map(g => {
+            const suffix = g.count > 1 ? ` (${g.count})` : "";
+            return `<span class="nas-device-tag">${esc(g.path)}${esc(suffix)}</span>`;
+          }).join(" ")}
         </div>` : ""}
       </div>`;
   }

@@ -128,37 +128,36 @@ async def get_nas_devices_by_platform() -> dict:
     # Trigger load if not started yet — safe to call from any async context.
     _nd.ensure_loaded()
 
-    grouped: dict[str, list[dict]] = {}
-    unmatched: list[dict] = []
-    seen: set[tuple] = set()
+    # Group matched devices by raw platform type → unique NDG paths with counts.
+    # {raw: [{path, count}]}
+    matched_paths: dict[str, dict[str, int]] = {}  # raw → {path → count}
+    unmatched_paths: dict[str, int] = {}            # path → count (no raw match)
+    seen_ip: set[str] = set()
+
     for ip, dev in _nd._by_ip.items():
-        entry = (dev.name, ip)
-        if entry in seen:
+        if ip in seen_ip:
             continue
-        seen.add(entry)
+        seen_ip.add(ip)
         norm = _normalize(dev.device_type) if dev.device_type else None
+        path = dev.device_type_path or dev.device_type or ""
         if norm:
-            grouped.setdefault(norm, []).append({
-                "name": dev.name,
-                "ip": ip,
-                "device_type_path": dev.device_type_path,
-            })
-        else:
-            # Vis kun devices der HAR en device_type — dem uden NDG kan vi ikke hjælpe
-            if dev.device_type or dev.device_type_path:
-                unmatched.append({
-                    "name": dev.name,
-                    "ip": ip,
-                    "device_type": dev.device_type,
-                    "device_type_path": dev.device_type_path,
-                })
+            matched_paths.setdefault(norm, {})
+            matched_paths[norm][path] = matched_paths[norm].get(path, 0) + 1
+        elif path:
+            unmatched_paths[path] = unmatched_paths.get(path, 0) + 1
+
+    # Convert to list form for JSON serialisation.
+    grouped = {
+        raw: [{"path": p, "count": c} for p, c in paths.items()]
+        for raw, paths in matched_paths.items()
+    }
+    unmatched = [{"path": p, "count": c} for p, c in unmatched_paths.items()]
 
     logger.info(
-        "nas-devices: loaded=%s devices=%d matched=%d unmatched=%d unmatched_types=%s",
+        "nas-devices: loaded=%s devices=%d matched_raw=%s unmatched_paths=%s",
         _nd._all_loaded, len(_nd._by_ip),
-        sum(len(v) for v in grouped.values()),
-        len(unmatched),
-        [d["device_type"] for d in unmatched],
+        {r: sum(x["count"] for x in v) for r, v in grouped.items()},
+        unmatched,
     )
     return {
         "devices": grouped,

@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.7 build 0304] — 2026-05-14 — fix: ISE NAS Devices viser NDG-sti med count — ikke hostname
+
+**Berørte filer**: `backend/app/api/custom_attributes.py`, `frontend/js/views/attributes.js`, `version.json`
+
+Skalerer ikke med 1000+ devices at vise hostnavn pr. device. API grupperer nu efter unik NDG-sti med antal devices: `{path, count}`. UI viser f.eks. `Wireless > Airspace-WLC (3)` i stedet for individuelle device-navne.
+
 ## [5.3.7 build 0303] — 2026-05-14 — fix: tilføj Airspace-WLC synonym + vis unmatched devices
 
 **Berørte filer**: `backend/app/core/platform_types.py`, `backend/app/api/custom_attributes.py`, `frontend/js/views/attributes.js`, `frontend/js/i18n.js`, `version.json`
