@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.2.1 build 0274] — 2026-05-14 — fix: Endpoint_VLAN tilføj Tunnel-Type/Medium-Type med tagged værdier
+
+**Berørte filer**: `backend/app/services/authz_profile_service.py`, `version.json`
+
+Tunnel-Type og Tunnel-Medium-Type genindsat med tag-prefixed værdier `"1:13"` og `"1:6"`. `Radius` dictionary bekræftet korrekt fra b0273. Profilen sætter nu alle tre RADIUS Tunnel-attributter med tunnel-tag 1.
+
 ## [5.2.1 build 0273] — 2026-05-14 — fix: Endpoint_VLAN 500 — fjern Tunnel-Type/Medium-Type fra advancedAttributes
 
 **Berørte filer**: `backend/app/services/authz_profile_service.py`, `version.json`
