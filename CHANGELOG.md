@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.2.1 build 0280] — 2026-05-14 — ux: omroker settings subtabs til Brugere → Endpoint grupper → Skabeloner
+
+**Berørte filer**: `frontend/js/views/settings.js`, `version.json`
+
+Subtab-rækkefølge under "Portal Bruger Config": Endpoint grupper↔Brugere byttet om. Ny orden: Brugere & Bruger grupper → Endpoint grupper → Skabeloner.
+
 ## [5.2.1 build 0279] — 2026-05-14 — ux: omdoeb nav-punkt Politikker til ISE Politikker
 
 **Berørte filer**: `frontend/js/i18n.js`, `version.json`

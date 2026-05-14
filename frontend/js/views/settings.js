@@ -415,8 +415,8 @@ export async function renderSettings(container) {
 
     ${isAdmin ? `
     <nav class="settings-subtab-nav" data-for-tab="portal-bruger-config">
-      <button class="settings-subtab" data-subtab="pbc-roles">${t("settings.subtab_roles")}</button>
       <button class="settings-subtab" data-subtab="pbc-users">${t("settings.subtab_users")}</button>
+      <button class="settings-subtab" data-subtab="pbc-roles">${t("settings.subtab_roles")}</button>
       <button class="settings-subtab" data-subtab="pbc-templates">${t("settings.subtab_templates")}</button>
     </nav>
     <nav class="settings-subtab-nav" data-for-tab="portal-config">
