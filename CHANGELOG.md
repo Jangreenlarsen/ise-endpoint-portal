@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.10 build 0309] — 2026-05-14 — feat: træk-og-slip kolonne-rækkefølge i browse-edit tabel
+
+**Berørte filer**: `frontend/js/views/browse-utils.js`, `frontend/js/views/browse.js`, `frontend/js/views/browse-table.js`, `frontend/css/styles.css`, `version.json`
+
+Kolonnerne i browse-edit tabellen kan nu trækkes til ny position. Klik og træk en kolonneoverskrift til ønsket placering — rækkefølgen gemmes i localStorage og bevares på tværs af sider og genindlæsninger. Kolonne-synlighed (col-vis) fungerer uændret. Implementeret med HTML5 Drag API uden eksterne afhængigheder; `applyColVis` bruger nu `[data-col]`-attributter i stedet for `nth-child`.
+
 ## [5.3.9 build 0306] — 2026-05-14 — feat: umappede NDG-stier vises som redigerbare rækker i platform mapping
 
 **Berørte filer**: `backend/app/core/platform_mapping_store.py`, `backend/app/services/custom_attribute_service.py`, `backend/app/api/custom_attributes.py`, `backend/app/pxgrid/session_worker.py`, `frontend/js/views/attributes.js`, `frontend/js/i18n.js`, `frontend/css/styles.css`, `version.json`

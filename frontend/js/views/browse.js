@@ -1,7 +1,7 @@
 import { api } from "../api.js";
 import { t } from "../i18n.js";
 import {
-  getColumns, esc,
+  getColumns, getOrderedColumns, esc,
   getPageSize, getCoaReauthOnSave, setCoaReauthOnSave,
   loadColVis, saveColVis,
   normalizeMac, fmtAgo, coaSummaryText,
@@ -78,12 +78,12 @@ export async function renderBrowse(container) {
           <thead>
             <tr>
               <th style="width:36px;"><input type="checkbox" id="select-all" title="${t("browse.select_all_title")}" /></th>
-              ${getColumns().map((c) => `<th data-col="${c.key}"${c.cls ? ` class="${c.cls}"` : ""}>${c.label}</th>`).join("")}
+              ${getOrderedColumns().map((c) => `<th data-col="${c.key}" draggable="true"${c.cls ? ` class="${c.cls}"` : ""}>${c.label}</th>`).join("")}
             </tr>
             <tr class="filter-row">
               <th></th>
-              ${getColumns().map((c) => `
-                <th${c.cls ? ` class="${c.cls}"` : ""}>
+              ${getOrderedColumns().map((c) => `
+                <th data-col="${c.key}"${c.cls ? ` class="${c.cls}"` : ""}>
                   <div class="col-filter">
                     <label class="col-filter-toggle" title="${c.label}">
                       <input type="checkbox" class="col-filter-cb" data-col="${c.key}" />

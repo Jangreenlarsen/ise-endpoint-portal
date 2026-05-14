@@ -46,6 +46,27 @@ export function saveColVis(snapshot) {
   try { localStorage.setItem(COLVIS_KEY, JSON.stringify(snapshot)); } catch { /* ignore */ }
 }
 
+export const COLORDER_KEY = "ise_portal_browse_colorder";
+export function loadColOrder() {
+  try {
+    const raw = localStorage.getItem(COLORDER_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+export function saveColOrder(order) {
+  try { localStorage.setItem(COLORDER_KEY, JSON.stringify(order)); } catch { /* ignore */ }
+}
+export function getOrderedColumns() {
+  const cols = getColumns();
+  const order = loadColOrder();
+  if (!order || !order.length) return cols;
+  const map = new Map(cols.map(c => [c.key, c]));
+  const ordered = order.map(k => map.get(k)).filter(Boolean);
+  const orderSet = new Set(order);
+  for (const c of cols) { if (!orderSet.has(c.key)) ordered.push(c); }
+  return ordered;
+}
+
 export function esc(s) {
   return (s || "").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 }

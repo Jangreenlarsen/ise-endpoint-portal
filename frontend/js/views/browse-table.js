@@ -4,10 +4,10 @@
 
 import { t } from "../i18n.js";
 import {
-  getColumns, esc,
+  getColumns, getOrderedColumns, esc,
   endpointCreateTime, fmtRelativeAge, fmtDateTime,
   normalizeMac, coaSummaryText, optionsHtml,
-  loadColVis, saveColVis, savePageSize,
+  loadColVis, saveColVis, savePageSize, saveColOrder,
 } from "./browse-utils.js";
 import { toIseCsv, downloadCsv } from "../csv.js";
 
@@ -70,12 +70,9 @@ export function initTable(container, state, api, cb) {
   function applyColVis() {
     const table = container.querySelector(".browse-table-wrap table");
     if (!table) return;
-    getColumns().forEach((c, i) => {
+    getColumns().forEach((c) => {
       const visible = state.colVis[c.key] !== false;
-      const nth     = i + 2;
-      table.querySelectorAll(`thead tr > th:nth-child(${nth})`).forEach((el) =>
-        el.classList.toggle("col-hidden", !visible));
-      table.querySelectorAll(`tbody tr > td:nth-child(${nth})`).forEach((el) =>
+      table.querySelectorAll(`[data-col="${c.key}"]`).forEach((el) =>
         el.classList.toggle("col-hidden", !visible));
     });
   }
@@ -157,28 +154,30 @@ export function initTable(container, state, api, cb) {
     tbody.innerHTML = rows.map((r) => {
       const mac   = r.mac || r.name;
       const nasPt = getNasPlatformType(mac);
-      const ptCell = nasPt
-        ? `<td class="platform-auto-td"><select class="ca-platformtype" disabled>${optionsHtml(state.caValues.PlatformType, nasPt)}</select><span class="platform-auto-badge" title="${t("browse.platform_auto_title")}">&#9889;</span></td>`
-        : `<td><select class="ca-platformtype">${optionsHtml(state.caValues.PlatformType, r.platform_type)}</select></td>`;
+      const cells = {
+        mac:           `<td data-col="mac" class="mac-cell${r.cache_stale ? " cache-stale" : ""}"><a href="#" class="mac-link" title="${t("browse.mac_link_title")}">${esc(mac)}</a>${r.cache_stale ? `<span class="stale-badge" title="${t("browse.stale_badge_title")}">⏱</span>` : ""}</td>`,
+        vendor:        `<td data-col="vendor" class="vendor-cell-td">${esc(r.vendor || "")}</td>`,
+        group_name:    `<td data-col="group_name"><select class="grp-select">${groupOptionsHtml(r.group_id)}</select></td>`,
+        static_group:  `<td data-col="static_group" class="assign-cell">${r.static_group ? t("cell.static") : t("cell.dynamic")}</td>`,
+        description:   `<td data-col="description"><input type="text" class="desc-input" value="${esc(r.description || "")}" /></td>`,
+        endpoint_type: `<td data-col="endpoint_type"><select class="ca-type">${optionsHtml(state.caValues.Type, r.endpoint_type)}</select></td>`,
+        owner:         `<td data-col="owner"><select class="ca-owner">${optionsHtml(state.caValues.Owner, r.owner)}</select></td>`,
+        lokation:      `<td data-col="lokation"><select class="ca-lokation">${optionsHtml(state.caValues.Lokation, r.lokation)}</select></td>`,
+        platform_type: nasPt
+          ? `<td data-col="platform_type" class="platform-auto-td"><select class="ca-platformtype" disabled>${optionsHtml(state.caValues.PlatformType, nasPt)}</select><span class="platform-auto-badge" title="${t("browse.platform_auto_title")}">&#9889;</span></td>`
+          : `<td data-col="platform_type"><select class="ca-platformtype">${optionsHtml(state.caValues.PlatformType, r.platform_type)}</select></td>`,
+        psk_mode:      `<td data-col="psk_mode" class="psk-mode-cell"><input type="checkbox" class="psk-mode-cb"${r.psk_mode ? " checked" : ""}${state.isPskEditor ? "" : " disabled"} title="MPSK/IPSK" /></td>`,
+        psk_key:       `<td data-col="psk_key" class="authz-col psk-key-cell mono">${state.pskShowKey ? esc(r.psk_key || "") : (r.psk_key ? "••••••" : "")}</td>`,
+        authz_vlan:    `<td data-col="authz_vlan" class="authz-col"><select class="ca-authzvlan">${optionsHtml(state.caValues.AuthzVlan, r.authz_vlan)}</select></td>`,
+        authz_acl:     `<td data-col="authz_acl" class="authz-col"><select class="ca-authzacl">${optionsHtml(state.caValues.AuthzACL, r.authz_acl)}</select></td>`,
+        roles:         `<td data-col="roles" class="roles-cell">${rolesChipsHtml(r.roles)}</td>`,
+        create_time:   `<td data-col="create_time" class="age-cell" title="${esc(fmtDateTime(endpointCreateTime(r)))}">${esc(fmtRelativeAge(endpointCreateTime(r)))}</td>`,
+        ise_session:   `<td data-col="ise_session" class="ise-session-col">${iseSessionCellHtml(mac)}</td>`,
+      };
       return `
       <tr data-id="${esc(r.id)}"${state.dirtyIds.has(r.id) ? ' class="dirty"' : ''}>
         <td class="select-cell"><input type="checkbox" class="row-select" /></td>
-        <td class="mac-cell${r.cache_stale ? " cache-stale" : ""}"><a href="#" class="mac-link" title="${t("browse.mac_link_title")}">${esc(mac)}</a>${r.cache_stale ? `<span class="stale-badge" title="${t("browse.stale_badge_title")}">⏱</span>` : ""}</td>
-        <td class="vendor-cell-td">${esc(r.vendor || "")}</td>
-        <td><select class="grp-select">${groupOptionsHtml(r.group_id)}</select></td>
-        <td class="assign-cell">${r.static_group ? t("cell.static") : t("cell.dynamic")}</td>
-        <td><input type="text" class="desc-input" value="${esc(r.description || "")}" /></td>
-        <td><select class="ca-type">${optionsHtml(state.caValues.Type, r.endpoint_type)}</select></td>
-        <td><select class="ca-owner">${optionsHtml(state.caValues.Owner, r.owner)}</select></td>
-        <td><select class="ca-lokation">${optionsHtml(state.caValues.Lokation, r.lokation)}</select></td>
-        ${ptCell}
-        <td class="psk-mode-cell"><input type="checkbox" class="psk-mode-cb"${r.psk_mode ? " checked" : ""}${state.isPskEditor ? "" : " disabled"} title="MPSK/IPSK" /></td>
-        <td class="authz-col psk-key-cell mono">${state.pskShowKey ? esc(r.psk_key || "") : (r.psk_key ? "••••••" : "")}</td>
-        <td class="authz-col"><select class="ca-authzvlan">${optionsHtml(state.caValues.AuthzVlan, r.authz_vlan)}</select></td>
-        <td class="authz-col"><select class="ca-authzacl">${optionsHtml(state.caValues.AuthzACL, r.authz_acl)}</select></td>
-        <td class="roles-cell">${rolesChipsHtml(r.roles)}</td>
-        <td class="age-cell" title="${esc(fmtDateTime(endpointCreateTime(r)))}">${esc(fmtRelativeAge(endpointCreateTime(r)))}</td>
-        <td class="ise-session-col">${iseSessionCellHtml(mac)}</td>
+        ${getOrderedColumns().map(c => cells[c.key] || "").join("")}
       </tr>`;
     }).join("");
     updateSelectionUI();
@@ -609,6 +608,66 @@ export function initTable(container, state, api, cb) {
     cb.clearActiveView?.();
     if (state.filterMode) applyFilter(); else load();
   });
+
+  // ── Column drag-and-drop ─────────────────────────────────────────────────
+  function initColDrag() {
+    const table = container.querySelector(".browse-table-wrap table");
+    if (!table) return;
+    const thead = table.querySelector("thead");
+    let dragSrcKey = null;
+
+    thead.addEventListener("dragstart", (e) => {
+      const th = e.target.closest("th[data-col][draggable]");
+      if (!th) return;
+      dragSrcKey = th.dataset.col;
+      e.dataTransfer.effectAllowed = "move";
+      th.classList.add("col-dragging");
+    });
+
+    thead.addEventListener("dragend", () => {
+      thead.querySelectorAll("th").forEach((h) => h.classList.remove("col-dragging", "col-drag-over"));
+      dragSrcKey = null;
+    });
+
+    thead.addEventListener("dragover", (e) => {
+      const th = e.target.closest("th[data-col]");
+      if (!th || !dragSrcKey || th.dataset.col === dragSrcKey) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      thead.querySelectorAll("th").forEach((h) => h.classList.remove("col-drag-over"));
+      th.classList.add("col-drag-over");
+    });
+
+    thead.addEventListener("dragleave", (e) => {
+      if (!e.currentTarget.contains(e.relatedTarget)) {
+        thead.querySelectorAll("th").forEach((h) => h.classList.remove("col-drag-over"));
+      }
+    });
+
+    thead.addEventListener("drop", (e) => {
+      const th = e.target.closest("th[data-col]");
+      if (!th || !dragSrcKey || th.dataset.col === dragSrcKey) return;
+      e.preventDefault();
+      const toKey = th.dataset.col;
+      table.querySelectorAll("tr").forEach((row) => {
+        const fromCell = row.querySelector(`[data-col="${dragSrcKey}"]`);
+        const toCell   = row.querySelector(`[data-col="${toKey}"]`);
+        if (!fromCell || !toCell) return;
+        const siblings = Array.from(row.children);
+        if (siblings.indexOf(fromCell) < siblings.indexOf(toCell)) {
+          row.insertBefore(fromCell, toCell.nextSibling);
+        } else {
+          row.insertBefore(fromCell, toCell);
+        }
+      });
+      const newOrder = Array.from(thead.querySelectorAll("tr:first-child th[data-col]"))
+        .map((h) => h.dataset.col);
+      saveColOrder(newOrder);
+      dragSrcKey = null;
+    });
+  }
+
+  initColDrag();
 
   return {
     renderRows, refreshRows, buildSavePayload,

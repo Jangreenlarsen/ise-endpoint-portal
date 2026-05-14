@@ -1786,6 +1786,17 @@ td.psk-key-cell {
 [data-theme="dark"] .dacl-issue-error { background: #3b1414; color: #fecaca; }
 [data-theme="dark"] .dacl-issue-warning { background: #3b2a14; color: #fde68a; }
 
+/* Column drag-and-drop reordering */
+th[draggable="true"] { cursor: grab; user-select: none; }
+th[draggable="true"]:active { cursor: grabbing; }
+th.col-dragging { opacity: 0.4; }
+th.col-drag-over {
+  outline: 2px solid #2563eb;
+  outline-offset: -2px;
+  background: #eff6ff;
+}
+[data-theme="dark"] th.col-drag-over { background: #1e3a5f; outline-color: #60a5fa; }
+
 /* Column visibility menu (Browse/Edit) */
 .col-vis-wrap { position: relative; display: inline-block; }
 .col-vis-menu {
