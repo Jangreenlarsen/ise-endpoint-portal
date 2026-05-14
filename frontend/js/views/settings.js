@@ -13,6 +13,7 @@ import { initTemplatesSection } from "./settings/section-templates.js";
 import { initPskPolicySection } from "./settings/section-psk.js";
 import { initPortalAuthConfigSection, initLocaleSection } from "./settings/section-auth.js";
 import { initSystemUpdateSection, initAdvancedSection } from "./settings/section-update.js";
+import { initAuthzProfilesSection } from "./settings/section-authz-profiles.js";
 
 export async function renderSettings(container) {
   const isAdmin = auth.isAdmin();
@@ -423,6 +424,7 @@ export async function renderSettings(container) {
       <button class="settings-subtab" data-subtab="pc-locale">${t("settings.subtab_locale")}</button>
       <button class="settings-subtab" data-subtab="pc-ise-config">${t("settings.subtab_ise_purge")}</button>
       <button class="settings-subtab" data-subtab="pc-update">${t("settings.subtab_update")}</button>
+      <button class="settings-subtab" data-subtab="pc-authz-profiles">${t("settings.subtab_authz_profiles")}</button>
       <button class="settings-subtab" data-subtab="pc-advanced">${t("settings.subtab_advanced")}</button>
     </nav>
     <div class="card" data-tab="portal-config" data-subtab="pc-ise-config">
@@ -762,6 +764,41 @@ export async function renderSettings(container) {
     ` : ""}
 
     ${isAdmin ? `
+    <div class="card" data-tab="portal-config" data-subtab="pc-authz-profiles">
+      <h3>${t("authzp.card_title")}</h3>
+      <p class="hint">${t("authzp.hint")}</p>
+      <div id="authzp-msg"></div>
+
+      <h4 style="margin-top:1rem;margin-bottom:.5rem">${t("authzp.standard_title")}</h4>
+      <table class="authzp-table">
+        <thead>
+          <tr>
+            <th>${t("authzp.col_name")}</th>
+            <th>${t("authzp.col_status")}</th>
+            <th>${t("authzp.col_config")}</th>
+          </tr>
+        </thead>
+        <tbody id="authzp-table-body">
+          <tr><td colspan="3" class="hint">${t("authzp.checking")}</td></tr>
+        </tbody>
+      </table>
+
+      <div class="actions" style="margin-top:.75rem">
+        <button type="button" id="authzp-check-btn" class="secondary">${t("authzp.btn_check")}</button>
+        <button type="button" id="authzp-ensure-btn" disabled>${t("authzp.btn_ensure")}</button>
+      </div>
+
+      <h4 style="margin-top:1.5rem;margin-bottom:.5rem">${t("authzp.all_title")}</h4>
+      <div id="authzp-all-section">
+        <div id="authzp-all-list"></div>
+        <div class="actions" style="margin-top:.5rem">
+          <button type="button" id="authzp-load-all-btn" class="secondary">${t("authzp.btn_load_all")}</button>
+        </div>
+      </div>
+    </div>
+    ` : ""}
+
+    ${isAdmin ? `
     <div class="card" data-tab="portal-config" data-subtab="pc-advanced">
       <h3 id="adv-card-h3"></h3>
       <div id="migration-sync-result" style="margin-bottom:0.75rem;"></div>
@@ -792,6 +829,7 @@ export async function renderSettings(container) {
     await initLocaleSection(container);
     await initTemplatesSection(container);
     initSystemUpdateSection(container);
+    await initAuthzProfilesSection(container);
     initAdvancedSection(container);
   }
 }

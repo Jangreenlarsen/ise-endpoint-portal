@@ -7,6 +7,7 @@ from app.core.audit_store import ActorContext, actor_ctx
 from app.core.user_store import find_by_id, load_users
 from app.ise.client import get_ise_client
 from app.schemas.user import ROLE_VALUES, Role, User
+from app.services.authz_profile_service import AuthzProfileService
 from app.services.custom_attribute_service import CustomAttributeService
 from app.services.dacl_service import DaclService
 from app.services.endpoint_service import EndpointService
@@ -27,6 +28,10 @@ def get_dacl_service() -> DaclService:
 
 def get_policy_service() -> PolicyService:
     return PolicyService(get_ise_client())
+
+
+def get_authz_profile_service() -> AuthzProfileService:
+    return AuthzProfileService(get_ise_client())
 
 
 def _extract_token(request: Request) -> str | None:

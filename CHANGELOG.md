@@ -3,6 +3,19 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.1.0 build 0262] — 2026-05-14 — feat: ISE Authorization Profile Manager
+
+**Berørte filer**: `backend/app/ise/authz_profiles.py` (ny), `backend/app/schemas/authz_profile.py` (ny), `backend/app/services/authz_profile_service.py` (ny), `backend/app/api/authz_profiles.py` (ny), `backend/app/api/deps.py`, `backend/app/main.py`, `frontend/js/api.js`, `frontend/js/i18n.js`, `frontend/js/views/settings/section-authz-profiles.js` (ny), `frontend/js/views/settings.js`, `frontend/css/styles.css`, `version.json`, `FEATURES.md`
+
+Ny settings-sektion: **Settings → Portal Config → Authz Profiler**.
+
+- **Standard profil status**: Viser en tabel over de 4 standard-profiler (`Endpoint_VLAN`, `Endpoint_DACL`, `Endpoint_PSK-KEY`, `Endpoint_AirSpaceACL`) med ✓/✗ status fra ISE — autocheck ved åbning af sektionen.
+- **Opret manglende**: Ét klik opretter alle manglende profiler i ISE via ERS med korrekte attributter (VLAN, DACL, PSK cisco-av-pair, Airespace ACL — alle dynamiske fra EndPoints-attributter).
+- **Alle ISE profiler**: Knap der henter og viser alle eksisterende autorisationsprofiler fra ISE til reference.
+- Backend: `GET /api/authz-profiles`, `GET /api/authz-profiles/standard/status`, `POST /api/authz-profiles/standard/ensure` — alle kræver admin.
+
+---
+
 ## [5.0.4 build 0261] — 2026-05-14 — fix: simuler match viser "Authz Profiles:" i stedet for "Profiles:"
 
 **Berørte filer**: `frontend/js/i18n.js`, `version.json`

@@ -16,6 +16,7 @@ from app.api import endpoint_roles as endpoint_roles_api
 from app.api import endpoints, groups, health, logs, me, oui, users
 from app.api import templates as templates_api
 from app.api import pxgrid as pxgrid_api
+from app.api import authz_profiles as authz_profiles_api
 from app.api import policy as policy_api
 from app.api import settings as settings_api
 from app.api import update as update_api
@@ -107,6 +108,7 @@ app.include_router(settings_api.router, prefix="/api")
 app.include_router(settings_api.psk_router, prefix="/api")
 app.include_router(custom_attrs_api.router, prefix="/api")
 app.include_router(dacls_api.router, prefix="/api")
+app.include_router(authz_profiles_api.router, prefix="/api")
 app.include_router(logs.router, prefix="/api")
 app.include_router(cache_api.router, prefix="/api")
 app.include_router(audit_api.router, prefix="/api")

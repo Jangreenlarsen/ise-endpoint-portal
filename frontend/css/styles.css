@@ -2501,3 +2501,52 @@ body.register-route .login-card {
 [data-theme="dark"] .policy-detail-card,
 [data-theme="dark"] .policy-editor-card,
 [data-theme="dark"] .policy-wizard-card { border-color: #2a2a4a; }
+
+
+/* ── Authorization Profile Manager ──────────────────────────────────── */
+.authzp-table,
+.authzp-all-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+}
+.authzp-table th,
+.authzp-table td,
+.authzp-all-table th,
+.authzp-all-table td {
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid var(--border, #e2e8f0);
+}
+.authzp-table th,
+.authzp-all-table th {
+  font-weight: 600;
+  color: var(--text-muted, #6b7280);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.authzp-config-cell {
+  color: var(--text-muted, #6b7280);
+  font-size: 0.8rem;
+  font-family: ui-monospace, "Cascadia Mono", Menlo, monospace;
+}
+.status-badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.badge-ok   { background: #d1fae5; color: #065f46; }
+.badge-warn { background: #fee2e2; color: #991b1b; }
+
+[data-theme="dark"] .authzp-table th,
+[data-theme="dark"] .authzp-all-table th { color: #94a3b8; }
+[data-theme="dark"] .authzp-table td,
+[data-theme="dark"] .authzp-all-table td { border-color: #2d3748; }
+[data-theme="dark"] .authzp-config-cell  { color: #94a3b8; }
+[data-theme="dark"] .badge-ok   { background: #052e16; color: #86efac; }
+[data-theme="dark"] .badge-warn { background: #3b1414; color: #fecaca; }

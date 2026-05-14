@@ -358,6 +358,12 @@ export const api = {
   deleteOperatorProfile: (id) =>
     request(`/operator-profiles/${encodeURIComponent(id)}`, { method: "DELETE" }),
 
+  // Authorization Profile Manager (5.1.0)
+  listAuthzProfiles: () => request("/authz-profiles"),
+  checkStandardAuthzProfiles: () => request("/authz-profiles/standard/status"),
+  ensureStandardAuthzProfiles: () =>
+    request("/authz-profiles/standard/ensure", { method: "POST" }),
+
   // RADIUS Policy (5.0.0)
   listPolicySets: () => request("/policy/policy-sets"),
   getPolicySet: (id) => request(`/policy/policy-sets/${encodeURIComponent(id)}`),
