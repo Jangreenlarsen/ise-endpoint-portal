@@ -3,7 +3,7 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
-## [5.1.0 build 0263] — 2026-05-14 — fix: authz-profile list bruger Open API som primær kilde
+## [5.1.1 build 0264] — 2026-05-14 — fix: authz-profile list bruger Open API som primær kilde
 
 **Berørte filer**: `backend/app/ise/authz_profiles.py`, `version.json`
 
