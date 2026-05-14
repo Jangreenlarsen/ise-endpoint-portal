@@ -3,6 +3,10 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.1 build 0285] — 2026-05-14 — version bump 5.3.0 → 5.3.1
+
+**Berørte filer**: `version.json`, `CHANGELOG.md`
+
 ## [5.3.0 build 0284] — 2026-05-14 — fix: pxGrid SSE-stream genopbygges ikke efter worker-genstart
 
 **Berørte filer**: `frontend/js/views/browse.js`, `version.json`, `BUGS.md`
