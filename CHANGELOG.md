@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.4 build 0295] — 2026-05-14 — feat: ISE Session kolonne viser Auth/Authz labels + useCase som auth-kilde
+
+**Berørte filer**: `backend/app/pxgrid/session_cache.py`, `backend/app/pxgrid/session_worker.py`, `backend/app/schemas/settings.py`, `backend/app/api/pxgrid.py`, `frontend/js/views/browse-table.js`, `frontend/css/styles.css`, `version.json`
+
+ISE Session-kolonnen viser nu "Auth: [useCase]" og "Authz: [første profil]" i stedet for komma-separeret profilliste. `use_case`-felt tilføjet til SessionInfo, broadcast og schema. `useCase` fra ISE pxGrid getSessions (f.eks. "Host Lookup", "Wireless_802.1x") bruges som auth-label. Kun første authz-profil vises. "Auth:"/"Authz:" prefixes styled med `.ise-sess-prefix` (dæmpet opacity).
+
 ## [5.3.4 build 0294] — 2026-05-14 — fix: ISE Session authz-data tom — getSessions bruger selectedAuthzProfiles (ikke selectedAznProfiles)
 
 **Berørte filer**: `backend/app/pxgrid/session_worker.py`, `backend/app/pxgrid/client.py`, `version.json`

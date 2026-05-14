@@ -468,6 +468,7 @@ def _build_session_info(d: dict[str, Any]) -> SessionInfo:
         user_name=str(d.get("userName", "") or d.get("username", "")),
         policy_set_name=str(d.get("policySetName", "")),
         authz_profiles=[str(p) for p in azn_raw if p],
+        use_case=str(d.get("useCase", "")),
         raw=d,
     )
 

@@ -110,14 +110,14 @@ export function initTable(container, state, api, cb) {
     if (!state.pxgridSessionData) return '<span class="hint">—</span>';
     const sess = state.pxgridSessionData.get(normalizeMac(mac));
     if (!sess) return '<span class="hint">—</span>';
-    const auth  = sess.policy_set_name || "";
-    const profs = sess.authz_profiles || [];
-    const authz = profs.join(", ");
-    if (!auth && !authz) return '<span class="hint">—</span>';
+    const authLabel  = sess.use_case || sess.policy_set_name || "";
+    const profs      = sess.authz_profiles || [];
+    const authzLabel = profs[0] || "";
+    if (!authLabel && !authzLabel) return '<span class="hint">—</span>';
     return (
       `<div class="ise-sess-combo">` +
-      (auth  ? `<span class="ise-sess-auth">${esc(auth)}</span>` : "") +
-      (authz ? `<span class="ise-sess-authz">${esc(authz)}</span>` : "") +
+      (authLabel  ? `<span class="ise-sess-auth"><span class="ise-sess-prefix">Auth:</span> ${esc(authLabel)}</span>` : "") +
+      (authzLabel ? `<span class="ise-sess-authz"><span class="ise-sess-prefix">Authz:</span> ${esc(authzLabel)}</span>` : "") +
       `</div>`
     );
   }

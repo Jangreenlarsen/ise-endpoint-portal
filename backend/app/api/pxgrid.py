@@ -51,6 +51,7 @@ async def list_sessions() -> PxGridSessionsResponse:
                 user_name=s.user_name,
                 policy_set_name=s.policy_set_name,
                 authz_profiles=s.authz_profiles,
+                use_case=s.use_case,
                 last_event_at=s.last_event_at,
             )
             for s in items
@@ -173,6 +174,7 @@ async def get_session(mac: str) -> PxGridSessionInfoResponse:
         user_name=info.user_name,
         policy_set_name=info.policy_set_name,
         authz_profiles=info.authz_profiles,
+        use_case=info.use_case,
         last_event_at=info.last_event_at,
     )
 

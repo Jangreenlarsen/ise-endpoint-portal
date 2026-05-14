@@ -206,6 +206,7 @@ class PxGridSessionInfoResponse(BaseModel):
     user_name: str = ""
     policy_set_name: str = ""
     authz_profiles: list[str] = Field(default_factory=list)
+    use_case: str = ""
     last_event_at: float = 0.0
 
 

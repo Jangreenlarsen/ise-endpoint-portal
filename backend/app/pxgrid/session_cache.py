@@ -34,6 +34,7 @@ class SessionInfo:
     user_name: str = ""
     policy_set_name: str = ""
     authz_profiles: list[str] = field(default_factory=list)
+    use_case: str = ""
     last_event_at: float = field(default_factory=time.time)
     raw: dict[str, Any] = field(default_factory=dict)
 
@@ -99,6 +100,7 @@ class SessionCache:
             "audit_session_id": info.audit_session_id,
             "policy_set_name": info.policy_set_name,
             "authz_profiles": info.authz_profiles,
+            "use_case": info.use_case,
             "ts": info.last_event_at,
         })
 

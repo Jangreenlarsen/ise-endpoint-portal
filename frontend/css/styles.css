@@ -766,6 +766,7 @@ td.ise-session-col {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.ise-sess-prefix { font-weight: 400; opacity: 0.6; margin-right: 0.2em; }
 [data-theme="dark"] .ise-sess-auth  { color: #93c5fd; }
 [data-theme="dark"] .ise-sess-authz { color: #94a3b8; }
 
