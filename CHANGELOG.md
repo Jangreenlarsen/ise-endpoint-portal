@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.1.0 build 0263] — 2026-05-14 — fix: authz-profile list bruger Open API som primær kilde
+
+**Berørte filer**: `backend/app/ise/authz_profiles.py`, `version.json`
+
+`list_all()` forsøger nu Open API `/api/v1/policy/network-access/authorization-profiles` før ERS-pagineringen. ISE 3.4 returnerede transport-fejl (TCP RST) på ERS-list-endpointet, mens Open API fungerer. ERS bruges stadig som fallback. Løser "502: ISE API 0: transport error:" i "Hent alle profiler fra ISE".
+
+---
+
 ## [5.1.0 build 0262] — 2026-05-14 — feat: ISE Authorization Profile Manager
 
 **Berørte filer**: `backend/app/ise/authz_profiles.py` (ny), `backend/app/schemas/authz_profile.py` (ny), `backend/app/services/authz_profile_service.py` (ny), `backend/app/api/authz_profiles.py` (ny), `backend/app/api/deps.py`, `backend/app/main.py`, `frontend/js/api.js`, `frontend/js/i18n.js`, `frontend/js/views/settings/section-authz-profiles.js` (ny), `frontend/js/views/settings.js`, `frontend/css/styles.css`, `version.json`, `FEATURES.md`
