@@ -52,6 +52,13 @@ class CertBundle:
 def _resolve(path_str: str) -> Path | None:
     if not path_str:
         return None
+    # Windows absolute path (e.g. "C:\...\pxgrid\file.pem") stored in settings and
+    # later read on Linux: Path("C:\\...").is_absolute() == False on Linux, so the
+    # naive join produces BACKEND_ROOT/"C:\..." which never exists. Detect the
+    # drive-letter pattern and use only the filename against the pxgrid store.
+    import re as _re
+    if _re.match(r'^[A-Za-z]:[/\\]', path_str):
+        return BACKEND_ROOT / "pxgrid" / Path(path_str.replace("\\", "/")).name
     p = Path(path_str)
     if not p.is_absolute():
         p = BACKEND_ROOT / p

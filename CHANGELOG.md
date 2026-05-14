@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.2.1 build 0275] — 2026-05-14 — fix: pxGrid aldrig forbundet — Windows cert-sti brugt på Linux
+
+**Berørte filer**: `backend/app/pxgrid/cert_manager.py`, `BUGS.md`, `version.json`
+
+`_resolve()` detekterer nu Windows drive-letter-mønster (`C:\` / `C:/`) i gemt cert-sti og extracter kun filnavnet mod `BACKEND_ROOT/pxgrid/`. Uden fix: `Path("C:\\...").is_absolute() == False` på Linux → sti joinedes til `BACKEND_ROOT/"C:\..."` → cert aldrig fundet → pxGrid fejlede permanent → stale portal.
+
 ## [5.2.1 build 0274] — 2026-05-14 — fix: Endpoint_VLAN tilføj Tunnel-Type/Medium-Type med tagged værdier
 
 **Berørte filer**: `backend/app/services/authz_profile_service.py`, `version.json`
