@@ -3,6 +3,10 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.4 build 0291] — 2026-05-14 — version bump 5.3.3 → 5.3.4
+
+**Berørte filer**: `version.json`, `CHANGELOG.md`
+
 ## [5.3.3 build 0290] — 2026-05-14 — fix: ISE Session kolonne tom — MnT-seed ekstraherer nu policy_set_name + authz_profiles
 
 **Berørte filer**: `backend/app/pxgrid/session_worker.py`, `version.json`
