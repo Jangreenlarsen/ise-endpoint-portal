@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.4 build 0292] — 2026-05-14 — feat: pxGrid getSessions som primær reconcile-kilde — ISE Session kolonne får nu policy + authz data
+
+**Berørte filer**: `backend/app/pxgrid/client.py`, `backend/app/pxgrid/session_worker.py`, `version.json`
+
+`_reconcile_cache_with_mnt` kalder nu `PxGridClient.get_sessions()` (pxGrid REST API `{restBaseUrl}/getSessions`) som primær kilde ved reconnect. pxGrid REST returnerer fuld session-payload inkl. `policySetName` og `selectedAznProfiles` — præcis de felter ISE Session-kolonnen viser. MnT ActiveList bruges kun som fallback hvis getSessions fejler. Tilføjet `_reconcile_from_pxgrid()` der evicterer stale entries, seeder manglende sessioner og opdaterer eksisterende entries der mangler policy-data.
+
 ## [5.3.4 build 0291] — 2026-05-14 — version bump 5.3.3 → 5.3.4
 
 **Berørte filer**: `version.json`, `CHANGELOG.md`

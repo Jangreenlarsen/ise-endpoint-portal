@@ -303,7 +303,7 @@ class PxGridSessionWorker:
             # Reconcilér session-cache mod MnT ActiveList efter reconnect så
             # disconnect-events misset under offline-vinduet ikke efterlader
             # stale grønne rækker i Browse. Best-effort: fejl blokerer ikke.
-            await _reconcile_cache_with_mnt(cache)
+            await _reconcile_cache_with_mnt(cache, client=client)
 
             while not self._stop_event.is_set():
                 try:
@@ -471,21 +471,93 @@ def _build_session_info(d: dict[str, Any]) -> SessionInfo:
     )
 
 
-async def _reconcile_cache_with_mnt(cache) -> None:  # type: ignore[no-untyped-def]
-    """Synkroniser pxGrid session-cache med MnT ActiveList ved reconnect.
+async def _reconcile_cache_with_mnt(cache, client: PxGridClient | None = None) -> None:  # type: ignore[no-untyped-def]
+    """Synkroniser pxGrid session-cache ved reconnect.
 
-    ISE sender ikke et replay af eksisterende sessioner ved pxGrid-subscribe
-    — kun fremtidige state-ændringer leveres som events. Uden denne funktion
-    ville cachen starte tom og forblive tom indtil en session skifter state.
-
-    To operationer:
-    1. Evict: fjern cache-entries der ikke er i MnT (disconnectede under offline-vinduet).
-    2. Seed: tilføj MnT-sessioner der ikke allerede er i cachen (pre-existing sessions
-       ISE ikke har replayed). pxGrid-events opdaterer dem med policy_set_name /
-       authz_profiles når de næste gang skifter state.
+    Forsøger pxGrid REST getSessions (rig data: policySetName + selectedAznProfiles)
+    som primær kilde. Falder tilbage til MnT ActiveList hvis getSessions fejler.
 
     Best-effort: enhver fejl logges og ignoreres så normal drift fortsætter.
     """
+    # Primary: pxGrid REST getSessions — returnerer fuld session-payload med policy-data.
+    if client is not None:
+        try:
+            pxgrid_sessions = await client.get_sessions()
+            if pxgrid_sessions:
+                await _reconcile_from_pxgrid(cache, pxgrid_sessions)
+                return
+            logger.debug("pxgrid reconcile: getSessions returnerede 0 sessioner, prøver MnT")
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("pxgrid reconcile: getSessions fejlede, falder tilbage til MnT: %s", exc)
+
+    # Fallback: MnT ActiveList (lavere data-fidelitet — mangler typisk policy-felter).
+    await _reconcile_from_mnt(cache)
+
+
+async def _reconcile_from_pxgrid(cache, sessions: list[dict]) -> None:
+    """Reconcile cache mod pxGrid getSessions-data (fuld payload)."""
+    try:
+        # Byg map: normaliseret MAC → session-dict.
+        pg_by_mac: dict[str, dict] = {}
+        for sess in sessions:
+            mac_raw = (
+                sess.get("callingStationId")
+                or sess.get("macAddress")
+                or sess.get("mac")
+                or ""
+            )
+            if not mac_raw:
+                continue
+            mac = str(mac_raw).upper().replace("-", ":").strip()
+            if len(mac) == 17 and mac.count(":") == 5:
+                pg_by_mac[mac] = sess
+        pg_macs = set(pg_by_mac.keys())
+
+        cached = await cache.list()
+        cached_macs = {entry.mac for entry in cached}
+
+        # 1. Evict stale cache-entries.
+        evicted = 0
+        for entry in cached:
+            if entry.mac not in pg_macs:
+                await cache.remove(entry.mac)
+                evicted += 1
+
+        # 2. Seed manglende sessioner med fuld policy-data.
+        seeded = 0
+        updated = 0
+        for mac, sess in pg_by_mac.items():
+            info = _build_session_info(sess)
+            info_with_mac = SessionInfo(
+                mac=mac,
+                state=info.state or "STARTED",
+                audit_session_id=info.audit_session_id,
+                nas_ip=info.nas_ip,
+                user_name=info.user_name,
+                policy_set_name=info.policy_set_name,
+                authz_profiles=info.authz_profiles,
+                raw=info.raw,
+            )
+            if mac not in cached_macs:
+                await cache.upsert(info_with_mac)
+                seeded += 1
+            else:
+                # Opdatér eksisterende entry med policy-data hvis det mangler.
+                existing = next((e for e in cached if e.mac == mac), None)
+                if existing and not existing.policy_set_name and info_with_mac.policy_set_name:
+                    await cache.upsert(info_with_mac)
+                    updated += 1
+
+        logger.info(
+            "pxgrid reconcile (getSessions): evicted=%d seeded=%d updated=%d",
+            evicted, seeded, updated,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("pxgrid reconcile (getSessions): uventet fejl: %s", exc)
+
+
+async def _reconcile_from_mnt(cache) -> None:  # type: ignore[no-untyped-def]
+    """Fallback reconcile via MnT ActiveList (lavere data-fidelitet)."""
     try:
         from app.ise.mnt_sessions import fetch_active_sessions
     except ImportError:
@@ -496,10 +568,8 @@ async def _reconcile_cache_with_mnt(cache) -> None:  # type: ignore[no-untyped-d
         logger.debug("pxgrid reconcile: MnT ActiveList fejlede: %s", exc)
         return
     try:
-        # Log feltnavne fra første session så vi kan se hvad MnT leverer (debug-hjælp).
         if sessions:
             logger.debug("pxgrid reconcile: MnT session-felter: %s", sorted(sessions[0].keys()))
-        # Byg map: normaliseret MAC → rå session-dict fra MnT.
         mnt_by_mac: dict[str, dict] = {}
         for sess in sessions:
             mac_raw = (
@@ -514,7 +584,6 @@ async def _reconcile_cache_with_mnt(cache) -> None:  # type: ignore[no-untyped-d
                 mnt_by_mac[mac] = sess
         mnt_macs = set(mnt_by_mac.keys())
 
-        # 1. Evict: cache-entries der ikke er i MnT er disconnectede.
         cached = await cache.list()
         cached_macs = {entry.mac for entry in cached}
         evicted = 0
@@ -523,12 +592,10 @@ async def _reconcile_cache_with_mnt(cache) -> None:  # type: ignore[no-untyped-d
                 await cache.remove(entry.mac)
                 evicted += 1
 
-        # 2. Seed: MnT-sessioner der mangler i cachen (ikke set af pxGrid endnu).
         seeded = 0
         for mac, sess in mnt_by_mac.items():
             if mac in cached_macs:
-                continue  # allerede i cache — bevar pxGrid-data
-            # Forsøg at udtrække policy_set_name fra MnT (feltnavn varierer pr. ISE-version).
+                continue
             policy_set_name = str(
                 sess.get("isepolicysetname", "")
                 or sess.get("ise-policy-set-name", "")
@@ -536,7 +603,6 @@ async def _reconcile_cache_with_mnt(cache) -> None:  # type: ignore[no-untyped-d
                 or sess.get("policyset", "")
                 or ""
             )
-            # authz_profiles: MnT returnerer dem typisk som komma-separeret streng.
             authz_raw = str(
                 sess.get("selectedazprofiles", "")
                 or sess.get("selectedaznprofiles", "")
@@ -560,11 +626,11 @@ async def _reconcile_cache_with_mnt(cache) -> None:  # type: ignore[no-untyped-d
 
         if evicted or seeded:
             logger.info(
-                "pxgrid reconcile: fjernede %d stale, seedede %d MnT-sessioner",
+                "pxgrid reconcile (MnT): fjernede %d stale, seedede %d sessioner",
                 evicted, seeded,
             )
     except Exception as exc:  # noqa: BLE001
-        logger.debug("pxgrid reconcile: uventet fejl: %s", exc)
+        logger.debug("pxgrid reconcile (MnT): uventet fejl: %s", exc)
 
 
 _worker: PxGridSessionWorker | None = None

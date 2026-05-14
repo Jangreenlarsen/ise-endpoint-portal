@@ -268,6 +268,46 @@ class PxGridClient:
             )
         return secret
 
+    async def get_sessions(self) -> list[dict[str, Any]]:
+        """Hent alle aktive RADIUS-sessioner via pxGrid session-service REST API.
+
+        Bruger ServiceLookup til at finde restBaseUrl for com.cisco.ise.session,
+        henter et AccessSecret og POSTer til /getSessions. Returnerer den fulde
+        session-payload inkl. policySetName og selectedAznProfiles — data som
+        STOMP-events kun leverer ved fremtidige state-ændringer.
+        """
+        nodes = await self.service_lookup("com.cisco.ise.session")
+        node = nodes[0]
+        rest_url = (node.rest_base_url or "").rstrip("/")
+        if not rest_url:
+            raise PxGridError(
+                f"Session-service node '{node.node_name}' har ingen restBaseUrl — "
+                "tjek at com.cisco.ise.session er aktiveret i ISE"
+            )
+        secret = await self.access_secret_create(node.node_name)
+        s = self._settings
+        bundle = self._bundle()
+        try:
+            async with httpx.AsyncClient(
+                cert=bundle.httpx_cert(),
+                verify=bundle.httpx_verify(),
+                timeout=self.timeout,
+                auth=httpx.BasicAuth(s.pxgrid_node_name, secret),
+                headers={"Content-Type": "application/json", "Accept": "application/json"},
+            ) as http:
+                resp = await http.post(f"{rest_url}/getSessions", json={})
+        except httpx.HTTPError as exc:
+            raise PxGridError(f"getSessions transport error: {exc}") from exc
+        if resp.status_code >= 400:
+            raise PxGridError(
+                f"getSessions returnerede {resp.status_code}: {resp.text[:300]}"
+            )
+        data: dict[str, Any] = resp.json() if resp.text.strip() else {}
+        sessions = data.get("sessions") or []
+        if not isinstance(sessions, list):
+            sessions = []
+        return sessions
+
     # ── High-level helpers ─────────────────────────────────────────
 
     async def connectivity_test(self) -> dict[str, Any]:
