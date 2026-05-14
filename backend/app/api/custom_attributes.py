@@ -1,4 +1,8 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
+
+logger = logging.getLogger(__name__)
 
 from app.api.deps import (
     get_custom_attribute_service,
@@ -114,16 +118,19 @@ async def set_platform_mapping(
 async def get_nas_devices_by_platform() -> dict:
     """Return ISE network devices grouped by raw platform type.
 
-    Uses the in-memory network device cache (populated from ERS on pxGrid
-    worker connect). Each key is a raw platform type (airos, iosxe, …);
-    value is a list of {name, ip, device_type_path} for matching devices.
+    Triggers background cache load if not already running. Returns
+    {devices: {raw: [{name,ip,device_type_path}]}, loaded: bool, loading: bool}
+    so the frontend can show a loading state while the cache warms up.
     """
+    import app.ise.network_devices as _nd
     from app.core.platform_types import normalize as _normalize
-    from app.ise.network_devices import _by_ip
+
+    # Trigger load if not started yet — safe to call from any async context.
+    _nd.ensure_loaded()
 
     grouped: dict[str, list[dict]] = {}
     seen: set[tuple] = set()
-    for ip, dev in _by_ip.items():
+    for ip, dev in _nd._by_ip.items():
         norm = _normalize(dev.device_type) if dev.device_type else None
         if not norm:
             continue
@@ -136,4 +143,13 @@ async def get_nas_devices_by_platform() -> dict:
             "ip": ip,
             "device_type_path": dev.device_type_path,
         })
-    return grouped
+
+    logger.info(
+        "nas-devices: cache loaded=%s loading=%s devices_in_cache=%d groups=%s",
+        _nd._all_loaded, _nd._loading, len(_nd._by_ip), list(grouped.keys()),
+    )
+    return {
+        "devices": grouped,
+        "loaded": _nd._all_loaded,
+        "loading": _nd._loading,
+    }

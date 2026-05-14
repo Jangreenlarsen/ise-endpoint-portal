@@ -40,7 +40,7 @@ export async function renderAttributes(container) {
   const sections = container.querySelector("#attr-sections");
   const attrMsg = container.querySelector("#attr-msg");
 
-  function renderMappingEditor(localValues, mapping, nasDevices = {}) {
+  function renderMappingEditor(localValues, mapping, nasDevices = {}, nasLoaded = false, nasLoading = false) {
     const localOptions = (selected) => {
       const opts = [`<option value="">${t("attr.mapping_none")}</option>`];
       for (const v of localValues) {
@@ -55,15 +55,20 @@ export async function renderAttributes(container) {
         return `<option value="${o.value}"${sel}>${o.label}</option>`;
       }).join("");
     const nasCell = (raw) => {
+      if (nasLoading && !nasLoaded) return `<span class="hint" style="font-size:0.8em;">${t("attr.nas_loading")}</span>`;
       const devs = nasDevices[raw] || [];
       if (!devs.length) return `<span class="hint" style="font-size:0.8em;">—</span>`;
       return devs.map(d =>
         `<span class="nas-device-tag" title="${esc(d.device_type_path || d.ip)}">${esc(d.name || d.ip)}</span>`
       ).join(" ");
     };
+    const nasHeader = nasLoaded
+      ? t("attr.mapping_col_nas")
+      : nasLoading
+        ? `${t("attr.mapping_col_nas")} <span class="hint" style="font-size:0.8em;">(${t("attr.nas_loading")})</span>`
+        : `${t("attr.mapping_col_nas")} <span class="hint" style="font-size:0.8em;">(${t("attr.nas_not_loaded")})</span>`;
     const rows = mapping.mappings.map((m) => `
       <tr data-raw="${esc(m.raw)}">
-        <td><code>${esc(m.raw)}</code></td>
         <td>
           <select class="map-local" data-raw="${esc(m.raw)}">
             ${localOptions(m.local)}
@@ -83,10 +88,9 @@ export async function renderAttributes(container) {
         <table class="platform-mapping-table" style="width:100%;border-collapse:collapse;">
           <thead>
             <tr>
-              <th style="text-align:left;padding:0.3rem;">${t("attr.mapping_col_raw")}</th>
               <th style="text-align:left;padding:0.3rem;">${t("attr.mapping_col_local")}</th>
               <th style="text-align:left;padding:0.3rem;">${t("attr.mapping_col_coa")}</th>
-              <th style="text-align:left;padding:0.3rem;">${t("attr.mapping_col_nas")}</th>
+              <th style="text-align:left;padding:0.3rem;">${nasHeader}</th>
             </tr>
           </thead>
           <tbody>${rows}</tbody>
@@ -101,11 +105,14 @@ export async function renderAttributes(container) {
   async function render() {
     attrMsg.innerHTML = "";
     try {
-      const [data, mapping, nasDevices] = await Promise.all([
+      const [data, mapping, nasResp] = await Promise.all([
         api.listCustomAttributes(),
         api.getPlatformMapping().catch(() => ({ mappings: [] })),
-        api.getNasDevicesByPlatform().catch(() => ({})),
+        api.getNasDevicesByPlatform().catch(() => ({ devices: {}, loaded: false, loading: false })),
       ]);
+      const nasDevices = nasResp.devices || {};
+      const nasLoaded = nasResp.loaded;
+      const nasLoading = nasResp.loading;
       const attrMap = {};
       for (const a of data.attributes) attrMap[a.name] = a.values;
       const ATTR_LABELS = getAttrLabels();
@@ -137,7 +144,7 @@ export async function renderAttributes(container) {
               <span class="hint">${t("attr.sync_hint")}</span>
               <div class="platform-sync-result" style="flex-basis:100%;"></div>
             </div>
-            ${renderMappingEditor(values, mapping, nasDevices)}`;
+            ${renderMappingEditor(values, mapping, nasDevices, nasLoaded, nasLoading)}`;
         }
         return `
           <div class="card" style="margin-bottom:0.75rem;" data-attr-card="${esc(name)}">
