@@ -2550,9 +2550,8 @@ body.register-route .login-card {
 .pol-rule-profiles { display: flex; flex-wrap: wrap; gap: 0.15rem; align-items: center; }
 .pol-profiles-arrow { font-size: 0.85rem; color: #3b82f6; margin-right: 0.08rem; font-weight: 700; }
 
-/* Rule action buttons */
-.pol-rule-actions { flex-shrink: 0; display: flex; gap: 0.2rem; align-items: center; padding-top: 2px; }
-.pol-btn-edit, .pol-btn-del { font-size: 0.78rem; padding: 0.18rem 0.38rem; }
+/* Detail panel action buttons (Rediger / Slet) — kun i detail-kortet */
+.pol-btn-edit, .pol-btn-del { font-size: 0.82rem; }
 
 /* Editor card (right panel) */
 .pol-editor-card { border: 1px solid var(--border); border-radius: 8px; padding: 1rem; }

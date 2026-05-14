@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.2.0 build 0268] — 2026-05-14 — fix: klik på regelkort viser nu detail-view, ikke editor
+
+**Berørte filer**: `frontend/js/views/policy.js`, `frontend/css/styles.css`, `version.json`
+
+Edit/slet-knapper fjernet fra regelkortene — kortene er nu kun klik-til-detail. Al redigering sker via "Rediger"-knappen i detail-panelet til højre. `wireRuleCards` simplificeret til ét click-listener på hele kortet.
+
+---
+
 ## [5.2.0 build 0267] — 2026-05-14 — refactor: detail-panel delt i betingelser (venstre) og authz profiles (højre)
 
 **Berørte filer**: `frontend/js/views/policy.js`, `frontend/css/styles.css`, `version.json`

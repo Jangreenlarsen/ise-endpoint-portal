@@ -151,7 +151,7 @@ export async function renderPolicy(container) {
   }
 
   // ── Rule card HTML ───────────────────────────────────────────────────────────
-  function renderRuleCard(r, editor) {
+  function renderRuleCard(r) {
     const chips    = renderConditionChips(r.condition);
     const profiles = (r.profiles || []).map((p) =>
       `<span class="profile-chip">${esc(p)}</span>`
@@ -170,11 +170,6 @@ export async function renderPolicy(container) {
           <div class="pol-rule-chips">${chips}</div>
           ${profiles ? `<div class="pol-rule-profiles"><span class="pol-profiles-arrow">→</span>${profiles}</div>` : ""}
         </div>
-        ${editor ? `
-        <div class="pol-rule-actions">
-          <button class="pol-btn-edit secondary small" data-id="${esc(r.id)}" title="${t("pol.btn_edit")}">✏</button>
-          <button class="pol-btn-del  danger  small" data-id="${esc(r.id)}" title="${t("pol.btn_delete")}">🗑</button>
-        </div>` : ""}
       </div>`;
   }
 
@@ -184,34 +179,10 @@ export async function renderPolicy(container) {
       const rule = rules.find((r) => r.id === id);
       if (!rule) return;
 
-      card.querySelector(".pol-rule-body")?.addEventListener("click", () => {
+      card.addEventListener("click", () => {
         if (selectedRuleId === id) { clearDetail(); return; }
         showRuleDetail(rule, setId);
       });
-      card.querySelector(".pol-rule-rank")?.addEventListener("click", () => {
-        if (selectedRuleId === id) { clearDetail(); return; }
-        showRuleDetail(rule, setId);
-      });
-
-      if (isEditor) {
-        card.querySelector(".pol-btn-edit")?.addEventListener("click", (e) => {
-          e.stopPropagation();
-          showRuleEditor(rule, setId);
-        });
-        card.querySelector(".pol-btn-del")?.addEventListener("click", async (e) => {
-          e.stopPropagation();
-          if (!confirm(t("pol.del_confirm").replace("{name}", rule.name))) return;
-          try {
-            await api.deletePolicyRule(setId, rule.id);
-            rulesMsg.innerHTML = `<div class="alert success">${t("pol.del_ok")}</div>`;
-            selectedRuleId = null;
-            await loadRules(setId);
-            clearDetail();
-          } catch (err) {
-            rulesMsg.innerHTML = `<div class="alert error">${t("pol.del_err").replace("{msg}", esc(err.message))}</div>`;
-          }
-        });
-      }
     });
   }
 
