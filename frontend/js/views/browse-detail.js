@@ -4,6 +4,11 @@
 import { auth } from "../auth.js";
 import { t } from "../i18n.js";
 import { esc, fmtDateTime, optionsHtml } from "./browse-utils.js";
+
+function loadFrontendPrefs() {
+  try { return JSON.parse(localStorage.getItem("ise_portal_prefs") || "{}"); }
+  catch { return {}; }
+}
 import {
   condRowHtml, readCondRows, wireCondRowEvents, buildCondition,
   profilesHtml, readProfiles, wireProfileEvents,
@@ -83,11 +88,16 @@ export function initDetail(container, state, api, cb) {
       detailMsg.innerHTML = "";
 
       const ancSection = container.querySelector("#d-anc-section");
-      if (auth.isEditor()) {
+      const hideAnc = loadFrontendPrefs().hideAnc === true;
+      if (!hideAnc && auth.isEditor()) {
         ancSection.classList.remove("hidden");
         loadAncStatus(id);
       } else {
         ancSection.classList.add("hidden");
+      }
+
+      if (auth.isEditor() || auth.getUser()?.role === "viewer") {
+        if (matchArea.innerHTML === "") loadPolicyMatchUI();
       }
     } catch (err) {
       const httpStatus = parseInt(err.message?.split(":")[0], 10) || 0;
@@ -110,13 +120,13 @@ export function initDetail(container, state, api, cb) {
     detailOverlay.classList.add("hidden");
     state.detailCurrentId = null;
     detailMsg.innerHTML   = "";
-    // Reset policy section
+    // Reset policy section — keep visible, clear content so next open reloads fresh
     const mb = detailOverlay.querySelector("#d-policy-body");
     const mt = detailOverlay.querySelector("#d-policy-toggle");
     const ma = detailOverlay.querySelector("#d-policy-match-area");
     const wa = detailOverlay.querySelector("#d-policy-wizard-area");
-    if (mb) mb.classList.add("hidden");
-    if (mt) mt.textContent = "▶ Vis";
+    if (mb) mb.classList.remove("hidden");
+    if (mt) mt.textContent = t("detail.policy_hide");
     if (ma) ma.innerHTML = "";
     if (wa) wa.innerHTML = "";
   }
@@ -221,27 +231,27 @@ export function initDetail(container, state, api, cb) {
   // Show/hide the policy accordion
   policyToggle?.addEventListener("click", () => {
     const collapsed = policyBody.classList.toggle("hidden");
-    policyToggle.textContent = collapsed ? "▶ Vis" : "▼ Skjul";
+    policyToggle.textContent = collapsed ? t("detail.policy_show") : t("detail.policy_hide");
     if (!collapsed && matchArea.innerHTML === "") loadPolicyMatchUI();
   });
 
   async function loadPolicyMatchUI() {
-    matchArea.innerHTML = `<div class="alert info">Henter policy sets…</div>`;
+    matchArea.innerHTML = `<div class="alert info">${t("detail.policy_loading")}</div>`;
     try {
       const res = await api.listPolicySets();
       const sets = res?.policy_sets || [];
       if (!sets.length) {
-        matchArea.innerHTML = `<div class="hint">Ingen policy sets fundet i ISE.</div>`;
+        matchArea.innerHTML = `<div class="hint">${t("detail.policy_none")}</div>`;
         return;
       }
       const opts = sets.map((s) => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join("");
       matchArea.innerHTML = `
         <div class="policy-match-bar">
           <select id="d-pol-set-sel">${opts}</select>
-          <button type="button" id="d-pol-match-btn" class="secondary small">Simuler match</button>
+          <button type="button" id="d-pol-match-btn" class="secondary small">${t("detail.policy_simulate")}</button>
         </div>
         <div id="d-pol-match-result"></div>
-        ${auth.isEditor() ? `<button type="button" id="d-pol-wizard-btn" class="secondary small" style="margin-top:.5rem">+ Opret regel baseret på dette endpoint</button>` : ""}
+        ${auth.isEditor() ? `<button type="button" id="d-pol-wizard-btn" class="secondary small" style="margin-top:.5rem">${t("detail.policy_create_rule")}</button>` : ""}
       `;
 
       matchArea.querySelector("#d-pol-match-btn").addEventListener("click", async () => {
@@ -284,9 +294,9 @@ export function initDetail(container, state, api, cb) {
   }
 
   function renderMatchResult(r) {
-    if (r.no_rules) return `<div class="hint">Ingen regler i dette policy set.</div>`;
+    if (r.no_rules) return `<div class="hint">${t("detail.policy_no_rules")}</div>`;
     if (!r.matched_rule_id) {
-      return `<div class="alert warning">Ingen regel matchede — endpoint ville ramme Default/Deny.</div>`;
+      return `<div class="alert warning">${t("detail.policy_no_match")}</div>`;
     }
     const profiles = (r.profiles || []).map((p) => `<span class="profile-chip">${esc(p)}</span>`).join(" ");
     const skipped  = r.condition_details?.filter((c) => c.skipped);
@@ -297,12 +307,15 @@ export function initDetail(container, state, api, cb) {
       </div>`
     ).join("") || "";
     const skippedNote = skipped?.length
-      ? `<div class="hint" style="margin-top:.25rem">⚠ ${skipped.length} betingelse(r) ikke evalueret (RADIUS/reference-attributter kræver live session).</div>`
+      ? `<div class="hint" style="margin-top:.25rem">${t("detail.policy_skipped").replace("{n}", skipped.length)}</div>`
       : "";
+    const matchedLine = t("detail.policy_matched")
+      .replace("{name}", esc(r.matched_rule_name))
+      .replace("{rank}", r.matched_rule_rank);
     return `
       <div class="match-result-card match-hit">
-        <div class="match-rule-name">✓ Matcher regel: <strong>${esc(r.matched_rule_name)}</strong> (rank ${r.matched_rule_rank})</div>
-        <div class="match-profiles">Profiler: ${profiles}</div>
+        <div class="match-rule-name"><strong>${matchedLine}</strong></div>
+        <div class="match-profiles">${t("detail.policy_profiles")} ${profiles}</div>
         ${detailRows}
         ${skippedNote}
       </div>`;
@@ -350,40 +363,41 @@ export function initDetail(container, state, api, cb) {
     if (authzAcl)  initProfiles.push("Endpoint_DACL");
     if (pskActive) initProfiles.push("Endpoint_PSK-KEY");
 
+    const defaultRuleName = t("detail.wiz_default_name").replace("{mac}", mac.replace(/:/g, "-"));
     wizardArea.innerHTML = `
       <div class="policy-wizard-card">
         <div class="wizard-header">
-          <strong>Ny regel i: ${esc(setName)}</strong>
+          <strong>${t("detail.wiz_title").replace("{set}", esc(setName))}</strong>
           <button type="button" id="d-pol-wizard-close" class="secondary small">✕</button>
         </div>
         <div id="d-pol-wizard-msg"></div>
-        <p class="hint">Betingelserne er preudfyldt fra ${esc(mac)}. Tilret og gem.</p>
+        <p class="hint">${t("detail.wiz_hint").replace("{mac}", esc(mac))}</p>
 
-        <label>Regelnavn
-          <input type="text" id="wiz-name" value="${esc("Regel for " + mac.replace(/:/g, "-"))}" />
+        <label>${t("detail.wiz_name_label")}
+          <input type="text" id="wiz-name" value="${esc(defaultRuleName)}" />
         </label>
-        <label>Rank
+        <label>${t("detail.wiz_rank_label")}
           <input type="number" id="wiz-rank" value="0" min="0" />
         </label>
-        <label>Logik
+        <label>${t("detail.wiz_logic_label")}
           <select id="wiz-block-type">
-            <option value="AND">Alle betingelser matcher (AND)</option>
-            <option value="OR">Mindst én betingelse matcher (OR)</option>
+            <option value="AND">${t("detail.wiz_logic_and")}</option>
+            <option value="OR">${t("detail.wiz_logic_or")}</option>
           </select>
         </label>
 
-        <div class="editor-section-label">Betingelser</div>
+        <div class="editor-section-label">${t("detail.wiz_conds_label")}</div>
         <div id="wiz-cond-rows">
           ${initConds.map((c, i) => condRowHtml(i, c, wizCaValues)).join("")}
         </div>
-        <button type="button" id="wiz-add-cond" class="secondary small">+ Tilføj betingelse</button>
+        <button type="button" id="wiz-add-cond" class="secondary small">${t("detail.wiz_add_cond")}</button>
 
-        <div class="editor-section-label">Autoriseringsprofiler</div>
+        <div class="editor-section-label">${t("detail.wiz_profiles_label")}</div>
         <div id="wiz-profiles-wrap">${profilesHtml(initProfiles)}</div>
 
         <div class="detail-actions">
-          <button type="button" id="wiz-save-btn">Opret regel i ISE</button>
-          <button type="button" id="wiz-cancel-btn" class="secondary">Annullér</button>
+          <button type="button" id="wiz-save-btn">${t("detail.wiz_save_btn")}</button>
+          <button type="button" id="wiz-cancel-btn" class="secondary">${t("btn.cancel")}</button>
         </div>
       </div>`;
 
@@ -410,19 +424,19 @@ export function initDetail(container, state, api, cb) {
       const cond  = buildCondition(rows, bt);
       const profs = readProfiles(profilesWrap);
 
-      if (!name) { msgEl.innerHTML = `<div class="alert error">Angiv et regelnavn.</div>`; return; }
-      if (!cond) { msgEl.innerHTML = `<div class="alert error">Tilføj mindst én betingelse.</div>`; return; }
-      if (!profs.length) { msgEl.innerHTML = `<div class="alert error">Tilføj mindst én profil.</div>`; return; }
+      if (!name) { msgEl.innerHTML = `<div class="alert error">${t("detail.wiz_err_name")}</div>`; return; }
+      if (!cond) { msgEl.innerHTML = `<div class="alert error">${t("detail.wiz_err_cond")}</div>`; return; }
+      if (!profs.length) { msgEl.innerHTML = `<div class="alert error">${t("detail.wiz_err_profile")}</div>`; return; }
 
-      msgEl.innerHTML = `<div class="alert info">Opretter regel i ISE…</div>`;
+      msgEl.innerHTML = `<div class="alert info">${t("detail.wiz_saving")}</div>`;
       const btn = wizardArea.querySelector("#wiz-save-btn");
       btn.disabled = true;
       try {
         await api.createPolicyRule(setId, { policy_set_id: setId, name, rank, state: "enabled", condition: cond, profiles: profs });
-        msgEl.innerHTML = `<div class="alert success">Regel '${esc(name)}' oprettet i ISE!</div>`;
+        msgEl.innerHTML = `<div class="alert success">${t("detail.wiz_saved").replace("{name}", esc(name))}</div>`;
         setTimeout(() => { wizardArea.innerHTML = ""; }, 2000);
       } catch (err) {
-        msgEl.innerHTML = `<div class="alert error">Fejl: ${esc(err.message)}</div>`;
+        msgEl.innerHTML = `<div class="alert error">${t("alert.error")}: ${esc(err.message)}</div>`;
       } finally { btn.disabled = false; }
     });
   }

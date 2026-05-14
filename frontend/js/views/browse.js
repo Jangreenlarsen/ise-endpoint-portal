@@ -176,9 +176,9 @@ export async function renderBrowse(container) {
         <div id="d-policy-section" class="hidden policy-section">
           <div class="policy-section-header">
             <span class="policy-section-label">RADIUS Policy</span>
-            <button id="d-policy-toggle" class="secondary small">▶ Vis</button>
+            <button id="d-policy-toggle" class="secondary small">${t("detail.policy_hide")}</button>
           </div>
-          <div id="d-policy-body" class="hidden">
+          <div id="d-policy-body">
             <div id="d-policy-match-area"></div>
             <div id="d-policy-wizard-area"></div>
           </div>

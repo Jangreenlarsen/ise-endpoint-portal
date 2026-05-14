@@ -3,6 +3,17 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.0.4 build 0260] — 2026-05-14 — feat: ANC hide-pref + RADIUS policy synlig som standard + i18n-fix
+
+**Berørte filer**: `frontend/js/i18n.js`, `frontend/js/views/browse.js`, `frontend/js/views/browse-detail.js`, `frontend/js/views/user-prefs.js`, `version.json`
+
+- **Præferencer**: ny `hideAnc`-checkbox i bruger-præferencer (Præferencer-siden) — skjuler ANC/Quarantine-sektionen i endpoint-editor når aktiveret.
+- **RADIUS policy**: sektionen er nu synlig som standard (ikke sammenfoldet) — policy sets hentes automatisk når endpoint åbnes.
+- **i18n**: alle hardkodede danske tekster i RADIUS policy-sektionen og wizard er erstattet med `t()`-nøgler. Nye nøgler tilføjet til begge locales (`da` + `en`): `detail.policy_*`, `detail.wiz_*`, `prefs.hide_anc`.
+- **Vis/Skjul-knap**: bruger nu `t("detail.policy_show")` / `t("detail.policy_hide")` — vises korrekt på det valgte locale.
+
+---
+
 ## [5.0.4 build 0259] — 2026-05-14 — fix: fjern Network-dictionary fra condition-builder
 
 **Berørte filer**: `frontend/js/views/policy-condition-builder.js`, `version.json`

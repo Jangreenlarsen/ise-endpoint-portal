@@ -92,6 +92,12 @@ export async function renderUserPrefs(container) {
             <option value="en">${t("prefs.lang_en")}</option>
           </select>
         </div>
+        <div class="field">
+          <label class="inline-cb">
+            <input type="checkbox" id="hide-anc" />
+            ${t("prefs.hide_anc")}
+          </label>
+        </div>
         <div class="actions">
           <button type="submit">${t("prefs.submit")}</button>
         </div>
@@ -124,6 +130,7 @@ export async function renderUserPrefs(container) {
   const prefs = loadFrontendPrefs();
   container.querySelector("#page_size").value = prefs.pageSize || 100;
   container.querySelector("#theme").value = prefs.theme || "light";
+  container.querySelector("#hide-anc").checked = prefs.hideAnc === true;
   // Sprogvælger: vis server-præference hvis sat, ellers aktuel locale
   container.querySelector("#language").value = serverLang || "";
 
@@ -134,6 +141,7 @@ export async function renderUserPrefs(container) {
     const newPrefs = {
       pageSize: parseInt(container.querySelector("#page_size").value, 10),
       theme: container.querySelector("#theme").value,
+      hideAnc: container.querySelector("#hide-anc").checked,
     };
     saveFrontendPrefs(newPrefs);
     applyTheme(newPrefs.theme);
