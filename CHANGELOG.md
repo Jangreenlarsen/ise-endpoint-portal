@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.5 build 0297] — 2026-05-14 — fix: ISE Session kolonne viser kun authz-resultater, ingen Auth-linje
+
+**Berørte filer**: `frontend/js/views/browse-table.js`, `version.json`
+
+Fjernet Auth/useCase-linjen — kun authz-profiler (resultater) vises, én per linje uden labels.
+
 ## [5.3.5 build 0296] — 2026-05-14 — version bump 5.3.4 → 5.3.5
 
 **Berørte filer**: `version.json`, `CHANGELOG.md`
