@@ -446,6 +446,7 @@ const TRANSLATIONS = {
     "attr.sync_btn":           "Sync platform fra MnT",
     "attr.sync_overwrite":     "Overskriv eksisterende",
     "attr.sync_hint":          "MnT sender raw-værdier (airos, iosxe, ...) som oversættes til de lokale labels via mapping nedenfor.",
+    "attr.sync_pxgrid_active": "pxGrid er forbundet — platform auto-mappes i realtid. MnT-sync er ikke nødvendig.",
     "attr.sync_loading":       "Henter aktive sessions fra MnT og deriverer platform...",
     "attr.sync_unmapped":      "Ikke-mappede raw-værdier sprunget over: {vals} ({n} endpoints). Tilføj dem i mapping nedenfor og kør igen.",
 
@@ -1403,6 +1404,7 @@ const TRANSLATIONS = {
     "attr.sync_btn":           "Sync platform from MnT",
     "attr.sync_overwrite":     "Overwrite existing",
     "attr.sync_hint":          "MnT sends raw values (airos, iosxe, ...) which are translated to local labels via the mapping below.",
+    "attr.sync_pxgrid_active": "pxGrid is connected — platform is auto-mapped in real time. MnT sync is not needed.",
     "attr.sync_loading":       "Fetching active sessions from MnT and deriving platform...",
     "attr.sync_unmapped":      "Unmapped raw values skipped: {vals} ({n} endpoints). Add them in the mapping below and run again.",
 

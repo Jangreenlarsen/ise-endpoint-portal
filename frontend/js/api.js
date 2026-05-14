@@ -175,6 +175,7 @@ export const api = {
   updatePxGridSettings: (payload) =>
     request("/settings/pxgrid", { method: "PUT", body: JSON.stringify(payload) }),
   getPxGridStatus: () => request("/settings/pxgrid/status"),
+  getPxGridWorkerStatus: () => request("/pxgrid/worker/status"),
   testPxGridConnection: () =>
     request("/settings/pxgrid/test", { method: "POST" }),
   createPxGridAccount: () =>

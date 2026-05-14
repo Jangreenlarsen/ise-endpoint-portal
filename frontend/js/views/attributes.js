@@ -140,15 +140,17 @@ export async function renderAttributes(container) {
   async function render() {
     attrMsg.innerHTML = "";
     try {
-      const [data, mapping, nasResp] = await Promise.all([
+      const [data, mapping, nasResp, workerResp] = await Promise.all([
         api.listCustomAttributes(),
         api.getPlatformMapping().catch(() => ({ mappings: [] })),
         api.getNasDevicesByPlatform().catch(() => ({ devices: {}, loaded: false, loading: false })),
+        api.getPxGridWorkerStatus().catch(() => ({ connected: false })),
       ]);
       const nasDevices = nasResp.devices || {};
       const nasLoaded = nasResp.loaded;
       const nasLoading = nasResp.loading;
       const nasUnmatched = nasResp.unmatched || [];
+      const pxgridConnected = !!(workerResp.connected);
       const attrMap = {};
       for (const a of data.attributes) attrMap[a.name] = a.values;
       const ATTR_LABELS = getAttrLabels();
@@ -170,14 +172,18 @@ export async function renderAttributes(container) {
             </div>`;
         let extra = "";
         if (name === "PlatformType") {
+          const syncDisabled = pxgridConnected ? " disabled" : "";
+          const syncHint = pxgridConnected
+            ? `<span class="hint" style="color:#6b7280;">${t("attr.sync_pxgrid_active")}</span>`
+            : `<span class="hint">${t("attr.sync_hint")}</span>`;
           extra = `
             <div class="attr-sync-row" style="margin-top:0.6rem;display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
-              <button class="small platform-sync-btn" type="button">${t("attr.sync_btn")}</button>
-              <label class="hint" style="display:flex;align-items:center;gap:0.3rem;">
+              <button class="small platform-sync-btn" type="button"${syncDisabled}>${t("attr.sync_btn")}</button>
+              ${pxgridConnected ? "" : `<label class="hint" style="display:flex;align-items:center;gap:0.3rem;">
                 <input type="checkbox" class="platform-sync-overwrite" />
                 ${t("attr.sync_overwrite")}
-              </label>
-              <span class="hint">${t("attr.sync_hint")}</span>
+              </label>`}
+              ${syncHint}
               <div class="platform-sync-result" style="flex-basis:100%;"></div>
             </div>
             ${renderMappingEditor(values, mapping, nasDevices, nasLoaded, nasLoading, nasUnmatched)}`;
