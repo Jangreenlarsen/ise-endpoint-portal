@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.7 build 0302] — 2026-05-14 — debug: nas-devices logger unmatched device types
+
+**Berørte filer**: `backend/app/api/custom_attributes.py`, `version.json`
+
+API returnerer nu `unmatched`-liste med devices der ikke matchede normalize(). Logger hvilke `device_type`-værdier ISE NDG returnerer så synonymer kan tilføjes.
+
 ## [5.3.7 build 0301] — 2026-05-14 — fix: fjern ISE raw-kolonne + fix tom NAS Devices + loading-state
 
 **Berørte filer**: `backend/app/api/custom_attributes.py`, `frontend/js/views/attributes.js`, `frontend/js/i18n.js`, `version.json`

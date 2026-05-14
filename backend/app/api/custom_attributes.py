@@ -129,27 +129,38 @@ async def get_nas_devices_by_platform() -> dict:
     _nd.ensure_loaded()
 
     grouped: dict[str, list[dict]] = {}
+    unmatched: list[dict] = []
     seen: set[tuple] = set()
     for ip, dev in _nd._by_ip.items():
-        norm = _normalize(dev.device_type) if dev.device_type else None
-        if not norm:
-            continue
-        entry = (dev.name, ip, dev.device_type_path)
+        entry = (dev.name, ip)
         if entry in seen:
             continue
         seen.add(entry)
-        grouped.setdefault(norm, []).append({
-            "name": dev.name,
-            "ip": ip,
-            "device_type_path": dev.device_type_path,
-        })
+        norm = _normalize(dev.device_type) if dev.device_type else None
+        if norm:
+            grouped.setdefault(norm, []).append({
+                "name": dev.name,
+                "ip": ip,
+                "device_type_path": dev.device_type_path,
+            })
+        else:
+            unmatched.append({
+                "name": dev.name,
+                "ip": ip,
+                "device_type": dev.device_type,
+                "device_type_path": dev.device_type_path,
+            })
 
     logger.info(
-        "nas-devices: cache loaded=%s loading=%s devices_in_cache=%d groups=%s",
-        _nd._all_loaded, _nd._loading, len(_nd._by_ip), list(grouped.keys()),
+        "nas-devices: loaded=%s devices=%d matched=%d unmatched=%d unmatched_types=%s",
+        _nd._all_loaded, len(_nd._by_ip),
+        sum(len(v) for v in grouped.values()),
+        len(unmatched),
+        [d["device_type"] for d in unmatched],
     )
     return {
         "devices": grouped,
+        "unmatched": unmatched,
         "loaded": _nd._all_loaded,
         "loading": _nd._loading,
     }
