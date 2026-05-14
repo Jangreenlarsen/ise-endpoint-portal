@@ -299,9 +299,11 @@ export async function renderBrowse(container) {
       .replace("{n}", state.pxgridEndpointEventCount)
       .replace("{agopart}", state.pxgridEndpointEventCount > 0 ? agopart : "");
     if (state.pxgridLive && state.pxgridSessionMacs) {
-      const sessAgo = fmtAgo(state.pxgridLastEventTs);
+      const sessAgo  = fmtAgo(state.pxgridLastEventTs);
+      // Vis activeSessionMacs.size (fusioneret MnT+pxGrid) som aktiv-count
+      const sessCount = state.activeSessionMacs ? state.activeSessionMacs.size : state.pxgridSessionMacs.size;
       el.innerHTML  = t("browse.pxgrid_push")
-        .replace("{n}", state.pxgridSessionMacs.size)
+        .replace("{n}", sessCount)
         .replace("{ago}", sessAgo || "—")
         .replace("{ep}", epPart);
       el.style.background = "#dcfce7"; el.style.color = "#166534";
@@ -366,7 +368,11 @@ export async function renderBrowse(container) {
         state.pxgridSessionData   = new Map(sessions.map((s) => [normalizeMac(s.mac), s]));
         state.pxgridLive          = true;
         state.pxgridLastEventTs   = Math.floor(Date.now() / 1000);
-        state.activeSessionMacs   = new Set(state.pxgridSessionMacs);
+        // Brug pxGrid-data hvis snapshot har sessioner; bevar ellers MnT-data
+        // så farver ikke forsvinder i vinduet før pxGrid-cache er seeded.
+        if (sessions.length > 0) {
+          state.activeSessionMacs = new Set(state.pxgridSessionMacs);
+        }
         cb.applyAuthStatusColors?.();
         cb.applyFilter?.();
         updatePxGridSourceBadge();

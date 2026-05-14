@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.1 build 0286] — 2026-05-14 — fix: pxGrid cache seedet fra MnT ved connect — ISE replayer ikke sessioner
+
+**Berørte filer**: `backend/app/pxgrid/session_worker.py`, `frontend/js/views/browse.js`, `version.json`, `BUGS.md`
+
+ISE pxGrid sender ikke eksisterende sessioner ved subscribe — kun fremtidige events. `_reconcile_cache_with_mnt` evicted kun stale entries men seede ikke nye. Cache startede altid på 0 → SSE snapshot sendte 0 → badge viste PUSH 0 eller PULL (MnT-data overskrevet med tom Set). Fix (backend): reconcile-funktionen upsert'er nu MnT-sessioner der mangler i cachen (`state=STARTED`; pxGrid-events raffinerer med policy_set_name/authz_profiles). Fix (frontend): snapshot-handler overskriver kun `activeSessionMacs` når snapshot faktisk har sessioner; badge bruger `activeSessionMacs.size` (fusioneret) som tæller.
+
 ## [5.3.1 build 0285] — 2026-05-14 — version bump 5.3.0 → 5.3.1
 
 **Berørte filer**: `version.json`, `CHANGELOG.md`

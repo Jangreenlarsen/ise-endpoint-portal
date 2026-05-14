@@ -472,11 +472,18 @@ def _build_session_info(d: dict[str, Any]) -> SessionInfo:
 
 
 async def _reconcile_cache_with_mnt(cache) -> None:  # type: ignore[no-untyped-def]
-    """Fjern stale cache-entries der ikke længere optræder i MnT ActiveList.
+    """Synkroniser pxGrid session-cache med MnT ActiveList ved reconnect.
 
-    Kaldes efter hver vellykket STOMP-reconnect. Håndterer tilfældet hvor
-    et endpoint disconnectede mens worker'en var offline (timeout-genstarts-
-    vinduet) — ISE sender ikke et replay af missede events ved reconnect.
+    ISE sender ikke et replay af eksisterende sessioner ved pxGrid-subscribe
+    — kun fremtidige state-ændringer leveres som events. Uden denne funktion
+    ville cachen starte tom og forblive tom indtil en session skifter state.
+
+    To operationer:
+    1. Evict: fjern cache-entries der ikke er i MnT (disconnectede under offline-vinduet).
+    2. Seed: tilføj MnT-sessioner der ikke allerede er i cachen (pre-existing sessions
+       ISE ikke har replayed). pxGrid-events opdaterer dem med policy_set_name /
+       authz_profiles når de næste gang skifter state.
+
     Best-effort: enhver fejl logges og ignoreres så normal drift fortsætter.
     """
     try:
@@ -489,8 +496,8 @@ async def _reconcile_cache_with_mnt(cache) -> None:  # type: ignore[no-untyped-d
         logger.debug("pxgrid reconcile: MnT ActiveList fejlede: %s", exc)
         return
     try:
-        # Byg sæt af normaliserede MACs fra MnT (calling_station_id).
-        mnt_macs: set[str] = set()
+        # Byg map: normaliseret MAC → rå session-dict fra MnT.
+        mnt_by_mac: dict[str, dict] = {}
         for sess in sessions:
             mac_raw = (
                 sess.get("calling_station_id", "")
@@ -501,19 +508,37 @@ async def _reconcile_cache_with_mnt(cache) -> None:  # type: ignore[no-untyped-d
                 continue
             mac = mac_raw.upper().replace("-", ":").strip()
             if len(mac) == 17 and mac.count(":") == 5:
-                mnt_macs.add(mac)
+                mnt_by_mac[mac] = sess
+        mnt_macs = set(mnt_by_mac.keys())
 
-        # Evict cache-entries der ikke er i MnT — disse er disconnectede.
+        # 1. Evict: cache-entries der ikke er i MnT er disconnectede.
         cached = await cache.list()
+        cached_macs = {entry.mac for entry in cached}
         evicted = 0
         for entry in cached:
             if entry.mac not in mnt_macs:
                 await cache.remove(entry.mac)
                 evicted += 1
-        if evicted:
+
+        # 2. Seed: MnT-sessioner der mangler i cachen (ikke set af pxGrid endnu).
+        seeded = 0
+        for mac, sess in mnt_by_mac.items():
+            if mac in cached_macs:
+                continue  # allerede i cache — bevar pxGrid-data
+            info = SessionInfo(
+                mac=mac,
+                state="STARTED",
+                audit_session_id=str(sess.get("audit_session_id", "") or sess.get("auditsessionid", "")),
+                nas_ip=str(sess.get("nas_ip_address", "") or sess.get("nasipaddress", "") or sess.get("nas-ip-address", "")),
+                user_name=str(sess.get("user_name", "") or sess.get("username", "")),
+            )
+            await cache.upsert(info)
+            seeded += 1
+
+        if evicted or seeded:
             logger.info(
-                "pxgrid reconcile: fjernede %d stale session(er) efter reconnect",
-                evicted,
+                "pxgrid reconcile: fjernede %d stale, seedede %d MnT-sessioner",
+                evicted, seeded,
             )
     except Exception as exc:  # noqa: BLE001
         logger.debug("pxgrid reconcile: uventet fejl: %s", exc)
