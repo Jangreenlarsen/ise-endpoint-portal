@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.2.1 build 0278] — 2026-05-14 — docs: opdater README.md til v5.2.1
+
+**Berørte filer**: `README.md`, `version.json`
+
+Version bump til 5.2.1 build 0277. Ny sektion "RADIUS Policy administration" beskriver Politik-dashboard, nested gruppe-editor, standard autoriseringsprofiler og Policy match preview. Hurtigstart opdateret med Linux/Windows split og korrekt `source`-kommando.
+
 ## [5.2.1 build 0277] — 2026-05-14 — docs: opdater ISE_API_REFERENCE, FEATURES og BUGS
 
 **Berørte filer**: `ISE_API_REFERENCE.md`, `FEATURES.md`, `version.json`

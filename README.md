@@ -2,7 +2,7 @@
 
 Web-baseret administrationssystem til Cisco ISE 3.4 endpoint-management via REST API og pxGrid 2.0.
 
-**Version 4.0.5 build 0232** — [Fuld manual](docs/INDEX.md) — [Changelog](CHANGELOG.md)
+**Version 5.2.1 build 0277** — [Fuld manual](docs/INDEX.md) — [Changelog](CHANGELOG.md)
 
 ---
 
@@ -54,6 +54,15 @@ De to protokoller supplerer hinanden: REST til management, pxGrid til observabil
 - Pre-warm worker scanner alle ISE endpoints i baggrunden med konfigurerbar concurrency
 - Request-koalescering — samtidige fetches for samme endpoint deler eet ISE-kald
 
+### RADIUS Policy administration
+- **Politikker-dashboard** — overblik over alle ISE policy sets med regelkort (rank-badge, betingelses-chips, autorisationsprofil-chips)
+- **Master-detail layout** — regeldetaljer med betingelser til venstre og autoriseringsprofiler til hoejre
+- **Nested AND/OR gruppe-editor** — opret og rediger betingelser med fuldt bevarede AND/OR-nesting-niveauer (ISE `ConditionAndBlock`/`ConditionOrBlock`)
+- **Betingelsestyper** — EndPoints, IdentityGroup og Radius-attributter med dynamiske dropdowns for kendte vaerdier og gruppe-navne
+- **Opret standard autoriseringsprofiler** — "Opret manglende profiler" opretter automatisk Endpoint_VLAN, Endpoint_DACL, Endpoint_PSK-KEY og Endpoint_AirSpaceACL i ISE
+- **Policy match preview** — i endpoint-detail vises hvilke autoriseringsregler der matcher det aktuelle endpoint
+- **Rule Builder Wizard** — opret ny autoriseringsregel direkte fra Browse med endpoint-attributterne preudfyldt
+
 ### Administration
 - Downloadable ACL editor med live Cisco IOS ACL syntax-validering
 - Custom attribute administration — vaerdier, PlatformType-mapping, CoA-binding
@@ -65,16 +74,20 @@ De to protokoller supplerer hinanden: REST til management, pxGrid til observabil
 
 ## Hurtigstart
 
-```
+```bash
 git clone https://github.com/Jangreenlarsen/ise-endpoint-portal.git
-cd ise-endpoint-portal\backend
-python -m venv .venv
-.venv\Scripts\activate
+cd ise-endpoint-portal/backend
+python3 -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -e .
 ```
 
-Start: kob `START.bat` i projektmappen (Windows — auto-genstart ved fejl).
-Eller manuelt: `python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --app-dir backend`
+**Linux/server** (produktion):
+```bash
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --app-dir backend
+```
+
+**Windows** (udvikling): kob `START.bat` i projektmappen (auto-genstart ved fejl).
 
 Abn `http://localhost:8000` — forste gang vises setup-flow til oprettelse af admin-bruger.
 
