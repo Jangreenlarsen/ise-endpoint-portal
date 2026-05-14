@@ -450,12 +450,23 @@ def _build_session_info(d: dict[str, Any]) -> SessionInfo:
         or d.get("mac")
         or ""
     )
+    azn_raw = (
+        d.get("selectedAznProfiles")
+        or d.get("authorizationProfiles")
+        or []
+    )
+    if isinstance(azn_raw, str):
+        azn_raw = [azn_raw]
+    elif not isinstance(azn_raw, list):
+        azn_raw = []
     return SessionInfo(
         mac=str(mac),
         state=str(d.get("state", "") or d.get("sessionEvent", "")),
         audit_session_id=str(d.get("auditSessionId", "")),
         nas_ip=str(d.get("nasIpAddress", "") or d.get("nasIp", "")),
         user_name=str(d.get("userName", "") or d.get("username", "")),
+        policy_set_name=str(d.get("policySetName", "")),
+        authz_profiles=[str(p) for p in azn_raw if p],
         raw=d,
     )
 

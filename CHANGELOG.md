@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.0 build 0283] — 2026-05-14 — feat: ISE Session kolonne i browse viser Auth/Authz fra pxGrid
+
+**Berørte filer**: `backend/app/pxgrid/session_cache.py`, `backend/app/pxgrid/session_worker.py`, `backend/app/schemas/settings.py`, `backend/app/api/pxgrid.py`, `frontend/js/views/browse.js`, `frontend/js/views/browse-table.js`, `frontend/js/views/browse-utils.js`, `frontend/js/i18n.js`, `frontend/css/styles.css`, `version.json`, `FEATURES.md`
+
+Ny "ISE Session"-kolonne i browse-edit-tabellen. Viser `Auth: [ISE policy set name]` og `Authz: [authz-profiler]` for endpoints med aktiv pxGrid RADIUS-session. Kilde: `policySetName` og `selectedAznProfiles`/`authorizationProfiles` fra pxGrid session-events. Backend: `SessionInfo` udvidet med `policy_set_name` og `authz_profiles`; `_build_session_info()` ekstraherer dem; `_broadcast()` sender dem med i SSE upsert-events; `PxGridSessionInfoResponse`-schema og API-endpoints opdateret. Frontend: `state.pxgridSessionData` Map (mac → sessiondata) vedligeholdes af snapshot/upsert/remove/clear SSE-handlers; `renderRows` genererer `.ise-sess-combo` med Auth-linje (fed) og Authz-linje (lille skrift); kolonne tilføjet i `getColumns()`; CSS + i18n (DA+EN).
+
 ## [5.2.2 build 0282] — 2026-05-14 — ux: flyt Portal Opdatering til sidst i Portal Config undermenu
 
 **Berørte filer**: `frontend/js/views/settings.js`, `frontend/js/i18n.js`, `version.json`

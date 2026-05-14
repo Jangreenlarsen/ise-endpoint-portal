@@ -105,6 +105,23 @@ export function initTable(container, state, api, cb) {
     if (!colVisMenu.contains(e.target) && e.target !== colVisBtn) colVisMenu.classList.add("hidden");
   });
 
+  // ── ISE session combo cell ───────────────────────────────────────────────
+  function iseSessionCellHtml(mac) {
+    if (!state.pxgridSessionData) return '<span class="hint">—</span>';
+    const sess = state.pxgridSessionData.get(normalizeMac(mac));
+    if (!sess) return '<span class="hint">—</span>';
+    const auth  = sess.policy_set_name || "";
+    const profs = sess.authz_profiles || [];
+    const authz = profs.join(", ");
+    if (!auth && !authz) return '<span class="hint">—</span>';
+    return (
+      `<div class="ise-sess-combo">` +
+      (auth  ? `<span class="ise-sess-auth">${esc(auth)}</span>` : "") +
+      (authz ? `<span class="ise-sess-authz">${esc(authz)}</span>` : "") +
+      `</div>`
+    );
+  }
+
   // ── Auth-status colors ───────────────────────────────────────────────────
   function applyAuthStatusColors() {
     const macs = state.activeSessionMacs || (state.pxgridLive && state.pxgridSessionMacs) || null;
@@ -145,6 +162,7 @@ export function initTable(container, state, api, cb) {
         <td class="authz-col"><select class="ca-authzacl">${optionsHtml(state.caValues.AuthzACL, r.authz_acl)}</select></td>
         <td class="roles-cell">${rolesChipsHtml(r.roles)}</td>
         <td class="age-cell" title="${esc(fmtDateTime(endpointCreateTime(r)))}">${esc(fmtRelativeAge(endpointCreateTime(r)))}</td>
+        <td class="ise-session-col">${iseSessionCellHtml(r.mac || r.name)}</td>
       </tr>`).join("");
     updateSelectionUI();
     updateDirtyUI();

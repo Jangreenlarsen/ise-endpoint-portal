@@ -111,5 +111,6 @@ export function getColumns() {
     { key: "authz_acl",     label: t("col.authz_acl"),    field: (r) => r.authz_acl,           cls: "authz-col" },
     { key: "roles",         label: t("col.roles"),        field: (r) => (r.roles || []).join(", ") },
     { key: "create_time",   label: t("col.create_time"),  field: (r) => fmtRelativeAge(endpointCreateTime(r)) },
+    { key: "ise_session",   label: t("col.ise_session"),  field: () => "" },
   ];
 }

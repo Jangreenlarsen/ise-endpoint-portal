@@ -49,6 +49,8 @@ async def list_sessions() -> PxGridSessionsResponse:
                 audit_session_id=s.audit_session_id,
                 nas_ip=s.nas_ip,
                 user_name=s.user_name,
+                policy_set_name=s.policy_set_name,
+                authz_profiles=s.authz_profiles,
                 last_event_at=s.last_event_at,
             )
             for s in items
@@ -163,6 +165,8 @@ async def get_session(mac: str) -> PxGridSessionInfoResponse:
         audit_session_id=info.audit_session_id,
         nas_ip=info.nas_ip,
         user_name=info.user_name,
+        policy_set_name=info.policy_set_name,
+        authz_profiles=info.authz_profiles,
         last_event_at=info.last_event_at,
     )
 

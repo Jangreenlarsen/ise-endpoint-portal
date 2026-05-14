@@ -162,6 +162,7 @@ const TRANSLATIONS = {
     "col.authz_acl":    "AuthzACL",
     "col.roles":        "System adm",
     "col.create_time":  "Alder",
+    "col.ise_session":  "ISE Session",
 
     // Browse — celleværdier
     "cell.static":   "Statisk",
@@ -1110,6 +1111,7 @@ const TRANSLATIONS = {
     "col.authz_acl":    "AuthzACL",
     "col.roles":        "System adm",
     "col.create_time":  "Age",
+    "col.ise_session":  "ISE Session",
 
     // Browse — cell values
     "cell.static":   "Static",

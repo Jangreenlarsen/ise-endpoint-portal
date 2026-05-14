@@ -257,7 +257,7 @@ export async function renderBrowse(container) {
     detailCurrentId: null, detailOriginalGroupId: "",
     savedViews: [], activeViewId: null,
     colVis,
-    pxgridLive: false, pxgridSessionMacs: null,
+    pxgridLive: false, pxgridSessionMacs: null, pxgridSessionData: null,
     pxgridLastEventTs: 0, pxgridEndpointEventCount: 0, pxgridLastEndpointEventTs: 0,
   };
 
@@ -361,11 +361,14 @@ export async function renderBrowse(container) {
     pxgridEventSource.addEventListener("snapshot", (e) => {
       try {
         const data = JSON.parse(e.data);
-        state.pxgridSessionMacs   = new Set((data.sessions || []).map((s) => normalizeMac(s.mac)));
+        const sessions = data.sessions || [];
+        state.pxgridSessionMacs   = new Set(sessions.map((s) => normalizeMac(s.mac)));
+        state.pxgridSessionData   = new Map(sessions.map((s) => [normalizeMac(s.mac), s]));
         state.pxgridLive          = true;
         state.pxgridLastEventTs   = Math.floor(Date.now() / 1000);
         state.activeSessionMacs   = new Set(state.pxgridSessionMacs);
         cb.applyAuthStatusColors?.();
+        cb.applyFilter?.();
         updatePxGridSourceBadge();
       } catch {}
     });
@@ -376,10 +379,13 @@ export async function renderBrowse(container) {
         if (!mac) return;
         if (!state.pxgridSessionMacs) state.pxgridSessionMacs = new Set();
         state.pxgridSessionMacs.add(mac);
+        if (!state.pxgridSessionData) state.pxgridSessionData = new Map();
+        state.pxgridSessionData.set(mac, data);
         state.pxgridLastEventTs = data.ts || Math.floor(Date.now() / 1000);
         if (!state.activeSessionMacs) state.activeSessionMacs = new Set();
         state.activeSessionMacs.add(mac);
         cb.applyAuthStatusColors?.();
+        cb.applyFilter?.();
         updatePxGridSourceBadge();
       } catch {}
     });
@@ -388,9 +394,11 @@ export async function renderBrowse(container) {
         const data = JSON.parse(e.data);
         const mac  = normalizeMac(data.mac);
         if (state.pxgridSessionMacs) state.pxgridSessionMacs.delete(mac);
+        if (state.pxgridSessionData) state.pxgridSessionData.delete(mac);
         state.pxgridLastEventTs = data.ts || Math.floor(Date.now() / 1000);
         if (state.activeSessionMacs) state.activeSessionMacs.delete(mac);
         cb.applyAuthStatusColors?.();
+        cb.applyFilter?.();
         updatePxGridSourceBadge();
       } catch {}
     });
@@ -411,8 +419,10 @@ export async function renderBrowse(container) {
     });
     pxgridEventSource.addEventListener("clear", () => {
       if (state.pxgridSessionMacs) state.pxgridSessionMacs.clear();
+      if (state.pxgridSessionData) state.pxgridSessionData.clear();
       if (state.activeSessionMacs) state.activeSessionMacs.clear();
       cb.applyAuthStatusColors?.();
+      cb.applyFilter?.();
       updatePxGridSourceBadge();
     });
     pxgridEventSource.onerror = () => {
@@ -432,6 +442,7 @@ export async function renderBrowse(container) {
     if (pxgridEventSource) { pxgridEventSource.close(); pxgridEventSource = null; }
     state.pxgridLive         = false;
     state.pxgridSessionMacs  = null;
+    state.pxgridSessionData  = null;
     state.activeSessionMacs  = null;
     state.pxgridLastEventTs  = 0;
   }

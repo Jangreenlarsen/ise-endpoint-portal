@@ -204,6 +204,8 @@ class PxGridSessionInfoResponse(BaseModel):
     audit_session_id: str = ""
     nas_ip: str = ""
     user_name: str = ""
+    policy_set_name: str = ""
+    authz_profiles: list[str] = Field(default_factory=list)
     last_event_at: float = 0.0
 
 
