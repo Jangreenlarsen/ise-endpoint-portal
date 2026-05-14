@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.0.4 build 0261] — 2026-05-14 — fix: simuler match viser "Authz Profiles:" i stedet for "Profiles:"
+
+**Berørte filer**: `frontend/js/i18n.js`, `version.json`
+
+`detail.policy_profiles` nøglen opdateret til "Authz Profiles:" i begge locales (da + en).
+
+---
+
 ## [5.0.4 build 0260] — 2026-05-14 — feat: ANC hide-pref + RADIUS policy synlig som standard + i18n-fix
 
 **Berørte filer**: `frontend/js/i18n.js`, `frontend/js/views/browse.js`, `frontend/js/views/browse-detail.js`, `frontend/js/views/user-prefs.js`, `version.json`
