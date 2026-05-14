@@ -158,7 +158,7 @@ export function initTable(container, state, api, cb) {
       const mac   = r.mac || r.name;
       const nasPt = !r.platform_type ? getNasPlatformType(mac) : "";
       const ptCell = nasPt
-        ? `<td class="platform-auto-td"><select class="ca-platformtype">${optionsHtml(state.caValues.PlatformType, nasPt)}</select><span class="platform-auto-badge" title="${t("browse.platform_auto_title")}">&#9889;</span></td>`
+        ? `<td class="platform-auto-td"><select class="ca-platformtype" disabled>${optionsHtml(state.caValues.PlatformType, nasPt)}</select><span class="platform-auto-badge" title="${t("browse.platform_auto_title")}">&#9889;</span></td>`
         : `<td><select class="ca-platformtype">${optionsHtml(state.caValues.PlatformType, r.platform_type)}</select></td>`;
       return `
       <tr data-id="${esc(r.id)}"${state.dirtyIds.has(r.id) ? ' class="dirty"' : ''}>
@@ -232,6 +232,7 @@ export function initTable(container, state, api, cb) {
       if (ptTd) {
         ptTd.classList.toggle("platform-auto-td", !!nasPt2);
         const ptSel = ptTd.querySelector(".ca-platformtype");
+        if (ptSel) ptSel.disabled = !!nasPt2;
         if (ptSel && nasPt2) ptSel.value = nasPt2;
         const oldBadge = ptTd.querySelector(".platform-auto-badge");
         if (nasPt2 && !oldBadge) {

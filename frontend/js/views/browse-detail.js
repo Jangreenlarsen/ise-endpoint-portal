@@ -55,7 +55,7 @@ export function initDetail(container, state, api, cb) {
         : "";
       const detailPtEl = container.querySelector("#d-platformtype");
       detailPtEl.innerHTML = optionsHtml(state.caValues.PlatformType, d.platform_type || detailNasPt);
-      const detailPtLabel = container.querySelector(`label[for="d-platformtype"], label:has(#d-platformtype)`);
+      detailPtEl.disabled = !!detailNasPt;
       const existingPtBadge = container.querySelector("#d-platformtype-auto-badge");
       if (existingPtBadge) existingPtBadge.remove();
       if (detailNasPt) {
