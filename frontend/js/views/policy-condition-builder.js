@@ -1,6 +1,8 @@
 // Shared condition builder for RADIUS policy editor and rule wizard.
 // Exported pure functions — no side effects except wireCondRowEvents/wireProfileEvents.
 
+import { t } from "../i18n.js";
+
 function esc(s) {
   return (s || "").replace(/[&<>"']/g, (c) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
@@ -15,15 +17,17 @@ export const DICTIONARIES = [
   { name: "Radius",        attrs: ["Called-Station-ID", "NAS-Port-Type", "NAS-Identifier", "User-Name", "Framed-IP-Address"] },
 ];
 
-export const OPERATORS = [
-  { value: "equals",      label: "=" },
-  { value: "notEquals",   label: "≠" },
-  { value: "contains",    label: "indeholder" },
-  { value: "notContains", label: "indeholder ikke" },
-  { value: "startsWith",  label: "starter med" },
-  { value: "endsWith",    label: "slutter med" },
-  { value: "matches",     label: "matcher (regex)" },
-];
+export function OPERATORS() {
+  return [
+    { value: "equals",      label: t("pol.cb_op_eq") },
+    { value: "notEquals",   label: t("pol.cb_op_neq") },
+    { value: "contains",    label: t("pol.cb_op_contains") },
+    { value: "notContains", label: t("pol.cb_op_notcontains") },
+    { value: "startsWith",  label: t("pol.cb_op_startswith") },
+    { value: "endsWith",    label: t("pol.cb_op_endswith") },
+    { value: "matches",     label: t("pol.cb_op_matches") },
+  ];
+}
 
 export const KNOWN_PROFILES = [
   "PermitAccess", "DenyAccess", "Endpoint_VLAN", "Endpoint_DACL",
@@ -46,18 +50,14 @@ function attrOptions(dictName, sel = "") {
 }
 
 function operatorOptions(sel = "equals") {
-  return OPERATORS.map((o) =>
+  return OPERATORS().map((o) =>
     `<option value="${o.value}"${o.value === sel ? " selected" : ""}>${esc(o.label)}</option>`
   ).join("");
 }
 
 // ── Value widget ──────────────────────────────────────────────────────────────
-// For EndPoints attributes with known caValues: select + optional free-text.
-// For all others: plain text input.
 
 export function valueWidgetHtml(idx, dict, attr, val, caValues) {
-  // For EndPoints: use caValues[attr] directly.
-  // For other dicts: use caValues["__DictName_AttrName__"] as a known-values list.
   let known = null;
   if (dict === "EndPoints") {
     known = caValues?.[attr];
@@ -66,26 +66,24 @@ export function valueWidgetHtml(idx, dict, attr, val, caValues) {
     known = caValues?.[genericKey];
   }
   if (Array.isArray(known) && known.length) {
-    const isKnown = known.includes(val);
+    const isKnown   = known.includes(val);
     const showCustom = Boolean(val) && !isKnown;
-    const selVal = showCustom ? "__custom__" : (val || "");
+    const selVal    = showCustom ? "__custom__" : (val || "");
     const opts =
-      `<option value="">— vælg —</option>` +
+      `<option value="">— ${t("pol.cb_select_val").replace("— ", "").replace(" —", "")} —</option>` +
       known.map((v) => `<option value="${esc(v)}"${v === selVal ? " selected" : ""}>${esc(v)}</option>`).join("") +
-      `<option value="__custom__"${showCustom ? " selected" : ""}>Andet…</option>`;
+      `<option value="__custom__"${showCustom ? " selected" : ""}>${t("pol.cb_other")}</option>`;
     return `<span class="cond-val-wrap" data-idx="${idx}">` +
       `<select class="cond-val-sel" data-idx="${idx}">${opts}</select>` +
-      `<input class="cond-val-custom" data-idx="${idx}" type="text" value="${esc(showCustom ? val : "")}" placeholder="skriv…"${showCustom ? "" : ' style="display:none"'} />` +
+      `<input class="cond-val-custom" data-idx="${idx}" type="text" value="${esc(showCustom ? val : "")}" placeholder="${t("pol.cb_val_ph")}"${showCustom ? "" : ' style="display:none"'} />` +
       `</span>`;
   }
   return `<span class="cond-val-wrap" data-idx="${idx}">` +
-    `<input class="cond-val" data-idx="${idx}" type="text" value="${esc(val || "")}" placeholder="værdi" />` +
+    `<input class="cond-val" data-idx="${idx}" type="text" value="${esc(val || "")}" placeholder="${t("pol.cb_val_ph")}" />` +
     `</span>`;
 }
 
 // ── Condition row HTML ────────────────────────────────────────────────────────
-// Accepts both ISE format (dictionaryName/attributeName/operator/attributeValue)
-// and editor format (dict/attr/op/val).
 
 export function condRowHtml(idx, cond = {}, caValues = {}) {
   const dn = cond.dictionaryName || cond.dict || "EndPoints";
@@ -127,7 +125,6 @@ export function readCondRows(editor) {
 }
 
 // ── Wire up condition row events ──────────────────────────────────────────────
-// Returns an addRow(cond) function for convenience.
 
 export function wireCondRowEvents(rowsEl, caValues = {}) {
   let _idx = rowsEl.querySelectorAll(".cond-row").length;
@@ -215,23 +212,49 @@ export function flattenConditionToRows(cond) {
   return [];
 }
 
-// ── Condition tree renderer (read-only view) ──────────────────────────────────
+// ── Condition chips (compact visual summary) ──────────────────────────────────
+// Returns HTML string of chips representing the condition — used in rule cards.
+
+export function renderConditionChips(cond, depth = 0) {
+  if (!cond) return `<span class="cond-chip cond-chip-empty">${t("pol.no_condition")}</span>`;
+  const ct = cond.conditionType || "";
+
+  if (ct === "ConditionReference") {
+    return `<span class="cond-chip cond-chip-ref">${t("pol.cond_ref").replace("{name}", esc(cond.name || ""))}</span>`;
+  }
+  if (ct === "ConditionAttributes") {
+    const neg  = cond.isNegate ? "NOT " : "";
+    const opLbl = OPERATORS().find((o) => o.value === cond.operator)?.label || esc(cond.operator || "");
+    return `<span class="cond-chip">${neg}${esc(cond.dictionaryName)}<span class="cond-chip-dot">:</span>${esc(cond.attributeName)} <span class="cond-chip-op">${opLbl}</span> <span class="cond-chip-val">${esc(cond.attributeValue)}</span></span>`;
+  }
+  if (ct === "ConditionAndBlock" || ct === "ConditionOrBlock") {
+    const sep  = ct === "ConditionAndBlock" ? "AND" : "OR";
+    const sep_html = `<span class="cond-chip-sep">${sep}</span>`;
+    return (cond.children || [])
+      .map((c) => renderConditionChips(c, depth + 1))
+      .join(sep_html);
+  }
+  return `<span class="cond-chip cond-chip-ref">${esc(ct)}</span>`;
+}
+
+// ── Condition tree renderer (read-only expanded view) ─────────────────────────
 
 export function renderConditionTree(cond, depth = 0) {
-  if (!cond) return "<em>ingen betingelse</em>";
+  if (!cond) return `<em>${t("pol.no_condition")}</em>`;
   const ct     = cond.conditionType || "";
   const indent = depth * 12;
   const style  = `style="margin-left:${indent}px"`;
 
   if (ct === "ConditionReference") {
-    return `<div class="cond-tree-ref" ${style}>[Ref: ${esc(cond.name || "")}]</div>`;
+    return `<div class="cond-tree-ref" ${style}>${t("pol.cond_ref").replace("{name}", esc(cond.name || ""))}</div>`;
   }
   if (ct === "ConditionAttributes") {
-    const neg = cond.isNegate ? "<span class='cond-neg'>IKKE</span> " : "";
+    const neg  = cond.isNegate ? "<span class='cond-neg'>NOT</span> " : "";
+    const opLbl = OPERATORS().find((o) => o.value === cond.operator)?.label || esc(cond.operator || "");
     return `<div class="cond-tree-single" ${style}>${neg}` +
       `<span class="cond-dict-lbl">${esc(cond.dictionaryName)}</span>.` +
       `<span class="cond-attr-lbl">${esc(cond.attributeName)}</span> ` +
-      `<span class="cond-op-lbl">${esc(cond.operator)}</span> ` +
+      `<span class="cond-op-lbl">${opLbl}</span> ` +
       `<span class="cond-val-lbl">${esc(cond.attributeValue)}</span></div>`;
   }
   if (ct === "ConditionAndBlock" || ct === "ConditionOrBlock") {
@@ -255,9 +278,9 @@ export function profilesHtml(existing = [], knownProfiles = KNOWN_PROFILES) {
   return `
     <div class="profiles-tags">${tags}</div>
     <div class="profiles-add-row">
-      <select class="profile-preset"><option value="">+ vælg profil…</option>${opts}</select>
-      <input type="text" class="profile-custom" placeholder="eller skriv navn…" />
-      <button type="button" class="profile-add-btn secondary small">Tilføj</button>
+      <select class="profile-preset"><option value="">${t("pol.cb_profile_sel")}</option>${opts}</select>
+      <input type="text" class="profile-custom" placeholder="${t("pol.cb_profile_ph")}" />
+      <button type="button" class="profile-add-btn secondary small">${t("pol.cb_profile_add")}</button>
     </div>`;
 }
 

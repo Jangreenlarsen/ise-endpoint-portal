@@ -3,6 +3,21 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.2.0 build 0265] — 2026-05-14 — feat: grafisk redesign af Politikker-siden + i18n fix
+
+**Berørte filer**: `frontend/js/views/policy.js`, `frontend/js/views/policy-condition-builder.js`, `frontend/js/i18n.js`, `frontend/css/styles.css`, `version.json`, `BUGS.md`, `FEATURES.md`
+
+**i18n fix**: `nav.policy` nøglen manglede fra begge locales — nav-linket viste altid hardkodet "Politikker". Alle strings i `policy.js` og `policy-condition-builder.js` brugte hardkodet dansk; nu erstattet med `t()` og ~60 nye nøgler i DA+EN.
+
+**Grafisk redesign**: Tre-rude tekst-layout erstattet af:
+- Policy set-kort øverst som horisontal klik-bar med navn, servicenavn og state-badge (grøn/rød)
+- Regelkort med rank-badge (blå cirkel), betingelses-chips (`Dict:Attr op value`), pil → profil-chips
+- Klik på regelkort/rank udfoldar inline-detail med fuld betingelsestræ
+- Editor erstatter liste midlertidigt (ikke separat rude)
+- Dark mode support på alle nye klasser
+
+---
+
 ## [5.1.1 build 0264] — 2026-05-14 — fix: authz-profile list bruger Open API som primær kilde
 
 **Berørte filer**: `backend/app/ise/authz_profiles.py`, `version.json`
