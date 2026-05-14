@@ -412,10 +412,17 @@ export async function renderBrowse(container) {
         updatePxGridSourceBadge();
       } catch {}
     });
-    pxgridEventSource.addEventListener("pxgrid_disabled", () => {
+    pxgridEventSource.addEventListener("pxgrid_disabled", (e) => {
+      let reason = "";
+      try { reason = JSON.parse(e.data)?.reason || ""; } catch {}
       stopPxGridStream();
       if (cb.anyFilterActive?.()) refreshActiveSessionMacs().then(() => cb.applyAuthStatusColors?.());
       updatePxGridSourceBadge();
+      // worker_stopped = transient restart — forsøg at genoprette SSE-stream
+      // efter kort delay. pxgrid_enabled=false = permanent, genopret ikke.
+      if (reason === "worker_stopped") {
+        setTimeout(() => startPxGridStream(), 5000);
+      }
     });
     pxgridEventSource.addEventListener("clear", () => {
       if (state.pxgridSessionMacs) state.pxgridSessionMacs.clear();
