@@ -50,7 +50,7 @@ export function initDetail(container, state, api, cb) {
       container.querySelector("#d-lokation").innerHTML    = optionsHtml(state.caValues.Lokation, d.lokation);
       container.querySelector("#d-authzvlan").innerHTML   = optionsHtml(state.caValues.AuthzVlan, d.authz_vlan);
       container.querySelector("#d-authzacl").innerHTML    = optionsHtml(state.caValues.AuthzACL, d.authz_acl);
-      const detailNasPt = !d.platform_type && state.pxgridSessionData
+      const detailNasPt = state.pxgridSessionData
         ? (state.pxgridSessionData.get(normalizeMac(d.mac || d.name))?.nas_device_type || "")
         : "";
       const detailPtEl = container.querySelector("#d-platformtype");

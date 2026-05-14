@@ -156,7 +156,7 @@ export function initTable(container, state, api, cb) {
     }
     tbody.innerHTML = rows.map((r) => {
       const mac   = r.mac || r.name;
-      const nasPt = !r.platform_type ? getNasPlatformType(mac) : "";
+      const nasPt = getNasPlatformType(mac);
       const ptCell = nasPt
         ? `<td class="platform-auto-td"><select class="ca-platformtype" disabled>${optionsHtml(state.caValues.PlatformType, nasPt)}</select><span class="platform-auto-badge" title="${t("browse.platform_auto_title")}">&#9889;</span></td>`
         : `<td><select class="ca-platformtype">${optionsHtml(state.caValues.PlatformType, r.platform_type)}</select></td>`;
@@ -228,7 +228,7 @@ export function initTable(container, state, api, cb) {
       setSel("ca-platformtype", r.platform_type, state.caValues.PlatformType);
       // Re-apply auto-platform indicator after refresh
       const ptTd   = tr.querySelector(".ca-platformtype")?.closest("td");
-      const nasPt2 = !r.platform_type ? getNasPlatformType(r.mac || r.name) : "";
+      const nasPt2 = getNasPlatformType(r.mac || r.name);
       if (ptTd) {
         ptTd.classList.toggle("platform-auto-td", !!nasPt2);
         const ptSel = ptTd.querySelector(".ca-platformtype");
