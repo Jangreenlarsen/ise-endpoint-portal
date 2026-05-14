@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.2.1 build 0271] — 2026-05-14 — fix: Endpoint_PSK-KEY 500 — forkert RADIUS dictionary navn
+
+**Berørte filer**: `backend/app/services/authz_profile_service.py`, `BUGS.md`, `version.json`
+
+ISE-dictionary for cisco AV-pairs er `Cisco` med attribut `cisco-av-pair`, ikke `Cisco-AV-Pair:Cisco-AV-Pair`. `Endpoint_PSK-KEY` rettet i begge `leftHandSideDictionaryAttribue`-entries.
+
 ## [5.2.1 build 0270] — 2026-05-14 — fix: Endpoint_PSK-KEY oprettelse fejlede 400 pga. forkert feltnavn
 
 **Berørte filer**: `backend/app/services/authz_profile_service.py`, `BUGS.md`, `version.json`

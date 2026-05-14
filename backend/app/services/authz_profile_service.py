@@ -51,8 +51,8 @@ STANDARD_PROFILES: list[dict[str, Any]] = [
             {
                 "leftHandSideDictionaryAttribue": {
                     "AdvancedAttributeValueType": "AdvancedDictionaryAttribute",
-                    "dictionaryName": "Cisco-AV-Pair",
-                    "attributeName": "Cisco-AV-Pair",
+                    "dictionaryName": "Cisco",
+                    "attributeName": "cisco-av-pair",
                 },
                 "rightHandSideAttribueValue": {
                     "AdvancedAttributeValueType": "AttributeValue",
@@ -62,8 +62,8 @@ STANDARD_PROFILES: list[dict[str, Any]] = [
             {
                 "leftHandSideDictionaryAttribue": {
                     "AdvancedAttributeValueType": "AdvancedDictionaryAttribute",
-                    "dictionaryName": "Cisco-AV-Pair",
-                    "attributeName": "Cisco-AV-Pair",
+                    "dictionaryName": "Cisco",
+                    "attributeName": "cisco-av-pair",
                 },
                 "rightHandSideAttribueValue": {
                     "AdvancedAttributeValueType": "AdvancedDictionaryAttribute",

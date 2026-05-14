@@ -9,7 +9,9 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 ## Åbne
 
-- `[fixed 5.2.0 build 0270] 2026-05-14 — "Opret manglende profiler" fejler 400 på Endpoint_PSK-KEY` — ISE ERS feltnavnet for højre side af advancedAttributes er `rightHandSideAttribueValue` (ISE's eget typo-mønster: "Attribue" = "Attribute" uden 't'), men koden sendte `rightHandSideAttribValue` (mangler 'ue'). Samme typo-mønster som det kendte `leftHandSideDictionaryAttribue`. **Fix:** omdøbt til `rightHandSideAttribueValue` i alle tre standard-profiler der bruger advancedAttributes. **Berørte filer:** `backend/app/services/authz_profile_service.py`.
+- `[fixed 5.2.1 build 0271] 2026-05-14 — "Opret manglende profiler" fejler 500 på Endpoint_PSK-KEY — forkert dictionary` — ISE returnerer `500: Unable to find dictionary attribute for [Cisco-AV-Pair:Cisco-AV-Pair]`. Det korrekte RADIUS-dictionary i ISE for cisco AV-pairs er `Cisco` med attributten `cisco-av-pair` (lowercase), ikke `Cisco-AV-Pair:Cisco-AV-Pair`. **Berørte filer:** `backend/app/services/authz_profile_service.py`.
+
+- `[fixed 5.2.1 build 0270] 2026-05-14 — "Opret manglende profiler" fejler 400 på Endpoint_PSK-KEY` — ISE ERS feltnavnet for højre side af advancedAttributes er `rightHandSideAttribueValue` (ISE's eget typo-mønster: "Attribue" = "Attribute" uden 't'), men koden sendte `rightHandSideAttribValue` (mangler 'ue'). Samme typo-mønster som det kendte `leftHandSideDictionaryAttribue`. **Fix:** omdøbt til `rightHandSideAttribueValue` i alle tre standard-profiler der bruger advancedAttributes. **Berørte filer:** `backend/app/services/authz_profile_service.py`.
 
 - `[fixed 5.2.0 build 0265] 2026-05-14 — Politikker-siden viser dansk tekst selvom locale er sat til engelsk` — `nav.policy` nøglen manglede fra i18n.js, så `updateNavLabels()` i app.js sprang translationen over og bevarede hardkodet "Politikker". Hele `policy.js` og `policy-condition-builder.js` brugte hardkodede danske strings fremfor `t()`. **Berørte filer:** `frontend/js/i18n.js`, `frontend/js/views/policy.js`, `frontend/js/views/policy-condition-builder.js`, `frontend/index.html`.
 
