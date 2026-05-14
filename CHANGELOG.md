@@ -3,6 +3,10 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.5 build 0296] — 2026-05-14 — version bump 5.3.4 → 5.3.5
+
+**Berørte filer**: `version.json`, `CHANGELOG.md`
+
 ## [5.3.4 build 0295] — 2026-05-14 — feat: ISE Session kolonne viser Auth/Authz labels + useCase som auth-kilde
 
 **Berørte filer**: `backend/app/pxgrid/session_cache.py`, `backend/app/pxgrid/session_worker.py`, `backend/app/schemas/settings.py`, `backend/app/api/pxgrid.py`, `frontend/js/views/browse-table.js`, `frontend/css/styles.css`, `version.json`
