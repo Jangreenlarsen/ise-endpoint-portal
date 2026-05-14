@@ -1,5 +1,5 @@
-// Policy dashboard — grafisk redesign.
-// Layout: policy set-kort øverst → regelkort med rank-badge, betingelses-chips, profil-chips.
+// Policy dashboard — master-detail layout.
+// Venstre: regelkort-liste. Højre: detail/editor. Max-width så det ikke strækker sig.
 
 import { api } from "../api.js";
 import { auth } from "../auth.js";
@@ -29,22 +29,34 @@ export async function renderPolicy(container) {
     <div class="pol-page">
 
       <div class="pol-sets-bar">
-        <div class="pol-sets-header">
-          <span class="pol-sets-label">${t("pol.title")}</span>
-          <button id="pol-refresh" class="secondary small" title="${t("pol.refresh")}">↺</button>
-        </div>
-        <div id="pol-sets-row" class="pol-sets-row">
-          <div class="alert info">${t("pol.sets_loading")}</div>
+        <div class="pol-inner">
+          <div class="pol-sets-header">
+            <span class="pol-sets-label">${t("pol.title")}</span>
+            <button id="pol-refresh" class="secondary small" title="${t("pol.refresh")}">↺</button>
+          </div>
+          <div id="pol-sets-row" class="pol-sets-row">
+            <div class="alert info">${t("pol.sets_loading")}</div>
+          </div>
         </div>
       </div>
 
-      <div class="pol-rules-area">
-        <div class="pol-rules-header">
-          <h3 id="pol-rules-title" class="pol-rules-title">${t("pol.select_set")}</h3>
-          ${isEditor ? `<button id="pol-new-rule-btn" class="hidden">+ ${t("pol.new_rule").replace("+ ", "")}</button>` : ""}
+      <div class="pol-body">
+        <div class="pol-inner pol-split">
+
+          <div class="pol-list-col">
+            <div class="pol-rules-header">
+              <h3 id="pol-rules-title" class="pol-rules-title">${t("pol.select_set")}</h3>
+              ${isEditor ? `<button id="pol-new-rule-btn" class="hidden">${t("pol.new_rule")}</button>` : ""}
+            </div>
+            <div id="pol-rules-msg"></div>
+            <div id="pol-rules-list" class="pol-rules-list"></div>
+          </div>
+
+          <div class="pol-detail-col" id="pol-detail-panel">
+            <div class="pol-detail-placeholder">${t("pol.select_set")}</div>
+          </div>
+
         </div>
-        <div id="pol-rules-msg"></div>
-        <div id="pol-rules-list" class="pol-rules-list"></div>
       </div>
 
     </div>
@@ -52,19 +64,27 @@ export async function renderPolicy(container) {
 
   let selectedSetId   = null;
   let selectedSetName = "";
+  let selectedRuleId  = null;
   let caValues        = {};
 
-  const setsRow    = container.querySelector("#pol-sets-row");
-  const rulesTitle = container.querySelector("#pol-rules-title");
-  const rulesMsg   = container.querySelector("#pol-rules-msg");
-  const rulesList  = container.querySelector("#pol-rules-list");
-  const newRuleBtn = container.querySelector("#pol-new-rule-btn");
+  const setsRow     = container.querySelector("#pol-sets-row");
+  const rulesTitle  = container.querySelector("#pol-rules-title");
+  const rulesMsg    = container.querySelector("#pol-rules-msg");
+  const rulesList   = container.querySelector("#pol-rules-list");
+  const detailPanel = container.querySelector("#pol-detail-panel");
+  const newRuleBtn  = container.querySelector("#pol-new-rule-btn");
 
   api.listCustomAttributes().then((res) => {
     if (res?.attributes) {
       for (const a of res.attributes) caValues[a.name] = a.values || [];
     }
   }).catch(() => {});
+
+  function clearDetail() {
+    selectedRuleId = null;
+    detailPanel.innerHTML = `<div class="pol-detail-placeholder">${t("pol.select_set")}</div>`;
+    rulesList.querySelectorAll(".pol-rule-card").forEach((c) => c.classList.remove("active"));
+  }
 
   // ── Policy sets ─────────────────────────────────────────────────────────────
   async function loadSets() {
@@ -86,10 +106,6 @@ export async function renderPolicy(container) {
       setsRow.querySelectorAll(".pol-set-card").forEach((el) =>
         el.addEventListener("click", () => selectSet(el.dataset.id, el.dataset.name))
       );
-      // Restore active set selection after reload
-      if (selectedSetId) {
-        setsRow.querySelector(`.pol-set-card[data-id="${selectedSetId}"]`)?.classList.add("active");
-      }
     } catch (err) {
       setsRow.innerHTML = `<div class="alert error">${t("pol.sets_error").replace("{msg}", esc(err.message))}</div>`;
     }
@@ -103,6 +119,7 @@ export async function renderPolicy(container) {
     );
     rulesTitle.textContent = name;
     newRuleBtn?.classList.remove("hidden");
+    clearDetail();
     await loadRules(id);
   }
 
@@ -114,10 +131,20 @@ export async function renderPolicy(container) {
       const rules = await api.listPolicyRules(setId);
       if (!rules.length) {
         rulesList.innerHTML = `<div class="hint pol-empty-hint">${t("pol.rules_empty")}</div>`;
+        clearDetail();
         return;
       }
       rulesList.innerHTML = rules.map((r) => renderRuleCard(r, isEditor)).join("");
       wireRuleCards(rulesList, rules, setId);
+      // Restore selection if same rule still exists
+      if (selectedRuleId) {
+        const still = rules.find((r) => r.id === selectedRuleId);
+        if (still) {
+          showRuleDetail(still, setId);
+        } else {
+          clearDetail();
+        }
+      }
     } catch (err) {
       rulesList.innerHTML = `<div class="alert error">${t("pol.rules_error").replace("{msg}", esc(err.message))}</div>`;
     }
@@ -131,7 +158,7 @@ export async function renderPolicy(container) {
     ).join("") || "";
 
     return `
-      <div class="pol-rule-card" data-id="${esc(r.id)}">
+      <div class="pol-rule-card${r.id === selectedRuleId ? " active" : ""}" data-id="${esc(r.id)}">
         <div class="pol-rule-rank">
           <span class="pol-rank-badge">${r.rank}</span>
         </div>
@@ -157,13 +184,14 @@ export async function renderPolicy(container) {
       const rule = rules.find((r) => r.id === id);
       if (!rule) return;
 
-      // Click body to expand/collapse detail
-      card.querySelector(".pol-rule-body")?.addEventListener("click", () =>
-        toggleRuleDetail(card, rule, setId)
-      );
-      card.querySelector(".pol-rule-rank")?.addEventListener("click", () =>
-        toggleRuleDetail(card, rule, setId)
-      );
+      card.querySelector(".pol-rule-body")?.addEventListener("click", () => {
+        if (selectedRuleId === id) { clearDetail(); return; }
+        showRuleDetail(rule, setId);
+      });
+      card.querySelector(".pol-rule-rank")?.addEventListener("click", () => {
+        if (selectedRuleId === id) { clearDetail(); return; }
+        showRuleDetail(rule, setId);
+      });
 
       if (isEditor) {
         card.querySelector(".pol-btn-edit")?.addEventListener("click", (e) => {
@@ -172,12 +200,13 @@ export async function renderPolicy(container) {
         });
         card.querySelector(".pol-btn-del")?.addEventListener("click", async (e) => {
           e.stopPropagation();
-          const msg = t("pol.del_confirm").replace("{name}", rule.name);
-          if (!confirm(msg)) return;
+          if (!confirm(t("pol.del_confirm").replace("{name}", rule.name))) return;
           try {
             await api.deletePolicyRule(setId, rule.id);
             rulesMsg.innerHTML = `<div class="alert success">${t("pol.del_ok")}</div>`;
+            selectedRuleId = null;
             await loadRules(setId);
+            clearDetail();
           } catch (err) {
             rulesMsg.innerHTML = `<div class="alert error">${t("pol.del_err").replace("{msg}", esc(err.message))}</div>`;
           }
@@ -186,32 +215,61 @@ export async function renderPolicy(container) {
     });
   }
 
-  // ── Inline expand (rule detail) ──────────────────────────────────────────────
-  function toggleRuleDetail(card, rule, setId) {
-    const existing = card.querySelector(".pol-rule-detail");
-    if (existing) { existing.remove(); return; }
+  // ── Rule detail (right panel) ────────────────────────────────────────────────
+  function showRuleDetail(rule, setId) {
+    selectedRuleId = rule.id;
+    rulesList.querySelectorAll(".pol-rule-card").forEach((c) =>
+      c.classList.toggle("active", c.dataset.id === rule.id)
+    );
 
     const profiles = (rule.profiles || []).map((p) =>
       `<span class="profile-chip">${esc(p)}</span>`
     ).join("") || "—";
 
-    const detail = document.createElement("div");
-    detail.className = "pol-rule-detail";
-    detail.innerHTML = `
-      <div class="pol-detail-row">
-        <span class="pol-detail-lbl">${t("pol.rank_label")}:</span> ${rule.rank}
-      </div>
-      <div class="pol-detail-row">
-        <span class="pol-detail-lbl">${t("pol.profiles_label")}:</span> ${profiles}
-      </div>
-      <div class="pol-detail-row pol-detail-cond">
-        <span class="pol-detail-lbl">${t("pol.condition_label")}:</span>
-        <div class="cond-tree">${renderConditionTree(rule.condition)}</div>
+    detailPanel.innerHTML = `
+      <div class="pol-detail-card">
+        <div class="pol-detail-card-header">
+          <h4>${esc(rule.name)}</h4>
+          <span class="pol-state-badge ${rule.state}">${stateLabel(rule.state)}</span>
+        </div>
+        <div class="pol-detail-row">
+          <span class="pol-detail-lbl">${t("pol.rank_label")}:</span> ${rule.rank}
+        </div>
+        <div class="pol-detail-row">
+          <span class="pol-detail-lbl">${t("pol.profiles_label")}:</span>
+          <span class="pol-profile-chips">${profiles}</span>
+        </div>
+        <div class="pol-detail-row pol-detail-cond">
+          <span class="pol-detail-lbl">${t("pol.condition_label")}:</span>
+          <div class="cond-tree">${renderConditionTree(rule.condition)}</div>
+        </div>
+        ${isEditor ? `
+        <div class="detail-actions">
+          <button id="pol-detail-edit" class="secondary">${t("pol.btn_edit")}</button>
+          <button id="pol-detail-del"  class="danger">${t("pol.btn_delete")}</button>
+        </div>` : ""}
       </div>`;
-    card.appendChild(detail);
+
+    if (isEditor) {
+      detailPanel.querySelector("#pol-detail-edit")?.addEventListener("click", () =>
+        showRuleEditor(rule, setId)
+      );
+      detailPanel.querySelector("#pol-detail-del")?.addEventListener("click", async () => {
+        if (!confirm(t("pol.del_confirm").replace("{name}", rule.name))) return;
+        try {
+          await api.deletePolicyRule(setId, rule.id);
+          rulesMsg.innerHTML = `<div class="alert success">${t("pol.del_ok")}</div>`;
+          selectedRuleId = null;
+          clearDetail();
+          await loadRules(setId);
+        } catch (err) {
+          rulesMsg.innerHTML = `<div class="alert error">${t("pol.del_err").replace("{msg}", esc(err.message))}</div>`;
+        }
+      });
+    }
   }
 
-  // ── Rule editor (full card replace) ─────────────────────────────────────────
+  // ── Rule editor (right panel) ────────────────────────────────────────────────
   function showRuleEditor(existing = null, setId) {
     const isNew    = !existing;
     const initRows = existing?.condition
@@ -219,8 +277,16 @@ export async function renderPolicy(container) {
       : [{ dict: "EndPoints", attr: "Owner", op: "equals", val: "" }];
     const blockType = existing?.condition?.conditionType === "ConditionOrBlock" ? "OR" : "AND";
 
-    rulesMsg.innerHTML  = "";
-    rulesList.innerHTML = `
+    // Mark card active if editing existing
+    if (existing) {
+      selectedRuleId = existing.id;
+      rulesList.querySelectorAll(".pol-rule-card").forEach((c) =>
+        c.classList.toggle("active", c.dataset.id === existing.id)
+      );
+    }
+
+    rulesMsg.innerHTML = "";
+    detailPanel.innerHTML = `
       <div class="pol-editor-card">
         <h4>${isNew ? t("pol.ed_new_title") : t("pol.ed_edit_title").replace("{name}", esc(existing?.name || ""))}</h4>
         <div id="pol-editor-msg"></div>
@@ -258,34 +324,35 @@ export async function renderPolicy(container) {
         </div>
       </div>`;
 
-    const condRowsEl   = rulesList.querySelector("#pol-cond-rows");
-    const profilesWrap = rulesList.querySelector("#pol-profiles-wrap");
+    const condRowsEl   = detailPanel.querySelector("#pol-cond-rows");
+    const profilesWrap = detailPanel.querySelector("#pol-profiles-wrap");
     const addRow = wireCondRowEvents(condRowsEl, caValues);
     wireProfileEvents(profilesWrap);
 
-    rulesList.querySelector("#pol-add-cond").addEventListener("click", () => addRow());
+    detailPanel.querySelector("#pol-add-cond").addEventListener("click", () => addRow());
 
-    rulesList.querySelector("#pol-save-rule-btn").addEventListener("click", async () => {
-      const editorMsg = rulesList.querySelector("#pol-editor-msg");
-      const name  = rulesList.querySelector("#pol-rule-name")?.value.trim();
-      const rank  = parseInt(rulesList.querySelector("#pol-rule-rank")?.value || "0", 10);
-      const state = rulesList.querySelector("#pol-rule-state")?.value || "enabled";
-      const bt    = rulesList.querySelector("#pol-block-type")?.value || "AND";
+    detailPanel.querySelector("#pol-save-rule-btn").addEventListener("click", async () => {
+      const editorMsg = detailPanel.querySelector("#pol-editor-msg");
+      const name  = detailPanel.querySelector("#pol-rule-name")?.value.trim();
+      const rank  = parseInt(detailPanel.querySelector("#pol-rule-rank")?.value || "0", 10);
+      const state = detailPanel.querySelector("#pol-rule-state")?.value || "enabled";
+      const bt    = detailPanel.querySelector("#pol-block-type")?.value || "AND";
       const rows  = readCondRows(condRowsEl);
       const cond  = buildCondition(rows, bt);
       const profs = readProfiles(profilesWrap);
 
-      if (!name)        { editorMsg.innerHTML = `<div class="alert error">${t("pol.ed_err_name")}</div>`; return; }
-      if (!cond)        { editorMsg.innerHTML = `<div class="alert error">${t("pol.ed_err_cond")}</div>`; return; }
-      if (!profs.length){ editorMsg.innerHTML = `<div class="alert error">${t("pol.ed_err_profile")}</div>`; return; }
+      if (!name)         { editorMsg.innerHTML = `<div class="alert error">${t("pol.ed_err_name")}</div>`; return; }
+      if (!cond)         { editorMsg.innerHTML = `<div class="alert error">${t("pol.ed_err_cond")}</div>`; return; }
+      if (!profs.length) { editorMsg.innerHTML = `<div class="alert error">${t("pol.ed_err_profile")}</div>`; return; }
 
       editorMsg.innerHTML = `<div class="alert info">${t("pol.ed_saving")}</div>`;
-      const btn = rulesList.querySelector("#pol-save-rule-btn");
+      const btn = detailPanel.querySelector("#pol-save-rule-btn");
       btn.disabled = true;
       try {
         if (isNew) {
           await api.createPolicyRule(setId, { policy_set_id: setId, name, rank, state, condition: cond, profiles: profs });
           editorMsg.innerHTML = `<div class="alert success">${t("pol.ed_saved_new")}</div>`;
+          selectedRuleId = null;
         } else {
           await api.updatePolicyRule(setId, existing.id, { name, rank, state, condition: cond, profiles: profs });
           editorMsg.innerHTML = `<div class="alert success">${t("pol.ed_saved_edit")}</div>`;
@@ -293,12 +360,17 @@ export async function renderPolicy(container) {
         await loadRules(setId);
       } catch (err) {
         editorMsg.innerHTML = `<div class="alert error">${t("pol.ed_save_err").replace("{msg}", esc(err.message))}</div>`;
-      } finally { btn.disabled = false; }
+        btn.disabled = false;
+      }
     });
 
-    rulesList.querySelector("#pol-cancel-rule-btn").addEventListener("click", () =>
-      loadRules(setId)
-    );
+    detailPanel.querySelector("#pol-cancel-rule-btn").addEventListener("click", () => {
+      if (existing) {
+        showRuleDetail(existing, setId);
+      } else {
+        clearDetail();
+      }
+    });
   }
 
   newRuleBtn?.addEventListener("click", () => {

@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.2.0 build 0266] — 2026-05-14 — refactor: policy-side master-detail layout + max-width
+
+**Berørte filer**: `frontend/js/views/policy.js`, `frontend/css/styles.css`, `version.json`
+
+Layout ændret fra enkelt fuld-bredde kolonne til master-detail: regelkort i venstre kolonne (380px fast), detail/editor i højre panel. `max-width: 1100px` via `.pol-inner` wrapper sikrer at indholdet ikke strækker sig over hele skærmen på bred skærm. Aktivt regelkort fremhæves blåt. Klik på aktiv regel lukker detail. Cancel i editor genviser detail eller rydder panel.
+
+---
+
 ## [5.2.0 build 0265] — 2026-05-14 — feat: grafisk redesign af Politikker-siden + i18n fix
 
 **Berørte filer**: `frontend/js/views/policy.js`, `frontend/js/views/policy-condition-builder.js`, `frontend/js/i18n.js`, `frontend/css/styles.css`, `version.json`, `BUGS.md`, `FEATURES.md`
