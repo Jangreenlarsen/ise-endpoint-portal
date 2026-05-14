@@ -3,6 +3,10 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.2 build 0287] — 2026-05-14 — version bump 5.3.1 → 5.3.2
+
+**Berørte filer**: `version.json`, `CHANGELOG.md`
+
 ## [5.3.1 build 0286] — 2026-05-14 — fix: pxGrid cache seedet fra MnT ved connect — ISE replayer ikke sessioner
 
 **Berørte filer**: `backend/app/pxgrid/session_worker.py`, `frontend/js/views/browse.js`, `version.json`, `BUGS.md`
