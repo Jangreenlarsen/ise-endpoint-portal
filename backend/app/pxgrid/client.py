@@ -306,6 +306,22 @@ class PxGridClient:
         sessions = data.get("sessions") or []
         if not isinstance(sessions, list):
             sessions = []
+        if sessions:
+            sample = sessions[0]
+            logger.info(
+                "getSessions: %d sessioner — felter i første: %s",
+                len(sessions), sorted(sample.keys()),
+            )
+            has_policy = sum(
+                1 for s in sessions
+                if s.get("policySetName") or s.get("selectedAznProfiles") or s.get("authorizationProfile")
+            )
+            logger.info(
+                "getSessions: %d/%d sessioner har policy/authz-data (policySetName/selectedAznProfiles/authorizationProfile)",
+                has_policy, len(sessions),
+            )
+        else:
+            logger.info("getSessions: returnerede 0 sessioner (tomt svar fra ISE)")
         return sessions
 
     # ── High-level helpers ─────────────────────────────────────────

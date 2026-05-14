@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.4 build 0293] — 2026-05-14 — debug: getSessions logger nu antal sessioner + felt-navne + policy-data count
+
+**Berørte filer**: `backend/app/pxgrid/client.py`, `version.json`
+
+Tilføjet INFO-logs i `get_sessions()` der viser: antal returnerede sessioner, felt-navne i første session og antal sessioner med policy-data. Gør det muligt at diagnosticere om ISE pxGrid REST returnerer `policySetName`/`selectedAznProfiles`.
+
 ## [5.3.4 build 0292] — 2026-05-14 — feat: pxGrid getSessions som primær reconcile-kilde — ISE Session kolonne får nu policy + authz data
 
 **Berørte filer**: `backend/app/pxgrid/client.py`, `backend/app/pxgrid/session_worker.py`, `version.json`
