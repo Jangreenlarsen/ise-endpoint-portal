@@ -21,7 +21,7 @@ const TRANSLATIONS = {
     "nav.user-prefs":   "Præferencer",
     "nav.csv-template": "CSV Skabelon",
     "nav.monitoring":   "Overvågning",
-    "nav.policy":       "Politikker",
+    "nav.policy":       "ISE Politikker",
 
     // Policy dashboard
     "pol.title":             "Politikker",
@@ -969,7 +969,7 @@ const TRANSLATIONS = {
     "nav.user-prefs":   "Preferences",
     "nav.csv-template": "CSV Template",
     "nav.monitoring":   "Monitoring",
-    "nav.policy":       "Policies",
+    "nav.policy":       "ISE Policies",
 
     // Policy dashboard
     "pol.title":             "Policies",

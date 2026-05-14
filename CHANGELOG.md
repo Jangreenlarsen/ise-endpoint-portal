@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.2.1 build 0279] — 2026-05-14 — ux: omdoeb nav-punkt Politikker til ISE Politikker
+
+**Berørte filer**: `frontend/js/i18n.js`, `version.json`
+
+DA: "Politikker" → "ISE Politikker". EN: "Policies" → "ISE Policies".
+
 ## [5.2.1 build 0278] — 2026-05-14 — docs: opdater README.md til v5.2.1
 
 **Berørte filer**: `README.md`, `version.json`
