@@ -496,6 +496,9 @@ async def _reconcile_cache_with_mnt(cache) -> None:  # type: ignore[no-untyped-d
         logger.debug("pxgrid reconcile: MnT ActiveList fejlede: %s", exc)
         return
     try:
+        # Log feltnavne fra første session så vi kan se hvad MnT leverer (debug-hjælp).
+        if sessions:
+            logger.debug("pxgrid reconcile: MnT session-felter: %s", sorted(sessions[0].keys()))
         # Byg map: normaliseret MAC → rå session-dict fra MnT.
         mnt_by_mac: dict[str, dict] = {}
         for sess in sessions:
@@ -525,12 +528,32 @@ async def _reconcile_cache_with_mnt(cache) -> None:  # type: ignore[no-untyped-d
         for mac, sess in mnt_by_mac.items():
             if mac in cached_macs:
                 continue  # allerede i cache — bevar pxGrid-data
+            # Forsøg at udtrække policy_set_name fra MnT (feltnavn varierer pr. ISE-version).
+            policy_set_name = str(
+                sess.get("isepolicysetname", "")
+                or sess.get("ise-policy-set-name", "")
+                or sess.get("ise_policy_set_name", "")
+                or sess.get("policyset", "")
+                or ""
+            )
+            # authz_profiles: MnT returnerer dem typisk som komma-separeret streng.
+            authz_raw = str(
+                sess.get("selectedazprofiles", "")
+                or sess.get("selectedaznprofiles", "")
+                or sess.get("authorizationprofiles", "")
+                or sess.get("authorization-profiles", "")
+                or sess.get("authorizationrule", "")
+                or ""
+            )
+            authz_profiles = [p.strip() for p in authz_raw.split(",") if p.strip()]
             info = SessionInfo(
                 mac=mac,
                 state="STARTED",
                 audit_session_id=str(sess.get("audit_session_id", "") or sess.get("auditsessionid", "")),
                 nas_ip=str(sess.get("nas_ip_address", "") or sess.get("nasipaddress", "") or sess.get("nas-ip-address", "")),
                 user_name=str(sess.get("user_name", "") or sess.get("username", "")),
+                policy_set_name=policy_set_name,
+                authz_profiles=authz_profiles,
             )
             await cache.upsert(info)
             seeded += 1

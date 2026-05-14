@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.3 build 0290] — 2026-05-14 — fix: ISE Session kolonne tom — MnT-seed ekstraherer nu policy_set_name + authz_profiles
+
+**Berørte filer**: `backend/app/pxgrid/session_worker.py`, `version.json`
+
+MnT-seedede sessioner havde tomme `policy_set_name` og `authz_profiles` → ISE Session-kolonne viste "—" for alle rækker. Fix: seeding-koden forsøger nu at udtrække policy-data fra MnT-sessionen (ISE-feltnavne varierer pr. version: `isepolicysetname`, `ise-policy-set-name`, `selectedazprofiles`, `authorizationprofiles` etc.). Tilføjet debug-log af MnT-felter ved første session så fremtidige felt-navne er lette at identificere.
+
 ## [5.3.3 build 0289] — 2026-05-14 — version bump 5.3.2 → 5.3.3
 
 **Berørte filer**: `version.json`, `CHANGELOG.md`
