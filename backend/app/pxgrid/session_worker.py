@@ -452,6 +452,7 @@ def _build_session_info(d: dict[str, Any]) -> SessionInfo:
     )
     azn_raw = (
         d.get("selectedAznProfiles")
+        or d.get("selectedAuthzProfiles")   # pxGrid REST getSessions bruger dette navn
         or d.get("authorizationProfiles")
         or []
     )
@@ -542,9 +543,11 @@ async def _reconcile_from_pxgrid(cache, sessions: list[dict]) -> None:
                 await cache.upsert(info_with_mac)
                 seeded += 1
             else:
-                # Opdatér eksisterende entry med policy-data hvis det mangler.
+                # Opdatér eksisterende entry hvis den mangler authz/policy-data.
                 existing = next((e for e in cached if e.mac == mac), None)
-                if existing and not existing.policy_set_name and info_with_mac.policy_set_name:
+                new_has_data = bool(info_with_mac.policy_set_name or info_with_mac.authz_profiles)
+                existing_lacks_data = existing and not existing.policy_set_name and not existing.authz_profiles
+                if existing_lacks_data and new_has_data:
                     await cache.upsert(info_with_mac)
                     updated += 1
 

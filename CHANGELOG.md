@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.4 build 0294] — 2026-05-14 — fix: ISE Session authz-data tom — getSessions bruger selectedAuthzProfiles (ikke selectedAznProfiles)
+
+**Berørte filer**: `backend/app/pxgrid/session_worker.py`, `backend/app/pxgrid/client.py`, `version.json`
+
+pxGrid REST `getSessions` returnerer `selectedAuthzProfiles` (ikke `selectedAznProfiles` som STOMP-events). `_build_session_info` kiggede ikke på dette felt → authz_profiles altid tom. Fix: tilføjet `selectedAuthzProfiles` som fallback i `_build_session_info`. `_reconcile_from_pxgrid` update-condition tjekker nu `authz_profiles` i stedet for kun `policy_set_name` (policySetName er ikke i getSessions-svaret fra ISE 3.4).
+
 ## [5.3.4 build 0293] — 2026-05-14 — debug: getSessions logger nu antal sessioner + felt-navne + policy-data count
 
 **Berørte filer**: `backend/app/pxgrid/client.py`, `version.json`
