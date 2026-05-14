@@ -423,9 +423,9 @@ export async function renderSettings(container) {
       <button class="settings-subtab" data-subtab="pc-psk">${t("settings.subtab_psk")}</button>
       <button class="settings-subtab" data-subtab="pc-locale">${t("settings.subtab_locale")}</button>
       <button class="settings-subtab" data-subtab="pc-ise-config">${t("settings.subtab_ise_purge")}</button>
-      <button class="settings-subtab" data-subtab="pc-update">${t("settings.subtab_update")}</button>
       <button class="settings-subtab" data-subtab="pc-authz-profiles">${t("settings.subtab_authz_profiles")}</button>
       <button class="settings-subtab" data-subtab="pc-advanced">${t("settings.subtab_advanced")}</button>
+      <button class="settings-subtab" data-subtab="pc-update">${t("settings.subtab_update")}</button>
     </nav>
     <div class="card" data-tab="portal-config" data-subtab="pc-ise-config">
       <h3>Anbefalet ISE purge-config</h3>

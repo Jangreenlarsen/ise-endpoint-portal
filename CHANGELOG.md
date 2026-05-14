@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.2.2 build 0282] — 2026-05-14 — ux: flyt Portal Opdatering til sidst i Portal Config undermenu
+
+**Berørte filer**: `frontend/js/views/settings.js`, `frontend/js/i18n.js`, `version.json`
+
+"Opdatering" omdøbt til "Portal Opdatering" (DA) / "Portal Update" (EN) og flyttet til sidst i Portal Config-undermenuen: PSK → Sprog → ISE Config → Authz Profiler → Avanceret → Portal Opdatering.
+
 ## [5.2.2 build 0281] — 2026-05-14 — version bump 5.2.1 → 5.2.2 (akkumulerede bugfixes b0270–b0280)
 
 **Berørte filer**: `version.json`

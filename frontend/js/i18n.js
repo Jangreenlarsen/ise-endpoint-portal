@@ -282,7 +282,7 @@ const TRANSLATIONS = {
     "settings.subtab_templates":   "Skabeloner",
     "settings.subtab_psk":         "PSK-politik",
     "settings.subtab_locale":          "Sprog",
-    "settings.subtab_update":          "Opdatering",
+    "settings.subtab_update":          "Portal Opdatering",
     "settings.subtab_advanced":        "Avanceret",
     "settings.subtab_authz_profiles":  "Authz Profiler",
 
@@ -1230,7 +1230,7 @@ const TRANSLATIONS = {
     "settings.subtab_templates":   "Templates",
     "settings.subtab_psk":         "PSK policy",
     "settings.subtab_locale":          "Language",
-    "settings.subtab_update":          "Update",
+    "settings.subtab_update":          "Portal Update",
     "settings.subtab_advanced":        "Advanced",
     "settings.subtab_authz_profiles":  "Authz Profiles",
 
