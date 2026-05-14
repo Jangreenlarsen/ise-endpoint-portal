@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.2 build 0288] — 2026-05-14 — fix: TACACS+-brugere fik 401 på pxGrid SSE-stream → PULL-badge
+
+**Berørte filer**: `backend/app/api/pxgrid.py`, `version.json`, `BUGS.md`
+
+SSE-stream endpointet (`/api/pxgrid/sessions/stream`) lavede sin egen manuel auth der manglede TACACS+-håndteringen fra `deps.get_current_user`. TACACS+-brugere har ingen record i `users.json` — `find_by_id(load_users(), payload["sub"])` returnerede None → 401 → EventSource fejlede → `pxgridLive` forblev false → badge viste 🟡 PULL selvom worker var connected og cache havde 29 sessioner. Fix: tilføjet `auth_type == "tacacs"`-check svarende til `deps.py`-logikken.
+
 ## [5.3.2 build 0287] — 2026-05-14 — version bump 5.3.1 → 5.3.2
 
 **Berørte filer**: `version.json`, `CHANGELOG.md`

@@ -86,9 +86,15 @@ async def sessions_stream(
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED, "Manglende eller ugyldigt token"
         )
-    record = find_by_id(load_users(), payload["sub"])
-    if not record or record["role"] != payload.get("role"):
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Bruger ikke fundet")
+    # TACACS+-brugere har ingen lokal record — al info er i token (samme logik som deps.get_current_user).
+    if payload.get("auth_type") == "tacacs":
+        role = payload.get("role", "")
+        if not role:
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Ugyldigt TACACS+ token")
+    else:
+        record = find_by_id(load_users(), payload["sub"])
+        if not record or record["role"] != payload.get("role"):
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Bruger ikke fundet")
 
     cache = get_cache()
     queue = cache.subscribe()
