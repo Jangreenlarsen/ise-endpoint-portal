@@ -116,6 +116,10 @@ export async function renderAttributes(container) {
       <div class="platform-mapping" style="margin-top:0.8rem;">
         <h4 style="margin:0.4rem 0;">${t("attr.mapping_title")}</h4>
         <p class="hint" style="margin:0 0 0.4rem 0;">${t("attr.mapping_hint")}</p>
+        <div class="alert info" style="margin:0 0 0.6rem 0;font-size:0.85em;">
+          <strong>${t("attr.mapping_nas_info_title")}</strong><br>
+          ${t("attr.mapping_nas_info_body")}
+        </div>
         <table class="platform-mapping-table" style="width:100%;border-collapse:collapse;">
           <thead>
             <tr>
