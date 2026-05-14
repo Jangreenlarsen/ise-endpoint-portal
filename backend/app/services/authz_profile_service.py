@@ -35,28 +35,6 @@ STANDARD_PROFILES: list[dict[str, Any]] = [
                 "leftHandSideDictionaryAttribue": {
                     "AdvancedAttributeValueType": "AdvancedDictionaryAttribute",
                     "dictionaryName": "Radius",
-                    "attributeName": "Tunnel-Type",
-                },
-                "rightHandSideAttribueValue": {
-                    "AdvancedAttributeValueType": "AttributeValue",
-                    "value": "13",
-                },
-            },
-            {
-                "leftHandSideDictionaryAttribue": {
-                    "AdvancedAttributeValueType": "AdvancedDictionaryAttribute",
-                    "dictionaryName": "Radius",
-                    "attributeName": "Tunnel-Medium-Type",
-                },
-                "rightHandSideAttribueValue": {
-                    "AdvancedAttributeValueType": "AttributeValue",
-                    "value": "6",
-                },
-            },
-            {
-                "leftHandSideDictionaryAttribue": {
-                    "AdvancedAttributeValueType": "AdvancedDictionaryAttribute",
-                    "dictionaryName": "Radius",
                     "attributeName": "Tunnel-Private-Group-ID",
                 },
                 "rightHandSideAttribueValue": {

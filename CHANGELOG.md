@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.2.1 build 0273] — 2026-05-14 — fix: Endpoint_VLAN 500 — fjern Tunnel-Type/Medium-Type fra advancedAttributes
+
+**Berørte filer**: `backend/app/services/authz_profile_service.py`, `version.json`
+
+ISE returnerede generisk 500 ved tre Tunnel-advancedAttributes. Stripbet til kun `Radius:Tunnel-Private-Group-ID = EndPoints:AuthzVlan`. Tunnel-Type/Medium-Type sættes på NAD-niveau og er ikke nødvendige i profilen.
+
 ## [5.2.1 build 0272] — 2026-05-14 — fix: Endpoint_VLAN 500 — common task vlan.nameID accepterer ikke EndPoints
 
 **Berørte filer**: `backend/app/services/authz_profile_service.py`, `BUGS.md`, `version.json`
