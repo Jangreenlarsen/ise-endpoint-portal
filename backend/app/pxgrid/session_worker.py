@@ -300,6 +300,13 @@ class PxGridSessionWorker:
                 ", ".join(sub_map.values()), peer.node_name,
             )
 
+            # Start background load af NAS device cache (IP → name + device type).
+            try:
+                from app.ise import network_devices as _nd
+                _nd.ensure_loaded()
+            except Exception:  # noqa: BLE001
+                pass
+
             # Reconcilér session-cache mod MnT ActiveList efter reconnect så
             # disconnect-events misset under offline-vinduet ikke efterlader
             # stale grønne rækker i Browse. Best-effort: fejl blokerer ikke.
@@ -444,6 +451,7 @@ def _extract_endpoints(payload: Any) -> list[dict[str, Any]]:
 
 
 def _build_session_info(d: dict[str, Any]) -> SessionInfo:
+    from app.ise import network_devices as _nd
     mac = (
         d.get("callingStationId")
         or d.get("macAddress")
@@ -460,15 +468,19 @@ def _build_session_info(d: dict[str, Any]) -> SessionInfo:
         azn_raw = [azn_raw]
     elif not isinstance(azn_raw, list):
         azn_raw = []
+    nas_ip = str(d.get("nasIpAddress", "") or d.get("nasIp", ""))
+    dev = _nd.get_device_info(nas_ip)
     return SessionInfo(
         mac=str(mac),
         state=str(d.get("state", "") or d.get("sessionEvent", "")),
         audit_session_id=str(d.get("auditSessionId", "")),
-        nas_ip=str(d.get("nasIpAddress", "") or d.get("nasIp", "")),
+        nas_ip=nas_ip,
         user_name=str(d.get("userName", "") or d.get("username", "")),
         policy_set_name=str(d.get("policySetName", "")),
         authz_profiles=[str(p) for p in azn_raw if p],
         use_case=str(d.get("useCase", "")),
+        nas_name=dev.name if dev else "",
+        nas_device_type=dev.device_type if dev else "",
         raw=d,
     )
 

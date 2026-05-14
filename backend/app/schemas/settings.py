@@ -207,6 +207,8 @@ class PxGridSessionInfoResponse(BaseModel):
     policy_set_name: str = ""
     authz_profiles: list[str] = Field(default_factory=list)
     use_case: str = ""
+    nas_name: str = ""
+    nas_device_type: str = ""
     last_event_at: float = 0.0
 
 

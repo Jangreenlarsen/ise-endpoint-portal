@@ -767,8 +767,10 @@ td.ise-session-col {
   text-overflow: ellipsis;
 }
 .ise-sess-prefix { font-weight: 400; opacity: 0.6; margin-right: 0.2em; }
+.ise-sess-nas { font-size: 0.72em; color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 0.1rem; }
 [data-theme="dark"] .ise-sess-auth  { color: #93c5fd; }
 [data-theme="dark"] .ise-sess-authz { color: #94a3b8; }
+[data-theme="dark"] .ise-sess-nas   { color: #64748b; }
 
 .radio-group {
   display: flex;

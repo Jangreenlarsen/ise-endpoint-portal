@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.5 build 0298] — 2026-05-14 — feat: NAS device name + type fra ISE Network Device Groups i ISE Session kolonne
+
+**Berørte filer**: `backend/app/ise/network_devices.py` (ny), `backend/app/pxgrid/session_cache.py`, `backend/app/pxgrid/session_worker.py`, `backend/app/schemas/settings.py`, `backend/app/api/pxgrid.py`, `backend/app/services/settings_service.py`, `frontend/js/views/browse-table.js`, `frontend/css/styles.css`, `version.json`
+
+Ny `network_devices.py` cache: henter alle network devices fra ERS `/ers/config/networkdevice`, bygger IP → {name, device_type, location}-map. `device_type` ekstraheres fra NDG "Device Type#All Device Types#WLC" → "WLC". Background load triggers ved første pxGrid worker-connect. SessionInfo tilføjet `nas_name` + `nas_device_type`. ISE Session-kolonnen viser nu en tredje linje: `wlc-dc-01 · WLC`. Cache invalideres ved ISE settings-ændring.
+
 ## [5.3.5 build 0297] — 2026-05-14 — fix: ISE Session kolonne viser kun authz-resultater, ingen Auth-linje
 
 **Berørte filer**: `frontend/js/views/browse-table.js`, `version.json`

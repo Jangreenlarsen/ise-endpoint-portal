@@ -35,6 +35,8 @@ class SessionInfo:
     policy_set_name: str = ""
     authz_profiles: list[str] = field(default_factory=list)
     use_case: str = ""
+    nas_name: str = ""
+    nas_device_type: str = ""
     last_event_at: float = field(default_factory=time.time)
     raw: dict[str, Any] = field(default_factory=dict)
 
@@ -101,6 +103,8 @@ class SessionCache:
             "policy_set_name": info.policy_set_name,
             "authz_profiles": info.authz_profiles,
             "use_case": info.use_case,
+            "nas_name": info.nas_name,
+            "nas_device_type": info.nas_device_type,
             "ts": info.last_event_at,
         })
 

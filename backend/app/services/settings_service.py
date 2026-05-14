@@ -90,6 +90,11 @@ async def update_backend_settings(
     await close_ise_client()
     # Drop cached ISE reads — URL or api-type may have changed under us.
     get_cache().invalidate_all()
+    try:
+        from app.ise import network_devices as _nd
+        _nd.invalidate()
+    except Exception:  # noqa: BLE001
+        pass
     logger.info(
         "backend settings updated: url=%s user=%s api=%s coa_psn=%s coa_type=%d",
         new.ise_base_url,
