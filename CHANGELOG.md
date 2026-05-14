@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.2.2 build 0281] — 2026-05-14 — version bump 5.2.1 → 5.2.2 (akkumulerede bugfixes b0270–b0280)
+
+**Berørte filer**: `version.json`
+
+PATCH-bump for bugfixes landet i b0270–b0280: advancedAttributes feltnavn-typo, forkert RADIUS dictionary, Endpoint_VLAN common task → advancedAttributes, pxGrid Windows cert-sti på Linux, IdentityGroup dropdown tom i politik-editor.
+
 ## [5.2.1 build 0280] — 2026-05-14 — ux: omroker settings subtabs til Brugere → Endpoint grupper → Skabeloner
 
 **Berørte filer**: `frontend/js/views/settings.js`, `version.json`
