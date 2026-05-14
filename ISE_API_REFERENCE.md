@@ -344,6 +344,148 @@ Response: `200 OK` med oprettet regel i `response[0]`.
 
 ---
 
+## ERS — Authorization Profiles
+
+### Path
+
+```
+GET  /ers/config/authorizationprofile
+GET  /ers/config/authorizationprofile/{id}
+GET  /ers/config/authorizationprofile/name/{name}
+POST /ers/config/authorizationprofile
+PUT  /ers/config/authorizationprofile/{id}
+```
+
+**OBS**: `GET /ers/config/authorizationprofile` (list) returnerer transport error (TCP RST) i visse ISE 3.4 builds. Brug Open API fallback:
+`GET /api/v1/policy/network-access/authorization-profiles` — returnerer `{ "response": [...] }`.
+
+### POST payload — wrapper
+
+```json
+{ "AuthorizationProfile": { ... } }
+```
+
+### Common task felter
+
+| Felt | Formål | Dynamisk dict-reference |
+|---|---|---|
+| `daclName` | Downloadable ACL | **Ja** — `"EndPoints:AuthzACL"` virker |
+| `vlan.nameID` | VLAN-navn/-ID | **Nej** — kun statisk eller ODBC dictionary |
+| `vlan.tagID` | RADIUS tunnel-tag (1–31) | N/A |
+
+**Vigtigt**: `vlan.nameID = "EndPoints:AuthzVlan"` giver `500: EndPoints is not a valid ODBC dictionary. Only ODBC dictionaries are allowed in Common tasks.` Brug i stedet `advancedAttributes` med `Radius:Tunnel-Private-Group-ID` for dynamisk VLAN.
+
+### advancedAttributes — feltnavn-typos (ISE API)
+
+ISE ERS har konsekvente typos i `advancedAttributes`-felterne — mangler `t` i "Attribu**t**e":
+
+| Korrekt navn (ISE-typo) | Forventet navn |
+|---|---|
+| `leftHandSideDictionary**Attribue**` | leftHandSideDictionaryAttribute |
+| `rightHandSideAttribu**e**Value` | rightHandSideAttributeValue |
+
+**Brug præcis disse navne med typoen** — ISE afviser `rightHandSideAttribValue` (400 JSON invalidity).
+
+### advancedAttributes — struktur
+
+```json
+"advancedAttributes": [
+  {
+    "leftHandSideDictionaryAttribue": {
+      "AdvancedAttributeValueType": "AdvancedDictionaryAttribute",
+      "dictionaryName": "<dict>",
+      "attributeName": "<attr>"
+    },
+    "rightHandSideAttribueValue": {
+      "AdvancedAttributeValueType": "AttributeValue",
+      "value": "<static-value>"
+    }
+  },
+  {
+    "leftHandSideDictionaryAttribue": {
+      "AdvancedAttributeValueType": "AdvancedDictionaryAttribute",
+      "dictionaryName": "<dict>",
+      "attributeName": "<attr>"
+    },
+    "rightHandSideAttribueValue": {
+      "AdvancedAttributeValueType": "AdvancedDictionaryAttribute",
+      "dictionaryName": "<dict>",
+      "attributeName": "<attr>"
+    }
+  }
+]
+```
+
+### Kendte RADIUS dictionary-navne (empirisk bekræftet ISE 3.4)
+
+| Dictionary | Attributter | Bemærkning |
+|---|---|---|
+| `Cisco` | `cisco-av-pair` | Cisco VSA / AV-pairs. **Ikke** `Cisco-AV-Pair`. |
+| `Radius` | `Tunnel-Type`, `Tunnel-Medium-Type`, `Tunnel-Private-Group-ID`, m.fl. | Standard RADIUS RFC-attributter |
+| `Airespace` | `Airespace-ACL-Name` | Cisco WLC / Airespace ACL |
+| `EndPoints` | Custom endpoint-attributter (`AuthzVlan`, `AuthzACL`, `PSK_Key`, …) | Dynamisk reference i `rightHandSideAttribueValue` |
+
+### Tunnel-attributter med tag (VLAN-profiler)
+
+Til dynamisk VLAN-tildeling fra endpoint-attribut:
+
+```json
+"advancedAttributes": [
+  {
+    "leftHandSideDictionaryAttribue": {
+      "AdvancedAttributeValueType": "AdvancedDictionaryAttribute",
+      "dictionaryName": "Radius", "attributeName": "Tunnel-Type"
+    },
+    "rightHandSideAttribueValue": { "AdvancedAttributeValueType": "AttributeValue", "value": "1:13" }
+  },
+  {
+    "leftHandSideDictionaryAttribue": {
+      "AdvancedAttributeValueType": "AdvancedDictionaryAttribute",
+      "dictionaryName": "Radius", "attributeName": "Tunnel-Medium-Type"
+    },
+    "rightHandSideAttribueValue": { "AdvancedAttributeValueType": "AttributeValue", "value": "1:6" }
+  },
+  {
+    "leftHandSideDictionaryAttribue": {
+      "AdvancedAttributeValueType": "AdvancedDictionaryAttribute",
+      "dictionaryName": "Radius", "attributeName": "Tunnel-Private-Group-ID"
+    },
+    "rightHandSideAttribueValue": {
+      "AdvancedAttributeValueType": "AdvancedDictionaryAttribute",
+      "dictionaryName": "EndPoints", "attributeName": "AuthzVlan"
+    }
+  }
+]
+```
+
+Formatet `"1:13"` = RADIUS tunnel-tag 1 + værdi 13 (VLAN). `"1:6"` = tag 1 + 802 (IEEE-802 medium type).
+
+### cisco-av-pair (PSK)
+
+```json
+"advancedAttributes": [
+  {
+    "leftHandSideDictionaryAttribue": {
+      "AdvancedAttributeValueType": "AdvancedDictionaryAttribute",
+      "dictionaryName": "Cisco", "attributeName": "cisco-av-pair"
+    },
+    "rightHandSideAttribueValue": { "AdvancedAttributeValueType": "AttributeValue", "value": "psk-mode=ascii" }
+  },
+  {
+    "leftHandSideDictionaryAttribue": {
+      "AdvancedAttributeValueType": "AdvancedDictionaryAttribute",
+      "dictionaryName": "Cisco", "attributeName": "cisco-av-pair"
+    },
+    "rightHandSideAttribueValue": {
+      "AdvancedAttributeValueType": "AdvancedDictionaryAttribute",
+      "dictionaryName": "EndPoints", "attributeName": "PSK_Key"
+    }
+  }
+]
+```
+
+---
+
 ## Open API — `/api/v1/endpoint`
 
 Open API er den strategiske vej for ISE 3.4+. Payload- og response-shapes afviger fra ERS.

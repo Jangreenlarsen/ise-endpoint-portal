@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.2.1 build 0277] — 2026-05-14 — docs: opdater ISE_API_REFERENCE, FEATURES og BUGS
+
+**Berørte filer**: `ISE_API_REFERENCE.md`, `FEATURES.md`, `version.json`
+
+ISE_API_REFERENCE: ny sektion "ERS — Authorization Profiles" med advancedAttributes-feltnavns-typos, kendte RADIUS dictionary-navne, Tunnel-tag-format, VLAN- og PSK-eksempler. FEATURES: nested gruppe-editor markeret done (5.2.1).
+
 ## [5.2.1 build 0276] — 2026-05-14 — fix: IdentityGroup:Name dropdown tom i politik-editor
 
 **Berørte filer**: `frontend/js/views/policy.js`, `version.json`
