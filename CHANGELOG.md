@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.9 build 0306] — 2026-05-14 — feat: umappede NDG-stier vises som redigerbare rækker i platform mapping
+
+**Berørte filer**: `backend/app/core/platform_mapping_store.py`, `backend/app/services/custom_attribute_service.py`, `backend/app/api/custom_attributes.py`, `backend/app/pxgrid/session_worker.py`, `frontend/js/views/attributes.js`, `frontend/js/i18n.js`, `frontend/css/styles.css`, `version.json`
+
+Umappede ISE NDG device type-stier (f.eks. "IOS-SW", "IOS-WLC") vises nu som ekstra rækker i Raw→local mapping-tabellen med gul baggrund. Brugeren kan vælge local label + CoA og gemme — de bliver permanente rækker. Den gule advarselsboks er fjernet. Backend accepterer nu vilkårlige raw-værdier (ikke kun KNOWN_PLATFORM_TYPES), session_worker slår direkte NDG-sti op som fallback, og nas-devices API flytter brugermappede NDG-stier fra unmatched til matched.
+
 ## [5.3.8 build 0305] — 2026-05-14 — feat: auto-sæt Platform kolonne fra NAS device type i browse/detail
 
 **Berørte filer**: `frontend/js/views/browse-table.js`, `frontend/js/views/browse-detail.js`, `frontend/js/i18n.js`, `frontend/css/styles.css`, `version.json`

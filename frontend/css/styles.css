@@ -785,6 +785,10 @@ td.ise-session-col {
 [data-theme="dark"] .ise-sess-authz { color: #94a3b8; }
 [data-theme="dark"] .ise-sess-nas   { color: #64748b; }
 
+/* Mapping table — new/unmatched NDG rows */
+.mapping-row-new { background: #fffbeb; }
+[data-theme="dark"] .mapping-row-new { background: #2d2500; }
+
 /* Platform auto-derive indicator */
 .platform-auto-td { position: relative; }
 .platform-auto-badge {

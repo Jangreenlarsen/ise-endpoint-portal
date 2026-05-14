@@ -24,7 +24,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from app.core.platform_types import KNOWN_PLATFORM_TYPES
+from app.core.platform_types import KNOWN_PLATFORM_TYPES  # noqa: F401 — re-exported
 
 STORE_FILE = Path(__file__).resolve().parents[2] / "platform_mapping.json"
 
@@ -52,7 +52,7 @@ def load_mapping() -> list[dict[str, str]]:
             raw = str(r.get("raw", "")).strip().lower()
             local = str(r.get("local", "")).strip()
             coa = str(r.get("coa", DEFAULT_COA)).strip().lower()
-            if not raw or raw not in KNOWN_PLATFORM_TYPES:
+            if not raw:
                 continue
             if coa not in VALID_COA:
                 coa = DEFAULT_COA
@@ -72,7 +72,7 @@ def save_mapping(rows: list[dict[str, str]]) -> list[dict[str, str]]:
         raw = str(r.get("raw", "")).strip().lower()
         local = str(r.get("local", "")).strip()
         coa = str(r.get("coa", DEFAULT_COA)).strip().lower()
-        if not raw or raw not in KNOWN_PLATFORM_TYPES:
+        if not raw:
             continue
         if raw in seen_raw:
             # Enforce 1-to-1: first row wins.

@@ -473,10 +473,11 @@ def _build_session_info(d: dict[str, Any]) -> SessionInfo:
     nas_ip = str(d.get("nasIpAddress", "") or d.get("nasIp", ""))
     dev = _nd.get_device_info(nas_ip)
     if dev:
-        # Kæde: NDG last-segment → normalize() → raw_to_local() → brugerens lokale label.
-        # Fallback: fuld NDG-sti hvis ingen lokal mapping endnu er sat.
         _norm = _normalize(dev.device_type)
         _local = (_norm and _r2l().get(_norm)) or ""
+        if not _local and dev.device_type:
+            # Fallback: direkte opslag på NDG-sti (brugerdefineret mapping)
+            _local = _r2l().get(dev.device_type.strip().lower(), "")
         nas_device_type = _local or dev.device_type_path or dev.device_type
         nas_name = dev.name
     else:

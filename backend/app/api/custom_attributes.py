@@ -119,17 +119,23 @@ async def get_nas_devices_by_platform() -> dict:
     """Return ISE network devices grouped by raw platform type.
 
     Triggers background cache load if not already running. Returns
-    {devices: {raw: [{name,ip,device_type_path}]}, loaded: bool, loading: bool}
-    so the frontend can show a loading state while the cache warms up.
+    {devices: {raw: [{path,count}]}, loaded: bool, loading: bool,
+     unmatched: [{path,count}]}
     """
     import app.ise.network_devices as _nd
-    from app.core.platform_types import normalize as _normalize
+    from app.core.platform_mapping_store import load_mapping as _load_mapping
+    from app.core.platform_types import KNOWN_PLATFORM_TYPES, normalize as _normalize
 
     # Trigger load if not started yet — safe to call from any async context.
     _nd.ensure_loaded()
 
+    # Build set of user-added raw keys (NDG paths stored as raw in mapping)
+    user_raws: set[str] = {
+        r["raw"] for r in _load_mapping()
+        if r["raw"] not in KNOWN_PLATFORM_TYPES
+    }
+
     # Group matched devices by raw platform type → unique NDG paths with counts.
-    # {raw: [{path, count}]}
     matched_paths: dict[str, dict[str, int]] = {}  # raw → {path → count}
     unmatched_paths: dict[str, int] = {}            # path → count (no raw match)
     seen_ip: set[str] = set()
@@ -140,9 +146,14 @@ async def get_nas_devices_by_platform() -> dict:
         seen_ip.add(ip)
         norm = _normalize(dev.device_type) if dev.device_type else None
         path = dev.device_type_path or dev.device_type or ""
-        if norm:
-            matched_paths.setdefault(norm, {})
-            matched_paths[norm][path] = matched_paths[norm].get(path, 0) + 1
+        raw_key = norm
+        if not raw_key and dev.device_type:
+            dt_lower = dev.device_type.strip().lower()
+            if dt_lower in user_raws:
+                raw_key = dt_lower
+        if raw_key:
+            matched_paths.setdefault(raw_key, {})
+            matched_paths[raw_key][path] = matched_paths[raw_key].get(path, 0) + 1
         elif path:
             unmatched_paths[path] = unmatched_paths.get(path, 0) + 1
 

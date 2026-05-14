@@ -297,9 +297,11 @@ class CustomAttributeService:
         return result
 
     def get_platform_mapping(self) -> PlatformMapping:
-        """Return the current raw→local PlatformType mapping, padded with
-        empty rows for any KNOWN raw value the user hasn't bound yet so the
-        editor always shows one row per known raw."""
+        """Return the current raw→local PlatformType mapping.
+
+        Known raw values always appear first (padded with empty rows if not
+        yet configured). User-added rows (arbitrary NDG paths) follow.
+        """
         rows = {r["raw"]: r for r in load_platform_mapping()}
         out: list[PlatformMappingRow] = []
         for raw in KNOWN_PLATFORM_TYPES:
@@ -308,13 +310,18 @@ class CustomAttributeService:
                 raw=r["raw"], local=r.get("local", ""),
                 coa=r.get("coa", "reauth"),
             ))
+        for raw, r in rows.items():
+            if raw not in KNOWN_PLATFORM_TYPES:
+                out.append(PlatformMappingRow(
+                    raw=r["raw"], local=r.get("local", ""),
+                    coa=r.get("coa", "reauth"),
+                ))
         return PlatformMapping(mappings=out)
 
     async def set_platform_mapping(
         self, payload: PlatformMapping
     ) -> PlatformMapping:
-        """Persist a new raw→local mapping. Validates raws against
-        KNOWN_PLATFORM_TYPES and CoA against (reauth, disconnect)."""
+        """Persist a new raw→local mapping. CoA validated; any raw value accepted."""
         before = load_platform_mapping()
         rows = [r.model_dump() for r in payload.mappings]
         saved = save_platform_mapping(rows)

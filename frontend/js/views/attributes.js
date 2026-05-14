@@ -54,9 +54,9 @@ export async function renderAttributes(container) {
         const sel = o.value === selected ? " selected" : "";
         return `<option value="${o.value}"${sel}>${o.label}</option>`;
       }).join("");
-    const nasCell = (raw) => {
+    const nasCell = (raw, overridePaths) => {
       if (nasLoading && !nasLoaded) return `<span class="hint" style="font-size:0.8em;">${t("attr.nas_loading")}</span>`;
-      const groups = nasDevices[raw] || [];
+      const groups = overridePaths || nasDevices[raw] || [];
       if (!groups.length) return `<span class="hint" style="font-size:0.8em;">—</span>`;
       return groups.map(g => {
         const label = g.path || raw;
@@ -69,6 +69,9 @@ export async function renderAttributes(container) {
       : nasLoading
         ? `${t("attr.mapping_col_nas")} <span class="hint" style="font-size:0.8em;">(${t("attr.nas_loading")})</span>`
         : `${t("attr.mapping_col_nas")} <span class="hint" style="font-size:0.8em;">(${t("attr.nas_not_loaded")})</span>`;
+
+    // Existing mapping rows (known + user-added from backend)
+    const mappedRaws = new Set(mapping.mappings.map(m => m.raw.toLowerCase()));
     const rows = mapping.mappings.map((m) => `
       <tr data-raw="${esc(m.raw)}">
         <td>
@@ -83,6 +86,32 @@ export async function renderAttributes(container) {
         </td>
         <td class="nas-devices-cell">${nasCell(m.raw)}</td>
       </tr>`).join("");
+
+    // Extra rows for unmatched NDG paths not yet in the mapping
+    const newRows = nasUnmatched
+      .filter(u => !mappedRaws.has(u.path.toLowerCase()))
+      .map(u => {
+        const rawKey = u.path.toLowerCase();
+        const suffix = u.count > 1 ? ` (${u.count})` : "";
+        return `
+      <tr data-raw="${esc(rawKey)}" class="mapping-row-new">
+        <td>
+          <select class="map-local" data-raw="${esc(rawKey)}">
+            ${localOptions("")}
+          </select>
+        </td>
+        <td>
+          <select class="map-coa" data-raw="${esc(rawKey)}">
+            ${coaOptions("reauth")}
+          </select>
+        </td>
+        <td class="nas-devices-cell">
+          <span class="nas-device-tag">${esc(u.path)}${esc(suffix)}</span>
+          <span class="hint" style="font-size:0.75em;display:block;">${t("attr.nas_unmatched_new")}</span>
+        </td>
+      </tr>`;
+      }).join("");
+
     return `
       <div class="platform-mapping" style="margin-top:0.8rem;">
         <h4 style="margin:0.4rem 0;">${t("attr.mapping_title")}</h4>
@@ -95,19 +124,12 @@ export async function renderAttributes(container) {
               <th style="text-align:left;padding:0.3rem;">${nasHeader}</th>
             </tr>
           </thead>
-          <tbody>${rows}</tbody>
+          <tbody>${rows}${newRows}</tbody>
         </table>
         <div style="margin-top:0.5rem;display:flex;gap:0.5rem;align-items:center;">
           <button class="small platform-mapping-save" type="button">${t("attr.mapping_save")}</button>
           <span class="platform-mapping-result hint"></span>
         </div>
-        ${nasUnmatched.length ? `<div class="alert warn" style="margin-top:0.5rem;font-size:0.85em;">
-          ${t("attr.nas_unmatched_hint")}<br>
-          ${nasUnmatched.map(g => {
-            const suffix = g.count > 1 ? ` (${g.count})` : "";
-            return `<span class="nas-device-tag">${esc(g.path)}${esc(suffix)}</span>`;
-          }).join(" ")}
-        </div>` : ""}
       </div>`;
   }
 
