@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.2.1 build 0276] — 2026-05-14 — fix: IdentityGroup:Name dropdown tom i politik-editor
+
+**Berørte filer**: `frontend/js/views/policy.js`, `version.json`
+
+`caValues["__IdentityGroup_Name__"]` var aldrig sat i politik-editoren — kun EndPoints custom attributes blev indlæst. Tilføjet `api.listGroups()` parallelt med `listCustomAttributes()`, så gruppe-navne injiceres i `caValues` og dropdown vises korrekt.
+
 ## [5.2.1 build 0275] — 2026-05-14 — fix: pxGrid aldrig forbundet — Windows cert-sti brugt på Linux
 
 **Berørte filer**: `backend/app/pxgrid/cert_manager.py`, `BUGS.md`, `version.json`

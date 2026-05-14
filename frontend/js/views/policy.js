@@ -80,6 +80,11 @@ export async function renderPolicy(container) {
     }
   }).catch(() => {});
 
+  api.listGroups().then((res) => {
+    const groups = Array.isArray(res) ? res : (res?.groups || []);
+    caValues["__IdentityGroup_Name__"] = groups.map((g) => g.name).filter(Boolean);
+  }).catch(() => {});
+
   function clearDetail() {
     selectedRuleId = null;
     detailPanel.innerHTML = `<div class="pol-detail-placeholder">${t("pol.select_set")}</div>`;
