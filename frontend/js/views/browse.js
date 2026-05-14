@@ -131,7 +131,7 @@ export async function renderBrowse(container) {
           <label>AuthzACL</label>
           <select id="d-authzacl"></select>
           <label>Platform</label>
-          <select id="d-platformtype"></select>
+          <div class="platform-field-wrap"><select id="d-platformtype"></select></div>
           <label>PSK Mode</label>
           <label class="inline-cb"><input type="checkbox" id="d-psk-mode" /> ${t("detail.psk_mode_lbl")}</label>
           <label id="d-psk-key-label">PSK Key</label>

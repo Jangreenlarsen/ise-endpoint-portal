@@ -789,6 +789,10 @@ td.ise-session-col {
 .mapping-row-new { background: #fffbeb; }
 [data-theme="dark"] .mapping-row-new { background: #2d2500; }
 
+/* Platform field wrapper — keeps select + ⚡ badge in one grid cell */
+.platform-field-wrap { display: flex; align-items: center; gap: 0.3rem; }
+.platform-field-wrap select { flex: 1; min-width: 0; }
+
 /* Platform auto-derive indicator */
 .platform-auto-td { position: relative; }
 .platform-auto-badge {

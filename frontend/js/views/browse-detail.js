@@ -64,7 +64,7 @@ export function initDetail(container, state, api, cb) {
         badge.className = "platform-auto-badge";
         badge.title = t("browse.platform_auto_title");
         badge.innerHTML = "&#9889;";
-        detailPtEl.after(badge);
+        detailPtEl.parentElement.appendChild(badge);
       }
 
       const pskModeEl  = container.querySelector("#d-psk-mode");
