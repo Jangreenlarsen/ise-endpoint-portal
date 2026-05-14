@@ -54,7 +54,7 @@ STANDARD_PROFILES: list[dict[str, Any]] = [
                     "dictionaryName": "Cisco-AV-Pair",
                     "attributeName": "Cisco-AV-Pair",
                 },
-                "rightHandSideAttribValue": {
+                "rightHandSideAttribueValue": {
                     "AdvancedAttributeValueType": "AttributeValue",
                     "value": "psk-mode=ascii",
                 },
@@ -65,7 +65,7 @@ STANDARD_PROFILES: list[dict[str, Any]] = [
                     "dictionaryName": "Cisco-AV-Pair",
                     "attributeName": "Cisco-AV-Pair",
                 },
-                "rightHandSideAttribValue": {
+                "rightHandSideAttribueValue": {
                     "AdvancedAttributeValueType": "AdvancedDictionaryAttribute",
                     "dictionaryName": "EndPoints",
                     "attributeName": "PSK_Key",
@@ -85,7 +85,7 @@ STANDARD_PROFILES: list[dict[str, Any]] = [
                     "dictionaryName": "Airespace",
                     "attributeName": "Airespace-ACL-Name",
                 },
-                "rightHandSideAttribValue": {
+                "rightHandSideAttribueValue": {
                     "AdvancedAttributeValueType": "AdvancedDictionaryAttribute",
                     "dictionaryName": "EndPoints",
                     "attributeName": "AuthzACL",

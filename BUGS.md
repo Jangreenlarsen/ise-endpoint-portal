@@ -9,6 +9,8 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 ## Åbne
 
+- `[fixed 5.2.0 build 0270] 2026-05-14 — "Opret manglende profiler" fejler 400 på Endpoint_PSK-KEY` — ISE ERS feltnavnet for højre side af advancedAttributes er `rightHandSideAttribueValue` (ISE's eget typo-mønster: "Attribue" = "Attribute" uden 't'), men koden sendte `rightHandSideAttribValue` (mangler 'ue'). Samme typo-mønster som det kendte `leftHandSideDictionaryAttribue`. **Fix:** omdøbt til `rightHandSideAttribueValue` i alle tre standard-profiler der bruger advancedAttributes. **Berørte filer:** `backend/app/services/authz_profile_service.py`.
+
 - `[fixed 5.2.0 build 0265] 2026-05-14 — Politikker-siden viser dansk tekst selvom locale er sat til engelsk` — `nav.policy` nøglen manglede fra i18n.js, så `updateNavLabels()` i app.js sprang translationen over og bevarede hardkodet "Politikker". Hele `policy.js` og `policy-condition-builder.js` brugte hardkodede danske strings fremfor `t()`. **Berørte filer:** `frontend/js/i18n.js`, `frontend/js/views/policy.js`, `frontend/js/views/policy-condition-builder.js`, `frontend/index.html`.
 
 - `[fixed 5.0.1 build 0248] 2026-05-13 — Deployment-opdatering fejler med PermissionError på read-only filer` — `apply_package` i `update_service.py` markerede hele opdateringen som fejlet når `CHANGELOG.md`, `FEATURES.md`, `BUGS.md`, `ARCHITECTURE.md`, `ISE_API_REFERENCE.md` og `START.bat` ikke var skrivbare for portal-processen på Linux (`/opt/hypervision/`). **Fix:** `PermissionError` fanges nu separat og tilføjes `skipped`-listen med en log-advarsel — opdateringen fortsætter og lykkes for de filer der kan skrives. **Filer:** `backend/app/services/update_service.py`.

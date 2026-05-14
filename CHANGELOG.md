@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.2.1 build 0270] — 2026-05-14 — fix: Endpoint_PSK-KEY oprettelse fejlede 400 pga. forkert feltnavn
+
+**Berørte filer**: `backend/app/services/authz_profile_service.py`, `BUGS.md`, `version.json`
+
+`rightHandSideAttribValue` → `rightHandSideAttribueValue` i alle tre standard-profilers `advancedAttributes`. ISE bruger konsekvent "Attribue" (mangler 't') som typo for "Attribute" — samme mønster som det kendte `leftHandSideDictionaryAttribue`.
+
 ## [5.2.0 build 0269] — 2026-05-14 — feat: nested AND/OR gruppe-editor i politik-redigering og browse-wizard
 
 **Berørte filer**: `frontend/js/views/policy.js`, `frontend/js/views/browse-detail.js`, `frontend/js/views/policy-condition-builder.js`, `frontend/css/styles.css`, `frontend/js/i18n.js`, `version.json`
