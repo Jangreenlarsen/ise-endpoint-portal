@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.6 build 0300] — 2026-05-14 — feat: Raw→local mapping viser ISE NAS Devices kolonne
+
+**Berørte filer**: `backend/app/api/custom_attributes.py`, `frontend/js/api.js`, `frontend/js/views/attributes.js`, `frontend/js/i18n.js`, `frontend/css/styles.css`, `version.json`
+
+Ny kolonne "ISE NAS Devices" i Raw→local mapping-tabellen (Attributter → PlatformType). Viser hvilke ISE network devices der matcher hvert raw platform type via NDG → normalize() lookup. Ny API endpoint `GET /custom-attributes/PlatformType/nas-devices` returnerer devices grupperet efter raw type. Devices vises som klikkable tags med tooltip (device_type_path / IP).
+
 ## [5.3.5 build 0299] — 2026-05-14 — feat: NAS device type linket til platform_mapping local labels
 
 **Berørte filer**: `backend/app/ise/network_devices.py`, `backend/app/pxgrid/session_worker.py`, `version.json`

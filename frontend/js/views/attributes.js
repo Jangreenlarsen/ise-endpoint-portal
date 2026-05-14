@@ -40,7 +40,7 @@ export async function renderAttributes(container) {
   const sections = container.querySelector("#attr-sections");
   const attrMsg = container.querySelector("#attr-msg");
 
-  function renderMappingEditor(localValues, mapping) {
+  function renderMappingEditor(localValues, mapping, nasDevices = {}) {
     const localOptions = (selected) => {
       const opts = [`<option value="">${t("attr.mapping_none")}</option>`];
       for (const v of localValues) {
@@ -54,6 +54,13 @@ export async function renderAttributes(container) {
         const sel = o.value === selected ? " selected" : "";
         return `<option value="${o.value}"${sel}>${o.label}</option>`;
       }).join("");
+    const nasCell = (raw) => {
+      const devs = nasDevices[raw] || [];
+      if (!devs.length) return `<span class="hint" style="font-size:0.8em;">—</span>`;
+      return devs.map(d =>
+        `<span class="nas-device-tag" title="${esc(d.device_type_path || d.ip)}">${esc(d.name || d.ip)}</span>`
+      ).join(" ");
+    };
     const rows = mapping.mappings.map((m) => `
       <tr data-raw="${esc(m.raw)}">
         <td><code>${esc(m.raw)}</code></td>
@@ -67,6 +74,7 @@ export async function renderAttributes(container) {
             ${coaOptions(m.coa)}
           </select>
         </td>
+        <td class="nas-devices-cell">${nasCell(m.raw)}</td>
       </tr>`).join("");
     return `
       <div class="platform-mapping" style="margin-top:0.8rem;">
@@ -78,6 +86,7 @@ export async function renderAttributes(container) {
               <th style="text-align:left;padding:0.3rem;">${t("attr.mapping_col_raw")}</th>
               <th style="text-align:left;padding:0.3rem;">${t("attr.mapping_col_local")}</th>
               <th style="text-align:left;padding:0.3rem;">${t("attr.mapping_col_coa")}</th>
+              <th style="text-align:left;padding:0.3rem;">${t("attr.mapping_col_nas")}</th>
             </tr>
           </thead>
           <tbody>${rows}</tbody>
@@ -92,9 +101,10 @@ export async function renderAttributes(container) {
   async function render() {
     attrMsg.innerHTML = "";
     try {
-      const [data, mapping] = await Promise.all([
+      const [data, mapping, nasDevices] = await Promise.all([
         api.listCustomAttributes(),
         api.getPlatformMapping().catch(() => ({ mappings: [] })),
+        api.getNasDevicesByPlatform().catch(() => ({})),
       ]);
       const attrMap = {};
       for (const a of data.attributes) attrMap[a.name] = a.values;
@@ -127,7 +137,7 @@ export async function renderAttributes(container) {
               <span class="hint">${t("attr.sync_hint")}</span>
               <div class="platform-sync-result" style="flex-basis:100%;"></div>
             </div>
-            ${renderMappingEditor(values, mapping)}`;
+            ${renderMappingEditor(values, mapping, nasDevices)}`;
         }
         return `
           <div class="card" style="margin-bottom:0.75rem;" data-attr-card="${esc(name)}">

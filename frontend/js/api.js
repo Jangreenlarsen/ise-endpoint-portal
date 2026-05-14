@@ -128,6 +128,8 @@ export const api = {
       method: "PUT",
       body: JSON.stringify({ mappings }),
     }),
+  getNasDevicesByPlatform: () =>
+    request("/custom-attributes/PlatformType/nas-devices"),
   listDacls: () => request("/dacls"),
   getDacl: (id) => request(`/dacls/${encodeURIComponent(id)}`),
   createDacl: (payload) =>

@@ -105,3 +105,35 @@ async def set_platform_mapping(
     """Replace the raw→local PlatformType mapping. Each row binds an ISE
     raw value to a local label and a CoA action (reauth | disconnect)."""
     return await service.set_platform_mapping(payload)
+
+
+@router.get(
+    "/PlatformType/nas-devices",
+    dependencies=[Depends(require_any)],
+)
+async def get_nas_devices_by_platform() -> dict:
+    """Return ISE network devices grouped by raw platform type.
+
+    Uses the in-memory network device cache (populated from ERS on pxGrid
+    worker connect). Each key is a raw platform type (airos, iosxe, …);
+    value is a list of {name, ip, device_type_path} for matching devices.
+    """
+    from app.core.platform_types import normalize as _normalize
+    from app.ise.network_devices import _by_ip
+
+    grouped: dict[str, list[dict]] = {}
+    seen: set[tuple] = set()
+    for ip, dev in _by_ip.items():
+        norm = _normalize(dev.device_type) if dev.device_type else None
+        if not norm:
+            continue
+        entry = (dev.name, ip, dev.device_type_path)
+        if entry in seen:
+            continue
+        seen.add(entry)
+        grouped.setdefault(norm, []).append({
+            "name": dev.name,
+            "ip": ip,
+            "device_type_path": dev.device_type_path,
+        })
+    return grouped
