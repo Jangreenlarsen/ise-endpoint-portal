@@ -3,6 +3,10 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.3 build 0289] — 2026-05-14 — version bump 5.3.2 → 5.3.3
+
+**Berørte filer**: `version.json`, `CHANGELOG.md`
+
 ## [5.3.2 build 0288] — 2026-05-14 — fix: TACACS+-brugere fik 401 på pxGrid SSE-stream → PULL-badge
 
 **Berørte filer**: `backend/app/api/pxgrid.py`, `version.json`, `BUGS.md`
