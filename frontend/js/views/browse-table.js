@@ -105,6 +105,13 @@ export function initTable(container, state, api, cb) {
     if (!colVisMenu.contains(e.target) && e.target !== colVisBtn) colVisMenu.classList.add("hidden");
   });
 
+  // ── NAS → PlatformType auto-derive ──────────────────────────────────────
+  function getNasPlatformType(mac) {
+    if (!state.pxgridSessionData) return "";
+    const sess = state.pxgridSessionData.get(normalizeMac(mac));
+    return sess?.nas_device_type || "";
+  }
+
   // ── ISE session combo cell ───────────────────────────────────────────────
   function iseSessionCellHtml(mac) {
     if (!state.pxgridSessionData) return '<span class="hint">—</span>';
@@ -147,10 +154,16 @@ export function initTable(container, state, api, cb) {
       selectAllCb.indeterminate = false;
       return;
     }
-    tbody.innerHTML = rows.map((r) => `
+    tbody.innerHTML = rows.map((r) => {
+      const mac   = r.mac || r.name;
+      const nasPt = !r.platform_type ? getNasPlatformType(mac) : "";
+      const ptCell = nasPt
+        ? `<td class="platform-auto-td"><select class="ca-platformtype">${optionsHtml(state.caValues.PlatformType, nasPt)}</select><span class="platform-auto-badge" title="${t("browse.platform_auto_title")}">&#9889;</span></td>`
+        : `<td><select class="ca-platformtype">${optionsHtml(state.caValues.PlatformType, r.platform_type)}</select></td>`;
+      return `
       <tr data-id="${esc(r.id)}"${state.dirtyIds.has(r.id) ? ' class="dirty"' : ''}>
         <td class="select-cell"><input type="checkbox" class="row-select" /></td>
-        <td class="mac-cell${r.cache_stale ? " cache-stale" : ""}"><a href="#" class="mac-link" title="${t("browse.mac_link_title")}">${esc(r.mac || r.name)}</a>${r.cache_stale ? `<span class="stale-badge" title="${t("browse.stale_badge_title")}">⏱</span>` : ""}</td>
+        <td class="mac-cell${r.cache_stale ? " cache-stale" : ""}"><a href="#" class="mac-link" title="${t("browse.mac_link_title")}">${esc(mac)}</a>${r.cache_stale ? `<span class="stale-badge" title="${t("browse.stale_badge_title")}">⏱</span>` : ""}</td>
         <td class="vendor-cell-td">${esc(r.vendor || "")}</td>
         <td><select class="grp-select">${groupOptionsHtml(r.group_id)}</select></td>
         <td class="assign-cell">${r.static_group ? t("cell.static") : t("cell.dynamic")}</td>
@@ -158,15 +171,16 @@ export function initTable(container, state, api, cb) {
         <td><select class="ca-type">${optionsHtml(state.caValues.Type, r.endpoint_type)}</select></td>
         <td><select class="ca-owner">${optionsHtml(state.caValues.Owner, r.owner)}</select></td>
         <td><select class="ca-lokation">${optionsHtml(state.caValues.Lokation, r.lokation)}</select></td>
-        <td><select class="ca-platformtype">${optionsHtml(state.caValues.PlatformType, r.platform_type)}</select></td>
+        ${ptCell}
         <td class="psk-mode-cell"><input type="checkbox" class="psk-mode-cb"${r.psk_mode ? " checked" : ""}${state.isPskEditor ? "" : " disabled"} title="MPSK/IPSK" /></td>
         <td class="authz-col psk-key-cell mono">${state.pskShowKey ? esc(r.psk_key || "") : (r.psk_key ? "••••••" : "")}</td>
         <td class="authz-col"><select class="ca-authzvlan">${optionsHtml(state.caValues.AuthzVlan, r.authz_vlan)}</select></td>
         <td class="authz-col"><select class="ca-authzacl">${optionsHtml(state.caValues.AuthzACL, r.authz_acl)}</select></td>
         <td class="roles-cell">${rolesChipsHtml(r.roles)}</td>
         <td class="age-cell" title="${esc(fmtDateTime(endpointCreateTime(r)))}">${esc(fmtRelativeAge(endpointCreateTime(r)))}</td>
-        <td class="ise-session-col">${iseSessionCellHtml(r.mac || r.name)}</td>
-      </tr>`).join("");
+        <td class="ise-session-col">${iseSessionCellHtml(mac)}</td>
+      </tr>`;
+    }).join("");
     updateSelectionUI();
     updateDirtyUI();
     applyColVis();
@@ -212,6 +226,24 @@ export function initTable(container, state, api, cb) {
       setSel("ca-authzvlan",  r.authz_vlan,     state.caValues.AuthzVlan);
       setSel("ca-authzacl",   r.authz_acl,      state.caValues.AuthzACL);
       setSel("ca-platformtype", r.platform_type, state.caValues.PlatformType);
+      // Re-apply auto-platform indicator after refresh
+      const ptTd   = tr.querySelector(".ca-platformtype")?.closest("td");
+      const nasPt2 = !r.platform_type ? getNasPlatformType(r.mac || r.name) : "";
+      if (ptTd) {
+        ptTd.classList.toggle("platform-auto-td", !!nasPt2);
+        const ptSel = ptTd.querySelector(".ca-platformtype");
+        if (ptSel && nasPt2) ptSel.value = nasPt2;
+        const oldBadge = ptTd.querySelector(".platform-auto-badge");
+        if (nasPt2 && !oldBadge) {
+          const badge = document.createElement("span");
+          badge.className = "platform-auto-badge";
+          badge.title = t("browse.platform_auto_title");
+          badge.innerHTML = "&#9889;";
+          ptSel && ptSel.after(badge);
+        } else if (!nasPt2 && oldBadge) {
+          oldBadge.remove();
+        }
+      }
       const rolesCell = tr.querySelector(".roles-cell");
       if (rolesCell) rolesCell.innerHTML = rolesChipsHtml(r.roles);
       const pskModeCb = tr.querySelector(".psk-mode-cb");

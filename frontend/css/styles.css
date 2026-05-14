@@ -785,6 +785,19 @@ td.ise-session-col {
 [data-theme="dark"] .ise-sess-authz { color: #94a3b8; }
 [data-theme="dark"] .ise-sess-nas   { color: #64748b; }
 
+/* Platform auto-derive indicator */
+.platform-auto-td { position: relative; }
+.platform-auto-badge {
+  display: inline-block;
+  margin-left: 0.25rem;
+  font-size: 0.75em;
+  color: #2563eb;
+  cursor: help;
+  vertical-align: middle;
+  line-height: 1;
+}
+[data-theme="dark"] .platform-auto-badge { color: #60a5fa; }
+
 .radio-group {
   display: flex;
   flex-direction: column;

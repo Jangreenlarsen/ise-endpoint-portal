@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.8 build 0305] — 2026-05-14 — feat: auto-sæt Platform kolonne fra NAS device type i browse/detail
+
+**Berørte filer**: `frontend/js/views/browse-table.js`, `frontend/js/views/browse-detail.js`, `frontend/js/i18n.js`, `frontend/css/styles.css`, `version.json`
+
+Platform-kolonnen i browse-tabellen og detail-modal auto-sættes nu fra NAS device type (via pxGrid session + platform mapping) når endpoint ikke har en manuelt sat Platform-værdi. Viser ⚡-badge som indikator. Brugeren kan stadig overskrive værdien manuelt i dropdown'en. Kun manual edit tillades når der ikke er noget NAS mapping.
+
 ## [5.3.7 build 0304] — 2026-05-14 — fix: ISE NAS Devices viser NDG-sti med count — ikke hostname
 
 **Berørte filer**: `backend/app/api/custom_attributes.py`, `frontend/js/views/attributes.js`, `version.json`

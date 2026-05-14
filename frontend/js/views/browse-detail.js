@@ -3,7 +3,7 @@
 
 import { auth } from "../auth.js";
 import { t } from "../i18n.js";
-import { esc, fmtDateTime, optionsHtml } from "./browse-utils.js";
+import { esc, fmtDateTime, optionsHtml, normalizeMac } from "./browse-utils.js";
 
 function loadFrontendPrefs() {
   try { return JSON.parse(localStorage.getItem("ise_portal_prefs") || "{}"); }
@@ -50,7 +50,22 @@ export function initDetail(container, state, api, cb) {
       container.querySelector("#d-lokation").innerHTML    = optionsHtml(state.caValues.Lokation, d.lokation);
       container.querySelector("#d-authzvlan").innerHTML   = optionsHtml(state.caValues.AuthzVlan, d.authz_vlan);
       container.querySelector("#d-authzacl").innerHTML    = optionsHtml(state.caValues.AuthzACL, d.authz_acl);
-      container.querySelector("#d-platformtype").innerHTML = optionsHtml(state.caValues.PlatformType, d.platform_type);
+      const detailNasPt = !d.platform_type && state.pxgridSessionData
+        ? (state.pxgridSessionData.get(normalizeMac(d.mac || d.name))?.nas_device_type || "")
+        : "";
+      const detailPtEl = container.querySelector("#d-platformtype");
+      detailPtEl.innerHTML = optionsHtml(state.caValues.PlatformType, d.platform_type || detailNasPt);
+      const detailPtLabel = container.querySelector(`label[for="d-platformtype"], label:has(#d-platformtype)`);
+      const existingPtBadge = container.querySelector("#d-platformtype-auto-badge");
+      if (existingPtBadge) existingPtBadge.remove();
+      if (detailNasPt) {
+        const badge = document.createElement("span");
+        badge.id = "d-platformtype-auto-badge";
+        badge.className = "platform-auto-badge";
+        badge.title = t("browse.platform_auto_title");
+        badge.innerHTML = "&#9889;";
+        detailPtEl.after(badge);
+      }
 
       const pskModeEl  = container.querySelector("#d-psk-mode");
       const pskKeyEl   = container.querySelector("#d-psk-key");
