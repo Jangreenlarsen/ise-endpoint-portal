@@ -222,27 +222,29 @@ export async function renderPolicy(container) {
       c.classList.toggle("active", c.dataset.id === rule.id)
     );
 
-    const profiles = (rule.profiles || []).map((p) =>
-      `<span class="profile-chip">${esc(p)}</span>`
-    ).join("") || "—";
+    const profileChips = (rule.profiles || []).map((p) =>
+      `<div class="pol-authz-chip"><span class="pol-authz-icon">→</span>${esc(p)}</div>`
+    ).join("") || `<span class="pol-detail-empty">—</span>`;
 
     detailPanel.innerHTML = `
       <div class="pol-detail-card">
         <div class="pol-detail-card-header">
+          <span class="pol-rank-badge">${rule.rank}</span>
           <h4>${esc(rule.name)}</h4>
           <span class="pol-state-badge ${rule.state}">${stateLabel(rule.state)}</span>
         </div>
-        <div class="pol-detail-row">
-          <span class="pol-detail-lbl">${t("pol.rank_label")}:</span> ${rule.rank}
+
+        <div class="pol-detail-split">
+          <div class="pol-detail-cond-col">
+            <div class="pol-detail-col-label">${t("pol.condition_label")}</div>
+            <div class="cond-tree">${renderConditionTree(rule.condition)}</div>
+          </div>
+          <div class="pol-detail-profiles-col">
+            <div class="pol-detail-col-label">${t("pol.profiles_label")}</div>
+            <div class="pol-authz-list">${profileChips}</div>
+          </div>
         </div>
-        <div class="pol-detail-row">
-          <span class="pol-detail-lbl">${t("pol.profiles_label")}:</span>
-          <span class="pol-profile-chips">${profiles}</span>
-        </div>
-        <div class="pol-detail-row pol-detail-cond">
-          <span class="pol-detail-lbl">${t("pol.condition_label")}:</span>
-          <div class="cond-tree">${renderConditionTree(rule.condition)}</div>
-        </div>
+
         ${isEditor ? `
         <div class="detail-actions">
           <button id="pol-detail-edit" class="secondary">${t("pol.btn_edit")}</button>

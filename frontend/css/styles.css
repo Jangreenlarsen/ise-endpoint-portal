@@ -2450,6 +2450,46 @@ body.register-route .login-card {
 .pol-detail-cond { margin-top: 0.4rem; }
 .pol-profile-chips { display: inline-flex; flex-wrap: wrap; gap: 0.2rem; vertical-align: middle; }
 
+/* Detail two-column split: conditions left, authz profiles right */
+.pol-detail-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin: 0.75rem 0 0.75rem;
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.pol-detail-col-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted, #6b7280);
+  margin-bottom: 0.5rem;
+}
+.pol-detail-cond-col { min-width: 0; }
+.pol-detail-profiles-col {
+  min-width: 0;
+  border-left: 1px solid var(--border);
+  padding-left: 1rem;
+}
+.pol-authz-list { display: flex; flex-direction: column; gap: 0.3rem; }
+.pol-authz-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #1e40af;
+}
+.pol-authz-icon { color: #3b82f6; font-size: 0.9rem; }
+.pol-detail-empty { color: var(--text-muted, #9ca3af); font-style: italic; font-size: 0.82rem; }
+
 /* Rule cards */
 .pol-rule-card {
   display: flex;
@@ -2660,6 +2700,9 @@ body.register-route .login-card {
 [data-theme="dark"] .cond-chip-empty    { background: #1e1e2e; border-color: #374151; }
 [data-theme="dark"] .pol-detail-card    { border-color: #2a2a4a; background: #1e1e2e; }
 [data-theme="dark"] .pol-detail-lbl     { color: #d1d5db; }
+[data-theme="dark"] .pol-detail-split   { border-color: #2a2a4a; }
+[data-theme="dark"] .pol-detail-profiles-col { border-color: #2a2a4a; }
+[data-theme="dark"] .pol-authz-chip     { background: #1e3a5f; border-color: #1e40af; color: #93c5fd; }
 [data-theme="dark"] .pol-editor-card    { border-color: #2a2a4a; background: #1e1e2e; }
 [data-theme="dark"] .profile-chip     { background: #1e3a5f; color: #93c5fd; border-color: #1e40af; }
 [data-theme="dark"] .profile-tag      { background: #1e3a5f; border-color: #1e40af; }
