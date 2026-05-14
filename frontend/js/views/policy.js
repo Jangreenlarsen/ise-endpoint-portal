@@ -5,7 +5,7 @@ import { api } from "../api.js";
 import { auth } from "../auth.js";
 import { t } from "../i18n.js";
 import {
-  condRowHtml, readCondRows, wireCondRowEvents, buildCondition, flattenConditionToRows,
+  groupEditorHtml, wireGroupEditor, readGroupCondition,
   renderConditionTree, renderConditionChips,
   profilesHtml, readProfiles, wireProfileEvents,
 } from "./policy-condition-builder.js";
@@ -244,11 +244,7 @@ export async function renderPolicy(container) {
 
   // ── Rule editor (right panel) ────────────────────────────────────────────────
   function showRuleEditor(existing = null, setId) {
-    const isNew    = !existing;
-    const initRows = existing?.condition
-      ? flattenConditionToRows(existing.condition)
-      : [{ dict: "EndPoints", attr: "Owner", op: "equals", val: "" }];
-    const blockType = existing?.condition?.conditionType === "ConditionOrBlock" ? "OR" : "AND";
+    const isNew = !existing;
 
     // Mark card active if editing existing
     if (existing) {
@@ -277,16 +273,8 @@ export async function renderPolicy(container) {
           </select>
         </label>
 
-        <div class="editor-section-label">${t("pol.ed_conds_label")}
-          <select id="pol-block-type">
-            <option value="AND"${blockType === "AND" ? " selected" : ""}>${t("pol.ed_logic_and")}</option>
-            <option value="OR"${blockType === "OR" ? " selected" : ""}>${t("pol.ed_logic_or")}</option>
-          </select>
-        </div>
-        <div id="pol-cond-rows">
-          ${initRows.map((r, i) => condRowHtml(i, r, caValues)).join("")}
-        </div>
-        <button type="button" id="pol-add-cond" class="secondary small">${t("pol.ed_add_cond")}</button>
+        <div class="editor-section-label">${t("pol.ed_conds_label")}</div>
+        <div id="pol-cond-editor">${groupEditorHtml(existing?.condition ?? null, caValues)}</div>
 
         <div class="editor-section-label">${t("pol.ed_profiles_label")}</div>
         <div id="pol-profiles-wrap">${profilesHtml(existing?.profiles || [])}</div>
@@ -297,21 +285,17 @@ export async function renderPolicy(container) {
         </div>
       </div>`;
 
-    const condRowsEl   = detailPanel.querySelector("#pol-cond-rows");
+    const condEditorEl = detailPanel.querySelector("#pol-cond-editor");
     const profilesWrap = detailPanel.querySelector("#pol-profiles-wrap");
-    const addRow = wireCondRowEvents(condRowsEl, caValues);
+    wireGroupEditor(condEditorEl, caValues);
     wireProfileEvents(profilesWrap);
-
-    detailPanel.querySelector("#pol-add-cond").addEventListener("click", () => addRow());
 
     detailPanel.querySelector("#pol-save-rule-btn").addEventListener("click", async () => {
       const editorMsg = detailPanel.querySelector("#pol-editor-msg");
       const name  = detailPanel.querySelector("#pol-rule-name")?.value.trim();
       const rank  = parseInt(detailPanel.querySelector("#pol-rule-rank")?.value || "0", 10);
       const state = detailPanel.querySelector("#pol-rule-state")?.value || "enabled";
-      const bt    = detailPanel.querySelector("#pol-block-type")?.value || "AND";
-      const rows  = readCondRows(condRowsEl);
-      const cond  = buildCondition(rows, bt);
+      const cond  = readGroupCondition(condEditorEl);
       const profs = readProfiles(profilesWrap);
 
       if (!name)         { editorMsg.innerHTML = `<div class="alert error">${t("pol.ed_err_name")}</div>`; return; }

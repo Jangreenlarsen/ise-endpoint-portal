@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.2.0 build 0269] — 2026-05-14 — feat: nested AND/OR gruppe-editor i politik-redigering og browse-wizard
+
+**Berørte filer**: `frontend/js/views/policy.js`, `frontend/js/views/browse-detail.js`, `frontend/js/views/policy-condition-builder.js`, `frontend/css/styles.css`, `frontend/js/i18n.js`, `version.json`
+
+Politik-editoren og browse-wizard'en bruger nu den rekursive gruppe-editor (`groupEditorHtml`/`wireGroupEditor`/`readGroupCondition`) i stedet for den flade `condRowHtml`-tilgang. AND/OR-nesting fra ISE bevares fuldt ud ved redigering. CSS tilføjet for `.cond-group*`-klasser inkl. dark-mode. i18n-nøgler `pol.ed_add_group` og `pol.ed_del_group` tilføjet til begge locales.
+
 ## [5.2.0 build 0268] — 2026-05-14 — fix: klik på regelkort viser nu detail-view, ikke editor
 
 **Berørte filer**: `frontend/js/views/policy.js`, `frontend/css/styles.css`, `version.json`

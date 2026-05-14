@@ -10,7 +10,7 @@ function loadFrontendPrefs() {
   catch { return {}; }
 }
 import {
-  condRowHtml, readCondRows, wireCondRowEvents, buildCondition,
+  groupEditorHtml, wireGroupEditor, readGroupCondition, buildCondition,
   profilesHtml, readProfiles, wireProfileEvents,
 } from "./policy-condition-builder.js";
 
@@ -379,18 +379,8 @@ export function initDetail(container, state, api, cb) {
         <label>${t("detail.wiz_rank_label")}
           <input type="number" id="wiz-rank" value="0" min="0" />
         </label>
-        <label>${t("detail.wiz_logic_label")}
-          <select id="wiz-block-type">
-            <option value="AND">${t("detail.wiz_logic_and")}</option>
-            <option value="OR">${t("detail.wiz_logic_or")}</option>
-          </select>
-        </label>
-
         <div class="editor-section-label">${t("detail.wiz_conds_label")}</div>
-        <div id="wiz-cond-rows">
-          ${initConds.map((c, i) => condRowHtml(i, c, wizCaValues)).join("")}
-        </div>
-        <button type="button" id="wiz-add-cond" class="secondary small">${t("detail.wiz_add_cond")}</button>
+        <div id="wiz-cond-editor">${groupEditorHtml(buildCondition(initConds, "AND"), wizCaValues)}</div>
 
         <div class="editor-section-label">${t("detail.wiz_profiles_label")}</div>
         <div id="wiz-profiles-wrap">${profilesHtml(initProfiles)}</div>
@@ -401,13 +391,12 @@ export function initDetail(container, state, api, cb) {
         </div>
       </div>`;
 
-    const condRowsEl   = wizardArea.querySelector("#wiz-cond-rows");
+    const condEditorEl = wizardArea.querySelector("#wiz-cond-editor");
     const profilesWrap = wizardArea.querySelector("#wiz-profiles-wrap");
 
-    const addRow = wireCondRowEvents(condRowsEl, wizCaValues);
+    wireGroupEditor(condEditorEl, wizCaValues);
     wireProfileEvents(profilesWrap);
 
-    wizardArea.querySelector("#wiz-add-cond").addEventListener("click", () => addRow());
     wizardArea.querySelector("#d-pol-wizard-close").addEventListener("click", () => {
       wizardArea.innerHTML = "";
     });
@@ -419,9 +408,7 @@ export function initDetail(container, state, api, cb) {
       const msgEl = wizardArea.querySelector("#d-pol-wizard-msg");
       const name  = wizardArea.querySelector("#wiz-name")?.value.trim();
       const rank  = parseInt(wizardArea.querySelector("#wiz-rank")?.value || "0", 10);
-      const bt    = wizardArea.querySelector("#wiz-block-type")?.value || "AND";
-      const rows  = readCondRows(condRowsEl);
-      const cond  = buildCondition(rows, bt);
+      const cond  = readGroupCondition(condEditorEl);
       const profs = readProfiles(profilesWrap);
 
       if (!name) { msgEl.innerHTML = `<div class="alert error">${t("detail.wiz_err_name")}</div>`; return; }

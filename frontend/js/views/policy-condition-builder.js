@@ -1,5 +1,5 @@
 // Shared condition builder for RADIUS policy editor and rule wizard.
-// Exported pure functions — no side effects except wireCondRowEvents/wireProfileEvents.
+// Supports nested AND/OR groups matching ISE's ConditionAndBlock/ConditionOrBlock structure.
 
 import { t } from "../i18n.js";
 
@@ -34,7 +34,7 @@ export const KNOWN_PROFILES = [
   "Endpoint_AirSpaceACL", "Endpoint_PSK-KEY", "Permit_TEMP_ACCESS",
 ];
 
-// ── Option HTML builders ──────────────────────────────────────────────────────
+// ── Internal option HTML builders ─────────────────────────────────────────────
 
 function dictionaryOptions(sel = "EndPoints") {
   return DICTIONARIES.map((d) =>
@@ -62,15 +62,14 @@ export function valueWidgetHtml(idx, dict, attr, val, caValues) {
   if (dict === "EndPoints") {
     known = caValues?.[attr];
   } else {
-    const genericKey = `__${dict}_${attr}__`;
-    known = caValues?.[genericKey];
+    known = caValues?.[`__${dict}_${attr}__`];
   }
   if (Array.isArray(known) && known.length) {
-    const isKnown   = known.includes(val);
+    const isKnown    = known.includes(val);
     const showCustom = Boolean(val) && !isKnown;
-    const selVal    = showCustom ? "__custom__" : (val || "");
+    const selVal     = showCustom ? "__custom__" : (val || "");
     const opts =
-      `<option value="">— ${t("pol.cb_select_val").replace("— ", "").replace(" —", "")} —</option>` +
+      `<option value="">${t("pol.cb_select_val")}</option>` +
       known.map((v) => `<option value="${esc(v)}"${v === selVal ? " selected" : ""}>${esc(v)}</option>`).join("") +
       `<option value="__custom__"${showCustom ? " selected" : ""}>${t("pol.cb_other")}</option>`;
     return `<span class="cond-val-wrap" data-idx="${idx}">` +
@@ -100,7 +99,7 @@ export function condRowHtml(idx, cond = {}, caValues = {}) {
     </div>`;
 }
 
-// ── Read rows ────────────────────────────────────────────────────────────────
+// ── Read rows (flat — used by browse-detail wizard legacy path) ───────────────
 
 export function readCondRows(editor) {
   return [...editor.querySelectorAll(".cond-row")].map((row) => {
@@ -109,9 +108,7 @@ export function readCondRows(editor) {
     const valPlain  = row.querySelector(".cond-val");
     let val = "";
     if (valSel) {
-      val = valSel.value === "__custom__"
-        ? (valCustom?.value.trim() || "")
-        : valSel.value;
+      val = valSel.value === "__custom__" ? (valCustom?.value.trim() || "") : valSel.value;
     } else if (valPlain) {
       val = valPlain.value;
     }
@@ -124,56 +121,22 @@ export function readCondRows(editor) {
   });
 }
 
-// ── Wire up condition row events ──────────────────────────────────────────────
+// ── Wire condition row events (flat — backward compat) ────────────────────────
 
 export function wireCondRowEvents(rowsEl, caValues = {}) {
   let _idx = rowsEl.querySelectorAll(".cond-row").length;
-
-  rowsEl.addEventListener("change", (e) => {
-    const idx = e.target.dataset?.idx;
-    if (!idx) return;
-    const row = rowsEl.querySelector(`.cond-row[data-idx="${idx}"]`);
-    if (!row) return;
-
-    if (e.target.classList.contains("cond-dict")) {
-      const newDict = e.target.value;
-      const attrSel = row.querySelector(".cond-attr");
-      if (attrSel) attrSel.innerHTML = attrOptions(newDict);
-      const newAttr = row.querySelector(".cond-attr")?.value || "";
-      const wrap = row.querySelector(".cond-val-wrap");
-      if (wrap) wrap.outerHTML = valueWidgetHtml(idx, newDict, newAttr, "", caValues);
-    }
-
-    if (e.target.classList.contains("cond-attr")) {
-      const dict    = row.querySelector(".cond-dict")?.value || "EndPoints";
-      const newAttr = e.target.value;
-      const wrap    = row.querySelector(".cond-val-wrap");
-      if (wrap) wrap.outerHTML = valueWidgetHtml(idx, dict, newAttr, "", caValues);
-    }
-
-    if (e.target.classList.contains("cond-val-sel")) {
-      const custom = row.querySelector(".cond-val-custom");
-      if (custom) {
-        const isCustom = e.target.value === "__custom__";
-        custom.style.display = isCustom ? "" : "none";
-        if (!isCustom) custom.value = "";
-        if (isCustom) custom.focus();
-      }
-    }
-  });
-
+  _bindRowChangeEvents(rowsEl, caValues);
   rowsEl.addEventListener("click", (e) => {
     if (e.target.classList.contains("cond-del")) {
       e.target.closest(".cond-row")?.remove();
     }
   });
-
   return function addRow(cond = {}) {
     rowsEl.insertAdjacentHTML("beforeend", condRowHtml(_idx++, cond, caValues));
   };
 }
 
-// ── Build ISE condition object ────────────────────────────────────────────────
+// ── Build ISE condition (flat — backward compat) ──────────────────────────────
 
 export function buildCondition(rows, blockType) {
   if (!rows.length) return null;
@@ -193,7 +156,7 @@ export function buildCondition(rows, blockType) {
   };
 }
 
-// ── Flatten ISE condition tree → editor rows ──────────────────────────────────
+// ── Flatten ISE condition tree → editor rows (backward compat) ────────────────
 
 export function flattenConditionToRows(cond) {
   if (!cond) return [];
@@ -212,8 +175,243 @@ export function flattenConditionToRows(cond) {
   return [];
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// ── Nested Group Editor ───────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// Renders a recursive AND/OR group editor that preserves ISE's nesting.
+// Usage:
+//   container.innerHTML = `...<div id="cond-editor">${groupEditorHtml(rule.condition, caValues)}</div>`;
+//   wireGroupEditor(container.querySelector("#cond-editor"), caValues);
+//   const cond = readGroupCondition(container.querySelector("#cond-editor"));
+
+let _gid = 0;  // global counter for unique data-idx across all rendered rows
+
+export function groupEditorHtml(condition, caValues) {
+  _gid = 0;
+  return _groupHtml(condition, caValues, 0);
+}
+
+function _defaultCond() {
+  return { conditionType: "ConditionAttributes", dictionaryName: "EndPoints", attributeName: "Owner", operator: "equals", attributeValue: "" };
+}
+
+function _groupHtml(cond, caValues, depth) {
+  let type = "AND";
+  let children = [];
+
+  const ct = cond?.conditionType;
+  if (!cond || (!ct)) {
+    children = [_defaultCond()];
+  } else if (ct === "ConditionAndBlock") {
+    type = "AND";
+    children = cond.children?.length ? cond.children : [_defaultCond()];
+  } else if (ct === "ConditionOrBlock") {
+    type = "OR";
+    children = cond.children?.length ? cond.children : [_defaultCond()];
+  } else if (ct === "ConditionAttributes") {
+    // Single condition at root — wrap in AND
+    type = "AND";
+    children = [cond];
+  } else {
+    children = [_defaultCond()];
+  }
+
+  const delBtn = depth > 0
+    ? `<button class="cond-group-del danger small" type="button" title="${t("pol.ed_del_group")}">✕</button>`
+    : "";
+
+  const childrenHtml = children.map((child) => {
+    const cct = child?.conditionType;
+    if (cct === "ConditionAndBlock" || cct === "ConditionOrBlock") {
+      return _groupHtml(child, caValues, depth + 1);
+    }
+    return _rowHtml(child, caValues);
+  }).join("");
+
+  return `
+    <div class="cond-group${depth === 0 ? " cond-group-root" : ""}" data-depth="${depth}">
+      <div class="cond-group-header">
+        <select class="cond-group-type">
+          <option value="AND"${type === "AND" ? " selected" : ""}>AND</option>
+          <option value="OR"${type === "OR" ? " selected" : ""}>OR</option>
+        </select>
+        <span class="cond-group-type-hint">${type === "AND" ? t("pol.ed_logic_and") : t("pol.ed_logic_or")}</span>
+        ${delBtn}
+      </div>
+      <div class="cond-group-children">
+        ${childrenHtml}
+      </div>
+      <div class="cond-group-footer">
+        <button class="cond-add-row secondary small" type="button">+ ${t("pol.ed_add_cond")}</button>
+        <button class="cond-add-group secondary small" type="button">+ ${t("pol.ed_add_group")}</button>
+      </div>
+    </div>`;
+}
+
+function _rowHtml(cond, caValues) {
+  const idx = _gid++;
+  const dn = cond?.dictionaryName || "EndPoints";
+  const an = cond?.attributeName  || "";
+  const op = cond?.operator       || "equals";
+  const av = cond?.attributeValue || "";
+  return `
+    <div class="cond-row" data-idx="${idx}">
+      <select class="cond-dict" data-idx="${idx}">${dictionaryOptions(dn)}</select>
+      <select class="cond-attr" data-idx="${idx}">${attrOptions(dn, an)}</select>
+      <select class="cond-op"   data-idx="${idx}">${operatorOptions(op)}</select>
+      ${valueWidgetHtml(idx, dn, an, av, caValues)}
+      <button class="cond-del secondary small" data-idx="${idx}" type="button">✕</button>
+    </div>`;
+}
+
+// ── Wire group editor events ───────────────────────────────────────────────────
+
+export function wireGroupEditor(rootEl, caValues = {}) {
+  _bindRowChangeEvents(rootEl, caValues);
+
+  rootEl.addEventListener("click", (e) => {
+    // Add condition row to nearest group
+    if (e.target.classList.contains("cond-add-row")) {
+      e.stopPropagation();
+      const group    = e.target.closest(".cond-group");
+      const children = group?.querySelector(":scope > .cond-group-children");
+      if (children) {
+        children.insertAdjacentHTML("beforeend", _rowHtml(_defaultCond(), caValues));
+        // Rebind change events for newly added row
+        _bindRowChangeEvents(rootEl, caValues);
+      }
+      return;
+    }
+
+    // Add sub-group to nearest group
+    if (e.target.classList.contains("cond-add-group")) {
+      e.stopPropagation();
+      const group    = e.target.closest(".cond-group");
+      const children = group?.querySelector(":scope > .cond-group-children");
+      const depth    = parseInt(group?.dataset.depth ?? "0") + 1;
+      if (children) {
+        _gid = Math.max(_gid, rootEl.querySelectorAll(".cond-row").length + 100);
+        const newGroupHtml = _groupHtml(null, caValues, depth);
+        children.insertAdjacentHTML("beforeend", newGroupHtml);
+        _bindRowChangeEvents(rootEl, caValues);
+      }
+      return;
+    }
+
+    // Delete condition row
+    if (e.target.classList.contains("cond-del")) {
+      e.target.closest(".cond-row")?.remove();
+      return;
+    }
+
+    // Delete group
+    if (e.target.classList.contains("cond-group-del")) {
+      e.target.closest(".cond-group")?.remove();
+      return;
+    }
+  });
+
+  // Update hint label when AND/OR type changes
+  rootEl.addEventListener("change", (e) => {
+    if (e.target.classList.contains("cond-group-type")) {
+      const header = e.target.closest(".cond-group-header");
+      const hint   = header?.querySelector(".cond-group-type-hint");
+      if (hint) {
+        hint.textContent = e.target.value === "AND" ? t("pol.ed_logic_and") : t("pol.ed_logic_or");
+      }
+    }
+  });
+}
+
+// ── Read group editor → ISE condition ─────────────────────────────────────────
+
+export function readGroupCondition(rootEl) {
+  const groupEl = rootEl.classList.contains("cond-group")
+    ? rootEl
+    : rootEl.querySelector(".cond-group");
+  if (!groupEl) return null;
+  return _readGroup(groupEl);
+}
+
+function _readGroup(groupEl) {
+  const type        = groupEl.querySelector(":scope > .cond-group-header > .cond-group-type")?.value || "AND";
+  const childrenEl  = groupEl.querySelector(":scope > .cond-group-children");
+  if (!childrenEl) return null;
+
+  const children = [];
+  for (const child of childrenEl.children) {
+    if (child.classList.contains("cond-row")) {
+      const c = _readRow(child);
+      if (c) children.push(c);
+    } else if (child.classList.contains("cond-group")) {
+      const g = _readGroup(child);
+      if (g) children.push(g);
+    }
+  }
+  if (!children.length) return null;
+  if (children.length === 1 && children[0].conditionType !== "ConditionAndBlock" && children[0].conditionType !== "ConditionOrBlock") {
+    return children[0];
+  }
+  return {
+    conditionType: type === "OR" ? "ConditionOrBlock" : "ConditionAndBlock",
+    isNegate: false,
+    children,
+  };
+}
+
+function _readRow(rowEl) {
+  const dict = rowEl.querySelector(".cond-dict")?.value || "EndPoints";
+  const attr = rowEl.querySelector(".cond-attr")?.value || "";
+  const op   = rowEl.querySelector(".cond-op")?.value   || "equals";
+  const valSel    = rowEl.querySelector(".cond-val-sel");
+  const valCustom = rowEl.querySelector(".cond-val-custom");
+  const valPlain  = rowEl.querySelector(".cond-val");
+  let val = "";
+  if (valSel)       val = valSel.value === "__custom__" ? (valCustom?.value.trim() || "") : valSel.value;
+  else if (valPlain) val = valPlain.value;
+  return { conditionType: "ConditionAttributes", isNegate: false, dictionaryName: dict, attributeName: attr, operator: op, attributeValue: val };
+}
+
+// ── Shared: bind row-level change events (dict/attr/val-sel changes) ──────────
+
+function _bindRowChangeEvents(el, caValues) {
+  // Remove and re-add to avoid duplicates — use a flag on the element
+  if (el._rowChangeBound) el.removeEventListener("change", el._rowChangeHandler);
+  el._rowChangeHandler = (e) => {
+    const idx = e.target.dataset?.idx;
+    if (!idx) return;
+    const row = el.querySelector(`.cond-row[data-idx="${idx}"]`);
+    if (!row) return;
+
+    if (e.target.classList.contains("cond-dict")) {
+      const newDict = e.target.value;
+      row.querySelector(".cond-attr").innerHTML = attrOptions(newDict);
+      const newAttr = row.querySelector(".cond-attr")?.value || "";
+      const wrap = row.querySelector(".cond-val-wrap");
+      if (wrap) wrap.outerHTML = valueWidgetHtml(idx, newDict, newAttr, "", caValues);
+    }
+    if (e.target.classList.contains("cond-attr")) {
+      const dict    = row.querySelector(".cond-dict")?.value || "EndPoints";
+      const newAttr = e.target.value;
+      const wrap    = row.querySelector(".cond-val-wrap");
+      if (wrap) wrap.outerHTML = valueWidgetHtml(idx, dict, newAttr, "", caValues);
+    }
+    if (e.target.classList.contains("cond-val-sel")) {
+      const custom  = row.querySelector(".cond-val-custom");
+      if (custom) {
+        const isCustom = e.target.value === "__custom__";
+        custom.style.display = isCustom ? "" : "none";
+        if (!isCustom) custom.value = "";
+        if (isCustom)  custom.focus();
+      }
+    }
+  };
+  el.addEventListener("change", el._rowChangeHandler);
+  el._rowChangeBound = true;
+}
+
 // ── Condition chips (compact visual summary) ──────────────────────────────────
-// Returns HTML string of chips representing the condition — used in rule cards.
 
 export function renderConditionChips(cond, depth = 0) {
   if (!cond) return `<span class="cond-chip cond-chip-empty">${t("pol.no_condition")}</span>`;
@@ -223,21 +421,19 @@ export function renderConditionChips(cond, depth = 0) {
     return `<span class="cond-chip cond-chip-ref">${t("pol.cond_ref").replace("{name}", esc(cond.name || ""))}</span>`;
   }
   if (ct === "ConditionAttributes") {
-    const neg  = cond.isNegate ? "NOT " : "";
+    const neg   = cond.isNegate ? "NOT " : "";
     const opLbl = OPERATORS().find((o) => o.value === cond.operator)?.label || esc(cond.operator || "");
     return `<span class="cond-chip">${neg}${esc(cond.dictionaryName)}<span class="cond-chip-dot">:</span>${esc(cond.attributeName)} <span class="cond-chip-op">${opLbl}</span> <span class="cond-chip-val">${esc(cond.attributeValue)}</span></span>`;
   }
   if (ct === "ConditionAndBlock" || ct === "ConditionOrBlock") {
-    const sep  = ct === "ConditionAndBlock" ? "AND" : "OR";
+    const sep      = ct === "ConditionAndBlock" ? "AND" : "OR";
     const sep_html = `<span class="cond-chip-sep">${sep}</span>`;
-    return (cond.children || [])
-      .map((c) => renderConditionChips(c, depth + 1))
-      .join(sep_html);
+    return (cond.children || []).map((c) => renderConditionChips(c, depth + 1)).join(sep_html);
   }
   return `<span class="cond-chip cond-chip-ref">${esc(ct)}</span>`;
 }
 
-// ── Condition tree renderer (read-only expanded view) ─────────────────────────
+// ── Condition tree renderer (read-only) ───────────────────────────────────────
 
 export function renderConditionTree(cond, depth = 0) {
   if (!cond) return `<em>${t("pol.no_condition")}</em>`;
@@ -249,7 +445,7 @@ export function renderConditionTree(cond, depth = 0) {
     return `<div class="cond-tree-ref" ${style}>${t("pol.cond_ref").replace("{name}", esc(cond.name || ""))}</div>`;
   }
   if (ct === "ConditionAttributes") {
-    const neg  = cond.isNegate ? "<span class='cond-neg'>NOT</span> " : "";
+    const neg   = cond.isNegate ? "<span class='cond-neg'>NOT</span> " : "";
     const opLbl = OPERATORS().find((o) => o.value === cond.operator)?.label || esc(cond.operator || "");
     return `<div class="cond-tree-single" ${style}>${neg}` +
       `<span class="cond-dict-lbl">${esc(cond.dictionaryName)}</span>.` +

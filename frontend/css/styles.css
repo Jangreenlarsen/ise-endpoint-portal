@@ -2613,6 +2613,40 @@ body.register-route .login-card {
 .cond-val-wrap  { display: inline-flex; align-items: center; gap: 0.2rem; flex: 1; min-width: 0; }
 .cond-val-sel   { font-size: 0.8rem; padding: 0.2rem 0.3rem; flex: 1; min-width: 60px; }
 .cond-val-custom { font-size: 0.8rem; padding: 0.2rem 0.3rem; flex: 1; min-width: 60px; border-left: 2px solid #3b82f6; }
+/* ── Nested group editor ─────────────────────────────────────────────────── */
+.cond-group {
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  margin-bottom: 0.4rem;
+  background: #f8fafc;
+}
+.cond-group-root { border-color: #94a3b8; background: #f1f5f9; }
+.cond-group .cond-group {
+  background: #fff;
+  border-color: #bfdbfe;
+  margin: 0 0 0.3rem 0;
+}
+.cond-group-header {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.5rem;
+  border-bottom: 1px solid #e2e8f0;
+  background: rgba(0,0,0,0.02);
+  border-radius: 5px 5px 0 0;
+}
+.cond-group-type { width: 72px; font-size: 0.78rem; font-weight: 700; padding: 0.15rem 0.25rem; }
+.cond-group-type-hint { font-size: 0.72rem; color: #64748b; flex: 1; }
+.cond-group-del { padding: 0.1rem 0.4rem; font-size: 0.72rem; }
+.cond-group-children { padding: 0.4rem 0.5rem 0.1rem; }
+.cond-group-footer {
+  display: flex;
+  gap: 0.3rem;
+  padding: 0.25rem 0.5rem;
+  border-top: 1px solid #e2e8f0;
+}
+.cond-add-row, .cond-add-group { font-size: 0.75rem; padding: 0.15rem 0.5rem; }
+
 /* Profile tags */
 .profile-tag {
   display: inline-flex;
@@ -2703,6 +2737,12 @@ body.register-route .login-card {
 [data-theme="dark"] .pol-detail-profiles-col { border-color: #2a2a4a; }
 [data-theme="dark"] .pol-authz-chip     { background: #1e3a5f; border-color: #1e40af; color: #93c5fd; }
 [data-theme="dark"] .pol-editor-card    { border-color: #2a2a4a; background: #1e1e2e; }
+[data-theme="dark"] .cond-group         { background: #1a2035; border-color: #334155; }
+[data-theme="dark"] .cond-group-root    { background: #151d2e; border-color: #475569; }
+[data-theme="dark"] .cond-group .cond-group { background: #1e2b42; border-color: #1e40af; }
+[data-theme="dark"] .cond-group-header  { background: rgba(255,255,255,0.03); border-color: #334155; }
+[data-theme="dark"] .cond-group-footer  { border-color: #334155; }
+[data-theme="dark"] .cond-group-type-hint { color: #94a3b8; }
 [data-theme="dark"] .profile-chip     { background: #1e3a5f; color: #93c5fd; border-color: #1e40af; }
 [data-theme="dark"] .profile-tag      { background: #1e3a5f; border-color: #1e40af; }
 [data-theme="dark"] .match-hit        { background: #052e16; border-color: #166534; }
