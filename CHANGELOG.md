@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.22 build 0330] — 2026-05-15 — fix: platform ⚡-badge inline efter navn i browse-edit tabel
+
+**Berørte filer**: `frontend/css/styles.css`, `version.json`
+
+`.platform-auto-td` manglede flex-layout — `select` fyldte hele celle-bredden og ⚡-badget faldt ned på næste linje. Fix: `display:flex; align-items:center; gap:0.25rem` på `.platform-auto-td`, `flex:1; min-width:0` på select inden i cellen, badge til `inline-flex; flex-shrink:0`.
+
 ## [5.3.22 build 0329] — 2026-05-15 — feat: "Anvend + Genstart"-knap i system opdatering
 
 **Berørte filer**: `frontend/js/views/settings/section-update.js`, `frontend/js/views/settings.js`, `frontend/js/i18n.js`, `version.json`

@@ -844,10 +844,12 @@ td.nas-info-col { overflow: hidden; }
 .platform-field-wrap select { flex: 1; min-width: 0; }
 
 /* Platform auto-derive indicator */
-.platform-auto-td { position: relative; }
+.platform-auto-td { display: flex; align-items: center; gap: 0.25rem; }
+.platform-auto-td select { flex: 1; min-width: 0; }
 .platform-auto-badge {
-  display: inline-block;
-  margin-left: 0.25rem;
+  display: inline-flex;
+  flex-shrink: 0;
+  margin-left: 0;
   font-size: 0.75em;
   color: #2563eb;
   cursor: help;
