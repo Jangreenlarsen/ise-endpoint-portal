@@ -789,13 +789,20 @@ td.ise-session-col {
   gap: 0.1rem;
   line-height: 1.3;
 }
-.ise-sess-auth {
-  font-size: 0.82em;
-  color: #1e3a5f;
-  font-weight: 600;
+.ise-sess-row {
+  display: block;
+  font-size: 0.78em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.4;
+}
+.ise-sess-lbl {
+  font-weight: 600;
+  color: #64748b;
+}
+.ise-sess-val {
+  color: #1e3a5f;
 }
 .ise-sess-authz {
   font-size: 0.75em;
@@ -804,9 +811,10 @@ td.ise-session-col {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.ise-sess-prefix { font-weight: 400; opacity: 0.6; margin-right: 0.2em; }
-[data-theme="dark"] .ise-sess-auth  { color: #93c5fd; }
+[data-theme="dark"] .ise-sess-lbl { color: #94a3b8; }
+[data-theme="dark"] .ise-sess-val { color: #93c5fd; }
 [data-theme="dark"] .ise-sess-authz { color: #94a3b8; }
+[data-theme="midnight"] .ise-sess-val { color: #60a5fa; }
 
 /* NAS kolonne — navn + device type */
 td.nas-info-col { overflow: hidden; }

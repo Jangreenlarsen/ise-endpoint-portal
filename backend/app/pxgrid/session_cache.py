@@ -38,6 +38,7 @@ class SessionInfo:
     user_name: str = ""
     policy_set_name: str = ""
     authz_profiles: list[str] = field(default_factory=list)
+    authz_rule_name: str = ""
     use_case: str = ""
     nas_name: str = ""
     nas_device_type: str = ""
@@ -207,6 +208,7 @@ class SessionCache:
                     user_name=item.get("user_name", ""),
                     policy_set_name=item.get("policy_set_name", ""),
                     authz_profiles=item.get("authz_profiles", []),
+                    authz_rule_name=item.get("authz_rule_name", ""),
                     use_case=item.get("use_case", ""),
                     nas_name=item.get("nas_name", ""),
                     nas_device_type=item.get("nas_device_type", ""),

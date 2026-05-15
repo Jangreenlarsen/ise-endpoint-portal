@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.24 build 0332] — 2026-05-15 — feat: session-kolonne viser Auth/Authz regel i stedet for profilnavne
+
+**Berørte filer**: `backend/app/pxgrid/session_cache.py`, `backend/app/pxgrid/session_worker.py`, `frontend/js/views/browse-table.js`, `frontend/js/i18n.js`, `frontend/css/styles.css`, `version.json`
+
+Nyt `authz_rule_name` felt i `SessionInfo` — captures `authorizationRuleName` fra pxGrid-topic og `authorizationrule` fra MnT-data. Session-kolonnen viser nu `Auth: <policySetName>` og `Authz: <authorizationRuleName>` i stedet for profilnavne. Fallback: vises profilnavne hvis hverken policy set name eller regel-navn er tilgængeligt (ældre ISE-versioner).
+
 ## [5.3.23 build 0331] — 2026-05-15 — fix: platform-kolonne badge-layout og sortering
 
 **Berørte filer**: `frontend/css/styles.css`, `frontend/js/views/browse-table.js`, `frontend/js/views/browse-filter.js`, `version.json`

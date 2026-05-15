@@ -146,6 +146,8 @@ const TRANSLATIONS = {
     "browse.stale_badge_title": "Data fra gammel cache — opdateres i baggrunden",
     "browse.extern_role_title": "Bruger-tag eller rolle uden for katalog",
     "browse.platform_auto_title": "Platform auto-sat fra NAS device type — kan overskrives manuelt",
+    "browse.sess_auth_label":  "Auth",
+    "browse.sess_authz_label": "Authz",
 
     // Browse — kolonnenavne
     "col.mac":          "MAC",
@@ -1118,6 +1120,8 @@ const TRANSLATIONS = {
     "browse.stale_badge_title": "Data from old cache — updating in background",
     "browse.extern_role_title": "User tag or role outside catalog",
     "browse.platform_auto_title": "Platform auto-set from NAS device type — can be overridden manually",
+    "browse.sess_auth_label":  "Auth",
+    "browse.sess_authz_label": "Authz",
 
     // Browse — column names
     "col.mac":          "MAC",

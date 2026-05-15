@@ -110,18 +110,23 @@ export function initTable(container, state, api, cb) {
     return sess?.nas_device_type || "";
   }
 
-  // ── ISE session combo cell (authz only — NAS info moved to nas column) ──
+  // ── ISE session combo cell ───────────────────────────────────────────────
   function iseSessionCellHtml(mac) {
     if (!state.pxgridSessionData) return '<span class="hint">—</span>';
     const sess = state.pxgridSessionData.get(normalizeMac(mac));
     if (!sess) return '<span class="hint">—</span>';
+    const auth  = sess.policy_set_name   || "";
+    const authz = sess.authz_rule_name   || "";
     const profs = (sess.authz_profiles || []).filter(Boolean);
-    if (!profs.length) return '<span class="hint">—</span>';
-    return (
-      `<div class="ise-sess-combo">` +
-      profs.map(p => `<span class="ise-sess-authz">${esc(p)}</span>`).join("") +
-      `</div>`
-    );
+    if (!auth && !authz && !profs.length) return '<span class="hint">—</span>';
+    const lines = [];
+    if (auth)  lines.push(`<span class="ise-sess-row"><span class="ise-sess-lbl">${t("browse.sess_auth_label")}:</span> <span class="ise-sess-val">${esc(auth)}</span></span>`);
+    if (authz) lines.push(`<span class="ise-sess-row"><span class="ise-sess-lbl">${t("browse.sess_authz_label")}:</span> <span class="ise-sess-val">${esc(authz)}</span></span>`);
+    // Profilnavne som tooltip hvis hverken auth eller authz er tilgængelig
+    if (!auth && !authz && profs.length) {
+      lines.push(...profs.map(p => `<span class="ise-sess-row ise-sess-authz">${esc(p)}</span>`));
+    }
+    return `<div class="ise-sess-combo">${lines.join("")}</div>`;
   }
 
   // ── NAS info cell ────────────────────────────────────────────────────────

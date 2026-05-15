@@ -483,6 +483,13 @@ def _build_session_info(d: dict[str, Any]) -> SessionInfo:
     else:
         nas_device_type = ""
         nas_name = ""
+    authz_rule_name = str(
+        d.get("authorizationRuleName", "")
+        or d.get("selectedAuthorizationRuleName", "")
+        or d.get("azRuleName", "")
+        or d.get("authzRuleName", "")
+        or ""
+    )
     return SessionInfo(
         mac=str(mac),
         state=str(d.get("state", "") or d.get("sessionEvent", "")),
@@ -491,6 +498,7 @@ def _build_session_info(d: dict[str, Any]) -> SessionInfo:
         user_name=str(d.get("userName", "") or d.get("username", "")),
         policy_set_name=str(d.get("policySetName", "")),
         authz_profiles=[str(p) for p in azn_raw if p],
+        authz_rule_name=authz_rule_name,
         use_case=str(d.get("useCase", "")),
         nas_name=nas_name,
         nas_device_type=nas_device_type,
@@ -568,6 +576,7 @@ async def _reconcile_from_pxgrid(cache, sessions: list[dict]) -> None:
                 user_name=info.user_name,
                 policy_set_name=info.policy_set_name,
                 authz_profiles=info.authz_profiles,
+                authz_rule_name=info.authz_rule_name,
                 nas_name=nas_name,
                 nas_device_type=nas_device_type,
                 raw=info.raw,
@@ -650,10 +659,15 @@ async def _reconcile_from_mnt(cache) -> None:  # type: ignore[no-untyped-def]
                 or sess.get("selectedaznprofiles", "")
                 or sess.get("authorizationprofiles", "")
                 or sess.get("authorization-profiles", "")
-                or sess.get("authorizationrule", "")
                 or ""
             )
             authz_profiles = [p.strip() for p in authz_raw.split(",") if p.strip()]
+            authz_rule_name = str(
+                sess.get("authorizationrule", "")
+                or sess.get("authorizationrulename", "")
+                or sess.get("authorization-rule", "")
+                or ""
+            )
             nas_ip_val = str(
                 sess.get("nas_ip_address", "")
                 or sess.get("nasipaddress", "")
@@ -680,6 +694,7 @@ async def _reconcile_from_mnt(cache) -> None:  # type: ignore[no-untyped-def]
                 user_name=str(sess.get("user_name", "") or sess.get("username", "")),
                 policy_set_name=policy_set_name,
                 authz_profiles=authz_profiles,
+                authz_rule_name=authz_rule_name,
                 nas_name=nas_name,
                 nas_device_type=nas_device_type,
             )
