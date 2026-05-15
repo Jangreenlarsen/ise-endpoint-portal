@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.19 build 0321] — 2026-05-15 — fix: Raw→local mapping fjerner fejlagtig "ISE raw"-kolonne
+
+**Berørte filer**: `frontend/js/views/attributes.js`, `version.json`
+
+"ISE raw"-kolonnen fjernet fra mapping-tabellen. Struktur tilbage til 3 kolonner: Lokalt label | CoA | ISE NAS Devices | ×. For nye rækker vises raw-input nu i NAS Devices-cellen (tekst-input med placeholder). Eksisterende rækker viser NAS device-tags som før.
+
 ## [5.3.18 build 0320] — 2026-05-15 — feat: Raw→local mapping dynamisk + Scan NAS knap
 
 **Berørte filer**: `backend/app/core/platform_mapping_store.py`, `backend/app/schemas/custom_attribute.py`, `backend/app/services/custom_attribute_service.py`, `backend/app/ise/network_devices.py`, `backend/app/api/custom_attributes.py`, `frontend/js/api.js`, `frontend/js/views/attributes.js`, `frontend/js/i18n.js`, `version.json`

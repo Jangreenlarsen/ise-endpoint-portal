@@ -72,21 +72,21 @@ export async function renderAttributes(container) {
         ? `${t("attr.mapping_col_nas")} <span class="hint" style="font-size:0.8em;">(${t("attr.nas_loading")})</span>`
         : `${t("attr.mapping_col_nas")} <span class="hint" style="font-size:0.8em;">(${t("attr.nas_not_loaded")})</span>`;
 
+    // NAS cell for existing rows: show device tags; for new rows: editable raw input
     const makeRow = (raw, local, coa, isNew = false) => `
       <tr data-raw="${esc(raw)}" class="${isNew ? "mapping-row-new" : ""}">
-        <td style="min-width:120px;">
-          ${isNew
-            ? `<input type="text" class="map-raw" placeholder="${esc(t("attr.mapping_raw_placeholder"))}" value="${esc(raw)}" style="width:100%;box-sizing:border-box;" />`
-            : `<span class="map-raw-label" style="font-family:monospace;font-size:0.85em;">${esc(raw)}</span><input type="hidden" class="map-raw" value="${esc(raw)}" />`
-          }
-        </td>
         <td>
           <select class="map-local">${localOptions(local)}</select>
         </td>
         <td>
           <select class="map-coa">${coaOptions(coa)}</select>
         </td>
-        <td class="nas-devices-cell">${nasCell(raw)}</td>
+        <td class="nas-devices-cell">
+          ${isNew
+            ? `<input type="text" class="map-raw" placeholder="${esc(t("attr.mapping_raw_placeholder"))}" value="${esc(raw)}" style="width:100%;box-sizing:border-box;" />`
+            : `<input type="hidden" class="map-raw" value="${esc(raw)}" />${nasCell(raw)}`
+          }
+        </td>
         <td style="width:28px;text-align:center;">
           <button type="button" class="map-row-del" title="${esc(t("attr.mapping_del_title"))}"
             style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:1rem;padding:0;line-height:1;">×</button>
@@ -97,7 +97,7 @@ export async function renderAttributes(container) {
     const mappedRaws = new Set(mapping.mappings.map(m => m.raw.toLowerCase()));
     const rows = mapping.mappings.map((m) => makeRow(m.raw, m.local, m.coa, false)).join("");
 
-    // Unmatched NDG rows not yet in any mapping → suggest as new rows
+    // Unmatched NDG rows not yet in any mapping → suggest as new pre-filled rows
     const newRows = nasUnmatched
       .filter(u => !mappedRaws.has(u.path.toLowerCase()))
       .map(u => makeRow(u.path, "", "reauth", true)).join("");
@@ -105,7 +105,7 @@ export async function renderAttributes(container) {
     const count = mapping.mappings.length;
     const atLimit = count >= maxMappings;
     const emptyNote = count === 0 && nasUnmatched.length === 0
-      ? `<tr class="mapping-empty-row"><td colspan="5" style="text-align:center;padding:0.6rem;color:#6b7280;">${t("attr.mapping_empty")}</td></tr>`
+      ? `<tr class="mapping-empty-row"><td colspan="4" style="text-align:center;padding:0.6rem;color:#6b7280;">${t("attr.mapping_empty")}</td></tr>`
       : "";
 
     return `
@@ -119,7 +119,6 @@ export async function renderAttributes(container) {
         <table class="platform-mapping-table" style="width:100%;border-collapse:collapse;">
           <thead>
             <tr>
-              <th style="text-align:left;padding:0.3rem;">${t("attr.mapping_col_raw")}</th>
               <th style="text-align:left;padding:0.3rem;">${t("attr.mapping_col_local")}</th>
               <th style="text-align:left;padding:0.3rem;">${t("attr.mapping_col_coa")}</th>
               <th style="text-align:left;padding:0.3rem;">${nasHeader}</th>
@@ -163,7 +162,7 @@ export async function renderAttributes(container) {
       if (!emptyRow) {
         emptyRow = document.createElement("tr");
         emptyRow.className = "mapping-empty-row";
-        emptyRow.innerHTML = `<td colspan="5" style="text-align:center;padding:0.6rem;color:#6b7280;">${t("attr.mapping_empty")}</td>`;
+        emptyRow.innerHTML = `<td colspan="4" style="text-align:center;padding:0.6rem;color:#6b7280;">${t("attr.mapping_empty")}</td>`;
         tbody.prepend(emptyRow);
       }
     } else if (emptyRow) {
@@ -320,13 +319,12 @@ export async function renderAttributes(container) {
           tr.className = "mapping-row-new";
           tr.dataset.raw = "";
           tr.innerHTML = `
-            <td style="min-width:120px;">
+            <td><select class="map-local">${optsHtml}</select></td>
+            <td><select class="map-coa">${coaOpts}</select></td>
+            <td class="nas-devices-cell">
               <input type="text" class="map-raw" placeholder="${esc(t("attr.mapping_raw_placeholder"))}"
                 style="width:100%;box-sizing:border-box;" />
             </td>
-            <td><select class="map-local">${optsHtml}</select></td>
-            <td><select class="map-coa">${coaOpts}</select></td>
-            <td class="nas-devices-cell"><span class="hint" style="font-size:0.8em;">—</span></td>
             <td style="width:28px;text-align:center;">
               <button type="button" class="map-row-del" title="${esc(t("attr.mapping_del_title"))}"
                 style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:1rem;padding:0;line-height:1;">×</button>
