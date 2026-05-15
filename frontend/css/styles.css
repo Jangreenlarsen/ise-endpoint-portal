@@ -733,6 +733,24 @@ th.sort-active {
   color: #60a5fa;
 }
 
+/* Faste bredder — read-only kolonner */
+th[data-col="static_group"], td[data-col="static_group"] {
+  width: 68px; min-width: 68px; max-width: 68px;
+  overflow: hidden; white-space: nowrap;
+}
+th[data-col="psk_mode"], td[data-col="psk_mode"] {
+  width: 44px; min-width: 44px; max-width: 44px;
+  text-align: center;
+}
+th[data-col="create_time"], td[data-col="create_time"] {
+  width: 70px; min-width: 70px; max-width: 70px;
+  overflow: hidden; white-space: nowrap;
+}
+th[data-col="ise_session"], td[data-col="ise_session"] {
+  width: 148px; min-width: 148px; max-width: 148px;
+  overflow: hidden;
+}
+
 /* Alder-kolonne */
 td.age-cell {
   font-size: 0.8rem;
@@ -755,8 +773,7 @@ th.authz-col {
 
 /* ISE Session kolonne — Auth + Authz kombinations-celle */
 td.ise-session-col {
-  min-width: 10rem;
-  max-width: 18rem;
+  overflow: hidden;
 }
 .ise-sess-combo {
   display: flex;

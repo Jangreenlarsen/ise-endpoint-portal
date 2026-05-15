@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.13 build 0314] — 2026-05-15 — feat: kompakt browse-edit — faste bredder på read-only kolonner + kortere navne
+
+**Berørte filer**: `frontend/js/i18n.js`, `frontend/js/views/browse-table.js`, `frontend/css/styles.css`, `version.json`
+
+Fire read-only kolonner er nu faste bredder: "Tilkn./Assign." (68px), "PSK" (44px), "Alder/Age" (70px), "Session" (148px). Kolonnenavne forkortet i begge sprog. ISE Session-cellen viser ikke længere NAS device type (duplikat af Platform-kolonnen) — kun NAS-navn + authz-politikker.
+
 ## [5.3.10 build 0309] — 2026-05-14 — feat: træk-og-slip kolonne-rækkefølge i browse-edit tabel
 
 **Berørte filer**: `frontend/js/views/browse-utils.js`, `frontend/js/views/browse.js`, `frontend/js/views/browse-table.js`, `frontend/css/styles.css`, `version.json`

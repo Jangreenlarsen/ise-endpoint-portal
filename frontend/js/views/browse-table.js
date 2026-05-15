@@ -114,12 +114,8 @@ export function initTable(container, state, api, cb) {
     if (!state.pxgridSessionData) return '<span class="hint">—</span>';
     const sess = state.pxgridSessionData.get(normalizeMac(mac));
     if (!sess) return '<span class="hint">—</span>';
-    const profs   = (sess.authz_profiles || []).filter(Boolean);
-    const nasName = sess.nas_name || "";
-    const nasType = sess.nas_device_type || "";
-    const nasLabel = nasName
-      ? (nasType ? `${nasName} · ${nasType}` : nasName)
-      : nasType;
+    const profs    = (sess.authz_profiles || []).filter(Boolean);
+    const nasLabel = sess.nas_name || "";
     if (!profs.length && !nasLabel) return '<span class="hint">—</span>';
     return (
       `<div class="ise-sess-combo">` +
