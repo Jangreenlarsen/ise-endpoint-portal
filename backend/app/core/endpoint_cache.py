@@ -53,7 +53,7 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T")
 
 STALE_MAX_FACTOR = 10.0
-DISK_CACHE_VERSION = 2
+DISK_CACHE_VERSION = 3
 
 
 @dataclass

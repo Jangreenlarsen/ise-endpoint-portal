@@ -143,7 +143,7 @@ class EndpointService:
                 id=r.get("id", ""),
                 name=r.get("name", ""),
                 description=r.get("description"),
-                vendor=oui_lookup(r.get("name", "")),
+                vendor=profiler_module.resolve_name_sync(r.get("profileId", "")) or oui_lookup(r.get("name", "")),
             )
             for r in raw
         ]
@@ -240,7 +240,7 @@ class EndpointService:
             portal_user=raw.get("portalUser", "") or "",
             identity_store=raw.get("identityStore", "") or "",
             identity_store_id=raw.get("identityStoreId", "") or "",
-            vendor=oui_lookup(mac_val),
+            vendor=profiler_name or oui_lookup(mac_val),
             psk_mode=ca.get(PSK_MODE_ATTR, "").lower() == "true",
             psk_key=_psk_decode(ca.get(PSK_KEY_ATTR, "")),
             create_time=create_time,
@@ -311,7 +311,7 @@ class EndpointService:
                         name=r.get("name", ""),
                         mac=r.get("name", ""),
                         description=r.get("description"),
-                        vendor=oui_lookup(r.get("name", "")),
+                        vendor=profiler_module.resolve_name_sync(r.get("profileId", "")) or oui_lookup(r.get("name", "")),
                     )
 
         details = await asyncio.gather(*(fetch_one(r) for r in resources))
@@ -433,7 +433,7 @@ class EndpointService:
                         name=r.get("name", ""),
                         mac=r.get("name", ""),
                         description=r.get("description"),
-                        vendor=oui_lookup(r.get("name", "")),
+                        vendor=profiler_module.resolve_name_sync(r.get("profileId", "")) or oui_lookup(r.get("name", "")),
                     )
 
         details = await asyncio.gather(*(fetch_one(r) for r in resources))

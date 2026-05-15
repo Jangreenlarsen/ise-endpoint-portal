@@ -149,7 +149,7 @@ const TRANSLATIONS = {
 
     // Browse — kolonnenavne
     "col.mac":          "MAC",
-    "col.vendor":       "Vendor",
+    "col.vendor":       "Profil",
     "col.group_name":   "Identity Group",
     "col.static_group": "Tilkn.",
     "col.description":  "Description",
@@ -1107,7 +1107,7 @@ const TRANSLATIONS = {
 
     // Browse — column names
     "col.mac":          "MAC",
-    "col.vendor":       "Vendor",
+    "col.vendor":       "Profile",
     "col.group_name":   "Identity Group",
     "col.static_group": "Assign.",
     "col.description":  "Description",

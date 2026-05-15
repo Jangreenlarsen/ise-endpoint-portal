@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.17 build 0318] — 2026-05-15 — feat: vendor-kolonne bruger nu ISE profiler-navn i stedet for lokal OUI-CSV
+
+**Berørte filer**: `backend/app/services/endpoint_service.py`, `backend/app/core/endpoint_cache.py`, `frontend/js/i18n.js`, `version.json`
+
+"Vendor"-kolonnen (nu omdøbt til "Profil"/"Profile") viser nu ISE's eget profiler-resultat (fx "Apple-iPhone", "Cisco-IP-Phone-7942", "HP-LaserJet") med lokal OUI-CSV som fallback for endpoints ISE endnu ikke har profileret. Den bundlede OUI-CSV var begrænset til ~400 OUI-entries. Disk-cache version bumpes til 3 så gammel cache med OUI-vendor invalideres automatisk ved næste genstart.
+
 ## [5.3.16 build 0317] — 2026-05-15 — feat: pxGrid session-cache disk-persistens overlever portal-genstart
 
 **Berørte filer**: `backend/app/pxgrid/session_cache.py`, `backend/app/core/config.py`, `backend/app/main.py`, `version.json`
