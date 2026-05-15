@@ -16,6 +16,7 @@ export function initTable(container, state, api, cb) {
   const msg            = container.querySelector("#msg");
   const countEl        = container.querySelector("#count");
   const saveAllBtn     = container.querySelector("#save-all-btn");
+  const undoBtn        = container.querySelector("#undo-btn");
   const selectAllCb    = container.querySelector("#select-all");
   const bulkSaveBtn    = container.querySelector("#bulk-save-btn");
   const bulkDelBtn     = container.querySelector("#bulk-del-btn");
@@ -259,10 +260,76 @@ export function initTable(container, state, api, cb) {
 
   // ── Dirty tracking ───────────────────────────────────────────────────────
   function updateDirtyUI() {
-    saveAllBtn.disabled  = state.dirtyIds.size === 0;
-    saveAllBtn.textContent = state.dirtyIds.size
-      ? t("browse.save_all_n").replace("{n}", state.dirtyIds.size)
+    const n = state.dirtyIds.size;
+    saveAllBtn.disabled = n === 0;
+    undoBtn.disabled    = n === 0;
+    saveAllBtn.textContent = n
+      ? t("browse.save_all_n").replace("{n}", n)
       : t("browse.btn_save_all");
+  }
+
+  function revertDirtyRows() {
+    if (!state.dirtyIds.size) return;
+    for (const id of [...state.dirtyIds]) {
+      const r  = (state.allRows || []).find((x) => x.id === id);
+      if (!r) continue;
+      const tr = tbody.querySelector(`tr[data-id="${CSS.escape(id)}"]`);
+      if (!tr) continue;
+
+      const mac  = r.mac || r.name;
+      const nasPt = getNasPlatformType(mac);
+
+      const descInput = tr.querySelector(".desc-input");
+      if (descInput) descInput.value = r.description || "";
+
+      const grpSel = tr.querySelector(".grp-select");
+      if (grpSel) grpSel.innerHTML = groupOptionsHtml(r.group_id);
+
+      const assignCell = tr.querySelector(".assign-cell");
+      if (assignCell) assignCell.textContent = r.static_group ? t("cell.static") : t("cell.dynamic");
+      delete tr.dataset.beStaticGroup;
+
+      const setSel = (cls, val, vals) => {
+        const el = tr.querySelector(`.${cls}`);
+        if (el) el.innerHTML = optionsHtml(vals, val);
+      };
+      setSel("ca-type",        r.endpoint_type, state.caValues.Type);
+      setSel("ca-owner",       r.owner,          state.caValues.Owner);
+      setSel("ca-lokation",    r.lokation,       state.caValues.Lokation);
+      setSel("ca-authzvlan",   r.authz_vlan,     state.caValues.AuthzVlan);
+      setSel("ca-authzacl",    r.authz_acl,      state.caValues.AuthzACL);
+      setSel("ca-platformtype",r.platform_type,  state.caValues.PlatformType);
+
+      const ptTd  = tr.querySelector(".ca-platformtype")?.closest("td");
+      if (ptTd) {
+        ptTd.classList.toggle("platform-auto-td", !!nasPt);
+        const ptSel = ptTd.querySelector(".ca-platformtype");
+        if (ptSel) { ptSel.disabled = !!nasPt; if (nasPt) ptSel.value = nasPt; }
+        const oldBadge = ptTd.querySelector(".platform-auto-badge");
+        if (nasPt && !oldBadge) {
+          const badge = document.createElement("span");
+          badge.className = "platform-auto-badge";
+          badge.title = t("browse.platform_auto_title");
+          badge.innerHTML = "&#9889;";
+          ptSel && ptSel.after(badge);
+        } else if (!nasPt && oldBadge) { oldBadge.remove(); }
+      }
+
+      const pskCb = tr.querySelector(".psk-mode-cb");
+      if (pskCb) pskCb.checked = !!r.psk_mode;
+      delete tr.dataset.bePskKey;
+
+      const rolesCell = tr.querySelector(".roles-cell");
+      if (rolesCell) rolesCell.innerHTML = rolesChipsHtml(r.roles);
+
+      const rowSel = tr.querySelector(".row-select");
+      if (rowSel) rowSel.checked = false;
+
+      tr.classList.remove("dirty");
+    }
+    state.dirtyIds.clear();
+    updateSelectionUI();
+    updateDirtyUI();
   }
 
   function markDirty(tr) {
@@ -463,6 +530,13 @@ export function initTable(container, state, api, cb) {
     e.preventDefault();
     const tr = link.closest("tr");
     if (tr && tr.dataset.id) cb.openDetail(tr.dataset.id);
+  });
+
+  undoBtn.addEventListener("click", () => {
+    if (!state.dirtyIds.size) return;
+    if (!confirm(`Fortryd ${state.dirtyIds.size} ikke-gemte ændring(er)?`)) return;
+    revertDirtyRows();
+    msg.innerHTML = `<div class="alert info">Ændringer fortrudt.</div>`;
   });
 
   // Save all dirty rows

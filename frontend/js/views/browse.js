@@ -46,6 +46,7 @@ export async function renderBrowse(container) {
         <div class="toolbar-group" title="${t("browse.tooltip_save")}">
           <button id="coa-toggle-btn" class="secondary"
                   title="Udløs CoA reauth på ISE efter hver gemt ændring">${t("browse.btn_coa_off")}</button>
+          <button id="undo-btn" class="secondary" disabled title="Fortryd alle ikke-gemte ændringer">↩ Fortryd</button>
           <button id="save-all-btn" disabled title="Gem alle ændrede endpoints">${t("browse.btn_save_all")}</button>
         </div>
         <span class="toolbar-divider"></span>
@@ -81,16 +82,11 @@ export async function renderBrowse(container) {
               ${getOrderedColumns().map((c) => `<th data-col="${c.key}" draggable="true"${c.cls ? ` class="${c.cls}"` : ""}>${c.label}</th>`).join("")}
             </tr>
             <tr class="filter-row">
-              <th></th>
+              <th><button type="button" id="filter-clear-all-btn" class="filter-clear-all-btn hidden" title="Nulstil alle søgefelter">×</button></th>
               ${getOrderedColumns().map((c) => `
                 <th data-col="${c.key}"${c.cls ? ` class="${c.cls}"` : ""}>
-                  <div class="col-filter">
-                    <label class="col-filter-toggle" title="${c.label}">
-                      <input type="checkbox" class="col-filter-cb" data-col="${c.key}" />
-                    </label>
-                    <input type="text" class="col-filter-input" data-col="${c.key}"
-                           placeholder="regex..." disabled />
-                  </div>
+                  <input type="text" class="col-filter-input" data-col="${c.key}"
+                         placeholder="…" />
                 </th>`).join("")}
             </tr>
           </thead>

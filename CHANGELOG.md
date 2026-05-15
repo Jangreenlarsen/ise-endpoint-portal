@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.15 build 0316] — 2026-05-15 — feat: ny søge-UX (auto-aktivering, global reset) + undo-knap i browse-edit
+
+**Berørte filer**: `frontend/js/views/browse.js`, `frontend/js/views/browse-filter.js`, `frontend/js/views/browse-table.js`, `frontend/css/styles.css`, `version.json`
+
+Søgefelterne i browse-edit aktiveres nu automatisk ved tekstindtastning — de individuelle checkboxe er fjernet. En rød ×-knap vises i venstre hjørne af filter-rækken når mindst ét felt er aktivt og nulstiller alle felter med ét klik. Escape-tast rydder enkelt felt. Derudover er der tilføjet en "↩ Fortryd"-knap i toolbaren der ruller alle ikke-gemte inline-ændringer tilbage til serverværdierne uden at genindlæse siden.
+
 ## [5.3.14 build 0315] — 2026-05-15 — feat: dropdown-pil erstattet med venstre-border i browse-edit select-felter
 
 **Berørte filer**: `frontend/css/styles.css`, `version.json`

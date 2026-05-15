@@ -11,22 +11,28 @@ import {
 } from "./browse-utils.js";
 
 export function initFilter(container, state, api, cb) {
-  const filterRow       = container.querySelector(".filter-row");
-  const portalFilterBtn = container.querySelector("#portal-filter-btn");
-  const pageSizeSelect  = container.querySelector("#page-size-select");
-  const viewsBtn        = container.querySelector("#views-btn");
-  const viewsMenu       = container.querySelector("#views-menu");
-  const msg             = container.querySelector("#msg");
+  const filterRow          = container.querySelector(".filter-row");
+  const portalFilterBtn    = container.querySelector("#portal-filter-btn");
+  const pageSizeSelect     = container.querySelector("#page-size-select");
+  const viewsBtn           = container.querySelector("#views-btn");
+  const viewsMenu          = container.querySelector("#views-menu");
+  const msg                = container.querySelector("#msg");
+  const filterClearAllBtn  = container.querySelector("#filter-clear-all-btn");
+
+  function updateClearBtn() {
+    const anyActive = state.portalOnly
+      || Array.from(filterRow.querySelectorAll(".col-filter-input")).some((i) => i.value.trim());
+    filterClearAllBtn.classList.toggle("hidden", !anyActive);
+  }
 
   pageSizeSelect.value = String(state.currentSize);
 
   // ── Column filters ──────────────────────────────────────────────────────
   function getColumnFilters() {
     const active = [];
-    filterRow.querySelectorAll(".col-filter-cb:checked").forEach((cb) => {
-      const col   = cb.dataset.col;
-      const input = filterRow.querySelector(`.col-filter-input[data-col="${col}"]`);
-      const q     = (input.value || "").trim();
+    filterRow.querySelectorAll(".col-filter-input").forEach((input) => {
+      const col = input.dataset.col;
+      const q   = (input.value || "").trim();
       if (q) {
         const colDef = getColumns().find((c) => c.key === col);
         if (colDef) {
@@ -42,14 +48,12 @@ export function initFilter(container, state, api, cb) {
   }
 
   function hasActiveFilterText() {
-    return Array.from(filterRow.querySelectorAll(".col-filter-input")).some(
-      (i) => !i.disabled && i.value.trim(),
-    );
+    return Array.from(filterRow.querySelectorAll(".col-filter-input")).some((i) => i.value.trim());
   }
 
   function needsFilterMode() {
     return state.portalOnly
-      || filterRow.querySelector(".col-filter-cb:checked") !== null
+      || Array.from(filterRow.querySelectorAll(".col-filter-input")).some((i) => i.value.trim())
       || state.sortCol !== null;
   }
 
@@ -166,9 +170,9 @@ export function initFilter(container, state, api, cb) {
   // ── Filter persistence ───────────────────────────────────────────────────
   function snapshotFilters() {
     const cols = [];
-    filterRow.querySelectorAll(".col-filter-cb:checked").forEach((cb) => {
-      const input = filterRow.querySelector(`.col-filter-input[data-col="${cb.dataset.col}"]`);
-      cols.push({ col: cb.dataset.col, value: input ? input.value : "" });
+    filterRow.querySelectorAll(".col-filter-input").forEach((input) => {
+      const q = (input.value || "").trim();
+      if (q) cols.push({ col: input.dataset.col, value: q });
     });
     return {
       portalOnly: state.portalOnly,
@@ -188,19 +192,15 @@ export function initFilter(container, state, api, cb) {
     state.sortCol = null;
     state.sortDir = null;
     updateSortHeaders();
-    filterRow.querySelectorAll(".col-filter-cb").forEach((cb) => {
-      const input = filterRow.querySelector(`.col-filter-input[data-col="${cb.dataset.col}"]`);
-      cb.checked = false;
-      if (input) { input.value = ""; input.disabled = true; }
-    });
+    filterRow.querySelectorAll(".col-filter-input").forEach((input) => { input.value = ""; });
     if (s.portalOnly) { state.portalOnly = true; portalFilterBtn.classList.add("active-toggle"); }
     if (Array.isArray(s.cols)) {
       for (const { col, value } of s.cols) {
-        const cbEl  = filterRow.querySelector(`.col-filter-cb[data-col="${col}"]`);
         const input = filterRow.querySelector(`.col-filter-input[data-col="${col}"]`);
-        if (cbEl && input) { cbEl.checked = true; input.disabled = false; input.value = value || ""; }
+        if (input) input.value = value || "";
       }
     }
+    updateClearBtn();
     if (s.colVis && typeof s.colVis === "object") {
       for (const c of getColumns()) {
         if (c.key in s.colVis) state.colVis[c.key] = s.colVis[c.key] !== false;
@@ -219,28 +219,31 @@ export function initFilter(container, state, api, cb) {
   function restoreFilters() { applyFilterSnapshot(loadBrowseFilters()); }
 
   // ── Event handlers ───────────────────────────────────────────────────────
-  filterRow.querySelectorAll(".col-filter-cb").forEach((cbEl) => {
-    const input = filterRow.querySelector(`.col-filter-input[data-col="${cbEl.dataset.col}"]`);
-    cbEl.addEventListener("change", async () => {
-      input.disabled = !cbEl.checked;
-      if (!cbEl.checked) input.value = "";
-      persistFilters();
-      clearActiveView();
-      await onFilterChange();
-      if (cbEl.checked) input.focus();
-    });
-  });
+  let filterDebounce = null;
   filterRow.querySelectorAll(".col-filter-input").forEach((input) => {
     input.addEventListener("input", () => {
+      updateClearBtn();
       persistFilters();
       clearActiveView();
-      if (state.filterMode) cb.applyFilter();
+      clearTimeout(filterDebounce);
+      filterDebounce = setTimeout(async () => { await onFilterChange(); }, 250);
     });
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") { input.value = ""; input.dispatchEvent(new Event("input")); }
+    });
+  });
+
+  filterClearAllBtn.addEventListener("click", async () => {
+    applyFilterSnapshot({ portalOnly: false, cols: [] });
+    persistFilters();
+    clearActiveView();
+    await onFilterChange();
   });
 
   portalFilterBtn.addEventListener("click", async () => {
     state.portalOnly = !state.portalOnly;
     portalFilterBtn.classList.toggle("active-toggle", state.portalOnly);
+    updateClearBtn();
     persistFilters();
     clearActiveView();
     await onFilterChange();
