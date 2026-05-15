@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.25 build 0335] — 2026-05-15 — fix: session-kolonne viser Authz-profiler korrekt + MnT enrichment for policySetName
+
+**Berørte filer**: `frontend/js/views/browse-table.js`, `backend/app/pxgrid/session_worker.py`, `version.json`
+
+ISE pxGrid getSessions returnerer ikke `policySetName` eller `authorizationRuleName` — bekræftet via debug-logging. To rettelser:
+1. **Frontend**: Authz-profiler vises nu som `Authz: Profil1, Profil2, ...` (komma-separeret med label) i stedet for separate unlabeled blokke der kørte sammen uden separator.
+2. **Backend**: Ny `_enrich_from_mnt()` funktion kaldes efter pxGrid reconcile — henter MnT ActiveList og beriger sessions med `isepolicysetname` og `authorizationrule` felter (hvis ISE MnT leverer dem). Logger MnT feltnavne for videre diagnose.
+
 ## [5.3.24 build 0334] — 2026-05-15 — debug: pxGrid session feltnavne logges ved DEBUG-niveau
 
 **Berørte filer**: `backend/app/pxgrid/session_worker.py`, `backend/app/core/config.py`, `backend/app/core/logging.py`, `backend/config.json`, `version.json`

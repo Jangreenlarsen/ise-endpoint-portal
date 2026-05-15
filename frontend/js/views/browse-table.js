@@ -122,9 +122,10 @@ export function initTable(container, state, api, cb) {
     const lines = [];
     if (auth)  lines.push(`<span class="ise-sess-row"><span class="ise-sess-lbl">${t("browse.sess_auth_label")}:</span> <span class="ise-sess-val">${esc(auth)}</span></span>`);
     if (authz) lines.push(`<span class="ise-sess-row"><span class="ise-sess-lbl">${t("browse.sess_authz_label")}:</span> <span class="ise-sess-val">${esc(authz)}</span></span>`);
-    // Profilnavne som tooltip hvis hverken auth eller authz er tilgængelig
-    if (!auth && !authz && profs.length) {
-      lines.push(...profs.map(p => `<span class="ise-sess-row ise-sess-authz">${esc(p)}</span>`));
+    // Profiler vises med Authz-label (komma-separeret) — policySetName/authorizationRuleName
+    // er ikke tilgængelig via pxGrid getSessions, så profiler er det tætteste vi kommer.
+    if (profs.length && !authz) {
+      lines.push(`<span class="ise-sess-row"><span class="ise-sess-lbl">${t("browse.sess_authz_label")}:</span> <span class="ise-sess-val">${profs.map(esc).join(", ")}</span></span>`);
     }
     return `<div class="ise-sess-combo">${lines.join("")}</div>`;
   }

@@ -520,23 +520,27 @@ def _build_session_info(d: dict[str, Any]) -> SessionInfo:
 async def _reconcile_cache_with_mnt(cache, client: PxGridClient | None = None) -> None:  # type: ignore[no-untyped-def]
     """Synkroniser pxGrid session-cache ved reconnect.
 
-    Forsøger pxGrid REST getSessions (rig data: policySetName + selectedAznProfiles)
-    som primær kilde. Falder tilbage til MnT ActiveList hvis getSessions fejler.
+    Forsøger pxGrid REST getSessions (selectedAuthzProfiles, state m.m.) som
+    primær kilde. pxGrid mangler policySetName og authorizationRuleName —
+    MnT bruges efterfølgende til at berige de tomme felter.
 
     Best-effort: enhver fejl logges og ignoreres så normal drift fortsætter.
     """
-    # Primary: pxGrid REST getSessions — returnerer fuld session-payload med policy-data.
+    # Primary: pxGrid REST getSessions — returnerer fuld session-payload.
     if client is not None:
         try:
             pxgrid_sessions = await client.get_sessions()
             if pxgrid_sessions:
                 await _reconcile_from_pxgrid(cache, pxgrid_sessions)
+                # pxGrid getSessions mangler policySetName/authorizationRuleName —
+                # brug MnT som supplement for at fylde disse felter.
+                await _enrich_from_mnt(cache)
                 return
             logger.debug("pxgrid reconcile: getSessions returnerede 0 sessioner, prøver MnT")
         except Exception as exc:  # noqa: BLE001
             logger.debug("pxgrid reconcile: getSessions fejlede, falder tilbage til MnT: %s", exc)
 
-    # Fallback: MnT ActiveList (lavere data-fidelitet — mangler typisk policy-felter).
+    # Fallback: MnT ActiveList (lavere data-fidelitet).
     await _reconcile_from_mnt(cache)
 
 
@@ -611,6 +615,85 @@ async def _reconcile_from_pxgrid(cache, sessions: list[dict]) -> None:
         )
     except Exception as exc:  # noqa: BLE001
         logger.debug("pxgrid reconcile (getSessions): uventet fejl: %s", exc)
+
+
+async def _enrich_from_mnt(cache) -> None:  # type: ignore[no-untyped-def]
+    """Berig pxGrid-seedede sessions med policySetName/authorizationRule fra MnT.
+
+    pxGrid getSessions returnerer ikke ISEPolicySetName eller
+    AuthorizationPolicyMatchedRule — disse felter er kun tilgængelige via MnT.
+    Funktionen kaldes EFTER _reconcile_from_pxgrid og fylder kun tomme felter.
+    """
+    try:
+        from app.ise.mnt_sessions import fetch_active_sessions
+    except ImportError:
+        return
+    try:
+        sessions = await fetch_active_sessions()
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("MnT enrichment fejlede: %s", exc)
+        return
+    if not sessions:
+        return
+
+    logger.debug("MnT enrichment: felter i første session: %s", sorted(sessions[0].keys()))
+
+    mnt_by_mac: dict[str, dict] = {}
+    for sess in sessions:
+        mac_raw = (
+            sess.get("calling_station_id", "")
+            or sess.get("callingstationid", "")
+            or ""
+        )
+        if not mac_raw:
+            continue
+        mac = mac_raw.upper().replace("-", ":").strip()
+        if len(mac) == 17 and mac.count(":") == 5:
+            mnt_by_mac[mac] = sess
+
+    cached = await cache.list()
+    enriched = 0
+    for entry in cached:
+        mnt = mnt_by_mac.get(entry.mac)
+        if not mnt:
+            continue
+        policy_set = str(
+            mnt.get("isepolicysetname", "")
+            or mnt.get("ise-policy-set-name", "")
+            or mnt.get("ise_policy_set_name", "")
+            or ""
+        )
+        authz_rule = str(
+            mnt.get("authorizationrule", "")
+            or mnt.get("authorizationrulename", "")
+            or mnt.get("authorization-rule", "")
+            or ""
+        )
+        if not policy_set and not authz_rule:
+            continue
+        updated = SessionInfo(
+            mac=entry.mac,
+            state=entry.state,
+            audit_session_id=entry.audit_session_id,
+            nas_ip=entry.nas_ip,
+            user_name=entry.user_name,
+            policy_set_name=policy_set or entry.policy_set_name,
+            authz_profiles=entry.authz_profiles,
+            authz_rule_name=authz_rule or entry.authz_rule_name,
+            use_case=entry.use_case,
+            nas_name=entry.nas_name,
+            nas_device_type=entry.nas_device_type,
+            last_event_at=entry.last_event_at,
+            raw=entry.raw,
+        )
+        await cache.upsert(updated)
+        enriched += 1
+        logger.debug(
+            "MnT enrichment [%s]: policy_set=%r authz_rule=%r",
+            entry.mac, policy_set, authz_rule,
+        )
+
+    logger.info("MnT enrichment: %d/%d sessions berigt med policy-data", enriched, len(cached))
 
 
 async def _reconcile_from_mnt(cache) -> None:  # type: ignore[no-untyped-def]
