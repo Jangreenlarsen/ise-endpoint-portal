@@ -169,7 +169,7 @@ export function initTable(container, state, api, cb) {
         owner:         `<td data-col="owner"><select class="ca-owner">${optionsHtml(state.caValues.Owner, r.owner)}</select></td>`,
         lokation:      `<td data-col="lokation"><select class="ca-lokation">${optionsHtml(state.caValues.Lokation, r.lokation)}</select></td>`,
         platform_type: nasPt
-          ? `<td data-col="platform_type" class="platform-auto-td"><select class="ca-platformtype" disabled>${optionsHtml(state.caValues.PlatformType, nasPt)}</select><span class="platform-auto-badge" title="${t("browse.platform_auto_title")}">&#9889;</span></td>`
+          ? `<td data-col="platform_type" class="platform-auto-td"><div class="platform-auto-wrap"><select class="ca-platformtype" disabled>${optionsHtml(state.caValues.PlatformType, nasPt)}</select><span class="platform-auto-badge" title="${t("browse.platform_auto_title")}">&#9889;</span></div></td>`
           : `<td data-col="platform_type"><select class="ca-platformtype">${optionsHtml(state.caValues.PlatformType, r.platform_type)}</select></td>`,
         psk_mode:      `<td data-col="psk_mode" class="psk-mode-cell"><input type="checkbox" class="psk-mode-cb"${r.psk_mode ? " checked" : ""}${state.isPskEditor ? "" : " disabled"} title="MPSK/IPSK" /></td>`,
         psk_key:       `<td data-col="psk_key" class="authz-col psk-key-cell mono">${state.pskShowKey ? esc(r.psk_key || "") : (r.psk_key ? "••••••" : "")}</td>`,
@@ -245,9 +245,18 @@ export function initTable(container, state, api, cb) {
           badge.className = "platform-auto-badge";
           badge.title = t("browse.platform_auto_title");
           badge.innerHTML = "&#9889;";
-          ptSel && ptSel.after(badge);
+          let wrap = ptTd.querySelector(".platform-auto-wrap");
+          if (!wrap) {
+            wrap = document.createElement("div");
+            wrap.className = "platform-auto-wrap";
+            ptSel.replaceWith(wrap);
+            wrap.appendChild(ptSel);
+          }
+          wrap.appendChild(badge);
         } else if (!nasPt2 && oldBadge) {
           oldBadge.remove();
+          const wrap = ptTd.querySelector(".platform-auto-wrap");
+          if (wrap) { wrap.replaceWith(ptSel || wrap.querySelector(".ca-platformtype")); }
         }
       }
       const rolesCell = tr.querySelector(".roles-cell");
@@ -320,8 +329,19 @@ export function initTable(container, state, api, cb) {
           badge.className = "platform-auto-badge";
           badge.title = t("browse.platform_auto_title");
           badge.innerHTML = "&#9889;";
-          ptSel && ptSel.after(badge);
-        } else if (!nasPt && oldBadge) { oldBadge.remove(); }
+          let wrap = ptTd.querySelector(".platform-auto-wrap");
+          if (!wrap) {
+            wrap = document.createElement("div");
+            wrap.className = "platform-auto-wrap";
+            ptSel.replaceWith(wrap);
+            wrap.appendChild(ptSel);
+          }
+          wrap.appendChild(badge);
+        } else if (!nasPt && oldBadge) {
+          oldBadge.remove();
+          const wrap = ptTd.querySelector(".platform-auto-wrap");
+          if (wrap) { wrap.replaceWith(wrap.querySelector(".ca-platformtype")); }
+        }
       }
 
       const pskCb = tr.querySelector(".psk-mode-cb");

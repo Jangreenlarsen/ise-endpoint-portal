@@ -844,8 +844,9 @@ td.nas-info-col { overflow: hidden; }
 .platform-field-wrap select { flex: 1; min-width: 0; }
 
 /* Platform auto-derive indicator */
-.platform-auto-td { display: flex; align-items: center; gap: 0.25rem; }
-.platform-auto-td select { flex: 1; min-width: 0; }
+.platform-auto-td { }
+.platform-auto-wrap { display: flex; align-items: center; gap: 0.25rem; }
+.platform-auto-wrap select { flex: 1; min-width: 0; }
 .platform-auto-badge {
   display: inline-flex;
   flex-shrink: 0;

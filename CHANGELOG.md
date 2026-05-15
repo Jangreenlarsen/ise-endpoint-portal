@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.23 build 0331] — 2026-05-15 — fix: platform-kolonne badge-layout og sortering
+
+**Berørte filer**: `frontend/css/styles.css`, `frontend/js/views/browse-table.js`, `frontend/js/views/browse-filter.js`, `version.json`
+
+**Bug 1 — badge synker til bunden**: `display:flex` direkte på `<td>` bryder table-layout og giver uforudsigelig vertikal alignment. Fix: flex fjernet fra `.platform-auto-td`, indhold wrappes i `<div class="platform-auto-wrap">` (flex-container). Dynamiske opdateringsveje (refreshRows/updateRow) opretter/fjerner wrapperen on-the-fly.
+
+**Bug 2 — sortering virker ikke**: Sort brugte `r.platform_type` (ISE-gemt), men auto-afledte rækker viser `nas_device_type` fra pxGrid — ingen synlig effekt. Fix: `browse-filter.js` special-caser `platform_type`-sort og læser `state.pxgridSessionData` med fallback til `r.platform_type`.
+
 ## [5.3.22 build 0330] — 2026-05-15 — fix: platform ⚡-badge inline efter navn i browse-edit tabel
 
 **Berørte filer**: `frontend/css/styles.css`, `version.json`

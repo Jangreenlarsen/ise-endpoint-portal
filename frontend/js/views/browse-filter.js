@@ -5,6 +5,7 @@
 import {
   getColumns, esc,
   endpointCreateTime,
+  normalizeMac,
   loadBrowseFilters, saveBrowseFilters,
   loadColVis, saveColVis,
   savePageSize,
@@ -73,6 +74,14 @@ export function initFilter(container, state, api, cb) {
             const ta = new Date(endpointCreateTime(a) || 0).getTime();
             const tb = new Date(endpointCreateTime(b) || 0).getTime();
             return state.sortDir === "asc" ? ta - tb : tb - ta;
+          }
+          if (state.sortCol === "platform_type") {
+            const sess = state.pxgridSessionData;
+            const pt = (r) => {
+              const nasPt = sess ? (sess.get(normalizeMac(r.mac || r.name))?.nas_device_type || "") : "";
+              return (nasPt || r.platform_type || "").toLowerCase();
+            };
+            return state.sortDir === "asc" ? pt(a).localeCompare(pt(b)) : pt(b).localeCompare(pt(a));
           }
           const va = (colDef.field(a) || "").toLowerCase();
           const vb = (colDef.field(b) || "").toLowerCase();
