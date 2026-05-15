@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.27 build 0341] — 2026-05-15 — feat: MnT diagnostik-probe for auth/authz policy-data
+
+**Berørte filer**: `backend/app/ise/mnt_sessions.py`, `backend/app/api/pxgrid.py`, `version.json`
+
+Ny admin-only probe: `GET /api/pxgrid/probe/mnt/{mac}` kalder `MnT/Session/MACAddress/{mac}` og `MnT/AuthStatus/MACAddress/{mac}` og returnerer alle XML-felter ISE leverer. Bruges til at undersøge om `ISEPolicySetName` og `AuthorizationPolicyMatchedRule` er tilgængelige — disse endpoints har aldrig været testet mod live-systemet.
+
 ## [5.3.27 build 0340] — 2026-05-15 — feat: diff-markering i audit log før/efter visning
 
 **Berørte filer**: `frontend/js/views/audit.js`, `frontend/css/styles.css`, `version.json`

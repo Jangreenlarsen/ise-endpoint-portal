@@ -30,6 +30,74 @@ def _normalize_mac(mac: str) -> str:
     return (mac or "").replace("-", ":").strip().upper()
 
 
+async def _mnt_get_xml(path: str) -> tuple[int, str]:
+    """Generisk MnT GET — returnerer (status_code, response_text)."""
+    s = config.settings
+    if not s.ise_password:
+        raise IseApiError(0, "ISE password ikke sat.")
+    base = s.ise_base_url.rstrip("/")
+    try:
+        async with httpx.AsyncClient(
+            base_url=base,
+            auth=(s.ise_username, s.ise_password),
+            verify=s.ise_verify_tls,
+            timeout=s.ise_timeout,
+            headers={"Accept": "application/xml"},
+            follow_redirects=False,
+        ) as http:
+            response = await http.get(path)
+    except httpx.HTTPError as exc:
+        raise IseApiError(0, f"MnT transport error: {exc}") from exc
+    return response.status_code, response.text or ""
+
+
+def _parse_all_xml_fields(text: str) -> dict[str, str]:
+    """Returner alle leaf-felter fra XML som {tag: text}. Til diagnostik."""
+    try:
+        root = ET.fromstring(text)
+    except ET.ParseError:
+        return {}
+    out: dict[str, str] = {}
+    for elem in root.iter():
+        if len(elem) == 0 and elem.text and elem.text.strip():
+            tag = elem.tag.split("}")[-1]
+            out[tag] = elem.text.strip()
+    return out
+
+
+async def probe_session_detail(mac: str) -> dict:
+    """Diagnostic probe: henter alle tilgængelige MnT-felter for en MAC.
+
+    Kalder:
+      - GET /admin/API/mnt/Session/MACAddress/{mac}
+      - GET /admin/API/mnt/AuthStatus/MACAddress/{mac}
+
+    Returnerer dict med status, feltnavn→værdi, og råt XML for begge.
+    """
+    mac_encoded = mac.upper().replace(":", "%3A")
+    results = {}
+    for label, path in [
+        ("session_detail",  f"/admin/API/mnt/Session/MACAddress/{mac_encoded}"),
+        ("auth_status",     f"/admin/API/mnt/AuthStatus/MACAddress/{mac_encoded}"),
+    ]:
+        try:
+            status_code, text = await _mnt_get_xml(path)
+            fields = _parse_all_xml_fields(text)
+            logger.info(
+                "MnT probe %s [%s] HTTP=%d felter=%d: %s",
+                label, path, status_code, len(fields),
+                sorted(fields.keys()),
+            )
+            results[label] = {
+                "http_status": status_code,
+                "fields": fields,
+                "raw_xml": text[:4000],
+            }
+        except IseApiError as exc:
+            results[label] = {"error": str(exc)}
+    return results
+
+
 async def fetch_active_sessions() -> list[dict[str, str]]:
     """Return a list of dicts (one per active session) from MnT.
 

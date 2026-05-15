@@ -216,6 +216,19 @@ async def worker_status() -> PxGridWorkerStatusResponse:
     )
 
 
+@router.get(
+    "/probe/mnt/{mac}",
+    dependencies=[Depends(require_admin)],
+    summary="Diagnostik: hent alle MnT-felter for en MAC (admin only)",
+)
+async def probe_mnt_session(mac: str) -> dict:
+    """Kalder MnT Session/MACAddress og AuthStatus/MACAddress og returnerer
+    alle felter som ISE leverer. Bruges til at undersøge om ISEPolicySetName
+    og AuthorizationPolicyMatchedRule er tilgængelige i det live system."""
+    from app.ise.mnt_sessions import probe_session_detail
+    return await probe_session_detail(mac)
+
+
 @router.post(
     "/worker/restart",
     response_model=PxGridWorkerStatusResponse,
