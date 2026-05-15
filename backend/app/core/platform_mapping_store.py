@@ -30,6 +30,7 @@ STORE_FILE = Path(__file__).resolve().parents[2] / "platform_mapping.json"
 
 VALID_COA = ("reauth", "disconnect")
 DEFAULT_COA = "reauth"
+MAX_MAPPINGS = 20
 
 
 def _empty() -> dict[str, list[dict[str, str]]]:
@@ -66,7 +67,7 @@ def save_mapping(rows: list[dict[str, str]]) -> list[dict[str, str]]:
     """Validate and persist the mapping list. Returns the saved list."""
     clean: list[dict[str, str]] = []
     seen_raw: set[str] = set()
-    for r in rows or []:
+    for r in (rows or [])[:MAX_MAPPINGS + 10]:  # generous slice before dedup
         if not isinstance(r, dict):
             continue
         raw = str(r.get("raw", "")).strip().lower()
@@ -80,6 +81,8 @@ def save_mapping(rows: list[dict[str, str]]) -> list[dict[str, str]]:
         seen_raw.add(raw)
         if coa not in VALID_COA:
             coa = DEFAULT_COA
+        if len(clean) >= MAX_MAPPINGS:
+            break
         clean.append({"raw": raw, "local": local, "coa": coa})
     STORE_FILE.parent.mkdir(parents=True, exist_ok=True)
     STORE_FILE.write_text(

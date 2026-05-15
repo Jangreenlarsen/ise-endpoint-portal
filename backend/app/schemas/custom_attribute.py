@@ -50,5 +50,6 @@ class PlatformMappingRow(BaseModel):
 
 
 class PlatformMapping(BaseModel):
-    """Full PlatformType mapping (one row per known raw value)."""
+    """Full PlatformType mapping."""
     mappings: list[PlatformMappingRow] = Field(default_factory=list)
+    max_mappings: int = 20

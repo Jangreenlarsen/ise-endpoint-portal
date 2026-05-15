@@ -297,26 +297,16 @@ class CustomAttributeService:
         return result
 
     def get_platform_mapping(self) -> PlatformMapping:
-        """Return the current raw→local PlatformType mapping.
-
-        Known raw values always appear first (padded with empty rows if not
-        yet configured). User-added rows (arbitrary NDG paths) follow.
-        """
-        rows = {r["raw"]: r for r in load_platform_mapping()}
-        out: list[PlatformMappingRow] = []
-        for raw in KNOWN_PLATFORM_TYPES:
-            r = rows.get(raw, {"raw": raw, "local": "", "coa": "reauth"})
-            out.append(PlatformMappingRow(
+        """Return the current raw→local PlatformType mapping (stored rows only)."""
+        from app.core.platform_mapping_store import MAX_MAPPINGS
+        out = [
+            PlatformMappingRow(
                 raw=r["raw"], local=r.get("local", ""),
                 coa=r.get("coa", "reauth"),
-            ))
-        for raw, r in rows.items():
-            if raw not in KNOWN_PLATFORM_TYPES:
-                out.append(PlatformMappingRow(
-                    raw=r["raw"], local=r.get("local", ""),
-                    coa=r.get("coa", "reauth"),
-                ))
-        return PlatformMapping(mappings=out)
+            )
+            for r in load_platform_mapping()
+        ]
+        return PlatformMapping(mappings=out, max_mappings=MAX_MAPPINGS)
 
     async def set_platform_mapping(
         self, payload: PlatformMapping

@@ -111,6 +111,21 @@ async def set_platform_mapping(
     return await service.set_platform_mapping(payload)
 
 
+@router.post(
+    "/PlatformType/nas-devices/refresh",
+    dependencies=[Depends(require_editor)],
+)
+async def refresh_nas_devices() -> dict:
+    """Force-reload the NAS device cache from ISE ERS.
+
+    Use this after adding or modifying network devices in ISE so that the
+    Raw → local mapping editor picks up the new device types.
+    """
+    import app.ise.network_devices as _nd
+    _nd.force_reload()
+    return {"status": "refreshing", "message": "NAS device cache reload started"}
+
+
 @router.get(
     "/PlatformType/nas-devices",
     dependencies=[Depends(require_any)],

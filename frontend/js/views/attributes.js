@@ -41,6 +41,8 @@ export async function renderAttributes(container) {
   const attrMsg = container.querySelector("#attr-msg");
 
   function renderMappingEditor(localValues, mapping, nasDevices = {}, nasLoaded = false, nasLoading = false, nasUnmatched = []) {
+    const maxMappings = mapping.max_mappings || 20;
+
     const localOptions = (selected) => {
       const opts = [`<option value="">${t("attr.mapping_none")}</option>`];
       for (const v of localValues) {
@@ -54,9 +56,9 @@ export async function renderAttributes(container) {
         const sel = o.value === selected ? " selected" : "";
         return `<option value="${o.value}"${sel}>${o.label}</option>`;
       }).join("");
-    const nasCell = (raw, overridePaths) => {
+    const nasCell = (raw) => {
       if (nasLoading && !nasLoaded) return `<span class="hint" style="font-size:0.8em;">${t("attr.nas_loading")}</span>`;
-      const groups = overridePaths || nasDevices[raw] || [];
+      const groups = nasDevices[raw] || [];
       if (!groups.length) return `<span class="hint" style="font-size:0.8em;">—</span>`;
       return groups.map(g => {
         const label = g.path || raw;
@@ -70,47 +72,41 @@ export async function renderAttributes(container) {
         ? `${t("attr.mapping_col_nas")} <span class="hint" style="font-size:0.8em;">(${t("attr.nas_loading")})</span>`
         : `${t("attr.mapping_col_nas")} <span class="hint" style="font-size:0.8em;">(${t("attr.nas_not_loaded")})</span>`;
 
-    // Existing mapping rows (known + user-added from backend)
-    const mappedRaws = new Set(mapping.mappings.map(m => m.raw.toLowerCase()));
-    const rows = mapping.mappings.map((m) => `
-      <tr data-raw="${esc(m.raw)}">
-        <td>
-          <select class="map-local" data-raw="${esc(m.raw)}">
-            ${localOptions(m.local)}
-          </select>
+    const makeRow = (raw, local, coa, isNew = false) => `
+      <tr data-raw="${esc(raw)}" class="${isNew ? "mapping-row-new" : ""}">
+        <td style="min-width:120px;">
+          ${isNew
+            ? `<input type="text" class="map-raw" placeholder="${esc(t("attr.mapping_raw_placeholder"))}" value="${esc(raw)}" style="width:100%;box-sizing:border-box;" />`
+            : `<span class="map-raw-label" style="font-family:monospace;font-size:0.85em;">${esc(raw)}</span><input type="hidden" class="map-raw" value="${esc(raw)}" />`
+          }
         </td>
         <td>
-          <select class="map-coa" data-raw="${esc(m.raw)}">
-            ${coaOptions(m.coa)}
-          </select>
-        </td>
-        <td class="nas-devices-cell">${nasCell(m.raw)}</td>
-      </tr>`).join("");
-
-    // Extra rows for unmatched NDG paths not yet in the mapping
-    const newRows = nasUnmatched
-      .filter(u => !mappedRaws.has(u.path.toLowerCase()))
-      .map(u => {
-        const rawKey = u.path.toLowerCase();
-        const suffix = u.count > 1 ? ` (${u.count})` : "";
-        return `
-      <tr data-raw="${esc(rawKey)}" class="mapping-row-new">
-        <td>
-          <select class="map-local" data-raw="${esc(rawKey)}">
-            ${localOptions("")}
-          </select>
+          <select class="map-local">${localOptions(local)}</select>
         </td>
         <td>
-          <select class="map-coa" data-raw="${esc(rawKey)}">
-            ${coaOptions("reauth")}
-          </select>
+          <select class="map-coa">${coaOptions(coa)}</select>
         </td>
-        <td class="nas-devices-cell">
-          <span class="nas-device-tag">${esc(u.path)}${esc(suffix)}</span>
-          <span class="hint" style="font-size:0.75em;display:block;">${t("attr.nas_unmatched_new")}</span>
+        <td class="nas-devices-cell">${nasCell(raw)}</td>
+        <td style="width:28px;text-align:center;">
+          <button type="button" class="map-row-del" title="${esc(t("attr.mapping_del_title"))}"
+            style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:1rem;padding:0;line-height:1;">×</button>
         </td>
       </tr>`;
-      }).join("");
+
+    // Stored mappings
+    const mappedRaws = new Set(mapping.mappings.map(m => m.raw.toLowerCase()));
+    const rows = mapping.mappings.map((m) => makeRow(m.raw, m.local, m.coa, false)).join("");
+
+    // Unmatched NDG rows not yet in any mapping → suggest as new rows
+    const newRows = nasUnmatched
+      .filter(u => !mappedRaws.has(u.path.toLowerCase()))
+      .map(u => makeRow(u.path, "", "reauth", true)).join("");
+
+    const count = mapping.mappings.length;
+    const atLimit = count >= maxMappings;
+    const emptyNote = count === 0 && nasUnmatched.length === 0
+      ? `<tr class="mapping-empty-row"><td colspan="5" style="text-align:center;padding:0.6rem;color:#6b7280;">${t("attr.mapping_empty")}</td></tr>`
+      : "";
 
     return `
       <div class="platform-mapping" style="margin-top:0.8rem;">
@@ -123,18 +119,56 @@ export async function renderAttributes(container) {
         <table class="platform-mapping-table" style="width:100%;border-collapse:collapse;">
           <thead>
             <tr>
+              <th style="text-align:left;padding:0.3rem;">${t("attr.mapping_col_raw")}</th>
               <th style="text-align:left;padding:0.3rem;">${t("attr.mapping_col_local")}</th>
               <th style="text-align:left;padding:0.3rem;">${t("attr.mapping_col_coa")}</th>
               <th style="text-align:left;padding:0.3rem;">${nasHeader}</th>
+              <th></th>
             </tr>
           </thead>
-          <tbody>${rows}${newRows}</tbody>
+          <tbody>${emptyNote}${rows}${newRows}</tbody>
         </table>
-        <div style="margin-top:0.5rem;display:flex;gap:0.5rem;align-items:center;">
+        <div style="margin-top:0.5rem;display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
           <button class="small platform-mapping-save" type="button">${t("attr.mapping_save")}</button>
-          <span class="platform-mapping-result hint"></span>
+          <button class="small platform-mapping-add" type="button" data-max="${maxMappings}"${atLimit ? " disabled" : ""} title="${atLimit ? esc(t("attr.mapping_at_limit").replace("{max}", maxMappings)) : ""}">
+            ${t("attr.mapping_add")}
+          </button>
+          <span class="platform-mapping-count hint">${count} / ${maxMappings} ${t("attr.mapping_limit")}</span>
+          <span class="platform-mapping-result hint" style="margin-left:auto;"></span>
+        </div>
+        <div style="margin-top:0.4rem;display:flex;gap:0.5rem;align-items:center;">
+          <button class="small secondary platform-nas-refresh" type="button">${t("attr.mapping_scan_nas")}</button>
+          <span class="platform-nas-refresh-result hint"></span>
         </div>
       </div>`;
+  }
+
+  function updateMappingCount(card) {
+    const tbody = card.querySelector(".platform-mapping-table tbody");
+    const countSpan = card.querySelector(".platform-mapping-count");
+    const addBtn = card.querySelector(".platform-mapping-add");
+    const maxAttr = addBtn?.dataset.max;
+    const max = maxAttr ? parseInt(maxAttr, 10) : 20;
+    if (!tbody || !countSpan) return;
+    const n = tbody.querySelectorAll("tr:not(.mapping-empty-row)").length;
+    countSpan.textContent = `${n} / ${max} ${t("attr.mapping_limit")}`;
+    if (addBtn) {
+      const atLimit = n >= max;
+      addBtn.disabled = atLimit;
+      addBtn.title = atLimit ? t("attr.mapping_at_limit").replace("{max}", max) : "";
+    }
+    // Show/hide empty note
+    let emptyRow = tbody.querySelector(".mapping-empty-row");
+    if (n === 0) {
+      if (!emptyRow) {
+        emptyRow = document.createElement("tr");
+        emptyRow.className = "mapping-empty-row";
+        emptyRow.innerHTML = `<td colspan="5" style="text-align:center;padding:0.6rem;color:#6b7280;">${t("attr.mapping_empty")}</td>`;
+        tbody.prepend(emptyRow);
+      }
+    } else if (emptyRow) {
+      emptyRow.remove();
+    }
   }
 
   async function render() {
@@ -239,19 +273,83 @@ export async function renderAttributes(container) {
         btn.addEventListener("click", async () => {
           if (!card) return;
           const rows = [];
-          card.querySelectorAll(".platform-mapping-table tbody tr").forEach((tr) => {
-            const raw = tr.dataset.raw;
+          card.querySelectorAll(".platform-mapping-table tbody tr:not(.mapping-empty-row)").forEach((tr) => {
+            const rawInput = tr.querySelector(".map-raw");
+            const raw = (rawInput?.value || "").trim().toLowerCase();
             const local = tr.querySelector(".map-local")?.value || "";
             const coa = tr.querySelector(".map-coa")?.value || "reauth";
-            rows.push({ raw, local, coa });
+            if (raw) rows.push({ raw, local, coa });
           });
           btn.disabled = true;
           if (resultSpan) resultSpan.textContent = t("attr.mapping_saving");
           try {
             await api.setPlatformMapping(rows);
             if (resultSpan) resultSpan.textContent = t("attr.mapping_saved");
+            await render();
           } catch (err) {
             if (resultSpan) resultSpan.textContent = t("attr.mapping_error").replace("{msg}", err.message);
+            btn.disabled = false;
+          }
+        });
+      });
+
+      // Mapping add-row button
+      sections.querySelectorAll(".platform-mapping-add").forEach((btn) => {
+        const card = btn.closest(".card");
+        btn.addEventListener("click", () => {
+          if (!card) return;
+          const tbody = card.querySelector(".platform-mapping-table tbody");
+          if (!tbody) return;
+          const max = parseInt(btn.dataset.max || "20", 10);
+          const n = tbody.querySelectorAll("tr:not(.mapping-empty-row)").length;
+          if (n >= max) return;
+          const localOpts = [`<option value="">${t("attr.mapping_none")}</option>`];
+          for (const v of card.querySelectorAll(".attr-tag") || []) {
+            const val = v.querySelector(".attr-del")?.dataset.value || "";
+            if (val) localOpts.push(`<option value="${esc(val)}">${esc(val)}</option>`);
+          }
+          // Build select options from current localValues via DOM (already rendered)
+          const existingSelects = card.querySelectorAll(".map-local");
+          const firstSelect = existingSelects[0];
+          const optsHtml = firstSelect
+            ? firstSelect.innerHTML
+            : `<option value="">${t("attr.mapping_none")}</option>`;
+          const coaOpts = getCoaOptions().map((o) =>
+            `<option value="${o.value}">${o.label}</option>`).join("");
+          const tr = document.createElement("tr");
+          tr.className = "mapping-row-new";
+          tr.dataset.raw = "";
+          tr.innerHTML = `
+            <td style="min-width:120px;">
+              <input type="text" class="map-raw" placeholder="${esc(t("attr.mapping_raw_placeholder"))}"
+                style="width:100%;box-sizing:border-box;" />
+            </td>
+            <td><select class="map-local">${optsHtml}</select></td>
+            <td><select class="map-coa">${coaOpts}</select></td>
+            <td class="nas-devices-cell"><span class="hint" style="font-size:0.8em;">—</span></td>
+            <td style="width:28px;text-align:center;">
+              <button type="button" class="map-row-del" title="${esc(t("attr.mapping_del_title"))}"
+                style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:1rem;padding:0;line-height:1;">×</button>
+            </td>`;
+          tbody.appendChild(tr);
+          tr.querySelector(".map-raw")?.focus();
+          updateMappingCount(card);
+        });
+      });
+
+      // Mapping delete-row buttons (delegated on sections)
+      // NAS refresh button
+      sections.querySelectorAll(".platform-nas-refresh").forEach((btn) => {
+        const resultSpan = btn.closest("div")?.querySelector(".platform-nas-refresh-result");
+        btn.addEventListener("click", async () => {
+          btn.disabled = true;
+          if (resultSpan) resultSpan.textContent = t("attr.mapping_scan_nas_running");
+          try {
+            await api.refreshNasDevices();
+            if (resultSpan) resultSpan.textContent = t("attr.mapping_scan_nas_done");
+            setTimeout(() => render(), 3000);
+          } catch (err) {
+            if (resultSpan) resultSpan.textContent = t("attr.mapping_scan_nas_err").replace("{msg}", err.message);
           } finally {
             btn.disabled = false;
           }
@@ -263,6 +361,13 @@ export async function renderAttributes(container) {
   }
 
   sections.addEventListener("click", async (e) => {
+    if (e.target.classList.contains("map-row-del")) {
+      const tr = e.target.closest("tr");
+      const card = e.target.closest(".card");
+      if (tr) tr.remove();
+      if (card) updateMappingCount(card);
+      return;
+    }
     if (e.target.classList.contains("attr-del")) {
       const attr = e.target.dataset.attr;
       const value = e.target.dataset.value;

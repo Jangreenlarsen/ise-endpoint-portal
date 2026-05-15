@@ -152,3 +152,9 @@ def invalidate() -> None:
     _by_ip.clear()
     _all_loaded = False
     _loading = False
+
+
+def force_reload() -> None:
+    """Invalidate cache and trigger a fresh background load immediately."""
+    invalidate()
+    ensure_loaded()

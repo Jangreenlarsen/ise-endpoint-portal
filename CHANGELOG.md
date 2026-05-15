@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.18 build 0320] — 2026-05-15 — feat: Raw→local mapping dynamisk + Scan NAS knap
+
+**Berørte filer**: `backend/app/core/platform_mapping_store.py`, `backend/app/schemas/custom_attribute.py`, `backend/app/services/custom_attribute_service.py`, `backend/app/ise/network_devices.py`, `backend/app/api/custom_attributes.py`, `frontend/js/api.js`, `frontend/js/views/attributes.js`, `frontend/js/i18n.js`, `version.json`
+
+Mapping-editoren viser nu kun gemte rækker (ingen "tom padding" for kendte raw-typer). Nye rækker tilføjes med "+ Tilføj mapping"-knap (maks. 20); hver række kan slettes individuelt. Raw-kolonnen er redigerbar ved nye rækker. "Scan NAS fra ISE"-knap kaller ny `POST /PlatformType/nas-devices/refresh` der invaliderer og genindlæser NAS device-cachen fra ISE ERS uden portal-genstart. Backend: `MAX_MAPPINGS = 20` enforces i `save_mapping()`; `PlatformMapping`-schema eksponerer `max_mappings`; `get_platform_mapping()` returnerer kun gemte rækker.
+
 ## [5.3.17 build 0319] — 2026-05-15 — fix: halvér whitespace i browse-edit tabel (th/td/input padding)
 
 **Berørte filer**: `frontend/css/styles.css`, `version.json`

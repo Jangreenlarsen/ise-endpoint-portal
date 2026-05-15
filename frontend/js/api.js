@@ -130,6 +130,8 @@ export const api = {
     }),
   getNasDevicesByPlatform: () =>
     request("/custom-attributes/PlatformType/nas-devices"),
+  refreshNasDevices: () =>
+    request("/custom-attributes/PlatformType/nas-devices/refresh", { method: "POST" }),
   listDacls: () => request("/dacls"),
   getDacl: (id) => request(`/dacls/${encodeURIComponent(id)}`),
   createDacl: (payload) =>
