@@ -3,6 +3,18 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.19 build 0323] — 2026-05-15 — fix: platform type forsvinder efter portal-genstart (reconcile sletter nas_device_type)
+
+**Berørte filer**: `backend/app/pxgrid/session_worker.py`, `version.json`
+
+**Root cause (2 bugs):**
+1. `_reconcile_from_pxgrid`: `info_with_mac` kopierede ikke `nas_name`/`nas_device_type` fra `_build_session_info()`, selv om de var beregnet korrekt. Alle sessions der re-seededes ved pxGrid reconnect fik `nas_device_type=""`.
+2. `_reconcile_from_mnt`: Fallback-reconcile via MnT seedede nye sessions uden NAS-opslag (ingen `_nd.get_device_info()` kald). Disk-loadede sessions der ikke var i MnT-listen blev evicted → platform type tabt for inaktive sessions.
+
+**Fix:** Begge reconcile-flows bevarer nu `nas_device_type`/`nas_name`:
+- pxGrid-reconcile kopierer begge felter fra `info` + falder tilbage til disk-cachet værdi hvis NAS-cachen endnu ikke er indlæst
+- MnT-reconcile tilføjer NAS device-opslag (identisk pattern som `_build_session_info`) + bevaer disk-cachet `nas_device_type` som fallback hvis NAS-cache ikke indlæst endnu
+
 ## [5.3.19 build 0322] — 2026-05-15 — fix: mapping-tabel kolonne-rækkefølge: ISE NAS Devices → Lokalt label
 
 **Berørte filer**: `frontend/js/views/attributes.js`, `version.json`

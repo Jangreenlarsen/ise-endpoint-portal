@@ -553,8 +553,13 @@ async def _reconcile_from_pxgrid(cache, sessions: list[dict]) -> None:
         # 2. Seed manglende sessioner med fuld policy-data.
         seeded = 0
         updated = 0
+        cached_by_mac = {entry.mac: entry for entry in cached}
         for mac, sess in pg_by_mac.items():
             info = _build_session_info(sess)
+            existing = cached_by_mac.get(mac)
+            # Preserve nas_device_type/nas_name from disk if NAS cache not loaded yet.
+            nas_device_type = info.nas_device_type or (existing.nas_device_type if existing else "")
+            nas_name = info.nas_name or (existing.nas_name if existing else "")
             info_with_mac = SessionInfo(
                 mac=mac,
                 state=info.state or "STARTED",
@@ -563,17 +568,20 @@ async def _reconcile_from_pxgrid(cache, sessions: list[dict]) -> None:
                 user_name=info.user_name,
                 policy_set_name=info.policy_set_name,
                 authz_profiles=info.authz_profiles,
+                nas_name=nas_name,
+                nas_device_type=nas_device_type,
                 raw=info.raw,
             )
-            if mac not in cached_macs:
+            if mac not in cached_by_mac:
                 await cache.upsert(info_with_mac)
                 seeded += 1
             else:
-                # Opdatér eksisterende entry hvis den mangler authz/policy-data.
-                existing = next((e for e in cached if e.mac == mac), None)
+                # Opdatér eksisterende entry hvis den mangler authz/policy-data
+                # ELLER hvis vi nu har bedre NAS-data (device type).
                 new_has_data = bool(info_with_mac.policy_set_name or info_with_mac.authz_profiles)
                 existing_lacks_data = existing and not existing.policy_set_name and not existing.authz_profiles
-                if existing_lacks_data and new_has_data:
+                nas_improved = bool(nas_device_type and not (existing and existing.nas_device_type))
+                if (existing_lacks_data and new_has_data) or nas_improved:
                     await cache.upsert(info_with_mac)
                     updated += 1
 
@@ -614,12 +622,17 @@ async def _reconcile_from_mnt(cache) -> None:  # type: ignore[no-untyped-def]
         mnt_macs = set(mnt_by_mac.keys())
 
         cached = await cache.list()
-        cached_macs = {entry.mac for entry in cached}
+        cached_by_mac = {entry.mac: entry for entry in cached}
+        cached_macs = set(cached_by_mac.keys())
         evicted = 0
         for entry in cached:
             if entry.mac not in mnt_macs:
                 await cache.remove(entry.mac)
                 evicted += 1
+
+        import app.ise.network_devices as _nd_mnt
+        from app.core.platform_mapping_store import raw_to_local as _r2l_mnt
+        from app.core.platform_types import normalize as _normalize_mnt
 
         seeded = 0
         for mac, sess in mnt_by_mac.items():
@@ -641,14 +654,34 @@ async def _reconcile_from_mnt(cache) -> None:  # type: ignore[no-untyped-def]
                 or ""
             )
             authz_profiles = [p.strip() for p in authz_raw.split(",") if p.strip()]
+            nas_ip_val = str(
+                sess.get("nas_ip_address", "")
+                or sess.get("nasipaddress", "")
+                or sess.get("nas-ip-address", "")
+            )
+            dev = _nd_mnt.get_device_info(nas_ip_val)
+            if dev:
+                _norm = _normalize_mnt(dev.device_type)
+                _local = (_norm and _r2l_mnt().get(_norm)) or ""
+                if not _local and dev.device_type:
+                    _local = _r2l_mnt().get(dev.device_type.strip().lower(), "")
+                nas_device_type = _local or dev.device_type_path or dev.device_type
+                nas_name = dev.name
+            else:
+                # Preserve from disk cache if NAS cache not loaded yet
+                existing = cached_by_mac.get(mac)
+                nas_device_type = existing.nas_device_type if existing else ""
+                nas_name = existing.nas_name if existing else ""
             info = SessionInfo(
                 mac=mac,
                 state="STARTED",
                 audit_session_id=str(sess.get("audit_session_id", "") or sess.get("auditsessionid", "")),
-                nas_ip=str(sess.get("nas_ip_address", "") or sess.get("nasipaddress", "") or sess.get("nas-ip-address", "")),
+                nas_ip=nas_ip_val,
                 user_name=str(sess.get("user_name", "") or sess.get("username", "")),
                 policy_set_name=policy_set_name,
                 authz_profiles=authz_profiles,
+                nas_name=nas_name,
+                nas_device_type=nas_device_type,
             )
             await cache.upsert(info)
             seeded += 1
