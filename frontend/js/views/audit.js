@@ -37,6 +37,52 @@ function renderJson(value) {
   }
 }
 
+function renderJsonDiff(before, after) {
+  const isObj = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+  if (!isObj(before) || !isObj(after)) {
+    return { beforeHtml: renderJson(before), afterHtml: renderJson(after) };
+  }
+  const allKeys = new Set([...Object.keys(before), ...Object.keys(after)]);
+  function lineHtml(cls, key, val) {
+    const raw = JSON.stringify(val, null, 2)
+      .split("\n")
+      .map((l, i) => (i === 0 ? `  "${esc(key)}": ${esc(l)}` : `  ${esc(l)}`))
+      .join("\n");
+    return `<span class="audit-diff-line ${cls}">${raw}</span>`;
+  }
+  const beforeLines = [];
+  const afterLines = [];
+  beforeLines.push("{");
+  afterLines.push("{");
+  let firstB = true, firstA = true;
+  for (const key of allKeys) {
+    const inBefore = Object.prototype.hasOwnProperty.call(before, key);
+    const inAfter  = Object.prototype.hasOwnProperty.call(after, key);
+    const sep = (first) => first ? "" : ",\n";
+    if (inBefore && inAfter) {
+      const changed = JSON.stringify(before[key]) !== JSON.stringify(after[key]);
+      const cls = changed ? "audit-diff-changed" : "";
+      beforeLines.push(sep(firstB) + lineHtml(cls, key, before[key]));
+      afterLines.push(sep(firstA)  + lineHtml(cls, key, after[key]));
+      firstB = false; firstA = false;
+    } else if (inBefore) {
+      beforeLines.push(sep(firstB) + lineHtml("audit-diff-removed", key, before[key]));
+      afterLines.push(sep(firstA)  + lineHtml("audit-diff-removed", key, null));
+      firstB = false; firstA = false;
+    } else {
+      beforeLines.push(sep(firstB) + lineHtml("audit-diff-added", key, null));
+      afterLines.push(sep(firstA)  + lineHtml("audit-diff-added", key, after[key]));
+      firstB = false; firstA = false;
+    }
+  }
+  beforeLines.push("\n}");
+  afterLines.push("\n}");
+  return {
+    beforeHtml: `<pre class="audit-json">${beforeLines.join("")}</pre>`,
+    afterHtml:  `<pre class="audit-json">${afterLines.join("")}</pre>`,
+  };
+}
+
 function canRollback(evt) {
   if (!ROLLBACK_SUPPORTED.has(evt.resource_type)) return false;
   if (evt.action === "rolled_back") return false;
@@ -187,6 +233,7 @@ export async function renderAudit(container) {
     const rbBtn = isAdmin && canRollback(evt)
       ? `<button id="audit-drawer-rollback" data-id="${evt.id}" class="primary">${t("audit.btn_rollback_confirm")}</button>`
       : "";
+    const diff = renderJsonDiff(evt.before, evt.after);
     drawerBody.innerHTML = `
       <div class="audit-meta-grid">
         <div><b>${t("audit.drawer_time")}</b> ${esc(fmtTs(evt.ts))}</div>
@@ -195,11 +242,11 @@ export async function renderAudit(container) {
       <div class="audit-diff">
         <div class="audit-pane">
           <h4>${t("audit.drawer_before")}</h4>
-          ${renderJson(evt.before)}
+          ${diff.beforeHtml}
         </div>
         <div class="audit-pane">
           <h4>${t("audit.drawer_after")}</h4>
-          ${renderJson(evt.after)}
+          ${diff.afterHtml}
         </div>
       </div>
       <div class="audit-drawer-footer">${rbBtn}</div>

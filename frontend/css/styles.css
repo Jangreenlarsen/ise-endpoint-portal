@@ -1346,6 +1346,13 @@ td.psk-key-cell {
 }
 .audit-none { color: #9ca3af; font-style: italic; }
 .audit-drawer-footer { margin-top: 1rem; text-align: right; }
+.audit-diff-line { display: block; border-radius: 2px; }
+.audit-diff-changed { background: #fef9c3; }
+.audit-diff-added   { background: #dcfce7; }
+.audit-diff-removed { background: #fee2e2; }
+[data-theme="dark"] .audit-diff-changed { background: #713f12; color: #fef9c3; }
+[data-theme="dark"] .audit-diff-added   { background: #14532d; color: #dcfce7; }
+[data-theme="dark"] .audit-diff-removed { background: #7f1d1d; color: #fee2e2; }
 
 [data-theme="dark"] .audit-drawer {
   background: #1a1a2e;

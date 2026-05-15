@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.27 build 0340] — 2026-05-15 — feat: diff-markering i audit log før/efter visning
+
+**Berørte filer**: `frontend/js/views/audit.js`, `frontend/css/styles.css`, `version.json`
+
+Ændrede felter fremhæves nu med farvet baggrund i audit log-drawerens før/efter JSON-visning: gul for ændret, grøn for tilføjet, rød for fjernet. Implementeret via `renderJsonDiff(before, after)` der sammenligner top-level nøgler og returnerer HTML med `.audit-diff-changed/added/removed` spans. Fungerer kun for objekt-typer — falder tilbage til plain `renderJson` for primitive værdier og arrays.
+
 ## [5.3.26 build 0339] — 2026-05-15 — feat: debug pxGrid session-logging toggle i Settings → Avanceret
 
 **Berørte filer**: `backend/app/schemas/settings.py`, `backend/app/services/settings_service.py`, `backend/app/core/logging.py`, `frontend/js/views/settings.js`, `frontend/js/views/settings/section-update.js`, `frontend/js/i18n.js`, `version.json`
