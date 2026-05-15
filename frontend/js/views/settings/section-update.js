@@ -39,26 +39,17 @@ export function initSystemUpdateSection(container) {
 
   let validatedFile = null;
 
-  fileInput.addEventListener("change", () => {
-    const hasFile = !!fileInput.files.length;
-    validateBtn.disabled = !hasFile;
-    validatedFile = null;
-    applyBtn.disabled = true;
-    preview.classList.add("hidden");
-    result.classList.add("hidden");
-    msgEl.innerHTML = "";
-  });
-
-  validateBtn.addEventListener("click", async () => {
-    const file = fileInput.files[0];
+  async function runValidation(file) {
     if (!file) return;
     msgEl.innerHTML = `<div class="alert info">${t("settings.update_validating")}</div>`;
     validateBtn.disabled = true;
+    applyBtn.disabled = true;
+    preview.classList.add("hidden");
+    result.classList.add("hidden");
     try {
       const info = await api.validateUpdate(file);
       msgEl.innerHTML = "";
       preview.classList.remove("hidden");
-      result.classList.add("hidden");
 
       // Pakke-info boks
       const statusIcon = info.ok ? "✅" : "❌";
@@ -95,7 +86,19 @@ export function initSystemUpdateSection(container) {
     } finally {
       validateBtn.disabled = false;
     }
+  }
+
+  fileInput.addEventListener("change", () => {
+    validatedFile = null;
+    applyBtn.disabled = true;
+    preview.classList.add("hidden");
+    result.classList.add("hidden");
+    msgEl.innerHTML = "";
+    if (fileInput.files.length) runValidation(fileInput.files[0]);
+    validateBtn.disabled = !fileInput.files.length;
   });
+
+  validateBtn.addEventListener("click", () => runValidation(fileInput.files[0]));
 
   applyBtn.addEventListener("click", async () => {
     if (!validatedFile) return;

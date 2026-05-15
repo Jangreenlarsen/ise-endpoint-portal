@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.22 build 0328] — 2026-05-15 — feat: auto-valider firmware-pakke ved indlæsning
+
+**Berørte filer**: `frontend/js/views/settings/section-update.js`, `version.json`
+
+Validering køres automatisk så snart en fil vælges i fil-dialogen — brugeren behøver ikke trykke "Valider pakke" manuelt. Validate-knappen forbliver synlig som en "Genvalider"-mulighed ved fejl. Validate-logikken er udtrukket til `runValidation(file)` og deles af begge kodestier.
+
 ## [5.3.22 build 0327] — 2026-05-15 — fix: profil-kolonne viser nu altid profil-navn
 
 **Berørte filer**: `backend/app/ise/profiler.py`, `backend/app/services/endpoint_service.py`, `version.json`
