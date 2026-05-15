@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.26 build 0339] — 2026-05-15 — feat: debug pxGrid session-logging toggle i Settings → Avanceret
+
+**Berørte filer**: `backend/app/schemas/settings.py`, `backend/app/services/settings_service.py`, `backend/app/core/logging.py`, `frontend/js/views/settings.js`, `frontend/js/views/settings/section-update.js`, `frontend/js/i18n.js`, `version.json`
+
+Ny checkbox i Settings → Avanceret: "Debug pxGrid session-logging". Gemmes via `PUT /api/settings/backend` (`debug_pxgrid_sessions: bool`). Logger opdateres øjeblikkeligt ved ændring (ingen genstart kræves) — `setup_logging()` genkaldes og sætter/nulstiller session_worker-loggerens niveau.
+
 ## [5.3.25 build 0338] — 2026-05-15 — cleanup: fjern debug-logging og MnT enrichment efter diagnose
 
 **Berørte filer**: `backend/app/pxgrid/session_worker.py`, `backend/config.json`, `version.json`

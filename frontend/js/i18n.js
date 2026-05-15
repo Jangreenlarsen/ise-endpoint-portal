@@ -965,11 +965,14 @@ const TRANSLATIONS = {
     "settings.update_blocked_lbl":    "⚠ Blokerede filer (overskrives ikke)",
 
     // ── Settings — Advanced/Migration ───────────────────────────────────────
-    "settings.adv_card":              "Importér custom attributter fra ISE (migration)",
-    "settings.adv_btn":               "Importér custom attributter fra ISE",
-    "settings.adv_confirm":           "Dette vil scanne ALLE endpoints i ISE individuelt.\n\nVed mange endpoints kan dette tage lang tid og belaste ISE.\n\nFortset?",
-    "settings.adv_loading":           "Importerer — vent venligst...",
-    "settings.adv_done":              "Scannet {n} endpoints. {new} nye værdier importeret.",
+    "settings.adv_card":                    "Importér custom attributter fra ISE (migration)",
+    "settings.adv_btn":                     "Importér custom attributter fra ISE",
+    "settings.adv_confirm":                 "Dette vil scanne ALLE endpoints i ISE individuelt.\n\nVed mange endpoints kan dette tage lang tid og belaste ISE.\n\nFortset?",
+    "settings.adv_loading":                 "Importerer — vent venligst...",
+    "settings.adv_done":                    "Scannet {n} endpoints. {new} nye værdier importeret.",
+    "settings.adv_debug_pxgrid_lbl":        "Debug pxGrid session-logging",
+    "settings.adv_debug_pxgrid_hint":       "Slår detaljeret DEBUG-logging til for session-worker. Skrives til app.log — slå fra igen efter diagnose.",
+    "settings.adv_debug_pxgrid_saved":      "Gemt — logger opdateret øjeblikkeligt.",
 
     // ── Settings — Purge Config ──────────────────────────────────────────────
     "settings.purge_card":            "Anbefalet ISE purge-config",
@@ -1939,11 +1942,14 @@ const TRANSLATIONS = {
     "settings.update_blocked_lbl":    "⚠ Blocked files (will not be overwritten)",
 
     // ── Settings — Advanced/Migration ───────────────────────────────────────
-    "settings.adv_card":              "Import custom attributes from ISE (migration)",
-    "settings.adv_btn":               "Import custom attributes from ISE",
-    "settings.adv_confirm":           "This will scan ALL endpoints in ISE individually.\n\nWith many endpoints this may take a long time and put load on ISE.\n\nContinue?",
-    "settings.adv_loading":           "Importing — please wait...",
-    "settings.adv_done":              "Scanned {n} endpoints. {new} new values imported.",
+    "settings.adv_card":                    "Import custom attributes from ISE (migration)",
+    "settings.adv_btn":                     "Import custom attributes from ISE",
+    "settings.adv_confirm":                 "This will scan ALL endpoints in ISE individually.\n\nWith many endpoints this may take a long time and put load on ISE.\n\nContinue?",
+    "settings.adv_loading":                 "Importing — please wait...",
+    "settings.adv_done":                    "Scanned {n} endpoints. {new} new values imported.",
+    "settings.adv_debug_pxgrid_lbl":        "Debug pxGrid session logging",
+    "settings.adv_debug_pxgrid_hint":       "Enables detailed DEBUG logging for the session worker. Written to app.log — disable again after diagnosis.",
+    "settings.adv_debug_pxgrid_saved":      "Saved — logger updated immediately.",
 
     // ── Settings — Purge Config ──────────────────────────────────────────────
     "settings.purge_card":            "Recommended ISE purge config",

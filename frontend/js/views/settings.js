@@ -806,6 +806,15 @@ export async function renderSettings(container) {
       <div class="actions">
         <button type="button" id="migration-sync-btn" class="secondary"></button>
       </div>
+      <hr style="margin:1rem 0;border:none;border-top:1px solid var(--border);">
+      <label class="settings-row" style="display:flex;align-items:center;gap:0.75rem;cursor:pointer;">
+        <input type="checkbox" id="debug-pxgrid-sessions-cb" />
+        <span>
+          <span id="debug-pxgrid-sessions-lbl" style="font-weight:500;"></span><br>
+          <span id="debug-pxgrid-sessions-hint" style="font-size:0.8em;color:var(--text-muted);"></span>
+        </span>
+      </label>
+      <div id="debug-pxgrid-sessions-result" style="margin-top:0.5rem;"></div>
     </div>
     ` : ""}
 

@@ -56,6 +56,7 @@ def get_backend_settings() -> BackendSettingsResponse:
         cache_disk_path=s.cache_disk_path,
         cache_prewarm_concurrency=s.cache_prewarm_concurrency,
         cache_prewarm_interval_s=s.cache_prewarm_interval_s,
+        debug_pxgrid_sessions=s.debug_pxgrid_sessions,
     )
 
 
@@ -81,12 +82,15 @@ async def update_backend_settings(
             "cache_disk_path": new.cache_disk_path,
             "cache_prewarm_concurrency": new.cache_prewarm_concurrency,
             "cache_prewarm_interval_s": new.cache_prewarm_interval_s,
+            "debug_pxgrid_sessions": new.debug_pxgrid_sessions,
         }
     )
     if new.ise_password:
         overrides["ise_password"] = new.ise_password
     save_overrides(overrides)
     config.refresh_settings()
+    from app.core.logging import setup_logging
+    setup_logging()
     await close_ise_client()
     # Drop cached ISE reads — URL or api-type may have changed under us.
     get_cache().invalidate_all()

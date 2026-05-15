@@ -170,12 +170,41 @@ export function initSystemUpdateSection(container) {
 export function initAdvancedSection(container) {
   const btn    = container.querySelector("#migration-sync-btn");
   const result = container.querySelector("#migration-sync-result");
+  const debugCb     = container.querySelector("#debug-pxgrid-sessions-cb");
+  const debugResult = container.querySelector("#debug-pxgrid-sessions-result");
   if (!btn) return;
 
   // Set element texts
   const advCardH3 = container.querySelector("#adv-card-h3");
   if (advCardH3) advCardH3.textContent = t("settings.adv_card");
   btn.textContent = t("settings.adv_btn");
+  const debugLbl = container.querySelector("#debug-pxgrid-sessions-lbl");
+  if (debugLbl) debugLbl.textContent = t("settings.adv_debug_pxgrid_lbl");
+  const debugHint = container.querySelector("#debug-pxgrid-sessions-hint");
+  if (debugHint) debugHint.textContent = t("settings.adv_debug_pxgrid_hint");
+
+  // Load current debug setting
+  (async () => {
+    try {
+      const s = await api.getBackendSettings();
+      if (debugCb) debugCb.checked = !!s.debug_pxgrid_sessions;
+    } catch (_) { /* ignore */ }
+  })();
+
+  // Save on toggle
+  if (debugCb) {
+    debugCb.addEventListener("change", async () => {
+      try {
+        const current = await api.getBackendSettings();
+        await api.updateBackendSettings({ ...current, debug_pxgrid_sessions: debugCb.checked });
+        debugResult.innerHTML = `<span style="color:var(--success,#166534);font-size:0.82em;">${t("settings.adv_debug_pxgrid_saved")}</span>`;
+        setTimeout(() => { debugResult.innerHTML = ""; }, 3000);
+      } catch (err) {
+        debugCb.checked = !debugCb.checked;
+        debugResult.innerHTML = `<span style="color:var(--danger,#991b1b);font-size:0.82em;">${esc(err.message)}</span>`;
+      }
+    });
+  }
 
   btn.addEventListener("click", async () => {
     if (!confirm(t("settings.adv_confirm"))) return;

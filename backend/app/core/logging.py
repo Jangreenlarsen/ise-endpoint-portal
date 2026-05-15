@@ -25,8 +25,11 @@ def setup_logging() -> None:
     root = logging.getLogger()
     root.setLevel(settings.log_level.upper())
 
+    sw_logger = logging.getLogger("app.pxgrid.session_worker")
     if getattr(settings, "debug_pxgrid_sessions", False):
-        logging.getLogger("app.pxgrid.session_worker").setLevel(logging.DEBUG)
+        sw_logger.setLevel(logging.DEBUG)
+    else:
+        sw_logger.setLevel(logging.NOTSET)
 
     has_file = any(isinstance(h, RotatingFileHandler) for h in root.handlers)
     if not has_file:
