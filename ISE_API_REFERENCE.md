@@ -746,6 +746,127 @@ For at undgå hardcoded topic-navne: kør altid `ServiceLookup` på service-name
 
 ---
 
+## ERS SDK — komplet ressource-oversigt (verificeret ISE 3.4, ERS_V1.json)
+
+Specifikation hentet fra `https://<ise>/ers/pages/ERS_V1.json` (OpenAPI 3.0.1, 376 operationer, 210 paths).
+Base URL: `https://<ise>:443/ers/config/` (port 443 via API gateway, anbefalet siden ISE 3.1).
+
+**VIGTIG begrænsning:** ERS er udelukkende konfigurationsAPI. Der er INGEN session-, RADIUS- eller runtime policy-data i ERS. `ISEPolicySetName` og `AuthorizationPolicyMatchedRule` eksisterer ikke i nogen ERS-ressource.
+
+### Ressourcer i brug i portalen
+
+| Ressource | Metoder | Felter/formål |
+|---|---|---|
+| `endpoint` | GET/POST/PUT/DELETE/PATCH | mac, groupId, profileId, customAttributes, staticGroupAssignment, mdmAttributes |
+| `endpointgroup` | GET/POST/PUT/DELETE/PATCH | id, name, description, systemDefined, parentId |
+| `authorizationprofile` | GET/POST/PUT/DELETE/PATCH | daclName, vlan, accessType, airespaceACL, acl, advancedAttributes, reauth, webRedirection |
+| `downloadableacl` | GET/POST/PUT/DELETE/PATCH | dacl (ACE-indhold), daclType (IPV4/IPV6/IP_AGNOSTIC) |
+| `ancendpoint` | GET/PUT apply/PUT clear | macAddress, policyName — apply/clear karantæne |
+| `ancpolicy` | GET/POST/PUT/DELETE | name, actions (QUARANTINE/PORTBOUNCE/SHUTDOWN/REMEDIATE) |
+| `networkdevice` | GET/POST/PUT/DELETE/PATCH | NetworkDeviceIPList, NetworkDeviceGroupList, modelName, softwareVersion, authenticationSettings, snmpsettings |
+| `networkdevicegroup` | GET/POST/PUT/DELETE/PATCH | name (NDG-sti fx `Device Type#All#Cisco#9800`), othername (NDG-type) |
+
+### Ressourcer med portal-potentiale (uudnyttede)
+
+| Ressource | Metoder | Hvad vi kan bruge det til |
+|---|---|---|
+| `profilerprofile` | GET list/GET id (read-only) | Liste alle ISE profiler-navne → vise profil-chip på endpoint (fx "Apple-iPhone", "Windows10") |
+| `sgt` | GET/POST/PUT/DELETE | Security Group Tags: name, value (2–65519), defaultSGACLs → SGT-navn i session-kolonnen |
+| `sgacl` | GET/POST/PUT/DELETE | SG-ACL indhold: aclcontent, ipVersion, sgAclType (TRUSTSEC/TRAFFIC_STEERING) |
+| `egressmatrixcell` | GET/POST/PUT/DELETE + clearall/clone/setStatus | TrustSec egress matrix management |
+| `node` | GET list/GET by name/GET by id (read-only) | Alle ISE-noder: fqdn, ipAddress, nodeServiceTypes, papNode, pxGridNode → deployment-oversigt |
+| `sessionservicenode` | GET list/GET by name/GET by id (read-only) | PSN-noder med ipAddress → vis aktive PSN'er i Settings |
+| `pxgridnode` | GET/DELETE/approve | pxGrid-klienter: status, groups, authMethod → godkend klienter fra portalen |
+| `pxgridsettings` | `PUT /pxgridsettings/autoapprove` | Auto-approve pxGrid cert-baserede klienter — kan aktiveres fra portalen |
+| `ancendpoint` (GET) | `GET /ancendpoint/` | Hent alle aktive ANC-bindinger → vis hvilke endpoints der ER i karantæne pt. |
+| `deploymentinfo` | `GET /deploymentinfo/getAllInfo` | networkAccessInfo, profilerInfo, nadInfo, licensesInfo, postureInfo — deployment-status |
+| `internaluser` | GET/POST/PUT/DELETE/PATCH | ISE lokale brugere — evt. ISE-bruger administration fra portalen |
+| `identitygroup` | GET/POST/PUT/DELETE/PATCH | Identity groups (parent-sti) — bruges til purge-bypass og session identity |
+
+### Ressourcer uden portal-relevans
+
+- **Guest management**: `guestuser`, `guesttype`, `guestssid`, `sponsorgroup`, `sponsorportal`, `sponsoredguestportal`, `hotspotportal`, `selfregportal`, `byodportal`, `mydeviceportal`
+- **TACACS+**: `tacacsprofile`, `tacacscommandsets`, `tacacsexternalservers`, `tacacsserversequence`
+- **Identity stores**: `ldap`, `activedirectory`, `idstoresequence`, `restidstore`, `certificateprofile`
+- **SXP/TrustSec infrastruktur**: `sxpconnections`, `sxplocalbindings`, `sxpvpns`, `sgmapping`, `sgmappinggroup`, `sgtvnvlan`
+- **ACI integration**: `acibindings`, `acisettings`
+- **ISE operations**: `supportbundle`, `supportbundledownload`, `systemcertificate`, `telemetryinfo`
+- **Portals/themes**: `portalglobalsetting`, `portaltheme`
+
+### Bekræftede gotchas fra ERS_V1.json
+
+- **`ancendpoint/getEndpointByMac` eksisterer IKKE i spec** — hverken i ISE 3.4 ERS_V1.json (376 operationer) eller i SDK. Er enten fjernet eller aldrig officielt tilgængeligt. Brug `ancendpoint/{id}` eller filtrér GET list.
+- **`profilerprofile` er read-only** — POST/PUT/DELETE er ikke tilgængeligt. Profiler-definitioner administreres udelukkende af ISE's profiler-engine.
+- **`node` og `sessionservicenode` er read-only** — ingen POST/PUT/DELETE. Kun til discovery/visning.
+- **`pxgridnode` approve**: `PUT /pxgridnode/name/{name}/approve` — kan bruges til at approve portalen som pxGrid-klient programmatisk i stedet for via GUI.
+- **`pxgridsettings` autoapprove**: `PUT /pxgridsettings/autoapprove` — slår auto-approve til for cert-baserede pxGrid-klienter.
+- **ERS OpenAPI version er 3.1.0** selvom ISE kører 3.4 — spec-versionen er statisk og opdateres ikke med minor ISE releases.
+
+---
+
+## Auth/Authz policy-navne i sessioner — hvad virker
+
+Dette er det vigtigste spørgsmål for Browse session-kolonnen: kan vi vise "Auth: MAC ByPass / Authz: SSID 802 PSK Mode"?
+
+### Bekræftede negative resultater
+
+| Kilde | Resultat | Bekræftet |
+|---|---|---|
+| **ERS** (alle 376 operationer) | ❌ Ingen session-data overhovedet | Verificeret via ERS_V1.json |
+| **pxGrid getSessions** | ❌ Returnerer `selectedAuthzProfiles` men IKKE `policySetName` eller `authorizationRuleName` | Bekræftet via debug-log — alle felter var `None` |
+| **pxGrid getSessionByMacAddress** | ❌ Samme service, samme felter som getSessions | Forventet — ikke testet separat |
+| **MnT `/admin/API/mnt/Session/ActiveList`** | ❌ Returnerer kun 7 felter: `acct_session_id`, `audit_session_id`, `calling_station_id`, `framed_ipv6_address`, `nas_ip_address`, `server`, `user_name` | Bekræftet via debug-log |
+
+### Uafprøvede kandidater
+
+| Kilde | Status | Forventet indhold |
+|---|---|---|
+| **MnT `/admin/API/mnt/Session/MACAddress/{mac}`** | ⏳ Probe deployeret (b0341) — ikke testet endnu | Sandsynligvis `ISEPolicySetName`, `AuthorizationPolicyMatchedRule`, `SelectedAZProfiles` — MnT per-session detail returnerer langt rigere XML end ActiveList |
+| **MnT `/admin/API/mnt/AuthStatus/MACAddress/{mac}`** | ⏳ Probe deployeret (b0341) — ikke testet endnu | Auth-event detaljer per MAC |
+| **ISE Context Visibility API** | ❌ Kræver `ContextVisibility` eller `Super Admin`-rolle — højere end ERS Admin | `ISEPolicySetName`, `AuthorizationPolicyMatchedRule` tilgængeligt men kræver rolle-opgradering |
+
+### Probe-endpoint (admin-only)
+
+```
+GET /api/pxgrid/probe/mnt/{mac}
+```
+
+Kalder begge MnT detail-endpoints og returnerer alle XML-felter ISE leverer. Logges til `app.log`. Brug en MAC fra en aktiv session. Resultat afgør om enrichment-implementering er mulig.
+
+### Fallback — hvad portalen viser i dag
+
+```
+Authz: Endpoint_AirSpaceACL, Endpoint_PSK-KEY, Endpoint_VLAN, PermitAccess
+```
+
+`selectedAuthzProfiles` fra pxGrid getSessions er den eneste policy-information tilgængeligt uden Context Visibility-rolle.
+
+---
+
+## MnT — Session API (udover CoA)
+
+MnT REST API har flere endpoints end blot CoA. Alle kræver `MnT Admin` eller `Super Admin`-rolle (ERS Admin alene giver HTML redirect til login-side).
+
+### Paths
+
+| Path | Metode | Beskrivelse |
+|---|---|---|
+| `/admin/API/mnt/Session/ActiveList` | GET | Alle aktive sessioner — **kun 7 felter** (acct_session_id, audit_session_id, calling_station_id, framed_ipv6_address, nas_ip_address, server, user_name) |
+| `/admin/API/mnt/Session/MACAddress/{mac}` | GET | Per-session detail for MAC — sandsynligvis inkl. ISEPolicySetName og AuthorizationPolicyMatchedRule (**ikke testet endnu**) |
+| `/admin/API/mnt/AuthStatus/MACAddress/{mac}` | GET | Auth-status per MAC (**ikke testet endnu**) |
+| `/admin/API/mnt/Session/IPAddress/{ip}` | GET | Session(er) for IP-adresse |
+| `/admin/API/mnt/CoA/Reauth/{psn}/{mac}/{type}` | GET | CoA reauth (i brug i portalen) |
+| `/admin/API/mnt/CoA/Disconnect/{psn}/{mac}/{type}` | GET | CoA disconnect (i brug i portalen) |
+
+### Fælles for alle MnT endpoints
+
+- **Auth**: Basic auth — kræver MnT Admin eller Super Admin (ikke ERS Admin)
+- **Response format**: XML (`Accept: application/xml`) — ikke JSON
+- **401 med HTML-body**: manglende MnT Admin-rolle, ikke forkert password
+- **MAC-format i URL**: kolon-separeret (`AA:BB:CC:DD:EE:FF`) URL-encodet som `%3A` i path-segmenter
+
+---
+
 ## Endpoint Purge — hvad virker og hvad gør ikke
 
 **Sti i ISE GUI:** Administration → Identity Management → Settings → Endpoint Purge → Never Purge.

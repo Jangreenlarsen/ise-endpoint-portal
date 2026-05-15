@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.27 build 0342] — 2026-05-15 — docs: ISE_API_REFERENCE.md opdateret med ERS SDK-analyse og session policy-findings
+
+**Berørte filer**: `ISE_API_REFERENCE.md`, `version.json`
+
+Tre nye sektioner: (1) ERS SDK komplet ressource-oversigt verificeret fra ERS_V1.json (376 operationer, 80 ressourcer) — tabel over hvad vi bruger, hvad har portal-potentiale, hvad er irrelevant; (2) Auth/Authz policy-navne i sessioner — samlet oversigt over bekræftede negative resultater (ERS, pxGrid, MnT ActiveList) og uafprøvede kandidater (MnT Session detail, probe b0341); (3) MnT Session API ud over CoA — alle kendte paths, feltbegrænsninger og auth-krav.
+
 ## [5.3.27 build 0341] — 2026-05-15 — feat: MnT diagnostik-probe for auth/authz policy-data
 
 **Berørte filer**: `backend/app/ise/mnt_sessions.py`, `backend/app/api/pxgrid.py`, `version.json`
