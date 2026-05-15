@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.25 build 0336] — 2026-05-15 — fix: browse-table.js Authz-label reapply efter linter-revert
+
+**Berørte filer**: `frontend/js/views/browse-table.js`, `version.json`
+
+Genindlæser frontend-rettelse fra b0335 (komma-separerede profiler med "Authz:"-label) efter linter rullede filen tilbage til gammel kode.
+
 ## [5.3.25 build 0335] — 2026-05-15 — fix: session-kolonne viser Authz-profiler korrekt + MnT enrichment for policySetName
 
 **Berørte filer**: `frontend/js/views/browse-table.js`, `backend/app/pxgrid/session_worker.py`, `version.json`
