@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.24 build 0334] — 2026-05-15 — debug: pxGrid session feltnavne logges ved DEBUG-niveau
+
+**Berørte filer**: `backend/app/pxgrid/session_worker.py`, `backend/app/core/config.py`, `backend/app/core/logging.py`, `backend/config.json`, `version.json`
+
+Ny `debug_pxgrid_sessions: bool` config-flag. Når `true` sættes `app.pxgrid.session_worker`-loggeren til DEBUG uden at oversvømme hele loggen. Logger alle nøgler + relevante feltnavne fra pxGrid-payload og MnT-seed data. Aktiveret i `config.json` nu for at diagnosere manglende `policy_set_name`/`authz_rule_name`.
+
 ## [5.3.24 build 0333] — 2026-05-15 — fix: authz_rule_name manglede i REST API schema og responses
 
 **Berørte filer**: `backend/app/schemas/settings.py`, `backend/app/api/pxgrid.py`, `version.json`

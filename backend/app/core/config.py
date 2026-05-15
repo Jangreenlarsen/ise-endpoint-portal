@@ -345,6 +345,7 @@ class Settings(BaseSettings):
     )
     log_level: str = "INFO"
     log_file: str = "logs/app.log"
+    debug_pxgrid_sessions: bool = False
 
 
 def _load() -> Settings:

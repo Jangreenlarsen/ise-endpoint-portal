@@ -458,6 +458,17 @@ def _build_session_info(d: dict[str, Any]) -> SessionInfo:
         or d.get("mac")
         or ""
     )
+    logger.debug(
+        "pxGrid session [%s] nøgler: %s | policySetName=%r authorizationRuleName=%r "
+        "azRuleName=%r selectedAznProfiles=%r selectedAuthzProfiles=%r",
+        mac,
+        sorted(d.keys()),
+        d.get("policySetName"),
+        d.get("authorizationRuleName"),
+        d.get("azRuleName"),
+        d.get("selectedAznProfiles"),
+        d.get("selectedAuthzProfiles"),
+    )
     azn_raw = (
         d.get("selectedAznProfiles")
         or d.get("selectedAuthzProfiles")   # pxGrid REST getSessions bruger dette navn
@@ -647,6 +658,11 @@ async def _reconcile_from_mnt(cache) -> None:  # type: ignore[no-untyped-def]
         for mac, sess in mnt_by_mac.items():
             if mac in cached_macs:
                 continue
+            logger.debug(
+                "MnT seed [%s] nøgler: %s",
+                mac,
+                sorted(sess.keys()),
+            )
             policy_set_name = str(
                 sess.get("isepolicysetname", "")
                 or sess.get("ise-policy-set-name", "")
