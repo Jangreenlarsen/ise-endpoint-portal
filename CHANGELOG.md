@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.22 build 0329] — 2026-05-15 — feat: "Anvend + Genstart"-knap i system opdatering
+
+**Berørte filer**: `frontend/js/views/settings/section-update.js`, `frontend/js/views/settings.js`, `frontend/js/i18n.js`, `version.json`
+
+Ny primær knap "Anvend + Genstart" der udfører apply og server-genstart i ét klik. Den eksisterende "Anvend opdatering"-knap er nedgraderet til sekundær (til de tilfælde hvor kun frontend-filer opdateres). Begge knapper aktiveres/deaktiveres synkront med validering. Ved fejl i apply-fasen afbrydes genstarten.
+
 ## [5.3.22 build 0328] — 2026-05-15 — feat: auto-valider firmware-pakke ved indlæsning
 
 **Berørte filer**: `frontend/js/views/settings/section-update.js`, `version.json`

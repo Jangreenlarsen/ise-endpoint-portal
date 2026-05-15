@@ -744,8 +744,9 @@ export async function renderSettings(container) {
           <label style="color:#b45309;" id="update-blocked-lbl"></label>
           <div id="update-blocked-list" style="font-family:monospace;font-size:0.78rem;background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:0.5rem;white-space:pre;color:#92400e;"></div>
         </div>
-        <div class="actions" style="margin-top:1rem;">
-          <button type="button" id="update-apply-btn" class="primary" disabled></button>
+        <div class="actions" style="margin-top:1rem;gap:0.5rem;">
+          <button type="button" id="update-apply-btn" class="secondary" disabled></button>
+          <button type="button" id="update-apply-restart-btn" class="primary" disabled></button>
         </div>
       </div>
 

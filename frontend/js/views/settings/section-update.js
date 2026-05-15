@@ -3,10 +3,11 @@ import { t } from "../../i18n.js";
 import { esc } from "./shared.js";
 
 export function initSystemUpdateSection(container) {
-  const fileInput    = container.querySelector("#update-file-input");
-  const validateBtn  = container.querySelector("#update-validate-btn");
-  const applyBtn     = container.querySelector("#update-apply-btn");
-  const restartBtn   = container.querySelector("#update-restart-btn");
+  const fileInput        = container.querySelector("#update-file-input");
+  const validateBtn      = container.querySelector("#update-validate-btn");
+  const applyBtn         = container.querySelector("#update-apply-btn");
+  const applyRestartBtn  = container.querySelector("#update-apply-restart-btn");
+  const restartBtn       = container.querySelector("#update-restart-btn");
   const preview      = container.querySelector("#update-preview");
   const result       = container.querySelector("#update-result");
   const pkgInfo      = container.querySelector("#update-pkg-info");
@@ -27,6 +28,7 @@ export function initSystemUpdateSection(container) {
   if (updatePkgLbl) updatePkgLbl.textContent = t("settings.update_pkg_lbl");
   if (validateBtn) validateBtn.textContent = t("settings.update_btn_validate");
   if (applyBtn) applyBtn.textContent = t("settings.update_btn_apply");
+  if (applyRestartBtn) applyRestartBtn.textContent = t("settings.update_btn_apply_restart");
   const updateRestartH4 = container.querySelector("#update-restart-h4");
   if (updateRestartH4) updateRestartH4.textContent = t("settings.update_restart_h4");
   const updateRestartHint = container.querySelector("#update-restart-hint");
@@ -80,6 +82,7 @@ export function initSystemUpdateSection(container) {
       }
 
       applyBtn.disabled = !info.ok;
+      if (applyRestartBtn) applyRestartBtn.disabled = !info.ok;
       if (info.ok) validatedFile = file;
     } catch (err) {
       msgEl.innerHTML = `<div class="alert error">${t("settings.update_validate_err").replace("{msg}", esc(err.message))}</div>`;
@@ -91,6 +94,7 @@ export function initSystemUpdateSection(container) {
   fileInput.addEventListener("change", () => {
     validatedFile = null;
     applyBtn.disabled = true;
+    if (applyRestartBtn) applyRestartBtn.disabled = true;
     preview.classList.add("hidden");
     result.classList.add("hidden");
     msgEl.innerHTML = "";
@@ -121,6 +125,31 @@ export function initSystemUpdateSection(container) {
       msgEl.innerHTML = `<div class="alert error">${t("settings.update_fail").replace("{msg}", esc(err.message))}</div>`;
       applyBtn.disabled = false;
     }
+  });
+
+  if (applyRestartBtn) applyRestartBtn.addEventListener("click", async () => {
+    if (!validatedFile) return;
+    if (!confirm(t("settings.update_apply_restart_confirm"))) return;
+    applyBtn.disabled = true;
+    applyRestartBtn.disabled = true;
+    msgEl.innerHTML = `<div class="alert info">${t("settings.update_applying")}</div>`;
+    try {
+      const res = await api.applyUpdate(validatedFile);
+      msgEl.innerHTML = `<div class="alert info">${t("settings.update_apply_restart_done").replace("{n}", res.applied_count)}</div>`;
+      preview.classList.add("hidden");
+      result.classList.add("hidden");
+    } catch (err) {
+      msgEl.innerHTML = `<div class="alert error">${t("settings.update_fail").replace("{msg}", esc(err.message))}</div>`;
+      applyBtn.disabled = false;
+      applyRestartBtn.disabled = false;
+      return;
+    }
+    try {
+      await api.restartServer();
+    } catch {
+      // Serveren lukker ned — forventet at kaldet fejler
+    }
+    setTimeout(() => window.location.reload(), 8000);
   });
 
   restartBtn.addEventListener("click", async () => {
