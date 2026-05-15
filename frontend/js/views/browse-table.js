@@ -110,18 +110,32 @@ export function initTable(container, state, api, cb) {
     return sess?.nas_device_type || "";
   }
 
-  // ── ISE session combo cell ───────────────────────────────────────────────
+  // ── ISE session combo cell (authz only — NAS info moved to nas column) ──
   function iseSessionCellHtml(mac) {
     if (!state.pxgridSessionData) return '<span class="hint">—</span>';
     const sess = state.pxgridSessionData.get(normalizeMac(mac));
     if (!sess) return '<span class="hint">—</span>';
-    const profs    = (sess.authz_profiles || []).filter(Boolean);
-    const nasLabel = sess.nas_name || "";
-    if (!profs.length && !nasLabel) return '<span class="hint">—</span>';
+    const profs = (sess.authz_profiles || []).filter(Boolean);
+    if (!profs.length) return '<span class="hint">—</span>';
     return (
       `<div class="ise-sess-combo">` +
       profs.map(p => `<span class="ise-sess-authz">${esc(p)}</span>`).join("") +
-      (nasLabel ? `<span class="ise-sess-nas">${esc(nasLabel)}</span>` : "") +
+      `</div>`
+    );
+  }
+
+  // ── NAS info cell ────────────────────────────────────────────────────────
+  function nasInfoCellHtml(mac) {
+    if (!state.pxgridSessionData) return '<span class="hint">—</span>';
+    const sess = state.pxgridSessionData.get(normalizeMac(mac));
+    if (!sess) return '<span class="hint">—</span>';
+    const name = sess.nas_name || "";
+    const type = sess.nas_device_type || "";
+    if (!name && !type) return '<span class="hint">—</span>';
+    return (
+      `<div class="nas-info-combo">` +
+      (name ? `<span class="nas-info-name">${esc(name)}</span>` : "") +
+      (type ? `<span class="nas-info-type">${esc(type)}</span>` : "") +
       `</div>`
     );
   }
@@ -169,6 +183,7 @@ export function initTable(container, state, api, cb) {
         authz_acl:     `<td data-col="authz_acl" class="authz-col"><select class="ca-authzacl">${optionsHtml(state.caValues.AuthzACL, r.authz_acl)}</select></td>`,
         roles:         `<td data-col="roles" class="roles-cell">${rolesChipsHtml(r.roles)}</td>`,
         create_time:   `<td data-col="create_time" class="age-cell" title="${esc(fmtDateTime(endpointCreateTime(r)))}">${esc(fmtRelativeAge(endpointCreateTime(r)))}</td>`,
+        nas:           `<td data-col="nas" class="nas-info-col">${nasInfoCellHtml(mac)}</td>`,
         ise_session:   `<td data-col="ise_session" class="ise-session-col">${iseSessionCellHtml(mac)}</td>`,
       };
       return `

@@ -163,6 +163,7 @@ const TRANSLATIONS = {
     "col.authz_acl":    "AuthzACL",
     "col.roles":        "System adm",
     "col.create_time":  "Alder",
+    "col.nas":          "NAS",
     "col.ise_session":  "Session",
 
     // Browse — celleværdier
@@ -1131,6 +1132,7 @@ const TRANSLATIONS = {
     "col.authz_acl":    "AuthzACL",
     "col.roles":        "System adm",
     "col.create_time":  "Age",
+    "col.nas":          "NAS",
     "col.ise_session":  "Session",
 
     // Browse — cell values

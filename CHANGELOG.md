@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.21 build 0325] — 2026-05-15 — feat: ny NAS-kolonne i browse-edit; NAS type flyttes fra Session-celle
+
+**Berørte filer**: `frontend/js/views/browse-table.js`, `frontend/js/views/browse-utils.js`, `frontend/js/i18n.js`, `frontend/css/styles.css`, `version.json`
+
+Ny `nas`-kolonne (120px) viser NAS-enhedens navn (fed, blå) og device type (lille, grå) fra pxGrid session-data. NAS-navne fjernes fra Session-cellen som nu kun viser Authz-profiler. Begge kolonner kan skjules/reordres som de øvrige. CSS: `.nas-info-combo`, `.nas-info-name`, `.nas-info-type` med dark/midnight theme-overrides.
+
 ## [5.3.20 build 0324] — 2026-05-15 — chore: bump version til 5.3.20 (korrekt versionering af bug-fix build 0323)
 
 **Berørte filer**: `version.json`, `CHANGELOG.md`

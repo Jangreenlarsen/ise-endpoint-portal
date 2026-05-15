@@ -750,8 +750,12 @@ th[data-col="create_time"], td[data-col="create_time"] {
   width: 70px; min-width: 70px; max-width: 70px;
   overflow: hidden; white-space: nowrap;
 }
+th[data-col="nas"], td[data-col="nas"] {
+  width: 120px; min-width: 120px; max-width: 120px;
+  overflow: hidden;
+}
 th[data-col="ise_session"], td[data-col="ise_session"] {
-  width: 148px; min-width: 148px; max-width: 148px;
+  width: 120px; min-width: 120px; max-width: 120px;
   overflow: hidden;
 }
 
@@ -801,10 +805,35 @@ td.ise-session-col {
   text-overflow: ellipsis;
 }
 .ise-sess-prefix { font-weight: 400; opacity: 0.6; margin-right: 0.2em; }
-.ise-sess-nas { font-size: 0.72em; color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 0.1rem; }
 [data-theme="dark"] .ise-sess-auth  { color: #93c5fd; }
 [data-theme="dark"] .ise-sess-authz { color: #94a3b8; }
-[data-theme="dark"] .ise-sess-nas   { color: #64748b; }
+
+/* NAS kolonne — navn + device type */
+td.nas-info-col { overflow: hidden; }
+.nas-info-combo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  line-height: 1.3;
+}
+.nas-info-name {
+  font-size: 0.8em;
+  font-weight: 600;
+  color: #1e3a5f;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nas-info-type {
+  font-size: 0.72em;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+[data-theme="dark"] .nas-info-name { color: #93c5fd; }
+[data-theme="dark"] .nas-info-type { color: #94a3b8; }
+[data-theme="midnight"] .nas-info-name { color: #60a5fa; }
 
 /* Mapping table — new/unmatched NDG rows */
 .mapping-row-new { background: #fffbeb; }
