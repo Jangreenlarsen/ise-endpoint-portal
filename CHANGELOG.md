@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.24 build 0333] — 2026-05-15 — fix: authz_rule_name manglede i REST API schema og responses
+
+**Berørte filer**: `backend/app/schemas/settings.py`, `backend/app/api/pxgrid.py`, `version.json`
+
+`authz_rule_name` manglede i `PxGridSessionInfoResponse`-schema og i de to manuelle konstruktioner i `list_sessions` + `get_session`. SSE-stream bruger `to_dict()` og var allerede korrekt.
+
 ## [5.3.24 build 0332] — 2026-05-15 — feat: session-kolonne viser Auth/Authz regel i stedet for profilnavne
 
 **Berørte filer**: `backend/app/pxgrid/session_cache.py`, `backend/app/pxgrid/session_worker.py`, `frontend/js/views/browse-table.js`, `frontend/js/i18n.js`, `frontend/css/styles.css`, `version.json`
