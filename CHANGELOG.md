@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.14 build 0315] — 2026-05-15 — feat: dropdown-pil erstattet med venstre-border i browse-edit select-felter
+
+**Berørte filer**: `frontend/css/styles.css`, `version.json`
+
+Select-felter i browse-edit tabellen viser ikke længere den native dropdown-pil (`appearance: none`). En blå venstre-kant (3px) bruges i stedet som visuelt cue for at feltet er redigerbart — giver mere plads til tekst. Dark/midnight-temaerne tilpasses med matchende blåtoner.
+
 ## [5.3.13 build 0314] — 2026-05-15 — feat: kompakt browse-edit — faste bredder på read-only kolonner + kortere navne
 
 **Berørte filer**: `frontend/js/i18n.js`, `frontend/js/views/browse-table.js`, `frontend/css/styles.css`, `version.json`

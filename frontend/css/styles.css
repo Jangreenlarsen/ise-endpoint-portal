@@ -500,10 +500,13 @@ button.small {
 }
 .browse-table-wrap select {
   width: 100%;
-  padding: 0.3rem 0.4rem;
+  padding: 0.3rem 0.35rem;
   font-size: 0.82rem;
   border: 1px solid #d1d5db;
+  border-left: 3px solid #93c5fd;
   border-radius: 3px;
+  appearance: none;
+  -webkit-appearance: none;
 }
 .select-cell {
   text-align: center;
@@ -1408,6 +1411,7 @@ td.psk-key-cell {
   color: #e0e0e0;
   border-color: #3a3a5c;
 }
+[data-theme="dark"] .browse-table-wrap select { border-left-color: #3b82f6; }
 [data-theme="dark"] .col-filter-input {
   background: #1a1a2e;
   color: #e0e0e0;
@@ -1560,6 +1564,7 @@ td.psk-key-cell {
 [data-theme="midnight"] .browse-table-wrap select {
   background: #0d1117; color: #e6edf3; border-color: #30363d;
 }
+[data-theme="midnight"] .browse-table-wrap select { border-left-color: #60a5fa; }
 [data-theme="midnight"] .col-filter-input { background: #0d1117; color: #e6edf3; border-color: #30363d; }
 [data-theme="midnight"] .col-filter-input:disabled { background: #010409; color: #484f58; }
 [data-theme="midnight"] .filter-row th { background: #010409; }
