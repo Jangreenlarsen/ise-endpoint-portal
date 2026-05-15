@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.25 build 0338] — 2026-05-15 — cleanup: fjern debug-logging og MnT enrichment efter diagnose
+
+**Berørte filer**: `backend/app/pxgrid/session_worker.py`, `backend/config.json`, `version.json`
+
+Diagnosen er afsluttet: pxGrid getSessions og MnT ActiveList leverer ikke `ISEPolicySetName`/`AuthorizationRuleName`. Fjerner: debug-log i `_build_session_info`, MnT-feltlog i `_reconcile_from_mnt`, og hele `_enrich_from_mnt`-funktionen. `debug_pxgrid_sessions` sat til `false` i config.json.
+
 ## [5.3.25 build 0337] — 2026-05-15 — fix: _enrich_from_mnt reapply i session_worker efter linter-revert
 
 **Berørte filer**: `backend/app/pxgrid/session_worker.py`, `version.json`

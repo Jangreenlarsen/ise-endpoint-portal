@@ -458,17 +458,6 @@ def _build_session_info(d: dict[str, Any]) -> SessionInfo:
         or d.get("mac")
         or ""
     )
-    logger.debug(
-        "pxGrid session [%s] nøgler: %s | policySetName=%r authorizationRuleName=%r "
-        "azRuleName=%r selectedAznProfiles=%r selectedAuthzProfiles=%r",
-        mac,
-        sorted(d.keys()),
-        d.get("policySetName"),
-        d.get("authorizationRuleName"),
-        d.get("azRuleName"),
-        d.get("selectedAznProfiles"),
-        d.get("selectedAuthzProfiles"),
-    )
     azn_raw = (
         d.get("selectedAznProfiles")
         or d.get("selectedAuthzProfiles")   # pxGrid REST getSessions bruger dette navn
@@ -520,8 +509,11 @@ def _build_session_info(d: dict[str, Any]) -> SessionInfo:
 async def _reconcile_cache_with_mnt(cache, client: PxGridClient | None = None) -> None:  # type: ignore[no-untyped-def]
     """Synkroniser pxGrid session-cache ved reconnect.
 
-    Forsøger pxGrid REST getSessions (rig data: policySetName + selectedAznProfiles)
-    som primær kilde. Falder tilbage til MnT ActiveList hvis getSessions fejler.
+    Forsøger pxGrid REST getSessions (selectedAuthzProfiles, state m.m.) som
+    primær kilde. Falder tilbage til MnT ActiveList hvis getSessions fejler.
+    NB: pxGrid og MnT leverer ikke ISEPolicySetName/AuthorizationRuleName —
+    disse felter er kun tilgængelige via ISE Context Visibility (kræver
+    højere ISE-tilladelser end ERS Admin).
 
     Best-effort: enhver fejl logges og ignoreres så normal drift fortsætter.
     """
@@ -531,8 +523,6 @@ async def _reconcile_cache_with_mnt(cache, client: PxGridClient | None = None) -
             pxgrid_sessions = await client.get_sessions()
             if pxgrid_sessions:
                 await _reconcile_from_pxgrid(cache, pxgrid_sessions)
-                # pxGrid mangler policySetName/authorizationRuleName — MnT som supplement.
-                await _enrich_from_mnt(cache)
                 return
             logger.debug("pxgrid reconcile: getSessions returnerede 0 sessioner, prøver MnT")
         except Exception as exc:  # noqa: BLE001
@@ -615,85 +605,6 @@ async def _reconcile_from_pxgrid(cache, sessions: list[dict]) -> None:
         logger.debug("pxgrid reconcile (getSessions): uventet fejl: %s", exc)
 
 
-async def _enrich_from_mnt(cache) -> None:  # type: ignore[no-untyped-def]
-    """Berig pxGrid-sessions med policySetName/authorizationRule fra MnT.
-
-    pxGrid getSessions returnerer ikke ISEPolicySetName eller
-    AuthorizationPolicyMatchedRule. Kaldes efter _reconcile_from_pxgrid
-    og udfylder kun tomme felter — overskriver ikke pxGrid-data.
-    """
-    try:
-        from app.ise.mnt_sessions import fetch_active_sessions
-    except ImportError:
-        return
-    try:
-        sessions = await fetch_active_sessions()
-    except Exception as exc:  # noqa: BLE001
-        logger.debug("MnT enrichment fejlede: %s", exc)
-        return
-    if not sessions:
-        return
-
-    logger.debug("MnT enrichment: felter i første session: %s", sorted(sessions[0].keys()))
-
-    mnt_by_mac: dict[str, dict] = {}
-    for sess in sessions:
-        mac_raw = (
-            sess.get("calling_station_id", "")
-            or sess.get("callingstationid", "")
-            or ""
-        )
-        if not mac_raw:
-            continue
-        mac = mac_raw.upper().replace("-", ":").strip()
-        if len(mac) == 17 and mac.count(":") == 5:
-            mnt_by_mac[mac] = sess
-
-    cached = await cache.list()
-    enriched = 0
-    for entry in cached:
-        mnt = mnt_by_mac.get(entry.mac)
-        if not mnt:
-            continue
-        policy_set = str(
-            mnt.get("isepolicysetname", "")
-            or mnt.get("ise-policy-set-name", "")
-            or mnt.get("ise_policy_set_name", "")
-            or ""
-        )
-        authz_rule = str(
-            mnt.get("authorizationrule", "")
-            or mnt.get("authorizationrulename", "")
-            or mnt.get("authorization-rule", "")
-            or ""
-        )
-        if not policy_set and not authz_rule:
-            continue
-        updated = SessionInfo(
-            mac=entry.mac,
-            state=entry.state,
-            audit_session_id=entry.audit_session_id,
-            nas_ip=entry.nas_ip,
-            user_name=entry.user_name,
-            policy_set_name=policy_set or entry.policy_set_name,
-            authz_profiles=entry.authz_profiles,
-            authz_rule_name=authz_rule or entry.authz_rule_name,
-            use_case=entry.use_case,
-            nas_name=entry.nas_name,
-            nas_device_type=entry.nas_device_type,
-            last_event_at=entry.last_event_at,
-            raw=entry.raw,
-        )
-        await cache.upsert(updated)
-        enriched += 1
-        logger.debug(
-            "MnT enrichment [%s]: policy_set=%r authz_rule=%r",
-            entry.mac, policy_set, authz_rule,
-        )
-
-    logger.info("MnT enrichment: %d/%d sessions berigt med policy-data", enriched, len(cached))
-
-
 async def _reconcile_from_mnt(cache) -> None:  # type: ignore[no-untyped-def]
     """Fallback reconcile via MnT ActiveList (lavere data-fidelitet)."""
     try:
@@ -706,8 +617,6 @@ async def _reconcile_from_mnt(cache) -> None:  # type: ignore[no-untyped-def]
         logger.debug("pxgrid reconcile: MnT ActiveList fejlede: %s", exc)
         return
     try:
-        if sessions:
-            logger.debug("pxgrid reconcile: MnT session-felter: %s", sorted(sessions[0].keys()))
         mnt_by_mac: dict[str, dict] = {}
         for sess in sessions:
             mac_raw = (
@@ -739,11 +648,6 @@ async def _reconcile_from_mnt(cache) -> None:  # type: ignore[no-untyped-def]
         for mac, sess in mnt_by_mac.items():
             if mac in cached_macs:
                 continue
-            logger.debug(
-                "MnT seed [%s] nøgler: %s",
-                mac,
-                sorted(sess.keys()),
-            )
             policy_set_name = str(
                 sess.get("isepolicysetname", "")
                 or sess.get("ise-policy-set-name", "")
