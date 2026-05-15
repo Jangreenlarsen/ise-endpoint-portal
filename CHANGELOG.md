@@ -3,6 +3,10 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.28 build 0344] — 2026-05-15 — chore: version bump til 5.3.28
+
+**Berørte filer**: `version.json`, `CHANGELOG.md`
+
 ## [5.3.27 build 0343] — 2026-05-15 — docs: ISE_API_REFERENCE.md — komplet MnT API-dokumentation
 
 **Berørte filer**: `ISE_API_REFERENCE.md`, `version.json`
