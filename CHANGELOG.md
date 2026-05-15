@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.21 build 0326] — 2026-05-15 — fix: NAS-kolonne viser kun NAS-navn, ikke local mapping label
+
+**Berørte filer**: `frontend/js/views/browse-table.js`, `version.json`
+
+`nas_device_type` (local mapping label) fjernet fra NAS-cellen. Kolonnen viser nu udelukkende NAS-enhedens navn (`nas_name`).
+
 ## [5.3.21 build 0325] — 2026-05-15 — feat: ny NAS-kolonne i browse-edit; NAS type flyttes fra Session-celle
 
 **Berørte filer**: `frontend/js/views/browse-table.js`, `frontend/js/views/browse-utils.js`, `frontend/js/i18n.js`, `frontend/css/styles.css`, `version.json`

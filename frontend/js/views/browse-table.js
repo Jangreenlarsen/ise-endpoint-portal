@@ -130,14 +130,8 @@ export function initTable(container, state, api, cb) {
     const sess = state.pxgridSessionData.get(normalizeMac(mac));
     if (!sess) return '<span class="hint">—</span>';
     const name = sess.nas_name || "";
-    const type = sess.nas_device_type || "";
-    if (!name && !type) return '<span class="hint">—</span>';
-    return (
-      `<div class="nas-info-combo">` +
-      (name ? `<span class="nas-info-name">${esc(name)}</span>` : "") +
-      (type ? `<span class="nas-info-type">${esc(type)}</span>` : "") +
-      `</div>`
-    );
+    if (!name) return '<span class="hint">—</span>';
+    return `<span class="nas-info-name">${esc(name)}</span>`;
   }
 
   // ── Auth-status colors ───────────────────────────────────────────────────
