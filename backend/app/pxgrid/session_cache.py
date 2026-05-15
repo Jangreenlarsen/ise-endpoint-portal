@@ -17,12 +17,16 @@ Designvalg
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import time
 from dataclasses import asdict, dataclass, field
+from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+DISK_CACHE_VERSION = 1
 
 
 @dataclass
@@ -156,6 +160,65 @@ class SessionCache:
             "upserts_total": self._upserts_total,
             "evictions_total": self._evictions_total,
         }
+
+    def save_to_disk(self, path: Path) -> int:
+        """Gem alle sessions til JSON-fil. Atomisk via tmp→rename.
+        Trådsikker: laver en shallow dict-kopi med Python GIL."""
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        sessions_snapshot = dict(self._sessions)
+        data = {
+            "version": DISK_CACHE_VERSION,
+            "saved_at": time.time(),
+            "sessions": [s.to_dict() for s in sessions_snapshot.values()],
+        }
+        tmp = path.with_suffix(".tmp")
+        try:
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump(data, f)
+            tmp.replace(path)
+            n = len(sessions_snapshot)
+            logger.info("session cache: gemt %d sessioner til %s", n, path)
+            return n
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("session cache: fejl ved gemning til %s: %s", path, exc)
+            return 0
+
+    def load_from_disk(self, path: Path) -> int:
+        """Indlæs sessions fra JSON-fil og merge ind i cache.
+        Kald synkront FØR worker starter (ingen asyncio-lock nødvendig)."""
+        path = Path(path)
+        if not path.exists():
+            logger.debug("session cache: ingen disk-fil fundet på %s", path)
+            return 0
+        try:
+            with open(path, encoding="utf-8") as f:
+                data = json.load(f)
+            loaded = 0
+            for item in data.get("sessions", []):
+                mac = self._norm(item.get("mac", ""))
+                if not mac:
+                    continue
+                info = SessionInfo(
+                    mac=mac,
+                    state=item.get("state", ""),
+                    audit_session_id=item.get("audit_session_id", ""),
+                    nas_ip=item.get("nas_ip", ""),
+                    user_name=item.get("user_name", ""),
+                    policy_set_name=item.get("policy_set_name", ""),
+                    authz_profiles=item.get("authz_profiles", []),
+                    use_case=item.get("use_case", ""),
+                    nas_name=item.get("nas_name", ""),
+                    nas_device_type=item.get("nas_device_type", ""),
+                    last_event_at=item.get("last_event_at", 0.0),
+                )
+                self._sessions[mac] = info
+                loaded += 1
+            logger.info("session cache: indlæst %d sessioner fra %s", loaded, path)
+            return loaded
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("session cache: fejl ved indlæsning fra %s: %s", path, exc)
+            return 0
 
 
 _cache: SessionCache | None = None

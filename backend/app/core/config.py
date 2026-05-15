@@ -280,6 +280,22 @@ class Settings(BaseSettings):
             "automatisk oprydning hvis disconnect-events bortfalder."
         ),
     )
+    pxgrid_session_disk_path: str = Field(
+        default="cache/sessions.json",
+        description=(
+            "Sti til disk-persistens-fil for pxGrid session-cache (relativ til "
+            "backend/). Gemmes ved shutdown + hvert pxgrid_session_autosave_interval_s "
+            "sekunder. Indlæses ved start så session-info overlever genstart. "
+            "Tom streng = deaktiveret."
+        ),
+    )
+    pxgrid_session_autosave_interval_s: float = Field(
+        default=300.0,
+        description=(
+            "Hvor tit session-cachen gemmes til disk mens portalen kører (sekunder). "
+            "0 = kun ved shutdown. Default 300 = hvert 5. minut."
+        ),
+    )
     pxgrid_worker_enabled: bool = Field(
         default=True,
         description=(

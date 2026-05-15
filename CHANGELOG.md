@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.16 build 0317] — 2026-05-15 — feat: pxGrid session-cache disk-persistens overlever portal-genstart
+
+**Berørte filer**: `backend/app/pxgrid/session_cache.py`, `backend/app/core/config.py`, `backend/app/main.py`, `version.json`
+
+Session-cachen (MAC → authz-profiler, NAS-navn, NAS device type m.m.) gemmes nu til `backend/cache/sessions.json` hvert 5. minut samt ved clean shutdown. Ved portal-genstart indlæses filen synkront inden pxGrid-workeren starter, så session-info er tilgængelig fra allerførste request. Konfigureres via `pxgrid_session_disk_path` og `pxgrid_session_autosave_interval_s` i settings.
+
 ## [5.3.15 build 0316] — 2026-05-15 — feat: ny søge-UX (auto-aktivering, global reset) + undo-knap i browse-edit
 
 **Berørte filer**: `frontend/js/views/browse.js`, `frontend/js/views/browse-filter.js`, `frontend/js/views/browse-table.js`, `frontend/css/styles.css`, `version.json`

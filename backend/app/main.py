@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -25,6 +26,7 @@ from app.core.config import settings
 from app.core.logging import setup_logging
 from app.core.version import FULL as APP_VERSION, VERSION
 from app.ise.client import close_ise_client
+from app.pxgrid.session_cache import get_cache as get_session_cache
 from app.pxgrid.session_worker import get_worker as get_pxgrid_worker
 from app.services.audit_retention import get_worker as get_audit_retention_worker
 from app.services.cache_prewarm import get_worker as get_prewarm_worker
@@ -70,17 +72,49 @@ async def lifespan(_: FastAPI):
     # Indlæs disk-cache synkront FØR yield så endpoints er tilgængelige
     # fra allerførste HTTP-request (ingen race-condition med async task).
     get_prewarm_worker().preload_disk_cache()
+
+    # Indlæs pxGrid session-cache fra disk — overlever genstart.
+    _sess_disk_str = getattr(settings, "pxgrid_session_disk_path", "cache/sessions.json")
+    _sess_cache_path = None
+    if _sess_disk_str:
+        _sess_cache_path = Path(_sess_disk_str)
+        if not _sess_cache_path.is_absolute():
+            _sess_cache_path = Path(__file__).resolve().parents[2] / _sess_cache_path
+        _n = get_session_cache().load_from_disk(_sess_cache_path)
+        logger.info("pxGrid session cache: indlæst %d sessioner fra disk ved start", _n)
+
     get_cache_sync_worker().start()
     get_audit_retention_worker().start()
     get_pxgrid_worker().start()
     get_prewarm_worker().start()
+
+    # Periodisk autosave af session-cache til disk.
+    _autosave_interval = float(getattr(settings, "pxgrid_session_autosave_interval_s", 300.0))
+
+    async def _session_autosave_loop():
+        if not _sess_cache_path or _autosave_interval <= 0:
+            return
+        while True:
+            await asyncio.sleep(_autosave_interval)
+            get_session_cache().save_to_disk(_sess_cache_path)
+
+    _autosave_task = asyncio.create_task(_session_autosave_loop(), name="session-cache-autosave")
+
     try:
         yield
     finally:
+        _autosave_task.cancel()
+        try:
+            await _autosave_task
+        except (asyncio.CancelledError, Exception):  # noqa: BLE001
+            pass
         await get_prewarm_worker().stop()
         await get_pxgrid_worker().stop()
         await get_audit_retention_worker().stop()
         await get_cache_sync_worker().stop()
+        if _sess_cache_path:
+            get_session_cache().save_to_disk(_sess_cache_path)
+            logger.info("pxGrid session cache: gemt til disk ved shutdown")
         await close_ise_client()
 
 
