@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.19 build 0322] — 2026-05-15 — fix: mapping-tabel kolonne-rækkefølge: ISE NAS Devices → Lokalt label
+
+**Berørte filer**: `frontend/js/views/attributes.js`, `version.json`
+
+ISE NAS Devices-kolonnen placeres nu som første kolonne, Lokalt label som anden. Input for ny raw-værdi vises i NAS Devices-cellen så det er tydeligt at det er ISE-device-typen der mappes til et lokalt label.
+
 ## [5.3.19 build 0321] — 2026-05-15 — fix: Raw→local mapping fjerner fejlagtig "ISE raw"-kolonne
 
 **Berørte filer**: `frontend/js/views/attributes.js`, `version.json`

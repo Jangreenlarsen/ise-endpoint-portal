@@ -72,20 +72,20 @@ export async function renderAttributes(container) {
         ? `${t("attr.mapping_col_nas")} <span class="hint" style="font-size:0.8em;">(${t("attr.nas_loading")})</span>`
         : `${t("attr.mapping_col_nas")} <span class="hint" style="font-size:0.8em;">(${t("attr.nas_not_loaded")})</span>`;
 
-    // NAS cell for existing rows: show device tags; for new rows: editable raw input
+    // ISE NAS Devices shown first; for new rows it's an editable raw input
     const makeRow = (raw, local, coa, isNew = false) => `
       <tr data-raw="${esc(raw)}" class="${isNew ? "mapping-row-new" : ""}">
-        <td>
-          <select class="map-local">${localOptions(local)}</select>
-        </td>
-        <td>
-          <select class="map-coa">${coaOptions(coa)}</select>
-        </td>
         <td class="nas-devices-cell">
           ${isNew
             ? `<input type="text" class="map-raw" placeholder="${esc(t("attr.mapping_raw_placeholder"))}" value="${esc(raw)}" style="width:100%;box-sizing:border-box;" />`
             : `<input type="hidden" class="map-raw" value="${esc(raw)}" />${nasCell(raw)}`
           }
+        </td>
+        <td>
+          <select class="map-local">${localOptions(local)}</select>
+        </td>
+        <td>
+          <select class="map-coa">${coaOptions(coa)}</select>
         </td>
         <td style="width:28px;text-align:center;">
           <button type="button" class="map-row-del" title="${esc(t("attr.mapping_del_title"))}"
@@ -119,9 +119,9 @@ export async function renderAttributes(container) {
         <table class="platform-mapping-table" style="width:100%;border-collapse:collapse;">
           <thead>
             <tr>
+              <th style="text-align:left;padding:0.3rem;">${nasHeader}</th>
               <th style="text-align:left;padding:0.3rem;">${t("attr.mapping_col_local")}</th>
               <th style="text-align:left;padding:0.3rem;">${t("attr.mapping_col_coa")}</th>
-              <th style="text-align:left;padding:0.3rem;">${nasHeader}</th>
               <th></th>
             </tr>
           </thead>
@@ -319,12 +319,12 @@ export async function renderAttributes(container) {
           tr.className = "mapping-row-new";
           tr.dataset.raw = "";
           tr.innerHTML = `
-            <td><select class="map-local">${optsHtml}</select></td>
-            <td><select class="map-coa">${coaOpts}</select></td>
             <td class="nas-devices-cell">
               <input type="text" class="map-raw" placeholder="${esc(t("attr.mapping_raw_placeholder"))}"
                 style="width:100%;box-sizing:border-box;" />
             </td>
+            <td><select class="map-local">${optsHtml}</select></td>
+            <td><select class="map-coa">${coaOpts}</select></td>
             <td style="width:28px;text-align:center;">
               <button type="button" class="map-row-del" title="${esc(t("attr.mapping_del_title"))}"
                 style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:1rem;padding:0;line-height:1;">×</button>
