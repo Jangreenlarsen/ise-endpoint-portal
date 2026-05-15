@@ -4,11 +4,13 @@ Resolves profileId (UUID) → human-readable profile name via the ERS
 profilerprofile resource. Results are cached in-memory.
 
 Design: callers NEVER block waiting for the cache to load.
-On first call the load is kicked off as a background asyncio task.
-Until it completes every lookup returns "". Subsequent Browse loads
-will show the resolved names once the task finishes (typically < 5s).
-This prevents the profiler load from serialising concurrent
-endpoint-detail fetches and triggering the ISE circuit breaker.
+- Background bulk load: ``ensure_loaded(client)`` kicks off a full cache
+  population in the background. Until it completes, individual lookups
+  fall back to the lazy per-UUID path.
+- Lazy per-UUID fetch: ``resolve_name_lazy(client, profile_id)`` fetches a
+  single profile by UUID directly (small request, low timeout risk). Used
+  in endpoint detail fetches so profile names resolve even when the bulk
+  list endpoint is unavailable.
 """
 from __future__ import annotations
 
@@ -25,6 +27,7 @@ ERS_PROFILER_PROFILES = "/ers/config/profilerprofile"
 _cache: dict[str, str] = {}
 _all_loaded: bool = False
 _loading: bool = False          # True while background task is running
+_lazy_pending: set[str] = set() # UUIDs currently being lazily fetched
 
 
 def resolve_name_sync(profile_id: str) -> str:
@@ -35,6 +38,49 @@ def resolve_name_sync(profile_id: str) -> str:
     """
     if not profile_id:
         return ""
+    return _cache.get(profile_id, "")
+
+
+async def resolve_name_lazy(client: IseClient, profile_id: str) -> str:
+    """Return the profile name for a given profileId UUID.
+
+    Checks cache first. On miss, fetches the single profile by UUID from
+    ISE directly (much smaller request than the full list). Caches the
+    result for subsequent calls.
+
+    Also starts the background bulk load (best-effort) so future Browse
+    pages benefit from a warm cache.
+    """
+    if not profile_id:
+        return ""
+    cached = _cache.get(profile_id)
+    if cached is not None:
+        return cached
+
+    # Kick off the bulk load in the background (no-op if already running/done).
+    ensure_loaded(client)
+
+    # Lazy fetch this specific UUID — avoid duplicate concurrent requests.
+    if profile_id in _lazy_pending:
+        # Another coroutine is already fetching this UUID; return what we have.
+        return _cache.get(profile_id, "")
+
+    _lazy_pending.add(profile_id)
+    try:
+        data = await client.get(f"{ERS_PROFILER_PROFILES}/{profile_id}")
+        profile = (data or {}).get("ProfilerProfile", data or {})
+        name = profile.get("name", "")
+        if name:
+            _cache[profile_id] = name
+            logger.debug("profiler lazy: %s → %s", profile_id, name)
+        else:
+            _cache[profile_id] = ""  # cache negative result to avoid repeated calls
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("profiler lazy fetch failed for %s: %s", profile_id, exc)
+        _cache[profile_id] = ""  # cache failure to avoid hammering ISE
+    finally:
+        _lazy_pending.discard(profile_id)
+
     return _cache.get(profile_id, "")
 
 
@@ -96,9 +142,16 @@ async def _load_all(client: IseClient) -> None:
         _loading = False
 
 
+def store(profile_id: str, name: str) -> None:
+    """Populate cache with a known UUID→name pair (e.g. from Open API response)."""
+    if profile_id and name:
+        _cache[profile_id] = name
+
+
 def invalidate() -> None:
     """Clear the profiler name cache (call after ISE settings change)."""
     global _all_loaded, _loading
     _cache.clear()
     _all_loaded = False
     _loading = False
+    _lazy_pending.clear()

@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.22 build 0327] — 2026-05-15 — fix: profil-kolonne viser nu altid profil-navn
+
+**Berørte filer**: `backend/app/ise/profiler.py`, `backend/app/services/endpoint_service.py`, `version.json`
+
+`/ers/config/profilerprofile` (bulk list) fejlede gentagne gange med transport errors → profiler-cache forblev tom → Profil-kolonne viste ingenting. Fix: ny `resolve_name_lazy()` henter én enkelt profil via `/ers/config/profilerprofile/{uuid}` (lille request). `_fetch_endpoint_detail` bruger lazy-fetch i stedet for `ensure_loaded + sync`. Open API-fallback bruger `endpointProfile` direkte fra respons hvis tilgængeligt. Ny `store()` helper til at populere cache fra inline data.
+
 ## [5.3.21 build 0326] — 2026-05-15 — fix: NAS-kolonne viser kun NAS-navn, ikke local mapping label
 
 **Berørte filer**: `frontend/js/views/browse-table.js`, `version.json`

@@ -194,15 +194,21 @@ class EndpointService:
         ca = _extract_custom_attrs(raw)
         _discover_ca_values(ca)
         group_id = raw.get("groupId", "")
-        profile_id = raw.get("profileId", "") or ""
+        profile_id = (
+            raw.get("profileId", "")
+            or raw.get("endpointProfileId", "")
+            or ""
+        )
 
         group_name = await self._resolve_group_name(group_id) if group_id else ""
 
-        # Profiler-navn: synkront cache-opslag (aldrig blokerende ISE-kald).
-        # ensure_loaded starter en baggrunds-load første gang så næste Browse
-        # viser det rigtige navn uden at dette kald forsinkes.
-        profiler_module.ensure_loaded(self.client)
-        profiler_name = profiler_module.resolve_name_sync(profile_id)
+        # Open API returnerer profil-navn som streng direkte i "endpointProfile".
+        # Brug det hvis tilgængeligt — ingen ISE-kald nødvendig.
+        # ERS returnerer kun profileId (UUID); lazy fetch henter navnet derfra.
+        inline_name: str = raw.get("endpointProfile", "") or ""
+        if inline_name and profile_id:
+            profiler_module.store(profile_id, inline_name)
+        profiler_name = inline_name or await profiler_module.resolve_name_lazy(self.client, profile_id)
 
         mac_val = raw.get("mac", "") or raw.get("name", "")
 
