@@ -312,6 +312,13 @@ class PxGridSessionWorker:
             # stale grønne rækker i Browse. Best-effort: fejl blokerer ikke.
             await _reconcile_cache_with_mnt(cache, client=client)
 
+            # Berig sessioner med MnT Session/MACAddress felter (endpoint_policy,
+            # dacl, vlan, cts_security_group). Kører efter reconcile i baggrunden.
+            asyncio.create_task(
+                _enrich_sessions_from_mnt(cache),
+                name="pxgrid-mnt-enrich",
+            )
+
             while not self._stop_event.is_set():
                 try:
                     chunk = await asyncio.wait_for(ws.recv(), timeout=recv_timeout)
@@ -709,6 +716,64 @@ async def _reconcile_from_mnt(cache) -> None:  # type: ignore[no-untyped-def]
             )
     except Exception as exc:  # noqa: BLE001
         logger.debug("pxgrid reconcile (MnT): uventet fejl: %s", exc)
+
+
+async def _enrich_sessions_from_mnt(cache) -> None:  # type: ignore[no-untyped-def]
+    """Berig sessions i cache med MnT Session/MACAddress-felter.
+
+    Kalder MnT én gang pr. session der mangler endpoint_policy/dacl.
+    Køres som baggrundstask efter reconcile. Best-effort — fejl ignoreres.
+    Indsætter en kort pause (100ms) mellem kald for at skåne ISE MnT.
+    """
+    try:
+        from app.ise.mnt_sessions import fetch_session_by_mac
+    except ImportError:
+        return
+    try:
+        sessions = await cache.list()
+        to_enrich = [s for s in sessions if not s.endpoint_policy and not s.dacl]
+        if not to_enrich:
+            return
+        logger.info("MnT enrichment: %d sessioner mangler MnT-data", len(to_enrich))
+        enriched = 0
+        for entry in to_enrich:
+            try:
+                data = await fetch_session_by_mac(entry.mac)
+                if not any(data.values()):
+                    continue
+                # Hent den seneste version (kan være ændret siden listen)
+                current = await cache.get(entry.mac)
+                if not current:
+                    continue
+                # Opbyg opdateret SessionInfo med nye MnT-felter
+                updated = SessionInfo(
+                    mac=current.mac,
+                    state=current.state,
+                    audit_session_id=current.audit_session_id,
+                    nas_ip=current.nas_ip,
+                    user_name=current.user_name,
+                    policy_set_name=current.policy_set_name,
+                    authz_profiles=current.authz_profiles,
+                    authz_rule_name=current.authz_rule_name,
+                    use_case=current.use_case,
+                    nas_name=current.nas_name,
+                    nas_device_type=current.nas_device_type,
+                    last_event_at=current.last_event_at,
+                    endpoint_policy=data.get("endpoint_policy", "") or current.endpoint_policy,
+                    dacl=data.get("dacl", "") or current.dacl,
+                    vlan=data.get("vlan", "") or current.vlan,
+                    cts_security_group=data.get("cts_security_group", "") or current.cts_security_group,
+                    raw=current.raw,
+                )
+                await cache.upsert(updated)
+                enriched += 1
+                await asyncio.sleep(0.1)
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("MnT enrichment fejlede for %s: %s", entry.mac, exc)
+        if enriched:
+            logger.info("MnT enrichment: beriget %d/%d sessioner", enriched, len(to_enrich))
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("MnT enrichment: uventet fejl: %s", exc)
 
 
 _worker: PxGridSessionWorker | None = None

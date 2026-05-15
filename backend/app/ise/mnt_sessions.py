@@ -98,6 +98,57 @@ async def probe_session_detail(mac: str) -> dict:
     return results
 
 
+async def fetch_session_by_mac(mac: str) -> dict[str, str]:
+    """Hent MnT Session/MACAddress for én MAC og returnér enrichment-felter.
+
+    Returnerer dict med keys: endpoint_policy, dacl, vlan, cts_security_group.
+    Tomme strenge ved manglende felt eller fejl.
+    """
+    mac_encoded = (mac or "").upper().replace(":", "%3A")
+    empty: dict[str, str] = {"endpoint_policy": "", "dacl": "", "vlan": "", "cts_security_group": ""}
+    if not mac_encoded:
+        return empty
+    try:
+        status_code, text = await _mnt_get_xml(
+            f"/admin/API/mnt/Session/MACAddress/{mac_encoded}"
+        )
+    except IseApiError as exc:
+        logger.debug("MnT Session/MACAddress [%s] fejlede: %s", mac, exc)
+        return empty
+    if status_code >= 400 or not text:
+        return empty
+    fields = _parse_all_xml_fields(text)
+    # ISE leverer disse feltnavn-varianter afhængigt af version:
+    return {
+        "endpoint_policy": (
+            fields.get("endpointPolicy")
+            or fields.get("endpoint_policy")
+            or fields.get("EndpointPolicy")
+            or ""
+        ),
+        "dacl": (
+            fields.get("downloadedAVPair")
+            or fields.get("dacl")
+            or fields.get("downloadedDacl")
+            or fields.get("downloaded_dacl")
+            or ""
+        ),
+        "vlan": (
+            fields.get("vlan")
+            or fields.get("tunnelPrivateGroupId")
+            or fields.get("tunnel_private_group_id")
+            or ""
+        ),
+        "cts_security_group": (
+            fields.get("ctsSecurityGroup")
+            or fields.get("cts_security_group")
+            or fields.get("sgt")
+            or fields.get("SecurityGroup")
+            or ""
+        ),
+    }
+
+
 async def fetch_active_sessions() -> list[dict[str, str]]:
     """Return a list of dicts (one per active session) from MnT.
 

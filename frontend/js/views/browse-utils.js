@@ -134,5 +134,6 @@ export function getColumns() {
     { key: "create_time",   label: t("col.create_time"),  field: (r) => fmtRelativeAge(endpointCreateTime(r)) },
     { key: "nas",           label: t("col.nas"),          field: () => "" },
     { key: "ise_session",   label: t("col.ise_session"),  field: () => "" },
+    { key: "ise_profile",   label: t("col.ise_profile"),  field: () => "" },
   ];
 }

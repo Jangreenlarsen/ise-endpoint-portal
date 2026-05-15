@@ -3,6 +3,17 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.29 build 0345] — 2026-05-15 — feat: ISE Profil-kolonne + MnT-berigelse (DACL, VLAN, SGT)
+
+**Berørte filer**: `backend/app/pxgrid/session_cache.py`, `backend/app/pxgrid/session_worker.py`, `backend/app/ise/mnt_sessions.py`, `backend/app/schemas/settings.py`, `backend/app/api/pxgrid.py`, `frontend/js/views/browse-utils.js`, `frontend/js/views/browse-table.js`, `frontend/js/i18n.js`, `frontend/css/styles.css`, `version.json`, `FEATURES.md`
+
+- Ny **"ISE Profil"-kolonne** i Browse viser ISE Profiler-tildelt policy (`endpoint_policy`) som badge (blå pill).
+- **Session-kolonnen** udvides med MnT-felter: DACL-navn (lilla badge), VLAN og TrustSec SGT-navn (gul badge).
+- Ny `fetch_session_by_mac(mac)` i `mnt_sessions.py` kalder `GET /admin/API/mnt/Session/MACAddress/{mac}` og udtrækker `endpoint_policy`, `dacl`, `vlan`, `cts_security_group`.
+- Ny baggrundstask `_enrich_sessions_from_mnt(cache)` i `session_worker.py` køres efter pxGrid-reconnect/reconcile og beriger alle sessioner der mangler MnT-data (100ms pause mellem kald for at skåne ISE MnT).
+- `SessionInfo` dataclass udvidet med 4 nye felter; SSE `upsert`-broadcast inkluderer dem; `load_from_disk` håndterer dem.
+- `PxGridSessionInfoResponse` schema + `list_sessions`/`get_session` API-endpoints returnerer de nye felter.
+
 ## [5.3.28 build 0344] — 2026-05-15 — chore: version bump til 5.3.28
 
 **Berørte filer**: `version.json`, `CHANGELOG.md`

@@ -816,6 +816,39 @@ td.ise-session-col {
 [data-theme="dark"] .ise-sess-authz { color: #94a3b8; }
 [data-theme="midnight"] .ise-sess-val { color: #60a5fa; }
 
+/* MnT enrichment badges i session-celle */
+.ise-sess-badge {
+  display: inline-block;
+  padding: 0 4px;
+  border-radius: 3px;
+  font-size: 0.75em;
+  font-weight: 600;
+}
+.ise-sess-dacl  { background: #ede9fe; color: #4c1d95; }
+.ise-sess-sgt   { background: #fef3c7; color: #78350f; }
+[data-theme="dark"] .ise-sess-dacl  { background: #3b1e7a; color: #ddd6fe; }
+[data-theme="dark"] .ise-sess-sgt   { background: #451a03; color: #fde68a; }
+[data-theme="midnight"] .ise-sess-dacl { background: #2e1065; color: #c4b5fd; }
+[data-theme="midnight"] .ise-sess-sgt  { background: #3d1500; color: #fcd34d; }
+
+/* ISE Profiler-policy kolonne */
+td.ise-profile-col { overflow: hidden; }
+.ise-profile-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-size: 0.75em;
+  font-weight: 600;
+  background: #dbeafe;
+  color: #1e3a8a;
+  white-space: nowrap;
+  max-width: 18ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+[data-theme="dark"] .ise-profile-badge  { background: #1e3a8a; color: #bfdbfe; }
+[data-theme="midnight"] .ise-profile-badge { background: #1e3a8a; color: #93c5fd; }
+
 /* NAS kolonne — navn + device type */
 td.nas-info-col { overflow: hidden; }
 .nas-info-combo {

@@ -148,6 +148,9 @@ const TRANSLATIONS = {
     "browse.platform_auto_title": "Platform auto-sat fra NAS device type — kan overskrives manuelt",
     "browse.sess_auth_label":  "Auth",
     "browse.sess_authz_label": "Authz",
+    "browse.sess_dacl_label":  "DACL",
+    "browse.sess_vlan_label":  "VLAN",
+    "browse.sess_sgt_label":   "SGT",
 
     // Browse — kolonnenavne
     "col.mac":          "MAC",
@@ -167,6 +170,7 @@ const TRANSLATIONS = {
     "col.create_time":  "Alder",
     "col.nas":          "NAS",
     "col.ise_session":  "Session",
+    "col.ise_profile":  "ISE Profil",
 
     // Browse — celleværdier
     "cell.static":   "Statisk",
@@ -1125,6 +1129,9 @@ const TRANSLATIONS = {
     "browse.platform_auto_title": "Platform auto-set from NAS device type — can be overridden manually",
     "browse.sess_auth_label":  "Auth",
     "browse.sess_authz_label": "Authz",
+    "browse.sess_dacl_label":  "DACL",
+    "browse.sess_vlan_label":  "VLAN",
+    "browse.sess_sgt_label":   "SGT",
 
     // Browse — column names
     "col.mac":          "MAC",
@@ -1144,6 +1151,7 @@ const TRANSLATIONS = {
     "col.create_time":  "Age",
     "col.nas":          "NAS",
     "col.ise_session":  "Session",
+    "col.ise_profile":  "ISE Profile",
 
     // Browse — cell values
     "cell.static":   "Static",

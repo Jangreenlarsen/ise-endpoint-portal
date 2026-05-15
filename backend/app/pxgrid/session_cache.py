@@ -43,6 +43,11 @@ class SessionInfo:
     nas_name: str = ""
     nas_device_type: str = ""
     last_event_at: float = field(default_factory=time.time)
+    # MnT Session/MACAddress enrichment fields (populated asynchronously after reconcile)
+    endpoint_policy: str = ""
+    dacl: str = ""
+    vlan: str = ""
+    cts_security_group: str = ""
     raw: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -107,9 +112,14 @@ class SessionCache:
             "audit_session_id": info.audit_session_id,
             "policy_set_name": info.policy_set_name,
             "authz_profiles": info.authz_profiles,
+            "authz_rule_name": info.authz_rule_name,
             "use_case": info.use_case,
             "nas_name": info.nas_name,
             "nas_device_type": info.nas_device_type,
+            "endpoint_policy": info.endpoint_policy,
+            "dacl": info.dacl,
+            "vlan": info.vlan,
+            "cts_security_group": info.cts_security_group,
             "ts": info.last_event_at,
         })
 
@@ -213,6 +223,10 @@ class SessionCache:
                     nas_name=item.get("nas_name", ""),
                     nas_device_type=item.get("nas_device_type", ""),
                     last_event_at=item.get("last_event_at", 0.0),
+                    endpoint_policy=item.get("endpoint_policy", ""),
+                    dacl=item.get("dacl", ""),
+                    vlan=item.get("vlan", ""),
+                    cts_security_group=item.get("cts_security_group", ""),
                 )
                 self._sessions[mac] = info
                 loaded += 1

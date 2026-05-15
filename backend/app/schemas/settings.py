@@ -213,6 +213,11 @@ class PxGridSessionInfoResponse(BaseModel):
     nas_name: str = ""
     nas_device_type: str = ""
     last_event_at: float = 0.0
+    # MnT enrichment fields
+    endpoint_policy: str = ""
+    dacl: str = ""
+    vlan: str = ""
+    cts_security_group: str = ""
 
 
 class PxGridSessionsResponse(BaseModel):

@@ -118,7 +118,10 @@ export function initTable(container, state, api, cb) {
     const auth  = sess.policy_set_name   || "";
     const authz = sess.authz_rule_name   || "";
     const profs = (sess.authz_profiles || []).filter(Boolean);
-    if (!auth && !authz && !profs.length) return '<span class="hint">—</span>';
+    const dacl  = sess.dacl              || "";
+    const vlan  = sess.vlan              || "";
+    const sgt   = sess.cts_security_group || "";
+    if (!auth && !authz && !profs.length && !dacl && !vlan && !sgt) return '<span class="hint">—</span>';
     const lines = [];
     if (auth)  lines.push(`<span class="ise-sess-row"><span class="ise-sess-lbl">${t("browse.sess_auth_label")}:</span> <span class="ise-sess-val">${esc(auth)}</span></span>`);
     if (authz) lines.push(`<span class="ise-sess-row"><span class="ise-sess-lbl">${t("browse.sess_authz_label")}:</span> <span class="ise-sess-val">${esc(authz)}</span></span>`);
@@ -127,7 +130,19 @@ export function initTable(container, state, api, cb) {
     if (profs.length && !authz) {
       lines.push(`<span class="ise-sess-row"><span class="ise-sess-lbl">${t("browse.sess_authz_label")}:</span> <span class="ise-sess-val">${profs.map(esc).join(", ")}</span></span>`);
     }
+    if (dacl) lines.push(`<span class="ise-sess-row"><span class="ise-sess-lbl">${t("browse.sess_dacl_label")}:</span> <span class="ise-sess-val ise-sess-badge ise-sess-dacl">${esc(dacl)}</span></span>`);
+    if (vlan) lines.push(`<span class="ise-sess-row"><span class="ise-sess-lbl">${t("browse.sess_vlan_label")}:</span> <span class="ise-sess-val">${esc(vlan)}</span></span>`);
+    if (sgt)  lines.push(`<span class="ise-sess-row"><span class="ise-sess-lbl">${t("browse.sess_sgt_label")}:</span> <span class="ise-sess-val ise-sess-badge ise-sess-sgt">${esc(sgt)}</span></span>`);
     return `<div class="ise-sess-combo">${lines.join("")}</div>`;
+  }
+
+  // ── ISE profiler-policy cell ─────────────────────────────────────────────
+  function iseProfileCellHtml(mac) {
+    if (!state.pxgridSessionData) return '<span class="hint">—</span>';
+    const sess = state.pxgridSessionData.get(normalizeMac(mac));
+    const policy = sess?.endpoint_policy || "";
+    if (!policy) return '<span class="hint">—</span>';
+    return `<span class="ise-profile-badge">${esc(policy)}</span>`;
   }
 
   // ── NAS info cell ────────────────────────────────────────────────────────
@@ -185,6 +200,7 @@ export function initTable(container, state, api, cb) {
         create_time:   `<td data-col="create_time" class="age-cell" title="${esc(fmtDateTime(endpointCreateTime(r)))}">${esc(fmtRelativeAge(endpointCreateTime(r)))}</td>`,
         nas:           `<td data-col="nas" class="nas-info-col">${nasInfoCellHtml(mac)}</td>`,
         ise_session:   `<td data-col="ise_session" class="ise-session-col">${iseSessionCellHtml(mac)}</td>`,
+        ise_profile:   `<td data-col="ise_profile" class="ise-profile-col">${iseProfileCellHtml(mac)}</td>`,
       };
       return `
       <tr data-id="${esc(r.id)}"${state.dirtyIds.has(r.id) ? ' class="dirty"' : ''}>

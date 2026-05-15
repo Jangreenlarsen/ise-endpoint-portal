@@ -56,6 +56,10 @@ async def list_sessions() -> PxGridSessionsResponse:
                 nas_name=s.nas_name,
                 nas_device_type=s.nas_device_type,
                 last_event_at=s.last_event_at,
+                endpoint_policy=s.endpoint_policy,
+                dacl=s.dacl,
+                vlan=s.vlan,
+                cts_security_group=s.cts_security_group,
             )
             for s in items
         ],
@@ -182,6 +186,10 @@ async def get_session(mac: str) -> PxGridSessionInfoResponse:
         nas_name=info.nas_name,
         nas_device_type=info.nas_device_type,
         last_event_at=info.last_event_at,
+        endpoint_policy=info.endpoint_policy,
+        dacl=info.dacl,
+        vlan=info.vlan,
+        cts_security_group=info.cts_security_group,
     )
 
 
