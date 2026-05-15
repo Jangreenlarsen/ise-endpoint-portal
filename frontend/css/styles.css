@@ -196,7 +196,7 @@ button.danger:hover:not(:disabled) { background: #991b1b; }
 table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
 th, td {
   text-align: left;
-  padding: 0.5rem 0.75rem;
+  padding: 0.25rem 0.4rem;
   border-bottom: 1px solid #e5e7eb;
   vertical-align: middle;
 }
@@ -204,7 +204,7 @@ th { background: #f9fafb; font-weight: 600; }
 tbody tr:hover { background: #f9fafb; }
 td input, td select {
   width: 100%;
-  padding: 0.3rem 0.5rem;
+  padding: 0.15rem 0.3rem;
   font-size: 0.85rem;
   border: 1px solid #d1d5db;
   border-radius: 3px;
@@ -467,7 +467,7 @@ button.small {
 
 /* Column filter row */
 .filter-row th {
-  padding: 0.2rem 0.3rem;
+  padding: 0.1rem 0.25rem;
   background: #f0f2f5;
 }
 .filter-clear-all-btn {
@@ -501,7 +501,7 @@ button.small {
 }
 .browse-table-wrap select {
   width: 100%;
-  padding: 0.3rem 0.35rem;
+  padding: 0.15rem 0.25rem;
   font-size: 0.82rem;
   border: 1px solid #d1d5db;
   border-left: 3px solid #93c5fd;

@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.17 build 0319] — 2026-05-15 — fix: halvér whitespace i browse-edit tabel (th/td/input padding)
+
+**Berørte filer**: `frontend/css/styles.css`, `version.json`
+
+`th`/`td` padding: 0.5rem 0.75rem → 0.25rem 0.4rem. Input/select padding: 0.3rem 0.5rem → 0.15rem 0.3rem. Filter-row: 0.2rem 0.3rem → 0.1rem 0.25rem. Samme rækker fylder nu ca. halvt så meget lodret plads.
+
 ## [5.3.17 build 0318] — 2026-05-15 — feat: vendor-kolonne bruger nu ISE profiler-navn i stedet for lokal OUI-CSV
 
 **Berørte filer**: `backend/app/services/endpoint_service.py`, `backend/app/core/endpoint_cache.py`, `frontend/js/i18n.js`, `version.json`
