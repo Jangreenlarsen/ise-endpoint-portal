@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.27 build 0343] — 2026-05-15 — docs: ISE_API_REFERENCE.md — komplet MnT API-dokumentation
+
+**Berørte filer**: `ISE_API_REFERENCE.md`, `version.json`
+
+MnT-sektionen udvidet med: komplet endpoint-liste (14 paths, 3 kategorier verificeret fra Cisco DevNet), Session/MACAddress feltliste (bekræftet via Ansible ISE SDK — ISEPolicySetName/AuthorizationPolicyMatchedRule IKKE tilgængeligt), endelig konklusion om auth/authz policy-navne, og AcctStatusTT/AuthStatus tilføjet. Nye nyttige felter fra Session/MACAddress: endpoint_policy, dacl, vlan, cts_security_group.
+
 ## [5.3.27 build 0342] — 2026-05-15 — docs: ISE_API_REFERENCE.md opdateret med ERS SDK-analyse og session policy-findings
 
 **Berørte filer**: `ISE_API_REFERENCE.md`, `version.json`

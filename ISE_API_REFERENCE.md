@@ -821,8 +821,8 @@ Dette er det vigtigste spørgsmål for Browse session-kolonnen: kan vi vise "Aut
 
 | Kilde | Status | Forventet indhold |
 |---|---|---|
-| **MnT `/admin/API/mnt/Session/MACAddress/{mac}`** | ⏳ Probe deployeret (b0341) — ikke testet endnu | Sandsynligvis `ISEPolicySetName`, `AuthorizationPolicyMatchedRule`, `SelectedAZProfiles` — MnT per-session detail returnerer langt rigere XML end ActiveList |
-| **MnT `/admin/API/mnt/AuthStatus/MACAddress/{mac}`** | ⏳ Probe deployeret (b0341) — ikke testet endnu | Auth-event detaljer per MAC |
+| **MnT `/admin/API/mnt/Session/MACAddress/{mac}`** | ✅ Felter dokumenteret via Ansible ISE SDK | Indeholder IKKE `ISEPolicySetName`/`AuthorizationPolicyMatchedRule`. Returnerer dog `endpoint_policy`, `dacl`, `vlan`, `cts_security_group` som er nye nyttige felter. |
+| **MnT `/admin/API/mnt/AuthStatus/MACAddress/{mac}/{s}/{n}/All`** | ⏳ Probe deployeret (b0341) — ikke testet endnu | Auth-events per MAC, RADIUS live log-lignende. Indhold ukendt. |
 | **ISE Context Visibility API** | ❌ Kræver `ContextVisibility` eller `Super Admin`-rolle — højere end ERS Admin | `ISEPolicySetName`, `AuthorizationPolicyMatchedRule` tilgængeligt men kræver rolle-opgradering |
 
 ### Probe-endpoint (admin-only)
@@ -843,27 +843,107 @@ Authz: Endpoint_AirSpaceACL, Endpoint_PSK-KEY, Endpoint_VLAN, PermitAccess
 
 ---
 
-## MnT — Session API (udover CoA)
+## MnT — Session API (komplet, verificeret fra Cisco DevNet + Ansible ISE SDK)
 
-MnT REST API har flere endpoints end blot CoA. Alle kræver `MnT Admin` eller `Super Admin`-rolle (ERS Admin alene giver HTML redirect til login-side).
+MnT REST API har 3 kategorier og 14 endpoints. Alle kræver `MnT Admin`, `System Admin` eller `Super Admin`-rolle.
+**Kun interne ISE-brugere** — externe ID stores (AD, LDAP) understøttes ikke til MnT-auth.
 
-### Paths
+### Komplet endpoint-liste
+
+#### Session Management
 
 | Path | Metode | Beskrivelse |
 |---|---|---|
-| `/admin/API/mnt/Session/ActiveList` | GET | Alle aktive sessioner — **kun 7 felter** (acct_session_id, audit_session_id, calling_station_id, framed_ipv6_address, nas_ip_address, server, user_name) |
-| `/admin/API/mnt/Session/MACAddress/{mac}` | GET | Per-session detail for MAC — sandsynligvis inkl. ISEPolicySetName og AuthorizationPolicyMatchedRule (**ikke testet endnu**) |
-| `/admin/API/mnt/AuthStatus/MACAddress/{mac}` | GET | Auth-status per MAC (**ikke testet endnu**) |
-| `/admin/API/mnt/Session/IPAddress/{ip}` | GET | Session(er) for IP-adresse |
-| `/admin/API/mnt/CoA/Reauth/{psn}/{mac}/{type}` | GET | CoA reauth (i brug i portalen) |
-| `/admin/API/mnt/CoA/Disconnect/{psn}/{mac}/{type}` | GET | CoA disconnect (i brug i portalen) |
+| `/admin/API/mnt/Session/ActiveCount` | GET | Antal aktive sessioner (én integer) |
+| `/admin/API/mnt/Session/PostureCount` | GET | Antal endpoints med posture-status |
+| `/admin/API/mnt/Session/ProfilerCount` | GET | Antal aktive profiler-service sessioner |
+| `/admin/API/mnt/Session/ActiveList` | GET | Alle aktive sessioner — **kun 7 felter** (bekræftet empirisk). Max 250.000 sessioner. |
+| `/admin/API/mnt/Session/AuthList/{starttime}/{endtime}` | GET | Autentificerede sessioner i tidsinterval. Format: `YYYY-MM-DD hh:mm:ss.s`. Begge parametre kan være `null`. |
+| `/admin/API/mnt/Session/MACAddress/{mac}` | GET | Fuld session-detail for MAC (se feltliste nedenfor) |
+| `/admin/API/mnt/Session/UserName/{username}` | GET/POST | Session for brugernavn. POST anbefales ved domæne-brugere (GET understøtter ikke backslash) |
+| `/admin/API/mnt/Session/IPAddress/{nasip}` | GET | Session(er) for NAS IP-adresse (IPv4 og IPv6) |
+| `/admin/API/mnt/Session/Active/SessionID/{audit-session-id}/0` | GET | Session for audit session ID |
+
+#### Troubleshooting
+
+| Path | Metode | Beskrivelse |
+|---|---|---|
+| `/admin/API/mnt/Version` | GET | Node-version og type (0=standalone, 1=aktiv, 2=standby, 3=non-MnT) |
+| `/admin/API/mnt/FailureReasons` | GET | Fejlkoder, årsager og løsninger. Kald én gang og cache lokalt. |
+| `/admin/API/mnt/AuthStatus/MACAddress/{mac}/{seconds}/{records}/All` | GET | Auth-events for MAC i tidsvindue. `seconds` 0–432000 (5 dage). Felter **ukendte** — probe ikke udført endnu. |
+| `/admin/API/mnt/AcctStatusTT/MACAddress/{mac}/{seconds}` | GET/PUT | Accounting-status i tidsperiode. Felter: macAddress, acctStatusElements (calling_station_id, paks_in/out, bytes_in/out, session_time, server) |
+
+#### Change of Authorization (CoA)
+
+| Path | Metode | Beskrivelse |
+|---|---|---|
+| `/admin/API/mnt/CoA/Reauth/{psn}/{mac}/{type}/{nasip}/{dstip}` | GET | CoA reauth. `nasip` og `dstip` er valgfrie. type: 0=default, 1=last, 2=rerun |
+| `/admin/API/mnt/CoA/Disconnect/{psn}/{mac}/{type}/{nasip}/{dstip}` | GET | CoA disconnect. type: 0=default, 1=bounce, 2=shutdown |
+
+**OBS:** Portalen bruger `nasip`/`dstip`-parametrene ikke i dag — CoA-kaldene virker uden dem hvis PSN-hostnamen matcher.
+
+### Session/MACAddress — felter (verificeret via Ansible ISE SDK)
+
+```
+Autentificering:   user_name, authentication_method, authentication_protocol,
+                   auth_id, identity_store, identity_group
+
+Netværk/NAS:       calling_station_id, orig_calling_station_id, nas_ip_address,
+                   nas_ipv6_address, nas_port_id, network_device_name,
+                   device_ip_address, device_type, interface_name
+
+IP/Adressering:    framed_ip_address, framed_ipv6_address, vlan,
+                   destination_ip_address
+
+Session-IDs:       audit_session_id, acct_session_id, cpmsession_id,
+                   acct_multi_session_id
+
+Accounting:        acct_session_time, acct_input_octets, acct_output_octets,
+                   acct_input_packets, acct_output_packets, acct_class,
+                   acct_terminate_cause, acct_status_type
+
+Sikkerhed/Policy:  selected_azn_profiles ← tilgængeligt (vi har det allerede fra pxGrid)
+                   endpoint_policy       ← NY: ISE profiler-tildelt policy-navn
+                   dacl                  ← NY: pushede DACL-navn
+                   vlan                  ← NY: tildelt VLAN
+                   cts_security_group    ← NY: TrustSec SGT-navn
+                   security_group, posture_status
+
+Status/Debug:      execution_steps, message_code, failure_reason, response_time
+
+Tidsstempler:      event_timestamp, started, stopped,
+                   auth_acs_timestamp, acct_acs_timestamp
+
+❌ IKKE tilgængeligt: ISEPolicySetName, AuthorizationPolicyMatchedRule
+```
+
+`endpoint_policy`, `dacl`, `vlan` og `cts_security_group` er de interessante nye felter der **ikke** er tilgængelige via pxGrid getSessions eller MnT ActiveList.
+
+### Session/ActiveList — felter (bekræftet empirisk ISE 3.4)
+
+Returnerer KUN disse 7 felter:
+`acct_session_id`, `audit_session_id`, `calling_station_id`, `framed_ipv6_address`, `nas_ip_address`, `server`, `user_name`
+
+### Auth/Authz policy-navne — endelig konklusion
+
+| Kilde | ISEPolicySetName | AuthorizationPolicyMatchedRule | Status |
+|---|---|---|---|
+| ERS (alle 376 ops) | ❌ | ❌ | Verificeret — ingen session-data |
+| pxGrid getSessions | ❌ | ❌ | Empirisk bekræftet |
+| MnT ActiveList | ❌ | ❌ | Empirisk bekræftet |
+| MnT Session/MACAddress | ❌ | ❌ | Bekræftet via Ansible SDK |
+| MnT AuthStatus/MACAddress | ❓ | ❓ | **Ukendt — probe ikke udført** |
+| ISE Context Visibility | ✅ | ✅ | Kræver ContextVisibility/Super Admin rolle |
+
+**Konklusion:** `ISEPolicySetName` og `AuthorizationPolicyMatchedRule` er IKKE tilgængeligt uden enten (a) at opgradere ISE-brugerens rolle til `ContextVisibility` eller (b) at `AuthStatus/MACAddress` viser sig at indeholde dem (probe afventer).
 
 ### Fælles for alle MnT endpoints
 
 - **Auth**: Basic auth — kræver MnT Admin eller Super Admin (ikke ERS Admin)
 - **Response format**: XML (`Accept: application/xml`) — ikke JSON
 - **401 med HTML-body**: manglende MnT Admin-rolle, ikke forkert password
-- **MAC-format i URL**: kolon-separeret (`AA:BB:CC:DD:EE:FF`) URL-encodet som `%3A` i path-segmenter
+- **MAC-format i URL**: kolon-separeret uppercase (`AA:BB:CC:DD:EE:FF`) URL-encoded som `%3A` i path-segmenter
+- **Tidsparam format**: `YYYY-MM-DD hh:mm:ss.s` — kan sættes til `null` for ingen begrænsning
 
 ---
 
