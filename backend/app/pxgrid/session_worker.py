@@ -520,9 +520,8 @@ def _build_session_info(d: dict[str, Any]) -> SessionInfo:
 async def _reconcile_cache_with_mnt(cache, client: PxGridClient | None = None) -> None:  # type: ignore[no-untyped-def]
     """Synkroniser pxGrid session-cache ved reconnect.
 
-    Forsøger pxGrid REST getSessions (selectedAuthzProfiles, state m.m.) som
-    primær kilde. pxGrid mangler policySetName og authorizationRuleName —
-    MnT bruges efterfølgende til at berige de tomme felter.
+    Forsøger pxGrid REST getSessions (rig data: policySetName + selectedAznProfiles)
+    som primær kilde. Falder tilbage til MnT ActiveList hvis getSessions fejler.
 
     Best-effort: enhver fejl logges og ignoreres så normal drift fortsætter.
     """
@@ -532,8 +531,7 @@ async def _reconcile_cache_with_mnt(cache, client: PxGridClient | None = None) -
             pxgrid_sessions = await client.get_sessions()
             if pxgrid_sessions:
                 await _reconcile_from_pxgrid(cache, pxgrid_sessions)
-                # pxGrid getSessions mangler policySetName/authorizationRuleName —
-                # brug MnT som supplement for at fylde disse felter.
+                # pxGrid mangler policySetName/authorizationRuleName — MnT som supplement.
                 await _enrich_from_mnt(cache)
                 return
             logger.debug("pxgrid reconcile: getSessions returnerede 0 sessioner, prøver MnT")
@@ -618,11 +616,11 @@ async def _reconcile_from_pxgrid(cache, sessions: list[dict]) -> None:
 
 
 async def _enrich_from_mnt(cache) -> None:  # type: ignore[no-untyped-def]
-    """Berig pxGrid-seedede sessions med policySetName/authorizationRule fra MnT.
+    """Berig pxGrid-sessions med policySetName/authorizationRule fra MnT.
 
     pxGrid getSessions returnerer ikke ISEPolicySetName eller
-    AuthorizationPolicyMatchedRule — disse felter er kun tilgængelige via MnT.
-    Funktionen kaldes EFTER _reconcile_from_pxgrid og fylder kun tomme felter.
+    AuthorizationPolicyMatchedRule. Kaldes efter _reconcile_from_pxgrid
+    og udfylder kun tomme felter — overskriver ikke pxGrid-data.
     """
     try:
         from app.ise.mnt_sessions import fetch_active_sessions

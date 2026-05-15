@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.25 build 0337] — 2026-05-15 — fix: _enrich_from_mnt reapply i session_worker efter linter-revert
+
+**Berørte filer**: `backend/app/pxgrid/session_worker.py`, `version.json`
+
+Genindlæser `_enrich_from_mnt()` og kaldet herfra i `_reconcile_cache_with_mnt` efter linter rullede session_worker.py tilbage til gammel kode (b0335 → reverted).
+
 ## [5.3.25 build 0336] — 2026-05-15 — fix: browse-table.js Authz-label reapply efter linter-revert
 
 **Berørte filer**: `frontend/js/views/browse-table.js`, `version.json`
