@@ -3,6 +3,10 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.20 build 0324] — 2026-05-15 — chore: bump version til 5.3.20 (korrekt versionering af bug-fix build 0323)
+
+**Berørte filer**: `version.json`, `CHANGELOG.md`
+
 ## [5.3.19 build 0323] — 2026-05-15 — fix: platform type forsvinder efter portal-genstart (reconcile sletter nas_device_type)
 
 **Berørte filer**: `backend/app/pxgrid/session_worker.py`, `version.json`
