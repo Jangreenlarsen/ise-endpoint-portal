@@ -3,6 +3,16 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.37 build 0353] — 2026-05-16 — fix: Session-kolonne — fjern Group + Authz-label, VLAN flettes ind i profil-navn, 25% bredere
+
+**Berørte filer**: `frontend/js/views/browse-table.js`, `frontend/css/styles.css`, `version.json`
+
+- Fjernet "Group:" linje (identity_group vises ikke længere i kolonnen).
+- Fjernet "Authz:" label — authz-profiler vises nu én pr. linje uden præfix.
+- VLAN-nummer flettes ind i profil-navne der indeholder "VLAN": `Endpoint_VLAN` → `Endpoint_VLAN:32`. Separat "VLAN:"-linje fjernet.
+- Kolonne-bredde: 150px → 188px (+25%).
+- `max-height` på `.ise-sess-combo` hævet til 88px (5 linjer).
+
 ## [5.3.36 build 0352] — 2026-05-16 — feat: Threading watchdog timer — tvinger genstart ved hængt asyncio event loop
 
 **Berørte filer**: `backend/app/core/watchdog.py` (ny), `backend/app/main.py`, `version.json`

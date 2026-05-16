@@ -122,27 +122,29 @@ export function initTable(container, state, api, cb) {
     const dacl       = sess.dacl               || "";
     const vlan       = sess.vlan               || "";
     const sgt        = sess.cts_security_group || "";
-    const group      = sess.identity_group     || "";
-    if (!auth && !authMethod && !authz && !profs.length && !dacl && !vlan && !sgt && !group) return '<span class="hint">—</span>';
+    if (!auth && !authMethod && !authz && !profs.length && !dacl && !vlan && !sgt) return '<span class="hint">—</span>';
+    // Extract numeric VLAN from e.g. "(tag=0) 32" → "32"
+    const vlanMatch = vlan.match(/(\d+)\s*$/);
+    const vlanNum   = vlanMatch ? vlanMatch[1] : "";
     const lines = [];
-    // Auth: policy set name (if ISE provides it) — otherwise auth method (mab/dot1x/…)
+    // Auth: policy set name or auth method badge
     if (auth) {
       lines.push(`<span class="ise-sess-row"><span class="ise-sess-lbl">${t("browse.sess_auth_label")}:</span> <span class="ise-sess-val">${esc(auth)}</span></span>`);
     } else if (authMethod) {
       lines.push(`<span class="ise-sess-row"><span class="ise-sess-lbl">${t("browse.sess_auth_label")}:</span> <span class="ise-sess-val ise-sess-badge ise-sess-method">${esc(authMethod.toUpperCase())}</span></span>`);
     }
-    // Identitetsgruppe fra MnT AuthStatus (f.eks. "ADM-Apple-iPhone")
-    if (group) lines.push(`<span class="ise-sess-row"><span class="ise-sess-lbl">${t("browse.sess_group_label")}:</span> <span class="ise-sess-val">${esc(group)}</span></span>`);
-    // Authz: rule name hvis tilgængeligt; ellers profilliste
-    if (authz) {
-      const authzVal = profs.length ? `${esc(authz)} <span class="ise-sess-hint">(${profs.map(esc).join(", ")})</span>` : esc(authz);
-      lines.push(`<span class="ise-sess-row"><span class="ise-sess-lbl">${t("browse.sess_authz_label")}:</span> <span class="ise-sess-val">${authzVal}</span></span>`);
-    } else if (profs.length) {
-      lines.push(`<span class="ise-sess-row"><span class="ise-sess-lbl">${t("browse.sess_authz_label")}:</span> <span class="ise-sess-val">${profs.map(esc).join(", ")}</span></span>`);
+    // Profiles: one per line, no label. VLAN number appended to any profile whose name contains "VLAN".
+    if (profs.length) {
+      for (const p of profs) {
+        const isVlanProf = vlanNum && /vlan/i.test(p);
+        const label = isVlanProf ? `${esc(p)}:${esc(vlanNum)}` : esc(p);
+        lines.push(`<span class="ise-sess-row ise-sess-prof">${label}</span>`);
+      }
+    } else if (authz) {
+      lines.push(`<span class="ise-sess-row ise-sess-prof">${esc(authz)}</span>`);
     }
-    if (dacl)  lines.push(`<span class="ise-sess-row"><span class="ise-sess-lbl">${t("browse.sess_dacl_label")}:</span> <span class="ise-sess-val ise-sess-badge ise-sess-dacl">${esc(dacl)}</span></span>`);
-    if (vlan)  lines.push(`<span class="ise-sess-row"><span class="ise-sess-lbl">${t("browse.sess_vlan_label")}:</span> <span class="ise-sess-val">${esc(vlan)}</span></span>`);
-    if (sgt)   lines.push(`<span class="ise-sess-row"><span class="ise-sess-lbl">${t("browse.sess_sgt_label")}:</span> <span class="ise-sess-val ise-sess-badge ise-sess-sgt">${esc(sgt)}</span></span>`);
+    if (dacl) lines.push(`<span class="ise-sess-row"><span class="ise-sess-lbl">${t("browse.sess_dacl_label")}:</span> <span class="ise-sess-val ise-sess-badge ise-sess-dacl">${esc(dacl)}</span></span>`);
+    if (sgt)  lines.push(`<span class="ise-sess-row"><span class="ise-sess-lbl">${t("browse.sess_sgt_label")}:</span> <span class="ise-sess-val ise-sess-badge ise-sess-sgt">${esc(sgt)}</span></span>`);
     return `<div class="ise-sess-combo">${lines.join("")}</div>`;
   }
 
