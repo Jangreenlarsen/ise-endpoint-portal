@@ -719,11 +719,13 @@ async def _reconcile_from_mnt(cache) -> None:  # type: ignore[no-untyped-def]
 
 
 async def _enrich_sessions_from_mnt(cache) -> None:  # type: ignore[no-untyped-def]
-    """Berig sessions i cache med MnT Session/MACAddress-felter.
+    """Berig sessions i cache med MnT-felter fra Session/MACAddress + AuthStatus.
 
-    Kalder MnT én gang pr. session der mangler endpoint_policy/dacl.
-    Køres som baggrundstask efter reconcile. Best-effort — fejl ignoreres.
-    Indsætter en kort pause (100ms) mellem kald for at skåne ISE MnT.
+    Kalder MnT pr. session der mangler policy_set_name, authz_rule_name,
+    endpoint_policy eller dacl. fetch_session_by_mac kalder begge endpoints
+    og returnerer alle enrichment-felter inkl. ISEPolicySetName og
+    AuthorizationPolicyMatchedRule fra AuthStatus.
+    Best-effort — fejl ignoreres. 100ms pause mellem kald for at skåne MnT.
     """
     try:
         from app.ise.mnt_sessions import fetch_session_by_mac
@@ -731,38 +733,43 @@ async def _enrich_sessions_from_mnt(cache) -> None:  # type: ignore[no-untyped-d
         return
     try:
         sessions = await cache.list()
-        to_enrich = [s for s in sessions if not s.endpoint_policy and not s.dacl]
+        # Berig sessioner der mangler ét eller flere af de MnT-eksklusive felter.
+        to_enrich = [
+            s for s in sessions
+            if not s.policy_set_name or not s.authz_rule_name
+            or not s.endpoint_policy or not s.dacl
+        ]
         if not to_enrich:
             return
-        logger.info("MnT enrichment: %d sessioner mangler MnT-data", len(to_enrich))
+        logger.info("MnT enrichment: %d sessioner til berigelse", len(to_enrich))
         enriched = 0
         for entry in to_enrich:
             try:
                 data = await fetch_session_by_mac(entry.mac)
                 if not any(data.values()):
                     continue
-                # Hent den seneste version (kan være ændret siden listen)
                 current = await cache.get(entry.mac)
                 if not current:
                     continue
-                # Opbyg opdateret SessionInfo med nye MnT-felter
                 updated = SessionInfo(
                     mac=current.mac,
                     state=current.state,
                     audit_session_id=current.audit_session_id,
                     nas_ip=current.nas_ip,
                     user_name=current.user_name,
-                    policy_set_name=current.policy_set_name,
+                    # MnT AuthStatus leverer ISEPolicySetName + AuthorizationPolicyMatchedRule;
+                    # bevar eksisterende pxGrid-data hvis MnT returnerer tomt.
+                    policy_set_name=data.get("policy_set_name") or current.policy_set_name,
                     authz_profiles=current.authz_profiles,
-                    authz_rule_name=current.authz_rule_name,
+                    authz_rule_name=data.get("authz_rule_name") or current.authz_rule_name,
                     use_case=current.use_case,
                     nas_name=current.nas_name,
                     nas_device_type=current.nas_device_type,
                     last_event_at=current.last_event_at,
-                    endpoint_policy=data.get("endpoint_policy", "") or current.endpoint_policy,
-                    dacl=data.get("dacl", "") or current.dacl,
-                    vlan=data.get("vlan", "") or current.vlan,
-                    cts_security_group=data.get("cts_security_group", "") or current.cts_security_group,
+                    endpoint_policy=data.get("endpoint_policy") or current.endpoint_policy,
+                    dacl=data.get("dacl") or current.dacl,
+                    vlan=data.get("vlan") or current.vlan,
+                    cts_security_group=data.get("cts_security_group") or current.cts_security_group,
                     raw=current.raw,
                 )
                 await cache.upsert(updated)

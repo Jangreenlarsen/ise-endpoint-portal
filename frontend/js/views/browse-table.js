@@ -136,15 +136,6 @@ export function initTable(container, state, api, cb) {
     return `<div class="ise-sess-combo">${lines.join("")}</div>`;
   }
 
-  // ── ISE profiler-policy cell ─────────────────────────────────────────────
-  function iseProfileCellHtml(mac) {
-    if (!state.pxgridSessionData) return '<span class="hint">—</span>';
-    const sess = state.pxgridSessionData.get(normalizeMac(mac));
-    const policy = sess?.endpoint_policy || "";
-    if (!policy) return '<span class="hint">—</span>';
-    return `<span class="ise-profile-badge">${esc(policy)}</span>`;
-  }
-
   // ── NAS info cell ────────────────────────────────────────────────────────
   function nasInfoCellHtml(mac) {
     if (!state.pxgridSessionData) return '<span class="hint">—</span>';
@@ -200,7 +191,6 @@ export function initTable(container, state, api, cb) {
         create_time:   `<td data-col="create_time" class="age-cell" title="${esc(fmtDateTime(endpointCreateTime(r)))}">${esc(fmtRelativeAge(endpointCreateTime(r)))}</td>`,
         nas:           `<td data-col="nas" class="nas-info-col">${nasInfoCellHtml(mac)}</td>`,
         ise_session:   `<td data-col="ise_session" class="ise-session-col">${iseSessionCellHtml(mac)}</td>`,
-        ise_profile:   `<td data-col="ise_profile" class="ise-profile-col">${iseProfileCellHtml(mac)}</td>`,
       };
       return `
       <tr data-id="${esc(r.id)}"${state.dirtyIds.has(r.id) ? ' class="dirty"' : ''}>

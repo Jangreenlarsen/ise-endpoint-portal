@@ -170,7 +170,6 @@ const TRANSLATIONS = {
     "col.create_time":  "Alder",
     "col.nas":          "NAS",
     "col.ise_session":  "Session",
-    "col.ise_profile":  "ISE Profil",
 
     // Browse — celleværdier
     "cell.static":   "Statisk",
@@ -1151,7 +1150,6 @@ const TRANSLATIONS = {
     "col.create_time":  "Age",
     "col.nas":          "NAS",
     "col.ise_session":  "Session",
-    "col.ise_profile":  "ISE Profile",
 
     // Browse — cell values
     "cell.static":   "Static",

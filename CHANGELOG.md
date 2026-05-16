@@ -3,6 +3,15 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.30 build 0346] — 2026-05-16 — fix: Session-kolonne Auth/Authz politik-navne + fjern redundant ISE Profil-kolonne
+
+**Berørte filer**: `backend/app/ise/mnt_sessions.py`, `backend/app/pxgrid/session_worker.py`, `frontend/js/views/browse-utils.js`, `frontend/js/views/browse-table.js`, `frontend/js/i18n.js`, `frontend/css/styles.css`, `version.json`, `BUGS.md`, `FEATURES.md`
+
+- **Bug fix**: `fetch_session_by_mac` kaldte kun MnT Session/MACAddress — `policy_set_name`/`authz_rule_name` sidder i MnT **AuthStatus**. Probe brugte forkert URL (manglede `/{seconds}/{records}/{framed}`). Fix: `fetch_session_by_mac` kalder nu BEGGE endpoints parallelt; AuthStatus-URL korrekt til `/3600/25/All`; `_enrich_sessions_from_mnt` popule­rer alle 6 felter inkl. `policy_set_name` + `authz_rule_name`.
+- **Enrichment trigger**: udvider fra `not endpoint_policy and not dacl` til at inkludere sessions der mangler `policy_set_name` eller `authz_rule_name`.
+- **Fjernet redundant kolonne**: `ise_profile`-kolonnen (b0345) viste samme data som den eksisterende "Profil"-kolonne — fjernet fra `browse-utils.js`, `browse-table.js`, `i18n.js`, `styles.css`.
+- **Fix probe URL**: `probe_session_detail` AuthStatus-path rettet med `/3600/25/All` så `GET /api/pxgrid/probe/mnt/{mac}` nu returnerer AuthStatus-data korrekt.
+
 ## [5.3.29 build 0345] — 2026-05-15 — feat: ISE Profil-kolonne + MnT-berigelse (DACL, VLAN, SGT)
 
 **Berørte filer**: `backend/app/pxgrid/session_cache.py`, `backend/app/pxgrid/session_worker.py`, `backend/app/ise/mnt_sessions.py`, `backend/app/schemas/settings.py`, `backend/app/api/pxgrid.py`, `frontend/js/views/browse-utils.js`, `frontend/js/views/browse-table.js`, `frontend/js/i18n.js`, `frontend/css/styles.css`, `version.json`, `FEATURES.md`

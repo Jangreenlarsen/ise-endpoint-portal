@@ -831,24 +831,6 @@ td.ise-session-col {
 [data-theme="midnight"] .ise-sess-dacl { background: #2e1065; color: #c4b5fd; }
 [data-theme="midnight"] .ise-sess-sgt  { background: #3d1500; color: #fcd34d; }
 
-/* ISE Profiler-policy kolonne */
-td.ise-profile-col { overflow: hidden; }
-.ise-profile-badge {
-  display: inline-block;
-  padding: 1px 6px;
-  border-radius: 10px;
-  font-size: 0.75em;
-  font-weight: 600;
-  background: #dbeafe;
-  color: #1e3a8a;
-  white-space: nowrap;
-  max-width: 18ch;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-[data-theme="dark"] .ise-profile-badge  { background: #1e3a8a; color: #bfdbfe; }
-[data-theme="midnight"] .ise-profile-badge { background: #1e3a8a; color: #93c5fd; }
-
 /* NAS kolonne — navn + device type */
 td.nas-info-col { overflow: hidden; }
 .nas-info-combo {

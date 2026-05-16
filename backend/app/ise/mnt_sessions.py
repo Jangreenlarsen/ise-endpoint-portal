@@ -78,7 +78,7 @@ async def probe_session_detail(mac: str) -> dict:
     results = {}
     for label, path in [
         ("session_detail",  f"/admin/API/mnt/Session/MACAddress/{mac_encoded}"),
-        ("auth_status",     f"/admin/API/mnt/AuthStatus/MACAddress/{mac_encoded}"),
+        ("auth_status",     f"/admin/API/mnt/AuthStatus/MACAddress/{mac_encoded}/3600/25/All"),
     ]:
         try:
             status_code, text = await _mnt_get_xml(path)
@@ -99,54 +99,75 @@ async def probe_session_detail(mac: str) -> dict:
 
 
 async def fetch_session_by_mac(mac: str) -> dict[str, str]:
-    """Hent MnT Session/MACAddress for én MAC og returnér enrichment-felter.
+    """Hent MnT Session/MACAddress + AuthStatus for én MAC og returnér enrichment-felter.
 
-    Returnerer dict med keys: endpoint_policy, dacl, vlan, cts_security_group.
-    Tomme strenge ved manglende felt eller fejl.
+    Kalder begge endpoints:
+      - GET /admin/API/mnt/Session/MACAddress/{mac}   → endpoint_policy, dacl, vlan, cts_security_group
+      - GET /admin/API/mnt/AuthStatus/MACAddress/{mac}/3600/25/All  → policy_set_name, authz_rule_name
+
+    Returnerer tom dict ved fejl. Alle keys er altid til stede.
+    AuthStatus-URL kræver /{seconds}/{records}/{framed} — kald uden disse giver 404.
     """
     mac_encoded = (mac or "").upper().replace(":", "%3A")
-    empty: dict[str, str] = {"endpoint_policy": "", "dacl": "", "vlan": "", "cts_security_group": ""}
+    out: dict[str, str] = {
+        "endpoint_policy": "", "dacl": "", "vlan": "", "cts_security_group": "",
+        "policy_set_name": "", "authz_rule_name": "",
+    }
     if not mac_encoded:
-        return empty
+        return out
+
+    # ── Session/MACAddress ────────────────────────────────────────────────
     try:
-        status_code, text = await _mnt_get_xml(
-            f"/admin/API/mnt/Session/MACAddress/{mac_encoded}"
-        )
+        sc, text = await _mnt_get_xml(f"/admin/API/mnt/Session/MACAddress/{mac_encoded}")
+        if sc < 400 and text:
+            f = _parse_all_xml_fields(text)
+            out["endpoint_policy"] = (
+                f.get("endpointPolicy") or f.get("endpoint_policy") or f.get("EndpointPolicy") or ""
+            )
+            out["dacl"] = (
+                f.get("dacl") or f.get("downloadedDacl") or f.get("downloaded_dacl")
+                or f.get("downloadedAVPair") or ""
+            )
+            out["vlan"] = (
+                f.get("vlan") or f.get("tunnelPrivateGroupId") or f.get("tunnel_private_group_id") or ""
+            )
+            out["cts_security_group"] = (
+                f.get("ctsSecurityGroup") or f.get("cts_security_group")
+                or f.get("sgt") or f.get("SecurityGroup") or ""
+            )
     except IseApiError as exc:
         logger.debug("MnT Session/MACAddress [%s] fejlede: %s", mac, exc)
-        return empty
-    if status_code >= 400 or not text:
-        return empty
-    fields = _parse_all_xml_fields(text)
-    # ISE leverer disse feltnavn-varianter afhængigt af version:
-    return {
-        "endpoint_policy": (
-            fields.get("endpointPolicy")
-            or fields.get("endpoint_policy")
-            or fields.get("EndpointPolicy")
-            or ""
-        ),
-        "dacl": (
-            fields.get("downloadedAVPair")
-            or fields.get("dacl")
-            or fields.get("downloadedDacl")
-            or fields.get("downloaded_dacl")
-            or ""
-        ),
-        "vlan": (
-            fields.get("vlan")
-            or fields.get("tunnelPrivateGroupId")
-            or fields.get("tunnel_private_group_id")
-            or ""
-        ),
-        "cts_security_group": (
-            fields.get("ctsSecurityGroup")
-            or fields.get("cts_security_group")
-            or fields.get("sgt")
-            or fields.get("SecurityGroup")
-            or ""
-        ),
-    }
+
+    # ── AuthStatus/MACAddress — kræver /seconds/records/framed path-params ─
+    # ISEPolicySetName + AuthorizationPolicyMatchedRule sidder kun her.
+    try:
+        sc2, text2 = await _mnt_get_xml(
+            f"/admin/API/mnt/AuthStatus/MACAddress/{mac_encoded}/3600/25/All"
+        )
+        if sc2 < 400 and text2:
+            f2 = _parse_all_xml_fields(text2)
+            out["policy_set_name"] = (
+                f2.get("ISEPolicySetName") or f2.get("isePolicySetName")
+                or f2.get("PolicySetName") or f2.get("policySetName") or ""
+            )
+            out["authz_rule_name"] = (
+                f2.get("AuthorizationPolicyMatchedRule") or f2.get("authorizationPolicyMatchedRule")
+                or f2.get("authorizationRuleName") or f2.get("AuthorizationRuleName") or ""
+            )
+            # Fallback: endpoint_policy og cts_security_group optræder
+            # også i AuthStatus hvis Session/MACAddress returnerede tomt.
+            if not out["endpoint_policy"]:
+                out["endpoint_policy"] = (
+                    f2.get("endpointPolicy") or f2.get("EndpointPolicy") or ""
+                )
+            if not out["cts_security_group"]:
+                out["cts_security_group"] = (
+                    f2.get("ctsSecurityGroup") or f2.get("cts_security_group") or ""
+                )
+    except IseApiError as exc:
+        logger.debug("MnT AuthStatus/MACAddress [%s] fejlede: %s", mac, exc)
+
+    return out
 
 
 async def fetch_active_sessions() -> list[dict[str, str]]:
