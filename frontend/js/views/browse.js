@@ -474,6 +474,18 @@ export async function renderBrowse(container) {
     runCoaForIds, refreshActiveSessionMacs, updatePxGridSourceBadge,
   });
 
+  // ── Sticky table header — size browse-table-wrap to viewport remainder ───
+  function fitStickyTable() {
+    const wrap       = container.querySelector(".browse-table-wrap");
+    const pagination = container.querySelector(".pagination-bar");
+    if (!wrap) return;
+    wrap.style.height = "";                    // reset to measure natural layout
+    const wrapTop    = wrap.getBoundingClientRect().top;
+    const paginH     = pagination ? pagination.getBoundingClientRect().height : 48;
+    const available  = window.innerHeight - wrapTop - paginH - 16;
+    wrap.style.height = Math.max(200, available) + "px";
+  }
+
   // ── Bootstrap ─────────────────────────────────────────────────────────────
   filterAPI.restoreFilters();
   tableAPI.applyColVis();
@@ -487,10 +499,13 @@ export async function renderBrowse(container) {
       stopPxGridStream();
       clearInterval(badgeTickTimer);
       cleanupObs.disconnect();
+      window.removeEventListener("resize", fitStickyTable);
     }
   });
   cleanupObs.observe(document.body, { childList: true, subtree: true });
+  window.addEventListener("resize", fitStickyTable);
 
   // force=true: poll altid MnT ved view-mount så auth-status er korrekt fra start.
   await tableAPI.load(true);
+  fitStickyTable();
 }

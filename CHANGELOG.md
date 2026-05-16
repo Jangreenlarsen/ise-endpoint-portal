@@ -3,6 +3,16 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.41 build 0358] — 2026-05-16 — feat: Browse-tabel header fastgjort ved scroll
+
+**Berørte filer**: `frontend/css/styles.css`, `frontend/js/views/browse.js`, `version.json`
+
+- `.browse-table-wrap` får `overflow-y: auto` + JS-beregnet `height` (viewport minus toolbar/pagination-bar/margin). Tabellens indhold scroller inden i wrappers; toolbar og pagination forbliver synlige.
+- `thead th` sættes til `position: sticky; top: 0; z-index: 9` — begge rækker (kolonnenavne + filterinput) sidder fast.
+- `box-shadow: 0 1px 0` giver en tydelig linje under den fastgjorte header.
+- Dark/midnight-tema: korrekte baggrunds- og shadow-farver.
+- `fitStickyTable()` genberegnes automatisk ved `window.resize` og ryddes op via MutationObserver når viewet unmountes.
+
 ## [5.3.40 build 0357] — 2026-05-16 — feat: Simulate match opdeler OR-grene som sub-rules med profiler per gren
 
 **Berørte filer**: `backend/app/schemas/policy.py`, `backend/app/services/policy_service.py`, `frontend/js/views/browse-detail.js`, `frontend/css/styles.css`, `version.json`

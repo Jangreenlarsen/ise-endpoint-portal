@@ -498,7 +498,17 @@ button.small {
 /* Browse table */
 .browse-table-wrap {
   overflow-x: auto;
+  overflow-y: auto;
 }
+.browse-table-wrap table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 9;
+  background: #f9fafb;
+  box-shadow: 0 1px 0 #e5e7eb;
+}
+[data-theme="dark"] .browse-table-wrap table thead th     { background: #1e1e2e; box-shadow: 0 1px 0 #3a3a5c; }
+[data-theme="midnight"] .browse-table-wrap table thead th { background: #0d1117; box-shadow: 0 1px 0 #30363d; }
 .browse-table-wrap select {
   width: 100%;
   padding: 0.15rem 0.25rem;
