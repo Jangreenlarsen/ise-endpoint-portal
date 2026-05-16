@@ -480,9 +480,18 @@ export async function renderBrowse(container) {
     const pagination = container.querySelector(".pagination-bar");
     if (!wrap) return;
     wrap.style.height = "";                    // reset to measure natural layout
-    const wrapTop    = wrap.getBoundingClientRect().top;
-    const paginH     = pagination ? pagination.getBoundingClientRect().height : 48;
-    const available  = window.innerHeight - wrapTop - paginH - 16;
+
+    // Row 1 (column names) sticks at top:0; row 2 (filter) sticks just below row 1.
+    const thead  = wrap.querySelector("thead");
+    const row1   = thead?.querySelector("tr:first-child");
+    const row2   = thead?.querySelector("tr.filter-row");
+    const row1H  = row1 ? row1.getBoundingClientRect().height : 33;
+    if (row1) row1.querySelectorAll("th").forEach((th) => { th.style.top = "0px"; });
+    if (row2) row2.querySelectorAll("th").forEach((th) => { th.style.top = row1H + "px"; });
+
+    const wrapTop   = wrap.getBoundingClientRect().top;
+    const paginH    = pagination ? pagination.getBoundingClientRect().height : 48;
+    const available = window.innerHeight - wrapTop - paginH - 16;
     wrap.style.height = Math.max(200, available) + "px";
   }
 
