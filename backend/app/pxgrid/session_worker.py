@@ -396,11 +396,16 @@ async def _handle_message_body(body: bytes, cache) -> None:  # type: ignore[no-u
                     info.vlan = existing.vlan
                 if not info.cts_security_group:
                     info.cts_security_group = existing.cts_security_group
+                if not info.auth_method:
+                    info.auth_method = existing.auth_method
+                if not info.identity_group:
+                    info.identity_group = existing.identity_group
+                # Back-fill authz_profiles fra MnT hvis pxGrid-event leverede tomt
+                if not info.authz_profiles and existing.authz_profiles:
+                    info.authz_profiles = existing.authz_profiles
             await cache.upsert(info)
-            # Trigger real-time MnT-berigelse hvis policy-navne mangler.
-            # Kørte ikke her tidligere — kun i periodisk loop. Nu berige
-            # øjeblikkeligt ved enhver ny/opdateret session fra pxGrid.
-            if not info.policy_set_name or not info.authz_rule_name:
+            # Trigger real-time MnT-berigelse hvis MnT-felter mangler.
+            if not info.identity_group or not info.endpoint_policy:
                 asyncio.create_task(
                     _enrich_single_from_mnt(cache, info.mac),
                     name=f"mnt-enrich-{info.mac[:8]}",
@@ -650,7 +655,7 @@ async def _reconcile_from_pxgrid(cache, sessions: list[dict]) -> None:
                 nas_ip=info.nas_ip,
                 user_name=info.user_name,
                 policy_set_name=info.policy_set_name or (existing.policy_set_name if existing else ""),
-                authz_profiles=info.authz_profiles,
+                authz_profiles=info.authz_profiles or (existing.authz_profiles if existing else []),
                 authz_rule_name=info.authz_rule_name or (existing.authz_rule_name if existing else ""),
                 nas_name=nas_name,
                 nas_device_type=nas_device_type,
@@ -658,6 +663,8 @@ async def _reconcile_from_pxgrid(cache, sessions: list[dict]) -> None:
                 dacl=existing.dacl if existing else "",
                 vlan=existing.vlan if existing else "",
                 cts_security_group=existing.cts_security_group if existing else "",
+                auth_method=existing.auth_method if existing else "",
+                identity_group=existing.identity_group if existing else "",
                 raw=info.raw,
             )
             if mac not in cached_by_mac:
@@ -791,7 +798,7 @@ async def _enrich_single_from_mnt(cache, mac: str) -> None:  # type: ignore[no-u
     """Real-time MnT-berigelse for ét enkelt endpoint ved pxGrid-event.
 
     Kaldes som fire-and-forget task fra _handle_message_body når pxGrid-event
-    ankommer med tomme policy_set_name/authz_rule_name. Kort timeout så vi
+    ankommer uden identity_group eller endpoint_policy. Kort timeout så vi
     ikke ophober tasks ved travl ISE-trafik.
     """
     try:
@@ -805,6 +812,9 @@ async def _enrich_single_from_mnt(cache, mac: str) -> None:  # type: ignore[no-u
         current = await cache.get(mac)
         if not current:
             return
+        # authz_profiles: brug MnT-data hvis pxGrid-event leverede tomt
+        mnt_profiles_str = data.get("authz_profiles_mnt", "")
+        mnt_profiles = [p.strip() for p in mnt_profiles_str.split(",") if p.strip()] if mnt_profiles_str else []
         updated = SessionInfo(
             mac=current.mac,
             state=current.state,
@@ -812,7 +822,7 @@ async def _enrich_single_from_mnt(cache, mac: str) -> None:  # type: ignore[no-u
             nas_ip=current.nas_ip,
             user_name=current.user_name,
             policy_set_name=data.get("policy_set_name") or current.policy_set_name,
-            authz_profiles=current.authz_profiles,
+            authz_profiles=current.authz_profiles or mnt_profiles,
             authz_rule_name=data.get("authz_rule_name") or current.authz_rule_name,
             use_case=current.use_case,
             nas_name=current.nas_name,
@@ -822,14 +832,18 @@ async def _enrich_single_from_mnt(cache, mac: str) -> None:  # type: ignore[no-u
             dacl=data.get("dacl") or current.dacl,
             vlan=data.get("vlan") or current.vlan,
             cts_security_group=data.get("cts_security_group") or current.cts_security_group,
+            auth_method=data.get("auth_method") or current.auth_method,
+            identity_group=data.get("identity_group") or current.identity_group,
             raw=current.raw,
         )
-        if (updated.policy_set_name != current.policy_set_name
-                or updated.authz_rule_name != current.authz_rule_name
-                or updated.dacl != current.dacl):
+        if (updated.identity_group != current.identity_group
+                or updated.auth_method != current.auth_method
+                or updated.endpoint_policy != current.endpoint_policy
+                or updated.dacl != current.dacl
+                or updated.authz_profiles != current.authz_profiles):
             logger.info(
-                "MnT real-time enrich [%s]: auth=%r authz=%r dacl=%r",
-                mac, updated.policy_set_name, updated.authz_rule_name, updated.dacl,
+                "MnT real-time enrich [%s]: group=%r auth=%r profiles=%r dacl=%r",
+                mac, updated.identity_group, updated.auth_method, updated.authz_profiles, updated.dacl,
             )
             await cache.upsert(updated)
     except asyncio.TimeoutError:
@@ -841,11 +855,8 @@ async def _enrich_single_from_mnt(cache, mac: str) -> None:  # type: ignore[no-u
 async def _enrich_sessions_from_mnt(cache) -> None:  # type: ignore[no-untyped-def]
     """Berig sessions i cache med MnT-felter fra Session/MACAddress + AuthStatus.
 
-    Kalder MnT pr. session der mangler policy_set_name, authz_rule_name,
-    endpoint_policy eller dacl. fetch_session_by_mac kalder begge endpoints
-    og returnerer alle enrichment-felter inkl. ISEPolicySetName og
-    AuthorizationPolicyMatchedRule fra AuthStatus.
-    Best-effort — fejl ignoreres. 100ms pause mellem kald for at skåne MnT.
+    Kalder MnT pr. session der mangler identity_group, endpoint_policy eller
+    authz_profiles. Best-effort — fejl ignoreres. 100ms pause mellem kald.
     """
     try:
         from app.ise.mnt_sessions import fetch_session_by_mac
@@ -853,11 +864,10 @@ async def _enrich_sessions_from_mnt(cache) -> None:  # type: ignore[no-untyped-d
         return
     try:
         sessions = await cache.list()
-        # Berig sessioner der mangler ét eller flere af de MnT-eksklusive felter.
+        # Berig sessioner der mangler MnT-felter (identity_group er den sikreste indikator).
         to_enrich = [
             s for s in sessions
-            if not s.policy_set_name or not s.authz_rule_name
-            or not s.endpoint_policy or not s.dacl
+            if not s.identity_group or not s.endpoint_policy or not s.authz_profiles
         ]
         if not to_enrich:
             return
@@ -871,16 +881,16 @@ async def _enrich_sessions_from_mnt(cache) -> None:  # type: ignore[no-untyped-d
                 current = await cache.get(entry.mac)
                 if not current:
                     continue
+                mnt_profiles_str = data.get("authz_profiles_mnt", "")
+                mnt_profiles = [p.strip() for p in mnt_profiles_str.split(",") if p.strip()] if mnt_profiles_str else []
                 updated = SessionInfo(
                     mac=current.mac,
                     state=current.state,
                     audit_session_id=current.audit_session_id,
                     nas_ip=current.nas_ip,
                     user_name=current.user_name,
-                    # MnT AuthStatus leverer ISEPolicySetName + AuthorizationPolicyMatchedRule;
-                    # bevar eksisterende pxGrid-data hvis MnT returnerer tomt.
                     policy_set_name=data.get("policy_set_name") or current.policy_set_name,
-                    authz_profiles=current.authz_profiles,
+                    authz_profiles=current.authz_profiles or mnt_profiles,
                     authz_rule_name=data.get("authz_rule_name") or current.authz_rule_name,
                     use_case=current.use_case,
                     nas_name=current.nas_name,
@@ -890,6 +900,8 @@ async def _enrich_sessions_from_mnt(cache) -> None:  # type: ignore[no-untyped-d
                     dacl=data.get("dacl") or current.dacl,
                     vlan=data.get("vlan") or current.vlan,
                     cts_security_group=data.get("cts_security_group") or current.cts_security_group,
+                    auth_method=data.get("auth_method") or current.auth_method,
+                    identity_group=data.get("identity_group") or current.identity_group,
                     raw=current.raw,
                 )
                 await cache.upsert(updated)

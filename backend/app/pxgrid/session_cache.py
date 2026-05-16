@@ -48,6 +48,9 @@ class SessionInfo:
     dacl: str = ""
     vlan: str = ""
     cts_security_group: str = ""
+    # MnT AuthStatus enrichment fields
+    identity_group: str = ""
+    auth_method: str = ""
     raw: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -120,6 +123,8 @@ class SessionCache:
             "dacl": info.dacl,
             "vlan": info.vlan,
             "cts_security_group": info.cts_security_group,
+            "identity_group": info.identity_group,
+            "auth_method": info.auth_method,
             "ts": info.last_event_at,
         })
 
@@ -227,6 +232,8 @@ class SessionCache:
                     dacl=item.get("dacl", ""),
                     vlan=item.get("vlan", ""),
                     cts_security_group=item.get("cts_security_group", ""),
+                    identity_group=item.get("identity_group", ""),
+                    auth_method=item.get("auth_method", ""),
                 )
                 self._sessions[mac] = info
                 loaded += 1

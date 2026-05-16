@@ -218,6 +218,8 @@ class PxGridSessionInfoResponse(BaseModel):
     dacl: str = ""
     vlan: str = ""
     cts_security_group: str = ""
+    identity_group: str = ""
+    auth_method: str = ""
 
 
 class PxGridSessionsResponse(BaseModel):

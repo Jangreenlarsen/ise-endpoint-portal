@@ -9,6 +9,8 @@ Alle nye features registreres her FØR implementering påbegyndes.
 
 ## Planlagt / Under implementering
 
+- `[done 5.3.33] 2026-05-16 — Browse: Session-kolonne viser auth_method + authz_profiles + identity_group fra MnT` — ISE 3.4 MnT AuthStatus returnerer IKKE policy-navne. Nu vises: Auth-metode (MAB-badge), authz-profiler fra pxGrid back-filled via MnT selected_azn_profiles, identity_group, VLAN, DACL, SGT.
+
 - `[done 5.3.31] 2026-05-16 — Browse: Session-kolonne MnT-data robust og persistent` — MnT-beriget data bevares nu på tværs af pxGrid STOMP-events og reconcile-runs. Periodisk enrichment-loop (startup + hvert 5. min) sikrer at Auth/Authz politik-navne populeres selv uden pxGrid-reconnect.
 
 - `[done 5.3.30] 2026-05-16 — Browse: Session-kolonne viser Auth + Authz politik-navne fra MnT AuthStatus` — MnT `AuthStatus/MACAddress/{mac}/3600/25/All` tilføjet til enrichment-pipeline. ISEPolicySetName → `policy_set_name` og AuthorizationPolicyMatchedRule → `authz_rule_name` populeres nu korrekt via `_enrich_sessions_from_mnt`. Redundant ISE Profil-kolonne fjernet (dublerede eksisterende Profil-kolonne).

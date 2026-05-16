@@ -824,12 +824,16 @@ td.ise-session-col {
   font-size: 0.75em;
   font-weight: 600;
 }
-.ise-sess-dacl  { background: #ede9fe; color: #4c1d95; }
-.ise-sess-sgt   { background: #fef3c7; color: #78350f; }
-[data-theme="dark"] .ise-sess-dacl  { background: #3b1e7a; color: #ddd6fe; }
-[data-theme="dark"] .ise-sess-sgt   { background: #451a03; color: #fde68a; }
-[data-theme="midnight"] .ise-sess-dacl { background: #2e1065; color: #c4b5fd; }
-[data-theme="midnight"] .ise-sess-sgt  { background: #3d1500; color: #fcd34d; }
+.ise-sess-dacl    { background: #ede9fe; color: #4c1d95; }
+.ise-sess-sgt     { background: #fef3c7; color: #78350f; }
+.ise-sess-method  { background: #d1fae5; color: #065f46; }
+.ise-sess-hint    { opacity: 0.6; font-size: 0.9em; }
+[data-theme="dark"] .ise-sess-dacl    { background: #3b1e7a; color: #ddd6fe; }
+[data-theme="dark"] .ise-sess-sgt     { background: #451a03; color: #fde68a; }
+[data-theme="dark"] .ise-sess-method  { background: #064e3b; color: #a7f3d0; }
+[data-theme="midnight"] .ise-sess-dacl   { background: #2e1065; color: #c4b5fd; }
+[data-theme="midnight"] .ise-sess-sgt    { background: #3d1500; color: #fcd34d; }
+[data-theme="midnight"] .ise-sess-method { background: #052e16; color: #86efac; }
 
 /* NAS kolonne — navn + device type */
 td.nas-info-col { overflow: hidden; }

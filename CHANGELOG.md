@@ -3,6 +3,17 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.33 build 0349] — 2026-05-16 — fix: Session-kolonne viser auth_method + authz_profiles fra MnT back-fill
+
+**Berørte filer**: `backend/app/ise/mnt_sessions.py`, `backend/app/pxgrid/session_cache.py`, `backend/app/pxgrid/session_worker.py`, `backend/app/schemas/settings.py`, `backend/app/api/pxgrid.py`, `frontend/js/views/browse-table.js`, `frontend/js/i18n.js`, `frontend/css/styles.css`, `version.json`
+
+- **Root cause bekræftet**: ISE 3.4 MnT AuthStatus returnerer IKKE `ISEPolicySetName`/`AuthorizationPolicyMatchedRule` for dette deployment. Policy-navne er ISE-interne og ikke tilgængelige via REST.
+- **Nye SessionInfo-felter**: `auth_method` (f.eks. "mab") og `identity_group` (f.eks. "ADM-Apple-iPhone") fra AuthStatus.
+- **authz_profiles back-fill**: `_enrich_single_from_mnt`/`_enrich_sessions_from_mnt` back-fylder `authz_profiles` fra AuthStatus `selected_azn_profiles` (komma-sep. string) hvis pxGrid-event leverede tomt.
+- **VLAN-parsing**: Udtrækkes nu også fra `response` AV-pair (`Tunnel-Private-Group-ID=(tag=N) NN`) som fallback.
+- **Session-kolonne**: Viser nu `Auth: MAB` (grønt badge), authz_rule_name ELLER profiler (ikke kun hvis authz_rule_name er tom), DACL, VLAN, SGT, Group.
+- **CSS**: Ny `.ise-sess-method` badge-klasse (grøn, light/dark/midnight).
+
 ## [5.3.32 build 0348] — 2026-05-16 — feat: real-time MnT trigger ved pxGrid-event + debug endpoint
 
 **Berørte filer**: `backend/app/pxgrid/session_worker.py`, `backend/app/pxgrid/client.py`, `backend/app/api/pxgrid.py`, `version.json`

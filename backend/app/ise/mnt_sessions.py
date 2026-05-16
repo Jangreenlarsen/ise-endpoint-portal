@@ -14,6 +14,7 @@ missing fields as empty strings.
 from __future__ import annotations
 
 import logging
+import re
 from typing import Iterable
 from xml.etree import ElementTree as ET
 
@@ -103,7 +104,13 @@ async def fetch_session_by_mac(mac: str) -> dict[str, str]:
 
     Kalder begge endpoints:
       - GET /admin/API/mnt/Session/MACAddress/{mac}   → endpoint_policy, dacl, vlan, cts_security_group
-      - GET /admin/API/mnt/AuthStatus/MACAddress/{mac}/3600/25/All  → policy_set_name, authz_rule_name
+      - GET /admin/API/mnt/AuthStatus/MACAddress/{mac}/3600/25/All
+          → policy_set_name, authz_rule_name, auth_method, identity_group,
+            authz_profiles_mnt (selected_azn_profiles som liste), VLAN via response AV-pair
+
+    Note: ISEPolicySetName og AuthorizationPolicyMatchedRule optræder IKKE i
+    ISE 3.4 MnT AuthStatus XML for alle deployments. authentication_method
+    (f.eks. "mab") og selected_azn_profiles er de felter der altid er tilgængelige.
 
     Returnerer tom dict ved fejl. Alle keys er altid til stede.
     AuthStatus-URL kræver /{seconds}/{records}/{framed} — kald uden disse giver 404.
@@ -111,7 +118,7 @@ async def fetch_session_by_mac(mac: str) -> dict[str, str]:
     mac_encoded = (mac or "").upper().replace(":", "%3A")
     out: dict[str, str] = {
         "endpoint_policy": "", "dacl": "", "vlan": "", "cts_security_group": "",
-        "policy_set_name": "", "authz_rule_name": "",
+        "auth_method": "", "identity_group": "", "authz_profiles_mnt": "",
     }
     if not mac_encoded:
         return out
@@ -139,23 +146,40 @@ async def fetch_session_by_mac(mac: str) -> dict[str, str]:
         logger.debug("MnT Session/MACAddress [%s] fejlede: %s", mac, exc)
 
     # ── AuthStatus/MACAddress — kræver /seconds/records/framed path-params ─
-    # ISEPolicySetName + AuthorizationPolicyMatchedRule sidder kun her.
     try:
         sc2, text2 = await _mnt_get_xml(
             f"/admin/API/mnt/AuthStatus/MACAddress/{mac_encoded}/3600/25/All"
         )
         if sc2 < 400 and text2:
             f2 = _parse_all_xml_fields(text2)
-            out["policy_set_name"] = (
-                f2.get("ISEPolicySetName") or f2.get("isePolicySetName")
-                or f2.get("PolicySetName") or f2.get("policySetName") or ""
+            # Auth-metode (mab, dot1x, webauth, …) — tilgængeligt i alle ISE-versioner
+            out["auth_method"] = (
+                f2.get("authentication_method") or f2.get("authenticationMethod")
+                or f2.get("auth_method") or ""
             )
-            out["authz_rule_name"] = (
-                f2.get("AuthorizationPolicyMatchedRule") or f2.get("authorizationPolicyMatchedRule")
-                or f2.get("authorizationRuleName") or f2.get("AuthorizationRuleName") or ""
+            # Identitetsgruppe (f.eks. "ADM-Apple-iPhone")
+            out["identity_group"] = (
+                f2.get("identity_group") or f2.get("identityGroup")
+                or f2.get("IdentityGroup") or ""
             )
-            # Fallback: endpoint_policy og cts_security_group optræder
-            # også i AuthStatus hvis Session/MACAddress returnerede tomt.
+            # selected_azn_profiles — komma-sep. string i AuthStatus (ikke list)
+            azn_str = (
+                f2.get("selected_azn_profiles") or f2.get("selectedAznProfiles")
+                or f2.get("selectedAuthzProfiles") or ""
+            )
+            if azn_str:
+                profiles = [p.strip() for p in azn_str.split(",") if p.strip()]
+                out["authz_profiles_mnt"] = ",".join(profiles)
+            # VLAN fra response AV-pair hvis ikke fundet via Session/MACAddress
+            # Format: "Tunnel-Private-Group-ID=(tag=1) 32" eller "Tunnel-Private-Group-ID=32"
+            if not out["vlan"]:
+                resp_str = f2.get("response", "")
+                m = re.search(
+                    r"Tunnel-Private-Group-ID=(?:\(tag=\d+\)\s*)?(\d+)", resp_str
+                )
+                if m:
+                    out["vlan"] = m.group(1)
+            # Fallback: endpoint_policy og cts_security_group fra AuthStatus
             if not out["endpoint_policy"]:
                 out["endpoint_policy"] = (
                     f2.get("endpointPolicy") or f2.get("EndpointPolicy") or ""
