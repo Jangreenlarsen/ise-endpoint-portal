@@ -173,6 +173,24 @@ async def prioritize_endpoint(
     return {"status": "queued", "id": endpoint_id}
 
 
+@router.get("/{endpoint_id}/profiling-data")
+async def get_endpoint_profiling_data(
+    endpoint_id: str,
+    _user: User = Depends(require_any),
+) -> dict:
+    """Hent alle ISE probe-attributter (DHCP, HTTP, MDM, netværk osv.)
+    for et endpoint fra ISE Open API. Bruges til profileringsdata-visning i detail-modal.
+    """
+    from app.ise.client import get_ise_client
+    from app.ise.profiling import get_endpoint_profiling_data as _get_profiling
+
+    client = get_ise_client()
+    try:
+        return await _get_profiling(client, endpoint_id)
+    except IseApiError as exc:
+        raise _ise_http_error(exc) from exc
+
+
 @router.get("/{endpoint_id}", response_model=EndpointDetail)
 async def get_endpoint(
     endpoint_id: str,

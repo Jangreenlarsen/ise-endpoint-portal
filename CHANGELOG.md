@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.4.0 build 0360] — 2026-05-17 — feat: Profileringsdata-viewer i endpoint detail-modal
+
+Ny "Profileringsdata" accordion-sektion i endpoint detail-modal. Klik ▶ Vis for at se alle probe-attributter ISE har indsamlet om et endpoint (DHCP, HTTP/User-Agent, MDM, netværk, profiler-assignment og andre). Data lazy-loades fra ISE Open API `GET /api/v1/endpoint/{id}` ved første åbning — attributter er organiseret i navngivne kategorier. Nulstilles automatisk ved lukning af modal.
+
+**Berørte filer**: `backend/app/ise/profiling.py` (ny), `backend/app/api/endpoints.py` (+route GET /endpoints/{id}/profiling-data), `frontend/js/api.js`, `frontend/js/views/browse.js`, `frontend/js/views/browse-detail.js`, `frontend/js/i18n.js`, `frontend/css/styles.css`, `version.json`
+
 ## [5.3.41 build 0358] — 2026-05-16 — feat: Browse-tabel header fastgjort ved scroll
 
 **Berørte filer**: `frontend/css/styles.css`, `frontend/js/views/browse.js`, `version.json`

@@ -238,6 +238,13 @@ const TRANSLATIONS = {
     "detail.wiz_saving":          "Opretter regel i ISE…",
     "detail.wiz_saved":           "Regel '{name}' oprettet i ISE!",
 
+    // Browse — detail modal — profileringsdata
+    "detail.profiling_title":   "Profileringsdata",
+    "detail.profiling_show":    "▶ Vis",
+    "detail.profiling_hide":    "▼ Skjul",
+    "detail.profiling_empty":   "Ingen probe-attributter fundet for dette endpoint.",
+    "detail.profiling_error":   "Kunne ikke hente profileringsdata",
+
     // Browse — bulk-edit-modal
     "bulk.title":             "Rediger valgte endpoints",
     "bulk.count_suffix":      "endpoints valgt",
@@ -1221,6 +1228,13 @@ const TRANSLATIONS = {
     "detail.wiz_err_profile":     "Add at least one profile.",
     "detail.wiz_saving":          "Creating rule in ISE…",
     "detail.wiz_saved":           "Rule '{name}' created in ISE!",
+
+    // Browse — detail modal — profiling data
+    "detail.profiling_title":   "Profiling Data",
+    "detail.profiling_show":    "▶ Show",
+    "detail.profiling_hide":    "▼ Hide",
+    "detail.profiling_empty":   "No probe attributes found for this endpoint.",
+    "detail.profiling_error":   "Could not fetch profiling data",
 
     // Browse — bulk edit modal
     "bulk.title":             "Edit selected endpoints",

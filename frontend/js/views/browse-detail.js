@@ -150,6 +150,13 @@ export function initDetail(container, state, api, cb) {
     if (mt) mt.textContent = t("detail.policy_hide");
     if (ma) ma.innerHTML = "";
     if (wa) wa.innerHTML = "";
+    // Reset profiling section — collapse + clear so next open lazy-loads fresh
+    const pb = detailOverlay.querySelector("#d-profiling-body");
+    const pt = detailOverlay.querySelector("#d-profiling-toggle");
+    const pc = detailOverlay.querySelector("#d-profiling-content");
+    if (pb) pb.classList.add("hidden");
+    if (pt) pt.textContent = t("detail.profiling_show");
+    if (pc) pc.innerHTML = "";
   }
 
   // ── ANC ──────────────────────────────────────────────────────────────────
@@ -608,6 +615,53 @@ export function initDetail(container, state, api, cb) {
   if (auth.isEditor() || auth.getUser()?.role === "viewer") {
     policySection?.classList.remove("hidden");
   }
+
+  // ── Profiling section ─────────────────────────────────────────────────────
+  const profilingToggle  = container.querySelector("#d-profiling-toggle");
+  const profilingBody    = container.querySelector("#d-profiling-body");
+  const profilingContent = container.querySelector("#d-profiling-content");
+
+  function _renderProfilingAttrTable(attributes) {
+    const rows = Object.entries(attributes)
+      .map(([k, v]) => {
+        const valStr = typeof v === "object" ? JSON.stringify(v, null, 2) : String(v);
+        return `<tr><td class="profiling-attr-key">${esc(k)}</td><td class="profiling-attr-val">${esc(valStr)}</td></tr>`;
+      })
+      .join("");
+    return `<table class="profiling-attr-table"><tbody>${rows}</tbody></table>`;
+  }
+
+  function _renderProfilingData(data) {
+    const sections = data?.sections || [];
+    if (!sections.length) {
+      return `<div class="hint">${t("detail.profiling_empty")}</div>`;
+    }
+    return sections
+      .map((sec) => `
+        <div class="profiling-section">
+          <div class="profiling-section-label">${esc(sec.label)}</div>
+          ${_renderProfilingAttrTable(sec.attributes)}
+        </div>`)
+      .join("");
+  }
+
+  profilingToggle?.addEventListener("click", async () => {
+    const collapsed = profilingBody.classList.toggle("hidden");
+    profilingToggle.textContent = collapsed
+      ? t("detail.profiling_show")
+      : t("detail.profiling_hide");
+
+    if (!collapsed && profilingContent.innerHTML === "") {
+      if (!state.detailCurrentId) return;
+      profilingContent.innerHTML = `<div class="alert info">${t("alert.loading")}</div>`;
+      try {
+        const data = await api.getProfilingData(state.detailCurrentId);
+        profilingContent.innerHTML = _renderProfilingData(data);
+      } catch (err) {
+        profilingContent.innerHTML = `<div class="alert error">${t("detail.profiling_error")}: ${esc(err.message)}</div>`;
+      }
+    }
+  });
 
   return { openDetail, closeDetail };
 }

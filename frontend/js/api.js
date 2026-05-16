@@ -74,6 +74,7 @@ export const api = {
     return request(`/endpoints/details/all${qs}`);
   },
   getEndpoint: (id) => request(`/endpoints/${encodeURIComponent(id)}`),
+  getProfilingData: (id) => request(`/endpoints/${encodeURIComponent(id)}/profiling-data`),
   prioritizeEndpoint: (id) => request(`/endpoints/${encodeURIComponent(id)}/prioritize`, { method: "POST" }),
   listGroups: () => request("/groups"),
   createEndpoint: (payload) =>

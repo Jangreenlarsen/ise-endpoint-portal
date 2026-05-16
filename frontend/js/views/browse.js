@@ -179,6 +179,15 @@ export async function renderBrowse(container) {
             <div id="d-policy-wizard-area"></div>
           </div>
         </div>
+        <div id="d-profiling-section" class="policy-section">
+          <div class="policy-section-header">
+            <span class="policy-section-label">${t("detail.profiling_title")}</span>
+            <button id="d-profiling-toggle" class="secondary small">${t("detail.profiling_show")}</button>
+          </div>
+          <div id="d-profiling-body" class="hidden">
+            <div id="d-profiling-content"></div>
+          </div>
+        </div>
         <div class="modal-actions">
           <button id="d-save">${t("detail.btn_save")}</button>
           <button id="d-disconnect" class="danger"

@@ -2990,3 +2990,29 @@ body.register-route .login-card {
 [data-theme="dark"] .authzp-config-cell  { color: #94a3b8; }
 [data-theme="dark"] .badge-ok   { background: #052e16; color: #86efac; }
 [data-theme="dark"] .badge-warn { background: #3b1414; color: #fecaca; }
+
+/* ── Profileringsdata section in browse-detail ── */
+.profiling-section { margin-top: 0.5rem; }
+.profiling-section-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.25rem;
+}
+.profiling-attr-table {
+  width: 100%;
+  font-size: 0.8rem;
+  border-collapse: collapse;
+  margin-bottom: 0.5rem;
+}
+.profiling-attr-table td { padding: 0.15rem 0.4rem; vertical-align: top; }
+.profiling-attr-key {
+  width: 42%;
+  color: var(--text-muted, #6b7280);
+  font-family: monospace;
+  word-break: break-all;
+}
+.profiling-attr-val { word-break: break-all; font-family: monospace; }
+[data-theme="dark"] .profiling-attr-key { color: #9ca3af; }

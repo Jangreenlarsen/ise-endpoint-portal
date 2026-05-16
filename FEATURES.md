@@ -9,6 +9,8 @@ Alle nye features registreres her FØR implementering påbegyndes.
 
 ## Planlagt / Under implementering
 
+- `[done 5.4.0] 2026-05-17 — Profileringsdata-viewer i endpoint detail-modal` — Ny accordion-sektion "Profileringsdata" i endpoint detail-modal. Viser alle probe-attributter ISE har lært om et endpoint (DHCP, HTTP, MDM, netværk, profiler-assignment) ved at kalde ISE Open API `GET /api/v1/endpoint/{id}` direkte. Data lazy-loades ved første åbning. **Berørte lag:** `backend/app/ise/profiling.py` (ny), `backend/app/api/endpoints.py` (+route), `frontend/js/api.js`, `frontend/js/views/browse.js`, `frontend/js/views/browse-detail.js`, `frontend/js/i18n.js`.
+
 - `[done 5.3.36] 2026-05-16 — Backend: Threading watchdog timer` — Daemon-tråd udenfor asyncio event loop. Kalder `os._exit(1)` hvis heartbeat er ældre end 120s. Systemd/Docker restart-policy genstarter processen automatisk. Løser problemet med hængt backend.
 
 - `[done 5.3.33] 2026-05-16 — Browse: Session-kolonne viser auth_method + authz_profiles + identity_group fra MnT` — ISE 3.4 MnT AuthStatus returnerer IKKE policy-navne. Nu vises: Auth-metode (MAB-badge), authz-profiler fra pxGrid back-filled via MnT selected_azn_profiles, identity_group, VLAN, DACL, SGT.
