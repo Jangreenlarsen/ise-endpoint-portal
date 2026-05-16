@@ -13,6 +13,7 @@ from app.schemas.policy import (
     PolicyMatchResult,
     PolicySetDetail,
     PolicySetSummary,
+    SubRuleGroup,
 )
 
 logger = logging.getLogger(__name__)
@@ -220,6 +221,54 @@ def _eval_condition(cond: dict | None, ep: dict) -> tuple[bool, list[MatchedCond
     return True, []
 
 
+def _split_into_subrules(
+    cond: dict | None, ep: dict
+) -> tuple[list[MatchedCondition], list[SubRuleGroup]]:
+    """Split a condition tree into global conditions + per-OR-branch sub-rules.
+
+    Detects the first ConditionOrBlock at depth 0 or as a direct child of the
+    top-level AND block.  Non-OR children of the AND are returned as global
+    conditions; OR children become numbered SubRuleGroups.
+
+    Returns (global_conditions, sub_rules).  sub_rules is empty when the
+    condition has no OR branching — the caller should fall back to a flat view.
+    """
+    if not cond:
+        return [], []
+
+    ct = cond.get("conditionType", "")
+
+    # Top-level is OR → each child is a sub-rule, no global conditions
+    if ct == "ConditionOrBlock":
+        sub_rules = []
+        for i, child in enumerate(cond.get("children", []), start=1):
+            _, child_details = _eval_condition(child, ep)
+            sub_rules.append(SubRuleGroup(index=i, conditions=child_details))
+        return [], sub_rules
+
+    # Top-level is AND → look for a direct OR child
+    if ct == "ConditionAndBlock":
+        children = cond.get("children", [])
+        or_child = next(
+            (c for c in children if c.get("conditionType") == "ConditionOrBlock"), None
+        )
+        if or_child:
+            global_conds: list[MatchedCondition] = []
+            for c in children:
+                if c is not or_child:
+                    _, d = _eval_condition(c, ep)
+                    global_conds.extend(d)
+            sub_rules = []
+            for i, child in enumerate(or_child.get("children", []), start=1):
+                _, child_details = _eval_condition(child, ep)
+                sub_rules.append(SubRuleGroup(index=i, conditions=child_details))
+            return global_conds, sub_rules
+
+    # No OR branching found — single flat evaluation
+    _, all_details = _eval_condition(cond, ep)
+    return all_details, []
+
+
 # ── Service class ────────────────────────────────────────────────────────────
 
 class PolicyService:
@@ -301,7 +350,9 @@ class PolicyService:
                 profiles = entry.get("profile") or inner.get("profile") or []
                 if isinstance(profiles, str):
                     profiles = [profiles]
-                has_skipped = any(d.skipped for d in details)
+                global_conds, sub_rules = _split_into_subrules(cond, ep)
+                all_conds = global_conds + [d for sr in sub_rules for d in sr.conditions]
+                has_skipped = any(d.skipped for d in all_conds)
                 return PolicyMatchResult(
                     policy_set_id=policy_set_id,
                     policy_set_name=ps_name,
@@ -309,7 +360,8 @@ class PolicyService:
                     matched_rule_name=inner.get("name"),
                     matched_rule_rank=inner.get("rank"),
                     profiles=profiles,
-                    condition_details=details,
+                    condition_details=global_conds,
+                    sub_rules=sub_rules,
                     partial_match=has_skipped,
                 )
 

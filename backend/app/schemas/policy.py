@@ -87,6 +87,11 @@ class MatchedCondition(BaseModel):
     skipped: bool = False   # True for conditions we can't evaluate (RADIUS, references)
 
 
+class SubRuleGroup(BaseModel):
+    index: int
+    conditions: list[MatchedCondition] = []
+
+
 class PolicyMatchResult(BaseModel):
     policy_set_id: str
     policy_set_name: str
@@ -94,7 +99,8 @@ class PolicyMatchResult(BaseModel):
     matched_rule_name: str | None = None
     matched_rule_rank: int | None = None
     profiles: list[str] = []
-    condition_details: list[MatchedCondition] = []
+    condition_details: list[MatchedCondition] = []   # global (non-OR-branch) conditions
+    sub_rules: list[SubRuleGroup] = []               # populated when rule has OR branches
     no_rules: bool = False
     partial_match: bool = False   # True when match relies on skipped (RADIUS) conditions
 

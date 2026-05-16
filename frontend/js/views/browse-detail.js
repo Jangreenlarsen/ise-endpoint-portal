@@ -319,44 +319,71 @@ export function initDetail(container, state, api, cb) {
     if (!r.matched_rule_id) {
       return `<div class="alert warning">${t("detail.policy_no_match")}</div>`;
     }
-    const profiles = (r.profiles || []).map((p) => `<span class="profile-chip">${esc(p)}</span>`).join(" ");
-    const skipped  = r.condition_details?.filter((c) => c.skipped);
-    const checked  = r.condition_details?.filter((c) => !c.skipped);
-    const detailRows = checked?.map((c) =>
-      `<div class="match-cond-row ${c.matched ? "match-ok" : "match-fail"}">
-        ${c.matched ? "✓" : "✗"} ${esc(c.attribute)} ${esc(c.operator)} <em>${esc(c.value)}</em>
-      </div>`
-    ).join("") || "";
-    if (r.partial_match) {
-      const skippedRows = (skipped || []).map((c) => {
+    const profiles    = (r.profiles || []).map((p) => `<span class="profile-chip">${esc(p)}</span>`).join(" ");
+    const profilesRow = `<div class="match-profiles">${t("detail.policy_profiles")} ${profiles}</div>`;
+    const subRules    = r.sub_rules || [];
+    const hasSubs     = subRules.length > 1;
+
+    // Renders a single MatchedCondition row
+    function condRow(c) {
+      if (c.skipped) {
         const isRef = c.operator === "ref";
         const label = isRef
           ? `<span class="match-cond-ref">${esc(c.attribute)}</span>`
           : `${esc(c.attribute)} <span class="match-cond-op">${esc(c.operator)}</span> <em>${esc(c.value)}</em>`;
         return `<div class="match-cond-row match-skip">? ${label}</div>`;
-      }).join("");
-      const skippedNote = skipped?.length
-        ? `<div class="match-partial-note">${t("detail.policy_partial_match").replace("{n}", skipped.length)}</div>${skippedRows}`
+      }
+      return `<div class="match-cond-row ${c.matched ? "match-ok" : "match-fail"}">
+        ${c.matched ? "✓" : "✗"} ${esc(c.attribute)} ${esc(c.operator)} <em>${esc(c.value)}</em>
+      </div>`;
+    }
+
+    // Global conditions (outside OR branches)
+    const globalRows = (r.condition_details || []).map(condRow).join("");
+
+    if (r.partial_match) {
+      const allSkippedCount = (r.condition_details || []).filter(c => c.skipped).length
+        + subRules.reduce((n, sr) => n + sr.conditions.filter(c => c.skipped).length, 0);
+      const note = allSkippedCount
+        ? `<div class="match-partial-note">${t("detail.policy_partial_match").replace("{n}", allSkippedCount)}</div>`
         : "";
       const matchedLine = t("detail.policy_possible_match")
         .replace("{name}", esc(r.matched_rule_name))
         .replace("{rank}", r.matched_rule_rank);
+
+      let body;
+      if (hasSubs) {
+        const subHtml = subRules.map((sr) => {
+          const srRows = sr.conditions.map(condRow).join("");
+          return `<div class="match-subrule">
+            <div class="match-subrule-label">Sub rule ${sr.index}:</div>
+            ${srRows}
+            ${profilesRow}
+          </div>`;
+        }).join("");
+        body = `${globalRows}${note}${subHtml}`;
+      } else {
+        // Flat view (no OR branches or single branch)
+        const flatRows = subRules.flatMap(sr => sr.conditions).map(condRow).join("");
+        body = `${profilesRow}${globalRows}${flatRows}${note}`;
+      }
       return `
         <div class="match-result-card match-possible">
           <div class="match-rule-name"><strong>${matchedLine}</strong></div>
-          <div class="match-profiles">${t("detail.policy_profiles")} ${profiles}</div>
-          ${detailRows}
-          ${skippedNote}
+          ${body}
         </div>`;
     }
+
+    // Full match
+    const allRows = globalRows + subRules.flatMap(sr => sr.conditions).map(condRow).join("");
     const matchedLine = t("detail.policy_matched")
       .replace("{name}", esc(r.matched_rule_name))
       .replace("{rank}", r.matched_rule_rank);
     return `
       <div class="match-result-card match-hit">
         <div class="match-rule-name"><strong>${matchedLine}</strong></div>
-        <div class="match-profiles">${t("detail.policy_profiles")} ${profiles}</div>
-        ${detailRows}
+        ${profilesRow}
+        ${allRows}
       </div>`;
   }
 

@@ -3,6 +3,16 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.40 build 0357] — 2026-05-16 — feat: Simulate match opdeler OR-grene som sub-rules med profiler per gren
+
+**Berørte filer**: `backend/app/schemas/policy.py`, `backend/app/services/policy_service.py`, `frontend/js/views/browse-detail.js`, `frontend/css/styles.css`, `version.json`
+
+- Ny `SubRuleGroup` model i `schemas/policy.py` + `sub_rules: list[SubRuleGroup]` felt på `PolicyMatchResult`.
+- Ny `_split_into_subrules()` i `policy_service.py`: detekterer top-level `ConditionOrBlock` (eller som direkte barn af top-level AND). Hvert OR-barn evalueres separat og returneres som `SubRuleGroup`. AND-betingelser udenfor OR-blokken forbliver i `condition_details` (global).
+- `match_endpoint` bruger nu `_split_into_subrules` og sætter `sub_rules` på resultatet.
+- Frontend `renderMatchResult`: ved `sub_rules.length > 1` vises grupperet visning: global ✓-betingelser øverst, note om antal skippede, derefter et kort per sub-rule med egne betingelser + "Authz Profiles:" i bunden af hvert kort.
+- CSS: `.match-subrule` (gul venstrekant, subtil baggrund), `.match-subrule-label` (fed label) inkl. dark-theme.
+
 ## [5.3.39 build 0356] — 2026-05-16 — feat: Simulate match viser ukendte RADIUS-betingelser enkeltvist
 
 **Berørte filer**: `frontend/js/views/browse-detail.js`, `frontend/js/i18n.js`, `frontend/css/styles.css`, `version.json`
