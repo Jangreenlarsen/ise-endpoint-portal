@@ -171,7 +171,7 @@ const TRANSLATIONS = {
     "col.roles":        "System adm",
     "col.create_time":  "Alder",
     "col.nas":          "NAS",
-    "col.ise_session":  "Session",
+    "col.ise_session":  "ISE Session Auth",
 
     // Browse — celleværdier
     "cell.static":   "Statisk",
@@ -1155,7 +1155,7 @@ const TRANSLATIONS = {
     "col.roles":        "System adm",
     "col.create_time":  "Age",
     "col.nas":          "NAS",
-    "col.ise_session":  "Session",
+    "col.ise_session":  "ISE Session Auth",
 
     // Browse — cell values
     "cell.static":   "Static",
