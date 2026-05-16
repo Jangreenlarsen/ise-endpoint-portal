@@ -3,6 +3,15 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.38 build 0354] — 2026-05-16 — feat: Session-kolonne profil-kontekst — WLC ACL, PSK-nøgle og DACL vist inline
+
+**Berørte filer**: `frontend/js/views/browse-table.js`, `version.json`
+
+- `Endpoint_AirSpaceACL` → `Endpoint_AirSpaceACL:[authz_acl]` — WLC ACL-værdi fra endpointets `authz_acl` felt.
+- `Endpoint_PSK-KEY` → `Endpoint_PSK-KEY:***` (maskeret) eller `Endpoint_PSK-KEY:[nøgle]` (klartekst) afhængigt af om "PSK Key"-kolonnen viser nøgler (`state.pskShowKey`).
+- `Endpoint_DACL` → `Endpoint_DACL:[dacl-navn]` — DACL-navn fra ISE session. Separat DACL-badge vises ikke hvis profilen allerede viser det.
+- `Endpoint_VLAN` → `Endpoint_VLAN:32` (uændret fra v5.3.37).
+
 ## [5.3.37 build 0353] — 2026-05-16 — fix: Session-kolonne — fjern Group + Authz-label, VLAN flettes ind i profil-navn, 25% bredere
 
 **Berørte filer**: `frontend/js/views/browse-table.js`, `frontend/css/styles.css`, `version.json`

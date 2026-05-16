@@ -126,6 +126,10 @@ export function initTable(container, state, api, cb) {
     // Extract numeric VLAN from e.g. "(tag=0) 32" → "32"
     const vlanMatch = vlan.match(/(\d+)\s*$/);
     const vlanNum   = vlanMatch ? vlanMatch[1] : "";
+    // Endpoint row for authz_acl (WLC ACL) and psk_key
+    const row      = (state.allRows || []).find(r => normalizeMac(r.mac || r.name) === normalizeMac(mac));
+    const authzAcl = row?.authz_acl || "";
+    const pskKey   = row?.psk_key   || "";
     const lines = [];
     // Auth: policy set name or auth method badge
     if (auth) {
@@ -133,18 +137,24 @@ export function initTable(container, state, api, cb) {
     } else if (authMethod) {
       lines.push(`<span class="ise-sess-row"><span class="ise-sess-lbl">${t("browse.sess_auth_label")}:</span> <span class="ise-sess-val ise-sess-badge ise-sess-method">${esc(authMethod.toUpperCase())}</span></span>`);
     }
-    // Profiles: one per line, no label. VLAN number appended to any profile whose name contains "VLAN".
+    // Profiles: one per line, no label. Contextual value appended based on profile name pattern.
+    let daclInProfile = false;
     if (profs.length) {
       for (const p of profs) {
-        const isVlanProf = vlanNum && /vlan/i.test(p);
-        const label = isVlanProf ? `${esc(p)}:${esc(vlanNum)}` : esc(p);
+        let suffix = "";
+        if (/vlan/i.test(p) && vlanNum)           { suffix = vlanNum; }
+        else if (/dacl/i.test(p) && dacl)         { suffix = dacl; daclInProfile = true; }
+        else if (/airspace/i.test(p) && authzAcl) { suffix = authzAcl; }
+        else if (/psk.*key/i.test(p) && pskKey)   { suffix = state.pskShowKey ? pskKey : "***"; }
+        const label = suffix ? `${esc(p)}:${esc(suffix)}` : esc(p);
         lines.push(`<span class="ise-sess-row ise-sess-prof">${label}</span>`);
       }
     } else if (authz) {
       lines.push(`<span class="ise-sess-row ise-sess-prof">${esc(authz)}</span>`);
     }
-    if (dacl) lines.push(`<span class="ise-sess-row"><span class="ise-sess-lbl">${t("browse.sess_dacl_label")}:</span> <span class="ise-sess-val ise-sess-badge ise-sess-dacl">${esc(dacl)}</span></span>`);
-    if (sgt)  lines.push(`<span class="ise-sess-row"><span class="ise-sess-lbl">${t("browse.sess_sgt_label")}:</span> <span class="ise-sess-val ise-sess-badge ise-sess-sgt">${esc(sgt)}</span></span>`);
+    // DACL badge only if not already shown inline via Endpoint_DACL profile
+    if (dacl && !daclInProfile) lines.push(`<span class="ise-sess-row"><span class="ise-sess-lbl">${t("browse.sess_dacl_label")}:</span> <span class="ise-sess-val ise-sess-badge ise-sess-dacl">${esc(dacl)}</span></span>`);
+    if (sgt) lines.push(`<span class="ise-sess-row"><span class="ise-sess-lbl">${t("browse.sess_sgt_label")}:</span> <span class="ise-sess-val ise-sess-badge ise-sess-sgt">${esc(sgt)}</span></span>`);
     return `<div class="ise-sess-combo">${lines.join("")}</div>`;
   }
 
