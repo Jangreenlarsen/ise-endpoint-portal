@@ -380,6 +380,23 @@ async def _handle_message_body(body: bytes, cache) -> None:  # type: ignore[no-u
         if "DISCONN" in state_upper or state_upper in ("STOPPED", "TERMINATED"):
             await cache.remove(info.mac)
         else:
+            # pxGrid STOMP-events sender ikke policy_set_name, authz_rule_name,
+            # endpoint_policy, dacl, vlan, cts_security_group. Bevar eksisterende
+            # MnT-beriget data så det ikke slettes ved næste session-event.
+            existing = await cache.get(info.mac)
+            if existing:
+                if not info.policy_set_name:
+                    info.policy_set_name = existing.policy_set_name
+                if not info.authz_rule_name:
+                    info.authz_rule_name = existing.authz_rule_name
+                if not info.endpoint_policy:
+                    info.endpoint_policy = existing.endpoint_policy
+                if not info.dacl:
+                    info.dacl = existing.dacl
+                if not info.vlan:
+                    info.vlan = existing.vlan
+                if not info.cts_security_group:
+                    info.cts_security_group = existing.cts_security_group
             await cache.upsert(info)
 
 
@@ -495,6 +512,14 @@ def _build_session_info(d: dict[str, Any]) -> SessionInfo:
         or d.get("selectedAuthorizationRuleName", "")
         or d.get("azRuleName", "")
         or d.get("authzRuleName", "")
+        or d.get("AuthorizationPolicyMatchedRule", "")
+        or ""
+    )
+    policy_set_name = str(
+        d.get("policySetName", "")
+        or d.get("ISEPolicySetName", "")
+        or d.get("isePolicySetName", "")
+        or d.get("ise_policy_set_name", "")
         or ""
     )
     return SessionInfo(
@@ -503,7 +528,7 @@ def _build_session_info(d: dict[str, Any]) -> SessionInfo:
         audit_session_id=str(d.get("auditSessionId", "")),
         nas_ip=nas_ip,
         user_name=str(d.get("userName", "") or d.get("username", "")),
-        policy_set_name=str(d.get("policySetName", "")),
+        policy_set_name=policy_set_name,
         authz_profiles=[str(p) for p in azn_raw if p],
         authz_rule_name=authz_rule_name,
         use_case=str(d.get("useCase", "")),
@@ -578,17 +603,24 @@ async def _reconcile_from_pxgrid(cache, sessions: list[dict]) -> None:
             # Preserve nas_device_type/nas_name from disk if NAS cache not loaded yet.
             nas_device_type = info.nas_device_type or (existing.nas_device_type if existing else "")
             nas_name = info.nas_name or (existing.nas_name if existing else "")
+            # Bevar MnT-beriget data fra eksisterende entry — pxGrid getSessions
+            # returnerer ikke endpoint_policy, dacl, vlan, cts_security_group og
+            # heller ikke altid policy_set_name/authz_rule_name.
             info_with_mac = SessionInfo(
                 mac=mac,
                 state=info.state or "STARTED",
                 audit_session_id=info.audit_session_id,
                 nas_ip=info.nas_ip,
                 user_name=info.user_name,
-                policy_set_name=info.policy_set_name,
+                policy_set_name=info.policy_set_name or (existing.policy_set_name if existing else ""),
                 authz_profiles=info.authz_profiles,
-                authz_rule_name=info.authz_rule_name,
+                authz_rule_name=info.authz_rule_name or (existing.authz_rule_name if existing else ""),
                 nas_name=nas_name,
                 nas_device_type=nas_device_type,
+                endpoint_policy=existing.endpoint_policy if existing else "",
+                dacl=existing.dacl if existing else "",
+                vlan=existing.vlan if existing else "",
+                cts_security_group=existing.cts_security_group if existing else "",
                 raw=info.raw,
             )
             if mac not in cached_by_mac:

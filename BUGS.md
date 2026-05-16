@@ -9,6 +9,10 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 ## Åbne
 
+- `[fixed 5.3.31 build 0347] 2026-05-16 — MnT-beriget data slettes ved næste STOMP-event` — `_handle_message_body` kaldte `cache.upsert(info)` med en frisk `SessionInfo` der har tomme MnT-felter — slettede policy_set_name/authz_rule_name/dacl/vlan/sgt ved enhver efterfølgende session-event. `_reconcile_from_pxgrid` havde samme problem. Fix: eksisterende cache-entry slås op og MnT-felter bevares ved merge inden upsert. **Berørte filer:** `backend/app/pxgrid/session_worker.py`.
+
+- `[fixed 5.3.31 build 0347] 2026-05-16 — Enrichment kørte kun ved pxGrid-reconnect, ikke ved startup` — Sessioner fra disk-cache (load_from_disk) fik aldrig MnT-berigelse medmindre pxGrid genoprettede forbindelsen. Fix: periodisk enrichment-task kører ved startup (45s delay) og derefter hvert 5. min via `_mnt_enrich_loop` i `main.py`. **Berørte filer:** `backend/app/main.py`.
+
 - `[fixed 5.3.30 build 0346] 2026-05-16 — Session-kolonne viser ikke Auth/Authz politik-navne` — `fetch_session_by_mac` kaldte kun MnT Session/MACAddress som ikke indeholder ISEPolicySetName/AuthorizationPolicyMatchedRule. Disse felter sidder i MnT **AuthStatus/MACAddress** — men probe brugte forkert URL (manglede påkrævede `/{seconds}/{records}/{framed}` path-params og fik 404). Fix: `fetch_session_by_mac` kalder nu BEGGE endpoints; AuthStatus-URL udvidet til `/3600/25/All`; `_enrich_sessions_from_mnt` populerer `policy_set_name` + `authz_rule_name` fra MnT. **Berørte filer:** `backend/app/ise/mnt_sessions.py`, `backend/app/pxgrid/session_worker.py`.
 
 - `[fixed 5.3.30 build 0346] 2026-05-16 — ISE Profil-kolonne redundant med eksisterende Profil-kolonne` — Ny `ise_profile`-kolonne (b0345) viste `endpoint_policy` fra MnT — dublerede den eksisterende "Profil"-kolonne (vendor/profileName fra ERS). Fjernet kolonne inkl. CSS, i18n, template. **Berørte filer:** `frontend/js/views/browse-utils.js`, `frontend/js/views/browse-table.js`, `frontend/js/i18n.js`, `frontend/css/styles.css`.

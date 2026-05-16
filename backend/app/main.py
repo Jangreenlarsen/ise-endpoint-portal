@@ -27,7 +27,7 @@ from app.core.logging import setup_logging
 from app.core.version import FULL as APP_VERSION, VERSION
 from app.ise.client import close_ise_client
 from app.pxgrid.session_cache import get_cache as get_session_cache
-from app.pxgrid.session_worker import get_worker as get_pxgrid_worker
+from app.pxgrid.session_worker import _enrich_sessions_from_mnt, get_worker as get_pxgrid_worker
 from app.services.audit_retention import get_worker as get_audit_retention_worker
 from app.services.cache_prewarm import get_worker as get_prewarm_worker
 from app.services.cache_sync import get_worker as get_cache_sync_worker
@@ -100,12 +100,27 @@ async def lifespan(_: FastAPI):
 
     _autosave_task = asyncio.create_task(_session_autosave_loop(), name="session-cache-autosave")
 
+    # Periodisk MnT-berigelse af session-cache (ISEPolicySetName, authorizationRuleName, m.m.).
+    # Venter 45s ved start (pxGrid-worker når at forbinde + reconcile), derefter hvert 5. min.
+    async def _mnt_enrich_loop():
+        await asyncio.sleep(45)
+        while True:
+            await _enrich_sessions_from_mnt(get_session_cache())
+            await asyncio.sleep(300)
+
+    _mnt_enrich_task = asyncio.create_task(_mnt_enrich_loop(), name="mnt-session-enrich")
+
     try:
         yield
     finally:
         _autosave_task.cancel()
+        _mnt_enrich_task.cancel()
         try:
             await _autosave_task
+        except (asyncio.CancelledError, Exception):  # noqa: BLE001
+            pass
+        try:
+            await _mnt_enrich_task
         except (asyncio.CancelledError, Exception):  # noqa: BLE001
             pass
         await get_prewarm_worker().stop()

@@ -9,6 +9,8 @@ Alle nye features registreres her FØR implementering påbegyndes.
 
 ## Planlagt / Under implementering
 
+- `[done 5.3.31] 2026-05-16 — Browse: Session-kolonne MnT-data robust og persistent` — MnT-beriget data bevares nu på tværs af pxGrid STOMP-events og reconcile-runs. Periodisk enrichment-loop (startup + hvert 5. min) sikrer at Auth/Authz politik-navne populeres selv uden pxGrid-reconnect.
+
 - `[done 5.3.30] 2026-05-16 — Browse: Session-kolonne viser Auth + Authz politik-navne fra MnT AuthStatus` — MnT `AuthStatus/MACAddress/{mac}/3600/25/All` tilføjet til enrichment-pipeline. ISEPolicySetName → `policy_set_name` og AuthorizationPolicyMatchedRule → `authz_rule_name` populeres nu korrekt via `_enrich_sessions_from_mnt`. Redundant ISE Profil-kolonne fjernet (dublerede eksisterende Profil-kolonne).
 
 - `[done 5.3.29] 2026-05-15 — Browse: MnT-berigelse af Session-kolonne (DACL, VLAN, SGT, endpoint_policy)` — Ny "ISE Profil"-kolonne viser ISE Profiler-tildelt policy (endpoint_policy) som en badge. Session-kolonnen udvides med DACL-navn, VLAN og TrustSec SGT-navn. Data hentes fra MnT Session/MACAddress asynkront efter pxGrid-reconnect via ny `_enrich_sessions_from_mnt()` background-task. Ny `fetch_session_by_mac()` i `mnt_sessions.py`. Nye felter i `SessionInfo`, `PxGridSessionInfoResponse` og SSE-broadcasts. CSS-badges for DACL (lilla) og SGT (gul). **Berørte filer:** `backend/app/pxgrid/session_cache.py`, `backend/app/pxgrid/session_worker.py`, `backend/app/ise/mnt_sessions.py`, `backend/app/schemas/settings.py`, `backend/app/api/pxgrid.py`, `frontend/js/views/browse-utils.js`, `frontend/js/views/browse-table.js`, `frontend/js/i18n.js`, `frontend/css/styles.css`.

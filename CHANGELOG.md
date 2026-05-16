@@ -3,6 +3,15 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.31 build 0347] — 2026-05-16 — fix: MnT-data slettes ved STOMP-events + periodisk enrichment
+
+**Berørte filer**: `backend/app/pxgrid/session_worker.py`, `backend/app/main.py`, `version.json`, `BUGS.md`, `FEATURES.md`
+
+- **Kritisk bug**: `_handle_message_body` oprettede ny `SessionInfo` med tomme MnT-felter og overskrev `policy_set_name`, `authz_rule_name`, `dacl`, `vlan`, `cts_security_group` ved enhver pxGrid STOMP-event. Fix: merge af MnT-felter fra existing cache-entry inden upsert.
+- **Reconcile fix**: `_reconcile_from_pxgrid` bevarede ikke MnT-felter fra existing entry — rettet.
+- **Startup enrichment**: Ny `_mnt_enrich_loop()` i `main.py` — 45s delay + hvert 5. min. Sikrer berigelse af disk-cache sessioner uden pxGrid-reconnect.
+- **Bredere feltnavn-dækning**: `_build_session_info` prøver `ISEPolicySetName`/`isePolicySetName` + `AuthorizationPolicyMatchedRule` for policy_set_name/authz_rule_name.
+
 ## [5.3.30 build 0346] — 2026-05-16 — fix: Session-kolonne Auth/Authz politik-navne + fjern redundant ISE Profil-kolonne
 
 **Berørte filer**: `backend/app/ise/mnt_sessions.py`, `backend/app/pxgrid/session_worker.py`, `frontend/js/views/browse-utils.js`, `frontend/js/views/browse-table.js`, `frontend/js/i18n.js`, `frontend/css/styles.css`, `version.json`, `BUGS.md`, `FEATURES.md`
