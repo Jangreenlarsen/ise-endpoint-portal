@@ -3,6 +3,15 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.39 build 0356] — 2026-05-16 — feat: Simulate match viser ukendte RADIUS-betingelser enkeltvist
+
+**Berørte filer**: `frontend/js/views/browse-detail.js`, `frontend/js/i18n.js`, `frontend/css/styles.css`, `version.json`
+
+- Skippede betingelser (RADIUS/reference) vises nu én pr. linje som `? Radius.Dict.Attribut operator <value>` i stedet for blot tælle dem.
+- Ny CSS: `.match-skip` (orange/gul), `.match-cond-op` (grå operator), `.match-cond-ref` (kursiv reference).
+- Overskriften ændret til "Følgende N betingelse(r) kræver live RADIUS-session for komplet match:".
+- Reference-betingelser (`[navn]`) vises som kursiv tekst uden operator/value.
+
 ## [5.3.38 build 0354] — 2026-05-16 — feat: Session-kolonne profil-kontekst — WLC ACL, PSK-nøgle og DACL vist inline
 
 **Berørte filer**: `frontend/js/views/browse-table.js`, `version.json`

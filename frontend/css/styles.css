@@ -2867,12 +2867,18 @@ body.register-route .login-card {
 .match-rule-name    { font-weight: 600; margin-bottom: 0.25rem; }
 .match-profiles     { margin-bottom: 0.25rem; }
 .match-cond-row     { padding: 1px 0; font-size: 0.78rem; font-family: monospace; }
-.match-partial-note { margin-top: 0.3rem; font-size: 0.78rem; color: #92400e; }
+.match-partial-note { margin-top: 0.4rem; font-size: 0.78rem; color: #92400e; font-style: italic; }
 .match-ok   { color: #16a34a; }
 .match-fail { color: #dc2626; }
+.match-skip { color: #b45309; }
+.match-cond-op  { color: #6b7280; }
+.match-cond-ref { font-style: italic; color: #6b7280; }
 [data-theme="dark"] .match-hit      { background: #052e16; border-color: #166534; }
 [data-theme="dark"] .match-possible { background: #1c1a04; border-color: #854d0e; }
 [data-theme="dark"] .match-partial-note { color: #fbbf24; }
+[data-theme="dark"] .match-skip         { color: #fbbf24; }
+[data-theme="dark"] .match-cond-op      { color: #9ca3af; }
+[data-theme="dark"] .match-cond-ref     { color: #9ca3af; }
 /* Wizard in detail */
 .policy-wizard-card {
   margin-top: 0.5rem;

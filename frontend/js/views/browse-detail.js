@@ -328,8 +328,15 @@ export function initDetail(container, state, api, cb) {
       </div>`
     ).join("") || "";
     if (r.partial_match) {
+      const skippedRows = (skipped || []).map((c) => {
+        const isRef = c.operator === "ref";
+        const label = isRef
+          ? `<span class="match-cond-ref">${esc(c.attribute)}</span>`
+          : `${esc(c.attribute)} <span class="match-cond-op">${esc(c.operator)}</span> <em>${esc(c.value)}</em>`;
+        return `<div class="match-cond-row match-skip">? ${label}</div>`;
+      }).join("");
       const skippedNote = skipped?.length
-        ? `<div class="match-partial-note">${t("detail.policy_partial_match").replace("{n}", skipped.length)}</div>`
+        ? `<div class="match-partial-note">${t("detail.policy_partial_match").replace("{n}", skipped.length)}</div>${skippedRows}`
         : "";
       const matchedLine = t("detail.policy_possible_match")
         .replace("{name}", esc(r.matched_rule_name))
