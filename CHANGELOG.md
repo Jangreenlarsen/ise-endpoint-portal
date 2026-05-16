@@ -3,6 +3,15 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.36 build 0352] — 2026-05-16 — feat: Threading watchdog timer — tvinger genstart ved hængt asyncio event loop
+
+**Berørte filer**: `backend/app/core/watchdog.py` (ny), `backend/app/main.py`, `version.json`
+
+- Ny `watchdog.py`: daemon-tråd udenfor asyncio event loop overvåger heartbeat-timestamp via `beat()`.
+- Hvis heartbeat er ældre end `timeout_s` (default 120s): `logger.critical(...)` + `logging.shutdown()` + `os._exit(1)`.
+- Startup grace period: watchdog sover `timeout_s` ved start inden første tjek.
+- `main.py`: `start_watchdog(timeout_s=120)` + asyncio `_heartbeat_task` (kalder `watchdog_beat()` hvert 10s) startes i lifespan startup. Task cancelles ved shutdown.
+
 ## [5.3.35 build 0351] — 2026-05-16 — chore: Session-kolonne 25% bredere + op til 4 linjer
 
 **Berørte filer**: `frontend/css/styles.css`, `version.json`

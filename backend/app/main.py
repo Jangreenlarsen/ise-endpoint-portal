@@ -24,6 +24,7 @@ from app.api import update as update_api
 from app.core.audit_store import init_db as init_audit_db
 from app.core.config import settings
 from app.core.logging import setup_logging
+from app.core.watchdog import beat as watchdog_beat, start_watchdog
 from app.core.version import FULL as APP_VERSION, VERSION
 from app.ise.client import close_ise_client
 from app.pxgrid.session_cache import get_cache as get_session_cache
@@ -83,6 +84,15 @@ async def lifespan(_: FastAPI):
         _n = get_session_cache().load_from_disk(_sess_cache_path)
         logger.info("pxGrid session cache: indlæst %d sessioner fra disk ved start", _n)
 
+    start_watchdog(timeout_s=120)
+
+    async def _heartbeat_loop():
+        while True:
+            watchdog_beat()
+            await asyncio.sleep(10)
+
+    _heartbeat_task = asyncio.create_task(_heartbeat_loop(), name="watchdog-heartbeat")
+
     get_cache_sync_worker().start()
     get_audit_retention_worker().start()
     get_pxgrid_worker().start()
@@ -113,8 +123,13 @@ async def lifespan(_: FastAPI):
     try:
         yield
     finally:
+        _heartbeat_task.cancel()
         _autosave_task.cancel()
         _mnt_enrich_task.cancel()
+        try:
+            await _heartbeat_task
+        except (asyncio.CancelledError, Exception):  # noqa: BLE001
+            pass
         try:
             await _autosave_task
         except (asyncio.CancelledError, Exception):  # noqa: BLE001

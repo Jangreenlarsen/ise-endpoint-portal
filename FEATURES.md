@@ -9,6 +9,8 @@ Alle nye features registreres her FØR implementering påbegyndes.
 
 ## Planlagt / Under implementering
 
+- `[done 5.3.36] 2026-05-16 — Backend: Threading watchdog timer` — Daemon-tråd udenfor asyncio event loop. Kalder `os._exit(1)` hvis heartbeat er ældre end 120s. Systemd/Docker restart-policy genstarter processen automatisk. Løser problemet med hængt backend.
+
 - `[done 5.3.33] 2026-05-16 — Browse: Session-kolonne viser auth_method + authz_profiles + identity_group fra MnT` — ISE 3.4 MnT AuthStatus returnerer IKKE policy-navne. Nu vises: Auth-metode (MAB-badge), authz-profiler fra pxGrid back-filled via MnT selected_azn_profiles, identity_group, VLAN, DACL, SGT.
 
 - `[done 5.3.31] 2026-05-16 — Browse: Session-kolonne MnT-data robust og persistent` — MnT-beriget data bevares nu på tværs af pxGrid STOMP-events og reconcile-runs. Periodisk enrichment-loop (startup + hvert 5. min) sikrer at Auth/Authz politik-navne populeres selv uden pxGrid-reconnect.
