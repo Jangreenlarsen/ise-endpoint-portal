@@ -301,6 +301,7 @@ class PolicyService:
                 profiles = entry.get("profile") or inner.get("profile") or []
                 if isinstance(profiles, str):
                     profiles = [profiles]
+                has_skipped = any(d.skipped for d in details)
                 return PolicyMatchResult(
                     policy_set_id=policy_set_id,
                     policy_set_name=ps_name,
@@ -309,6 +310,7 @@ class PolicyService:
                     matched_rule_rank=inner.get("rank"),
                     profiles=profiles,
                     condition_details=details,
+                    partial_match=has_skipped,
                 )
 
         return PolicyMatchResult(

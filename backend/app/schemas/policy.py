@@ -96,6 +96,7 @@ class PolicyMatchResult(BaseModel):
     profiles: list[str] = []
     condition_details: list[MatchedCondition] = []
     no_rules: bool = False
+    partial_match: bool = False   # True when match relies on skipped (RADIUS) conditions
 
 
 # ── List response ────────────────────────────────────────────────────────────

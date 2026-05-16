@@ -27,14 +27,20 @@ export function initDetail(container, state, api, cb) {
     try {
       const d = await api.getEndpoint(id);
 
-      // Refresh caValues after the detail fetch — auto_discover_values may have
-      // written new values to the store during the ISE call above. Must be
-      // sequential (not parallel) so the JSON write lands before we read it.
-      const caData = await api.listCustomAttributes().catch(() => null);
+      // Refresh caValues + DACL list after the detail fetch so the dropdowns
+      // always reflect the current ISE state (auto_discover may have written
+      // new attribute values; DACLs may have been added/removed in ISE).
+      const [caData, freshDacls] = await Promise.all([
+        api.listCustomAttributes().catch(() => null),
+        api.listDacls().catch(() => null),
+      ]);
       if (caData && Array.isArray(caData.attributes)) {
         for (const a of caData.attributes) {
           if (a.name in state.caValues) state.caValues[a.name] = a.values;
         }
+      }
+      if (freshDacls && Array.isArray(freshDacls)) {
+        state.caValues.AuthzACL = freshDacls.map((d) => d.name).filter(Boolean).sort();
       }
 
       state.detailOriginalGroupId = d.group_id || "";
@@ -321,9 +327,21 @@ export function initDetail(container, state, api, cb) {
         ${c.matched ? "✓" : "✗"} ${esc(c.attribute)} ${esc(c.operator)} <em>${esc(c.value)}</em>
       </div>`
     ).join("") || "";
-    const skippedNote = skipped?.length
-      ? `<div class="hint" style="margin-top:.25rem">${t("detail.policy_skipped").replace("{n}", skipped.length)}</div>`
-      : "";
+    if (r.partial_match) {
+      const skippedNote = skipped?.length
+        ? `<div class="match-partial-note">${t("detail.policy_partial_match").replace("{n}", skipped.length)}</div>`
+        : "";
+      const matchedLine = t("detail.policy_possible_match")
+        .replace("{name}", esc(r.matched_rule_name))
+        .replace("{rank}", r.matched_rule_rank);
+      return `
+        <div class="match-result-card match-possible">
+          <div class="match-rule-name"><strong>${matchedLine}</strong></div>
+          <div class="match-profiles">${t("detail.policy_profiles")} ${profiles}</div>
+          ${detailRows}
+          ${skippedNote}
+        </div>`;
+    }
     const matchedLine = t("detail.policy_matched")
       .replace("{name}", esc(r.matched_rule_name))
       .replace("{rank}", r.matched_rule_rank);
@@ -332,7 +350,6 @@ export function initDetail(container, state, api, cb) {
         <div class="match-rule-name"><strong>${matchedLine}</strong></div>
         <div class="match-profiles">${t("detail.policy_profiles")} ${profiles}</div>
         ${detailRows}
-        ${skippedNote}
       </div>`;
   }
 

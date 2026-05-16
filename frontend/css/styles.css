@@ -2858,13 +2858,18 @@ body.register-route .login-card {
   font-size: 0.82rem;
   margin-top: 0.25rem;
 }
-.match-hit  { background: #f0fdf4; border: 1px solid #86efac; }
-.match-miss { background: #fff7ed; border: 1px solid #fed7aa; }
-.match-rule-name { font-weight: 600; margin-bottom: 0.25rem; }
-.match-profiles  { margin-bottom: 0.25rem; }
-.match-cond-row  { padding: 1px 0; font-size: 0.78rem; font-family: monospace; }
+.match-hit      { background: #f0fdf4; border: 1px solid #86efac; }
+.match-miss     { background: #fff7ed; border: 1px solid #fed7aa; }
+.match-possible { background: #fefce8; border: 1px solid #fde047; }
+.match-rule-name    { font-weight: 600; margin-bottom: 0.25rem; }
+.match-profiles     { margin-bottom: 0.25rem; }
+.match-cond-row     { padding: 1px 0; font-size: 0.78rem; font-family: monospace; }
+.match-partial-note { margin-top: 0.3rem; font-size: 0.78rem; color: #92400e; }
 .match-ok   { color: #16a34a; }
 .match-fail { color: #dc2626; }
+[data-theme="dark"] .match-hit      { background: #052e16; border-color: #166534; }
+[data-theme="dark"] .match-possible { background: #1c1a04; border-color: #854d0e; }
+[data-theme="dark"] .match-partial-note { color: #fbbf24; }
 /* Wizard in detail */
 .policy-wizard-card {
   margin-top: 0.5rem;

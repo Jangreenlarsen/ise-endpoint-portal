@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.34 build 0350] — 2026-05-16 — fix: Simulate match viser ⚠ ved RADIUS-betingelser + authzACL refresh
+
+**Berørte filer**: `backend/app/schemas/policy.py`, `backend/app/services/policy_service.py`, `frontend/js/views/browse-detail.js`, `frontend/js/i18n.js`, `frontend/css/styles.css`, `version.json`
+
+- **Simulate match partial_match**: `PolicyMatchResult` har nyt felt `partial_match: bool`. Sættes `True` når den matchede regel har én eller flere skippede (RADIUS/reference) betingelser. Frontend viser gult ⚠ kort "Muligt match" med forklaring i stedet for grønt ✓ — brugeren ser nu tydeligt at matchet IKKE er bekræftet.
+- **authzACL refresh**: `openDetail()` henter nu `api.listDacls()` parallelt med `api.listCustomAttributes()` og opdaterer `state.caValues.AuthzACL` — dropdown afspejler nu aktuelle ISE DACLs uden sidgenindlæsning.
+- **CSS**: `.match-possible` (gul), `.match-partial-note` badge inkl. dark-theme varianter.
+
 ## [5.3.33 build 0349] — 2026-05-16 — fix: Session-kolonne viser auth_method + authz_profiles fra MnT back-fill
 
 **Berørte filer**: `backend/app/ise/mnt_sessions.py`, `backend/app/pxgrid/session_cache.py`, `backend/app/pxgrid/session_worker.py`, `backend/app/schemas/settings.py`, `backend/app/api/pxgrid.py`, `frontend/js/views/browse-table.js`, `frontend/js/i18n.js`, `frontend/css/styles.css`, `version.json`
