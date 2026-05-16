@@ -755,7 +755,7 @@ th[data-col="nas"], td[data-col="nas"] {
   overflow: hidden;
 }
 th[data-col="ise_session"], td[data-col="ise_session"] {
-  width: 120px; min-width: 120px; max-width: 120px;
+  width: 150px; min-width: 150px; max-width: 150px;
   overflow: hidden;
 }
 
@@ -782,12 +782,15 @@ th.authz-col {
 /* ISE Session kolonne — Auth + Authz kombinations-celle */
 td.ise-session-col {
   overflow: hidden;
+  vertical-align: top;
 }
 .ise-sess-combo {
   display: flex;
   flex-direction: column;
-  gap: 0.1rem;
+  gap: 0.15rem;
   line-height: 1.3;
+  max-height: 66px;   /* maks 4 linjer × ~15px + 3 gaps */
+  overflow: hidden;
 }
 .ise-sess-row {
   display: block;

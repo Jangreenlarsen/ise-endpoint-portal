@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.35 build 0351] — 2026-05-16 — chore: Session-kolonne 25% bredere + op til 4 linjer
+
+**Berørte filer**: `frontend/css/styles.css`, `version.json`
+
+- `th/td[data-col="ise_session"]`: 120px → 150px (+25%).
+- `.ise-sess-combo`: `max-height: 66px` (≈ 4 × ~15px linjer + gaps), `overflow: hidden`, `vertical-align: top` på `td.ise-session-col`.
+
 ## [5.3.34 build 0350] — 2026-05-16 — fix: Simulate match viser ⚠ ved RADIUS-betingelser + authzACL refresh
 
 **Berørte filer**: `backend/app/schemas/policy.py`, `backend/app/services/policy_service.py`, `frontend/js/views/browse-detail.js`, `frontend/js/i18n.js`, `frontend/css/styles.css`, `version.json`
