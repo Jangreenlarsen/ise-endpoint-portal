@@ -225,6 +225,47 @@ async def worker_status() -> PxGridWorkerStatusResponse:
 
 
 @router.get(
+    "/sessions/{mac}/debug",
+    dependencies=[Depends(require_admin)],
+    summary="Diagnostik: cached session + frisk pxGrid+MnT data for en MAC (admin only)",
+)
+async def debug_session(mac: str) -> dict:
+    """Returnerer tre datasæt for én MAC til at diagnosticere Session-kolonne:
+    1. `cached`: hvad der pt. er i session-cache (hvad frontend ser)
+    2. `mnt`: frisk MnT probe (Session/MACAddress + AuthStatus/MACAddress)
+    3. `pxgrid_fields`: hvilke policy-felter pxGrid leverede i cache.raw
+    """
+    from app.ise.mnt_sessions import fetch_session_by_mac, probe_session_detail
+    norm = mac.upper().replace("-", ":").strip()
+    cache = get_cache()
+    entry = await cache.get(norm)
+    cached_data = entry.to_dict() if entry else None
+    # Vis hvad pxGrid raw-payload faktisk indeholder (policy-relevante felter)
+    pxgrid_policy_fields: dict = {}
+    if entry and entry.raw:
+        for key in sorted(entry.raw.keys()):
+            v = entry.raw[key]
+            if isinstance(v, (str, list, int, float, bool)) or v is None:
+                pxgrid_policy_fields[key] = v
+    # Frisk MnT-data
+    try:
+        mnt_enrichment = await fetch_session_by_mac(norm)
+    except Exception as exc:  # noqa: BLE001
+        mnt_enrichment = {"error": str(exc)}
+    try:
+        mnt_probe = await probe_session_detail(norm)
+    except Exception as exc:  # noqa: BLE001
+        mnt_probe = {"error": str(exc)}
+    return {
+        "mac": norm,
+        "cached": cached_data,
+        "pxgrid_raw_all_fields": pxgrid_policy_fields,
+        "mnt_enrichment_result": mnt_enrichment,
+        "mnt_probe": mnt_probe,
+    }
+
+
+@router.get(
     "/probe/mnt/{mac}",
     dependencies=[Depends(require_admin)],
     summary="Diagnostik: hent alle MnT-felter for en MAC (admin only)",

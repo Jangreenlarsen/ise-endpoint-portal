@@ -3,6 +3,15 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.3.32 build 0348] — 2026-05-16 — feat: real-time MnT trigger ved pxGrid-event + debug endpoint
+
+**Berørte filer**: `backend/app/pxgrid/session_worker.py`, `backend/app/pxgrid/client.py`, `backend/app/api/pxgrid.py`, `version.json`
+
+- **Real-time MnT enrichment**: `_handle_message_body` trigger nu `_enrich_single_from_mnt(mac)` som asyncio task ved enhver ny/opdateret pxGrid session der mangler policy_set_name/authz_rule_name. 15s timeout. Logger hvad MnT returnerer.
+- **pxGrid native feltudtræk**: `_build_session_info` udtrækker nu `securityGroup`→cts_security_group, `vlan`→vlan, `dacl`→dacl, `endpointProfile`→endpoint_policy direkte fra pxGrid payload (disse felter er spec'et i pxGrid 2.0 og var aldrig udtrukket).
+- **Debug endpoint**: `GET /api/pxgrid/sessions/{mac}/debug` (admin) returnerer cached session, alle pxGrid raw-felter, frisk MnT enrichment-resultat og fuld MnT probe.
+- **getSessions logging**: Viser nu alle policy-relevante felter (policySetName, authorizationRuleName, securityGroup, vlan, dacl, endpointProfile) fra første session ved reconnect.
+
 ## [5.3.31 build 0347] — 2026-05-16 — fix: MnT-data slettes ved STOMP-events + periodisk enrichment
 
 **Berørte filer**: `backend/app/pxgrid/session_worker.py`, `backend/app/main.py`, `version.json`, `BUGS.md`, `FEATURES.md`

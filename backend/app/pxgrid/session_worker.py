@@ -380,9 +380,8 @@ async def _handle_message_body(body: bytes, cache) -> None:  # type: ignore[no-u
         if "DISCONN" in state_upper or state_upper in ("STOPPED", "TERMINATED"):
             await cache.remove(info.mac)
         else:
-            # pxGrid STOMP-events sender ikke policy_set_name, authz_rule_name,
-            # endpoint_policy, dacl, vlan, cts_security_group. Bevar eksisterende
-            # MnT-beriget data så det ikke slettes ved næste session-event.
+            # Bevar MnT-beriget data fra eksisterende entry — pxGrid STOMP-events
+            # sender ikke altid policy_set_name, authz_rule_name osv.
             existing = await cache.get(info.mac)
             if existing:
                 if not info.policy_set_name:
@@ -398,6 +397,14 @@ async def _handle_message_body(body: bytes, cache) -> None:  # type: ignore[no-u
                 if not info.cts_security_group:
                     info.cts_security_group = existing.cts_security_group
             await cache.upsert(info)
+            # Trigger real-time MnT-berigelse hvis policy-navne mangler.
+            # Kørte ikke her tidligere — kun i periodisk loop. Nu berige
+            # øjeblikkeligt ved enhver ny/opdateret session fra pxGrid.
+            if not info.policy_set_name or not info.authz_rule_name:
+                asyncio.create_task(
+                    _enrich_single_from_mnt(cache, info.mac),
+                    name=f"mnt-enrich-{info.mac[:8]}",
+                )
 
 
 def _extract_sessions(payload: Any) -> list[dict[str, Any]]:
@@ -522,6 +529,32 @@ def _build_session_info(d: dict[str, Any]) -> SessionInfo:
         or d.get("ise_policy_set_name", "")
         or ""
     )
+    # pxGrid getSessions + STOMP events kan indeholde dacl/vlan/sgt/endpointProfile
+    # direkte i payload — udtrækkes her så vi ikke er afhængige af MnT-kald for disse.
+    endpoint_policy = str(
+        d.get("endpointProfile", "")
+        or d.get("endpointPolicy", "")
+        or d.get("EndpointProfile", "")
+        or ""
+    )
+    dacl = str(
+        d.get("dacl", "")
+        or d.get("downloadedDacl", "")
+        or d.get("coa_vpn_acl", "")
+        or ""
+    )
+    vlan = str(
+        d.get("vlan", "")
+        or d.get("tunnelPrivateGroupId", "")
+        or ""
+    )
+    cts_security_group = str(
+        d.get("securityGroup", "")
+        or d.get("ctsSecurityGroup", "")
+        or d.get("cts_security_group", "")
+        or d.get("sgt", "")
+        or ""
+    )
     return SessionInfo(
         mac=str(mac),
         state=str(d.get("state", "") or d.get("sessionEvent", "")),
@@ -534,6 +567,10 @@ def _build_session_info(d: dict[str, Any]) -> SessionInfo:
         use_case=str(d.get("useCase", "")),
         nas_name=nas_name,
         nas_device_type=nas_device_type,
+        endpoint_policy=endpoint_policy,
+        dacl=dacl,
+        vlan=vlan,
+        cts_security_group=cts_security_group,
         raw=d,
     )
 
@@ -748,6 +785,57 @@ async def _reconcile_from_mnt(cache) -> None:  # type: ignore[no-untyped-def]
             )
     except Exception as exc:  # noqa: BLE001
         logger.debug("pxgrid reconcile (MnT): uventet fejl: %s", exc)
+
+
+async def _enrich_single_from_mnt(cache, mac: str) -> None:  # type: ignore[no-untyped-def]
+    """Real-time MnT-berigelse for ét enkelt endpoint ved pxGrid-event.
+
+    Kaldes som fire-and-forget task fra _handle_message_body når pxGrid-event
+    ankommer med tomme policy_set_name/authz_rule_name. Kort timeout så vi
+    ikke ophober tasks ved travl ISE-trafik.
+    """
+    try:
+        from app.ise.mnt_sessions import fetch_session_by_mac
+    except ImportError:
+        return
+    try:
+        data = await asyncio.wait_for(fetch_session_by_mac(mac), timeout=15.0)
+        if not any(data.values()):
+            return
+        current = await cache.get(mac)
+        if not current:
+            return
+        updated = SessionInfo(
+            mac=current.mac,
+            state=current.state,
+            audit_session_id=current.audit_session_id,
+            nas_ip=current.nas_ip,
+            user_name=current.user_name,
+            policy_set_name=data.get("policy_set_name") or current.policy_set_name,
+            authz_profiles=current.authz_profiles,
+            authz_rule_name=data.get("authz_rule_name") or current.authz_rule_name,
+            use_case=current.use_case,
+            nas_name=current.nas_name,
+            nas_device_type=current.nas_device_type,
+            last_event_at=current.last_event_at,
+            endpoint_policy=data.get("endpoint_policy") or current.endpoint_policy,
+            dacl=data.get("dacl") or current.dacl,
+            vlan=data.get("vlan") or current.vlan,
+            cts_security_group=data.get("cts_security_group") or current.cts_security_group,
+            raw=current.raw,
+        )
+        if (updated.policy_set_name != current.policy_set_name
+                or updated.authz_rule_name != current.authz_rule_name
+                or updated.dacl != current.dacl):
+            logger.info(
+                "MnT real-time enrich [%s]: auth=%r authz=%r dacl=%r",
+                mac, updated.policy_set_name, updated.authz_rule_name, updated.dacl,
+            )
+            await cache.upsert(updated)
+    except asyncio.TimeoutError:
+        logger.debug("MnT real-time enrich timeout for %s", mac)
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("MnT real-time enrich fejlede for %s: %s", mac, exc)
 
 
 async def _enrich_sessions_from_mnt(cache) -> None:  # type: ignore[no-untyped-def]

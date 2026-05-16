@@ -9,6 +9,8 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 ## Åbne
 
+- `[investigating 5.3.32 build 0348] 2026-05-16 — Session-kolonne viser stadig kun authz_profiles` — Ukendt hvorfor ISE ikke returnerer policy_set_name/authz_rule_name fra hverken pxGrid getSessions eller MnT AuthStatus. Ny debug endpoint `GET /api/pxgrid/sessions/{mac}/debug` tilføjet for at diagnosticere. Real-time MnT enrichment trigger tilføjet ved pxGrid STOMP-events. Ny getSessions-logging viser alle policy-felter.
+
 - `[fixed 5.3.31 build 0347] 2026-05-16 — MnT-beriget data slettes ved næste STOMP-event` — `_handle_message_body` kaldte `cache.upsert(info)` med en frisk `SessionInfo` der har tomme MnT-felter — slettede policy_set_name/authz_rule_name/dacl/vlan/sgt ved enhver efterfølgende session-event. `_reconcile_from_pxgrid` havde samme problem. Fix: eksisterende cache-entry slås op og MnT-felter bevares ved merge inden upsert. **Berørte filer:** `backend/app/pxgrid/session_worker.py`.
 
 - `[fixed 5.3.31 build 0347] 2026-05-16 — Enrichment kørte kun ved pxGrid-reconnect, ikke ved startup` — Sessioner fra disk-cache (load_from_disk) fik aldrig MnT-berigelse medmindre pxGrid genoprettede forbindelsen. Fix: periodisk enrichment-task kører ved startup (45s delay) og derefter hvert 5. min via `_mnt_enrich_loop` i `main.py`. **Berørte filer:** `backend/app/main.py`.
