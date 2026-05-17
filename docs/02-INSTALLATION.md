@@ -1,4 +1,4 @@
-<!-- Version: 4.0.5 | Opdateret: 2026-05-10 -->
+<!-- Version: 5.5.0 | Opdateret: 2026-05-17 -->
 
 # 02 — Installation og første opsætning
 
@@ -11,8 +11,8 @@
 | Krav | Detaljer |
 |---|---|
 | Python | 3.11 eller nyere |
-| Git | Valgfri — kræves kun til klon-baseret installation |
-| Windows | 10/11 (anbefalet). Linux og macOS understøttes men er ikke testet |
+| Git | Kræves på Linux-server (til GitHub-opdatering fra portal). Valgfri på Windows. |
+| Windows | 10/11 (anbefalet). Linux understøttes og er testet i produktion. |
 
 ### Cisco ISE
 
@@ -188,85 +188,34 @@ nssm start HyperVisionISE
 
 ## Linux-server: opsætning af GitHub-deploy
 
-Hvis portalen er installeret på en Linux-server (f.eks. `/opt/hypervision`) uden git, kan GitHub bruges til at trække opdateringer. Følg disse trin én gang for at sætte det op — herefter er deploy en enkelt kommando.
+Portalen er open source og hostet på GitHub (public repository). Når git er sat op på serveren, kan admin hente opdateringer direkte fra **Settings → GitHub-opdatering** i portalen — uden at SSH til serveren.
+
+Følg disse trin **én gang** ved første installation.
 
 ### Første gang: initialiser git og kobl til GitHub
 
 ```bash
 cd /opt/hypervision
 
-# Undgå "dubious ownership"-fejl hvis mappen ejes af en anden bruger
-git config --global --add safe.directory /opt/hypervision
-
 # Initialiser git og sæt branch-navn
 git init
 git branch -m main
 
-# Kobl til GitHub-remote
+# Kobl til GitHub (repoet er public — ingen auth nødvendig)
 git remote add origin https://github.com/Jangreenlarsen/ise-endpoint-portal.git
-```
 
-### GitHub-autentificering
+# Tillad git-adgang for alle brugere på serveren (system-wide)
+# Kræves fordi portalen kører som en service-bruger (ikke root)
+git config --system --add safe.directory /opt/hypervision
 
-GitHub understøtter ikke password — brug enten **PAT** (hurtigst) eller **SSH-nøgle** (anbefalet til server).
-
-#### Option A: Personal Access Token (PAT)
-
-1. Gå til **github.com/settings/tokens**
-2. Klik **Generate new token (classic)**
-3. Giv den et navn, sæt `repo`-scope ✓, vælg udløbsdato
-4. Klik **Generate token** — kopiér tokenet (vises kun én gang)
-5. Gem tokenet på serveren så det ikke skal tastes igen:
-
-```bash
-git config credential.helper store
+# Hent og synkroniser kode
 git fetch origin main
-# Username: Jangreenlarsen
-# Password: <indsæt PAT>
-# Gemmes automatisk i ~/.git-credentials til næste gang
-```
-
-#### Option B: SSH-nøgle (anbefalet til produktion)
-
-```bash
-# Generer nøgle på serveren
-ssh-keygen -t ed25519 -C "hypervision-server" -f ~/.ssh/github -N ""
-
-# Vis den offentlige nøgle — kopiér outputtet
-cat ~/.ssh/github.pub
-```
-
-Tilføj nøglen på GitHub: **Settings → SSH and GPG keys → New SSH key** — indsæt det kopierede indhold.
-
-```bash
-# Skift remote til SSH-URL
-git remote set-url origin git@github.com:Jangreenlarsen/ise-endpoint-portal.git
-
-# Test forbindelsen
-ssh -T git@github.com -i ~/.ssh/github
-```
-
-### Hent og anvend kode fra GitHub
-
-```bash
-cd /opt/hypervision
-git fetch origin main
-
-# Reset tracked filer til seneste version — gitignored filer (.env, config.json,
-# auth_secret.key, audit.db, cache/, logs/) berøres IKKE
 git reset --hard origin/main
-
-# Genstart portalen
-systemctl restart hypervision
 ```
 
-### Fremtidige opdateringer (deploy)
-
-```bash
-cd /opt/hypervision
-git pull origin main
-systemctl restart hypervision
-```
+> **Bemærk:** Brug `--system` (ikke `--global`) til `safe.directory`. `--global` sætter kun
+> indstillingen for root, mens service-brugeren (f.eks. `hypervision`) får "dubious ownership"-fejl
+> og portalen viser "Server er ikke konfigureret med git".
 
 ### Vigtig sikkerhed: auth_secret.key
 
@@ -275,6 +224,32 @@ Portalen checker ved opstart at `backend/auth_secret.key` ikke er læsbar af and
 ```bash
 # Sæt korrekte rettigheder (kræves kun én gang)
 chmod 600 /opt/hypervision/backend/auth_secret.key
+```
+
+### Genstart portalen
+
+```bash
+systemctl restart hypervision
+```
+
+### Fremtidige opdateringer
+
+Når git er sat op, kan alle fremtidige opdateringer hentes direkte i portalen:
+
+**Settings → GitHub-opdatering → Tjek GitHub → Hent opdatering**
+
+Portalen kører `git pull origin main` på serveren og viser output. Admin skal herefter genstarte serveren manuelt via **Genstart server**-knappen i Settings, eller:
+
+```bash
+systemctl restart hypervision
+```
+
+Alternativt fra kommandolinjen:
+
+```bash
+cd /opt/hypervision
+git pull origin main
+systemctl restart hypervision
 ```
 
 ---
@@ -292,3 +267,4 @@ Efter opsætning kan følgende tjekkes:
 | `http://localhost:8000/api/health` | `{"status": "ok"}` |
 | `backend/logs/app.log` | ISE-kald logges uden CRITICAL-fejl |
 | Settings → Portal Auth Config → Test TACACS+ | "TACACS+ auth OK" (kun ved TACACS+-mode) |
+| Settings → GitHub-opdatering → Tjek GitHub | Viser installeret og seneste version (ikke "Server er ikke konfigureret med git") |
