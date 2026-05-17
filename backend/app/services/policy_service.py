@@ -363,6 +363,27 @@ class PolicyService:
                 no_rules=True,
             )
 
+        # Match strategy:
+        #
+        # Rules can have three shapes:
+        #   a) No condition (catch-all / Default) → always matches; use as last resort only.
+        #   b) All conditions evaluable, all pass → definitive match; return immediately (ISE
+        #      first-match semantics apply exactly here).
+        #   c) Some conditions are ConditionReference / RADIUS (unevaluable) → partial match.
+        #
+        # For partial matches we cannot respect strict rank ordering because RADIUS conditions
+        # are unknown at simulation time.  A rule at rank 2 with 1 evaluable condition (PSK_Mode)
+        # + 2 unevaluable RADIUS conditions is far less specific than a rule at rank 4 with
+        # 5 evaluable conditions (Owner, Type, Lokation, PlatformType, IdentityGroup) + 1 RADIUS.
+        # Picking rank-2 would be wrong when the endpoint clearly matches rank-4's specific attrs.
+        #
+        # Heuristic: among partial matches, prefer the rule with the MOST evaluable conditions
+        # that actually passed.  Ties broken by lowest rank (ISE priority order).
+        # A definitive match (shape b) always beats any partial match regardless of rank.
+
+        best_partial: tuple[int, int, PolicyMatchResult] | None = None  # (evaluable_matched, rank, result)
+        catch_all: PolicyMatchResult | None = None
+
         for entry in rules:
             inner = entry.get("rule") or entry
             cond = inner.get("condition")
@@ -376,7 +397,8 @@ class PolicyService:
             global_conds, sub_rules = _split_into_subrules(cond, ep)
             all_conds = global_conds + [d for sr in sub_rules for d in sr.conditions]
             has_skipped = any(d.skipped for d in all_conds)
-            return PolicyMatchResult(
+
+            result = PolicyMatchResult(
                 policy_set_id=policy_set_id,
                 policy_set_name=ps_name,
                 matched_rule_id=inner.get("id"),
@@ -388,6 +410,30 @@ class PolicyService:
                 partial_match=has_skipped,
             )
 
+            if not all_conds:
+                # No-condition catch-all (Default) — last resort only.
+                if catch_all is None:
+                    catch_all = result
+                continue
+
+            if not has_skipped:
+                # Definitive match: all conditions evaluable and pass → stop immediately.
+                return result
+
+            # Partial match: count how many evaluable (non-skipped) conditions matched.
+            evaluable_matched = sum(1 for c in all_conds if not c.skipped and c.matched)
+            rank = inner.get("rank") or 0
+            if (
+                best_partial is None
+                or evaluable_matched > best_partial[0]
+                or (evaluable_matched == best_partial[0] and rank < best_partial[1])
+            ):
+                best_partial = (evaluable_matched, rank, result)
+
+        if best_partial:
+            return best_partial[2]
+        if catch_all:
+            return catch_all
         return PolicyMatchResult(
             policy_set_id=policy_set_id,
             policy_set_name=ps_name,

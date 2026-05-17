@@ -3,6 +3,21 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.4.5 build 0380] — 2026-05-17 — fix: Simulate match — specificitetbaseret valg af partial matches
+
+Stop-ved-første-match valgte regel 2 "SSID 802 PSK Mode" (rank 2, 1 evaluable + 2 Radius-skipped)
+frem for den korrekte regel med 5 evaluable betingelser (Owner, Type, Lokation, PlatformType,
+IdentityGroup + 1 Radius-skipped). Ny tre-kategori match-strategi:
+
+a) **No-condition (Default/catch-all)** → bruges kun som absolut sidste udvej.
+b) **Definitivt match** (alle conditions evaluable, alle passer) → returner straks (ISE-semantik).
+c) **Partial match** → vælg den med FLEST evaluable betingelser der faktisk passer.
+   Uafgjort brydes af laveste rank (ISE prioritetsrækkefølge).
+
+**Berørte filer:** `backend/app/services/policy_service.py`
+
+---
+
 ## [5.4.5 build 0379] — 2026-05-17 — revert: to-pass strategi fjernet — Default-regel altid vandt
 
 To-pass strategien fra build 0378 var forkert: Default-reglen (ingen betingelse) er altid et
