@@ -3,6 +3,10 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.4.2 build 0365] — 2026-05-17 — chore: Version bump til 5.4.2
+
+**Berørte filer**: `version.json`, `CHANGELOG.md`
+
 ## [5.4.1 build 0364] — 2026-05-17 — fix: Politik condition-builder auto-præfikser IdentityGroup:Name med "Endpoint Identity Groups:"
 
 Når man tilføjer eller redigerer en betingelse med `IdentityGroup:Name` i politik-editoren, præfikses værdien nu automatisk med `Endpoint Identity Groups:` hvis præfikset mangler. Gælder for: (1) blur på tekstfelt — feltet opdateres live så brugeren ser den fulde sti; (2) read/save — sikkerhedsnet ved gemning. Forhindrer stille-og-roligt virkningsløse betingelser (fx `equals Profiled` → matches aldrig; `equals Endpoint Identity Groups:Profiled` → matcher hierarkisk).
