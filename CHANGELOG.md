@@ -3,6 +3,23 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.4.5 build 0381] — 2026-05-17 — fix: Simulate match — robust group-matching + korrekt OR-score
+
+To yderligere fejl i match-simulatoren:
+
+1. **IdentityGroup fallback for korte navne** — Hvis backend ikke er genstartet efter gruppe-fix,
+   kan `group_name` være et kortnavnet ("ADM-Apple-iPhone" uden prefix). `_eval_identity_group`
+   matcher nu også hvis `rule_val` ender med `":<ep_val>"` (suffix-fallback), så reglen stadig
+   matcher selv med stale cache-data.
+
+2. **OR-blok dobbelttælling** — OR-regler (sub-rules) tæller evaluable conditions fra ALLE grene,
+   hvilket kunstigt oppuster scoren (PSK_Mode tælt 2× for 2 sub-rules). Fix: scorer kun fra
+   `global_conds + bedste sub-rule` (den gren med flest matches).
+
+**Berørte filer:** `backend/app/services/policy_service.py`
+
+---
+
 ## [5.4.5 build 0380] — 2026-05-17 — fix: Simulate match — specificitetbaseret valg af partial matches
 
 Stop-ved-første-match valgte regel 2 "SSID 802 PSK Mode" (rank 2, 1 evaluable + 2 Radius-skipped)

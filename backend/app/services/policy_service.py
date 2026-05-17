@@ -149,18 +149,27 @@ def _eval_operator(op: str, ep_val: str, rule_val: str) -> bool:
 def _eval_identity_group(ep_val: str, op: str, rule_val: str) -> bool:
     """ISE-korrekt evaluering af IdentityGroup.Name.
 
-    ISE's 'equals' på identity groups er hierarkisk: en regel mod
-    'Endpoint Identity Groups:Profiled' matcher ALLE endpoints i Profiled
-    og alle undergrupper (fx :Profiled:ADM-Apple-iPhone).
-    Vi implementerer dette via prefix-tjek med ':' som separator.
+    ISE's 'equals' er hierarkisk: "Endpoint Identity Groups:Profiled" matcher
+    alle endpoints i Profiled og alle undergrupper.
+
+    Robust mod korte group-navne (ep_val = "ADM-Apple-iPhone" uden prefix):
+    vi tjekker om rule_val ender med ":<ep_val>" som fallback.
     """
     ep_v = (ep_val or "").lower()
     r_v = (rule_val or "").lower()
     if op == "equals":
-        return ep_v == r_v or ep_v.startswith(r_v + ":")
+        if ep_v == r_v:
+            return True
+        # Hierarkisk: ep er descendant af rule (ep starter med rule + ":")
+        if ep_v.startswith(r_v + ":"):
+            return True
+        # Fallback: ep_val er kortnavnet uden ISE-prefix (f.eks. "ADM-Apple-iPhone")
+        # → match hvis rule_val ender med ":<ep_val>"
+        if ep_v and ":" not in ep_v and r_v.endswith(":" + ep_v):
+            return True
+        return False
     if op == "notEquals":
-        return ep_v != r_v and not ep_v.startswith(r_v + ":")
-    # Øvrige operatorer: fald igennem til standard string-sammenligning
+        return not _eval_identity_group(ep_val, "equals", rule_val)
     return _eval_operator(op, ep_val, rule_val)
 
 
@@ -420,8 +429,15 @@ class PolicyService:
                 # Definitive match: all conditions evaluable and pass → stop immediately.
                 return result
 
-            # Partial match: count how many evaluable (non-skipped) conditions matched.
-            evaluable_matched = sum(1 for c in all_conds if not c.skipped and c.matched)
+            # Partial match: count unique evaluable (non-skipped) conditions that matched.
+            # For OR-blocks, sub_rules each repeat the same conditions — count from
+            # global_conds + the single best-matching sub-rule to avoid double-counting.
+            if sub_rules:
+                best_sr = max(sub_rules, key=lambda sr: sum(1 for c in sr.conditions if not c.skipped and c.matched))
+                score_conds = global_conds + best_sr.conditions
+            else:
+                score_conds = all_conds
+            evaluable_matched = sum(1 for c in score_conds if not c.skipped and c.matched)
             rank = inner.get("rank") or 0
             if (
                 best_partial is None
