@@ -9,6 +9,16 @@ function esc(s) {
   }[c]));
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+const IDENTITY_GROUP_PREFIX = "Endpoint Identity Groups:";
+
+function normalizeIdentityGroupValue(dict, attr, val) {
+  if (dict !== "IdentityGroup" || attr !== "Name") return val;
+  if (!val || val.startsWith(IDENTITY_GROUP_PREFIX)) return val;
+  return IDENTITY_GROUP_PREFIX + val;
+}
+
 // ── Static metadata ───────────────────────────────────────────────────────────
 
 export const DICTIONARIES = [
@@ -112,11 +122,13 @@ export function readCondRows(editor) {
     } else if (valPlain) {
       val = valPlain.value;
     }
+    const dict = row.querySelector(".cond-dict")?.value || "EndPoints";
+    const attr = row.querySelector(".cond-attr")?.value || "";
     return {
-      dict: row.querySelector(".cond-dict")?.value || "EndPoints",
-      attr: row.querySelector(".cond-attr")?.value || "",
-      op:   row.querySelector(".cond-op")?.value   || "equals",
-      val,
+      dict,
+      attr,
+      op: row.querySelector(".cond-op")?.value || "equals",
+      val: normalizeIdentityGroupValue(dict, attr, val),
     };
   });
 }
@@ -370,14 +382,17 @@ function _readRow(rowEl) {
   let val = "";
   if (valSel)       val = valSel.value === "__custom__" ? (valCustom?.value.trim() || "") : valSel.value;
   else if (valPlain) val = valPlain.value;
-  return { conditionType: "ConditionAttributes", isNegate: false, dictionaryName: dict, attributeName: attr, operator: op, attributeValue: val };
+  return { conditionType: "ConditionAttributes", isNegate: false, dictionaryName: dict, attributeName: attr, operator: op, attributeValue: normalizeIdentityGroupValue(dict, attr, val) };
 }
 
 // ── Shared: bind row-level change events (dict/attr/val-sel changes) ──────────
 
 function _bindRowChangeEvents(el, caValues) {
   // Remove and re-add to avoid duplicates — use a flag on the element
-  if (el._rowChangeBound) el.removeEventListener("change", el._rowChangeHandler);
+  if (el._rowChangeBound) {
+    el.removeEventListener("change", el._rowChangeHandler);
+    el.removeEventListener("blur",   el._rowBlurHandler, true);
+  }
   el._rowChangeHandler = (e) => {
     const idx = e.target.dataset?.idx;
     if (!idx) return;
@@ -407,7 +422,21 @@ function _bindRowChangeEvents(el, caValues) {
       }
     }
   };
+  // Auto-prefix IdentityGroup:Name value on blur so user sees the full path
+  el._rowBlurHandler = (e) => {
+    const input = e.target;
+    if (!input.classList.contains("cond-val") && !input.classList.contains("cond-val-custom")) return;
+    const idx = input.dataset?.idx;
+    if (!idx) return;
+    const row  = el.querySelector(`.cond-row[data-idx="${idx}"]`);
+    if (!row) return;
+    const dict = row.querySelector(".cond-dict")?.value || "";
+    const attr = row.querySelector(".cond-attr")?.value || "";
+    const normalized = normalizeIdentityGroupValue(dict, attr, input.value);
+    if (normalized !== input.value) input.value = normalized;
+  };
   el.addEventListener("change", el._rowChangeHandler);
+  el.addEventListener("blur",   el._rowBlurHandler, true);
   el._rowChangeBound = true;
 }
 

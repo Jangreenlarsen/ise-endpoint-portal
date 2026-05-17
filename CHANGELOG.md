@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.4.1 build 0364] — 2026-05-17 — fix: Politik condition-builder auto-præfikser IdentityGroup:Name med "Endpoint Identity Groups:"
+
+Når man tilføjer eller redigerer en betingelse med `IdentityGroup:Name` i politik-editoren, præfikses værdien nu automatisk med `Endpoint Identity Groups:` hvis præfikset mangler. Gælder for: (1) blur på tekstfelt — feltet opdateres live så brugeren ser den fulde sti; (2) read/save — sikkerhedsnet ved gemning. Forhindrer stille-og-roligt virkningsløse betingelser (fx `equals Profiled` → matches aldrig; `equals Endpoint Identity Groups:Profiled` → matcher hierarkisk).
+
+**Berørte filer**: `frontend/js/views/policy-condition-builder.js` (normalizeIdentityGroupValue, _readRow, readCondRows, _bindRowChangeEvents blur-handler), `version.json`
+
 ## [5.4.1 build 0363] — 2026-05-17 — feat: Auth-status som sortérbar kolonneheader i Browse
 
 "Status" er nu en rigtig kolonne i tabel-headeren (placeret efter MAC). Klik på "Status" i kolonnenavnrækken for at sortere: auth-endpoints øverst (↑) eller sidst (↓), med tredje klik nulstiller sortering. Filtrerings-dropdown (Alle/Auth/Ikke auth) er flyttet til denne kolonnes filter-celle. Kolonnen viser ●/○-indikator i grøn/rød baggrundsfarve svarende til MAC-cellens farver. Kolonnens synlighed styres via Kolonner-menuen. Sort-logik bruger `activeSessionMacs` ligesom MAC-cellefarverne.
