@@ -3,6 +3,18 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.4.0-P1 build 0391] — 2026-05-17 — docs: Linux-server GitHub-deploy guide i 02-INSTALLATION.md
+
+Tilføjet sektion "Linux-server: opsætning af GitHub-deploy" med:
+- git init + safe.directory + remote opsætning
+- GitHub-autentificering: PAT (hurtigst) og SSH-nøgle (anbefalet til prod)
+- credential.helper store for PAT
+- git reset --hard origin/main workflow
+- Fremtidige deploys: git pull + systemctl restart
+- Sikkerhedsnotat om auth_secret.key chmod 600
+
+**Berørte filer:** `docs/02-INSTALLATION.md`
+
 ## [5.4.0-P1 build 0390] — 2026-05-17 — fix: auth_secret.key check crash mid-request
 
 `sys.exit(1)` inde i en aktiv Starlette ASGI-request-handler sprænger TaskGroup og

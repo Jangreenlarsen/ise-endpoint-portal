@@ -186,6 +186,99 @@ nssm start HyperVisionISE
 
 ---
 
+## Linux-server: opsætning af GitHub-deploy
+
+Hvis portalen er installeret på en Linux-server (f.eks. `/opt/hypervision`) uden git, kan GitHub bruges til at trække opdateringer. Følg disse trin én gang for at sætte det op — herefter er deploy en enkelt kommando.
+
+### Første gang: initialiser git og kobl til GitHub
+
+```bash
+cd /opt/hypervision
+
+# Undgå "dubious ownership"-fejl hvis mappen ejes af en anden bruger
+git config --global --add safe.directory /opt/hypervision
+
+# Initialiser git og sæt branch-navn
+git init
+git branch -m main
+
+# Kobl til GitHub-remote
+git remote add origin https://github.com/Jangreenlarsen/ise-endpoint-portal.git
+```
+
+### GitHub-autentificering
+
+GitHub understøtter ikke password — brug enten **PAT** (hurtigst) eller **SSH-nøgle** (anbefalet til server).
+
+#### Option A: Personal Access Token (PAT)
+
+1. Gå til **github.com/settings/tokens**
+2. Klik **Generate new token (classic)**
+3. Giv den et navn, sæt `repo`-scope ✓, vælg udløbsdato
+4. Klik **Generate token** — kopiér tokenet (vises kun én gang)
+5. Gem tokenet på serveren så det ikke skal tastes igen:
+
+```bash
+git config credential.helper store
+git fetch origin main
+# Username: Jangreenlarsen
+# Password: <indsæt PAT>
+# Gemmes automatisk i ~/.git-credentials til næste gang
+```
+
+#### Option B: SSH-nøgle (anbefalet til produktion)
+
+```bash
+# Generer nøgle på serveren
+ssh-keygen -t ed25519 -C "hypervision-server" -f ~/.ssh/github -N ""
+
+# Vis den offentlige nøgle — kopiér outputtet
+cat ~/.ssh/github.pub
+```
+
+Tilføj nøglen på GitHub: **Settings → SSH and GPG keys → New SSH key** — indsæt det kopierede indhold.
+
+```bash
+# Skift remote til SSH-URL
+git remote set-url origin git@github.com:Jangreenlarsen/ise-endpoint-portal.git
+
+# Test forbindelsen
+ssh -T git@github.com -i ~/.ssh/github
+```
+
+### Hent og anvend kode fra GitHub
+
+```bash
+cd /opt/hypervision
+git fetch origin main
+
+# Reset tracked filer til seneste version — gitignored filer (.env, config.json,
+# auth_secret.key, audit.db, cache/, logs/) berøres IKKE
+git reset --hard origin/main
+
+# Genstart portalen
+systemctl restart hypervision
+```
+
+### Fremtidige opdateringer (deploy)
+
+```bash
+cd /opt/hypervision
+git pull origin main
+systemctl restart hypervision
+```
+
+### Vigtig sikkerhed: auth_secret.key
+
+Portalen checker ved opstart at `backend/auth_secret.key` ikke er læsbar af andre brugere. Hvis filen har forkerte rettigheder (`mode=644`), afbrydes portalen med en CRITICAL-fejl.
+
+```bash
+# Sæt korrekte rettigheder (kræves kun én gang)
+chmod 600 /opt/hypervision/backend/auth_secret.key
+```
+
+---
+
 ## Verificering
 
 Efter opsætning kan følgende tjekkes:
