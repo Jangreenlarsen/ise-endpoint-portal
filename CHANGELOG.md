@@ -3,6 +3,22 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.4.4 build 0372] — 2026-05-17 — feat: Hierarkisk Identity Group-dropdown overalt
+
+Alle steder der viser ISE endpoint-grupper bruger nu hierarkiske optgroups:
+- **Root-optgroup** "Endpoint Identity Groups" — direkte børn (Blocked List, GuestEndpoints, Profiled, …)
+- **Sub-optgroup** "↳ Profiled" — under-grupper (ADM-Apple-iPhone, Android, Apple-Device, …)
+- Fuld ISE-sti bruges som `value` (korrekt til API-kald), kort navn vises som display-tekst
+
+Ny delt hjælpefunktion `groupHierarchyOptionsHtml(groups, selId, emptyLabel?)` i `browse-utils.js`.
+Bruges i: browse-tabel inline-edit, endpoint detail-modal, policy condition-builder,
+registrer-formular og skabeloner-sektion i settings.
+
+Berørte filer: `frontend/js/views/browse-utils.js`, `browse-table.js`,
+`policy-condition-builder.js`, `register.js`, `settings/section-templates.js`, `FEATURES.md`
+
+---
+
 ## [5.4.3 build 0371] — 2026-05-17 — fix: Detail modal fanepanel viste ingen indhold (flex height bug)
 
 `max-height` → `height: 92vh` på `.modal.detail-modal` så `flex: 1 1 0` på

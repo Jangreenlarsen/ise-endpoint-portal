@@ -8,6 +8,7 @@ import {
   endpointCreateTime, fmtRelativeAge, fmtDateTime,
   normalizeMac, coaSummaryText, optionsHtml,
   loadColVis, saveColVis, savePageSize, saveColOrder,
+  groupHierarchyOptionsHtml,
 } from "./browse-utils.js";
 import { toIseCsv, downloadCsv } from "../csv.js";
 
@@ -34,11 +35,7 @@ export function initTable(container, state, api, cb) {
 
   // ── Render helpers (need state.groups / state.roleCatalog) ───────────────
   function groupOptionsHtml(selectedId) {
-    const opts = [`<option value="">${t("cell.no_group")}</option>`];
-    for (const g of state.groups) {
-      opts.push(`<option value="${esc(g.id)}"${g.id === selectedId ? " selected" : ""}>${esc(g.name)}</option>`);
-    }
-    return opts.join("");
+    return groupHierarchyOptionsHtml(state.groups, selectedId);
   }
 
   function rolesChipsHtml(selected, opts = {}) {

@@ -75,20 +75,52 @@ export function valueWidgetHtml(idx, dict, attr, val, caValues) {
     known = caValues?.[`__${dict}_${attr}__`];
   }
   if (Array.isArray(known) && known.length) {
-    // IdentityGroup:Name — render as optgroup so prefix appears once as header
+    // IdentityGroup:Name — hierarchical optgroups mirroring ISE group tree
     if (dict === "IdentityGroup" && attr === "Name") {
-      const prefix  = IDENTITY_GROUP_PREFIX;
-      const inGroup = known.filter((v) => v.startsWith(prefix));
-      const outside = known.filter((v) => !v.startsWith(prefix));
+      const PREFIX  = IDENTITY_GROUP_PREFIX;
+      const items   = known.filter((v) => v.startsWith(PREFIX)).sort();
+      const outside = known.filter((v) => !v.startsWith(PREFIX));
+
+      // level1: direct children ("EIG:X"), deeper: "EIG:X:Y" etc.
+      const level1  = items.filter((v) => !v.slice(PREFIX.length).includes(":"));
+      const deeper  = items.filter((v) =>  v.slice(PREFIX.length).includes(":"));
+
+      // Group deeper values by immediate parent full-path
+      const byParent = new Map();
+      for (const v of deeper) {
+        const parts     = v.split(":");
+        const parentKey = parts.slice(0, -1).join(":");
+        if (!byParent.has(parentKey)) byParent.set(parentKey, []);
+        byParent.get(parentKey).push(v);
+      }
+
+      const selAttr = (v) => v === val ? " selected" : "";
+
       let opts = `<option value="">${t("pol.cb_select_val")}</option>`;
-      if (inGroup.length) {
-        opts += `<optgroup label="${esc(prefix.slice(0, -1))}">` +
-          inGroup.map((v) => `<option value="${esc(v)}"${v === val ? " selected" : ""}>${esc(v.slice(prefix.length))}</option>`).join("") +
-          `</optgroup>`;
+
+      // Root optgroup
+      opts += `<optgroup label="${esc(PREFIX.slice(0, -1))}">`;
+      for (const v of level1) {
+        opts += `<option value="${esc(v)}"${selAttr(v)}>${esc(v.slice(PREFIX.length))}</option>`;
       }
-      if (outside.length) {
-        opts += outside.map((v) => `<option value="${esc(v)}"${v === val ? " selected" : ""}>${esc(v)}</option>`).join("");
+      opts += `</optgroup>`;
+
+      // Sub-optgroups (one per parent with children)
+      for (const [parentPath, children] of [...byParent.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+        const parentLabel = "↳ " + (parentPath.startsWith(PREFIX) ? parentPath.slice(PREFIX.length) : parentPath);
+        opts += `<optgroup label="${esc(parentLabel)}">`;
+        for (const v of children) {
+          const display = v.split(":").pop();
+          opts += `<option value="${esc(v)}"${selAttr(v)}>${esc(display)}</option>`;
+        }
+        opts += `</optgroup>`;
       }
+
+      // Values without the standard prefix (edge cases)
+      for (const v of outside) {
+        opts += `<option value="${esc(v)}"${selAttr(v)}>${esc(v)}</option>`;
+      }
+
       return `<span class="cond-val-wrap" data-idx="${idx}">` +
         `<select class="cond-val-sel" data-idx="${idx}">${opts}</select>` +
         `</span>`;

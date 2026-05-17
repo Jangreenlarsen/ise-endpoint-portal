@@ -114,6 +114,69 @@ export function optionsHtml(values, selected) {
   return opts.join("");
 }
 
+const EIG_PREFIX = "Endpoint Identity Groups:";
+
+/**
+ * Build hierarchical <optgroup> HTML for an ISE endpoint group list.
+ *
+ * groups  — array of { id, name } where name is the full ISE path
+ *           e.g. "Endpoint Identity Groups:Profiled:ADM-Apple-iPhone"
+ * selId   — currently selected group ID (or "" for none)
+ *
+ * Renders:
+ *   <optgroup label="Endpoint Identity Groups"> — direct children
+ *   <optgroup label="↳ Profiled">               — children of Profiled
+ *   … one optgroup per parent that has sub-groups
+ */
+export function groupHierarchyOptionsHtml(groups, selId, emptyLabel = null) {
+  const sorted = [...groups].sort((a, b) => a.name.localeCompare(b.name));
+
+  // Separate by depth after the root prefix
+  const level1   = sorted.filter((g) => {
+    const rest = g.name.startsWith(EIG_PREFIX) ? g.name.slice(EIG_PREFIX.length) : g.name;
+    return !rest.includes(":");
+  });
+  const deeper   = sorted.filter((g) => {
+    const rest = g.name.startsWith(EIG_PREFIX) ? g.name.slice(EIG_PREFIX.length) : g.name;
+    return rest.includes(":");
+  });
+
+  // Group deeper items by immediate parent full-path
+  const byParent = new Map();
+  for (const g of deeper) {
+    const parts      = g.name.split(":");
+    const parentName = parts.slice(0, -1).join(":");
+    if (!byParent.has(parentName)) byParent.set(parentName, []);
+    byParent.get(parentName).push(g);
+  }
+
+  const sel = (g) => g.id === selId ? " selected" : "";
+  const shortName = (g) => g.name.split(":").pop();
+
+  let html = `<option value="">${esc(emptyLabel ?? t("cell.no_group"))}</option>`;
+
+  // Root optgroup — direct children of "Endpoint Identity Groups"
+  if (level1.length || deeper.length) {
+    html += `<optgroup label="${esc(EIG_PREFIX.slice(0, -1))}">`;
+    for (const g of level1) {
+      html += `<option value="${esc(g.id)}"${sel(g)}>${esc(shortName(g))}</option>`;
+    }
+    html += `</optgroup>`;
+  }
+
+  // One optgroup per parent-with-children, sorted by parent path
+  for (const [parentPath, children] of [...byParent.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+    const parentLabel = "↳ " + (parentPath.startsWith(EIG_PREFIX) ? parentPath.slice(EIG_PREFIX.length) : parentPath);
+    html += `<optgroup label="${esc(parentLabel)}">`;
+    for (const g of children) {
+      html += `<option value="${esc(g.id)}"${sel(g)}>${esc(shortName(g))}</option>`;
+    }
+    html += `</optgroup>`;
+  }
+
+  return html;
+}
+
 // getColumns() evalueres ved hvert kald så labels afspejler aktivt sprog.
 export function getColumns() {
   return [

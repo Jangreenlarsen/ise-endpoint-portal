@@ -2,6 +2,7 @@ import { api } from "../api.js";
 import { auth } from "../auth.js";
 import { t } from "../i18n.js";
 import { offlineQueue } from "../offline_queue.js";
+import { groupHierarchyOptionsHtml } from "./browse-utils.js";
 
 const MAC_RE = /^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$/;
 const MAC_EXTRACT_RE = /([0-9A-Fa-f]{2}[:\-]?){5}[0-9A-Fa-f]{2}/;
@@ -130,9 +131,7 @@ export async function renderRegister(container) {
   // Load groups + custom-attribute dropdowns
   try {
     const groups = await api.listGroups();
-    groupSel.innerHTML =
-      `<option value="">${t("reg.group_none")}</option>` +
-      groups.map((g) => `<option value="${g.id}">${g.name}</option>`).join("");
+    groupSel.innerHTML = groupHierarchyOptionsHtml(groups, "", t("reg.group_none"));
   } catch (err) {
     showError(t("reg.err_groups").replace("{msg}", err.message));
   }

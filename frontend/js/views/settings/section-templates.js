@@ -1,6 +1,7 @@
 import { api } from "../../api.js";
 import { t } from "../../i18n.js";
 import { esc } from "./shared.js";
+import { groupHierarchyOptionsHtml } from "../browse-utils.js";
 
 export async function initTemplatesSection(container) {
   const msg        = container.querySelector("#tpl-msg");
@@ -59,9 +60,7 @@ export async function initTemplatesSection(container) {
     attrMap.AuthzACL = (daclsResp || []).map((d) => d.name).filter(Boolean).sort();
   } catch { /* ignorer */ }
 
-  groupSel.innerHTML =
-    `<option value="">${t("settings.tpl_group_none")}</option>` +
-    groups.map((g) => `<option value="${esc(g.id)}">${esc(g.name)}</option>`).join("");
+  groupSel.innerHTML = groupHierarchyOptionsHtml(groups, "", t("settings.tpl_group_none"));
 
   attrsWrap.innerHTML = Object.entries(attrLabels).map(([name, label]) => {
     const opts = (attrMap[name] || [])
