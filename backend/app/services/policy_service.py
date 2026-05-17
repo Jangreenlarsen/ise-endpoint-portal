@@ -363,30 +363,47 @@ class PolicyService:
                 no_rules=True,
             )
 
+        # Two-pass strategy:
+        # - Definitive match: all conditions evaluable, all pass → return immediately (first wins).
+        # - Partial match: evaluable conditions pass but some conditions are ConditionReferences
+        #   (runtime RADIUS/session attributes we cannot evaluate) → remember first, keep searching.
+        # This avoids stopping at a ConditionReference rule (e.g. Wireless_MAB) that ISE would
+        # actually fail at runtime, which would hide the true matching rule further down the list.
+        first_partial: PolicyMatchResult | None = None
+
         for entry in rules:
             inner = entry.get("rule") or entry
             cond = inner.get("condition")
             matched, details = _eval_condition(cond, ep)
-            if matched:
-                profiles = entry.get("profile") or inner.get("profile") or []
-                if isinstance(profiles, str):
-                    profiles = [profiles]
-                global_conds, sub_rules = _split_into_subrules(cond, ep)
-                all_conds = global_conds + [d for sr in sub_rules for d in sr.conditions]
-                has_skipped = any(d.skipped for d in all_conds)
-                return PolicyMatchResult(
-                    policy_set_id=policy_set_id,
-                    policy_set_name=ps_name,
-                    matched_rule_id=inner.get("id"),
-                    matched_rule_name=inner.get("name"),
-                    matched_rule_rank=inner.get("rank"),
-                    profiles=profiles,
-                    condition_details=global_conds,
-                    sub_rules=sub_rules,
-                    partial_match=has_skipped,
-                )
+            if not matched:
+                continue
 
-        return PolicyMatchResult(
+            profiles = entry.get("profile") or inner.get("profile") or []
+            if isinstance(profiles, str):
+                profiles = [profiles]
+            global_conds, sub_rules = _split_into_subrules(cond, ep)
+            all_conds = global_conds + [d for sr in sub_rules for d in sr.conditions]
+            has_skipped = any(d.skipped for d in all_conds)
+
+            result = PolicyMatchResult(
+                policy_set_id=policy_set_id,
+                policy_set_name=ps_name,
+                matched_rule_id=inner.get("id"),
+                matched_rule_name=inner.get("name"),
+                matched_rule_rank=inner.get("rank"),
+                profiles=profiles,
+                condition_details=global_conds,
+                sub_rules=sub_rules,
+                partial_match=has_skipped,
+            )
+
+            if not has_skipped:
+                return result  # Definitive match — stop here.
+
+            if first_partial is None:
+                first_partial = result  # Remember earliest partial, keep searching.
+
+        return first_partial or PolicyMatchResult(
             policy_set_id=policy_set_id,
             policy_set_name=ps_name,
         )

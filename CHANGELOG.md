@@ -3,6 +3,25 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.4.5 build 0378] — 2026-05-17 — fix: Simulate match — to-pass strategi + korrekt regelsortering
+
+**To fejl rettet:**
+
+1. **ConditionReference stopper simulatoren for tidligt** — `match_endpoint` returnerede ved første
+   `matched=True`, inkl. partial matches (ConditionReference = benefit-of-doubt True). En regel tidligt
+   i listen med `ConditionReference(Wireless_MAB) AND IdentityGroup(X)` rapporteres som "muligt match"
+   selvom ISE ville fejle den (Wireless_MAB=False ved runtime) og gå videre til en anden regel.
+   Fix: to-pass strategi — fortsætter forbi partial matches, returnerer første **definitive** match;
+   falder tilbage til første partial match kun hvis ingen definitiv match findes.
+
+2. **Regelsortering søgte rank på forkert niveau** — `r.get("rank", 0)` søgte på wrapper-objektet
+   `{"rule":{...}, "profile":[...]}` i stedet for inde i `r["rule"]`. Alle regler fik sort-key `0`.
+   Fix: `(r.get("rule") or r).get("rank", 0)`.
+
+**Berørte filer:** `backend/app/services/policy_service.py`, `backend/app/ise/policy.py`
+
+---
+
 ## [5.4.5 build 0377] — 2026-05-17 — fix: Simulate match — ISE hierarkisk IdentityGroup equals implementeret
 
 ISE's `IdentityGroup.Name equals "Endpoint Identity Groups:Profiled"` matcher **alle** endpoints

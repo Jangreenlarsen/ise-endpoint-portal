@@ -51,7 +51,7 @@ async def list_authorization_rules(client, policy_set_id: str) -> list[dict]:
     """Return all authorization rules for a policy set, sorted by rank."""
     data = await client.get(f"{_BASE}/{policy_set_id}/authorization")
     rules = _unwrap(data)
-    return sorted(rules, key=lambda r: r.get("rank", 0))
+    return sorted(rules, key=lambda r: (r.get("rule") or r).get("rank", 0))
 
 
 async def create_authorization_rule(
