@@ -20,7 +20,12 @@ Dette er Claudes system-prompt for dette projekt. Den læses altid først og fø
 6. **Runtime-logging**: Backend skal logge alle ISE-operationer til [backend/logs/app.log](backend/logs/app.log).
 7. **Read/write rettigheder**: Claude har forhåndsgodkendelse (via [.claude/settings.local.json](.claude/settings.local.json)) til at læse, skrive og redigere filer i projektmappen.
 8. **Versionskontrol**: Projektet er et git-repo fra start. Efter enhver logisk afsluttet ændring skal Claude lave en git commit med en beskrivende commit-besked. Aldrig bulk-commits af urelaterede ændringer.
-9. **GitHub**: Alle commits skal pushes til det tilknyttede GitHub remote (`origin`) efter hver commit. Hvis remote ikke er sat op, skal Claude påminde brugeren.
+9. **GitHub branch-strategi (UFRAVIGELIG)**:
+   - `dev` — aktiv udviklingsbranch. **Al ny kode commites hertil.** Claude arbejder altid på `dev`.
+   - `main` — stabil release-branch. Kun opdateret via PR/merge fra `dev` når en release er klar. Produktionsserver følger `main`.
+   - Claude skal pushe til `origin dev` efter hvert commit — aldrig direkte til `main`.
+   - Portalens GitHub-opdateringscheck følger `main` (produktionsstabil).
+   - Merge `dev` → `main` gøres manuelt af Jan når en release er godkendt.
 
 ## Workflow for enhver opgave
 
@@ -30,7 +35,7 @@ Dette er Claudes system-prompt for dette projekt. Den læses altid først og fø
 4. Tilføj entry i `CHANGELOG.md` med `[version build NNNN]` prefix.
 5. Kør tests hvis relevant.
 6. `git add` + `git commit` med besked der inkluderer version: `v1.0.0-b0001: beskrivelse`.
-7. `git push origin <branch>` til GitHub.
+7. `git push origin dev` til GitHub (al aktiv udvikling sker på `dev`).
 
 ## Projektstruktur
 
