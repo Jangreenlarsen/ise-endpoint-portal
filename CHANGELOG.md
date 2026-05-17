@@ -3,6 +3,16 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.0 build 0401] — 2026-05-17 — feat: licensfooter i sidebar med copyright, email og AGPL v3-link
+
+Tilføjet diskret footer nederst i sidebaren på alle sider:
+- © 2026 Jan Green Larsen (klikbar mailto: hypervision@laces.dk)
+- GitHub-link til kildekode
+- AGPL v3-link til licenstekst
+
+- `frontend/index.html` — `.portal-license`-div med links
+- `frontend/css/styles.css` — `.portal-license`, `.portal-license-links` styling
+
 ## [5.5.0 build 0400] — 2026-05-17 — test: opdateringstest af fetch + reset --hard mekanisme
 
 ## [5.5.0 build 0399] — 2026-05-17 — fix: git pull erstattet med fetch + reset --hard

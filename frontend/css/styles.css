@@ -90,6 +90,18 @@ body {
 }
 .backend-status .ok { color: #6ee7b7; }
 .backend-status .err { color: #fca5a5; }
+.portal-license {
+  padding: 0.6rem 1.5rem 0.8rem;
+  font-size: 0.68rem;
+  color: #94a3b8;
+  border-top: 1px solid rgba(255,255,255,0.07);
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.portal-license a { color: #94a3b8; text-decoration: none; }
+.portal-license a:hover { color: #e2e8f0; text-decoration: underline; }
+.portal-license-links { display: flex; gap: 0.3rem; align-items: center; }
 
 .version-label {
   margin-top: 0.35rem;
