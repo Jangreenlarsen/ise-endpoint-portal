@@ -3,6 +3,17 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.0 build 0397] — 2026-05-17 — feat: GitHub-opdatering kan følge dev- eller main-branch
+
+Admin kan nu vælge om portalen skal tjekke og hente fra `main` (stabil) eller `dev` (udviklingsversion) via en checkbox i Settings → GitHub-opdatering.
+
+- `backend/app/core/config.py` — ny setting `github_branch` (default: "main")
+- `backend/app/services/update_service.py` — branch-aware URL og git pull; cache invalideres ved branch-skift; `branch` returneres i check-respons
+- `frontend/js/views/settings/section-update.js` — checkbox med gem-on-toggle + badge på seneste version
+- `frontend/js/views/settings.js` — HTML til checkbox + hint + result-element
+- `frontend/js/i18n.js` — DA + EN strings (gh_dev_branch_lbl/hint/saved)
+- `frontend/css/styles.css` — `.gh-branch-badge`, `.gh-branch-main`, `.gh-branch-dev`
+
 ## [5.5.0 build 0396] — 2026-05-17 — fix: HSTS header + camera Permissions-Policy
 
 - `backend/app/main.py` — `Permissions-Policy: camera=()` → `camera=(self)` (barcode-scanner i register-view kræver kameraadgang)

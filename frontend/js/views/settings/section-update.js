@@ -173,26 +173,63 @@ export function initGithubUpdateSection(container) {
   const card    = container.querySelector("#gh-update-card");
   if (!card) return;
 
-  const msgEl   = card.querySelector("#gh-msg");
+  const msgEl    = card.querySelector("#gh-msg");
   const checkBtn = card.querySelector("#gh-check-btn");
   const pullBtn  = card.querySelector("#gh-pull-btn");
-  const infoEl  = card.querySelector("#gh-info");
+  const infoEl   = card.querySelector("#gh-info");
+  const devCb    = card.querySelector("#gh-dev-branch-cb");
+  const devResult = card.querySelector("#gh-dev-branch-result");
 
   if (card.querySelector("#gh-card-h3")) card.querySelector("#gh-card-h3").textContent = t("settings.gh_card");
   if (card.querySelector("#gh-hint"))    card.querySelector("#gh-hint").textContent    = t("settings.gh_hint");
   if (checkBtn) checkBtn.textContent = t("settings.gh_btn_check");
   if (pullBtn)  pullBtn.textContent  = t("settings.gh_btn_pull");
+  const devLbl = card.querySelector("#gh-dev-branch-lbl");
+  if (devLbl) devLbl.textContent = t("settings.gh_dev_branch_lbl");
+  const devHint = card.querySelector("#gh-dev-branch-hint");
+  if (devHint) devHint.textContent = t("settings.gh_dev_branch_hint");
+
+  // Indlæs nuværende branch-indstilling
+  (async () => {
+    try {
+      const s = await api.getBackendSettings();
+      if (devCb) devCb.checked = (s.github_branch || "main") === "dev";
+    } catch (_) { /* ignore */ }
+  })();
+
+  // Gem ved toggle
+  if (devCb) {
+    devCb.addEventListener("change", async () => {
+      const branch = devCb.checked ? "dev" : "main";
+      try {
+        const current = await api.getBackendSettings();
+        await api.updateBackendSettings({ ...current, github_branch: branch });
+        if (devResult) {
+          devResult.innerHTML = `<span style="color:var(--success,#166534);font-size:0.82em;">${t("settings.gh_dev_branch_saved").replace("{branch}", branch)}</span>`;
+          setTimeout(() => { devResult.innerHTML = ""; }, 3000);
+        }
+        // Ryd info så næste check henter fra ny branch
+        infoEl.innerHTML = "";
+        msgEl.innerHTML = "";
+        pullBtn.hidden = true;
+      } catch (err) {
+        devCb.checked = !devCb.checked;
+        if (devResult) devResult.innerHTML = `<span style="color:var(--danger,#991b1b);font-size:0.82em;">${esc(err.message)}</span>`;
+      }
+    });
+  }
 
   function showInfo(data) {
-    const cur  = `${data.current_version} build ${data.current_build}`;
-    const lat  = data.latest_version ? `${data.latest_version} build ${data.latest_build}` : "–";
-    const upd  = data.update_available;
-    const git  = data.git_ready;
+    const cur    = `${data.current_version} build ${data.current_build}`;
+    const lat    = data.latest_version ? `${data.latest_version} build ${data.latest_build}` : "–";
+    const upd    = data.update_available;
+    const git    = data.git_ready;
+    const branch = data.branch || "main";
 
     infoEl.innerHTML = `
       <table class="gh-version-table">
         <tr><td>${t("settings.gh_current")}</td><td><strong>${esc(cur)}</strong></td></tr>
-        <tr><td>${t("settings.gh_latest")}</td><td><strong>${esc(lat)}</strong></td></tr>
+        <tr><td>${t("settings.gh_latest")}</td><td><strong>${esc(lat)}</strong> <span class="gh-branch-badge gh-branch-${esc(branch)}">${esc(branch)}</span></td></tr>
       </table>`;
 
     if (data.error) {

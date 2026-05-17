@@ -1020,6 +1020,9 @@ const TRANSLATIONS = {
     "settings.gh_pull_ok":            "✅ Opdatering hentet. Genstart serveren for at aktivere backend-ændringer.",
     "settings.gh_pull_err":           "Fejl ved git pull: {msg}",
     "settings.gh_check_err":          "Kunne ikke tjekke GitHub: {msg}",
+    "settings.gh_dev_branch_lbl":     "Brug dev-branch (udviklingsversion)",
+    "settings.gh_dev_branch_hint":    "Tjekker og henter fra 'dev'-branchen i stedet for 'main'. Brug kun til test — dev-versioner kan være ustabile.",
+    "settings.gh_dev_branch_saved":   "Branch skiftet til '{branch}' — klik Tjek GitHub for at se ny version.",
 
     // ── Settings — Advanced/Migration ───────────────────────────────────────
     "settings.adv_card":                    "Importér custom attributter fra ISE (migration)",
@@ -2052,6 +2055,9 @@ const TRANSLATIONS = {
     "settings.gh_pull_ok":            "✅ Update fetched. Restart the server to activate backend changes.",
     "settings.gh_pull_err":           "git pull error: {msg}",
     "settings.gh_check_err":          "Could not check GitHub: {msg}",
+    "settings.gh_dev_branch_lbl":     "Use dev branch (development version)",
+    "settings.gh_dev_branch_hint":    "Checks and pulls from the 'dev' branch instead of 'main'. Use for testing only — dev versions may be unstable.",
+    "settings.gh_dev_branch_saved":   "Branch switched to '{branch}' — click Check GitHub to see the new version.",
 
     // ── Settings — Advanced/Migration ───────────────────────────────────────
     "settings.adv_card":                    "Import custom attributes from ISE (migration)",

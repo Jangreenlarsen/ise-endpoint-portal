@@ -367,6 +367,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     log_file: str = "logs/app.log"
     debug_pxgrid_sessions: bool = False
+    github_branch: str = Field(default="main", description="GitHub-branch til opdateringscheck og git pull. 'main' = stabil release, 'dev' = udviklingsversion.")
 
 
 def _load() -> Settings:
