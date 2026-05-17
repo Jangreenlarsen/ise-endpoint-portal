@@ -49,9 +49,16 @@ if grep -q "^deb cdrom" /etc/apt/sources.list 2>/dev/null; then
     ok "CD-ROM apt-kilde deaktiveret"
 fi
 
+# ── OS-opdatering ─────────────────────────────────────────────────────────────
+info "Opdaterer OS-pakker (kan tage et par minutter)..."
+apt-get update -qq
+apt-get upgrade -y
+apt-get autoremove -y
+apt-get clean
+ok "OS fuldt opdateret"
+
 # ── Installer open-vm-tools (VMware integration) ──────────────────────────────
 info "Installerer open-vm-tools til VMware..."
-apt-get update -qq
 apt-get install -y open-vm-tools
 ok "open-vm-tools installeret"
 

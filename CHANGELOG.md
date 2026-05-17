@@ -3,6 +3,8 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.0 build 0407] — 2026-05-17 — fix: prepare-ova-base.sh kører fuld OS-opdatering inden eksport
+
 ## [5.5.0 build 0406] — 2026-05-17 — feat: OVA first-boot wizard (netværk, hostname, root-password, auto-install)
 
 Tilføjet tre nye deploy-filer til OVA-distribution:
