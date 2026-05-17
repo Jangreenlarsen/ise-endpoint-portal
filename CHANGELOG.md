@@ -3,6 +3,24 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.4.4 build 0373] — 2026-05-17 — fix: Identity Group-dropdown viste alt fladt — backend bygger nu fulde stier via parentId
+
+ISE ERS `/ers/config/endpointgroup` list-respons returnerer kun korte navne
+(`"Profiled"`, `"ADM-Apple-iPhone"`) — ingen parent-info. Fix:
+
+`IseEndpointGroupRepository.list_all()` udfører nu:
+1. Henter alle gruppe-summaries (pagineret som før)
+2. GET'er hvert gruppe individuelt i parallel (sem=8) for at hente `parentId`
+3. Bygger fuld hierarkisk sti rekursivt via parent-kæden:
+   `ADM-Apple-iPhone` → `Endpoint Identity Groups:Profiled:ADM-Apple-iPhone`
+
+`_fetch_groups()` i service bruger nu `_full_path` fra listen.
+Frontend-kode (optgroup-logik) var allerede korrekt — problemet var manglende path.
+
+Berørte filer: `backend/app/ise/endpoints.py`, `backend/app/services/endpoint_service.py`, `version.json`
+
+---
+
 ## [5.4.4 build 0372] — 2026-05-17 — feat: Hierarkisk Identity Group-dropdown overalt
 
 Alle steder der viser ISE endpoint-grupper bruger nu hierarkiske optgroups:

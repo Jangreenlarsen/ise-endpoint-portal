@@ -462,7 +462,9 @@ class EndpointService:
         return [
             EndpointGroupSummary(
                 id=r.get("id", ""),
-                name=r.get("name", ""),
+                # Use the full hierarchical path built by list_all(); fall back
+                # to the short name if parentId resolution was unavailable.
+                name=r.get("_full_path") or r.get("name", ""),
                 description=r.get("description"),
             )
             for r in raw

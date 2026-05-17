@@ -187,33 +187,75 @@ class IseEndpointGroupRepository:
         sr = data.get("SearchResult", {}) if data else {}
         return sr.get("resources", []), sr.get("total", 0)
 
+    async def _fetch_group_detail(self, group_id: str) -> dict[str, Any]:
+        """GET individual group to retrieve parentId and full name."""
+        try:
+            data = await self.client.get(f"{ERS_ENDPOINT_GROUPS}/{group_id}")
+            return (data or {}).get("EndPointGroup", {})
+        except Exception:
+            return {}
+
     async def list_all(self) -> list[dict[str, Any]]:
-        """Fetch all endpoint groups across all ISE pages (ERS max 100 per page).
+        """Fetch all endpoint groups with full hierarchical paths.
 
-        Parallel fetch — same strategy as IseEndpointRepository.list_all().
+        1. List all pages to collect {id, name} summaries.
+        2. GET each group individually (parallel, sem=8) to get parentId.
+        3. Build full path for every group by following the parent chain.
+           Example: "ADM-Apple-iPhone" → "Endpoint Identity Groups:Profiled:ADM-Apple-iPhone"
         """
+        # ── Step 1: collect all group summaries ──────────────────────────────
         resources, total = await self._list_groups_page(1)
-        if not resources or len(resources) >= total:
-            return resources
+        if resources and len(resources) < total:
+            total_pages = math.ceil(total / 100)
+            sem_pages = asyncio.Semaphore(5)
 
-        total_pages = math.ceil(total / 100)
-        if total_pages <= 1:
-            return resources
+            async def _fetch_page(page: int) -> list[dict[str, Any]]:
+                async with sem_pages:
+                    result, _ = await self._list_groups_page(page)
+                    return result
 
-        sem = asyncio.Semaphore(5)
+            remaining = await asyncio.gather(
+                *[_fetch_page(p) for p in range(2, total_pages + 1)],
+                return_exceptions=False,
+            )
+            for page_resources in remaining:
+                resources.extend(page_resources)
 
-        async def _fetch_page(page: int) -> list[dict[str, Any]]:
-            async with sem:
-                result, _ = await self._list_groups_page(page)
-                return result
+        if not resources:
+            return []
 
-        remaining = await asyncio.gather(
-            *[_fetch_page(p) for p in range(2, total_pages + 1)],
-            return_exceptions=False,
+        # ── Step 2: GET each group for parentId ──────────────────────────────
+        sem_detail = asyncio.Semaphore(8)
+
+        async def _detail(r: dict[str, Any]) -> dict[str, Any]:
+            async with sem_detail:
+                detail = await self._fetch_group_detail(r["id"])
+                # Merge: prefer detail fields, fall back to list summary
+                return {**r, **detail} if detail else r
+
+        detailed: list[dict[str, Any]] = list(
+            await asyncio.gather(*[_detail(r) for r in resources])
         )
-        for page_resources in remaining:
-            resources.extend(page_resources)
-        return resources
+
+        # ── Step 3: build full hierarchical paths ────────────────────────────
+        by_id: dict[str, dict[str, Any]] = {g["id"]: g for g in detailed if g.get("id")}
+
+        def _full_path(g: dict[str, Any], visited: set[str]) -> str:
+            gid = g.get("id", "")
+            if gid in visited:
+                return g.get("name", "")
+            visited.add(gid)
+            parent_id = g.get("parentId", "")
+            name = g.get("name", "")
+            if not parent_id or parent_id not in by_id:
+                return name
+            parent_name = _full_path(by_id[parent_id], visited)
+            return f"{parent_name}:{name}" if parent_name else name
+
+        for g in detailed:
+            g["_full_path"] = _full_path(g, set())
+
+        return detailed
 
     async def get_by_name(self, name: str) -> dict[str, Any] | None:
         data = await self.client.get(f"{ERS_ENDPOINT_GROUPS}/name/{name}")
