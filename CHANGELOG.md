@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.0 build 0406] — 2026-05-17 — feat: OVA first-boot wizard (netværk, hostname, root-password, auto-install)
+
+Tilføjet tre nye deploy-filer til OVA-distribution:
+- `deploy/first-boot.sh`: interaktiv wizard der ved første boot spørger om hostname, statisk IP, subnet, gateway, DNS og root-adgangskode, tester internetforbindelsen og kører install.sh automatisk
+- `deploy/first-boot.service`: systemd oneshot-service der kører wizarden på /dev/tty1 ved første boot og deaktiverer sig selv bagefter
+- `deploy/prepare-ova-base.sh`: klargøringsscript der køres på base-VM inden OVA-eksport — installerer first-boot, open-vm-tools, rydder machine-id/SSH-keys/logs og sætter netværk til DHCP
+
 ## [5.5.0 build 0405] — 2026-05-17 — fix: install.sh pipe-kompatibilitet (read /dev/tty) og PATH inkluderer /usr/sbin
 
 Rettet to fejl ved kørsel via wget|bash:
