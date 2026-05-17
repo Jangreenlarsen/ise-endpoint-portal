@@ -2,7 +2,7 @@
 
 Web-baseret administrationssystem til Cisco ISE 3.4 endpoint-management via REST API og pxGrid 2.0.
 
-**Version 5.2.1 build 0277** — [Fuld manual](docs/INDEX.md) — [Changelog](CHANGELOG.md)
+**Version 5.4.0-P1 build 0391** — [Fuld manual](docs/INDEX.md) — [Changelog](CHANGELOG.md)
 
 ---
 
@@ -57,17 +57,30 @@ De to protokoller supplerer hinanden: REST til management, pxGrid til observabil
 ### RADIUS Policy administration
 - **Politikker-dashboard** — overblik over alle ISE policy sets med regelkort (rank-badge, betingelses-chips, autorisationsprofil-chips)
 - **Master-detail layout** — regeldetaljer med betingelser til venstre og autoriseringsprofiler til hoejre
+- **Sammenfoldet regeliste** — politikregler vises som kompakt liste (kun navn); klik folder reglen ud med betingelser og profiler
 - **Nested AND/OR gruppe-editor** — opret og rediger betingelser med fuldt bevarede AND/OR-nesting-niveauer (ISE `ConditionAndBlock`/`ConditionOrBlock`)
 - **Betingelsestyper** — EndPoints, IdentityGroup og Radius-attributter med dynamiske dropdowns for kendte vaerdier og gruppe-navne
 - **Opret standard autoriseringsprofiler** — "Opret manglende profiler" opretter automatisk Endpoint_VLAN, Endpoint_DACL, Endpoint_PSK-KEY og Endpoint_AirSpaceACL i ISE
-- **Policy match preview** — i endpoint-detail vises hvilke autoriseringsregler der matcher det aktuelle endpoint
+- **Policy match preview** — i endpoint-detail vises hvilke autoriseringsregler der matcher det aktuelle endpoint; live endpoint-data hentes fra ISE
+- **RADIUS-parameter prompt** — simulatoren spoerger om RADIUS-attributter kraevet for praecis matching (NAS-Port-Type, Called-Station-ID m.fl.)
+- **Profilerings-data viewer** — vis ISE-profileringsdata (OUI, profileringsresultater) direkte i endpoint-detail
 - **Rule Builder Wizard** — opret ny autoriseringsregel direkte fra Browse med endpoint-attributterne preudfyldt
+
+### Sikkerhed (Sikkerheds-patch 1)
+- HTTP Security Headers — CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy m.fl.
+- Account lockout — 5 fejlede loginforsog inden for 10 min giver 15 min lockout (HTTP 429)
+- Login-events i audit-log — success og failure registreres med IP og tidsstempel
+- Token TTL reduceret 8h → 1h med silent refresh (automatisk fornyelse inden udlob)
+- Password-styrkekrav — minimum 10 tegn, mindst eet stort bogstav, eet lille bogstav, eet tal
+- Tillidsproxy-liste — X-Forwarded-For til rate limiting kun fra konfigurerede proxy-IPs
+- ISE CA-bundle — mulighed for at angive eget root-CA PEM til TLS-verifikation mod ISE
 
 ### Administration
 - Downloadable ACL editor med live Cisco IOS ACL syntax-validering
 - Custom attribute administration — vaerdier, PlatformType-mapping, CoA-binding
-- Audit-log — alle aendringer logges med bruger, tidsstempel og felt-diff
+- Audit-log — alle aendringer logges med bruger, tidsstempel og felt-diff; FTS5 trigram-soegning
 - Portal system-opdatering — admin uploader ZIP-pakke direkte i portalen
+- **GitHub-opdateringschek** — portalen tjekker automatisk GitHub for nye versioner og notificerer admin
 - Brugervenlige fejlbeskeder — ISE-utilgaengelighed vises med klar dansk tekst og Proev igen-knap
 
 ---

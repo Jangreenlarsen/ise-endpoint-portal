@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.4.0-P1 build 0392] — 2026-05-17 — docs: README opdateret med nye funktioner og sikkerheds-patch
+
+Version bump til 5.4.0-P1. Tilfoejede: sammenfoldet regeliste, RADIUS-parameter prompt,
+profilerings-data viewer, Sikkerheds-patch 1-sektion, GitHub-opdateringschek-bullet.
+
+**Berørte filer:** `README.md`
+
 ## [5.4.0-P1 build 0391] — 2026-05-17 — docs: Linux-server GitHub-deploy guide i 02-INSTALLATION.md
 
 Tilføjet sektion "Linux-server: opsætning af GitHub-deploy" med:
