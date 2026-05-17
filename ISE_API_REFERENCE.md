@@ -301,6 +301,7 @@ Tilføjet i 5.0.0. Kræver Open API aktiveret i ISE.
 **Dictionaries (empirisk)**:
 - `EndPoints` — custom endpoint-attributter (Owner, Type, Lokation, PSK_Mode, m.fl.)
 - `IdentityGroup` — attribut `Name` matcher identity group path, fx `Endpoint Identity Groups:Profiled:ADM-Apple-iPhone`
+  - **GOTCHA**: Brug altid fuld sti med præfiks `Endpoint Identity Groups:`. `equals Endpoint Identity Groups:Profiled` matcher hierarkisk (Profiled + alle undergrupper). `equals Profiled` (uden præfiks) matcher aldrig noget — ISE gemmer altid fuld sti internt.
 - `Radius` — RADIUS-protokolfelter (Called-Station-ID, NAS-Port-Type, m.fl.) — kun tilgængelige ved live session
 - `Network`, `Device`, `NetworkAccess` — netværksenheds- og sessionskontekst
 
