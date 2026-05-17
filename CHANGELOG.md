@@ -3,7 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
-## [5.5.0 build 0394] — 2026-05-17 — chore: AGPL v3 open source licens + SPDX-headers på alle kildefiler
+## [5.5.0 build 0396] — 2026-05-17 — fix: HSTS header + camera Permissions-Policy
+
+- `backend/app/main.py` — `Permissions-Policy: camera=()` → `camera=(self)` (barcode-scanner i register-view kræver kameraadgang)
+- `backend/app/main.py` — tilføjet `Strict-Transport-Security: max-age=31536000; includeSubDomains` (HSTS til TLS-deployments)
+
+## [5.5.0 build 0395] — 2026-05-17 — docs: opdater install guide med git system-wide safe.directory og public repo
 
 Tilføjet GNU Affero General Public License v3 (LICENSE-fil hentet fra gnu.org).
 SPDX-identifier headers (`AGPL-3.0-or-later`) og copyright-notice (`Jan Green Larsen <jgl@laces.dk>`) tilføjet til alle 91 Python-filer, 39 JS-filer, index.html og styles.css.
