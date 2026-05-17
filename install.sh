@@ -55,6 +55,13 @@ if ! grep -qiE "debian|ubuntu" /etc/os-release 2>/dev/null; then
     warn "Scriptet er testet på Debian/Ubuntu. Fortsætter alligevel..."
 fi
 
+# Fjern CD-ROM kilde fra sources.list (blokerer apt på fresh DVD-install)
+if grep -q "^deb cdrom" /etc/apt/sources.list 2>/dev/null; then
+    info "Deaktiverer CD-ROM apt-kilde..."
+    sed -i '/^deb cdrom/s/^/#/' /etc/apt/sources.list
+    ok "CD-ROM kilde deaktiveret"
+fi
+
 # Python 3.11+ krav
 PYTHON_BIN=""
 for py in python3.12 python3.11 python3; do
