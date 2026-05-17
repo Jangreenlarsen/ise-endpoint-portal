@@ -9,6 +9,8 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 ## Åbne
 
+- `[fixed 5.4.3 build 0371] 2026-05-17 — Detail modal fanepanel tomt efter konvertering til tabs` — `.detail-tab-panels` kollapsede til 0 højde fordi `.detail-modal` brugte `max-height` i stedet for `height` — `flex: 1 1 0` kræver en defineret højde på flex-forælderen. Fix: `height: 92vh` på `.modal.detail-modal`. **Berørte filer:** `frontend/css/styles.css`.
+
 - `[fixed 5.3.34 build 0350] 2026-05-16 — Simulate match viser ✓ selv om RADIUS-betingelser ikke er evalueret` — Simulator behandlede alle unevaluable RADIUS-attributter som "True" (benefit of doubt), så en regel med `RADIUS.X AND RADIUS.Y AND EndPoints.PSK_Mode` matchede bare ved PSK_Mode=true uanset RADIUS-tilstanden. Fix: `PolicyMatchResult.partial_match=True` når nogen betingelse er skippet; frontend viser ⚠ gult kort "Muligt match" i stedet for grønt ✓. **Berørte filer:** `policy.py`, `policy_service.py`, `browse-detail.js`, `i18n.js`, `styles.css`.
 
 - `[fixed 5.3.34 build 0350] 2026-05-16 — authzACL dropdown i detail-editor ikke opdateret med aktuelle ISE DACLs` — `openDetail()` refreshede custom attributter (Type, Owner m.fl.) men ikke DACL-listen — den var kun hentet ved page load. Fix: `openDetail()` kalder nu `api.listDacls()` parallelt med `api.listCustomAttributes()` og opdaterer `state.caValues.AuthzACL`. **Berørte filer:** `browse-detail.js`.

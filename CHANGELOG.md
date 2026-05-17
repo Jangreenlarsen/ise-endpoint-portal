@@ -3,6 +3,15 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.4.3 build 0371] — 2026-05-17 — fix: Detail modal fanepanel viste ingen indhold (flex height bug)
+
+`max-height` → `height: 92vh` på `.modal.detail-modal` så `flex: 1 1 0` på
+fanepanelcontaineren fungerer korrekt og indholdet er synligt.
+
+**Berørte filer:** `frontend/css/styles.css`, `BUGS.md`, `version.json`
+
+---
+
 ## [5.4.3 build 0370] — 2026-05-17 — feat: Endpoint detail modal konverteret til fane-layout
 
 Detail-modal bruger nu tre faner i stedet for scrollende accordions:

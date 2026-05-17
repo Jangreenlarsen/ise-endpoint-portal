@@ -707,7 +707,7 @@ td.mac-cell.cache-stale {
 .modal.detail-modal {
   width: 800px;
   max-width: 96vw;
-  max-height: 92vh;
+  height: 92vh;
   overflow-y: hidden;
   display: flex;
   flex-direction: column;
