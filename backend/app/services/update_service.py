@@ -22,6 +22,7 @@ import io
 import json
 import logging
 import os
+import subprocess
 import time
 import zipfile
 from pathlib import Path
@@ -178,6 +179,105 @@ def apply_package(zip_bytes: bytes) -> dict[str, Any]:
         "errors": errors,
         "applied_count": len(applied),
     }
+
+
+# ---------------------------------------------------------------------------
+# GitHub version check
+# ---------------------------------------------------------------------------
+
+_GITHUB_RAW = (
+    "https://raw.githubusercontent.com/Jangreenlarsen/ise-endpoint-portal/main/version.json"
+)
+_github_cache: dict[str, Any] = {}
+_github_cache_ts: float = 0.0
+_GITHUB_CACHE_TTL = 3600.0  # 1 time
+
+
+def _is_git_repo() -> bool:
+    """Returnerer True hvis PROJECT_ROOT er et git-repo."""
+    result = subprocess.run(
+        ["git", "-C", str(PROJECT_ROOT), "rev-parse", "--git-dir"],
+        capture_output=True, timeout=5,
+    )
+    return result.returncode == 0
+
+
+async def check_github_version() -> dict[str, Any]:
+    """Hent seneste version fra GitHub og sammenlign med lokal.
+
+    Returnerer:
+        current_version, current_build, latest_version, latest_build,
+        update_available, git_ready, checked_at, error (hvis fejl).
+
+    Caches i 1 time for at undgå unødige GitHub-kald.
+    """
+    global _github_cache, _github_cache_ts
+    from app.core.version import BUILD, VERSION
+
+    now = time.time()
+    if _github_cache and now - _github_cache_ts < _GITHUB_CACHE_TTL:
+        return _github_cache
+
+    git_ready = await asyncio.to_thread(_is_git_repo)
+    result: dict[str, Any] = {
+        "current_version": VERSION,
+        "current_build": BUILD,
+        "latest_version": None,
+        "latest_build": None,
+        "update_available": False,
+        "git_ready": git_ready,
+        "checked_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "error": None,
+    }
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(_GITHUB_RAW)
+            resp.raise_for_status()
+            data = resp.json()
+        result["latest_version"] = data.get("version", "?")
+        result["latest_build"] = data.get("build", "?")
+        try:
+            result["update_available"] = int(data.get("build", "0")) > int(BUILD)
+        except ValueError:
+            result["update_available"] = data.get("build") != BUILD
+        _github_cache = result
+        _github_cache_ts = now
+    except Exception as exc:  # noqa: BLE001
+        result["error"] = str(exc)
+        logger.warning("github version check fejlede: %s", exc)
+    return result
+
+
+def _git_pull_sync() -> dict[str, Any]:
+    """Kør git pull origin main i PROJECT_ROOT. Returnerer stdout, stderr, ok."""
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(PROJECT_ROOT), "pull", "origin", "main"],
+            capture_output=True, text=True, timeout=60,
+        )
+        ok = proc.returncode == 0
+        if ok:
+            # Ryd cache så næste check henter ny version
+            global _github_cache, _github_cache_ts
+            _github_cache = {}
+            _github_cache_ts = 0.0
+        return {
+            "ok": ok,
+            "stdout": proc.stdout.strip(),
+            "stderr": proc.stderr.strip(),
+            "returncode": proc.returncode,
+        }
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "stdout": "", "stderr": "git pull timed out (60s)", "returncode": -1}
+    except FileNotFoundError:
+        return {"ok": False, "stdout": "", "stderr": "git ikke fundet — er git installeret på serveren?", "returncode": -1}
+    except Exception as exc:  # noqa: BLE001
+        return {"ok": False, "stdout": "", "stderr": str(exc), "returncode": -1}
+
+
+async def git_pull() -> dict[str, Any]:
+    return await asyncio.to_thread(_git_pull_sync)
 
 
 async def schedule_restart(delay_s: float = 2.5) -> None:

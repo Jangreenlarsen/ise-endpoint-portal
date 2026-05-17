@@ -12,7 +12,7 @@ import { initUsersSection } from "./settings/section-users.js";
 import { initTemplatesSection } from "./settings/section-templates.js";
 import { initPskPolicySection } from "./settings/section-psk.js";
 import { initPortalAuthConfigSection, initLocaleSection } from "./settings/section-auth.js";
-import { initSystemUpdateSection, initAdvancedSection } from "./settings/section-update.js";
+import { initSystemUpdateSection, initAdvancedSection, initGithubUpdateSection } from "./settings/section-update.js";
 import { initAuthzProfilesSection } from "./settings/section-authz-profiles.js";
 
 export async function renderSettings(container) {
@@ -762,6 +762,17 @@ export async function renderSettings(container) {
         </div>
       </div>
     </div>
+
+    <div class="card" data-tab="portal-config" data-subtab="pc-update" id="gh-update-card">
+      <h3 id="gh-card-h3"></h3>
+      <p class="hint" id="gh-hint"></p>
+      <div class="actions">
+        <button type="button" id="gh-check-btn"></button>
+        <button type="button" id="gh-pull-btn" class="primary" hidden></button>
+      </div>
+      <div id="gh-msg" style="margin-top:0.75rem;"></div>
+      <div id="gh-info" style="margin-top:0.5rem;"></div>
+    </div>
     ` : ""}
 
     ${isAdmin ? `
@@ -839,6 +850,7 @@ export async function renderSettings(container) {
     await initLocaleSection(container);
     await initTemplatesSection(container);
     initSystemUpdateSection(container);
+    initGithubUpdateSection(container);
     await initAuthzProfilesSection(container);
     initAdvancedSection(container);
   }

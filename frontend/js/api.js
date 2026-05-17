@@ -164,6 +164,8 @@ export const api = {
     }),
   logout: () => request("/auth/logout", { method: "POST" }),
   refreshToken: () => request("/auth/refresh", { method: "POST" }),
+  githubCheck: () => request("/update/github-check"),
+  githubPull:  () => request("/update/github-pull", { method: "POST" }),
   setupAdmin: (username, password) =>
     request("/auth/setup", {
       method: "POST",

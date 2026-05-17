@@ -167,6 +167,87 @@ export function initSystemUpdateSection(container) {
   });
 }
 
+export function initGithubUpdateSection(container) {
+  const card    = container.querySelector("#gh-update-card");
+  if (!card) return;
+
+  const msgEl   = card.querySelector("#gh-msg");
+  const checkBtn = card.querySelector("#gh-check-btn");
+  const pullBtn  = card.querySelector("#gh-pull-btn");
+  const infoEl  = card.querySelector("#gh-info");
+
+  if (card.querySelector("#gh-card-h3")) card.querySelector("#gh-card-h3").textContent = t("settings.gh_card");
+  if (card.querySelector("#gh-hint"))    card.querySelector("#gh-hint").textContent    = t("settings.gh_hint");
+  if (checkBtn) checkBtn.textContent = t("settings.gh_btn_check");
+  if (pullBtn)  pullBtn.textContent  = t("settings.gh_btn_pull");
+
+  function showInfo(data) {
+    const cur  = `${data.current_version} build ${data.current_build}`;
+    const lat  = data.latest_version ? `${data.latest_version} build ${data.latest_build}` : "–";
+    const upd  = data.update_available;
+    const git  = data.git_ready;
+
+    infoEl.innerHTML = `
+      <table class="gh-version-table">
+        <tr><td>${t("settings.gh_current")}</td><td><strong>${esc(cur)}</strong></td></tr>
+        <tr><td>${t("settings.gh_latest")}</td><td><strong>${esc(lat)}</strong></td></tr>
+      </table>`;
+
+    if (data.error) {
+      msgEl.innerHTML = `<div class="alert error">${t("settings.gh_check_err").replace("{msg}", esc(data.error))}</div>`;
+      pullBtn.hidden = true;
+      return;
+    }
+    if (!git) {
+      msgEl.innerHTML = `<div class="alert warning">${t("settings.gh_not_git")}</div>`;
+      pullBtn.hidden = true;
+      return;
+    }
+    if (upd) {
+      msgEl.innerHTML = `<div class="alert warning">${t("settings.gh_update_available")}</div>`;
+      pullBtn.hidden = false;
+    } else {
+      msgEl.innerHTML = `<div class="alert success">${t("settings.gh_up_to_date")}</div>`;
+      pullBtn.hidden = true;
+    }
+  }
+
+  checkBtn.addEventListener("click", async () => {
+    checkBtn.disabled = true;
+    msgEl.innerHTML = `<div class="alert info">${t("settings.gh_checking")}</div>`;
+    infoEl.innerHTML = "";
+    pullBtn.hidden = true;
+    try {
+      const data = await api.githubCheck();
+      showInfo(data);
+    } catch (err) {
+      msgEl.innerHTML = `<div class="alert error">${t("settings.gh_check_err").replace("{msg}", esc(err.message))}</div>`;
+    } finally {
+      checkBtn.disabled = false;
+    }
+  });
+
+  pullBtn.addEventListener("click", async () => {
+    if (!confirm(t("settings.gh_btn_pull") + "?")) return;
+    pullBtn.disabled = true;
+    checkBtn.disabled = true;
+    msgEl.innerHTML = `<div class="alert info">${t("settings.gh_pulling")}</div>`;
+    try {
+      const res = await api.githubPull();
+      const out = [res.stdout, res.stderr].filter(Boolean).join("\n");
+      msgEl.innerHTML = `
+        <div class="alert success">${t("settings.gh_pull_ok")}</div>
+        ${out ? `<pre class="gh-pull-output">${esc(out)}</pre>` : ""}`;
+      pullBtn.hidden = true;
+    } catch (err) {
+      msgEl.innerHTML = `<div class="alert error">${t("settings.gh_pull_err").replace("{msg}", esc(err.message))}</div>`;
+    } finally {
+      pullBtn.disabled = false;
+      checkBtn.disabled = false;
+    }
+  });
+}
+
 export function initAdvancedSection(container) {
   const btn    = container.querySelector("#migration-sync-btn");
   const result = container.querySelector("#migration-sync-result");

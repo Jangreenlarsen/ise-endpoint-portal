@@ -43,6 +43,27 @@ async def apply_update(
     return result
 
 
+@router.get("/github-check")
+async def github_check(_user=Depends(require_admin)) -> dict:
+    """Tjek om der er en ny version på GitHub. Caches i 1 time."""
+    return await update_service.check_github_version()
+
+
+@router.post("/github-pull")
+async def github_pull(_user=Depends(require_admin)) -> dict:
+    """Kør git pull origin main i projektroden.
+
+    Kræver at serveren er et git-repo (git init + remote sat op).
+    """
+    result = await update_service.git_pull()
+    if not result["ok"]:
+        raise HTTPException(
+            status_code=500,
+            detail=result["stderr"] or "git pull fejlede",
+        )
+    return result
+
+
 @router.post("/restart")
 async def restart_server(_user=Depends(require_admin)) -> dict:
     """Planlæg server-genstart om 2.5 sekunder.

@@ -3117,3 +3117,21 @@ body.register-route .login-card {
 }
 .profiling-attr-val { word-break: break-all; font-family: monospace; }
 [data-theme="dark"] .profiling-attr-key { color: #9ca3af; }
+
+/* ── GitHub opdatering ── */
+.gh-version-table { border-collapse: collapse; margin: 0.5rem 0; font-size: 0.9rem; }
+.gh-version-table td { padding: 0.2rem 1rem 0.2rem 0; }
+.gh-pull-output {
+  background: var(--code-bg, #f1f5f9);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 6px;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.8rem;
+  font-family: monospace;
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin-top: 0.5rem;
+  max-height: 200px;
+  overflow-y: auto;
+}
+[data-theme="dark"] .gh-pull-output { background: #1e293b; border-color: #334155; }

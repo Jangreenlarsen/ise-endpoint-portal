@@ -3,6 +3,20 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.0 build 0393] — 2026-05-17 — feat: GitHub opdateringschek og git pull direkte fra portal
+
+Admin kan nu tjekke om der er en ny version på GitHub og hente opdateringen direkte via git — uden at SSH til serveren.
+
+- **Backend** (`update_service.py`): `check_github_version()` — henter `version.json` fra GitHub raw URL, sammenligner build-numre, cacher i 1 time. `git_pull()` — kører `git pull origin main` i projektroden via subprocess. `_is_git_repo()` — detekterer om serveren er et git-repo.
+- **API** (`api/update.py`): `GET /api/update/github-check` og `POST /api/update/github-pull` (kun admin).
+- **Frontend** (`section-update.js`): ny `initGithubUpdateSection()` — "Tjek for opdatering"-knap viser installeret vs. seneste version; "Hent og installer"-knap kører git pull og viser output; restart-knap er stadig tilgængelig bagefter.
+- **Settings HTML** (`settings.js`): nyt GitHub-opdatering-kort under pc-update subtab.
+- **CSS** (`styles.css`): `.gh-version-table` og `.gh-pull-output` styling.
+- **i18n** (`i18n.js`): DA + EN strings for alle GitHub-opdatering UI-elementer.
+- **api.js**: `githubCheck()` og `githubPull()` metoder.
+
+**Berørte filer:** `backend/app/services/update_service.py`, `backend/app/api/update.py`, `frontend/js/views/settings/section-update.js`, `frontend/js/views/settings.js`, `frontend/js/i18n.js`, `frontend/js/api.js`, `frontend/css/styles.css`
+
 ## [5.4.0-P1 build 0392] — 2026-05-17 — docs: README opdateret med nye funktioner og sikkerheds-patch
 
 Version bump til 5.4.0-P1. Tilfoejede: sammenfoldet regeliste, RADIUS-parameter prompt,

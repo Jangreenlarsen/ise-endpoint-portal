@@ -1003,6 +1003,22 @@ const TRANSLATIONS = {
     "settings.update_file_list_lbl":  "Filer der opdateres ({n})",
     "settings.update_blocked_lbl":    "⚠ Blokerede filer (overskrives ikke)",
 
+    // ── Settings — GitHub opdatering ────────────────────────────────────────
+    "settings.gh_card":               "GitHub opdatering",
+    "settings.gh_hint":               "Portalen tjekker GitHub for nye versioner og henter opdateringen direkte via git. Kræver at serveren er sat op med git remote (se installationsvejledningen).",
+    "settings.gh_btn_check":          "Tjek for opdatering",
+    "settings.gh_checking":           "Tjekker GitHub...",
+    "settings.gh_current":            "Installeret version",
+    "settings.gh_latest":             "Seneste version på GitHub",
+    "settings.gh_up_to_date":         "✅ Portalen er opdateret.",
+    "settings.gh_update_available":   "🔔 Ny version tilgængelig!",
+    "settings.gh_not_git":            "⚠ Serveren er ikke konfigureret med git. Følg GitHub-deploy-guiden i installationsvejledningen.",
+    "settings.gh_btn_pull":           "Hent og installer fra GitHub",
+    "settings.gh_pulling":            "Henter opdatering fra GitHub...",
+    "settings.gh_pull_ok":            "✅ Opdatering hentet. Genstart serveren for at aktivere backend-ændringer.",
+    "settings.gh_pull_err":           "Fejl ved git pull: {msg}",
+    "settings.gh_check_err":          "Kunne ikke tjekke GitHub: {msg}",
+
     // ── Settings — Advanced/Migration ───────────────────────────────────────
     "settings.adv_card":                    "Importér custom attributter fra ISE (migration)",
     "settings.adv_btn":                     "Importér custom attributter fra ISE",
@@ -2018,6 +2034,22 @@ const TRANSLATIONS = {
     "settings.update_pkg_info_lbl":   "Package info",
     "settings.update_file_list_lbl":  "Files to update ({n})",
     "settings.update_blocked_lbl":    "⚠ Blocked files (will not be overwritten)",
+
+    // ── Settings — GitHub update ─────────────────────────────────────────────
+    "settings.gh_card":               "GitHub update",
+    "settings.gh_hint":               "The portal checks GitHub for new versions and fetches the update directly via git. Requires the server to be set up with a git remote (see the installation guide).",
+    "settings.gh_btn_check":          "Check for update",
+    "settings.gh_checking":           "Checking GitHub...",
+    "settings.gh_current":            "Installed version",
+    "settings.gh_latest":             "Latest version on GitHub",
+    "settings.gh_up_to_date":         "✅ Portal is up to date.",
+    "settings.gh_update_available":   "🔔 New version available!",
+    "settings.gh_not_git":            "⚠ Server is not configured with git. Follow the GitHub deploy guide in the installation documentation.",
+    "settings.gh_btn_pull":           "Fetch and install from GitHub",
+    "settings.gh_pulling":            "Fetching update from GitHub...",
+    "settings.gh_pull_ok":            "✅ Update fetched. Restart the server to activate backend changes.",
+    "settings.gh_pull_err":           "git pull error: {msg}",
+    "settings.gh_check_err":          "Could not check GitHub: {msg}",
 
     // ── Settings — Advanced/Migration ───────────────────────────────────────
     "settings.adv_card":                    "Import custom attributes from ISE (migration)",
