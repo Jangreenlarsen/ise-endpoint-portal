@@ -3,6 +3,8 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.0 build 0404] — 2026-05-17 — fix: install.sh deaktiverer automatisk CD-ROM apt-kilde ved fresh DVD-installation
+
 ## [5.5.0 build 0403] — 2026-05-17 — fix: install.sh viser wget-alternativ når curl ikke er installeret
 
 ## [5.5.0 build 0402] — 2026-05-17 — feat: distributions-installationsscript og deploy-filer til Debian/Ubuntu
