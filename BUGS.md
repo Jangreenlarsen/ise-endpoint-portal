@@ -15,6 +15,8 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 ## Fixed
 
+- `[fixed 5.4.5 build 0379] 2026-05-17 — Simulate match matchede altid Default-reglen efter build 0378` — To-pass strategien fra 0378 sprang alle partial matches (ConditionReference) over og ledte efter "definitivt match". Default-reglen (ingen betingelse) er altid definitivt → alt landede på Default/DenyAccess. Reverteret til stop-ved-første-match; ConditionReference = benefit-of-doubt True + partial_match=True. **Berørte filer:** `backend/app/services/policy_service.py`.
+
 - `[fixed 5.4.5 build 0378] 2026-05-17 — Simulate match stoppede ved første ConditionReference-regel og returnerede forkert regel` — `match_endpoint` stoppede ved første `matched=True` — også partial matches (ConditionReference behandlet som True). Regel 1 med `ConditionReference(Wireless_MAB) AND IdentityGroup(X)` rapporteres som "muligt match" selvom ISE ville fejle regel 1 (Wireless_MAB=False ved runtime) og matche regel 5. Fix: to-pass strategi — fortsæt forbi partial matches, returner første **definitive** match (alle betingelser evaluable og True); falder kun tilbage til første partial match hvis ingen definitiv match findes. **Berørte filer:** `backend/app/services/policy_service.py`.
 
 - `[fixed 5.4.5 build 0378] 2026-05-17 — Regelsortering i list_authorization_rules sorterede på forkert niveau` — `r.get("rank", 0)` søgte rank på wrapper-niveau (`{"rule":{...}, "profile":[...]}`), men rank sidder inde i `r["rule"]`. Alle regler fik sort-key `0` → sortering var no-op. ISE returnerer typisk regler i rank-rækkefølge alligevel, men afhænger af ISE-version. Fix: `(r.get("rule") or r).get("rank", 0)`. **Berørte filer:** `backend/app/ise/policy.py`.

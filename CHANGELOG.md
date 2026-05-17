@@ -3,6 +3,17 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.4.5 build 0379] — 2026-05-17 — revert: to-pass strategi fjernet — Default-regel altid vandt
+
+To-pass strategien fra build 0378 var forkert: Default-reglen (ingen betingelse) er altid et
+"definitivt match" (ingen skipped conditions) → simulatoren sprang alle regler over og landede
+altid på Default med DenyAccess. Tilbagerullet til stop-ved-første-match, som er korrekt
+semantisk — ConditionReference behandles som "benefit of doubt = True" og markeres som partial.
+
+**Berørte filer:** `backend/app/services/policy_service.py`
+
+---
+
 ## [5.4.5 build 0378] — 2026-05-17 — fix: Simulate match — to-pass strategi + korrekt regelsortering
 
 **To fejl rettet:**
