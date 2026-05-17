@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.0 build 0405] — 2026-05-17 — fix: install.sh pipe-kompatibilitet (read /dev/tty) og PATH inkluderer /usr/sbin
+
+Rettet to fejl ved kørsel via wget|bash:
+- `read` læser nu fra /dev/tty i stedet for stdin så nginx-prompt virker korrekt ved pipe-kørsel
+- PATH udvides med /usr/sbin så nginx og andre sbin-kommandoer findes ved su/pipe-kørsel
+
 ## [5.5.0 build 0404] — 2026-05-17 — fix: install.sh deaktiverer automatisk CD-ROM apt-kilde ved fresh DVD-installation
 
 ## [5.5.0 build 0403] — 2026-05-17 — fix: install.sh viser wget-alternativ når curl ikke er installeret
