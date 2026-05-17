@@ -3,6 +3,15 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.0 build 0398] — 2026-05-17 — fix: GitHub-tjek bypasser nu altid cache (force refresh)
+
+"Tjek GitHub"-knappen sendte cached resultat selvom GitHub var opdateret.
+Fix: API-endpointet sender `force=True` til `check_github_version()` — cachen
+bruges kun af passive/automatiske opslag, aldrig ved aktiv knap-klik.
+
+- `backend/app/api/update.py` — `github_check` sender `force=True`
+- `backend/app/services/update_service.py` — `check_github_version(force=False)` parameter
+
 ## [5.5.0 build 0397] — 2026-05-17 — feat: GitHub-opdatering kan følge dev- eller main-branch
 
 Admin kan nu vælge om portalen skal tjekke og hente fra `main` (stabil) eller `dev` (udviklingsversion) via en checkbox i Settings → GitHub-opdatering.

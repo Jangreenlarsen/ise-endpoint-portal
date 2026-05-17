@@ -210,22 +210,23 @@ def _is_git_repo() -> bool:
     return result.returncode == 0
 
 
-async def check_github_version() -> dict[str, Any]:
+async def check_github_version(*, force: bool = False) -> dict[str, Any]:
     """Hent seneste version fra GitHub og sammenlign med lokal.
 
     Returnerer:
         current_version, current_build, latest_version, latest_build,
         update_available, git_ready, checked_at, branch, error (hvis fejl).
 
-    Caches i 1 time — invalideres automatisk hvis branch-indstilling ændres.
+    Caches i 1 time — invalideres automatisk hvis branch-indstilling ændres
+    eller force=True sendes (bruges af knappen i UI'et).
     """
     global _github_cache, _github_cache_ts, _github_cache_branch
     from app.core.version import BUILD, VERSION
 
     branch = _github_branch()
     now = time.time()
-    # Ugyldiggør cache hvis branch er skiftet
-    if _github_cache and (now - _github_cache_ts < _GITHUB_CACHE_TTL) and _github_cache_branch == branch:
+    # Ugyldiggør cache hvis branch er skiftet eller force-refresh
+    if not force and _github_cache and (now - _github_cache_ts < _GITHUB_CACHE_TTL) and _github_cache_branch == branch:
         return _github_cache
 
     git_ready = await asyncio.to_thread(_is_git_repo)
