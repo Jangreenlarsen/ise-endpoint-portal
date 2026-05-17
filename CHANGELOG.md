@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.4.8 build 0387] — 2026-05-17 — docs: Ny reports/-mappe med sikkerheds- og systemrapporter
+
+Oprettet `reports/`-mappe. Flyttet `SYSTEM_DESCRIPTION.md` og tilføjet
+`SECURITY_ANALYSIS.md` (to-fase sikkerheds- og funktionsanalyse med
+13 fund og Top-10 handlingsliste).
+
 ## [5.4.8 build 0386] — 2026-05-17 — ux: Omdøb side-menu punkter med prefix-kategori
 
 Register → Endpoint Register, Import → Endpoint Import, Browse → Endpoint Browse/Edit,
