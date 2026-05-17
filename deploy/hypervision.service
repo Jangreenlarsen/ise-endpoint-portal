@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
+#
+# Systemd service unit for HyperVision ISE Portal.
+# Install: cp deploy/hypervision.service /etc/systemd/system/
+#          systemctl daemon-reload && systemctl enable --now hypervision
+
+[Unit]
+Description=HyperVision ISE Portal
+After=network.target
+Documentation=https://github.com/Jangreenlarsen/ise-endpoint-portal
+
+[Service]
+Type=simple
+User=hypervision
+Group=hypervision
+WorkingDirectory=/opt/hypervision
+ExecStart=/opt/hypervision/backend/.venv/bin/python \
+    -m uvicorn app.main:app \
+    --host 0.0.0.0 \
+    --port 8000 \
+    --app-dir backend \
+    --log-level warning
+Restart=always
+RestartSec=3
+TimeoutStopSec=10
+
+# Sikkerhed
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/opt/hypervision/backend
+
+# Logging til systemd journal
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=hypervision
+
+[Install]
+WantedBy=multi-user.target
