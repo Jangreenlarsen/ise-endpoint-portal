@@ -3,6 +3,18 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.4.4 build 0375] — 2026-05-17 — fix: Simulate match brugte kortnavnet som group_name — ISE-sammenligning fejlede
+
+`collectEndpointAttrs()` sendte kortnavnet (`"ADM-Apple-iPhone"`) som `group_name` fordi den læste
+`.selectedOptions[0].text` fra `#d-group`. Backend `_get_ep_value` sammenlignede med ISE-regelens
+fulde condition-value (`"Endpoint Identity Groups:Profiled:ADM-Apple-iPhone"`) — `equals` fejlede
+altid og simulator rapporterede "ingen match" selvom reglen faktisk ville ramme.
+Fix: lookup i `state.groups` via gruppe-ID → fuld ISE-sti.
+
+**Berørte filer:** `frontend/js/views/browse-detail.js`
+
+---
+
 ## [5.4.4 build 0374] — 2026-05-17 — fix: Identity Group-condition i RADIUS-wizard fik forkert sti (manglede mellemled)
 
 Wizard-koden brugte `.selectedOptions[0].text` (display-teksten = kortnavnet `"ADM-Apple-iPhone"`) til at

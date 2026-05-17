@@ -317,7 +317,7 @@ export function initDetail(container, state, api, cb) {
       platform_type:  container.querySelector("#d-platformtype")?.value || "",
       psk_mode:       container.querySelector("#d-psk-mode")?.checked ? "true" : "false",
       description:    container.querySelector("#d-description")?.value || "",
-      group_name:     container.querySelector("#d-group")?.selectedOptions[0]?.text || "",
+      group_name:     (state.groups || []).find((g) => g.id === (container.querySelector("#d-group")?.value || ""))?.name || "",
     };
   }
 
