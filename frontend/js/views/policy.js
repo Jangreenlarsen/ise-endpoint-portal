@@ -163,9 +163,10 @@ export async function renderPolicy(container) {
     const profiles = (r.profiles || []).map((p) =>
       `<span class="profile-chip">${esc(p)}</span>`
     ).join("") || "";
+    const expanded = r.id === selectedRuleId ? " expanded" : "";
 
     return `
-      <div class="pol-rule-card${r.id === selectedRuleId ? " active" : ""}" data-id="${esc(r.id)}">
+      <div class="pol-rule-card${r.id === selectedRuleId ? " active" : ""}${expanded}" data-id="${esc(r.id)}">
         <div class="pol-rule-rank">
           <span class="pol-rank-badge">${r.rank}</span>
         </div>
@@ -173,9 +174,12 @@ export async function renderPolicy(container) {
           <div class="pol-rule-top">
             <span class="pol-rule-name">${esc(r.name)}</span>
             <span class="pol-state-badge ${r.state}">${stateLabel(r.state)}</span>
+            <span class="pol-rule-chevron">▸</span>
           </div>
-          <div class="pol-rule-chips">${chips}</div>
-          ${profiles ? `<div class="pol-rule-profiles"><span class="pol-profiles-arrow">→</span>${profiles}</div>` : ""}
+          <div class="pol-rule-expand">
+            <div class="pol-rule-chips">${chips}</div>
+            ${profiles ? `<div class="pol-rule-profiles"><span class="pol-profiles-arrow">→</span>${profiles}</div>` : ""}
+          </div>
         </div>
       </div>`;
   }
@@ -187,8 +191,18 @@ export async function renderPolicy(container) {
       if (!rule) return;
 
       card.addEventListener("click", () => {
-        if (selectedRuleId === id) { clearDetail(); return; }
-        showRuleDetail(rule, setId);
+        const isExpanded = card.classList.contains("expanded");
+        // Collapse all others
+        list.querySelectorAll(".pol-rule-card.expanded").forEach((c) => {
+          if (c !== card) c.classList.remove("expanded");
+        });
+        if (isExpanded) {
+          card.classList.remove("expanded");
+          if (selectedRuleId === id) clearDetail();
+        } else {
+          card.classList.add("expanded");
+          showRuleDetail(rule, setId);
+        }
       });
     });
   }

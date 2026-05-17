@@ -3,6 +3,17 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.4.8 build 0384] — 2026-05-17 — feat: Policy-regler foldet sammen som liste — klik for at åbne
+
+Reglerne under en policy set vises nu som en kompakt liste (kun rank + navn + state).
+Klik på en regel folder den ud inline og viser conditions + profiles.
+Klik igen kollapser den. Kun én regel er udfoldet ad gangen.
+Højre panel (editor) åbner som før ved udvidelse.
+
+**Berørte filer:**
+- `frontend/js/views/policy.js` — `renderRuleCard()` og `wireRuleCards()` omskrevet
+- `frontend/css/styles.css` — `.pol-rule-expand`, `.pol-rule-chevron` styles
+
 ## [5.4.7 build 0383] — 2026-05-17 — feat: Simulate match spørger efter RADIUS-parametre
 
 Simulator viser nu hvilke RADIUS-attributter (`Radius.*`) der indgår i reglerne
