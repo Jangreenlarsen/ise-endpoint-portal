@@ -264,28 +264,46 @@ async def check_github_version(*, force: bool = False) -> dict[str, Any]:
 
 
 def _git_pull_sync() -> dict[str, Any]:
-    """Kør git pull origin <branch> i PROJECT_ROOT. Returnerer stdout, stderr, ok."""
+    """Hent og anvend seneste kode fra GitHub via fetch + reset --hard.
+
+    Bruger fetch + reset --hard i stedet for pull for at undgå
+    merge-konflikter ved lokale ændringer på produktionsserveren.
+    Gitignored filer (config, logs, cache) berøres ikke.
+    """
     from app.core import config as _cfg
     branch = (_cfg.settings.github_branch or "main").strip()
+    stdout_parts: list[str] = []
     try:
-        proc = subprocess.run(
-            ["git", "-C", str(PROJECT_ROOT), "pull", "origin", branch],
+        # Trin 1: fetch
+        fetch = subprocess.run(
+            ["git", "-C", str(PROJECT_ROOT), "fetch", "origin", branch],
             capture_output=True, text=True, timeout=60,
         )
-        ok = proc.returncode == 0
+        if fetch.stdout.strip(): stdout_parts.append(fetch.stdout.strip())
+        if fetch.stderr.strip(): stdout_parts.append(fetch.stderr.strip())
+        if fetch.returncode != 0:
+            return {"ok": False, "stdout": "\n".join(stdout_parts), "stderr": fetch.stderr.strip(), "returncode": fetch.returncode}
+
+        # Trin 2: reset --hard til remote branch
+        reset = subprocess.run(
+            ["git", "-C", str(PROJECT_ROOT), "reset", "--hard", f"origin/{branch}"],
+            capture_output=True, text=True, timeout=30,
+        )
+        if reset.stdout.strip(): stdout_parts.append(reset.stdout.strip())
+        if reset.stderr.strip(): stdout_parts.append(reset.stderr.strip())
+        ok = reset.returncode == 0
         if ok:
-            # Ryd cache så næste check henter ny version
             global _github_cache, _github_cache_ts
             _github_cache = {}
             _github_cache_ts = 0.0
         return {
             "ok": ok,
-            "stdout": proc.stdout.strip(),
-            "stderr": proc.stderr.strip(),
-            "returncode": proc.returncode,
+            "stdout": "\n".join(stdout_parts),
+            "stderr": reset.stderr.strip() if not ok else "",
+            "returncode": reset.returncode,
         }
     except subprocess.TimeoutExpired:
-        return {"ok": False, "stdout": "", "stderr": "git pull timed out (60s)", "returncode": -1}
+        return {"ok": False, "stdout": "", "stderr": "git timed out (60s)", "returncode": -1}
     except FileNotFoundError:
         return {"ok": False, "stdout": "", "stderr": "git ikke fundet — er git installeret på serveren?", "returncode": -1}
     except Exception as exc:  # noqa: BLE001

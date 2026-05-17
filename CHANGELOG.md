@@ -3,6 +3,15 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.0 build 0399] — 2026-05-17 — fix: git pull erstattet med fetch + reset --hard
+
+`git pull` fejler med "local changes would be overwritten" på produktionsserveren
+fordi serveren aldrig laver egne commits. Fix: `_git_pull_sync()` bruger nu
+`git fetch origin <branch>` + `git reset --hard origin/<branch>` — matcher
+remote præcist uden merge-konflikter. Gitignored filer (config, logs, cache) berøres ikke.
+
+- `backend/app/services/update_service.py` — fetch + reset --hard i stedet for pull
+
 ## [5.5.0 build 0398] — 2026-05-17 — fix: GitHub-tjek bypasser nu altid cache (force refresh)
 
 "Tjek GitHub"-knappen sendte cached resultat selvom GitHub var opdateret.
