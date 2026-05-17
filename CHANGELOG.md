@@ -3,6 +3,8 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.0 build 0400] — 2026-05-17 — test: opdateringstest af fetch + reset --hard mekanisme
+
 ## [5.5.0 build 0399] — 2026-05-17 — fix: git pull erstattet med fetch + reset --hard
 
 `git pull` fejler med "local changes would be overwritten" på produktionsserveren
