@@ -146,6 +146,24 @@ def _eval_operator(op: str, ep_val: str, rule_val: str) -> bool:
     return False
 
 
+def _eval_identity_group(ep_val: str, op: str, rule_val: str) -> bool:
+    """ISE-korrekt evaluering af IdentityGroup.Name.
+
+    ISE's 'equals' på identity groups er hierarkisk: en regel mod
+    'Endpoint Identity Groups:Profiled' matcher ALLE endpoints i Profiled
+    og alle undergrupper (fx :Profiled:ADM-Apple-iPhone).
+    Vi implementerer dette via prefix-tjek med ':' som separator.
+    """
+    ep_v = (ep_val or "").lower()
+    r_v = (rule_val or "").lower()
+    if op == "equals":
+        return ep_v == r_v or ep_v.startswith(r_v + ":")
+    if op == "notEquals":
+        return ep_v != r_v and not ep_v.startswith(r_v + ":")
+    # Øvrige operatorer: fald igennem til standard string-sammenligning
+    return _eval_operator(op, ep_val, rule_val)
+
+
 def _eval_condition(cond: dict | None, ep: dict) -> tuple[bool, list[MatchedCondition]]:
     """Recursively evaluate a condition against an endpoint.
 
@@ -196,7 +214,10 @@ def _eval_condition(cond: dict | None, ep: dict) -> tuple[bool, list[MatchedCond
             )
             return True, [mc]
 
-        result = _eval_operator(op, ep_val, av)
+        if dn == "IdentityGroup" and an == "Name":
+            result = _eval_identity_group(ep_val, op, av)
+        else:
+            result = _eval_operator(op, ep_val, av)
         mc = MatchedCondition(
             attribute=f"{dn}.{an}",
             operator=_OP_LABEL.get(op, op),

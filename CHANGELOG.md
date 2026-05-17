@@ -3,6 +3,19 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.4.5 build 0377] — 2026-05-17 — fix: Simulate match — ISE hierarkisk IdentityGroup equals implementeret
+
+ISE's `IdentityGroup.Name equals "Endpoint Identity Groups:Profiled"` matcher **alle** endpoints
+i Profiled og undergrupper (hierarkisk). Simulatoren brugte simpel string-equal → endpoints i
+`"...Profiled:ADM-Apple-iPhone"` matchede aldrig regler skrevet mod `"...Profiled"`.
+
+Fix: ny `_eval_identity_group()` bruger prefix-tjek `ep.startswith(rule + ":")` for `equals`/`notEquals`.
+`_eval_condition` kalder denne i stedet for `_eval_operator` når `dictionaryName == "IdentityGroup"`.
+
+**Berørte filer:** `backend/app/services/policy_service.py`
+
+---
+
 ## [5.4.5 build 0376] — 2026-05-17 — chore: version bump til 5.4.5
 
 ---
