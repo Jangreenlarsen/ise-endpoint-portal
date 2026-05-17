@@ -3,6 +3,11 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.4.8 build 0385] — 2026-05-17 — docs: SYSTEM_DESCRIPTION.md tilføjet
+
+Ny fil `SYSTEM_DESCRIPTION.md` med komplet beskrivelse af systemets formål,
+brugerroller og alle 11 funktionsområder samt teknisk arkitektur-oversigt.
+
 ## [5.4.8 build 0384] — 2026-05-17 — feat: Policy-regler foldet sammen som liste — klik for at åbne
 
 Reglerne under en policy set vises nu som en kompakt liste (kun rank + navn + state).
