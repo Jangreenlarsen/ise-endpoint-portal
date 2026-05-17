@@ -243,6 +243,11 @@ const TRANSLATIONS = {
     "detail.wiz_saving":          "Opretter regel i ISE…",
     "detail.wiz_saved":           "Regel '{name}' oprettet i ISE!",
 
+    // Browse — detail modal — faner
+    "detail.tab_endpoint":      "Endpoint",
+    "detail.tab_radius":        "RADIUS",
+    "detail.tab_profil":        "Profil & IDs",
+
     // Browse — detail modal — profileringsdata
     "detail.profiling_title":   "Profileringsdata",
     "detail.profiling_show":    "▶ Vis",
@@ -1253,6 +1258,11 @@ const TRANSLATIONS = {
     "detail.wiz_err_profile":     "Add at least one profile.",
     "detail.wiz_saving":          "Creating rule in ISE…",
     "detail.wiz_saved":           "Rule '{name}' created in ISE!",
+
+    // Browse — detail modal — tabs
+    "detail.tab_endpoint":      "Endpoint",
+    "detail.tab_radius":        "RADIUS",
+    "detail.tab_profil":        "Profile & IDs",
 
     // Browse — detail modal — profiling data
     "detail.profiling_title":   "Profiling Data",

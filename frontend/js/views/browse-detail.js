@@ -117,9 +117,6 @@ export function initDetail(container, state, api, cb) {
         ancSection.classList.add("hidden");
       }
 
-      if (auth.isEditor() || auth.getUser()?.role === "viewer") {
-        if (matchArea.innerHTML === "") loadPolicyMatchUI();
-      }
     } catch (err) {
       const httpStatus = parseInt(err.message?.split(":")[0], 10) || 0;
       if (httpStatus === 503) {
@@ -141,28 +138,16 @@ export function initDetail(container, state, api, cb) {
     detailOverlay.classList.add("hidden");
     state.detailCurrentId = null;
     detailMsg.innerHTML   = "";
-    // Reset policy section — keep visible, clear content so next open reloads fresh
-    const mb = detailOverlay.querySelector("#d-policy-body");
-    const mt = detailOverlay.querySelector("#d-policy-toggle");
+    // Reset to Endpoint tab
+    _switchTab("endpoint");
+    // Clear dynamic content so next open reloads fresh
     const ma = detailOverlay.querySelector("#d-policy-match-area");
     const wa = detailOverlay.querySelector("#d-policy-wizard-area");
-    if (mb) mb.classList.remove("hidden");
-    if (mt) mt.textContent = t("detail.policy_hide");
+    const pc = detailOverlay.querySelector("#d-profiling-content");
+    const ic = detailOverlay.querySelector("#d-iseids-content");
     if (ma) ma.innerHTML = "";
     if (wa) wa.innerHTML = "";
-    // Reset profiling section — collapse + clear so next open lazy-loads fresh
-    const pb = detailOverlay.querySelector("#d-profiling-body");
-    const pt = detailOverlay.querySelector("#d-profiling-toggle");
-    const pc = detailOverlay.querySelector("#d-profiling-content");
-    if (pb) pb.classList.add("hidden");
-    if (pt) pt.textContent = t("detail.profiling_show");
     if (pc) pc.innerHTML = "";
-    // Reset ISE IDs section
-    const ib = detailOverlay.querySelector("#d-iseids-body");
-    const it = detailOverlay.querySelector("#d-iseids-toggle");
-    const ic = detailOverlay.querySelector("#d-iseids-content");
-    if (ib) ib.classList.add("hidden");
-    if (it) it.textContent = t("detail.iseids_show");
     if (ic) ic.innerHTML = "";
   }
 
@@ -256,19 +241,27 @@ export function initDetail(container, state, api, cb) {
   container.querySelector("#d-close").addEventListener("click", closeDetail);
   detailOverlay.addEventListener("click", (e) => { if (e.target === detailOverlay) closeDetail(); });
 
-  // ── Policy section (Idé 1 + 2) ───────────────────────────────────────────
-  const policySection = container.querySelector("#d-policy-section");
-  const policyToggle  = container.querySelector("#d-policy-toggle");
-  const policyBody    = container.querySelector("#d-policy-body");
-  const matchArea     = container.querySelector("#d-policy-match-area");
-  const wizardArea    = container.querySelector("#d-policy-wizard-area");
+  // ── Tab switching ─────────────────────────────────────────────────────────
+  const tabBtns   = Array.from(container.querySelectorAll(".detail-tab-btn"));
+  const tabPanels = Array.from(container.querySelectorAll(".detail-tab-panel"));
 
-  // Show/hide the policy accordion
-  policyToggle?.addEventListener("click", () => {
-    const collapsed = policyBody.classList.toggle("hidden");
-    policyToggle.textContent = collapsed ? t("detail.policy_show") : t("detail.policy_hide");
-    if (!collapsed && matchArea.innerHTML === "") loadPolicyMatchUI();
+  function _switchTab(name) {
+    tabBtns.forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
+    tabPanels.forEach((p) => p.classList.toggle("hidden", p.id !== `detail-tab-${name}`));
+  }
+
+  tabBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const tab = btn.dataset.tab;
+      _switchTab(tab);
+      if (tab === "radius" && matchArea.innerHTML === "") loadPolicyMatchUI();
+      if (tab === "profil") _lazyLoadProfil();
+    });
   });
+
+  // ── Policy areas ──────────────────────────────────────────────────────────
+  const matchArea  = container.querySelector("#d-policy-match-area");
+  const wizardArea = container.querySelector("#d-policy-wizard-area");
 
   async function loadPolicyMatchUI() {
     matchArea.innerHTML = `<div class="alert info">${t("detail.policy_loading")}</div>`;
@@ -618,17 +611,8 @@ export function initDetail(container, state, api, cb) {
     }
   });
 
-  // Show policy section for editors + viewers
-  if (auth.isEditor() || auth.getUser()?.role === "viewer") {
-    policySection?.classList.remove("hidden");
-  }
-
-  // ── Profiling section ─────────────────────────────────────────────────────
-  const profilingToggle  = container.querySelector("#d-profiling-toggle");
-  const profilingBody    = container.querySelector("#d-profiling-body");
+  // ── Profil & IDs tab — lazy-load ──────────────────────────────────────────
   const profilingContent = container.querySelector("#d-profiling-content");
-  const iseidToggle      = container.querySelector("#d-iseids-toggle");
-  const iseidBody        = container.querySelector("#d-iseids-body");
   const iseidContent     = container.querySelector("#d-iseids-content");
 
   function _renderProfilingAttrTable(attributes) {
@@ -655,25 +639,29 @@ export function initDetail(container, state, api, cb) {
       .join("");
   }
 
-  profilingToggle?.addEventListener("click", async () => {
-    const collapsed = profilingBody.classList.toggle("hidden");
-    profilingToggle.textContent = collapsed
-      ? t("detail.profiling_show")
-      : t("detail.profiling_hide");
-
-    if (!collapsed && profilingContent.innerHTML === "") {
-      if (!state.detailCurrentId) return;
+  async function _lazyLoadProfil() {
+    if (!state.detailCurrentId) return;
+    const promises = [];
+    if (profilingContent.innerHTML === "") {
       profilingContent.innerHTML = `<div class="alert info">${t("alert.loading")}</div>`;
-      try {
-        const data = await api.getProfilingData(state.detailCurrentId);
-        profilingContent.innerHTML = _renderProfilingData(data);
-      } catch (err) {
-        profilingContent.innerHTML = `<div class="alert error">${t("detail.profiling_error")}: ${esc(err.message)}</div>`;
-      }
+      promises.push(
+        api.getProfilingData(state.detailCurrentId)
+          .then((data) => { profilingContent.innerHTML = _renderProfilingData(data); })
+          .catch((err) => { profilingContent.innerHTML = `<div class="alert error">${t("detail.profiling_error")}: ${esc(err.message)}</div>`; })
+      );
     }
-  });
+    if (iseidContent.innerHTML === "") {
+      iseidContent.innerHTML = `<div class="alert info">${t("alert.loading")}</div>`;
+      promises.push(
+        api.getProfilerProfile(state.detailCurrentId)
+          .then((data) => { iseidContent.innerHTML = _renderProfilerProfile(state.detailCurrentId, data); })
+          .catch((err) => { iseidContent.innerHTML = `<div class="alert error">${esc(err.message)}</div>`; })
+      );
+    }
+    await Promise.all(promises);
+  }
 
-  // ── ISE IDs & Profil-sektion ──────────────────────────────────────────────
+  // ── ISE IDs & Profil renderer ─────────────────────────────────────────────
   function _renderProfilerProfile(endpointId, data) {
     const profileId = data?.profile_id;
     const profile   = data?.profile;
@@ -736,24 +724,6 @@ export function initDetail(container, state, api, cb) {
         ${profileTable}
       </div>`;
   }
-
-  iseidToggle?.addEventListener("click", async () => {
-    const collapsed = iseidBody.classList.toggle("hidden");
-    iseidToggle.textContent = collapsed
-      ? t("detail.iseids_show")
-      : t("detail.iseids_hide");
-
-    if (!collapsed && iseidContent.innerHTML === "") {
-      if (!state.detailCurrentId) return;
-      iseidContent.innerHTML = `<div class="alert info">${t("alert.loading")}</div>`;
-      try {
-        const data = await api.getProfilerProfile(state.detailCurrentId);
-        iseidContent.innerHTML = _renderProfilerProfile(state.detailCurrentId, data);
-      } catch (err) {
-        iseidContent.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
-      }
-    }
-  });
 
   return { openDetail, closeDetail };
 }

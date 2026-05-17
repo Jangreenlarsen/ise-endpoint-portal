@@ -108,95 +108,84 @@ export async function renderBrowse(container) {
       <div class="modal detail-modal">
         <h3>${t("detail.title")}</h3>
         <div id="detail-msg"></div>
-        <div class="detail-grid">
-          <label>MAC</label><div class="detail-value" id="d-mac"></div>
-          <label>Vendor</label><div class="detail-value" id="d-vendor"></div>
-          <label>Name</label><div class="detail-value" id="d-name"></div>
-          <label>ID</label><div class="detail-value mono" id="d-id"></div>
-          <label>Identity Group</label>
-          <select id="d-group"></select>
-          <label>${t("detail.assignment")}</label>
-          <label class="inline-cb"><input type="checkbox" id="d-static-group" /> ${t("detail.static_assign")}</label>
-          <label>Description</label>
-          <input type="text" id="d-description" />
-          <label>Type</label>
-          <select id="d-type"></select>
-          <label>Owner</label>
-          <select id="d-owner"></select>
-          <label>${t("col.lokation")}</label>
-          <select id="d-lokation"></select>
-          <label>AuthzVlan</label>
-          <select id="d-authzvlan"></select>
-          <label>AuthzACL</label>
-          <select id="d-authzacl"></select>
-          <label>Platform</label>
-          <div class="platform-field-wrap"><select id="d-platformtype"></select></div>
-          <label>PSK Mode</label>
-          <label class="inline-cb"><input type="checkbox" id="d-psk-mode" /> ${t("detail.psk_mode_lbl")}</label>
-          <label id="d-psk-key-label">PSK Key</label>
-          <div id="d-psk-key-wrap" class="psk-key-wrap">
-            <input type="password" id="d-psk-key" autocomplete="off" />
-            <button type="button" id="d-psk-show" class="secondary small">${t("detail.btn_show")}</button>
-            <button type="button" id="d-psk-gen" class="secondary small">${t("detail.btn_generate")}</button>
-          </div>
-          <label>${t("col.roles")}</label>
-          <div id="d-roles"></div>
-          <label>HypervisionISEPortal</label>
-          <div class="detail-value mono" id="d-hypervision"></div>
-          <label>Profile ID</label>
-          <div class="detail-value mono" id="d-profile-id"></div>
-          <label>${t("detail.profile_name")}</label>
-          <div class="detail-value" id="d-profiler-name"></div>
-          <label>Static profile</label>
-          <div class="detail-value" id="d-static-profile"></div>
-          <label>Portal user</label>
-          <div class="detail-value" id="d-portal-user"></div>
-          <label>Identity store</label>
-          <div class="detail-value" id="d-identity-store"></div>
-          <label>${t("detail.registered")}</label>
-          <div class="detail-value" id="d-create-time"></div>
-          <label>${t("detail.last_updated")}</label>
-          <div class="detail-value" id="d-update-time"></div>
+        <div class="detail-tab-bar">
+          <button class="detail-tab-btn active" data-tab="endpoint">${t("detail.tab_endpoint")}</button>
+          <button class="detail-tab-btn" data-tab="radius">${t("detail.tab_radius")}</button>
+          <button class="detail-tab-btn" data-tab="profil">${t("detail.tab_profil")}</button>
         </div>
-        <div id="d-anc-section" class="hidden anc-section">
-          <div class="anc-status-row">
-            <span class="anc-label">ANC Quarantine</span>
-            <span id="d-anc-badge" class="anc-badge anc-free">${t("detail.anc_free")}</span>
-            <span id="d-anc-loading" class="hint hidden">${t("detail.anc_loading")}</span>
+        <div class="detail-tab-panels">
+          <div id="detail-tab-endpoint" class="detail-tab-panel">
+            <div class="detail-grid">
+              <label>MAC</label><div class="detail-value" id="d-mac"></div>
+              <label>Vendor</label><div class="detail-value" id="d-vendor"></div>
+              <label>Name</label><div class="detail-value" id="d-name"></div>
+              <label>ID</label><div class="detail-value mono" id="d-id"></div>
+              <label>Identity Group</label>
+              <select id="d-group"></select>
+              <label>${t("detail.assignment")}</label>
+              <label class="inline-cb"><input type="checkbox" id="d-static-group" /> ${t("detail.static_assign")}</label>
+              <label>Description</label>
+              <input type="text" id="d-description" />
+              <label>Type</label>
+              <select id="d-type"></select>
+              <label>Owner</label>
+              <select id="d-owner"></select>
+              <label>${t("col.lokation")}</label>
+              <select id="d-lokation"></select>
+              <label>AuthzVlan</label>
+              <select id="d-authzvlan"></select>
+              <label>AuthzACL</label>
+              <select id="d-authzacl"></select>
+              <label>Platform</label>
+              <div class="platform-field-wrap"><select id="d-platformtype"></select></div>
+              <label>PSK Mode</label>
+              <label class="inline-cb"><input type="checkbox" id="d-psk-mode" /> ${t("detail.psk_mode_lbl")}</label>
+              <label id="d-psk-key-label">PSK Key</label>
+              <div id="d-psk-key-wrap" class="psk-key-wrap">
+                <input type="password" id="d-psk-key" autocomplete="off" />
+                <button type="button" id="d-psk-show" class="secondary small">${t("detail.btn_show")}</button>
+                <button type="button" id="d-psk-gen" class="secondary small">${t("detail.btn_generate")}</button>
+              </div>
+              <label>${t("col.roles")}</label>
+              <div id="d-roles"></div>
+              <label>HypervisionISEPortal</label>
+              <div class="detail-value mono" id="d-hypervision"></div>
+              <label>Profile ID</label>
+              <div class="detail-value mono" id="d-profile-id"></div>
+              <label>${t("detail.profile_name")}</label>
+              <div class="detail-value" id="d-profiler-name"></div>
+              <label>Static profile</label>
+              <div class="detail-value" id="d-static-profile"></div>
+              <label>Portal user</label>
+              <div class="detail-value" id="d-portal-user"></div>
+              <label>Identity store</label>
+              <div class="detail-value" id="d-identity-store"></div>
+              <label>${t("detail.registered")}</label>
+              <div class="detail-value" id="d-create-time"></div>
+              <label>${t("detail.last_updated")}</label>
+              <div class="detail-value" id="d-update-time"></div>
+            </div>
+            <div id="d-anc-section" class="hidden anc-section">
+              <div class="anc-status-row">
+                <span class="anc-label">ANC Quarantine</span>
+                <span id="d-anc-badge" class="anc-badge anc-free">${t("detail.anc_free")}</span>
+                <span id="d-anc-loading" class="hint hidden">${t("detail.anc_loading")}</span>
+              </div>
+              <div id="d-anc-quarantine-row" class="anc-action-row">
+                <select id="d-anc-policy" class="anc-policy-select"><option value="">${t("detail.anc_select")}</option></select>
+                <button id="d-anc-apply" class="danger small">${t("detail.anc_quarantine")}</button>
+              </div>
+              <div id="d-anc-clear-row" class="anc-action-row hidden">
+                <button id="d-anc-clear" class="secondary small">${t("detail.anc_clear")}</button>
+              </div>
+            </div>
           </div>
-          <div id="d-anc-quarantine-row" class="anc-action-row">
-            <select id="d-anc-policy" class="anc-policy-select"><option value="">${t("detail.anc_select")}</option></select>
-            <button id="d-anc-apply" class="danger small">${t("detail.anc_quarantine")}</button>
-          </div>
-          <div id="d-anc-clear-row" class="anc-action-row hidden">
-            <button id="d-anc-clear" class="secondary small">${t("detail.anc_clear")}</button>
-          </div>
-        </div>
-        <div id="d-policy-section" class="hidden policy-section">
-          <div class="policy-section-header">
-            <span class="policy-section-label">RADIUS Policy</span>
-            <button id="d-policy-toggle" class="secondary small">${t("detail.policy_hide")}</button>
-          </div>
-          <div id="d-policy-body">
+          <div id="detail-tab-radius" class="detail-tab-panel hidden">
             <div id="d-policy-match-area"></div>
             <div id="d-policy-wizard-area"></div>
           </div>
-        </div>
-        <div id="d-profiling-section" class="policy-section">
-          <div class="policy-section-header">
-            <span class="policy-section-label">${t("detail.profiling_title")}</span>
-            <button id="d-profiling-toggle" class="secondary small">${t("detail.profiling_show")}</button>
-          </div>
-          <div id="d-profiling-body" class="hidden">
+          <div id="detail-tab-profil" class="detail-tab-panel hidden">
             <div id="d-profiling-content"></div>
-          </div>
-        </div>
-        <div id="d-iseids-section" class="policy-section">
-          <div class="policy-section-header">
-            <span class="policy-section-label">${t("detail.iseids_title")}</span>
-            <button id="d-iseids-toggle" class="secondary small">${t("detail.iseids_show")}</button>
-          </div>
-          <div id="d-iseids-body" class="hidden">
             <div id="d-iseids-content"></div>
           </div>
         </div>

@@ -3,6 +3,21 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.4.3 build 0370] — 2026-05-17 — feat: Endpoint detail modal konverteret til fane-layout
+
+Detail-modal bruger nu tre faner i stedet for scrollende accordions:
+- **Endpoint** — alle redigerbare felter + ANC-sektion
+- **RADIUS** — policy match-simulator + regel-wizard (lazy-loaded ved første faneskift)
+- **Profil & IDs** — Profileringsdata + ISE IDs & Profil (begge lazy-loaded ved første faneskift)
+
+Modal-actions (Gem/Disconnect/Luk) er altid synlige under fanepanelet uden scroll.
+Modal er bredere (800px) og bruger `flex-column` med scrollbart fanepanel.
+
+Berørte filer: `frontend/js/views/browse.js`, `frontend/js/views/browse-detail.js`,
+`frontend/js/i18n.js`, `frontend/css/styles.css`, `version.json`
+
+---
+
 ## [5.4.3 build 0369] — 2026-05-17 — feat: Endpoint detail — ny "ISE IDs & Profil" accordion-sektion
 
 Ny collapsible sektion i endpoint detail-modal. Viser ved åbning:

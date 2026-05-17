@@ -650,6 +650,10 @@ td.mac-cell.cache-stale {
   display: flex;
   gap: 0.5rem;
   justify-content: flex-end;
+  flex-shrink: 0;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+  margin-top: 0.25rem;
 }
 
 /* ── ANC Quarantine section in detail modal ── */
@@ -701,11 +705,52 @@ td.mac-cell.cache-stale {
   color: #fca5a5;
 }
 .modal.detail-modal {
-  width: 760px;
+  width: 800px;
   max-width: 96vw;
-  max-height: 90vh;
-  overflow-y: auto;
+  max-height: 92vh;
+  overflow-y: hidden;
+  display: flex;
+  flex-direction: column;
 }
+/* ── Detail modal tabs ──────────────────────────────────────────────────── */
+.detail-tab-bar {
+  display: flex;
+  gap: 2px;
+  border-bottom: 2px solid #e5e7eb;
+  margin: 0.5rem 0 0;
+  flex-shrink: 0;
+}
+.detail-tab-btn {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  padding: 0.45rem 1.1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: pointer;
+  border-radius: 4px 4px 0 0;
+  transition: color 0.15s, border-color 0.15s;
+}
+.detail-tab-btn:hover { color: #1d4ed8; background: #f0f4ff; }
+.detail-tab-btn.active { color: #1d4ed8; border-bottom-color: #1d4ed8; background: none; }
+.detail-tab-panels {
+  flex: 1 1 0;
+  overflow-y: auto;
+  min-height: 0;
+}
+.detail-tab-panel { padding: 0.5rem 0; }
+.detail-tab-panel.hidden { display: none; }
+/* ── Dark / midnight themes ─────────────────────────────────────────────── */
+[data-theme="dark"] .detail-tab-btn,
+[data-theme="midnight"] .detail-tab-btn { color: #9ca3af; }
+[data-theme="dark"] .detail-tab-btn:hover,
+[data-theme="midnight"] .detail-tab-btn:hover { color: #93c5fd; background: #1e293b; }
+[data-theme="dark"] .detail-tab-btn.active,
+[data-theme="midnight"] .detail-tab-btn.active { color: #93c5fd; border-bottom-color: #3b82f6; }
+[data-theme="dark"] .detail-tab-bar,
+[data-theme="midnight"] .detail-tab-bar { border-bottom-color: #374151; }
 .detail-grid {
   display: grid;
   grid-template-columns: 160px 1fr;
