@@ -3,6 +3,10 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.4.5 build 0376] — 2026-05-17 — chore: version bump til 5.4.5
+
+---
+
 ## [5.4.4 build 0375] — 2026-05-17 — fix: Simulate match brugte kortnavnet som group_name — ISE-sammenligning fejlede
 
 `collectEndpointAttrs()` sendte kortnavnet (`"ADM-Apple-iPhone"`) som `group_name` fordi den læste
