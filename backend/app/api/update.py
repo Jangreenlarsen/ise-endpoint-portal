@@ -47,8 +47,12 @@ async def apply_update(
 
 @router.get("/github-check")
 async def github_check(_user=Depends(require_admin)) -> dict:
-    """Tjek om der er en ny version på GitHub. Caches i 1 time."""
-    return await update_service.check_github_version()
+    """Tjek om der er en ny version på GitHub.
+
+    Knappen i UI'et sender altid force=true for at sikre frisk data.
+    Caches i 1 time ved automatiske/passive opslag.
+    """
+    return await update_service.check_github_version(force=True)
 
 
 @router.post("/github-pull")
