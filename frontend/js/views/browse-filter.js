@@ -19,10 +19,12 @@ export function initFilter(container, state, api, cb) {
   const viewsMenu          = container.querySelector("#views-menu");
   const msg                = container.querySelector("#msg");
   const filterClearAllBtn  = container.querySelector("#filter-clear-all-btn");
+  const authStatusSelect   = container.querySelector("#auth-status-filter");
 
   function updateClearBtn() {
     const anyActive = state.portalOnly
-      || Array.from(filterRow.querySelectorAll(".col-filter-input")).some((i) => i.value.trim());
+      || Array.from(filterRow.querySelectorAll(".col-filter-input")).some((i) => i.value.trim())
+      || (authStatusSelect && authStatusSelect.value !== "all");
     filterClearAllBtn.classList.toggle("hidden", !anyActive);
   }
 
@@ -55,6 +57,7 @@ export function initFilter(container, state, api, cb) {
   function needsFilterMode() {
     return state.portalOnly
       || Array.from(filterRow.querySelectorAll(".col-filter-input")).some((i) => i.value.trim())
+      || (authStatusSelect && authStatusSelect.value !== "all")
       || state.sortCol !== null;
   }
 
@@ -66,6 +69,16 @@ export function initFilter(container, state, api, cb) {
     if (state.portalOnly) rows = rows.filter((r) => r.hypervision === "true");
     const filters = getColumnFilters();
     if (filters.length) rows = rows.filter((r) => filters.every((f) => f.re.test(f.field(r) || "")));
+    const authFilter = authStatusSelect ? authStatusSelect.value : "all";
+    if (authFilter !== "all") {
+      const macs = state.activeSessionMacs || (state.pxgridLive && state.pxgridSessionMacs) || null;
+      if (macs) {
+        rows = rows.filter((r) => {
+          const mac = normalizeMac(r.mac || r.name || "");
+          return authFilter === "auth" ? macs.has(mac) : !macs.has(mac);
+        });
+      }
+    }
     if (state.sortCol) {
       const colDef = getColumns().find((c) => c.key === state.sortCol);
       if (colDef) {
@@ -186,6 +199,7 @@ export function initFilter(container, state, api, cb) {
     return {
       portalOnly: state.portalOnly,
       cols,
+      authStatus: authStatusSelect ? authStatusSelect.value : "all",
       colVis: { ...state.colVis },
       pageSize: state.currentSize,
     };
@@ -202,7 +216,9 @@ export function initFilter(container, state, api, cb) {
     state.sortDir = null;
     updateSortHeaders();
     filterRow.querySelectorAll(".col-filter-input").forEach((input) => { input.value = ""; });
+    if (authStatusSelect) authStatusSelect.value = "all";
     if (s.portalOnly) { state.portalOnly = true; portalFilterBtn.classList.add("active-toggle"); }
+    if (s.authStatus && authStatusSelect) authStatusSelect.value = s.authStatus;
     if (Array.isArray(s.cols)) {
       for (const { col, value } of s.cols) {
         const input = filterRow.querySelector(`.col-filter-input[data-col="${col}"]`);
@@ -242,8 +258,18 @@ export function initFilter(container, state, api, cb) {
     });
   });
 
+  if (authStatusSelect) {
+    authStatusSelect.addEventListener("change", () => {
+      updateClearBtn();
+      persistFilters();
+      clearActiveView();
+      clearTimeout(filterDebounce);
+      filterDebounce = setTimeout(async () => { await onFilterChange(); }, 250);
+    });
+  }
+
   filterClearAllBtn.addEventListener("click", async () => {
-    applyFilterSnapshot({ portalOnly: false, cols: [] });
+    applyFilterSnapshot({ portalOnly: false, cols: [], authStatus: "all" });
     persistFilters();
     clearActiveView();
     await onFilterChange();

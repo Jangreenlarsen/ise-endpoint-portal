@@ -85,8 +85,14 @@ export async function renderBrowse(container) {
               <th><button type="button" id="filter-clear-all-btn" class="filter-clear-all-btn hidden" title="Nulstil alle søgefelter">×</button></th>
               ${getOrderedColumns().map((c) => `
                 <th data-col="${c.key}"${c.cls ? ` class="${c.cls}"` : ""}>
-                  <input type="text" class="col-filter-input" data-col="${c.key}"
-                         placeholder="…" />
+                  ${c.key === "mac" ? `<div class="mac-filter-wrap">
+                    <input type="text" class="col-filter-input" data-col="mac" placeholder="…" />
+                    <select id="auth-status-filter" class="auth-status-select" title="Filtrer på auth-status">
+                      <option value="all">Alle</option>
+                      <option value="auth">Auth</option>
+                      <option value="notauth">Ikke auth</option>
+                    </select>
+                  </div>` : `<input type="text" class="col-filter-input" data-col="${c.key}" placeholder="…" />`}
                 </th>`).join("")}
             </tr>
           </thead>

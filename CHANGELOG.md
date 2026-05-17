@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.4.1 build 0361] — 2026-05-17 — feat: Auth-status filter i MAC-søgefelt (Browse)
+
+Dropdown ved siden af MAC regex-søgefeltet giver mulighed for at filtrere endpoints på auth-status: "Alle" (default), "Auth" (kun endpoints med aktiv RADIUS-session, grøn) og "Ikke auth" (endpoints uden aktiv session, rød). Filteret kombineres frit med regex-søgning og indgår i filter-persistens og saved views. Dropdown vises compakt i MAC-filtercelleen og understøtter dark/midnight-temaer.
+
+**Berørte filer**: `frontend/js/views/browse.js` (MAC filter-celle template), `frontend/js/views/browse-filter.js` (authStatusSelect logik, snapshot/restore, needsFilterMode, applyFiltersToRows), `frontend/css/styles.css` (.mac-filter-wrap, .auth-status-select, dark/midnight themes), `version.json`
+
 ## [5.4.0 build 0360] — 2026-05-17 — feat: Profileringsdata-viewer i endpoint detail-modal
 
 Ny "Profileringsdata" accordion-sektion i endpoint detail-modal. Klik ▶ Vis for at se alle probe-attributter ISE har indsamlet om et endpoint (DHCP, HTTP/User-Agent, MDM, netværk, profiler-assignment og andre). Data lazy-loades fra ISE Open API `GET /api/v1/endpoint/{id}` ved første åbning — attributter er organiseret i navngivne kategorier. Nulstilles automatisk ved lukning af modal.
