@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 """ISE Network Device cache — IP → name + device type (NDG).
 
 Fetches all network devices from ERS and builds an IP-keyed map so

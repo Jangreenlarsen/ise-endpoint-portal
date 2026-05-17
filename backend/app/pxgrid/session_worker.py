@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 """Persistent STOMP-worker der subscriber til pxGrid session-topic.
 
 Bygger oven på samme bootstrap som ``probe.py`` (ServiceLookup →

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 """PxGrid 2.0 integration package (3.0.0).
 
 Splits into discrete modules so each concern can be tested in isolation

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 // Policy dashboard — master-detail layout.
 // Venstre: regelkort-liste. Højre: detail/editor. Max-width så det ikke strækker sig.
 

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 """Daily retention-prune worker for the audit log (2.9.0).
 
 Runs once at startup and then every 24 h, removing events older than

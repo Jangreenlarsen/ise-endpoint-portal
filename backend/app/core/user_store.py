@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 """Persistent store for local user accounts.
 
 Layout: backend/users.json (gitignored) — list of user records.

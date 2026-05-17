@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 """Threading-based watchdog timer til FastAPI/asyncio backend.
 
 Problemet: asyncio event loop'et kan hænge ved blocking ISE-kald,

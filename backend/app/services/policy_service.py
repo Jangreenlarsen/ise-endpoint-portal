@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 """RADIUS Policy Service — wraps ISE policy API + condition match simulation."""
 from __future__ import annotations
 

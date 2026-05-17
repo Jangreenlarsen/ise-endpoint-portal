@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 """Henter rå probe-attributter for et endpoint fra ISE Open API.
 
 ISE Open API `/api/v1/endpoint/{id}` returnerer alle probe-indsamlede

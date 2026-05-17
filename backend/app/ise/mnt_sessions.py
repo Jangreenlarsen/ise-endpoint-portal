@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 """ISE MnT session list — fetches active RADIUS sessions and derives platform.
 
 MnT sessions are returned as XML. We parse the fields needed to derive the

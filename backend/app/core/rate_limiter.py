@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 """Sliding-window per-IP rate limiter middleware.
 
 Blokerer en IP-adresse der sender mere end `rate_limit_per_minute` requests

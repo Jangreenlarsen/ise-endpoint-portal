@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 const TOKEN_KEY = "hv_ise_token";
 const USER_KEY = "hv_ise_user";
 

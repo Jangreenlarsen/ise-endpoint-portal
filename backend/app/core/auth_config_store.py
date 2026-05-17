@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 """Persistent store for Portal Auth Config (auth mode + TACACS+ settings).
 
 Stored in backend/auth_config.json — kept separate from config.json

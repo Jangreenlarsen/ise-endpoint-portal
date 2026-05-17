@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 """Prometheus metrics for HyperVision ISE Portal.
 
 All metric objects are module-level singletons — import and call directly.

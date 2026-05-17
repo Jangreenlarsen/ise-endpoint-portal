@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 """Minimal STOMP 1.2 frame codec for the pxGrid pubsub probe.
 
 We don't pull in stomp.py / aiostomp because we need exactly four frames

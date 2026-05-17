@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 """Authentication primitives: password hashing and signed-token handling.
 
 Uses only stdlib. Passwords hashed with PBKDF2-HMAC-SHA256 (600k iterations).

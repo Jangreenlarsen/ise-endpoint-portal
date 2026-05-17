@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 """OUI → vendor lookup API (2.11.0).
 
 Used by the Create form to auto-suggest Type/PlatformType from the MAC.

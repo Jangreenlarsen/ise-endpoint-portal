@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 /* Settings tab + sub-tab navigation.
  * Hoved-tabs: data-tab på .settings-tab knapper.
  * Sub-tabs: .settings-subtab-nav[data-for-tab] med .settings-subtab[data-subtab] knapper.

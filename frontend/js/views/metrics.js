@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 /**
  * Metrics view — viser Prometheus-data fra GET /metrics som et live dashboard.
  * Parser Prometheus text format direkte i browseren uden externe biblioteker.

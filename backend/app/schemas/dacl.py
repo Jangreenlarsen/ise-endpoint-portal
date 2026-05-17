@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 from pydantic import BaseModel, Field
 
 DACL_TYPES = ("IPV4", "IPV6", "IP_AGNOSTIC")

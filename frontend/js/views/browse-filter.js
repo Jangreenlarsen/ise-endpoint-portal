@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 // Filter-toolbar + saved views logic for Browse.
 // initFilter wires all filter-related DOM events and returns its public API.
 // Cross-module calls go via the `cb` object (populated in browse.js after all inits).

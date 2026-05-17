@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 // Pure utility functions and constants shared across browse modules.
 import { t } from "../i18n.js";
 

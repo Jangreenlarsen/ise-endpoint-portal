@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 """ISE integration for Downloadable ACLs (DACLs).
 
 A DACL ("Downloadable ACL", also called Port ACL in this portal's UI) is a

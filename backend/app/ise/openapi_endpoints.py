@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 """Cisco ISE Open API integration for endpoints and endpoint identity groups.
 
 Parallel to `app.ise.endpoints` which speaks ERS. Exposes the same interface

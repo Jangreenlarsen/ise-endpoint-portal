@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 """Endpoint-rolle-katalog API (2.12.0).
 
 GET    /api/endpoint-roles            -> alle (read for any auth user

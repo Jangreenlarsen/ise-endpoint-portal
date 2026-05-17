@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 // Table rendering, inline-edit, pagination, col-vis, save, export.
 // initTable wires all table DOM events and returns its public API.
 // Cross-module calls go via `cb` (populated in browse.js after all inits).

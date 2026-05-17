@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 """Change of Authorization (CoA) via the ISE MnT REST API.
 
 MnT exposes a CoA trigger path that does NOT share the ERS/Open API base path

@@ -1,8 +1,12 @@
 # HyperVision ISE Portal
 
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+
 Web-baseret administrationssystem til Cisco ISE 3.4 endpoint-management via REST API og pxGrid 2.0.
 
-**Version 5.4.0-P1 build 0391** — [Fuld manual](docs/INDEX.md) — [Changelog](CHANGELOG.md)
+**Version 5.5.0 build 0394** — [Fuld manual](docs/INDEX.md) — [Changelog](CHANGELOG.md)
+
+Copyright (C) 2026 Jan Green Larsen — udgivet under [GNU Affero General Public License v3](LICENSE)
 
 ---
 

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 """Short-lived in-memory cache for ISE endpoint + group reads.
 
 Targets the N+1 ISE-call problem in Browse/Edit: every filter toggle,

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 """Canonical PlatformType values for endpoints.
 
 PlatformType is a managed custom attribute, but unlike the other free-text

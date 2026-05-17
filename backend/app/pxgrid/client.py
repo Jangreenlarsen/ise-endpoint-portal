@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 """REST client for the pxGrid control plane.
 
 The control plane lives at ``https://<psn>:8910/pxgrid/control/*`` and

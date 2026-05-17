@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 """Pydantic schemas for the audit-log API (2.9.0)."""
 from __future__ import annotations
 

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 """Local registry of allowed values for custom endpoint attributes.
 
 ISE custom attributes are free-text; ISE does NOT enforce allowed values.

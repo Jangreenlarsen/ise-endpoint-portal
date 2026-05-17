@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 // Shared condition builder for RADIUS policy editor and rule wizard.
 // Supports nested AND/OR groups matching ISE's ConditionAndBlock/ConditionOrBlock structure.
 

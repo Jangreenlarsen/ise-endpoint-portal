@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 """Read-only API til pxGrid session-cache + worker-status (Phase 2b).
 
 Cache fyldes af ``pxgrid.session_worker``. Disse endpoints er

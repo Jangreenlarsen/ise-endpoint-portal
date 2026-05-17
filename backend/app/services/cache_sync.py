@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 """Periodic background worker that keeps the endpoint cache warm.
 
 Strategy: every ``cache_sync_interval_seconds`` seconds, iterate the ids

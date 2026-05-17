@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 """Append-only audit log for write-operations (2.9.0).
 
 Persisted to ``backend/audit.db`` (SQLite). Every successful

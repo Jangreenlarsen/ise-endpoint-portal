@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 """Typed exceptions for the PxGrid layer.
 
 Kept distinct from ``app.core.exceptions.IseApiError`` because pxGrid

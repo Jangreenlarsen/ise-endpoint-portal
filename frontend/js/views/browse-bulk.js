@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 // Bulk-edit modal, bulk-delete, and bulk-disconnect for Browse.
 // initBulk wires all bulk-action event handlers (no public API returned).
 

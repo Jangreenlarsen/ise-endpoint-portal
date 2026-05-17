@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 """ISE Open API — RADIUS Network Access Policy Sets and Authorization Rules.
 
 Open API paths (ISE 3.1+):

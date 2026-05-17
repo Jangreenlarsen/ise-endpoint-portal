@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 """Endpoint-skabelon-katalog (3.24.0).
 
 Delt katalog (ikke per-bruger) af forudfyldte skabeloner til

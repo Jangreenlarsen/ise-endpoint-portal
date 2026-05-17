@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 """Prometheus metrics scrape endpoint.
 
 GET /metrics  — text/plain; version=0.0.4 (standard Prometheus format)

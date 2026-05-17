@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 """Per-bruger personalisering — saved views, fremtidige preferences m.m.
 
 Bruger-records gemmer en ``saved_views``-liste under ``users.json``. Hver

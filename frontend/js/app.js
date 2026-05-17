@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 import { api, setUnauthorizedHandler } from "./api.js";
 import { auth } from "./auth.js";
 import { t, resolveLocale, initLocaleFromStorage, registerRerenderCallback } from "./i18n.js";

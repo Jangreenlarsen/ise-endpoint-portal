@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 """API router for ISE Authorization Profiles (admin only)."""
 from __future__ import annotations
 

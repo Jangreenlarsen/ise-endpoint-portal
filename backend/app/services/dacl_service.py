@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 """DACL service: list/get/create/update/delete + Cisco IOS ACL syntax validation.
 
 Validation is intentionally lenient — Cisco IOS ACL syntax is huge and

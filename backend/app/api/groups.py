@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.deps import get_endpoint_service, require_register_lookup

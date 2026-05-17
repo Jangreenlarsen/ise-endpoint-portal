@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 """IEEE OUI → vendor lookup (2.11.0).
 
 Loads a bundled CSV (``backend/data/oui.csv``) once at import and exposes

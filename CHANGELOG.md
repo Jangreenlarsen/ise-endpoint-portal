@@ -3,6 +3,20 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.0 build 0394] — 2026-05-17 — chore: AGPL v3 open source licens + SPDX-headers på alle kildefiler
+
+Tilføjet GNU Affero General Public License v3 (LICENSE-fil hentet fra gnu.org).
+SPDX-identifier headers (`AGPL-3.0-or-later`) og copyright-notice (`Jan Green Larsen <jgl@laces.dk>`) tilføjet til alle 91 Python-filer, 39 JS-filer, index.html og styles.css.
+README opdateret med license-badge og copyright-linje.
+
+- `LICENSE` — ny fil (AGPL v3 fuldt licenstekst)
+- `backend/app/**/*.py` — SPDX-header prepended (91 filer)
+- `frontend/js/**/*.js` — SPDX-header prepended (39 filer)
+- `frontend/index.html` — HTML-kommentar med SPDX + copyright
+- `frontend/css/styles.css` — CSS-kommentar med SPDX + copyright
+- `README.md` — license-badge + copyright-linje
+- `version.json` — bump build 0393 → 0394
+
 ## [5.5.0 build 0393] — 2026-05-17 — feat: GitHub opdateringschek og git pull direkte fra portal
 
 Admin kan nu tjekke om der er en ny version på GitHub og hente opdateringen direkte via git — uden at SSH til serveren.
