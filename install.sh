@@ -25,6 +25,9 @@
 
 set -euo pipefail
 
+# Sikr at /usr/sbin er i PATH (mangler ved 'su' og pipe-kørsel)
+export PATH="$PATH:/usr/sbin:/usr/local/sbin"
+
 # ── Farver ──────────────────────────────────────────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC='\033[0m'
 info()    { echo -e "${BLUE}[INFO]${NC}  $*"; }
@@ -168,7 +171,13 @@ fi
 
 # ── 8. Nginx ─────────────────────────────────────────────────────────────────
 echo ""
-read -rp "Vil du opsætte nginx som reverse proxy? [j/N] " setup_nginx
+# Læs fra /dev/tty så read virker selv når scriptet køres via pipe (wget|bash)
+setup_nginx=""
+if [[ -t 0 ]]; then
+    read -rp "Vil du opsætte nginx som reverse proxy? [j/N] " setup_nginx
+else
+    read -rp "Vil du opsætte nginx som reverse proxy? [j/N] " setup_nginx </dev/tty || true
+fi
 if [[ "$setup_nginx" =~ ^[jJyY]$ ]]; then
     cp "$INSTALL_DIR/deploy/nginx-hypervision.conf" /etc/nginx/sites-available/hypervision
     ln -sf /etc/nginx/sites-available/hypervision /etc/nginx/sites-enabled/hypervision
@@ -179,6 +188,8 @@ if [[ "$setup_nginx" =~ ^[jJyY]$ ]]; then
     warn "TLS-certifikat mangler endnu. Kør:"
     echo "  apt-get install -y certbot python3-certbot-nginx"
     echo "  certbot --nginx -d <dit-hostname>"
+else
+    ok "Nginx sprunget over — portal tilgængelig på http://$(hostname -I | awk '{print $1}'):$PORT"
 fi
 
 # ── Færdig ───────────────────────────────────────────────────────────────────
