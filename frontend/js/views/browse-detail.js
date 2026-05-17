@@ -157,6 +157,13 @@ export function initDetail(container, state, api, cb) {
     if (pb) pb.classList.add("hidden");
     if (pt) pt.textContent = t("detail.profiling_show");
     if (pc) pc.innerHTML = "";
+    // Reset ISE IDs section
+    const ib = detailOverlay.querySelector("#d-iseids-body");
+    const it = detailOverlay.querySelector("#d-iseids-toggle");
+    const ic = detailOverlay.querySelector("#d-iseids-content");
+    if (ib) ib.classList.add("hidden");
+    if (it) it.textContent = t("detail.iseids_show");
+    if (ic) ic.innerHTML = "";
   }
 
   // ── ANC ──────────────────────────────────────────────────────────────────
@@ -620,6 +627,9 @@ export function initDetail(container, state, api, cb) {
   const profilingToggle  = container.querySelector("#d-profiling-toggle");
   const profilingBody    = container.querySelector("#d-profiling-body");
   const profilingContent = container.querySelector("#d-profiling-content");
+  const iseidToggle      = container.querySelector("#d-iseids-toggle");
+  const iseidBody        = container.querySelector("#d-iseids-body");
+  const iseidContent     = container.querySelector("#d-iseids-content");
 
   function _renderProfilingAttrTable(attributes) {
     const rows = Object.entries(attributes)
@@ -659,6 +669,88 @@ export function initDetail(container, state, api, cb) {
         profilingContent.innerHTML = _renderProfilingData(data);
       } catch (err) {
         profilingContent.innerHTML = `<div class="alert error">${t("detail.profiling_error")}: ${esc(err.message)}</div>`;
+      }
+    }
+  });
+
+  // ── ISE IDs & Profil-sektion ──────────────────────────────────────────────
+  function _renderProfilerProfile(endpointId, data) {
+    const profileId = data?.profile_id;
+    const profile   = data?.profile;
+
+    const idRows = `
+      <table class="profiling-attr-table">
+        <tbody>
+          <tr><td class="profiling-attr-key">${t("detail.iseids_endpoint_id")}</td>
+              <td class="profiling-attr-val mono">${esc(endpointId || "—")}</td></tr>
+          <tr><td class="profiling-attr-key">${t("detail.iseids_profile_id")}</td>
+              <td class="profiling-attr-val mono">${esc(profileId || "—")}</td></tr>
+        </tbody>
+      </table>`;
+
+    if (!profile) {
+      return `<div class="profiling-section">
+        <div class="profiling-section-label">${t("detail.iseids_ids_label")}</div>
+        ${idRows}
+        <div class="hint">${t("detail.iseids_no_profile")}</div>
+      </div>`;
+    }
+
+    const LABEL_MAP = {
+      name:               t("detail.iseids_prof_name"),
+      description:        t("detail.iseids_prof_desc"),
+      minCertaintyFactor: t("detail.iseids_prof_certainty"),
+      systemDefined:      t("detail.iseids_prof_system"),
+      exceptionAction:    t("detail.iseids_prof_exception"),
+    };
+    const ORDER = ["name", "description", "minCertaintyFactor", "systemDefined", "exceptionAction"];
+    const shown = new Set();
+
+    const mainRows = ORDER
+      .filter((k) => k in profile)
+      .map((k) => {
+        shown.add(k);
+        const val = profile[k];
+        const valStr = typeof val === "boolean" ? (val ? "Ja" : "Nej") : String(val ?? "—");
+        return `<tr><td class="profiling-attr-key">${esc(LABEL_MAP[k] || k)}</td>
+                    <td class="profiling-attr-val">${esc(valStr)}</td></tr>`;
+      }).join("");
+
+    const extraRows = Object.entries(profile)
+      .filter(([k]) => !shown.has(k) && k !== "id")
+      .map(([k, v]) => {
+        const valStr = typeof v === "object" ? JSON.stringify(v, null, 2) : String(v ?? "—");
+        return `<tr><td class="profiling-attr-key">${esc(k)}</td>
+                    <td class="profiling-attr-val mono">${esc(valStr)}</td></tr>`;
+      }).join("");
+
+    const profileTable = `<table class="profiling-attr-table"><tbody>${mainRows}${extraRows}</tbody></table>`;
+
+    return `
+      <div class="profiling-section">
+        <div class="profiling-section-label">${t("detail.iseids_ids_label")}</div>
+        ${idRows}
+      </div>
+      <div class="profiling-section">
+        <div class="profiling-section-label">${t("detail.iseids_profile_label")}</div>
+        ${profileTable}
+      </div>`;
+  }
+
+  iseidToggle?.addEventListener("click", async () => {
+    const collapsed = iseidBody.classList.toggle("hidden");
+    iseidToggle.textContent = collapsed
+      ? t("detail.iseids_show")
+      : t("detail.iseids_hide");
+
+    if (!collapsed && iseidContent.innerHTML === "") {
+      if (!state.detailCurrentId) return;
+      iseidContent.innerHTML = `<div class="alert info">${t("alert.loading")}</div>`;
+      try {
+        const data = await api.getProfilerProfile(state.detailCurrentId);
+        iseidContent.innerHTML = _renderProfilerProfile(state.detailCurrentId, data);
+      } catch (err) {
+        iseidContent.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
       }
     }
   });

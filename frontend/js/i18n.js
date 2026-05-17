@@ -250,6 +250,21 @@ const TRANSLATIONS = {
     "detail.profiling_empty":   "Ingen probe-attributter fundet for dette endpoint.",
     "detail.profiling_error":   "Kunne ikke hente profileringsdata",
 
+    // Browse — detail modal — ISE IDs & Profil
+    "detail.iseids_title":        "ISE IDs & Profil",
+    "detail.iseids_show":         "▶ Vis",
+    "detail.iseids_hide":         "▼ Skjul",
+    "detail.iseids_ids_label":    "ISE Identifikatorer",
+    "detail.iseids_endpoint_id":  "Endpoint ID",
+    "detail.iseids_profile_id":   "Profile ID",
+    "detail.iseids_profile_label":"Profilerprofile Definition",
+    "detail.iseids_no_profile":   "Intet profileId registreret på dette endpoint.",
+    "detail.iseids_prof_name":    "Profil-navn",
+    "detail.iseids_prof_desc":    "Beskrivelse",
+    "detail.iseids_prof_certainty":"Min. Certainty Factor",
+    "detail.iseids_prof_system":  "System-defineret",
+    "detail.iseids_prof_exception":"Exception Action",
+
     // Browse — bulk-edit-modal
     "bulk.title":             "Rediger valgte endpoints",
     "bulk.count_suffix":      "endpoints valgt",
@@ -1245,6 +1260,21 @@ const TRANSLATIONS = {
     "detail.profiling_hide":    "▼ Hide",
     "detail.profiling_empty":   "No probe attributes found for this endpoint.",
     "detail.profiling_error":   "Could not fetch profiling data",
+
+    // Browse — detail modal — ISE IDs & Profile
+    "detail.iseids_title":        "ISE IDs & Profile",
+    "detail.iseids_show":         "▶ Show",
+    "detail.iseids_hide":         "▼ Hide",
+    "detail.iseids_ids_label":    "ISE Identifiers",
+    "detail.iseids_endpoint_id":  "Endpoint ID",
+    "detail.iseids_profile_id":   "Profile ID",
+    "detail.iseids_profile_label":"Profiler Profile Definition",
+    "detail.iseids_no_profile":   "No profileId registered on this endpoint.",
+    "detail.iseids_prof_name":    "Profile Name",
+    "detail.iseids_prof_desc":    "Description",
+    "detail.iseids_prof_certainty":"Min. Certainty Factor",
+    "detail.iseids_prof_system":  "System Defined",
+    "detail.iseids_prof_exception":"Exception Action",
 
     // Browse — bulk edit modal
     "bulk.title":             "Edit selected endpoints",

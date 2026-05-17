@@ -173,6 +173,41 @@ async def prioritize_endpoint(
     return {"status": "queued", "id": endpoint_id}
 
 
+@router.get("/{endpoint_id}/profiler-profile")
+async def get_profiler_profile_for_endpoint(
+    endpoint_id: str,
+    _user: User = Depends(require_any),
+) -> dict:
+    """Hent ISE profilerprofile-definition for det profile der er tildelt et endpoint.
+
+    1. Henter endpoint fra ISE ERS for at finde profileId.
+    2. Henter /ers/config/profilerprofile/{profileId} og returnerer definitionen.
+    """
+    from app.ise.client import get_ise_client
+
+    client = get_ise_client()
+    try:
+        ep_data = await client.get(f"/ers/config/endpoint/{endpoint_id}")
+    except IseApiError as exc:
+        raise _ise_http_error(exc) from exc
+
+    ers_ep = (ep_data or {}).get("ERSEndPoint", {})
+    profile_id = ers_ep.get("profileId", "")
+
+    if not profile_id:
+        return {"endpoint_id": endpoint_id, "profile_id": None, "profile": None}
+
+    try:
+        profile_data = await client.get(f"/ers/config/profilerprofile/{profile_id}")
+    except IseApiError as exc:
+        raise _ise_http_error(exc) from exc
+
+    profile = dict((profile_data or {}).get("ProfilerProfile", {}))
+    profile.pop("link", None)
+
+    return {"endpoint_id": endpoint_id, "profile_id": profile_id, "profile": profile}
+
+
 @router.get("/{endpoint_id}/profiling-data")
 async def get_endpoint_profiling_data(
     endpoint_id: str,

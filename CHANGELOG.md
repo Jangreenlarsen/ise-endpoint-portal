@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.4.3 build 0369] — 2026-05-17 — feat: Endpoint detail — ny "ISE IDs & Profil" accordion-sektion
+
+Ny collapsible sektion i endpoint detail-modal. Viser ved åbning:
+- **ISE Identifikatorer**: Endpoint ID og Profile ID i monospace
+- **Profilerprofile Definition**: lazy-loadet fra ny backend-route der kalder ISE ERS `GET /ers/config/profilerprofile/{profileId}` — viser profil-navn, beskrivelse, Min. Certainty Factor, system-defineret flag, exception action og øvrige felter fra ISE. Sektionen nulstilles ved lukning af modal så næste endpoint lazy-loader frisk.
+
+**Berørte filer**: `backend/app/api/endpoints.py` (+GET /{id}/profiler-profile), `frontend/js/api.js` (+getProfilerProfile), `frontend/js/views/browse.js` (HTML-sektion), `frontend/js/views/browse-detail.js` (toggle + _renderProfilerProfile + closeDetail reset), `frontend/js/i18n.js` (+15 nøgler DA/EN), `FEATURES.md`, `version.json`
+
 ## [5.4.2 build 0368] — 2026-05-17 — feat: IdentityGroup:Name dropdown bruger optgroup — præfiks øverst, korte navne herunder
 
 Dropdown til IdentityGroup:Name-conditions renderes nu med `<optgroup label="Endpoint Identity Groups">` som header. Hver option viser kun det korte gruppenavn (fx "Profiled", "Blacklist") mens den fulde sti stadig er option-værdien bag scenen — matching og gemning virker uændret. Lettere at overskue og skelne identity groups.
