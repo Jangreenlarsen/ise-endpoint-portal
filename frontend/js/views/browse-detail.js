@@ -282,18 +282,32 @@ export function initDetail(container, state, api, cb) {
         ${auth.isEditor() ? `<button type="button" id="d-pol-wizard-btn" class="secondary small" style="margin-top:.5rem">${t("detail.policy_create_rule")}</button>` : ""}
       `;
 
-      matchArea.querySelector("#d-pol-match-btn").addEventListener("click", async () => {
-        const setId = matchArea.querySelector("#d-pol-set-sel")?.value;
-        if (!setId || !state.detailCurrentId) return;
+      async function runSimulate(setId, extraEp = {}) {
         const resultEl = matchArea.querySelector("#d-pol-match-result");
         resultEl.innerHTML = `<div class="alert info">Simulerer…</div>`;
         try {
-          const ep = collectEndpointAttrs();
+          const ep = { ...collectEndpointAttrs(), ...extraEp };
           const result = await api.matchPolicyEndpoint(setId, ep);
-          resultEl.innerHTML = renderMatchResult(result);
+          const needed = result.radius_attrs_needed || [];
+          const current = (extraEp.radius_attrs) || {};
+          resultEl.innerHTML = renderMatchResult(result) + renderRadiusPrompt(needed, current);
+          resultEl.querySelector("#d-pol-refine-btn")?.addEventListener("click", async () => {
+            const radiusAttrs = {};
+            resultEl.querySelectorAll(".radius-attr-input").forEach((inp) => {
+              const val = inp.value.trim();
+              if (val) radiusAttrs[inp.dataset.attr] = val;
+            });
+            await runSimulate(setId, { radius_attrs: radiusAttrs });
+          });
         } catch (err) {
           resultEl.innerHTML = `<div class="alert error">Simulering fejlede: ${esc(err.message)}</div>`;
         }
+      }
+
+      matchArea.querySelector("#d-pol-match-btn").addEventListener("click", () => {
+        const setId = matchArea.querySelector("#d-pol-set-sel")?.value;
+        if (!setId || !state.detailCurrentId) return;
+        runSimulate(setId);
       });
 
       matchArea.querySelector("#d-pol-wizard-btn")?.addEventListener("click", () => {
@@ -399,6 +413,22 @@ export function initDetail(container, state, api, cb) {
         ${profilesRow}
         ${allRows}
       </div>`;
+  }
+
+  function renderRadiusPrompt(needed, current = {}) {
+    if (!needed || needed.length === 0) return "";
+    const rows = needed.map((attr) => {
+      const val = esc(current[attr] || "");
+      return `<div class="radius-input-row">
+        <label class="radius-attr-label">${esc(attr)}</label>
+        <input type="text" class="radius-attr-input" data-attr="${esc(attr)}" value="${val}" placeholder="…" />
+      </div>`;
+    }).join("");
+    return `<div class="radius-prompt">
+      <div class="radius-prompt-title">RADIUS-parametre (præciser match):</div>
+      ${rows}
+      <button type="button" id="d-pol-refine-btn" class="secondary small">Præciser match</button>
+    </div>`;
   }
 
   // ── Idé 2: Rule wizard pre-filled from endpoint ───────────────────────────

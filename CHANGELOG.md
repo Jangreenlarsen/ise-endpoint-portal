@@ -3,6 +3,31 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.4.7 build 0383] — 2026-05-17 — feat: Simulate match spørger efter RADIUS-parametre
+
+Simulator viser nu hvilke RADIUS-attributter (`Radius.*`) der indgår i reglerne
+og promper brugeren for at udfylde dem — så RADIUS-conditions evalueres præcist
+frem for altid at blive skippet.
+
+**Flow:**
+1. Første simulate returnerer match-resultat + `radius_attrs_needed: [...]` —
+   alle RADIUS-attributter der bruges på tværs af alle regler, minus dem der
+   allerede er angivet.
+2. Frontend viser et kompakt input-panel med et felt per RADIUS-attribut.
+3. Bruger udfylder (f.eks. `Called-Station-ID = hus-ap:802`) og klikker
+   "Præciser match" → ny simulate med `{ endpoint_id, radius_attrs: {...} }`.
+4. Backend evaluerer nu RADIUS-conditions ordentligt og vælger præcis den regel
+   ISE ville matche.
+
+**Berørte filer:**
+- `backend/app/schemas/policy.py` — nyt felt `radius_attrs_needed`
+- `backend/app/services/policy_service.py` — `Radius` fjernet fra `_UNEVALUABLE_DICTS`,
+  ny `_collect_radius_attrs()`, `_get_ep_value` håndterer Radius-dict,
+  `_inject()` tilføjer `radius_attrs_needed` til alle returneringer
+- `frontend/js/views/browse-detail.js` — `runSimulate()` abstraherer simulate-loop,
+  ny `renderRadiusPrompt()`, "Præciser match"-knap re-simulerer med RADIUS-værdier
+- `frontend/css/styles.css` — `.radius-prompt` styles
+
 ## [5.4.6 build 0382] — 2026-05-17 — fix: Simulate match henter live endpoint-data fra ISE ERS
 
 Rodårsag til alle tidligere simulate-match-fejl: frontend sendte formularværdier

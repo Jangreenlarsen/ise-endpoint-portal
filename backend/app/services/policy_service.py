@@ -45,8 +45,9 @@ _ENDPOINT_ATTR_MAP = {
     "Description": "description",
 }
 
-# Dictionaries we CANNOT evaluate (runtime RADIUS attributes, etc.)
-_UNEVALUABLE_DICTS = {"Radius", "Network", "Device", "NetworkAccess"}
+# Dictionaries we CANNOT evaluate without live session data
+# Radius is NOT in this list — we evaluate it when values are provided via radius_attrs
+_UNEVALUABLE_DICTS = {"Network", "Device", "NetworkAccess"}
 
 
 def _condition_summary(cond: dict | None) -> str:
@@ -119,9 +120,30 @@ def _get_ep_value(ep: dict, dictionary: str, attribute: str) -> str | None:
             return str(ca[attribute]).lower()
         return None
     if dictionary == "IdentityGroup" and attribute == "Name":
-        # ep.group_name comes from the identity group lookup
         return (ep.get("group_name") or "").lower()
+    if dictionary == "Radius":
+        # Return value if provided by user; None → condition will be skipped
+        radius_attrs = ep.get("radius_attrs") or {}
+        v = radius_attrs.get(attribute)
+        return str(v) if v is not None else None
     return None
+
+
+def _collect_radius_attrs(cond: dict | None) -> set[str]:
+    """Walk a condition tree and return all Radius.* attribute names used."""
+    if not cond:
+        return set()
+    ct = cond.get("conditionType", "")
+    if ct == "ConditionAttributes":
+        if cond.get("dictionaryName") == "Radius":
+            return {cond.get("attributeName", "")}
+        return set()
+    if ct in ("ConditionAndBlock", "ConditionOrBlock"):
+        result: set[str] = set()
+        for child in cond.get("children", []):
+            result |= _collect_radius_attrs(child)
+        return result
+    return set()
 
 
 def _eval_operator(op: str, ep_val: str, rule_val: str) -> bool:
@@ -398,6 +420,9 @@ class PolicyService:
 
     async def match_endpoint(self, policy_set_id: str, ep: dict) -> PolicyMatchResult:
         """Simulate which authorization rule first matches the given endpoint dict."""
+        # Preserve user-supplied RADIUS values before potentially overwriting ep
+        radius_attrs: dict[str, str] = ep.get("radius_attrs") or {}
+
         # If the caller sends endpoint_id, fetch live attributes from ISE so the
         # simulation is based on what ISE actually sees, not stale form values.
         endpoint_id = ep.get("endpoint_id", "")
@@ -407,6 +432,9 @@ class PolicyService:
                 logger.debug("simulate match: fetched live ep attrs for %s → %s", endpoint_id, ep)
             except Exception as exc:
                 logger.warning("simulate match: could not fetch ep %s from ISE: %s", endpoint_id, exc)
+
+        # Inject RADIUS values (user-provided) so _get_ep_value can evaluate them
+        ep = {**ep, "radius_attrs": radius_attrs}
 
         ps = await policy_api.get_policy_set(self._client, policy_set_id)
         rules = await policy_api.list_authorization_rules(self._client, policy_set_id)
@@ -419,6 +447,18 @@ class PolicyService:
                 policy_set_name=ps_name,
                 no_rules=True,
             )
+
+        # Collect all Radius.* attributes used across ALL rules in this policy set.
+        # Return the ones not yet provided so the frontend can prompt for them.
+        all_radius_attrs: set[str] = set()
+        for entry in rules:
+            inner = entry.get("rule") or entry
+            all_radius_attrs |= _collect_radius_attrs(inner.get("condition"))
+        provided_radius = set(radius_attrs.keys())
+        radius_needed = sorted(all_radius_attrs - provided_radius)
+
+        def _inject(result: PolicyMatchResult) -> PolicyMatchResult:
+            return result.model_copy(update={"radius_attrs_needed": radius_needed})
 
         # Match strategy:
         #
@@ -475,7 +515,7 @@ class PolicyService:
 
             if not has_skipped:
                 # Definitive match: all conditions evaluable and pass → stop immediately.
-                return result
+                return _inject(result)
 
             # Partial match: count unique evaluable (non-skipped) conditions that matched.
             # For OR-blocks, sub_rules each repeat the same conditions — count from
@@ -495,10 +535,10 @@ class PolicyService:
                 best_partial = (evaluable_matched, rank, result)
 
         if best_partial:
-            return best_partial[2]
+            return _inject(best_partial[2])
         if catch_all:
-            return catch_all
-        return PolicyMatchResult(
+            return _inject(catch_all)
+        return _inject(PolicyMatchResult(
             policy_set_id=policy_set_id,
             policy_set_name=ps_name,
-        )
+        ))

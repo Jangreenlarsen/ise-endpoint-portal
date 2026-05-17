@@ -103,6 +103,7 @@ class PolicyMatchResult(BaseModel):
     sub_rules: list[SubRuleGroup] = []               # populated when rule has OR branches
     no_rules: bool = False
     partial_match: bool = False   # True when match relies on skipped (RADIUS) conditions
+    radius_attrs_needed: list[str] = []              # RADIUS attributes used in rules but not yet provided
 
 
 # ── List response ────────────────────────────────────────────────────────────
