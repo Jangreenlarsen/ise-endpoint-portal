@@ -137,7 +137,8 @@ async function renderView() {
   try {
     await def.render(container);
   } catch (err) {
-    container.innerHTML = `<div class="alert error">View error: ${err.message}</div>`;
+    const safeMsg = String(err.message || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    container.innerHTML = `<div class="alert error">View error: ${safeMsg}</div>`;
   }
 }
 

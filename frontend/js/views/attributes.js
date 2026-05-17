@@ -381,7 +381,7 @@ export async function renderAttributes(container) {
           ${t("attr.del_success").replace("{v}", esc(value)).replace("{attr}", esc(attr)).replace("{scanned}", scanned).replace("{cleared}", cleared)}
         </div>`;
       } catch (err) {
-        attrMsg.innerHTML = `<div class="alert error">${err.message}</div>`;
+        attrMsg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
       }
     }
     if (e.target.classList.contains("attr-add-btn")) {
@@ -394,7 +394,7 @@ export async function renderAttributes(container) {
         input.value = "";
         await render();
       } catch (err) {
-        attrMsg.innerHTML = `<div class="alert error">${err.message}</div>`;
+        attrMsg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
       }
     }
   });

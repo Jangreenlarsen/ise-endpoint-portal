@@ -135,7 +135,7 @@ export function initFilter(container, state, api, cb) {
       state.currentPage = 1;
       msg.innerHTML = "";
     } catch (err) {
-      msg.innerHTML = `<div class="alert error">Kunne ikke hente alle endpoints: ${err.message}</div>`;
+      msg.innerHTML = `<div class="alert error">Kunne ikke hente alle endpoints: ${esc(err.message)}</div>`;
     } finally {
       state.loadingAll = false;
     }

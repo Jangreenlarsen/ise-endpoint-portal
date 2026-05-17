@@ -227,6 +227,25 @@ async def record(
         return None
 
 
+def record_sync(
+    action: str,
+    resource_type: str,
+    resource_id: str | None = None,
+    after: Any = None,
+) -> None:
+    """Synkron audit-write til brug fra synkrone funktioner (f.eks. login).
+
+    Kalder _insert_sync direkte uden asyncio. Fejl logges men propageres aldrig.
+    """
+    if not _enabled():
+        return
+    actor = actor_ctx.get()
+    try:
+        _insert_sync(action, resource_type, resource_id, None, _serialize(after), actor)
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("audit record_sync failed: %s", exc)
+
+
 def _query_sync(
     actor: str | None,
     resource_type: str | None,

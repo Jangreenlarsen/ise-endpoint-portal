@@ -71,7 +71,7 @@ export function initBulk(container, state, api, cb) {
       inp.value = result.key; inp.type = "text";
       container.querySelector("#be-psk-show").textContent = t("bulk.btn_hide");
     } catch (err) {
-      msg.innerHTML = `<div class="alert error">Kunne ikke generere PSK: ${err.message}</div>`;
+      msg.innerHTML = `<div class="alert error">Kunne ikke generere PSK: ${esc(err.message)}</div>`;
     }
   });
 

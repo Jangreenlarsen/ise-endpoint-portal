@@ -3,6 +3,19 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.4.0-P1 build 0388] — 2026-05-17 — sec: Sikkerheds-patch 1 — SEC-1/2/3/4/7/8
+
+Implementeret seks sikkerhedsforbedringer identificeret i to-fase sikkerhedsanalysen:
+
+- **SEC-1** (`auth.py`): Startup-check af `auth_secret.key` filrettigheder; `sys.exit(1)` hvis world-readable på Unix; `chmod 600` ved oprettelse.
+- **SEC-2** (`main.py`): `SecurityHeadersMiddleware` — X-Frame-Options, X-Content-Type-Options, Referrer-Policy, X-XSS-Protection, Permissions-Policy, Content-Security-Policy.
+- **SEC-3** (8 frontend-filer): Alle `err.message`-interpolationer i `innerHTML` wrappes med `esc()` / inline-escape for at forhindre reflekteret XSS.
+- **SEC-4** (`user_service.py`): Per-bruger sliding-window lockout — 5 fejl inden for 10 min → 15 min lockout; returnerer HTTP 429.
+- **SEC-7** (`audit_store.py` + `user_service.py`): Login-success og login-failed events registreres nu i audit-db via ny `record_sync()` funktion.
+- **SEC-8** (`main.py`): CORS strammet — `allow_methods` og `allow_headers` begrænset til eksplicitte lister.
+
+**Berørte filer:** `backend/app/core/auth.py`, `backend/app/main.py`, `backend/app/services/user_service.py`, `backend/app/core/audit_store.py`, `frontend/js/app.js`, `frontend/js/views/attributes.js`, `frontend/js/views/browse-detail.js`, `frontend/js/views/browse-table.js`, `frontend/js/views/browse-filter.js`, `frontend/js/views/browse-bulk.js`, `frontend/js/views/import.js`, `frontend/js/views/metrics.js`
+
 ## [5.4.8 build 0387] — 2026-05-17 — docs: Ny reports/-mappe med sikkerheds- og systemrapporter
 
 Oprettet `reports/`-mappe. Flyttet `SYSTEM_DESCRIPTION.md` og tilføjet

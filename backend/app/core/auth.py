@@ -9,9 +9,15 @@ import base64
 import hashlib
 import hmac
 import json
+import logging
+import os
 import secrets
+import stat
+import sys
 import time
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 PBKDF2_ITERATIONS = 600_000
 SALT_BYTES = 16
@@ -20,12 +26,40 @@ TOKEN_TTL_SECONDS = 8 * 60 * 60  # 8h
 SECRET_FILE = Path(__file__).resolve().parents[2] / "auth_secret.key"
 
 
+def _check_secret_file_permissions(path: Path) -> None:
+    """Afbryd processen hvis auth_secret.key er læsbar af andre end ejeren."""
+    if os.name == "nt":
+        # Windows har ikke Unix-filrettigheder — skip check, men log en advarsel.
+        logger.warning(
+            "SEC: auth_secret.key filrettigheder kan ikke verificeres på Windows. "
+            "Sørg for at kun applikationsbrugeren har adgang til %s", path
+        )
+        return
+    try:
+        mode = path.stat().st_mode
+        # Tjek at group-read (040) og other-read (004) IKKE er sat
+        if mode & (stat.S_IRGRP | stat.S_IROTH):
+            logger.critical(
+                "SIKKERHEDSFEJL: %s er world-readable (mode=%o). "
+                "Kør: chmod 600 %s — Portalen afbrydes.", path, mode, path
+            )
+            sys.exit(1)
+    except OSError as exc:
+        logger.warning("SEC: kunne ikke kontrollere filrettigheder på %s: %s", path, exc)
+
+
 def _load_secret() -> bytes:
     if SECRET_FILE.exists():
+        _check_secret_file_permissions(SECRET_FILE)
         return SECRET_FILE.read_bytes().strip()
     secret = secrets.token_bytes(64)
     SECRET_FILE.parent.mkdir(parents=True, exist_ok=True)
     SECRET_FILE.write_bytes(secret)
+    # Sæt 600-rettigheder straks efter oprettelse (virker kun på Unix)
+    try:
+        SECRET_FILE.chmod(0o600)
+    except OSError:
+        pass
     return secret
 
 

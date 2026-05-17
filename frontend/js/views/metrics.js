@@ -195,7 +195,7 @@ export async function renderMetrics(container) {
       const locale = getLocale() === "da" ? "da-DK" : "en-GB";
       tsEl.textContent = t("metrics.last_updated") + new Date().toLocaleTimeString(locale);
     } catch (err) {
-      body.innerHTML = `<div class="alert error">${t("metrics.error").replace("{msg}", err.message)}</div>`;
+      body.innerHTML = `<div class="alert error">${t("metrics.error").replace("{msg}", esc(err.message))}</div>`;
     }
   }
 

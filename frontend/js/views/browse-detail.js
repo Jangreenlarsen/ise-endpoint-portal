@@ -555,7 +555,7 @@ export function initDetail(container, state, api, cb) {
       inp.value = key; inp.type = "text";
       container.querySelector("#d-psk-show").textContent = t("detail.btn_hide");
     } catch (err) {
-      detailMsg.innerHTML = `<div class="alert error">Kunne ikke generere nøgle: ${err.message}</div>`;
+      detailMsg.innerHTML = `<div class="alert error">Kunne ikke generere nøgle: ${esc(err.message)}</div>`;
     } finally { btn.disabled = false; }
   });
 
@@ -643,7 +643,7 @@ export function initDetail(container, state, api, cb) {
       await cb.refreshRows([savedId]);
       msg.innerHTML = `<div class="alert success">Endpoint gemt.${coaSummary}</div>`;
     } catch (err) {
-      detailMsg.innerHTML = `<div class="alert error">${err.message}</div>`;
+      detailMsg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
     } finally {
       saveBtn.disabled = false;
     }

@@ -570,7 +570,7 @@ export function initTable(container, state, api, cb) {
       await cb.refreshActiveSessionMacs(force);
       applyFilter();
     } catch (err) {
-      msg.innerHTML = `<div class="alert error">${err.message}</div>`;
+      msg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
       tbody.innerHTML = "";
     }
   }
@@ -702,7 +702,7 @@ export function initTable(container, state, api, cb) {
         exportRows = state.allRowsCache || (state.allRowsCache = await api.listAllEndpointDetails("", state.currentFilters));
         allLabel   = true;
       } catch (err) {
-        msg.innerHTML = `<div class="alert error">${t("browse.export_error").replace("{msg}", err.message)}</div>`;
+        msg.innerHTML = `<div class="alert error">${t("browse.export_error").replace("{msg}", esc(err.message))}</div>`;
         exportBtn.disabled = false;
         return;
       }

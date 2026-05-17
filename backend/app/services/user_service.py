@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import logging
+import time
 import uuid
+from collections import defaultdict
 from datetime import datetime, timezone
+from threading import Lock
 
 from fastapi import HTTPException, status
 
@@ -27,6 +30,52 @@ from app.schemas.user import (
 )
 
 logger = logging.getLogger(__name__)
+
+# ── Account lockout ──────────────────────────────────────────────────────────
+_LOCKOUT_MAX_ATTEMPTS = 5       # fejl inden lockout
+_LOCKOUT_WINDOW_S     = 600     # 10 min glidende vindue
+_LOCKOUT_DURATION_S   = 900     # 15 min lockout
+
+_failed_attempts: dict[str, list[float]] = defaultdict(list)  # username → [timestamps]
+_lockout_until:   dict[str, float]       = {}                 # username → epoch
+_lockout_lock = Lock()
+
+
+def _check_and_record_failure(username: str) -> None:
+    """Registrér fejlet login-forsøg. Kaster 429 hvis bruger er låst."""
+    with _lockout_lock:
+        now = time.time()
+        # Udløbet lockout ryddes automatisk
+        if username in _lockout_until and now >= _lockout_until[username]:
+            del _lockout_until[username]
+            _failed_attempts[username] = []
+
+        if username in _lockout_until:
+            remaining = int(_lockout_until[username] - now)
+            logger.warning("login blocked (lockout) for username=%s remaining=%ds", username, remaining)
+            raise HTTPException(
+                status.HTTP_429_TOO_MANY_REQUESTS,
+                f"For mange fejlede loginforsøg. Prøv igen om {remaining // 60 + 1} minut(ter).",
+            )
+
+        # Tilføj timestamp og ryd gamle poster udenfor vinduet
+        _failed_attempts[username].append(now)
+        _failed_attempts[username] = [t for t in _failed_attempts[username] if now - t < _LOCKOUT_WINDOW_S]
+
+        if len(_failed_attempts[username]) >= _LOCKOUT_MAX_ATTEMPTS:
+            _lockout_until[username] = now + _LOCKOUT_DURATION_S
+            _failed_attempts[username] = []
+            logger.warning(
+                "account locked for %ds after %d failed attempts: username=%s",
+                _LOCKOUT_DURATION_S, _LOCKOUT_MAX_ATTEMPTS, username,
+            )
+
+
+def _clear_failures(username: str) -> None:
+    """Ryd fejltæller ved successfuldt login."""
+    with _lockout_lock:
+        _failed_attempts.pop(username, None)
+        _lockout_until.pop(username, None)
 
 
 def _now_iso() -> str:
@@ -363,6 +412,7 @@ def login(payload: LoginRequest) -> LoginResponse:
         )
 
         if result.success:
+            _clear_failures(payload.username)
             # Slå operator-profil op i users.json (brugernavn = profilnavn).
             # TACACS+ klarer auth — portal-profilen bestemmer rolle + endpoint-roller.
             profile_name = result.operator_profile_name or payload.username
@@ -407,12 +457,15 @@ def login(payload: LoginRequest) -> LoginResponse:
                 profile_name,
                 effective_role,
             )
+            audit_store.record_sync("login_success", "session", f"tacacs:{payload.username}", {"auth": "tacacs", "role": effective_role})
             return LoginResponse(token=token, user=tacacs_user)
 
         # TACACS+ auth fejlede
         fallback = auth_cfg.get("tacacs_fallback_to_local", True)
         if not fallback:
             logger.warning("tacacs auth failed (no fallback) for %s: %s", payload.username, result.error)
+            _check_and_record_failure(payload.username)
+            audit_store.record_sync("login_failed", "session", payload.username, {"reason": "tacacs_failed"})
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Forkert brugernavn eller password")
         logger.warning("tacacs auth failed (falling back to local) for %s: %s", payload.username, result.error)
         # Fald igennem til lokal auth nedenfor
@@ -429,13 +482,17 @@ def login(payload: LoginRequest) -> LoginResponse:
     if not record or not auth_core.verify_password(
         payload.password, record.get("password_hash", "")
     ):
+        _check_and_record_failure(payload.username)
         logger.warning("failed login attempt for username=%s", payload.username)
+        audit_store.record_sync("login_failed", "session", payload.username, {"reason": "bad_credentials"})
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED,
             "Forkert brugernavn eller password",
         )
+    _clear_failures(payload.username)
     record["last_login"] = _now_iso()
     save_users(users)
     token = auth_core.create_token(record["id"], record["username"], record["role"])
     logger.info("local login: %s role=%s", record["username"], record["role"])
+    audit_store.record_sync("login_success", "session", record["id"], {"username": record["username"], "role": record["role"]})
     return LoginResponse(token=token, user=_to_public(record))

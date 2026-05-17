@@ -67,7 +67,7 @@ AA:BB:CC:DD:EE:02,Profiled,printer,Camera,Facilities,,VLAN200"></textarea>
       .map((g) => `<option value="${g.id}">${g.name}</option>`)
       .join("");
   } catch (err) {
-    msg.innerHTML = `<div class="alert error">${t("import.err_groups").replace("{msg}", err.message)}</div>`;
+    msg.innerHTML = `<div class="alert error">${t("import.err_groups").replace("{msg}", esc(err.message))}</div>`;
   }
 
   container.querySelector("#csv-file").addEventListener("change", async (e) => {
@@ -197,7 +197,7 @@ AA:BB:CC:DD:EE:02,Profiled,printer,Camera,Facilities,,VLAN200"></textarea>
         </div>
       `;
     } catch (err) {
-      result.innerHTML = `<div class="alert error">${t("import.err_bulk").replace("{msg}", err.message)}</div>`;
+      result.innerHTML = `<div class="alert error">${t("import.err_bulk").replace("{msg}", esc(err.message))}</div>`;
     } finally {
       importBtn.disabled = false;
     }
