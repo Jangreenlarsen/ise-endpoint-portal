@@ -33,7 +33,7 @@ class IseClient:
         self._http = httpx.AsyncClient(
             base_url=s.ise_base_url.rstrip("/"),
             auth=(s.ise_username, s.ise_password),
-            verify=s.ise_verify_tls,
+            verify=s.ise_ca_bundle or s.ise_verify_tls,
             timeout=s.ise_timeout,
             # Explicit connection limits prevent ISE connection-reset errors under load.
             # ISE ERS accepts ~5-10 simultaneous connections per client.

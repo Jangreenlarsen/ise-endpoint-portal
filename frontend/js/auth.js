@@ -63,4 +63,19 @@ export const auth = {
       return true;
     }
   },
+  // Returns seconds until token expires, or 0 if expired/missing.
+  secondsUntilExpiry() {
+    const token = this.getToken();
+    if (!token) return 0;
+    try {
+      const [payloadB64] = token.split(".");
+      const padding = "=".repeat((4 - (payloadB64.length % 4)) % 4);
+      const payload = JSON.parse(
+        atob(payloadB64.replace(/-/g, "+").replace(/_/g, "/") + padding),
+      );
+      return Math.max(0, (payload.exp || 0) - Math.floor(Date.now() / 1000));
+    } catch {
+      return 0;
+    }
+  },
 };

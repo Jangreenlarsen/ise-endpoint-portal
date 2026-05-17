@@ -163,6 +163,7 @@ export const api = {
       body: JSON.stringify({ username, password }),
     }),
   logout: () => request("/auth/logout", { method: "POST" }),
+  refreshToken: () => request("/auth/refresh", { method: "POST" }),
   setupAdmin: (username, password) =>
     request("/auth/setup", {
       method: "POST",

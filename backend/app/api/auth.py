@@ -79,6 +79,25 @@ async def me(user: User = Depends(get_current_user)) -> UserMe:
     return user_service.get_user_me(user.id)
 
 
+@router.post("/refresh", response_model=LoginResponse)
+async def refresh_token(user: User = Depends(get_current_user)) -> LoginResponse:
+    """Udsteder et nyt token med fuld TTL til en allerede autentiseret bruger.
+
+    Klienten kalder dette endpoint inden token udløber (silent refresh).
+    Returnerer samme format som /login så klienten kan gemme det direkte.
+    """
+    if user.id.startswith("tacacs:"):
+        new_token = auth_core.create_tacacs_token(
+            username=user.username,
+            role=user.role,
+            operator_profile=None,
+            endpoint_roles=list(user.assigned_endpoint_roles or []),
+        )
+    else:
+        new_token = auth_core.create_token(user.id, user.username, user.role)
+    return LoginResponse(token=new_token, user=user)
+
+
 @router.post("/change-password")
 async def change_password(
     req: ChangePasswordRequest,

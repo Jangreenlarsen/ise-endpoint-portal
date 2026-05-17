@@ -62,10 +62,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if limit <= 0 or not request.url.path.startswith("/api"):
             return await call_next(request)  # type: ignore[operator]
 
-        ip = (
-            request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
-            or (request.client.host if request.client else "unknown")
-        )
+        direct_ip = request.client.host if request.client else "unknown"
+        trusted = set(getattr(config.settings, "trusted_proxy_ips", []))
+        if trusted and direct_ip in trusted:
+            forwarded = request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
+            ip = forwarded or direct_ip
+        else:
+            ip = direct_ip
 
         if not _window.is_allowed(ip, limit):
             RATE_LIMIT_BLOCKED.inc()

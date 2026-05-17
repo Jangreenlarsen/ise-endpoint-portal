@@ -106,6 +106,19 @@ class PolicyMatchResult(BaseModel):
     radius_attrs_needed: list[str] = []              # RADIUS attributes used in rules but not yet provided
 
 
+# ── Match simulation request ─────────────────────────────────────────────────
+
+class EndpointMatchRequest(BaseModel):
+    """Typed schema for /match endpoint — prevents arbitrary dict injection."""
+    endpoint_id: str | None = None
+    group_id: str | None = None
+    custom_attributes: dict[str, str] = {}
+    radius_attrs: dict[str, str] = {}
+    # Allows passing any other endpoint fields the simulator understands
+    # (e.g. staticGroupAssignment, profileId) without opening a free dict.
+    extra: dict[str, str] = {}
+
+
 # ── List response ────────────────────────────────────────────────────────────
 
 class PolicySetListResponse(BaseModel):

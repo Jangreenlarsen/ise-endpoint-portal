@@ -6,6 +6,7 @@ because it contains a TACACS+ shared secret.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -37,3 +38,8 @@ def load() -> dict[str, Any]:
 def save(data: dict[str, Any]) -> None:
     _FILE.parent.mkdir(parents=True, exist_ok=True)
     _FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    if os.name != "nt":
+        try:
+            _FILE.chmod(0o600)
+        except OSError:
+            pass

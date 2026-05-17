@@ -198,6 +198,18 @@ async function boot() {
     });
   }
 
+  // Silent token refresh — tjek hvert minut om token snart udløber.
+  // Refresh 5 min inden udløb så brugeren ikke kastes ud midt i arbejdet.
+  setInterval(async () => {
+    if (!auth.getToken() || auth.isTokenExpired()) return;
+    if (auth.secondsUntilExpiry() < 5 * 60) {
+      try {
+        const res = await api.refreshToken();
+        if (res?.token) auth.save(res.token, res.user || auth.getUser());
+      } catch { /* ignore — næste check prøver igen */ }
+    }
+  }, 60_000);
+
   window.addEventListener("hashchange", renderView);
 
   const user = auth.getUser();

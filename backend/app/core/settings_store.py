@@ -6,6 +6,7 @@ File lives outside git (see .gitignore).
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -24,3 +25,8 @@ def load_overrides() -> dict[str, Any]:
 def save_overrides(data: dict[str, Any]) -> None:
     CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
     CONFIG_FILE.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    if os.name != "nt":
+        try:
+            CONFIG_FILE.chmod(0o600)
+        except OSError:
+            pass

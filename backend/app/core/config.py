@@ -15,6 +15,16 @@ class Settings(BaseSettings):
     ise_username: str = "ers-admin"
     ise_password: str = ""
     ise_verify_tls: bool = False
+    ise_ca_bundle: str = Field(
+        default="",
+        description=(
+            "Sti til PEM-bundle med den CA der signerede ISE's server-cert "
+            "(relativ til backend/ eller absolut). Når sat bruges bundlet til "
+            "TLS-verifikation i stedet for system-CA'erne. "
+            "Eksempel: 'certs/ise-root-ca.pem'. "
+            "Sæt ise_verify_tls=true for at aktivere TLS-verifikation."
+        ),
+    )
     ise_timeout: float = 30.0
     ise_api_type: str = Field(default="ers", description="'ers' or 'openapi'")
     ise_cb_failure_threshold: int = Field(
@@ -38,6 +48,15 @@ class Settings(BaseSettings):
         description=(
             "Max API-requests pr. IP pr. minut. 0 = deaktiveret. "
             "Gælder kun /api/-stier. Returnerer 429 ved overskridelse."
+        ),
+    )
+    trusted_proxy_ips: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Liste af IP-adresser der tillades at sætte X-Forwarded-For headeren. "
+            "Kun requests fra disse adresser anvender X-Forwarded-For til rate limiting. "
+            "Andre requests identificeres ved den direkte forbindelses IP. "
+            "Eksempel: ['10.0.0.1', '192.168.1.254'] (reverse proxy / load balancer IPs)."
         ),
     )
     ise_max_connections: int = Field(

@@ -78,6 +78,31 @@ def _clear_failures(username: str) -> None:
         _lockout_until.pop(username, None)
 
 
+_PW_MIN_LEN = 10
+_PW_POLICY = (
+    "Password skal opfylde: mindst {n} tegn, mindst ét stort bogstav, "
+    "mindst ét lille bogstav og mindst ét tal."
+)
+
+
+def _validate_password_strength(password: str) -> None:
+    """Kaster 400 hvis password ikke opfylder minimumskravene."""
+    errors: list[str] = []
+    if len(password) < _PW_MIN_LEN:
+        errors.append(f"mindst {_PW_MIN_LEN} tegn")
+    if not any(c.isupper() for c in password):
+        errors.append("mindst ét stort bogstav")
+    if not any(c.islower() for c in password):
+        errors.append("mindst ét lille bogstav")
+    if not any(c.isdigit() for c in password):
+        errors.append("mindst ét tal")
+    if errors:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Password krav ikke opfyldt: " + ", ".join(errors) + ".",
+        )
+
+
 def _now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -191,11 +216,7 @@ async def create_user(payload: UserCreate) -> User:
     is_tacacs_mode = auth_cfg.get("auth_mode") == "tacacs"
 
     if payload.password:
-        if len(payload.password) < 8:
-            raise HTTPException(
-                status.HTTP_400_BAD_REQUEST,
-                "Password skal være mindst 8 tegn",
-            )
+        _validate_password_strength(payload.password)
         password_hash = auth_core.hash_password(payload.password)
     elif not is_tacacs_mode:
         raise HTTPException(
@@ -344,6 +365,7 @@ async def change_password(user_id: str, payload: ChangePasswordRequest) -> None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Bruger ikke fundet")
     if not auth_core.verify_password(payload.current_password, record["password_hash"]):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Forkert nuværende password")
+    _validate_password_strength(payload.new_password)
     record["password_hash"] = auth_core.hash_password(payload.new_password)
     save_users(users)
     logger.info("password changed for %s", record["username"])

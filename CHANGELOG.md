@@ -3,6 +3,17 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.4.0-P1 build 0389] — 2026-05-17 — sec: Sikkerheds-patch 1 (fortsat) — SEC-5/6/9/10/11/12
+
+- **SEC-5** (`config.py` + `client.py`): Ny `ise_ca_bundle`-indstilling — sti til ISE root-CA PEM. `verify=ise_ca_bundle or ise_verify_tls` i httpx-klienten.
+- **SEC-6** (`settings_store.py` + `auth_config_store.py`): `chmod 600` på `config.json` og `auth_config.json` efter skrivning (Unix).
+- **SEC-9** (`config.py` + `rate_limiter.py`): Ny `trusted_proxy_ips`-liste — X-Forwarded-For bruges kun til rate limiting når request-IP er i listen.
+- **SEC-10** (`auth.py` + `auth.js` + `app.js` + `api.js` + `api/auth.py`): Token TTL reduceret 8h → 1h. Ny `POST /api/auth/refresh`. Silent refresh timer hvert minut — refresh ved < 5 min til udløb.
+- **SEC-11** (`user_service.py`): Password-styrke-validator — min 10 tegn, mindst ét stort bogstav, ét lille bogstav, ét tal. Gælder ved oprettelse og password-skift.
+- **SEC-12** (`schemas/policy.py` + `api/policy.py`): `EndpointMatchRequest` Pydantic-schema erstatter fri `dict` på `/match`-endpoint.
+
+**Berørte filer:** `backend/app/core/config.py`, `backend/app/ise/client.py`, `backend/app/core/settings_store.py`, `backend/app/core/auth_config_store.py`, `backend/app/core/rate_limiter.py`, `backend/app/core/auth.py`, `backend/app/api/auth.py`, `backend/app/services/user_service.py`, `backend/app/schemas/policy.py`, `backend/app/api/policy.py`, `frontend/js/auth.js`, `frontend/js/api.js`, `frontend/js/app.js`
+
 ## [5.4.0-P1 build 0388] — 2026-05-17 — sec: Sikkerheds-patch 1 — SEC-1/2/3/4/7/8
 
 Implementeret seks sikkerhedsforbedringer identificeret i to-fase sikkerhedsanalysen:

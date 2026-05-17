@@ -10,6 +10,7 @@ from app.core.exceptions import IseApiError
 from app.schemas.policy import (
     AuthzRuleDetail,
     CreateAuthzRuleRequest,
+    EndpointMatchRequest,
     PolicyMatchResult,
     PolicySetDetailResponse,
     PolicySetListResponse,
@@ -155,11 +156,11 @@ async def delete_rule(
 )
 async def match_endpoint(
     policy_set_id: str,
-    ep: dict,
+    ep: EndpointMatchRequest,
     svc: PolicyService = Depends(get_policy_service),
 ) -> PolicyMatchResult:
     """Simulate which authorization rule first matches the given endpoint attributes."""
     try:
-        return await svc.match_endpoint(policy_set_id, ep)
+        return await svc.match_endpoint(policy_set_id, ep.model_dump(exclude_none=True))
     except IseApiError as exc:
         raise _502(exc) from exc

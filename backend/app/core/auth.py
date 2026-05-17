@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 PBKDF2_ITERATIONS = 600_000
 SALT_BYTES = 16
-TOKEN_TTL_SECONDS = 8 * 60 * 60  # 8h
+TOKEN_TTL_SECONDS = 60 * 60  # 1h
 
 SECRET_FILE = Path(__file__).resolve().parents[2] / "auth_secret.key"
 
