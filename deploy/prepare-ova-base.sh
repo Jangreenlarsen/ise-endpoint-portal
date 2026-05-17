@@ -38,10 +38,25 @@ info "Installerer first-boot wizard..."
 cp "$SCRIPT_DIR/first-boot.sh" /usr/local/sbin/hypervision-firstboot.sh
 chmod +x /usr/local/sbin/hypervision-firstboot.sh
 
-cp "$SCRIPT_DIR/first-boot.service" /etc/systemd/system/hypervision-firstboot.service
+# Auto-login som root på tty1 — wizard kører straks ved første boot
+# uden at skulle vente på login-prompt der konkurrerer med wizarden
+mkdir -p /etc/systemd/system/getty@tty1.service.d/
+cat > /etc/systemd/system/getty@tty1.service.d/autologin.conf <<'EOF'
+[Service]
+ExecStart=
+ExecStart=-/sbin/agetty --autologin root --noclear %I $TERM
+EOF
+
+# Kør first-boot wizard automatisk ved root-login på tty1
+cat > /root/.bash_profile <<'EOF'
+# Kør first-boot wizard hvis det ikke er gjort endnu
+if [ ! -f /etc/hypervision-firstboot-done ]; then
+    bash /usr/local/sbin/hypervision-firstboot.sh
+fi
+EOF
+
 systemctl daemon-reload
-systemctl enable hypervision-firstboot.service
-ok "First-boot wizard installeret og aktiveret"
+ok "First-boot wizard installeret — auto-login aktiveret på tty1"
 
 # ── Fjern CD-ROM apt-kilde ────────────────────────────────────────────────────
 if grep -q "^deb cdrom" /etc/apt/sources.list 2>/dev/null; then
