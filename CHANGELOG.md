@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.4.2 build 0367] — 2026-05-17 — fix: IdentityGroup condition-dropdown viser korrekt valgt gruppe ved re-edit
+
+`listGroups()` returnerer korte navne ("Profiled") men gemte condition-værdier er fulde stier ("Endpoint Identity Groups:Profiled"). `caValues.__IdentityGroup_Name__` præfikses nu med "Endpoint Identity Groups:" ved indlæsning, så dropdown kan matche den gemte værdi og forvælge den korrekt — i stedet for at falde tilbage til "--- select ---".
+
+**Berørte filer**: `frontend/js/views/policy.js` (listGroups map + præfiks), `version.json`
+
 ## [5.4.2 build 0366] — 2026-05-17 — fix: Politik condition-editor bredere layout + fjern "Other" for IdentityGroup:Name
 
 Policy-sideens max-width øget fra 1100px til 1600px så condition-rækker ikke er klemt. Feltbredder øget: Dictionary 120→150px, Attribut 120→140px, Operator 110→120px — fuld tekst synlig uden afskæring. "Other"-option fjernet fra værdidropdown specifikt for `IdentityGroup:Name` da man altid skal vælge fra listen; reglen fra b0364 om auto-præfiks bevares som sikkerhedsnet.

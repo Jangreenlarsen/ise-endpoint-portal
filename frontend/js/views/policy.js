@@ -82,7 +82,9 @@ export async function renderPolicy(container) {
 
   api.listGroups().then((res) => {
     const groups = Array.isArray(res) ? res : (res?.groups || []);
-    caValues["__IdentityGroup_Name__"] = groups.map((g) => g.name).filter(Boolean);
+    caValues["__IdentityGroup_Name__"] = groups
+      .map((g) => g.name).filter(Boolean)
+      .map((n) => n.startsWith("Endpoint Identity Groups:") ? n : "Endpoint Identity Groups:" + n);
   }).catch(() => {});
 
   function clearDetail() {
