@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.4.1 build 0362] — 2026-05-17 — fix: Auth-status filter — i18n tekster + Status-label over dropdown
+
+Dropdown-optionerne ("Alle"/"All", "Auth", "Ikke auth"/"Not auth") og label over feltet ("Status") bruger nu i18n-systemet via `t()`. Label vises som lille tekst over dropdown'en i MAC-filtercelleen.
+
+**Berørte filer**: `frontend/js/i18n.js` (+4 nøgler DA/EN), `frontend/js/views/browse.js` (t()-kald + .auth-status-wrap/.auth-status-label), `frontend/css/styles.css` (.auth-status-wrap, .auth-status-label, dark/midnight), `version.json`
+
 ## [5.4.1 build 0361] — 2026-05-17 — feat: Auth-status filter i MAC-søgefelt (Browse)
 
 Dropdown ved siden af MAC regex-søgefeltet giver mulighed for at filtrere endpoints på auth-status: "Alle" (default), "Auth" (kun endpoints med aktiv RADIUS-session, grøn) og "Ikke auth" (endpoints uden aktiv session, rød). Filteret kombineres frit med regex-søgning og indgår i filter-persistens og saved views. Dropdown vises compakt i MAC-filtercelleen og understøtter dark/midnight-temaer.

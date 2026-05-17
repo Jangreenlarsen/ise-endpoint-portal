@@ -503,8 +503,20 @@ button.small {
   flex: 1 1 auto;
   min-width: 0;
 }
-.auth-status-select {
+.auth-status-wrap {
   flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.05rem;
+}
+.auth-status-label {
+  font-size: 0.65rem;
+  color: #6b7280;
+  line-height: 1;
+  white-space: nowrap;
+}
+.auth-status-select {
   padding: 0.15rem 0.2rem;
   font-size: 0.72rem;
   border: 1px solid #d1d5db;
@@ -1521,6 +1533,7 @@ td.psk-key-cell {
   color: #e0e0e0;
   border-color: #3a3a5c;
 }
+[data-theme="dark"] .auth-status-label { color: #9ca3af; }
 [data-theme="dark"] .filter-clear-all-btn { background: #dc2626; }
 [data-theme="dark"] .filter-clear-all-btn:hover { background: #b91c1c; }
 [data-theme="dark"] .filter-row th {
@@ -1669,6 +1682,7 @@ td.psk-key-cell {
 [data-theme="midnight"] .browse-table-wrap select { border-left-color: #60a5fa; }
 [data-theme="midnight"] .col-filter-input { background: #0d1117; color: #e6edf3; border-color: #30363d; }
 [data-theme="midnight"] .auth-status-select { background: #0d1117; color: #e6edf3; border-color: #30363d; }
+[data-theme="midnight"] .auth-status-label { color: #8b949e; }
 [data-theme="midnight"] .filter-clear-all-btn { background: #b91c1c; }
 [data-theme="midnight"] .filter-row th { background: #010409; }
 [data-theme="midnight"] button { background: #1f6feb; }

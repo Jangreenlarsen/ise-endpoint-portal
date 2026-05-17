@@ -87,11 +87,14 @@ export async function renderBrowse(container) {
                 <th data-col="${c.key}"${c.cls ? ` class="${c.cls}"` : ""}>
                   ${c.key === "mac" ? `<div class="mac-filter-wrap">
                     <input type="text" class="col-filter-input" data-col="mac" placeholder="…" />
-                    <select id="auth-status-filter" class="auth-status-select" title="Filtrer på auth-status">
-                      <option value="all">Alle</option>
-                      <option value="auth">Auth</option>
-                      <option value="notauth">Ikke auth</option>
-                    </select>
+                    <div class="auth-status-wrap">
+                      <span class="auth-status-label">${t("browse.auth_filter_label")}</span>
+                      <select id="auth-status-filter" class="auth-status-select" title="${t("browse.auth_filter_label")}">
+                        <option value="all">${t("browse.auth_filter_all")}</option>
+                        <option value="auth">${t("browse.auth_filter_auth")}</option>
+                        <option value="notauth">${t("browse.auth_filter_notauth")}</option>
+                      </select>
+                    </div>
                   </div>` : `<input type="text" class="col-filter-input" data-col="${c.key}" placeholder="…" />`}
                 </th>`).join("")}
             </tr>

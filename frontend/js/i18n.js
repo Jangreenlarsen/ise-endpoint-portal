@@ -153,6 +153,10 @@ const TRANSLATIONS = {
     "browse.sess_vlan_label":   "VLAN",
     "browse.sess_sgt_label":    "SGT",
     "browse.sess_group_label":  "Gruppe",
+    "browse.auth_filter_label": "Status",
+    "browse.auth_filter_all":   "Alle",
+    "browse.auth_filter_auth":  "Auth",
+    "browse.auth_filter_notauth": "Ikke auth",
 
     // Browse — kolonnenavne
     "col.mac":          "MAC",
@@ -1144,6 +1148,10 @@ const TRANSLATIONS = {
     "browse.sess_vlan_label":   "VLAN",
     "browse.sess_sgt_label":    "SGT",
     "browse.sess_group_label":  "Group",
+    "browse.auth_filter_label": "Status",
+    "browse.auth_filter_all":   "All",
+    "browse.auth_filter_auth":  "Auth",
+    "browse.auth_filter_notauth": "Not auth",
 
     // Browse — column names
     "col.mac":          "MAC",
