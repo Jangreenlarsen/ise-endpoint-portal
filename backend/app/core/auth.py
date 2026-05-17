@@ -13,7 +13,6 @@ import logging
 import os
 import secrets
 import stat
-import sys
 import time
 from pathlib import Path
 
@@ -43,7 +42,8 @@ def _check_secret_file_permissions(path: Path) -> None:
                 "SIKKERHEDSFEJL: %s er world-readable (mode=%o). "
                 "Kør: chmod 600 %s — Portalen afbrydes.", path, mode, path
             )
-            sys.exit(1)
+            # os._exit bypasser Python cleanup og er sikker fra async-kontekst.
+            os._exit(1)
     except OSError as exc:
         logger.warning("SEC: kunne ikke kontrollere filrettigheder på %s: %s", path, exc)
 

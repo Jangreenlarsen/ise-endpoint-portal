@@ -41,6 +41,10 @@ async def lifespan(_: FastAPI):
     import logging
     logger = logging.getLogger(__name__)
     logger.info("HyperVision ISE Portal %s starting", APP_VERSION)
+    # Eager load af auth-secret — filrettigheds-check sker ved startup
+    # (ikke mid-request) så en evt. os._exit(1) ikke sprænger ASGI-stacken.
+    from app.core import auth as _auth_core
+    _auth_core._secret()
     init_audit_db()
     # 3.8.0: backfill System adm-rolle for hver eksisterende bruger så admin
     # kan tagge endpoints med username via rolle-katalogen. Idempotent.

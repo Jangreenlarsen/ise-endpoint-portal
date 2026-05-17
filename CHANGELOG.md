@@ -3,6 +3,25 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.4.0-P1 build 0390] — 2026-05-17 — fix: auth_secret.key check crash mid-request
+
+`sys.exit(1)` inde i en aktiv Starlette ASGI-request-handler sprænger TaskGroup og
+crasher hele portalen (SystemExit i BaseHTTPMiddleware → "No response returned").
+
+To rettelser:
+1. `sys.exit` → `os._exit(1)` i `_check_secret_file_permissions` — bypasser Python
+   cleanup og er sikker fra async-kontekst.
+2. Eager `_auth_core._secret()` kald i `main.py` lifespan startup — checket sker ved
+   opstart (ikke mid-request) så portalen afbrydes rent inden den begynder at serve.
+
+**På serveren (hurtig fix):**
+```
+chmod 600 /opt/hypervision/backend/auth_secret.key
+systemctl restart hypervision
+```
+
+**Berørte filer:** `backend/app/core/auth.py`, `backend/app/main.py`
+
 ## [5.4.0-P1 build 0389] — 2026-05-17 — sec: Sikkerheds-patch 1 (fortsat) — SEC-5/6/9/10/11/12
 
 - **SEC-5** (`config.py` + `client.py`): Ny `ise_ca_bundle`-indstilling — sti til ISE root-CA PEM. `verify=ise_ca_bundle or ise_verify_tls` i httpx-klienten.
