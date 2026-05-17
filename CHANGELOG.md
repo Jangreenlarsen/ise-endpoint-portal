@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.4.2 build 0366] — 2026-05-17 — fix: Politik condition-editor bredere layout + fjern "Other" for IdentityGroup:Name
+
+Policy-sideens max-width øget fra 1100px til 1600px så condition-rækker ikke er klemt. Feltbredder øget: Dictionary 120→150px, Attribut 120→140px, Operator 110→120px — fuld tekst synlig uden afskæring. "Other"-option fjernet fra værdidropdown specifikt for `IdentityGroup:Name` da man altid skal vælge fra listen; reglen fra b0364 om auto-præfiks bevares som sikkerhedsnet.
+
+**Berørte filer**: `frontend/css/styles.css` (.pol-inner max-width, .cond-dict/.cond-attr/.cond-op bredder), `frontend/js/views/policy-condition-builder.js` (allowCustom-guard i valueWidgetHtml), `version.json`
+
 ## [5.4.2 build 0365] — 2026-05-17 — chore: Version bump til 5.4.2
 
 **Berørte filer**: `version.json`, `CHANGELOG.md`

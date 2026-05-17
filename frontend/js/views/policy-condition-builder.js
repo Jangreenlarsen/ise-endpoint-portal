@@ -75,16 +75,17 @@ export function valueWidgetHtml(idx, dict, attr, val, caValues) {
     known = caValues?.[`__${dict}_${attr}__`];
   }
   if (Array.isArray(known) && known.length) {
+    const allowCustom = !(dict === "IdentityGroup" && attr === "Name");
     const isKnown    = known.includes(val);
-    const showCustom = Boolean(val) && !isKnown;
+    const showCustom = allowCustom && Boolean(val) && !isKnown;
     const selVal     = showCustom ? "__custom__" : (val || "");
     const opts =
       `<option value="">${t("pol.cb_select_val")}</option>` +
       known.map((v) => `<option value="${esc(v)}"${v === selVal ? " selected" : ""}>${esc(v)}</option>`).join("") +
-      `<option value="__custom__"${showCustom ? " selected" : ""}>${t("pol.cb_other")}</option>`;
+      (allowCustom ? `<option value="__custom__"${showCustom ? " selected" : ""}>${t("pol.cb_other")}</option>` : "");
     return `<span class="cond-val-wrap" data-idx="${idx}">` +
       `<select class="cond-val-sel" data-idx="${idx}">${opts}</select>` +
-      `<input class="cond-val-custom" data-idx="${idx}" type="text" value="${esc(showCustom ? val : "")}" placeholder="${t("pol.cb_val_ph")}"${showCustom ? "" : ' style="display:none"'} />` +
+      (allowCustom ? `<input class="cond-val-custom" data-idx="${idx}" type="text" value="${esc(showCustom ? val : "")}" placeholder="${t("pol.cb_val_ph")}"${showCustom ? "" : ' style="display:none"'} />` : "") +
       `</span>`;
   }
   return `<span class="cond-val-wrap" data-idx="${idx}">` +
