@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.4.2 build 0368] — 2026-05-17 — feat: IdentityGroup:Name dropdown bruger optgroup — præfiks øverst, korte navne herunder
+
+Dropdown til IdentityGroup:Name-conditions renderes nu med `<optgroup label="Endpoint Identity Groups">` som header. Hver option viser kun det korte gruppenavn (fx "Profiled", "Blacklist") mens den fulde sti stadig er option-værdien bag scenen — matching og gemning virker uændret. Lettere at overskue og skelne identity groups.
+
+**Berørte filer**: `frontend/js/views/policy-condition-builder.js` (valueWidgetHtml optgroup-gren for IdentityGroup:Name), `version.json`
+
 ## [5.4.2 build 0367] — 2026-05-17 — fix: IdentityGroup condition-dropdown viser korrekt valgt gruppe ved re-edit
 
 `listGroups()` returnerer korte navne ("Profiled") men gemte condition-værdier er fulde stier ("Endpoint Identity Groups:Profiled"). `caValues.__IdentityGroup_Name__` præfikses nu med "Endpoint Identity Groups:" ved indlæsning, så dropdown kan matche den gemte værdi og forvælge den korrekt — i stedet for at falde tilbage til "--- select ---".

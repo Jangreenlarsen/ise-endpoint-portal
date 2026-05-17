@@ -75,17 +75,34 @@ export function valueWidgetHtml(idx, dict, attr, val, caValues) {
     known = caValues?.[`__${dict}_${attr}__`];
   }
   if (Array.isArray(known) && known.length) {
-    const allowCustom = !(dict === "IdentityGroup" && attr === "Name");
+    // IdentityGroup:Name — render as optgroup so prefix appears once as header
+    if (dict === "IdentityGroup" && attr === "Name") {
+      const prefix  = IDENTITY_GROUP_PREFIX;
+      const inGroup = known.filter((v) => v.startsWith(prefix));
+      const outside = known.filter((v) => !v.startsWith(prefix));
+      let opts = `<option value="">${t("pol.cb_select_val")}</option>`;
+      if (inGroup.length) {
+        opts += `<optgroup label="${esc(prefix.slice(0, -1))}">` +
+          inGroup.map((v) => `<option value="${esc(v)}"${v === val ? " selected" : ""}>${esc(v.slice(prefix.length))}</option>`).join("") +
+          `</optgroup>`;
+      }
+      if (outside.length) {
+        opts += outside.map((v) => `<option value="${esc(v)}"${v === val ? " selected" : ""}>${esc(v)}</option>`).join("");
+      }
+      return `<span class="cond-val-wrap" data-idx="${idx}">` +
+        `<select class="cond-val-sel" data-idx="${idx}">${opts}</select>` +
+        `</span>`;
+    }
     const isKnown    = known.includes(val);
-    const showCustom = allowCustom && Boolean(val) && !isKnown;
+    const showCustom = Boolean(val) && !isKnown;
     const selVal     = showCustom ? "__custom__" : (val || "");
     const opts =
       `<option value="">${t("pol.cb_select_val")}</option>` +
       known.map((v) => `<option value="${esc(v)}"${v === selVal ? " selected" : ""}>${esc(v)}</option>`).join("") +
-      (allowCustom ? `<option value="__custom__"${showCustom ? " selected" : ""}>${t("pol.cb_other")}</option>` : "");
+      `<option value="__custom__"${showCustom ? " selected" : ""}>${t("pol.cb_other")}</option>`;
     return `<span class="cond-val-wrap" data-idx="${idx}">` +
       `<select class="cond-val-sel" data-idx="${idx}">${opts}</select>` +
-      (allowCustom ? `<input class="cond-val-custom" data-idx="${idx}" type="text" value="${esc(showCustom ? val : "")}" placeholder="${t("pol.cb_val_ph")}"${showCustom ? "" : ' style="display:none"'} />` : "") +
+      `<input class="cond-val-custom" data-idx="${idx}" type="text" value="${esc(showCustom ? val : "")}" placeholder="${t("pol.cb_val_ph")}"${showCustom ? "" : ' style="display:none"'} />` +
       `</span>`;
   }
   return `<span class="cond-val-wrap" data-idx="${idx}">` +
