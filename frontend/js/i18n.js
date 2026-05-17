@@ -9,18 +9,18 @@
 const TRANSLATIONS = {
   da: {
     // Navigation
-    "nav.browse":       "Gennemse",
-    "nav.register":     "Registrér",
-    "nav.import":       "Importer",
-    "nav.attributes":   "Attributter",
-    "nav.dacls":        "DACL'er",
+    "nav.browse":       "Endpoint Browse/Edit",
+    "nav.register":     "Endpoint Registrer",
+    "nav.import":       "Endpoint Import",
+    "nav.attributes":   "Endpoint Attributter",
+    "nav.dacls":        "Endpoint DACL'er",
     "nav.logs":         "Logs",
     "nav.audit":        "Audit",
     "nav.metrics":      "Metrics",
-    "nav.settings":     "Indstillinger",
+    "nav.settings":     "Portal Indstillinger",
     "nav.user-prefs":   "Præferencer",
     "nav.csv-template": "CSV Skabelon",
-    "nav.monitoring":   "Overvågning",
+    "nav.monitoring":   "Portal Overvågning",
     "nav.policy":       "ISE Politikker",
 
     // Policy dashboard
@@ -1025,18 +1025,18 @@ const TRANSLATIONS = {
 
   en: {
     // Navigation
-    "nav.browse":       "Browse",
-    "nav.register":     "Register",
-    "nav.import":       "Import",
-    "nav.attributes":   "Attributes",
-    "nav.dacls":        "DACLs",
+    "nav.browse":       "Endpoint Browse/Edit",
+    "nav.register":     "Endpoint Register",
+    "nav.import":       "Endpoint Import",
+    "nav.attributes":   "Endpoint Attributes",
+    "nav.dacls":        "Endpoint DACLs",
     "nav.logs":         "Logs",
     "nav.audit":        "Audit",
     "nav.metrics":      "Metrics",
-    "nav.settings":     "Settings",
+    "nav.settings":     "Portal Settings",
     "nav.user-prefs":   "Preferences",
     "nav.csv-template": "CSV Template",
-    "nav.monitoring":   "Monitoring",
+    "nav.monitoring":   "Portal Monitoring",
     "nav.policy":       "ISE Policies",
 
     // Policy dashboard

@@ -3,6 +3,15 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.4.8 build 0386] — 2026-05-17 — ux: Omdøb side-menu punkter med prefix-kategori
+
+Register → Endpoint Register, Import → Endpoint Import, Browse → Endpoint Browse/Edit,
+Attributes → Endpoint Attributes, DACLs → Endpoint DACLs,
+Monitoring → Portal Monitoring, Settings → Portal Settings.
+Opdateret i begge sprog (DA + EN).
+
+**Berørte filer:** `frontend/js/i18n.js`
+
 ## [5.4.8 build 0385] — 2026-05-17 — docs: SYSTEM_DESCRIPTION.md tilføjet
 
 Ny fil `SYSTEM_DESCRIPTION.md` med komplet beskrivelse af systemets formål,
