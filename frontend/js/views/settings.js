@@ -774,6 +774,14 @@ export async function renderSettings(container) {
       </div>
       <div id="gh-msg" style="margin-top:0.75rem;"></div>
       <div id="gh-info" style="margin-top:0.5rem;"></div>
+      <div style="margin-top:1rem;padding-top:0.75rem;border-top:1px solid var(--border,#e2e8f0);">
+        <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.9rem;">
+          <input type="checkbox" id="gh-dev-branch-cb">
+          <span id="gh-dev-branch-lbl"></span>
+        </label>
+        <p class="hint" id="gh-dev-branch-hint" style="margin:0.25rem 0 0 1.5rem;font-size:0.8rem;"></p>
+        <div id="gh-dev-branch-result" style="margin-top:0.25rem;margin-left:1.5rem;"></div>
+      </div>
     </div>
     ` : ""}
 

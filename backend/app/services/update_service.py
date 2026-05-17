@@ -187,12 +187,18 @@ def apply_package(zip_bytes: bytes) -> dict[str, Any]:
 # GitHub version check
 # ---------------------------------------------------------------------------
 
-_GITHUB_RAW = (
-    "https://raw.githubusercontent.com/Jangreenlarsen/ise-endpoint-portal/main/version.json"
+_GITHUB_RAW_TMPL = (
+    "https://raw.githubusercontent.com/Jangreenlarsen/ise-endpoint-portal/{branch}/version.json"
 )
 _github_cache: dict[str, Any] = {}
 _github_cache_ts: float = 0.0
+_github_cache_branch: str = ""
 _GITHUB_CACHE_TTL = 3600.0  # 1 time
+
+
+def _github_branch() -> str:
+    from app.core import config as _cfg
+    return (_cfg.settings.github_branch or "main").strip()
 
 
 def _is_git_repo() -> bool:
@@ -209,15 +215,17 @@ async def check_github_version() -> dict[str, Any]:
 
     Returnerer:
         current_version, current_build, latest_version, latest_build,
-        update_available, git_ready, checked_at, error (hvis fejl).
+        update_available, git_ready, checked_at, branch, error (hvis fejl).
 
-    Caches i 1 time for at undgå unødige GitHub-kald.
+    Caches i 1 time — invalideres automatisk hvis branch-indstilling ændres.
     """
-    global _github_cache, _github_cache_ts
+    global _github_cache, _github_cache_ts, _github_cache_branch
     from app.core.version import BUILD, VERSION
 
+    branch = _github_branch()
     now = time.time()
-    if _github_cache and now - _github_cache_ts < _GITHUB_CACHE_TTL:
+    # Ugyldiggør cache hvis branch er skiftet
+    if _github_cache and (now - _github_cache_ts < _GITHUB_CACHE_TTL) and _github_cache_branch == branch:
         return _github_cache
 
     git_ready = await asyncio.to_thread(_is_git_repo)
@@ -228,13 +236,15 @@ async def check_github_version() -> dict[str, Any]:
         "latest_build": None,
         "update_available": False,
         "git_ready": git_ready,
+        "branch": branch,
         "checked_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "error": None,
     }
     try:
         import httpx
+        url = _GITHUB_RAW_TMPL.format(branch=branch)
         async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get(_GITHUB_RAW)
+            resp = await client.get(url)
             resp.raise_for_status()
             data = resp.json()
         result["latest_version"] = data.get("version", "?")
@@ -245,17 +255,20 @@ async def check_github_version() -> dict[str, Any]:
             result["update_available"] = data.get("build") != BUILD
         _github_cache = result
         _github_cache_ts = now
+        _github_cache_branch = branch
     except Exception as exc:  # noqa: BLE001
         result["error"] = str(exc)
-        logger.warning("github version check fejlede: %s", exc)
+        logger.warning("github version check fejlede (branch=%s): %s", branch, exc)
     return result
 
 
 def _git_pull_sync() -> dict[str, Any]:
-    """Kør git pull origin main i PROJECT_ROOT. Returnerer stdout, stderr, ok."""
+    """Kør git pull origin <branch> i PROJECT_ROOT. Returnerer stdout, stderr, ok."""
+    from app.core import config as _cfg
+    branch = (_cfg.settings.github_branch or "main").strip()
     try:
         proc = subprocess.run(
-            ["git", "-C", str(PROJECT_ROOT), "pull", "origin", "main"],
+            ["git", "-C", str(PROJECT_ROOT), "pull", "origin", branch],
             capture_output=True, text=True, timeout=60,
         )
         ok = proc.returncode == 0
