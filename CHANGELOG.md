@@ -3,6 +3,15 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.0 build 0402] — 2026-05-17 — feat: distributions-installationsscript og deploy-filer til Debian/Ubuntu
+
+Tilføjet tre nye filer til nem distribution og installation på fresh Debian/Ubuntu server:
+- `install.sh`: Komplet bash-installationsscript der håndterer Python-tjek/installation, system-bruger oprettelse, git-klon/opdatering, venv-setup, rettigheder, systemd-service og valgfri nginx-opsætning
+- `deploy/hypervision.service`: Systemd service unit med User=hypervision, sikkerhedshærdning (NoNewPrivileges, PrivateTmp, ProtectSystem), Restart=always
+- `deploy/nginx-hypervision.conf`: Nginx reverse proxy med HTTP→HTTPS redirect, TLS-pladsholdere til certbot, SSE-understøttelse (proxy_buffering off)
+
+Brug: `curl -fsSL https://raw.githubusercontent.com/Jangreenlarsen/ise-endpoint-portal/main/install.sh | bash`
+
 ## [5.5.0 build 0401] — 2026-05-17 — feat: licensfooter i sidebar med copyright, email og AGPL v3-link
 
 Tilføjet diskret footer nederst i sidebaren på alle sider:
