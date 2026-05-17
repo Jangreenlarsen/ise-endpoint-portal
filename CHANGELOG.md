@@ -3,6 +3,17 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.4.4 build 0374] — 2026-05-17 — fix: Identity Group-condition i RADIUS-wizard fik forkert sti (manglede mellemled)
+
+Wizard-koden brugte `.selectedOptions[0].text` (display-teksten = kortnavnet `"ADM-Apple-iPhone"`) til at
+pre-fylde IdentityGroup-condition. `normalizeIdentityGroupValue` prefixede kun med `"Endpoint Identity Groups:"`,
+så mellemniveauet (f.eks. `"Profiled"`) forsvandt → `"Endpoint Identity Groups:ADM-Apple-iPhone"`.
+Fix: lookup gruppen i `state.groups` via `g.id` og brug den fulde sti direkte.
+
+**Berørte filer:** `frontend/js/views/browse-detail.js`
+
+---
+
 ## [5.4.4 build 0373] — 2026-05-17 — fix: Identity Group-dropdown viste alt fladt — backend bygger nu fulde stier via parentId
 
 ISE ERS `/ers/config/endpointgroup` list-respons returnerer kun korte navne

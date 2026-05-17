@@ -402,7 +402,8 @@ export function initDetail(container, state, api, cb) {
     const pskActive  = container.querySelector("#d-psk-mode")?.checked === true;
     const authzVlan  = container.querySelector("#d-authzvlan")?.value || "";
     const authzAcl   = container.querySelector("#d-authzacl")?.value  || "";
-    const groupName  = container.querySelector("#d-group")?.selectedOptions[0]?.text || "";
+    const groupSelId = container.querySelector("#d-group")?.value || "";
+    const groupName  = (state.groups || []).find((g) => g.id === groupSelId)?.name || "";
 
     const epAttrs = [
       { attr: "Owner",       val: container.querySelector("#d-owner")?.value || "" },
