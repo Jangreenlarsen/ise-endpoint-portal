@@ -4,8 +4,11 @@
 #
 # HyperVision ISE Portal — installations-script til Debian/Ubuntu
 #
-# Brug:
+# Brug (curl):
 #   curl -fsSL https://raw.githubusercontent.com/Jangreenlarsen/ise-endpoint-portal/main/install.sh | bash
+#
+# Brug (wget — hvis curl ikke er installeret):
+#   wget -qO- https://raw.githubusercontent.com/Jangreenlarsen/ise-endpoint-portal/main/install.sh | bash
 #
 # Eller efter download:
 #   chmod +x install.sh && sudo ./install.sh
