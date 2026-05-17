@@ -3,6 +3,23 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.4.6 build 0382] — 2026-05-17 — fix: Simulate match henter live endpoint-data fra ISE ERS
+
+Rodårsag til alle tidligere simulate-match-fejl: frontend sendte formularværdier
+som basis for simuleringen — stale group_name, stale custom attributes, alt hvad
+der sidst var gemt i HTML-formularen, ikke hvad ISE faktisk har.
+
+**Løsning:**
+- `collectEndpointAttrs()` sender nu kun `{ endpoint_id: <id> }` til backend.
+- Backend `match_endpoint()`: hvis `endpoint_id` er sat, henter den ALLE
+  endpoint-attributter live fra ISE ERS (`IseEndpointRepository.get()`) og
+  resolver group_name til fuld hierarkisk sti via `IseEndpointGroupRepository.list_all()`.
+- Simulationen er nu 100% baseret på hvad ISE ser for den pågældende endpoint.
+
+**Berørte filer:**
+- `frontend/js/views/browse-detail.js` — `collectEndpointAttrs()` simplificeret
+- `backend/app/services/policy_service.py` — ny `_fetch_ep_from_ise()` + logik i `match_endpoint()`
+
 ## [5.4.5 build 0381] — 2026-05-17 — fix: Simulate match — robust group-matching + korrekt OR-score
 
 To yderligere fejl i match-simulatoren:

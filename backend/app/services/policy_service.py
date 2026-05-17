@@ -4,8 +4,10 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from app.core.custom_attr_store import PSK_MODE_ATTR
 from app.core.exceptions import IseApiError
 from app.ise import policy as policy_api
+from app.ise.endpoints import IseEndpointGroupRepository, IseEndpointRepository
 from app.schemas.policy import (
     AuthzRuleDetail,
     AuthzRuleSummary,
@@ -358,8 +360,54 @@ class PolicyService:
     async def delete_rule(self, policy_set_id: str, rule_id: str) -> None:
         await policy_api.delete_authorization_rule(self._client, policy_set_id, rule_id)
 
+    async def _fetch_ep_from_ise(self, endpoint_id: str) -> dict:
+        """Fetch live endpoint attributes from ISE ERS and return an ep dict."""
+        raw = await IseEndpointRepository(self._client).get(endpoint_id)
+
+        # Extract custom attributes from the nested ERS structure
+        ca_wrapper = raw.get("customAttributes", {})
+        if isinstance(ca_wrapper, dict):
+            ca: dict[str, str] = {
+                k: str(v) for k, v in ca_wrapper.get("customAttributes", ca_wrapper).items()
+            }
+        else:
+            ca = {}
+
+        group_id = raw.get("groupId", "")
+        group_name = ""
+        if group_id:
+            try:
+                groups = await IseEndpointGroupRepository(self._client).list_all()
+                by_id = {g.get("id", ""): g.get("name", "") for g in groups}
+                group_name = by_id.get(group_id, "")
+            except Exception:
+                pass
+
+        psk_raw = ca.get(PSK_MODE_ATTR, "").lower()
+        return {
+            "owner":         ca.get("Owner", ""),
+            "endpoint_type": ca.get("Type", ""),
+            "lokation":      ca.get("Lokation", ""),
+            "authz_vlan":    ca.get("AuthzVlan", ""),
+            "authz_acl":     ca.get("AuthzACL", ""),
+            "platform_type": ca.get("PlatformType", ""),
+            "psk_mode":      "true" if psk_raw == "true" else "false",
+            "description":   raw.get("description", ""),
+            "group_name":    group_name,
+        }
+
     async def match_endpoint(self, policy_set_id: str, ep: dict) -> PolicyMatchResult:
         """Simulate which authorization rule first matches the given endpoint dict."""
+        # If the caller sends endpoint_id, fetch live attributes from ISE so the
+        # simulation is based on what ISE actually sees, not stale form values.
+        endpoint_id = ep.get("endpoint_id", "")
+        if endpoint_id:
+            try:
+                ep = await self._fetch_ep_from_ise(endpoint_id)
+                logger.debug("simulate match: fetched live ep attrs for %s → %s", endpoint_id, ep)
+            except Exception as exc:
+                logger.warning("simulate match: could not fetch ep %s from ISE: %s", endpoint_id, exc)
+
         ps = await policy_api.get_policy_set(self._client, policy_set_id)
         rules = await policy_api.list_authorization_rules(self._client, policy_set_id)
 

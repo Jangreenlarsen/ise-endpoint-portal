@@ -308,6 +308,13 @@ export function initDetail(container, state, api, cb) {
   }
 
   function collectEndpointAttrs() {
+    const epId = state.detailCurrentId || "";
+    if (epId) {
+      // Let the backend fetch live attributes directly from ISE so the
+      // simulation is always based on current ISE data, not stale form values.
+      return { endpoint_id: epId };
+    }
+    // Fallback for cases where no endpoint ID is available (should not happen in practice)
     return {
       owner:          container.querySelector("#d-owner")?.value || "",
       endpoint_type:  container.querySelector("#d-type")?.value || "",
