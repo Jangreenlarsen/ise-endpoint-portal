@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.4.1 build 0363] — 2026-05-17 — feat: Auth-status som sortérbar kolonneheader i Browse
+
+"Status" er nu en rigtig kolonne i tabel-headeren (placeret efter MAC). Klik på "Status" i kolonnenavnrækken for at sortere: auth-endpoints øverst (↑) eller sidst (↓), med tredje klik nulstiller sortering. Filtrerings-dropdown (Alle/Auth/Ikke auth) er flyttet til denne kolonnes filter-celle. Kolonnen viser ●/○-indikator i grøn/rød baggrundsfarve svarende til MAC-cellens farver. Kolonnens synlighed styres via Kolonner-menuen. Sort-logik bruger `activeSessionMacs` ligesom MAC-cellefarverne.
+
+**Berørte filer**: `frontend/js/views/browse-utils.js` (+auth_status kolonne), `frontend/js/views/browse-table.js` (celle + applyAuthStatusColors), `frontend/js/views/browse-filter.js` (auth_status sort-case), `frontend/js/views/browse.js` (filter-celle template), `frontend/js/i18n.js` (+col.auth_status DA/EN), `frontend/css/styles.css` (.auth-status-col + oprydning), `version.json`
+
 ## [5.4.1 build 0362] — 2026-05-17 — fix: Auth-status filter — i18n tekster + Status-label over dropdown
 
 Dropdown-optionerne ("Alle"/"All", "Auth", "Ikke auth"/"Not auth") og label over feltet ("Status") bruger nu i18n-systemet via `t()`. Label vises som lille tekst over dropdown'en i MAC-filtercelleen.

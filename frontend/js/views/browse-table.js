@@ -172,12 +172,19 @@ export function initTable(container, state, api, cb) {
   function applyAuthStatusColors() {
     const macs = state.activeSessionMacs || (state.pxgridLive && state.pxgridSessionMacs) || null;
     tbody.querySelectorAll("tr[data-id]").forEach((tr) => {
-      const macCell = tr.querySelector(".mac-cell");
+      const macCell        = tr.querySelector(".mac-cell");
+      const authStatusCell = tr.querySelector(".auth-status-col");
       if (!macCell) return;
       macCell.classList.remove("auth-active", "auth-failed");
+      if (authStatusCell) { authStatusCell.className = "auth-status-col"; authStatusCell.textContent = ""; }
       if (!macs) return;
-      const mac = normalizeMac(macCell.textContent);
-      if (mac) macCell.classList.add(macs.has(mac) ? "auth-active" : "auth-failed");
+      const mac    = normalizeMac(macCell.textContent);
+      const isAuth = mac ? macs.has(mac) : false;
+      if (mac) macCell.classList.add(isAuth ? "auth-active" : "auth-failed");
+      if (authStatusCell && mac) {
+        authStatusCell.classList.add(isAuth ? "auth-active" : "auth-failed");
+        authStatusCell.textContent = isAuth ? "●" : "○";
+      }
     });
   }
 
@@ -195,6 +202,7 @@ export function initTable(container, state, api, cb) {
       const nasPt = getNasPlatformType(mac);
       const cells = {
         mac:           `<td data-col="mac" class="mac-cell${r.cache_stale ? " cache-stale" : ""}"><a href="#" class="mac-link" title="${t("browse.mac_link_title")}">${esc(mac)}</a>${r.cache_stale ? `<span class="stale-badge" title="${t("browse.stale_badge_title")}">⏱</span>` : ""}</td>`,
+        auth_status:   `<td data-col="auth_status" class="auth-status-col"></td>`,
         vendor:        `<td data-col="vendor" class="vendor-cell-td">${esc(r.vendor || "")}</td>`,
         group_name:    `<td data-col="group_name"><select class="grp-select">${groupOptionsHtml(r.group_id)}</select></td>`,
         static_group:  `<td data-col="static_group" class="assign-cell">${r.static_group ? t("cell.static") : t("cell.dynamic")}</td>`,

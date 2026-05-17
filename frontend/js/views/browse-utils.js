@@ -118,6 +118,7 @@ export function optionsHtml(values, selected) {
 export function getColumns() {
   return [
     { key: "mac",           label: t("col.mac"),          field: (r) => r.mac || r.name },
+    { key: "auth_status",   label: t("col.auth_status"),  field: () => "" },
     { key: "vendor",        label: t("col.vendor"),       field: (r) => r.vendor || "" },
     { key: "group_name",    label: t("col.group_name"),   field: (r) => r.group_name },
     { key: "static_group",  label: t("col.static_group"), field: (r) => r.static_group ? t("cell.static") : t("cell.dynamic") },

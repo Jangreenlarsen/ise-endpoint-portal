@@ -88,6 +88,14 @@ export function initFilter(container, state, api, cb) {
             const tb = new Date(endpointCreateTime(b) || 0).getTime();
             return state.sortDir === "asc" ? ta - tb : tb - ta;
           }
+          if (state.sortCol === "auth_status") {
+            const macs = state.activeSessionMacs || (state.pxgridLive && state.pxgridSessionMacs) || null;
+            const authVal = (r) => {
+              if (!macs) return "9";
+              return macs.has(normalizeMac(r.mac || r.name || "")) ? "0" : "1";
+            };
+            return state.sortDir === "asc" ? authVal(a).localeCompare(authVal(b)) : authVal(b).localeCompare(authVal(a));
+          }
           if (state.sortCol === "platform_type") {
             const sess = state.pxgridSessionData;
             const pt = (r) => {

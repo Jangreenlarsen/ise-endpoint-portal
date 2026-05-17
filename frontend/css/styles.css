@@ -494,27 +494,17 @@ button.small {
   border-radius: 3px;
   font-family: monospace;
 }
-.mac-filter-wrap {
-  display: flex;
-  gap: 0.2rem;
-  align-items: center;
+td.auth-status-col {
+  text-align: center;
+  font-size: 0.85rem;
+  width: 36px;
+  min-width: 36px;
+  padding: 0.1rem;
 }
-.mac-filter-wrap .col-filter-input {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-.auth-status-wrap {
-  flex: 0 0 auto;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.05rem;
-}
-.auth-status-label {
-  font-size: 0.65rem;
-  color: #6b7280;
-  line-height: 1;
-  white-space: nowrap;
+td.auth-status-col.auth-active { background: #4ade80; color: #14532d; }
+td.auth-status-col.auth-failed { background: #f87171; color: #450a0a; }
+.auth-status-select {
+  width: 100%;
 }
 .auth-status-select {
   padding: 0.15rem 0.2rem;
@@ -523,7 +513,6 @@ button.small {
   border-radius: 3px;
   background: #fff;
   cursor: pointer;
-  max-width: 72px;
 }
 
 /* Browse table */
@@ -1533,7 +1522,6 @@ td.psk-key-cell {
   color: #e0e0e0;
   border-color: #3a3a5c;
 }
-[data-theme="dark"] .auth-status-label { color: #9ca3af; }
 [data-theme="dark"] .filter-clear-all-btn { background: #dc2626; }
 [data-theme="dark"] .filter-clear-all-btn:hover { background: #b91c1c; }
 [data-theme="dark"] .filter-row th {
@@ -1682,7 +1670,6 @@ td.psk-key-cell {
 [data-theme="midnight"] .browse-table-wrap select { border-left-color: #60a5fa; }
 [data-theme="midnight"] .col-filter-input { background: #0d1117; color: #e6edf3; border-color: #30363d; }
 [data-theme="midnight"] .auth-status-select { background: #0d1117; color: #e6edf3; border-color: #30363d; }
-[data-theme="midnight"] .auth-status-label { color: #8b949e; }
 [data-theme="midnight"] .filter-clear-all-btn { background: #b91c1c; }
 [data-theme="midnight"] .filter-row th { background: #010409; }
 [data-theme="midnight"] button { background: #1f6feb; }
