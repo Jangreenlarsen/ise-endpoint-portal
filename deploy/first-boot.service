@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
+#
+# Systemd service — kører HyperVision first-boot wizard én gang ved første boot.
+# Install (på OVA-base-imaget):
+#   cp deploy/first-boot.sh /usr/local/sbin/hypervision-firstboot.sh
+#   chmod +x /usr/local/sbin/hypervision-firstboot.sh
+#   cp deploy/first-boot.service /etc/systemd/system/hypervision-firstboot.service
+#   systemctl enable hypervision-firstboot.service
+
+[Unit]
+Description=HyperVision ISE Portal — First Boot Setup Wizard
+After=local-fs.target systemd-udevd.service
+ConditionPathExists=!/etc/hypervision-firstboot-done
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/hypervision-firstboot.sh
+RemainAfterExit=yes
+
+# Kør på konsollen så brugeren kan taste
+StandardInput=tty
+StandardOutput=tty
+StandardError=tty
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+
+[Install]
+WantedBy=multi-user.target
