@@ -26,6 +26,11 @@ Dette er Claudes system-prompt for dette projekt. Den læses altid først og fø
    - Claude skal pushe til `origin dev` efter hvert commit — aldrig direkte til `main`.
    - Portalens GitHub-opdateringscheck følger `main` (produktionsstabil).
    - Merge `dev` → `main` gøres manuelt af Jan når en release er godkendt.
+10. **Push og merge efter commit (UFRAVIGELIG)**: Efter ethvert commit skal Claude automatisk:
+    - Pushe til `origin dev`
+    - Spørge Jan: *"Vil du også merge til `main` og pushe?"*
+    - Hvis ja: merge `dev` → `main` med `--no-ff` og pushe `origin main`
+    - Hvis nej: forblive på `dev` og informere om at `main` ikke er opdateret
 
 ## Workflow for enhver opgave
 
@@ -35,7 +40,8 @@ Dette er Claudes system-prompt for dette projekt. Den læses altid først og fø
 4. Tilføj entry i `CHANGELOG.md` med `[version build NNNN]` prefix.
 5. Kør tests hvis relevant.
 6. `git add` + `git commit` med besked der inkluderer version: `v1.0.0-b0001: beskrivelse`.
-7. `git push origin dev` til GitHub (al aktiv udvikling sker på `dev`).
+7. `git push origin dev` til GitHub.
+8. Spørg Jan: *"Vil du også merge til `main`?"* — merge og push `origin main` hvis ja.
 
 ## Projektstruktur
 

@@ -32,6 +32,7 @@ class DeviceInfo:
 
 
 _by_ip: dict[str, DeviceInfo] = {}
+_all_devices: list[DeviceInfo] = []   # alle loadede devices uanset IP/type
 _all_loaded: bool = False
 _loading: bool = False
 
@@ -79,6 +80,8 @@ async def _load_all() -> None:
             return
 
         # Step 2: fetch each device for IP list + NDG.
+        # Track ALL devices in _all_devices (per device) regardless of IP or type.
+        # Track IP→device in _by_ip for session-enrichment lookups.
         ip_count = 0
         for device_id in ids:
             try:
@@ -94,6 +97,7 @@ async def _load_all() -> None:
                     device_type_path=dpath,
                     location=_location_from_groups(groups),
                 )
+                _all_devices.append(info)
                 for entry in ip_list:
                     ip = (entry.get("ipaddress") or "").strip()
                     if ip:
@@ -152,6 +156,7 @@ def invalidate() -> None:
     """Clear cache — call after ISE settings change."""
     global _all_loaded, _loading
     _by_ip.clear()
+    _all_devices.clear()
     _all_loaded = False
     _loading = False
 
