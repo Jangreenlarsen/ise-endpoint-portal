@@ -120,33 +120,14 @@ echo ""
 # ── Anvend netværk med ip-kommandoer (mere robust end ifdown/ifup) ────────────
 info "Anvender netværkskonfiguration..."
 
-# Beregn prefix-længde fra netmask
-mask2prefix() {
-    local mask=$1 prefix=0
-    IFS=. read -r a b c d <<< "$mask"
-    for oct in $a $b $c $d; do
-        while [[ $oct -gt 0 ]]; do
-            prefix=$(( prefix + (oct & 1) ))
-            oct=$(( oct >> 1 ))
-        done
-    done
-    echo $prefix
-}
-PREFIX=$(mask2prefix "$NETMASK")
-
-# Fjern alle eksisterende default routes og link-local adresser
-ip route flush dev "$IFACE" 2>/dev/null || true
-ip route del default 2>/dev/null || true
-ip addr flush dev "$IFACE" 2>/dev/null || true
-
-# Stop eventuelle DHCP-klienter der kan genindføre link-local adresser
+# Stop DHCP-klienter
 pkill dhclient 2>/dev/null || true
 pkill dhcpcd  2>/dev/null || true
+sleep 1
 
-# Sæt ny IP og default route
-ip addr add "$IP_ADDR/$PREFIX" dev "$IFACE"
-ip link set "$IFACE" up
-ip route add default via "$GATEWAY" dev "$IFACE"
+# Anvend konfiguration via systemd networking
+systemctl restart networking
+sleep 2
 ok "Netværk aktivt — IP: $IP_ADDR"
 echo ""
 
