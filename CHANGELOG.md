@@ -3,6 +3,8 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.0 build 0418] — 2026-05-18 — feat: CLAUDE.md opdateret — Claude spørger altid om merge til main efter commit
+
 ## [5.5.0 build 0417] — 2026-05-18 — fix: NAS-scan viser nu alle device-typer inkl. devices uden IP eller med tom NDG-type
 
 **Berørte filer:** `backend/app/ise/network_devices.py`, `backend/app/api/custom_attributes.py`
