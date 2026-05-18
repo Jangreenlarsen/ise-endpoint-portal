@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.1 build 0423] — 2026-05-18 — fix: git pull bruger nu FETCH_HEAD i stedet for origin/{branch}
+
+**Berørte filer:** `backend/app/services/update_service.py`
+
+`reset --hard origin/dev` fejlede med "ambiguous argument" fordi serveren ikke har en lokal remote-tracking-reference for `origin/dev` (repo opsat til kun at følge `main`). `git fetch origin dev` henter data korrekt men opretter ikke nødvendigvis `refs/remotes/origin/dev` på alle repo-konfigurationer. Fix: `reset --hard FETCH_HEAD` — FETCH_HEAD sættes altid af `git fetch` og peger på det netop hentede HEAD, uanset remote-tracking-opsætning.
+
 ## [5.5.1 build 0422] — 2026-05-18 — feat: NAS-scan viser nu alle rå ISE NDG device-typer direkte til mapping
 
 **Berørte filer:** `backend/app/api/custom_attributes.py`, `backend/app/core/platform_types.py`

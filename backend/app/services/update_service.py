@@ -284,9 +284,11 @@ def _git_pull_sync() -> dict[str, Any]:
         if fetch.returncode != 0:
             return {"ok": False, "stdout": "\n".join(stdout_parts), "stderr": fetch.stderr.strip(), "returncode": fetch.returncode}
 
-        # Trin 2: reset --hard til remote branch
+        # Trin 2: reset --hard til FETCH_HEAD — mere robust end origin/{branch}
+        # fordi FETCH_HEAD altid sættes af git fetch uanset om remote-tracking
+        # referencen (origin/dev) eksisterer i det lokale repo.
         reset = subprocess.run(
-            ["git", "-C", str(PROJECT_ROOT), "reset", "--hard", f"origin/{branch}"],
+            ["git", "-C", str(PROJECT_ROOT), "reset", "--hard", "FETCH_HEAD"],
             capture_output=True, text=True, timeout=30,
         )
         if reset.stdout.strip(): stdout_parts.append(reset.stdout.strip())
