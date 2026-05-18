@@ -121,23 +121,50 @@ Scriptet udfører automatisk:
 systemctl poweroff
 ```
 
+### Trin 3b — Afmonter DVD/ISO inden eksport
+
+Vigtigt: sørg for at CD-ROM drevet er afmonteret i VM-indstillingerne inden eksport, ellers medfølger hele Debian DVD-imaget (~4 GB) i OVAen.
+
+**ESXi Host Client → vælg VM (slukket) → Actions → Edit settings → CD/DVD Drive → Client Device → Gem**
+
 ### Trin 4 — Eksporter OVA med ovftool
 
-Kør på Windows (erstat `<vm-navn>` og adgangskode):
+Kør på Windows (erstat `<esxi-ip>`, `<vm-navn>` og adgangskode):
 
 ```powershell
 New-Item -ItemType Directory -Path "C:\OVA" -Force
 
 & "C:\Program Files\VMware\VMware OVF Tool\ovftool.exe" `
     --noSSLVerify `
-    --powerOffSource `
-    "vi://root:Adgangskode%21@esx2.ll.lan/<vm-navn>" `
+    --diskMode=thin `
+    "vi://root:Adgangskode%21@<esxi-ip>/<vm-navn>" `
     "C:\OVA\hypervision-base.ova"
 ```
 
 > **Specialtegn i adgangskoden** skal URL-encodes: `!` → `%21`, `@` → `%40`, `#` → `%23`, `$` → `%24`
 
-Resultatet er én enkelt `hypervision-base.ova` fil klar til distribution.
+### Trin 5 — Rens OVA for nvram-reference
+
+ESXi inkluderer en nvram-fil i eksporten som blokkerer import på andre ESXi-servere. Rens den med disse kommandoer:
+
+```powershell
+# Udtræk OVA
+mkdir C:\OVA\extracted
+tar -xf "C:\OVA\hypervision-base.ova" -C "C:\OVA\extracted"
+
+# Fjern nvram-reference fra OVF-descriptor
+(Get-Content "C:\OVA\extracted\hypervision-base.ovf" -Raw) `
+    -replace '<File[^>]*nvram[^/]*/>', '' |
+    Set-Content "C:\OVA\extracted\hypervision-base.ovf"
+
+# Genbyg ren OVA
+& "C:\Program Files\VMware\VMware OVF Tool\ovftool.exe" `
+    --skipManifestCheck `
+    "C:\OVA\extracted\hypervision-base.ovf" `
+    "C:\OVA\hypervision-clean.ova"
+```
+
+Resultatet er `hypervision-clean.ova` — klar til distribution og import på enhver ESXi 7.0/8.0 server.
 
 ---
 
