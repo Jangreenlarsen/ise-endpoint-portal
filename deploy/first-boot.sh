@@ -134,9 +134,14 @@ mask2prefix() {
 }
 PREFIX=$(mask2prefix "$NETMASK")
 
-# Fjern eksisterende IP og ruter på interfacet
-ip addr flush dev "$IFACE" 2>/dev/null || true
+# Fjern alle eksisterende default routes og link-local adresser
 ip route flush dev "$IFACE" 2>/dev/null || true
+ip route del default 2>/dev/null || true
+ip addr flush dev "$IFACE" 2>/dev/null || true
+
+# Stop eventuelle DHCP-klienter der kan genindføre link-local adresser
+pkill dhclient 2>/dev/null || true
+pkill dhcpcd  2>/dev/null || true
 
 # Sæt ny IP og default route
 ip addr add "$IP_ADDR/$PREFIX" dev "$IFACE"
