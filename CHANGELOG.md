@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.0 build 0417] — 2026-05-18 — fix: NAS-scan viser nu alle device-typer inkl. devices uden IP eller med tom NDG-type
+
+**Berørte filer:** `backend/app/ise/network_devices.py`, `backend/app/api/custom_attributes.py`
+
+`_load_all()` byggede kun `_by_ip`-dict (keyet på IP). `get_nas_devices_by_platform` itererede kun `_by_ip`, så NAS-devices uden IP-adresse eller med Device Type NDG "All Device Types" (tom type, `device_type=""`, `path=""`) var usynlige. Fix: `_load_all()` populerer nu også `_all_devices: list[DeviceInfo]` (én entry per device, uanset IP). `get_nas_devices_by_platform` itererer `_all_devices` i stedet for `_by_ip`. Devices med ukendt/tom type vises nu under unmatched med navn som label (f.eks. "Router-01 (ukendt type)") i stedet for at blive tabt.
+
 ## [5.5.0 build 0416] — 2026-05-18 — docs: 02-INSTALLATION.md opdateret med nvram-oprydning og DVD-afmontering
 
 ## [5.5.0 build 0415] — 2026-05-18 — docs: 02-INSTALLATION.md opdateret med OVA-metode, first-boot wizard og ovftool-eksport

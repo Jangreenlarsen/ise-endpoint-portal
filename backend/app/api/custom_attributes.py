@@ -152,15 +152,14 @@ async def get_nas_devices_by_platform() -> dict:
         if r["raw"] not in KNOWN_PLATFORM_TYPES
     }
 
-    # Group matched devices by raw platform type → unique NDG paths with counts.
+    # Group ALL loaded devices by raw platform type → unique NDG paths with counts.
+    # Uses _all_devices (per-device list) instead of _by_ip so devices without
+    # IP addresses and devices with NDG "All Device Types" (empty type/path) are
+    # also included — previously these were silently dropped from the scan.
     matched_paths: dict[str, dict[str, int]] = {}  # raw → {path → count}
     unmatched_paths: dict[str, int] = {}            # path → count (no raw match)
-    seen_ip: set[str] = set()
 
-    for ip, dev in _nd._by_ip.items():
-        if ip in seen_ip:
-            continue
-        seen_ip.add(ip)
+    for dev in _nd._all_devices:
         norm = _normalize(dev.device_type) if dev.device_type else None
         path = dev.device_type_path or dev.device_type or ""
         raw_key = norm
@@ -171,8 +170,10 @@ async def get_nas_devices_by_platform() -> dict:
         if raw_key:
             matched_paths.setdefault(raw_key, {})
             matched_paths[raw_key][path] = matched_paths[raw_key].get(path, 0) + 1
-        elif path:
-            unmatched_paths[path] = unmatched_paths.get(path, 0) + 1
+        else:
+            # Include devices with no specific type (path="") under a readable label
+            label = path or f"{dev.name} (ukendt type)" if dev.name else "(ukendt type)"
+            unmatched_paths[label] = unmatched_paths.get(label, 0) + 1
 
     # Convert to list form for JSON serialisation.
     grouped = {
@@ -182,8 +183,8 @@ async def get_nas_devices_by_platform() -> dict:
     unmatched = [{"path": p, "count": c} for p, c in unmatched_paths.items()]
 
     logger.info(
-        "nas-devices: loaded=%s devices=%d matched_raw=%s unmatched_paths=%s",
-        _nd._all_loaded, len(_nd._by_ip),
+        "nas-devices: loaded=%s total_devices=%d matched_raw=%s unmatched_paths=%s",
+        _nd._all_loaded, len(_nd._all_devices),
         {r: sum(x["count"] for x in v) for r, v in grouped.items()},
         unmatched,
     )
