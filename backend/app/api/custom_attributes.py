@@ -154,8 +154,10 @@ async def get_nas_devices_by_platform() -> dict:
 
     # Group ALL loaded devices by raw platform type → unique NDG paths with counts.
     # Uses _all_devices (per-device list) instead of _by_ip so devices without
-    # IP addresses and devices with NDG "All Device Types" (empty type/path) are
-    # also included — previously these were silently dropped from the scan.
+    # IP addresses are also included.
+    # Devices with device_type="" AND path="" have NDG "All Device Types" (the
+    # default/unspecified group in ISE) — these are excluded from both matched and
+    # unmatched because they carry no platform-type information worth mapping.
     matched_paths: dict[str, dict[str, int]] = {}  # raw → {path → count}
     unmatched_paths: dict[str, int] = {}            # path → count (no raw match)
 
@@ -170,10 +172,10 @@ async def get_nas_devices_by_platform() -> dict:
         if raw_key:
             matched_paths.setdefault(raw_key, {})
             matched_paths[raw_key][path] = matched_paths[raw_key].get(path, 0) + 1
-        else:
-            # Include devices with no specific type (path="") under a readable label
-            label = path or f"{dev.name} (ukendt type)" if dev.name else "(ukendt type)"
-            unmatched_paths[label] = unmatched_paths.get(label, 0) + 1
+        elif path:
+            # Only show in unmatched when there IS a path — devices with no
+            # specific Device Type NDG ("All Device Types") are silently skipped.
+            unmatched_paths[path] = unmatched_paths.get(path, 0) + 1
 
     # Convert to list form for JSON serialisation.
     grouped = {

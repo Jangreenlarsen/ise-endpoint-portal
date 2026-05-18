@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.1 build 0420] — 2026-05-18 — fix: NAS-scan medtager nu devices der fejler under detail-fetch; "All Device Types" udelukkes fra unmatched
+
+**Berørte filer:** `backend/app/ise/network_devices.py`, `backend/app/api/custom_attributes.py`
+
+To supplerende rettelser til NAS-scan (efter b0417):
+1. **Manglende device ved fejlet detail-fetch**: `_load_all()` step 2 fangedev undtagelser med `logger.debug` → enheder der fejler under GET `/networkdevice/{id}` (timeout, rettighedsproblem o.l.) forsvandt lydløst fra `_all_devices`. Fix: (a) step 1 bevarer nu `(id, name)`-tupler i stedet for bare `id`, (b) ved fejl logger vi `WARNING` og indsætter et fallback-`DeviceInfo(name=list_name)` så enheden altid er synlig i scannens resultat.
+2. **Udeluk "All Device Types"**: devices med `device_type=""` og `path=""` (standard ISE NDG "All Device Types" — ingen specifik type konfigureret) vises ikke længere som unmatched. De bærer ingen platform-information og forurener mapping-editoren. Devices med en faktisk NDG-path der ikke kan normaliseres vises fortsat som unmatched.
+
 ## [5.5.0 build 0419] — 2026-05-18 — docs: OVA uploadet til GitHub Releases v5.5.0 + installationsguide opdateret med download-link
 
 **Berørte filer:** `docs/02-INSTALLATION.md`, `FEATURES.md`

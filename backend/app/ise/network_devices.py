@@ -59,8 +59,9 @@ async def _load_all() -> None:
         from app.ise.client import get_ise_client
         client = get_ise_client()
 
-        # Step 1: collect all device IDs from paginated list.
-        ids: list[str] = []
+        # Step 1: collect all (id, name) tuples from paginated list.
+        # Name is preserved so a failed detail-fetch can still produce a fallback entry.
+        id_names: list[tuple[str, str]] = []
         page = 1
         while True:
             data = await client.get(ERS_NETWORK_DEVICES, params=[("page", page), ("size", 100)])
@@ -69,12 +70,12 @@ async def _load_all() -> None:
             total = int(sr.get("total", len(resources)))
             for r in resources:
                 if r.get("id"):
-                    ids.append(r["id"])
-            if not resources or len(ids) >= total:
+                    id_names.append((r["id"], str(r.get("name", ""))))
+            if not resources or len(id_names) >= total:
                 break
             page += 1
 
-        if not ids:
+        if not id_names:
             logger.debug("network device cache: ingen devices fundet i ISE ERS")
             _all_loaded = True
             return
@@ -82,12 +83,14 @@ async def _load_all() -> None:
         # Step 2: fetch each device for IP list + NDG.
         # Track ALL devices in _all_devices (per device) regardless of IP or type.
         # Track IP→device in _by_ip for session-enrichment lookups.
+        # On detail-fetch failure a minimal fallback entry (name only) is added so
+        # the device is never silently lost from _all_devices.
         ip_count = 0
-        for device_id in ids:
+        for device_id, list_name in id_names:
             try:
                 data = await client.get(f"{ERS_NETWORK_DEVICES}/{device_id}")
                 nd = (data or {}).get("NetworkDevice", {})
-                name = str(nd.get("name", ""))
+                name = str(nd.get("name", "")) or list_name
                 groups: list[str] = nd.get("NetworkDeviceGroupList", [])
                 ip_list: list[dict] = nd.get("NetworkDeviceIPList", [])
                 dtype, dpath = _device_type_from_groups(groups)
@@ -104,12 +107,16 @@ async def _load_all() -> None:
                         _by_ip[ip] = info
                         ip_count += 1
             except Exception as exc:  # noqa: BLE001
-                logger.debug("network device %s fetch fejlede: %s", device_id, exc)
+                logger.warning(
+                    "network device '%s' (%s) detail-fetch fejlede — tilføjer som fallback: %s",
+                    list_name, device_id, exc,
+                )
+                _all_devices.append(DeviceInfo(name=list_name))
 
         _all_loaded = True
         logger.info(
             "network device cache loaded: %d devices, %d IP-entries",
-            len(ids), ip_count,
+            len(id_names), ip_count,
         )
     except Exception as exc:  # noqa: BLE001
         logger.warning("network device cache load fejlede: %s", exc)
