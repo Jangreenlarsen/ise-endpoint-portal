@@ -13,6 +13,7 @@ export PATH="$PATH:/usr/sbin:/usr/local/sbin"
 
 FLAGFILE="/etc/hypervision-firstboot-done"
 INSTALL_URL="https://raw.githubusercontent.com/Jangreenlarsen/ise-endpoint-portal/main/install.sh"
+WIZARD_VERSION="5.5.0 build 0412"
 
 [[ -f "$FLAGFILE" ]] && exit 0
 
@@ -43,6 +44,7 @@ echo ""
 echo "╔══════════════════════════════════════════════════════════════╗"
 echo "║     HyperVision ISE Portal — Første gangs opsætning         ║"
 echo "║     © 2026 Jan Green Larsen <hypervision@laces.dk>          ║"
+printf "║     Wizard version: %-40s║\n" "$WIZARD_VERSION"
 echo "╚══════════════════════════════════════════════════════════════╝"
 echo ""
 echo "  Denne guide konfigurerer netværk og installerer portalen."
