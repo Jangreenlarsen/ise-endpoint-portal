@@ -2,18 +2,18 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 #
-# HyperVision ISE Portal — Første gangs opsætning (first-boot wizard)
+# HyperVision ISE Portal — First-boot setup wizard
 #
-# Køres automatisk ved første boot af OVA-imaget via first-boot.service.
-# Konfigurerer hostname, statisk IP, gateway, DNS og root-adgangskode,
-# derefter hentes og køres install.sh fra GitHub.
+# Runs automatically on first boot of the OVA image via first-boot.service.
+# Configures hostname, static IP, gateway, DNS and root password,
+# then downloads and runs install.sh from GitHub.
 
 set -euo pipefail
 export PATH="$PATH:/usr/sbin:/usr/local/sbin"
 
 FLAGFILE="/etc/hypervision-firstboot-done"
 INSTALL_URL="https://raw.githubusercontent.com/Jangreenlarsen/ise-endpoint-portal/main/install.sh"
-WIZARD_VERSION="5.5.0 build 0412"
+WIZARD_VERSION="5.5.0 build 0413"
 
 [[ -f "$FLAGFILE" ]] && exit 0
 
@@ -21,10 +21,9 @@ RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC
 info()  { echo -e "${BLUE}[INFO]${NC}  $*"; }
 ok()    { echo -e "${GREEN}[OK]${NC}    $*"; }
 warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
-error() { echo -e "${RED}[FEJL]${NC} $*"; exit 1; }
+error() { echo -e "${RED}[ERROR]${NC} $*"; exit 1; }
 
 ask() {
-    # ask <variabel> <prompt> [default]
     local __var=$1 __prompt=$2 __default=${3:-}
     local __val=""
     if [[ -n "$__default" ]]; then
@@ -33,7 +32,7 @@ ask() {
     else
         while [[ -z "$__val" ]]; do
             read -rp "$__prompt: " __val </dev/tty
-            [[ -z "$__val" ]] && echo "  (feltet er påkrævet)"
+            [[ -z "$__val" ]] && echo "  (field is required)"
         done
     fi
     printf -v "$__var" '%s' "$__val"
@@ -42,19 +41,18 @@ ask() {
 clear
 echo ""
 echo "╔══════════════════════════════════════════════════════════════╗"
-echo "║     HyperVision ISE Portal — Første gangs opsætning         ║"
+echo "║     HyperVision ISE Portal — First Boot Setup               ║"
 echo "║     © 2026 Jan Green Larsen <hypervision@laces.dk>          ║"
 printf "║     Wizard version: %-40s║\n" "$WIZARD_VERSION"
 echo "╚══════════════════════════════════════════════════════════════╝"
 echo ""
-echo "  Denne guide konfigurerer netværk og installerer portalen."
-echo "  Du skal bruge: statisk IP-adresse, subnet-maske, gateway og DNS."
+echo "  This wizard configures networking and installs the portal."
+echo "  You will need: static IP address, subnet mask, gateway and DNS."
 echo ""
 
 # ── Hostname ──────────────────────────────────────────────────────────────────
 ask HOSTNAME "Hostname" "hypervision"
 hostnamectl set-hostname "$HOSTNAME"
-# Opdatér /etc/hosts hvis nødvendigt
 if ! grep -q "127.0.1.1" /etc/hosts; then
     echo "127.0.1.1 $HOSTNAME" >> /etc/hosts
 else
@@ -63,36 +61,36 @@ fi
 ok "Hostname: $HOSTNAME"
 echo ""
 
-# ── Netværksgrænseflade ───────────────────────────────────────────────────────
+# ── Network interface ─────────────────────────────────────────────────────────
 IFACE=$(ip -o link show | awk -F': ' '$2 != "lo" {print $2; exit}')
-info "Netværksgrænseflade fundet: $IFACE"
+info "Network interface detected: $IFACE"
 echo ""
 
-# ── Netværkskonfiguration ─────────────────────────────────────────────────────
-ask IP_ADDR   "IP-adresse      (fx 192.168.1.100)"
-ask NETMASK   "Subnet-maske    (fx 255.255.255.0)" "255.255.255.0"
-ask GATEWAY   "Gateway         (fx 192.168.1.1)"
-ask DNS1      "Primær DNS      (fx 8.8.8.8)"
-read -rp "Sekundær DNS    (Enter for ingen): " DNS2 </dev/tty || DNS2=""
+# ── Network configuration ─────────────────────────────────────────────────────
+ask IP_ADDR   "IP address       (e.g. 192.168.1.100)"
+ask NETMASK   "Subnet mask      (e.g. 255.255.255.0)" "255.255.255.0"
+ask GATEWAY   "Gateway          (e.g. 192.168.1.1)"
+ask DNS1      "Primary DNS      (e.g. 8.8.8.8)"
+read -rp "Secondary DNS    (Enter to skip): " DNS2 </dev/tty || DNS2=""
 
 echo ""
-echo "  ┌─ Netværksoversigt ───────────────────────────────────────┐"
+echo "  ┌─ Network summary ────────────────────────────────────────┐"
 printf  "  │  Interface : %-43s│\n" "$IFACE"
-printf  "  │  IP-adresse: %-43s│\n" "$IP_ADDR"
+printf  "  │  IP address: %-43s│\n" "$IP_ADDR"
 printf  "  │  Subnet    : %-43s│\n" "$NETMASK"
 printf  "  │  Gateway   : %-43s│\n" "$GATEWAY"
 printf  "  │  DNS       : %-43s│\n" "$DNS1${DNS2:+, $DNS2}"
 echo "  └──────────────────────────────────────────────────────────┘"
 echo ""
-read -rp "Er ovenstående korrekt? [J/n] " CONFIRM </dev/tty
+read -rp "Is the above correct? [Y/n] " CONFIRM </dev/tty
 if [[ "$CONFIRM" =~ ^[nN]$ ]]; then
-    warn "Afbrudt — kør igen: bash /usr/local/sbin/hypervision-firstboot.sh"
+    warn "Aborted — run again: bash /usr/local/sbin/hypervision-firstboot.sh"
     exit 1
 fi
 
-# Skriv /etc/network/interfaces
+# Write /etc/network/interfaces
 cat > /etc/network/interfaces <<EOF
-# Genereret af HyperVision first-boot — $(date '+%Y-%m-%d %H:%M')
+# Generated by HyperVision first-boot — $(date '+%Y-%m-%d %H:%M')
 source /etc/network/interfaces.d/*
 
 auto lo
@@ -111,71 +109,70 @@ EOF
     [[ -n "$DNS2" ]] && echo "nameserver $DNS2"
 } > /etc/resolv.conf
 
-ok "Netværkskonfiguration skrevet"
+ok "Network configuration written"
 
-# ── Root-adgangskode ──────────────────────────────────────────────────────────
+# ── Root password ─────────────────────────────────────────────────────────────
 echo ""
-info "Sæt adgangskode til root-brugeren:"
+info "Set root password:"
 passwd root </dev/tty
 echo ""
 
-# ── Anvend netværk med ip-kommandoer (mere robust end ifdown/ifup) ────────────
-info "Anvender netværkskonfiguration..."
+# ── Apply network configuration ───────────────────────────────────────────────
+info "Applying network configuration..."
 
-# Stop DHCP-klienter
+# Stop any DHCP clients
 pkill dhclient 2>/dev/null || true
 pkill dhcpcd  2>/dev/null || true
 sleep 1
 
-# Anvend konfiguration via systemd networking
 systemctl restart networking
 sleep 2
-ok "Netværk aktivt — IP: $IP_ADDR"
+ok "Network active — IP: $IP_ADDR"
 echo ""
 
-# ── Vent på netværk — test i etaper ──────────────────────────────────────────
-info "Tester netværksforbindelse..."
+# ── Test connectivity in stages ───────────────────────────────────────────────
+info "Testing network connectivity..."
 
 # 1. Gateway
 TRIES=0
 until ping -c 1 -W 2 "$GATEWAY" &>/dev/null; do
     TRIES=$((TRIES+1))
-    [[ $TRIES -ge 10 ]] && error "Gateway $GATEWAY ikke nåbar — tjek IP/gateway-konfiguration"
+    [[ $TRIES -ge 10 ]] && error "Gateway $GATEWAY unreachable — check IP/gateway configuration"
     sleep 1
 done
-ok "Gateway nåbar ($GATEWAY)"
+ok "Gateway reachable ($GATEWAY)"
 
-# 2. Internet (uden DNS)
+# 2. Internet (no DNS)
 TRIES=0
 until ping -c 1 -W 2 8.8.8.8 &>/dev/null; do
     TRIES=$((TRIES+1))
-    [[ $TRIES -ge 10 ]] && error "Ingen internetforbindelse — tjek at gateway har internet-adgang"
+    [[ $TRIES -ge 10 ]] && error "No internet connectivity — check that gateway has internet access"
     sleep 1
 done
-ok "Internet nåbar"
+ok "Internet reachable"
 
 # 3. DNS + HTTPS
 TRIES=0
 until wget -q --spider https://github.com 2>/dev/null; do
     TRIES=$((TRIES+1))
-    [[ $TRIES -ge 15 ]] && error "DNS/HTTPS fejler — tjek DNS-server $DNS1"
+    [[ $TRIES -ge 15 ]] && error "DNS/HTTPS failed — check DNS server $DNS1"
     sleep 2
 done
-ok "Internetforbindelse OK"
+ok "Internet connectivity OK"
 echo ""
 
-# ── Kør install.sh ────────────────────────────────────────────────────────────
-info "Henter og kører HyperVision ISE Portal install.sh..."
+# ── Run install.sh ────────────────────────────────────────────────────────────
+info "Downloading and running HyperVision ISE Portal install.sh..."
 echo ""
 wget -qO- "$INSTALL_URL" | bash
 
-# ── Markér færdig ─────────────────────────────────────────────────────────────
+# ── Mark as done ──────────────────────────────────────────────────────────────
 touch "$FLAGFILE"
 systemctl disable hypervision-firstboot.service 2>/dev/null || true
 
 echo ""
 echo "╔══════════════════════════════════════════════════════════════╗"
-echo "║  Første gangs opsætning fuldført!                           ║"
+echo "║  First boot setup complete!                                  ║"
 echo "╠══════════════════════════════════════════════════════════════╣"
 printf "║  Portal URL: http://%-40s║\n" "$IP_ADDR:8000"
 echo "╚══════════════════════════════════════════════════════════════╝"
