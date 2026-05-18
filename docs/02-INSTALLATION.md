@@ -1,10 +1,161 @@
-<!-- Version: 5.5.0 | Opdateret: 2026-05-17 -->
+<!-- Version: 5.5.0 | Opdateret: 2026-05-18 -->
 
 # 02 — Installation og første opsætning
 
 ---
 
-## Forudsætninger
+## Installationsmetoder
+
+| Metode | Hvornår |
+|---|---|
+| **OVA-image** (anbefalet) | Fresh server — importér OVA i ESXi, first-boot wizard konfigurerer alt |
+| **install.sh** | Eksisterende Debian/Ubuntu-server |
+| **Manuel** | Windows eller tilpassede Linux-opsætninger |
+
+---
+
+## Metode 1 — OVA-image til VMware ESXi (anbefalet)
+
+OVA-imaget indeholder et rent Debian 13-system med en first-boot wizard. Wizarden konfigurerer netværk, hostname og root-adgangskode, og installerer derefter portalen automatisk fra GitHub.
+
+### Forudsætninger
+
+| Krav | Detaljer |
+|---|---|
+| VMware ESXi | 7.0 eller nyere |
+| Internet | Serveren skal nå GitHub under first-boot |
+
+### Trin 1 — Importér OVA i ESXi
+
+1. Log ind i ESXi Host Client (`https://<esxi-ip>`)
+2. **Create / Register VM → Deploy a virtual machine from an OVF or OVA file**
+3. Vælg `hypervision-base.ova`
+4. Vælg datastore og netværk
+5. Gennemfør import
+
+### Trin 2 — Start VM og kør first-boot wizard
+
+1. Start VM'en i ESXi
+2. Åbn konsollen: **Actions → Open console**
+3. Wizarden starter automatisk og viser:
+
+```
+╔══════════════════════════════════════════════════════════════╗
+║     HyperVision ISE Portal — First Boot Setup               ║
+║     © 2026 Jan Green Larsen <hypervision@laces.dk>          ║
+║     Wizard version: x.x.x build NNNN                        ║
+╚══════════════════════════════════════════════════════════════╝
+```
+
+4. Besvar spørgsmålene:
+
+| Felt | Eksempel | Bemærkning |
+|---|---|---|
+| Hostname | `hypervision` | Serverens hostnavn |
+| IP address | `192.168.1.100` | Statisk IP |
+| Subnet mask | `255.255.255.0` | Standard /24 |
+| Gateway | `192.168.1.1` | Default gateway |
+| Primary DNS | `8.8.8.8` | DNS-server |
+| Secondary DNS | *(Enter for ingen)* | Valgfri |
+| Root password | *(valgfri adgangskode)* | Sættes ved first-boot |
+
+5. Bekræft med `Y` — wizarden:
+   - Skriver `/etc/network/interfaces`
+   - Genstarter netværk
+   - Tester gateway → internet → DNS
+   - Kører `install.sh` fra GitHub automatisk
+
+6. Installation færdig — portalen er tilgængelig på `http://<ip>:8000`
+
+### Trin 3 — Første login
+
+Åbn `http://<ip>:8000` og opret admin-bruger ved første login.
+
+---
+
+## Oprettelse af nyt OVA-image (vedligehold)
+
+Følg disse trin for at bygge et nyt OVA-image til distribution.
+
+### Forudsætninger
+
+| Krav | Detaljer |
+|---|---|
+| VMware ESXi | 7.0 eller nyere |
+| VMware OVF Tool | Installeret på Windows: `C:\Program Files\VMware\VMware OVF Tool\ovftool.exe` |
+| Internet | Build-VM skal nå GitHub og Debian apt-servere |
+
+### Trin 1 — Opret fresh Debian 13 VM i ESXi
+
+- **vCPU**: 2
+- **RAM**: 2 GB
+- **Disk**: 20 GB
+- **OS**: Debian GNU/Linux 13 (64-bit)
+- Installer Debian minimalt — vælg kun **SSH server** og **standard system utilities**
+
+### Trin 2 — Kør prepare-ova-base.sh
+
+SSH ind på VM'en og kør:
+
+```bash
+# Fjern CD-ROM apt-kilde hvis Debian er installeret fra DVD
+sed -i '/^deb cdrom/s/^/#/' /etc/apt/sources.list
+
+# Download og kør klargøringsscript
+wget -qO /tmp/first-boot.sh "https://raw.githubusercontent.com/Jangreenlarsen/ise-endpoint-portal/main/deploy/first-boot.sh"
+wget -qO /tmp/prepare-ova-base.sh "https://raw.githubusercontent.com/Jangreenlarsen/ise-endpoint-portal/main/deploy/prepare-ova-base.sh"
+bash /tmp/prepare-ova-base.sh
+```
+
+Scriptet udfører automatisk:
+- Installation af first-boot wizard
+- Konfiguration af auto-login på tty1
+- Fuld OS-opdatering (`apt-get upgrade`)
+- Installation af `open-vm-tools` (VMware integration)
+- Oprydning: machine-id, SSH host keys, logs, bash-historik
+- Nulstilling af netværk til DHCP
+
+### Trin 3 — Luk VM ned
+
+```bash
+systemctl poweroff
+```
+
+### Trin 4 — Eksporter OVA med ovftool
+
+Kør på Windows (erstat `<vm-navn>` og adgangskode):
+
+```powershell
+New-Item -ItemType Directory -Path "C:\OVA" -Force
+
+& "C:\Program Files\VMware\VMware OVF Tool\ovftool.exe" `
+    --noSSLVerify `
+    --powerOffSource `
+    "vi://root:Adgangskode%21@esx2.ll.lan/<vm-navn>" `
+    "C:\OVA\hypervision-base.ova"
+```
+
+> **Specialtegn i adgangskoden** skal URL-encodes: `!` → `%21`, `@` → `%40`, `#` → `%23`, `$` → `%24`
+
+Resultatet er én enkelt `hypervision-base.ova` fil klar til distribution.
+
+---
+
+## Metode 2 — install.sh på eksisterende Debian/Ubuntu-server
+
+Kør på en fresh Debian/Ubuntu-server som root:
+
+```bash
+wget -qO- https://raw.githubusercontent.com/Jangreenlarsen/ise-endpoint-portal/main/install.sh | bash
+```
+
+Scriptet installerer automatisk Python, git, nginx, opretter service-brugeren `hypervision`, kloner kode fra GitHub, sætter venv op og starter systemd-servicen.
+
+> **Ingen curl?** Brug `wget -qO-` som vist ovenfor. curl installeres af scriptet.
+
+---
+
+## Metode 3 — Manuel installation
 
 ### Software
 
