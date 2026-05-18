@@ -3,6 +3,8 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.0 build 0414] — 2026-05-18 — fix: prepare-ova-base.sh henter first-boot.sh fra GitHub hvis ikke lokalt tilgængelig
+
 ## [5.5.0 build 0413] — 2026-05-18 — feat: first-boot wizard oversat til engelsk
 
 ## [5.5.0 build 0412] — 2026-05-18 — feat: first-boot wizard viser versionsnummer i banner

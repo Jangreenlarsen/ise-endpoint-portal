@@ -35,7 +35,13 @@ echo ""
 
 # ── Installer first-boot wizard ───────────────────────────────────────────────
 info "Installerer first-boot wizard..."
-cp "$SCRIPT_DIR/first-boot.sh" /usr/local/sbin/hypervision-firstboot.sh
+GITHUB_RAW="https://raw.githubusercontent.com/Jangreenlarsen/ise-endpoint-portal/main/deploy"
+if [[ -f "$SCRIPT_DIR/first-boot.sh" ]]; then
+    cp "$SCRIPT_DIR/first-boot.sh" /usr/local/sbin/hypervision-firstboot.sh
+else
+    info "Henter first-boot.sh fra GitHub..."
+    wget -qO /usr/local/sbin/hypervision-firstboot.sh "$GITHUB_RAW/first-boot.sh"
+fi
 chmod +x /usr/local/sbin/hypervision-firstboot.sh
 
 # Auto-login som root på tty1 — wizard kører straks ved første boot
