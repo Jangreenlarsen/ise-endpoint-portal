@@ -3,6 +3,8 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.0 build 0411] — 2026-05-18 — fix: first-boot bruger systemctl restart networking i stedet for manuel ip-manipulation
+
 ## [5.5.0 build 0410] — 2026-05-18 — fix: first-boot fjerner alle default routes og stopper DHCP-klienter inden netværkskonfiguration
 
 ## [5.5.0 build 0409] — 2026-05-18 — fix: first-boot netværkskonfiguration bruger ip-kommandoer og tester gateway/internet/DNS separat
