@@ -59,6 +59,7 @@ def get_backend_settings() -> BackendSettingsResponse:
         cache_prewarm_concurrency=s.cache_prewarm_concurrency,
         cache_prewarm_interval_s=s.cache_prewarm_interval_s,
         debug_pxgrid_sessions=s.debug_pxgrid_sessions,
+        github_branch=s.github_branch,
     )
 
 
@@ -85,6 +86,7 @@ async def update_backend_settings(
             "cache_prewarm_concurrency": new.cache_prewarm_concurrency,
             "cache_prewarm_interval_s": new.cache_prewarm_interval_s,
             "debug_pxgrid_sessions": new.debug_pxgrid_sessions,
+            "github_branch": new.github_branch,
         }
     )
     if new.ise_password:

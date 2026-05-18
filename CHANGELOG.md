@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.1 build 0421] — 2026-05-18 — fix: "Use dev branch" gemmer nu github_branch korrekt i config.json
+
+**Berørte filer:** `backend/app/schemas/settings.py`, `backend/app/services/settings_service.py`
+
+`github_branch` manglede i alle fire nødvendige steder: `BackendSettingsUpdate`-schema (Pydantic droppede feltet stille), `BackendSettingsResponse`-schema (returnerede aldrig værdien), `get_backend_settings()` (læste aldrig fra `config.settings`) og `update_backend_settings()` (gemte aldrig til `config.json`). Resultat: checkbox-toggle ændrede intet — GitHub-check hentede altid fra `main`. Fix: `github_branch: str = "main"` tilføjet til begge schemas og koblet i service-laget.
+
 ## [5.5.1 build 0420] — 2026-05-18 — fix: NAS-scan medtager nu devices der fejler under detail-fetch; "All Device Types" udelukkes fra unmatched
 
 **Berørte filer:** `backend/app/ise/network_devices.py`, `backend/app/api/custom_attributes.py`
