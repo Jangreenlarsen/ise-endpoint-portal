@@ -8,13 +8,17 @@
 
 | Metode | Hvornår |
 |---|---|
-| **OVA-image** (anbefalet) | Fresh server — importér OVA i ESXi, first-boot wizard konfigurerer alt |
+| **OVA-image** (anbefalet) | Fresh ESXi-server — importér OVA, first-boot wizard konfigurerer alt |
 | **install.sh** | Eksisterende Debian/Ubuntu-server |
 | **Manuel** | Windows eller tilpassede Linux-opsætninger |
 
 ---
 
 ## Metode 1 — OVA-image til VMware ESXi (anbefalet)
+
+> **Download OVA:**
+> [hypervision-clean.ova — GitHub Releases](https://github.com/Jangreenlarsen/ise-endpoint-portal/releases/latest/download/hypervision-clean.ova)
+> *(ca. 1,1 GB — kræver VMware ESXi 7.0 eller nyere)*
 
 OVA-imaget indeholder et rent Debian 13-system med en first-boot wizard. Wizarden konfigurerer netværk, hostname og root-adgangskode, og installerer derefter portalen automatisk fra GitHub.
 
@@ -25,15 +29,23 @@ OVA-imaget indeholder et rent Debian 13-system med en first-boot wizard. Wizarde
 | VMware ESXi | 7.0 eller nyere |
 | Internet | Serveren skal nå GitHub under first-boot |
 
-### Trin 1 — Importér OVA i ESXi
+### Trin 1 — Download OVA
+
+Hent den seneste OVA fra GitHub Releases:
+
+```
+https://github.com/Jangreenlarsen/ise-endpoint-portal/releases/latest/download/hypervision-clean.ova
+```
+
+### Trin 2 — Importér OVA i ESXi
 
 1. Log ind i ESXi Host Client (`https://<esxi-ip>`)
 2. **Create / Register VM → Deploy a virtual machine from an OVF or OVA file**
-3. Vælg `hypervision-base.ova`
+3. Vælg `hypervision-clean.ova`
 4. Vælg datastore og netværk
 5. Gennemfør import
 
-### Trin 2 — Start VM og kør first-boot wizard
+### Trin 3 — Start VM og kør first-boot wizard
 
 1. Start VM'en i ESXi
 2. Åbn konsollen: **Actions → Open console**
@@ -67,7 +79,7 @@ OVA-imaget indeholder et rent Debian 13-system med en first-boot wizard. Wizarde
 
 6. Installation færdig — portalen er tilgængelig på `http://<ip>:8000`
 
-### Trin 3 — Første login
+### Trin 4 — Første login
 
 Åbn `http://<ip>:8000` og opret admin-bruger ved første login.
 

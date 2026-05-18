@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.0 build 0419] — 2026-05-18 — docs: OVA uploadet til GitHub Releases v5.5.0 + installationsguide opdateret med download-link
+
+**Berørte filer:** `docs/02-INSTALLATION.md`, `FEATURES.md`
+
+OVA-image (`hypervision-clean.ova`, 1,1 GB) uploadet som release-asset til GitHub Releases tag `v5.5.0`. Installationsguide opdateret: direkte download-URL tilføjet som fremhævet boks øverst i OVA-afsnittet, trin-numre justeret (Download → Import → Start → Første login).
+
 ## [5.5.0 build 0418] — 2026-05-18 — feat: CLAUDE.md opdateret — Claude spørger altid om merge til main efter commit
 
 ## [5.5.0 build 0417] — 2026-05-18 — fix: NAS-scan viser nu alle device-typer inkl. devices uden IP eller med tom NDG-type
