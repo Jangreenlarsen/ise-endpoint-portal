@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.1 build 0422] — 2026-05-18 — feat: NAS-scan viser nu alle rå ISE NDG device-typer direkte til mapping
+
+**Berørte filer:** `backend/app/api/custom_attributes.py`, `backend/app/core/platform_types.py`
+
+Tidligere normaliserede scanneren ISE NDG-paths til kanoniske typer ("airos", "iosxe" osv.) — enheder med type "Airespace-WLC" forsvandt ind i en "airos"-match og var usynlige hvis ingen "airos"-mapping-række fandtes. Nu præsenterer scanneren alle unikke NDG device-type-paths rå og direkte: `grouped` = paths der allerede har en mapping-række (exact case-insensitive match); `unmatched` = paths uden mapping-række → vises som pre-udfyldte forslag i mapping-editoren. Brugeren beslutter selv hvad hver ISE device-type mappes til. Normalisering (`normalize()`) fjernet fra scan-presentationslaget; bruges stadig internt i MnT session-sync (`derive_platform`). Tilføjet også synonym-varianter for Airespace/Airspace i `platform_types.py` (mellemrum-varianter og kortformer).
+
 ## [5.5.1 build 0421] — 2026-05-18 — fix: "Use dev branch" gemmer nu github_branch korrekt i config.json
 
 **Berørte filer:** `backend/app/schemas/settings.py`, `backend/app/services/settings_service.py`

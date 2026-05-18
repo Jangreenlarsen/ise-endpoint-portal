@@ -141,54 +141,41 @@ async def get_nas_devices_by_platform() -> dict:
     """
     import app.ise.network_devices as _nd
     from app.core.platform_mapping_store import load_mapping as _load_mapping
-    from app.core.platform_types import KNOWN_PLATFORM_TYPES, normalize as _normalize
 
     # Trigger load if not started yet — safe to call from any async context.
     _nd.ensure_loaded()
 
-    # Build set of user-added raw keys (NDG paths stored as raw in mapping)
-    user_raws: set[str] = {
-        r["raw"] for r in _load_mapping()
-        if r["raw"] not in KNOWN_PLATFORM_TYPES
-    }
+    # All raw keys the user has already mapped (case-insensitive).
+    all_mapped_raws: set[str] = {r["raw"].lower() for r in _load_mapping()}
 
-    # Group ALL loaded devices by raw platform type → unique NDG paths with counts.
-    # Uses _all_devices (per-device list) instead of _by_ip so devices without
-    # IP addresses are also included.
-    # Devices with device_type="" AND path="" have NDG "All Device Types" (the
-    # default/unspecified group in ISE) — these are excluded from both matched and
-    # unmatched because they carry no platform-type information worth mapping.
-    matched_paths: dict[str, dict[str, int]] = {}  # raw → {path → count}
-    unmatched_paths: dict[str, int] = {}            # path → count (no raw match)
-
+    # Collect all unique NDG device type paths from ISE.
+    # Each path is presented as-is so the user can decide the mapping.
+    # Devices with empty path (NDG "All Device Types") are skipped — they carry
+    # no device-type information worth mapping.
+    path_counts: dict[str, int] = {}  # original_path → device count
     for dev in _nd._all_devices:
-        norm = _normalize(dev.device_type) if dev.device_type else None
         path = dev.device_type_path or dev.device_type or ""
-        raw_key = norm
-        if not raw_key and dev.device_type:
-            dt_lower = dev.device_type.strip().lower()
-            if dt_lower in user_raws:
-                raw_key = dt_lower
-        if raw_key:
-            matched_paths.setdefault(raw_key, {})
-            matched_paths[raw_key][path] = matched_paths[raw_key].get(path, 0) + 1
-        elif path:
-            # Only show in unmatched when there IS a path — devices with no
-            # specific Device Type NDG ("All Device Types") are silently skipped.
-            unmatched_paths[path] = unmatched_paths.get(path, 0) + 1
+        if not path:
+            continue
+        path_counts[path] = path_counts.get(path, 0) + 1
 
-    # Convert to list form for JSON serialisation.
-    grouped = {
-        raw: [{"path": p, "count": c} for p, c in paths.items()]
-        for raw, paths in matched_paths.items()
-    }
-    unmatched = [{"path": p, "count": c} for p, c in unmatched_paths.items()]
+    # Split into:
+    #   grouped   — paths that already have a mapping row (raw == path, case-insensitive)
+    #   unmatched — paths with no mapping row yet → shown as pre-filled suggestions
+    grouped: dict[str, list[dict]] = {}
+    unmatched: list[dict] = []
+
+    for path, count in path_counts.items():
+        path_lower = path.lower()
+        if path_lower in all_mapped_raws:
+            grouped.setdefault(path_lower, []).append({"path": path, "count": count})
+        else:
+            unmatched.append({"path": path, "count": count})
 
     logger.info(
-        "nas-devices: loaded=%s total_devices=%d matched_raw=%s unmatched_paths=%s",
-        _nd._all_loaded, len(_nd._all_devices),
-        {r: sum(x["count"] for x in v) for r, v in grouped.items()},
-        unmatched,
+        "nas-devices: loaded=%s total_devices=%d unique_paths=%d matched=%d unmatched=%d",
+        _nd._all_loaded, len(_nd._all_devices), len(path_counts),
+        len(grouped), len(unmatched),
     )
     return {
         "devices": grouped,
