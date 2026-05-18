@@ -117,19 +117,60 @@ info "Sæt adgangskode til root-brugeren:"
 passwd root </dev/tty
 echo ""
 
-# ── Anvend netværk ────────────────────────────────────────────────────────────
+# ── Anvend netværk med ip-kommandoer (mere robust end ifdown/ifup) ────────────
 info "Anvender netværkskonfiguration..."
-ifdown "$IFACE" 2>/dev/null || true
-ifup "$IFACE" || error "Netværk kunne ikke startes — tjek konfigurationen og prøv igen"
+
+# Beregn prefix-længde fra netmask
+mask2prefix() {
+    local mask=$1 prefix=0
+    IFS=. read -r a b c d <<< "$mask"
+    for oct in $a $b $c $d; do
+        while [[ $oct -gt 0 ]]; do
+            prefix=$(( prefix + (oct & 1) ))
+            oct=$(( oct >> 1 ))
+        done
+    done
+    echo $prefix
+}
+PREFIX=$(mask2prefix "$NETMASK")
+
+# Fjern eksisterende IP og ruter på interfacet
+ip addr flush dev "$IFACE" 2>/dev/null || true
+ip route flush dev "$IFACE" 2>/dev/null || true
+
+# Sæt ny IP og default route
+ip addr add "$IP_ADDR/$PREFIX" dev "$IFACE"
+ip link set "$IFACE" up
+ip route add default via "$GATEWAY" dev "$IFACE"
 ok "Netværk aktivt — IP: $IP_ADDR"
 echo ""
 
-# ── Vent på netværk / internet ────────────────────────────────────────────────
-info "Tester internetforbindelse..."
+# ── Vent på netværk — test i etaper ──────────────────────────────────────────
+info "Tester netværksforbindelse..."
+
+# 1. Gateway
+TRIES=0
+until ping -c 1 -W 2 "$GATEWAY" &>/dev/null; do
+    TRIES=$((TRIES+1))
+    [[ $TRIES -ge 10 ]] && error "Gateway $GATEWAY ikke nåbar — tjek IP/gateway-konfiguration"
+    sleep 1
+done
+ok "Gateway nåbar ($GATEWAY)"
+
+# 2. Internet (uden DNS)
+TRIES=0
+until ping -c 1 -W 2 8.8.8.8 &>/dev/null; do
+    TRIES=$((TRIES+1))
+    [[ $TRIES -ge 10 ]] && error "Ingen internetforbindelse — tjek at gateway har internet-adgang"
+    sleep 1
+done
+ok "Internet nåbar"
+
+# 3. DNS + HTTPS
 TRIES=0
 until wget -q --spider https://github.com 2>/dev/null; do
     TRIES=$((TRIES+1))
-    [[ $TRIES -ge 10 ]] && error "Ingen internetforbindelse efter 20 sekunder — tjek gateway/DNS"
+    [[ $TRIES -ge 15 ]] && error "DNS/HTTPS fejler — tjek DNS-server $DNS1"
     sleep 2
 done
 ok "Internetforbindelse OK"
