@@ -9,7 +9,7 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 ## Åbne
 
-*(ingen åbne bugs)*
+- `[fixed 5.5.2 build 0424] 2026-05-18 — Simulator viser kun én RADIUS-parameter selv om politikken bruger flere` — RADIUS-parametersektionen i endpoint-detail / simulatoren vises kun *efter* simulation og kun med de attributter politikken rapporterer som `radius_attrs_needed`. Der er ingen mulighed for proaktivt at tilføje flere RADIUS-parametre eller fjerne/redigere dem — UI'et genstarter parametre ved hvert kald. Fix: ny dynamisk add/remove RADIUS-sektion der altid er synlig; bruger kan tilføje/fjerne vilkårlige RADIUS-nøgle/værdi-par; manglende `radius_attrs_needed` merges ind automatisk efter simulation uden at nulstille eksisterende værdier. **Berørte filer:** `frontend/js/views/browse-detail.js`, `frontend/css/styles.css`.
 
 ---
 

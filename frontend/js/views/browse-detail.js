@@ -276,35 +276,84 @@ export function initDetail(container, state, api, cb) {
       }
       const opts = sets.map((s) => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join("");
       matchArea.innerHTML = `
+        <datalist id="d-radius-attrs-list">
+          <option value="Called-Station-ID">
+          <option value="NAS-Port-Type">
+          <option value="NAS-Identifier">
+          <option value="NAS-IP-Address">
+          <option value="User-Name">
+          <option value="Framed-IP-Address">
+          <option value="Service-Type">
+          <option value="Calling-Station-Id">
+          <option value="EAP-Type">
+          <option value="AuthenticationMethod">
+        </datalist>
         <div class="policy-match-bar">
           <select id="d-pol-set-sel">${opts}</select>
           <button type="button" id="d-pol-match-btn" class="secondary small">${t("detail.policy_simulate")}</button>
+        </div>
+        <div class="radius-section">
+          <div class="radius-section-header">
+            <span class="radius-prompt-title">RADIUS-parametre (præciser match):</span>
+            <button type="button" id="d-pol-radius-add" class="secondary small">+ Tilføj parameter</button>
+          </div>
+          <div id="d-pol-radius-rows"></div>
         </div>
         <div id="d-pol-match-result"></div>
         ${auth.isEditor() ? `<button type="button" id="d-pol-wizard-btn" class="secondary small" style="margin-top:.5rem">${t("detail.policy_create_rule")}</button>` : ""}
       `;
 
-      async function runSimulate(setId, extraEp = {}) {
+      function addRadiusRow(key = "", val = "") {
+        const rowsEl = matchArea.querySelector("#d-pol-radius-rows");
+        const row = document.createElement("div");
+        row.className = "radius-attr-row";
+        row.innerHTML = `
+          <input type="text" class="radius-attr-key" list="d-radius-attrs-list" placeholder="Attribut (fx NAS-Port-Type)" value="${esc(key)}" />
+          <input type="text" class="radius-attr-val" placeholder="Værdi" value="${esc(val)}" />
+          <button type="button" class="radius-row-remove secondary small" title="Fjern">✕</button>
+        `;
+        row.querySelector(".radius-row-remove").addEventListener("click", () => row.remove());
+        rowsEl.appendChild(row);
+      }
+
+      function readRadiusAttrs() {
+        const attrs = {};
+        matchArea.querySelectorAll(".radius-attr-row").forEach((row) => {
+          const k = row.querySelector(".radius-attr-key")?.value.trim();
+          const v = row.querySelector(".radius-attr-val")?.value.trim();
+          if (k && v) attrs[k] = v;
+        });
+        return attrs;
+      }
+
+      function mergeNeededRadiusAttrs(needed) {
+        const existingKeys = new Set(
+          Array.from(matchArea.querySelectorAll(".radius-attr-key"))
+            .map((el) => el.value.trim())
+            .filter(Boolean)
+        );
+        for (const attr of (needed || [])) {
+          if (!existingKeys.has(attr)) addRadiusRow(attr, "");
+        }
+      }
+
+      async function runSimulate(setId) {
         const resultEl = matchArea.querySelector("#d-pol-match-result");
         resultEl.innerHTML = `<div class="alert info">Simulerer…</div>`;
         try {
-          const ep = { ...collectEndpointAttrs(), ...extraEp };
+          const radiusAttrs = readRadiusAttrs();
+          const ep = { ...collectEndpointAttrs(), radius_attrs: radiusAttrs };
           const result = await api.matchPolicyEndpoint(setId, ep);
-          const needed = result.radius_attrs_needed || [];
-          const current = (extraEp.radius_attrs) || {};
-          resultEl.innerHTML = renderMatchResult(result) + renderRadiusPrompt(needed, current);
-          resultEl.querySelector("#d-pol-refine-btn")?.addEventListener("click", async () => {
-            const radiusAttrs = {};
-            resultEl.querySelectorAll(".radius-attr-input").forEach((inp) => {
-              const val = inp.value.trim();
-              if (val) radiusAttrs[inp.dataset.attr] = val;
-            });
-            await runSimulate(setId, { radius_attrs: radiusAttrs });
-          });
+          resultEl.innerHTML = renderMatchResult(result);
+          mergeNeededRadiusAttrs(result.radius_attrs_needed || []);
         } catch (err) {
           resultEl.innerHTML = `<div class="alert error">Simulering fejlede: ${esc(err.message)}</div>`;
         }
       }
+
+      matchArea.querySelector("#d-pol-radius-add").addEventListener("click", () => {
+        addRadiusRow();
+      });
 
       matchArea.querySelector("#d-pol-match-btn").addEventListener("click", () => {
         const setId = matchArea.querySelector("#d-pol-set-sel")?.value;
@@ -417,21 +466,6 @@ export function initDetail(container, state, api, cb) {
       </div>`;
   }
 
-  function renderRadiusPrompt(needed, current = {}) {
-    if (!needed || needed.length === 0) return "";
-    const rows = needed.map((attr) => {
-      const val = esc(current[attr] || "");
-      return `<div class="radius-input-row">
-        <label class="radius-attr-label">${esc(attr)}</label>
-        <input type="text" class="radius-attr-input" data-attr="${esc(attr)}" value="${val}" placeholder="…" />
-      </div>`;
-    }).join("");
-    return `<div class="radius-prompt">
-      <div class="radius-prompt-title">RADIUS-parametre (præciser match):</div>
-      ${rows}
-      <button type="button" id="d-pol-refine-btn" class="secondary small">Præciser match</button>
-    </div>`;
-  }
 
   // ── Idé 2: Rule wizard pre-filled from endpoint ───────────────────────────
   function showRuleWizard(setId, setName) {

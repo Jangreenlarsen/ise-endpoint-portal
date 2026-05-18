@@ -2993,22 +2993,32 @@ body.register-route .login-card {
 [data-theme="dark"] .match-cond-ref     { color: #9ca3af; }
 [data-theme="dark"] .match-subrule       { border-left-color: #854d0e; background: rgba(133,77,14,0.15); }
 [data-theme="dark"] .match-subrule-label { color: #fbbf24; }
-/* RADIUS prompt */
-.radius-prompt {
+/* RADIUS parameter section (dynamic add/remove) */
+.radius-section {
   margin-top: 0.6rem;
   border: 1px solid #bfdbfe;
   border-radius: 5px;
   padding: 0.5rem 0.75rem;
   background: #eff6ff;
 }
-.radius-prompt-title { font-size: 0.78rem; font-weight: 600; color: #1e40af; margin-bottom: 0.4rem; }
-.radius-input-row { display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.25rem; }
-.radius-attr-label { font-size: 0.75rem; font-family: monospace; min-width: 12rem; color: #374151; }
-.radius-attr-input { font-size: 0.75rem; font-family: monospace; padding: 2px 5px; border: 1px solid #93c5fd; border-radius: 3px; flex: 1; max-width: 18rem; background: #fff; }
-[data-theme="dark"] .radius-prompt { background: #0f172a; border-color: #1d4ed8; }
+.radius-section-header { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.35rem; }
+.radius-prompt-title { font-size: 0.78rem; font-weight: 600; color: #1e40af; }
+.radius-attr-row { display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.3rem; }
+.radius-attr-key {
+  font-size: 0.75rem; font-family: monospace; padding: 2px 5px;
+  border: 1px solid #93c5fd; border-radius: 3px; flex: 1; min-width: 0;
+  background: #fff;
+}
+.radius-attr-val {
+  font-size: 0.75rem; font-family: monospace; padding: 2px 5px;
+  border: 1px solid #93c5fd; border-radius: 3px; flex: 1; min-width: 0;
+  background: #fff;
+}
+.radius-row-remove { flex-shrink: 0; padding: 1px 6px !important; font-size: 0.7rem !important; line-height: 1.4; }
+[data-theme="dark"] .radius-section { background: #0f172a; border-color: #1d4ed8; }
 [data-theme="dark"] .radius-prompt-title { color: #93c5fd; }
-[data-theme="dark"] .radius-attr-label { color: #d1d5db; }
-[data-theme="dark"] .radius-attr-input { background: #1e293b; border-color: #1d4ed8; color: #e2e8f0; }
+[data-theme="dark"] .radius-attr-key,
+[data-theme="dark"] .radius-attr-val { background: #1e293b; border-color: #1d4ed8; color: #e2e8f0; }
 /* Wizard in detail */
 .policy-wizard-card {
   margin-top: 0.5rem;

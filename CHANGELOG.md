@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.2 build 0424] — 2026-05-18 — fix: dynamisk RADIUS-parameter UI i endpoint-simulator
+
+**Berørte filer:** `frontend/js/views/browse-detail.js`, `frontend/css/styles.css`
+
+RADIUS-sektionen i endpoint-detail / simulatoren (RADIUS-fanen) viste kun de attributter politikken selv rapporterede som manglende, og kun ét ad gangen. Ny permanent add/remove UI: `+ Tilføj parameter`-knap med nøgle/værdi-rækker og ✕-fjern-knap. Attributnavne har autocomplete (datalist) med 10 almindelige RADIUS-attributter. `radius_attrs_needed` fra simulationsresultatet merges automatisk ind som tomme rækker uden at nulstille eksisterende værdier. Fjernede den gamle `renderRadiusPrompt`-funktion og `#d-pol-refine-btn`-flowet.
+
 ## [5.5.1 build 0423] — 2026-05-18 — fix: git pull bruger nu FETCH_HEAD i stedet for origin/{branch}
 
 **Berørte filer:** `backend/app/services/update_service.py`
