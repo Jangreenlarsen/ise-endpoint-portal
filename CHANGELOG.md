@@ -3,6 +3,8 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.0 build 0416] — 2026-05-18 — docs: 02-INSTALLATION.md opdateret med nvram-oprydning og DVD-afmontering
+
 ## [5.5.0 build 0415] — 2026-05-18 — docs: 02-INSTALLATION.md opdateret med OVA-metode, first-boot wizard og ovftool-eksport
 
 ## [5.5.0 build 0414] — 2026-05-18 — fix: prepare-ova-base.sh henter first-boot.sh fra GitHub hvis ikke lokalt tilgængelig
