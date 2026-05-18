@@ -3,6 +3,8 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.0 build 0409] — 2026-05-18 — fix: first-boot netværkskonfiguration bruger ip-kommandoer og tester gateway/internet/DNS separat
+
 ## [5.5.0 build 0408] — 2026-05-17 — fix: first-boot wizard forsvandt ikke efter 15 sek — skiftet til auto-login + .bash_profile
 
 Getty og first-boot.service konkurrerede om tty1 og getty vandt efter ~15 sek. Løsning: auto-login som root på tty1 via getty@tty1 override, wizard køres fra /root/.bash_profile i stedet for som systemd service.
