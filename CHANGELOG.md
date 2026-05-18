@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.2 build 0425] — 2026-05-18 — fix: duplikat RADIUS-nøgle advarsel + hint om enkeltværdi-semantik
+
+**Berørte filer:** `frontend/js/views/browse-detail.js`, `frontend/css/styles.css`
+
+Når brugeren tilføjer to rækker med samme RADIUS-attributnøgle (fx to `Called-Station-ID`-rækker), blokeres simulering nu med en klar advarsel og de duplikerede felter fremhæves i gult. Tilføjet hint-tekst under sektionstitlen der forklarer enkeltværdi-semantikken: en RADIUS-pakke har én enkelt værdi per attribut; for at matche `contains "802"` OG `contains "hus"` i samme regel skal brugeren skrive én samlet værdi der indeholder begge substrings, fx `hus-802`.
+
 ## [5.5.2 build 0424] — 2026-05-18 — fix: dynamisk RADIUS-parameter UI i endpoint-simulator
 
 **Berørte filer:** `frontend/js/views/browse-detail.js`, `frontend/css/styles.css`

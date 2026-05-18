@@ -297,6 +297,7 @@ export function initDetail(container, state, api, cb) {
             <span class="radius-prompt-title">RADIUS-parametre (præciser match):</span>
             <button type="button" id="d-pol-radius-add" class="secondary small">+ Tilføj parameter</button>
           </div>
+          <div class="radius-section-hint">Én attribut = én enkelt værdi — som i en rigtig RADIUS-pakke. For at matche <em>contains "hus"</em> OG <em>contains "802"</em> i samme regel: skriv én value der indeholder begge, fx <code>hus-802</code>.</div>
           <div id="d-pol-radius-rows"></div>
         </div>
         <div id="d-pol-match-result"></div>
@@ -339,6 +340,26 @@ export function initDetail(container, state, api, cb) {
 
       async function runSimulate(setId) {
         const resultEl = matchArea.querySelector("#d-pol-match-result");
+
+        // Detect duplicate attribute keys before simulating
+        const keyCount = {};
+        matchArea.querySelectorAll(".radius-attr-row").forEach((row) => {
+          const k = row.querySelector(".radius-attr-key")?.value.trim();
+          if (k) keyCount[k] = (keyCount[k] || 0) + 1;
+        });
+        const duplicates = Object.keys(keyCount).filter((k) => keyCount[k] > 1);
+        matchArea.querySelectorAll(".radius-attr-row").forEach((row) => {
+          const k = row.querySelector(".radius-attr-key")?.value.trim();
+          row.classList.toggle("radius-row-duplicate", duplicates.includes(k));
+        });
+        if (duplicates.length) {
+          resultEl.innerHTML = `<div class="alert warning">
+            ⚠ Duplikerede RADIUS-nøgler: <strong>${esc(duplicates.join(", "))}</strong><br>
+            En RADIUS-pakke har én enkelt værdi per attribut. Skriv én samlet værdi der matcher alle betingelser i reglen — fx <em>hus-802</em> i stedet for to separate rækker.
+          </div>`;
+          return;
+        }
+
         resultEl.innerHTML = `<div class="alert info">Simulerer…</div>`;
         try {
           const radiusAttrs = readRadiusAttrs();
