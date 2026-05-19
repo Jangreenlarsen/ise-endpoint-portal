@@ -775,6 +775,7 @@ export async function renderSettings(container) {
       </div>
       <div id="gh-msg" style="margin-top:0.75rem;"></div>
       <div id="gh-info" style="margin-top:0.5rem;"></div>
+      <div id="gh-release-notes" style="display:none;margin-top:0.75rem;"></div>
       <div style="margin-top:1rem;padding-top:0.75rem;border-top:1px solid var(--border,#e2e8f0);">
         <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.9rem;">
           <input type="checkbox" id="gh-dev-branch-cb">

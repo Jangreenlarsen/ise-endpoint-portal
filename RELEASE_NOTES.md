@@ -1,0 +1,116 @@
+# HyperVision ISE Portal — Release Notes
+
+Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-release.
+
+---
+
+## [5.5.3] — 2026-05-19
+
+### PxGrid-opsætning — forbedret vejledning og workflow
+
+**Cert-mode dropdown** er nu visuelt tydelig med en chevron-pil på alle form-dropdowns i portalen.
+
+**Extra SAN-felt** er opdateret med tydelig tekst: portalens FQDN *skal* inkluderes her for at TLS-validering virker korrekt. pxGrid 2.0 / RFC 6125 validerer server-certifikatet mod det hostnavn klienten forbinder til — hvis portalens FQDN afviger fra node-name, fejler forbindelsen.
+
+**Trin 5 — Opret pxGrid-konto** kører nu automatisk en test-forbindelse efter registrering, hvis ISE returnerer kontoen i `INIT`-tilstand. Det første autentificerede forbindelsesforsøg fra klienten er nødvendigt for at ISE kan flytte kontoen til `PENDING`, hvorefter ISE-admin kan approve den under Administration → pxGrid Services → Clients.
+
+**Phase 2b (STOMP-worker)** er nu slået **fra som standard**. Workeren skal eksplicit aktiveres af admin efter vellykket pxGrid-opsætning og admin-approval.
+
+**Test-forbindelsesstatus** vises nu direkte under trin 5-knappen — ingen scroll nødvendig for at se resultatet.
+
+---
+
+## [5.5.2] — 2026-05-18
+
+### Endpoint-simulator — RADIUS-attributter
+
+**Dynamisk RADIUS-parameter UI:** Simulatoren viser nu en permanent tilføj/fjern-grænseflade til RADIUS-attributter. Tilføj så mange attributter du har brug for med ✕-fjern, og autocomplete foreslår 10 almindelige RADIUS-attributnavne (`Called-Station-ID`, `NAS-IP-Address`, `Service-Type` m.fl.).
+
+**Duplikat-nøgle advarsel:** Forsøg på at simulere med to attributter af samme nøgle (fx to `Called-Station-ID`-rækker) blokeres med en tydelig advarsel. En RADIUS-pakke har én enkelt værdi per attribut — ønsker du at matche flere substrings skal de kombineres i én samlet værdi.
+
+---
+
+## [5.5.1] — 2026-05-18
+
+### Rettelser
+
+**NAS-scan** viser nu alle device-typer fra ISE NDG direkte og rå — ingen intern normalisering i præsentationslaget. Enheder med specielle typer (fx `Airespace-WLC`, `Airspace-WLC`) er nu synlige og præsenteres som forslag i mapping-editoren. Devices uden IP-adresse og devices der fejler under detail-hentning vises nu også.
+
+**GitHub-opdatering — branch-valg** gemmes nu korrekt. `github_branch`-feltet manglede i Pydantic-schemas og service-laget, så "Brug dev-branch"-checkbox ændrede intet. Opdateringscheck henter nu fra den korrekte branch.
+
+**Git pull** bruger nu `FETCH_HEAD` i stedet for `origin/{branch}` som reference. Løser fejl på servere med ikke-standard remote-tracking opsætning (typisk Debian-servere der kun følger `main`).
+
+---
+
+## [5.5.0] — 2026-05-17 — Første release
+
+### Endpoint Browse & Redigering
+
+Hoved-arbejdsflade for endpoint-administration. Viser alle ISE-endpoints i en søgbar, filtré rbar og sorterbar tabel med live opdatering.
+
+- **Filtrering** per kolonne med regex-søgning, dropdown-filter og datointerval
+- **Auth-status kolonne** — sortérbar kolonne med grøn/rød indikator der viser om et endpoint har aktiv RADIUS-session, med filter (Alle / Auth / Ikke auth)
+- **Inline redigering** via detail-modal med tre faner: *Endpoint* (gruppe, custom attributes, ANC), *RADIUS* (policy-simulering), *Profil & IDs* (ISE-profileringsdata og profilerprofile)
+- **Bulk-operationer** — markér flere endpoints og skift gruppe eller attributter i ét hug
+- **Kolonne-synlighed** — slå kolonner til/fra og gem valget
+- **Saved views** — gem filterkombinationer til genbrug
+
+### ISE pxGrid — Real-time session data
+
+Portal kan forbindes til ISE pxGrid (port 8910) via mTLS for at modtage RADIUS-session events i realtid i stedet for periodisk MnT-polling.
+
+- **Phase 1:** Certifikat-opsætning — upload tre PEM-filer eller generer CSR direkte i portalen (5-trins flow med ISE Internal CA eller MS certsrv)
+- **Phase 2b:** Persistent STOMP-worker der abonnerer på session-events og opdaterer Browse-tabellen live via Server-Sent Events
+- **ISE Session-kolonne** viser auth-metode, authz-profiler og identity group direkte i tabellen
+
+### Politik-administration
+
+Vis og redigér ISE endpoint authorization policy sets og regler direkte fra portalen.
+
+- **Grafisk regelvisning** med rank-badges, betingelses-chips og sammenklappelig regeliste
+- **Inline redigering** med rekursiv AND/OR gruppe-editor der bevarer ISE's betingelses-nesting fuldt ud
+- **Simuler policy-match** for et specifikt endpoint — se hvilken regel og authz-profil ISE ville matche, inkl. RADIUS-condition evaluering med valgfrie RADIUS-parametre
+
+### NAS Platform Management
+
+Kortlæg ISE network device-typer til platform-kategorier (Aruba, Cisco WLC, UniFi m.fl.).
+
+- **NAS-scan** henter alle network devices fra ISE og viser typer rå fra NDG — grupperede (allerede mappet) og ikke-mappede (vises som forslag)
+- **Mapping-editor** til at tilknytte ISE device-type-paths til platform-labels der bruges i custom attributes og profiler
+
+### TACACS+ Autentisering
+
+Portal-brugere kan autentiseres via ekstern TACACS+-server.
+
+- Rolle (`portal-role`) og operatørprofil (`portal-operator-profile`) sættes via TACACS+-attributter
+- Fallback til lokal autentisering ved TACACS+-nedbrud (konfigurerbart)
+- **Operatørprofil-katalog** — definer standard-rolle og endpoint-roller per profil
+
+### Endpoint Registrering & Import
+
+- **Registrér** nye endpoints enkeltvis med gruppe, custom attributes og valgfri skabelon
+- **Importer** endpoints fra CSV med fleksibel kolonne-mapping til ISE-attributter
+
+### Endpoint Attributter & DACL'er
+
+- Administrér custom attribut-definitioner direkte fra portalen (tilføj, redigér, slet)
+- Vis og administrér ISE DACL'er (Downloadable ACL'er) med indhold
+
+### Autentisering & Sikkerhed
+
+- Lokal brugeradministration med roller (admin, bruger) og password-styrke-validering
+- Token-baseret autentisering (1 time TTL) med silent refresh hvert minut
+- Rate limiting og bruger-lockout ved gentagne fejl-login (5 fejl → 15 min lockout)
+- Security headers: CSP, HSTS, X-Frame-Options, X-Content-Type-Options
+- Login-audit log (success og failed events)
+- AGPL v3 open source
+
+### Portal-administration
+
+- **Tema:** Light, Dark, Midnight — gemmes per bruger
+- **Lokalisering:** Dansk og Engelsk per bruger (skifter øjeblikkeligt uden reload)
+- **GitHub-opdatering:** Tjek og hent seneste version direkte fra portalen via git pull — vælg mellem `main` (stabil) og `dev` (udviklingsversion)
+- **OVA-distribution:** Installer direkte som VMware/ESXi-image med interaktiv first-boot wizard (hostname, IP, gateway, DNS, root-password, auto-install)
+- **Install-script:** `curl -fsSL .../install.sh | bash` på fresh Debian/Ubuntu
+
+---

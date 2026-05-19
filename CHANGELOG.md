@@ -3,6 +3,16 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.3 build 0428] — 2026-05-19 — feat: Release notes i GitHub-opdatering + RELEASE_NOTES.md
+
+**Berørte filer:** `RELEASE_NOTES.md` (ny), `backend/app/services/update_service.py`, `frontend/js/views/settings/section-update.js`, `frontend/js/views/settings.js`, `frontend/js/i18n.js`, `frontend/css/styles.css`
+
+Ny `RELEASE_NOTES.md` i repo-roden med formaterede release notes per version: v5.5.0 (samlet første release med alle features), v5.5.1/5.5.2/5.5.3 som delta-noter fra forrige version.
+
+Backend `check_github_version()` henter nu RELEASE_NOTES.md parallelt med version.json via `asyncio.gather()` og udtrækker sektionen for den seneste version med regex. Release notes returneres som `release_notes`-felt i API-responsen.
+
+Frontend GitHub-opdatering-kortet viser release notes i et sammenklappeligt panel (`<details>`) med simpel markdown-renderer (headers, bold/italic, code, lister, separator) — altid synligt når data er tilgængeligt, uanset om der er en opdatering.
+
 ## [5.5.3 build 0427] — 2026-05-19 — fix: form select styled med tydelig chevron-pil (alle temaer)
 
 **Berørte filer:** `frontend/css/styles.css`

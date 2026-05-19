@@ -190,10 +190,25 @@ def apply_package(zip_bytes: bytes) -> dict[str, Any]:
 _GITHUB_RAW_TMPL = (
     "https://raw.githubusercontent.com/Jangreenlarsen/ise-endpoint-portal/{branch}/version.json"
 )
+_GITHUB_RELEASE_NOTES_TMPL = (
+    "https://raw.githubusercontent.com/Jangreenlarsen/ise-endpoint-portal/{branch}/RELEASE_NOTES.md"
+)
 _github_cache: dict[str, Any] = {}
 _github_cache_ts: float = 0.0
 _github_cache_branch: str = ""
 _GITHUB_CACHE_TTL = 3600.0  # 1 time
+
+
+def _extract_release_section(md_text: str, version: str) -> str:
+    """Udtræk release notes-sektion for en specifik version fra RELEASE_NOTES.md.
+
+    Finder første overskrift der matcher ## [{version}] og returnerer al tekst
+    frem til næste ## [-sektion eller slutningen af filen.
+    """
+    import re
+    pattern = rf'## \[{re.escape(version)}\].*?(?=\n## \[|\Z)'
+    m = re.search(pattern, md_text, re.DOTALL)
+    return m.group(0).strip() if m else ""
 
 
 def _github_branch() -> str:
@@ -239,21 +254,34 @@ async def check_github_version(*, force: bool = False) -> dict[str, Any]:
         "git_ready": git_ready,
         "branch": branch,
         "checked_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "release_notes": "",
         "error": None,
     }
     try:
         import httpx
-        url = _GITHUB_RAW_TMPL.format(branch=branch)
+        version_url = _GITHUB_RAW_TMPL.format(branch=branch)
+        notes_url = _GITHUB_RELEASE_NOTES_TMPL.format(branch=branch)
         async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get(url)
-            resp.raise_for_status()
-            data = resp.json()
+            version_resp, notes_resp = await asyncio.gather(
+                client.get(version_url),
+                client.get(notes_url),
+                return_exceptions=True,
+            )
+        if isinstance(version_resp, Exception):
+            raise version_resp
+        version_resp.raise_for_status()
+        data = version_resp.json()
         result["latest_version"] = data.get("version", "?")
         result["latest_build"] = data.get("build", "?")
         try:
             result["update_available"] = int(data.get("build", "0")) > int(BUILD)
         except ValueError:
             result["update_available"] = data.get("build") != BUILD
+        # Release notes — fejl her er ikke fatalt
+        if not isinstance(notes_resp, Exception) and notes_resp.status_code == 200:
+            result["release_notes"] = _extract_release_section(
+                notes_resp.text, result["latest_version"]
+            )
         _github_cache = result
         _github_cache_ts = now
         _github_cache_branch = branch
