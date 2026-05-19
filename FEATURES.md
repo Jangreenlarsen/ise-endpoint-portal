@@ -9,6 +9,10 @@ Alle nye features registreres her FØR implementering påbegyndes.
 
 ## Planlagt / Under implementering
 
+- `[done 5.5.5] 2026-05-19 — Security Patch 2: SEC-B, SEC-D, SEC-E, SEC-I, SEC-J, SEC-M` — Implementering af sikkerhedsfund fra V2-analyse: (B) PSK CSPRNG, (D) ISE TLS default True, (E) audit-log for update-operationer + first-admin, (I) chmod 600 på operator_profiles.json, (J) ZIP-bomb ukomprimeret størrelsestjek, (M) audit for TACACS auto-admin bootstrap. **Berørte lag:** `backend/app/services/settings_service.py`, `backend/app/core/config.py`, `backend/app/services/update_service.py`, `backend/app/services/user_service.py`, `backend/app/core/operator_profile_store.py`.
+
+- `[done 5.5.4] 2026-05-19 — TACACS+ auto-admin ved tom operatørprofil-liste` — Hvis ingen operatørprofiler er konfigureret i portalen, tildeles TACACS-autentiserede brugere automatisk admin-rollen (bootstrap-tilstand). **Berørte lag:** `backend/app/services/user_service.py`.
+
 - `[done 5.5.3] 2026-05-19 — PxGrid settings UX-forbedringer` — (1) Extra SAN-felt præciserer at portalens FQDN skal med. (2) Step 5 auto-kører test-forbindelse ved INIT-state for at flytte konto til PENDING. (3) Phase 2b disabled by default. (4) Test connection status spejles under step 5. **Berørte lag:** `frontend/js/views/settings.js`, `frontend/js/views/settings/section-pxgrid.js`, `frontend/js/i18n.js`.
 
 - `[done 5.5.0] 2026-05-18 — OVA upload til GitHub Releases + opdateret installationsguide` — OVA-image uploadet som release-asset til GitHub Releases v5.5.0. Installationsguide opdateret med direkte download-link og OVA som trin 1 for ESXi-installation. **Berørte filer:** `docs/02-INSTALLATION.md`.

@@ -3,6 +3,48 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.5 build 0433] — 2026-05-19 — security: Patch 2 — SEC-B/D/E/I/J/M implementeret
+
+**Berørte filer:** `backend/app/services/settings_service.py`, `backend/app/core/config.py`, `backend/app/services/update_service.py`, `backend/app/services/user_service.py`, `backend/app/core/operator_profile_store.py`, `FEATURES.md`, `reports/SECURITY_ANALYSIS_V2.md`
+
+- **SEC-B:** PSK-nøglegenerator bruger nu `secrets.choice()` + `secrets.randbelow()` i stedet for `random` (Mersenne Twister). Kryptografisk sikker PRNG.
+- **SEC-D:** `ise_verify_tls` default ændret fra `False` til `True`. Nyinstallationer validerer ISE-certifikatet.
+- **SEC-E:** Audit-records tilføjet i `git_pull()`, `apply_package()`, `schedule_restart()` og `setup_first_admin()`. Kritiske update-operationer er nu sporbare i audit-log.
+- **SEC-I:** `operator_profiles.json` sættes til `chmod 0o600` ved skrivning på Unix-systemer (no-op på Windows).
+- **SEC-J:** ZIP-bomb beskyttelse: ukomprimeret totalstørrelse tjekkes til max 500 MB i `validate_package()`.
+- **SEC-M:** TACACS+ auto-admin bootstrap logges nu til audit-DB (`tacacs_auto_admin_bootstrap`-action) i tillæg til app.log.
+- **SEC-A markeret By Design:** Auto-admin reaktivering ved tom operatørprofil-liste er intentionel adfærd.
+
+## [5.5.4 build 0432] — 2026-05-19 — docs: Sikkerhedsanalyse V2 — to-faset statisk analyse med 13 fund (SEC-A til SEC-M)
+
+**Berørte filer:** `reports/SECURITY_ANALYSIS_V2.md` (ny), `version.json`
+
+To-faset white-box sikkerhedsgennemgang af v5.5.4 mod OWASP Top 10 2021. Fase 1 kortlægger 12 angrebsflader; fase 2 dokumenterer 13 specifikke fund inkl. 1 kritisk (SEC-A: TACACS+ auto-admin genaktivering), 3 høj, 6 medium og 3 lav. Top-10 handlingsliste og sammenligning med V1-rapport medfølger.
+
+## [5.5.4 build 0431] — 2026-05-19 — fix: TACACS+ auto-admin crash — profile_record.get() på None
+
+**Berørte filer:** `backend/app/services/user_service.py`
+
+`tacacs_user`-opbygningen kaldte `profile_record.get("created_at", "")` selv når `profile_record` var `None` (ingen operatørprofiler konfigureret → auto-admin sti). Gav `AttributeError` → HTTP 500. Fix: `profile_record.get(...) if profile_record else ""`.
+
+## [5.5.4 build 0430] — 2026-05-19 — feat: TACACS+ auto-admin når ingen operatørprofiler er konfigureret
+
+**Berørte filer:** `backend/app/services/user_service.py`
+
+Hvis TACACS+ auth lykkes men der ikke er oprettet nogen operatørprofiler i portalen (bootstrap-tilstand), tildeles TACACS-brugeren automatisk admin-rollen i stedet for at blive afvist med en fejl. Giver administrator mulighed for at logge ind via TACACS+ og oprette operatørprofiler uden at skulle bruge lokal fallback-konto.
+
+Når mindst én operatørprofil er oprettet, gælder den eksisterende logik: TACACS-brugerens profilnavn skal matche en konfigureret profil — ellers afvises login.
+
+## [5.5.3 build 0429] — 2026-05-19 — docs: pxGrid cert-opsætning præciserer at identitets-cert og CA-cert skal være separate filer
+
+**Berørte filer:** `frontend/js/views/settings.js`, `frontend/js/i18n.js`
+
+Upload-mode: tilføjet tydelig advarsel om at klient-cert-filen KUN må indeholde portalens eget identitets-certifikat (én BEGIN/END CERTIFICATE blok) — CA-certifikater uploades separat i CA-bundle-feltet.
+CSR trin 2: ISE Internal CA-instruks præciserer at man downloader kun certifikatet (ikke chain-filen), og at CA-bundle hentes separat fra Certificate Authority Certificates. MS certsrv-instruks præciserer "Download certificate" (ikke "Download certificate chain"). Rød advarsel: identitets-cert og CA-bundle skal altid være separate filer.
+CSR trin 3 hint: opdateret til "kun portalens eget identitets-certifikat — ikke en chain, ét certifikat i filen".
+CSR trin 4 hint: præciseret at CA-bundle er separat fra trin 3, og at den godt må indeholde rod-CA + intermediates som sammensatte PEM-blokke.
+Upload-cert label: ændret til "Identitets-certifikat (PEM) — kun klientcert, ikke chain" (DA + EN).
+
 ## [5.5.3 build 0428] — 2026-05-19 — feat: Release notes i GitHub-opdatering + RELEASE_NOTES.md
 
 **Berørte filer:** `RELEASE_NOTES.md` (ny), `backend/app/services/update_service.py`, `frontend/js/views/settings/section-update.js`, `frontend/js/views/settings.js`, `frontend/js/i18n.js`, `frontend/css/styles.css`

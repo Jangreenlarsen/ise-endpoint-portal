@@ -35,7 +35,8 @@ logger = logging.getLogger(__name__)
 # Projektroden: backend/app/services/ → ../../.. → projekt-root
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
-MAX_ZIP_BYTES = 100 * 1024 * 1024  # 100 MB
+MAX_ZIP_BYTES = 100 * 1024 * 1024         # 100 MB komprimeret
+MAX_UNCOMPRESSED_BYTES = 500 * 1024 * 1024  # 500 MB ukomprimeret
 
 # Filer/mapper der ALDRIG overskrives uanset pakkens indhold
 _BLOCKED_PREFIXES = (
@@ -97,6 +98,14 @@ def validate_package(zip_bytes: bytes) -> dict[str, Any]:
     try:
         with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
             all_names = zf.namelist()
+            # Tjek ukomprimeret totalstørrelse inden videre behandling (ZIP-bomb)
+            total_uncompressed = sum(zf.getinfo(n).file_size for n in all_names if not n.endswith("/"))
+            if total_uncompressed > MAX_UNCOMPRESSED_BYTES:
+                return {
+                    "ok": False,
+                    "errors": [f"Pakken udpakker til {total_uncompressed // (1024 * 1024)} MB — max 500 MB"],
+                    "files": [], "blocked": [],
+                }
             # Find version.json (acceptér på rod-niveau)
             v_candidates = [n for n in all_names if Path(n).name == "version.json" and n.count("/") <= 1]
             if not v_candidates:
@@ -174,13 +183,19 @@ def apply_package(zip_bytes: bytes) -> dict[str, Any]:
         "update: anvend færdig — %d filer skrevet, %d fejl",
         len(applied), len(errors),
     )
-    return {
+    result = {
         "ok": ok,
         "applied": applied,
         "skipped": skipped,
         "errors": errors,
         "applied_count": len(applied),
     }
+    from app.core import audit_store
+    audit_store.record_sync(
+        "package_apply", "system",
+        after={"ok": ok, "applied_count": len(applied), "errors": errors[:5]},
+    )
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -341,7 +356,13 @@ def _git_pull_sync() -> dict[str, Any]:
 
 
 async def git_pull() -> dict[str, Any]:
-    return await asyncio.to_thread(_git_pull_sync)
+    from app.core import audit_store
+    result = await asyncio.to_thread(_git_pull_sync)
+    await audit_store.record(
+        "github_pull", "system",
+        after={"ok": result["ok"], "branch": _github_branch(), "returncode": result.get("returncode")},
+    )
+    return result
 
 
 async def schedule_restart(delay_s: float = 2.5) -> None:
@@ -351,6 +372,8 @@ async def schedule_restart(delay_s: float = 2.5) -> None:
     skal admin starte serveren manuelt efter genstart-signalet.
     """
     logger.info("update: server-genstart planlagt om %.1fs", delay_s)
+    from app.core import audit_store
+    audit_store.record_sync("server_restart", "system", after={"delay_s": delay_s})
 
     async def _do_exit() -> None:
         await asyncio.sleep(delay_s)

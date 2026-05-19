@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-import random
+import secrets
 import string
 import time
 
@@ -567,11 +567,11 @@ def generate_psk_key(policy: PskPolicy | None = None) -> GeneratedPskKey:
     # Opbyg med garanterede tegn for hver aktiveret krav
     required: list[str] = []
     if p.require_uppercase:
-        required.append(random.choice(uppercase))
+        required.append(secrets.choice(uppercase))
     if p.require_numbers:
-        required.append(random.choice(digits))
+        required.append(secrets.choice(digits))
     if p.require_special:
-        required.append(random.choice(special))
+        required.append(secrets.choice(special))
 
     pool = lowercase + uppercase + digits
     if p.require_special:
@@ -580,9 +580,9 @@ def generate_psk_key(policy: PskPolicy | None = None) -> GeneratedPskKey:
     # Fyld op til min_length + lidt ekstra for god entropi (min 12)
     target_len = max(p.min_length, 12)
     remaining = target_len - len(required)
-    required += [random.choice(pool) for _ in range(remaining)]
+    required += [secrets.choice(pool) for _ in range(remaining)]
 
-    random.shuffle(required)
+    required.sort(key=lambda _: secrets.randbelow(2**32))
     return GeneratedPskKey(key="".join(required))
 
 
