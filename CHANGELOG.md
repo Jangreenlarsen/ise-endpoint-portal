@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.4 build 0432] — 2026-05-19 — docs: Sikkerhedsanalyse V2 — to-faset statisk analyse med 13 fund (SEC-A til SEC-M)
+
+**Berørte filer:** `reports/SECURITY_ANALYSIS_V2.md` (ny), `version.json`
+
+To-faset white-box sikkerhedsgennemgang af v5.5.4 mod OWASP Top 10 2021. Fase 1 kortlægger 12 angrebsflader; fase 2 dokumenterer 13 specifikke fund inkl. 1 kritisk (SEC-A: TACACS+ auto-admin genaktivering), 3 høj, 6 medium og 3 lav. Top-10 handlingsliste og sammenligning med V1-rapport medfølger.
+
 ## [5.5.4 build 0431] — 2026-05-19 — fix: TACACS+ auto-admin crash — profile_record.get() på None
 
 **Berørte filer:** `backend/app/services/user_service.py`
