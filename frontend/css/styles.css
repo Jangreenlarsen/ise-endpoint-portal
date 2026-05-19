@@ -732,7 +732,19 @@ td.mac-cell.cache-stale {
   overflow-y: hidden;
   display: flex;
   flex-direction: column;
+  position: relative;
 }
+/* Detail-msg flyder IKKE i flex-flowet — overlayer indholdet uden at flytte tabs */
+#detail-msg {
+  position: absolute;
+  top: 3rem;
+  left: 1.5rem;
+  right: 1.5rem;
+  z-index: 20;
+  pointer-events: none;
+}
+#detail-msg:empty { display: none; }
+#detail-msg .alert { pointer-events: auto; }
 /* ── Detail modal tabs ──────────────────────────────────────────────────── */
 .detail-tab-bar {
   display: flex;

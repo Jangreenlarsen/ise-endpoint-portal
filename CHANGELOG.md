@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.8 build 0441] — 2026-05-19 — fix: detail-modal loading-besked rykker ikke længere layout
+
+**Berørte filer:** `frontend/css/styles.css`, `version.json`
+
+`#detail-msg` sad i flex-flowet mellem `<h3>` og `.detail-tab-bar` — hvert gang loading/gem/fejl-besked dukkede op eller forsvandt rykkede tab-baren og alt indhold op/ned. Fix: `#detail-msg` er nu `position: absolute` (taget ud af flex-flowet) og overlayer indholdet øverst i modal uden at påvirke tab-barens position. `pointer-events: none` på wrapper sikrer at klik stadig virker igennem tom besked-area.
+
 ## [5.5.7 build 0440] — 2026-05-19 — fix: TACACS+ bootstrap → viewer (ikke admin); mismatch → 401 (uændret)
 
 **Berørte filer:** `backend/app/services/user_service.py`, `version.json`
