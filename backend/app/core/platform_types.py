@@ -40,8 +40,12 @@ def normalize(value: str | None) -> str | None:
         "aire-os": "airos",
         "aireos": "airos",
         "wlc": "airos",
-        "airspace-wlc": "airos",  # ISE NDG device type navn fra "Device Type" gruppe
-        "airespace-wlc": "airos", # alternativ stavemåde (Cisco Airespace → AireOS)
+        "airspace-wlc":  "airos",  # ISE NDG (Cisco Airespace, ingen 'e')
+        "airespace-wlc": "airos",  # ISE NDG (korrekt Cisco-stavemåde)
+        "airspace wlc":  "airos",  # mellemrum i stedet for bindestreg
+        "airespace wlc": "airos",  # mellemrum i stedet for bindestreg
+        "airespace":     "airos",  # kortform uden "-wlc" suffix
+        "airspace":      "airos",  # kortform, ingen 'e'
         "ios-xe": "iosxe",
         "ios_xe": "iosxe",
         "iosxe-sw": "iosxe",

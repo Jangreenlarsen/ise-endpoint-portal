@@ -169,16 +169,58 @@ export function initSystemUpdateSection(container) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Simpel markdown-renderer til release notes (subset: ##/###, **bold**,
+// *italic*, `code`, - list, --- separator, blanklinje = afsnit).
+// ---------------------------------------------------------------------------
+function _rnInline(text) {
+  return text
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*([^*]+)\*/g, "<em>$1</em>")
+    .replace(/`([^`]+)`/g, "<code>$1</code>");
+}
+
+function renderReleaseNotesMd(md) {
+  const lines = md.split("\n");
+  const parts = [];
+  let inList = false;
+  for (const raw of lines) {
+    const l = raw.trimEnd();
+    if (l.startsWith("### ")) {
+      if (inList) { parts.push("</ul>"); inList = false; }
+      parts.push(`<h5 class="rn-h3">${_rnInline(l.slice(4))}</h5>`);
+    } else if (l.startsWith("## ")) {
+      if (inList) { parts.push("</ul>"); inList = false; }
+      parts.push(`<h4 class="rn-h2">${_rnInline(l.slice(3))}</h4>`);
+    } else if (l === "---") {
+      if (inList) { parts.push("</ul>"); inList = false; }
+      parts.push('<hr class="rn-hr">');
+    } else if (l.startsWith("- ")) {
+      if (!inList) { parts.push('<ul class="rn-list">'); inList = true; }
+      parts.push(`<li>${_rnInline(l.slice(2))}</li>`);
+    } else if (l === "") {
+      if (inList) { parts.push("</ul>"); inList = false; }
+    } else {
+      if (inList) { parts.push("</ul>"); inList = false; }
+      parts.push(`<p class="rn-p">${_rnInline(l)}</p>`);
+    }
+  }
+  if (inList) parts.push("</ul>");
+  return parts.join("");
+}
+
 export function initGithubUpdateSection(container) {
   const card    = container.querySelector("#gh-update-card");
   if (!card) return;
 
-  const msgEl    = card.querySelector("#gh-msg");
-  const checkBtn = card.querySelector("#gh-check-btn");
-  const pullBtn  = card.querySelector("#gh-pull-btn");
-  const infoEl   = card.querySelector("#gh-info");
-  const devCb    = card.querySelector("#gh-dev-branch-cb");
-  const devResult = card.querySelector("#gh-dev-branch-result");
+  const msgEl      = card.querySelector("#gh-msg");
+  const checkBtn   = card.querySelector("#gh-check-btn");
+  const pullBtn    = card.querySelector("#gh-pull-btn");
+  const infoEl     = card.querySelector("#gh-info");
+  const notesEl    = card.querySelector("#gh-release-notes");
+  const devCb      = card.querySelector("#gh-dev-branch-cb");
+  const devResult  = card.querySelector("#gh-dev-branch-result");
 
   if (card.querySelector("#gh-card-h3")) card.querySelector("#gh-card-h3").textContent = t("settings.gh_card");
   if (card.querySelector("#gh-hint"))    card.querySelector("#gh-hint").textContent    = t("settings.gh_hint");
@@ -211,6 +253,7 @@ export function initGithubUpdateSection(container) {
         // Ryd info så næste check henter fra ny branch
         infoEl.innerHTML = "";
         msgEl.innerHTML = "";
+        if (notesEl) { notesEl.style.display = "none"; notesEl.innerHTML = ""; }
         pullBtn.hidden = true;
       } catch (err) {
         devCb.checked = !devCb.checked;
@@ -231,6 +274,21 @@ export function initGithubUpdateSection(container) {
         <tr><td>${t("settings.gh_current")}</td><td><strong>${esc(cur)}</strong></td></tr>
         <tr><td>${t("settings.gh_latest")}</td><td><strong>${esc(lat)}</strong> <span class="gh-branch-badge gh-branch-${esc(branch)}">${esc(branch)}</span></td></tr>
       </table>`;
+
+    // Release notes — vis altid når de er tilgængelige (uanset om update er tilgængeligt)
+    if (notesEl) {
+      if (data.release_notes) {
+        notesEl.style.display = "";
+        notesEl.innerHTML = `
+          <details class="rn-details" open>
+            <summary class="rn-summary">${esc(t("settings.gh_release_notes_hdr"))} — v${esc(data.latest_version || "")}</summary>
+            <div class="rn-body">${renderReleaseNotesMd(data.release_notes)}</div>
+          </details>`;
+      } else {
+        notesEl.style.display = "none";
+        notesEl.innerHTML = "";
+      }
+    }
 
     if (data.error) {
       msgEl.innerHTML = `<div class="alert error">${t("settings.gh_check_err").replace("{msg}", esc(data.error))}</div>`;

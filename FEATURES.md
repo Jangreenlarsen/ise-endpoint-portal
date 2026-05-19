@@ -9,6 +9,8 @@ Alle nye features registreres her FØR implementering påbegyndes.
 
 ## Planlagt / Under implementering
 
+- `[done 5.5.3] 2026-05-19 — PxGrid settings UX-forbedringer` — (1) Extra SAN-felt præciserer at portalens FQDN skal med. (2) Step 5 auto-kører test-forbindelse ved INIT-state for at flytte konto til PENDING. (3) Phase 2b disabled by default. (4) Test connection status spejles under step 5. **Berørte lag:** `frontend/js/views/settings.js`, `frontend/js/views/settings/section-pxgrid.js`, `frontend/js/i18n.js`.
+
 - `[done 5.5.0] 2026-05-18 — OVA upload til GitHub Releases + opdateret installationsguide` — OVA-image uploadet som release-asset til GitHub Releases v5.5.0. Installationsguide opdateret med direkte download-link og OVA som trin 1 for ESXi-installation. **Berørte filer:** `docs/02-INSTALLATION.md`.
 
 - `[done 5.4.4] 2026-05-17 — Hierarkisk Identity Group-dropdown overalt` — Alle steder der viser ISE endpoint-grupper (browse-tabel inline-edit, endpoint detail-modal, policy condition-builder, registrer-formular, skabeloner) bruger nu hierarkiske optgroups der afspejler den faktiske ISE-gruppestruktur: "Endpoint Identity Groups" som root-optgroup med direkte børn, og separate sub-optgroups (fx "↳ Profiled") med tilhørende sub-grupper som `ADM-Apple-iPhone`, `Android` etc. Fuld sti bruges som `value` til ISE, kort navn vises som display-tekst. **Berørte lag:** `frontend/js/views/browse-utils.js` (ny `groupHierarchyOptionsHtml`), `frontend/js/views/browse-table.js`, `frontend/js/views/policy-condition-builder.js`, `frontend/js/views/register.js`, `frontend/js/views/settings/section-templates.js`.

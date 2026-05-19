@@ -3,6 +3,69 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.3 build 0428] — 2026-05-19 — feat: Release notes i GitHub-opdatering + RELEASE_NOTES.md
+
+**Berørte filer:** `RELEASE_NOTES.md` (ny), `backend/app/services/update_service.py`, `frontend/js/views/settings/section-update.js`, `frontend/js/views/settings.js`, `frontend/js/i18n.js`, `frontend/css/styles.css`
+
+Ny `RELEASE_NOTES.md` i repo-roden med formaterede release notes per version: v5.5.0 (samlet første release med alle features), v5.5.1/5.5.2/5.5.3 som delta-noter fra forrige version.
+
+Backend `check_github_version()` henter nu RELEASE_NOTES.md parallelt med version.json via `asyncio.gather()` og udtrækker sektionen for den seneste version med regex. Release notes returneres som `release_notes`-felt i API-responsen.
+
+Frontend GitHub-opdatering-kortet viser release notes i et sammenklappeligt panel (`<details>`) med simpel markdown-renderer (headers, bold/italic, code, lister, separator) — altid synligt når data er tilgængeligt, uanset om der er en opdatering.
+
+## [5.5.3 build 0427] — 2026-05-19 — fix: form select styled med tydelig chevron-pil (alle temaer)
+
+**Berørte filer:** `frontend/css/styles.css`
+
+`form select`-elementer har nu `appearance: none` + SVG-chevron som `background-image` så det er tydeligt at de er klikbare dropdowns. Padding-right justeret så tekst ikke overlapper pilen. Dark- og midnight-theme ovverides udskilt til separate regler der bevarer `background-image` med lys-farvet pil.
+
+## [5.5.3 build 0426] — 2026-05-19 — feat: PxGrid settings UX — SAN-præcisering, INIT→PENDING auto-test, Phase 2b off by default, step5-status
+
+**Berørte filer:** `frontend/js/views/settings.js`, `frontend/js/views/settings/section-pxgrid.js`, `frontend/js/i18n.js`
+
+1. **Extra SAN label + hint**: Label ændret til "Ekstra SAN-navne — portalens FQDN skal med". Hint-tekst præciserer at portalens FQDN er påkrævet (pxGrid 2.0 / RFC 6125 validerer mod hostnavn), med eksempel på komma-separerede FQDN'er.
+2. **Step 5 INIT→PENDING auto-flow**: Når "Opret pxGrid-konto" klikkes og ISE returnerer `accountState=INIT`, kører portalen automatisk en test-forbindelse. Første autentificerede forbindelsesforsøg fra klienten får ISE til at flytte kontoen fra INIT til PENDING-tilstand — klar til admin-approval. Step5-hint-tekst opdateret til at beskrive dette flow.
+3. **Phase 2b (STOMP-worker) disabled by default**: `pxgrid_worker_enabled` initialiseres nu til `false` ved ny installation (var `true` pga. `!== false`-logik). Worker skal eksplicit aktiveres af admin efter vellykket pxGrid-opsætning.
+4. **Test connection status under step 5**: Nyt `#pxgrid-step5-msg`-div under step 5-knappen viser resultat af både account-create-flowet og manuelle "Test forbindelse"-klik — så admin kan se status direkte i CSR-flowet uden at scrolle til bunden.
+
+## [5.5.2 build 0425] — 2026-05-18 — fix: duplikat RADIUS-nøgle advarsel + hint om enkeltværdi-semantik
+
+**Berørte filer:** `frontend/js/views/browse-detail.js`, `frontend/css/styles.css`
+
+Når brugeren tilføjer to rækker med samme RADIUS-attributnøgle (fx to `Called-Station-ID`-rækker), blokeres simulering nu med en klar advarsel og de duplikerede felter fremhæves i gult. Tilføjet hint-tekst under sektionstitlen der forklarer enkeltværdi-semantikken: en RADIUS-pakke har én enkelt værdi per attribut; for at matche `contains "802"` OG `contains "hus"` i samme regel skal brugeren skrive én samlet værdi der indeholder begge substrings, fx `hus-802`.
+
+## [5.5.2 build 0424] — 2026-05-18 — fix: dynamisk RADIUS-parameter UI i endpoint-simulator
+
+**Berørte filer:** `frontend/js/views/browse-detail.js`, `frontend/css/styles.css`
+
+RADIUS-sektionen i endpoint-detail / simulatoren (RADIUS-fanen) viste kun de attributter politikken selv rapporterede som manglende, og kun ét ad gangen. Ny permanent add/remove UI: `+ Tilføj parameter`-knap med nøgle/værdi-rækker og ✕-fjern-knap. Attributnavne har autocomplete (datalist) med 10 almindelige RADIUS-attributter. `radius_attrs_needed` fra simulationsresultatet merges automatisk ind som tomme rækker uden at nulstille eksisterende værdier. Fjernede den gamle `renderRadiusPrompt`-funktion og `#d-pol-refine-btn`-flowet.
+
+## [5.5.1 build 0423] — 2026-05-18 — fix: git pull bruger nu FETCH_HEAD i stedet for origin/{branch}
+
+**Berørte filer:** `backend/app/services/update_service.py`
+
+`reset --hard origin/dev` fejlede med "ambiguous argument" fordi serveren ikke har en lokal remote-tracking-reference for `origin/dev` (repo opsat til kun at følge `main`). `git fetch origin dev` henter data korrekt men opretter ikke nødvendigvis `refs/remotes/origin/dev` på alle repo-konfigurationer. Fix: `reset --hard FETCH_HEAD` — FETCH_HEAD sættes altid af `git fetch` og peger på det netop hentede HEAD, uanset remote-tracking-opsætning.
+
+## [5.5.1 build 0422] — 2026-05-18 — feat: NAS-scan viser nu alle rå ISE NDG device-typer direkte til mapping
+
+**Berørte filer:** `backend/app/api/custom_attributes.py`, `backend/app/core/platform_types.py`
+
+Tidligere normaliserede scanneren ISE NDG-paths til kanoniske typer ("airos", "iosxe" osv.) — enheder med type "Airespace-WLC" forsvandt ind i en "airos"-match og var usynlige hvis ingen "airos"-mapping-række fandtes. Nu præsenterer scanneren alle unikke NDG device-type-paths rå og direkte: `grouped` = paths der allerede har en mapping-række (exact case-insensitive match); `unmatched` = paths uden mapping-række → vises som pre-udfyldte forslag i mapping-editoren. Brugeren beslutter selv hvad hver ISE device-type mappes til. Normalisering (`normalize()`) fjernet fra scan-presentationslaget; bruges stadig internt i MnT session-sync (`derive_platform`). Tilføjet også synonym-varianter for Airespace/Airspace i `platform_types.py` (mellemrum-varianter og kortformer).
+
+## [5.5.1 build 0421] — 2026-05-18 — fix: "Use dev branch" gemmer nu github_branch korrekt i config.json
+
+**Berørte filer:** `backend/app/schemas/settings.py`, `backend/app/services/settings_service.py`
+
+`github_branch` manglede i alle fire nødvendige steder: `BackendSettingsUpdate`-schema (Pydantic droppede feltet stille), `BackendSettingsResponse`-schema (returnerede aldrig værdien), `get_backend_settings()` (læste aldrig fra `config.settings`) og `update_backend_settings()` (gemte aldrig til `config.json`). Resultat: checkbox-toggle ændrede intet — GitHub-check hentede altid fra `main`. Fix: `github_branch: str = "main"` tilføjet til begge schemas og koblet i service-laget.
+
+## [5.5.1 build 0420] — 2026-05-18 — fix: NAS-scan medtager nu devices der fejler under detail-fetch; "All Device Types" udelukkes fra unmatched
+
+**Berørte filer:** `backend/app/ise/network_devices.py`, `backend/app/api/custom_attributes.py`
+
+To supplerende rettelser til NAS-scan (efter b0417):
+1. **Manglende device ved fejlet detail-fetch**: `_load_all()` step 2 fangedev undtagelser med `logger.debug` → enheder der fejler under GET `/networkdevice/{id}` (timeout, rettighedsproblem o.l.) forsvandt lydløst fra `_all_devices`. Fix: (a) step 1 bevarer nu `(id, name)`-tupler i stedet for bare `id`, (b) ved fejl logger vi `WARNING` og indsætter et fallback-`DeviceInfo(name=list_name)` så enheden altid er synlig i scannens resultat.
+2. **Udeluk "All Device Types"**: devices med `device_type=""` og `path=""` (standard ISE NDG "All Device Types" — ingen specifik type konfigureret) vises ikke længere som unmatched. De bærer ingen platform-information og forurener mapping-editoren. Devices med en faktisk NDG-path der ikke kan normaliseres vises fortsat som unmatched.
+
 ## [5.5.0 build 0419] — 2026-05-18 — docs: OVA uploadet til GitHub Releases v5.5.0 + installationsguide opdateret med download-link
 
 **Berørte filer:** `docs/02-INSTALLATION.md`, `FEATURES.md`

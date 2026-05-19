@@ -212,8 +212,8 @@ export async function renderSettings(container) {
           <input type="text" id="pxgrid_cert_extra_sans" placeholder="portal.ll.lan, hypervision-portal.ll.lan" autocomplete="off" />
           <div class="hint">
             Tilføjes som <code>SubjectAlternativeName:dNSName</code> i CSR'en udover node-navnet.
-            <strong>Anbefalet:</strong> medtag portalens host-FQDN — pxGrid 2.0 / RFC 6125 best practice.
-            Tom = kun node-navnet i SAN (minimum-kravet for ISE 3.4).
+            <strong>Portalens FQDN skal med her</strong> — pxGrid 2.0 / RFC 6125 validerer server-certifikatet mod det hostnavn klienten forbinder til. Angiv ét eller flere FQDN'er komma-separeret (f.eks. <code>portal.company.lan, hypervision.company.lan</code>).
+            Tom = kun node-navnet i SAN, hvilket fejler TLS-validering hvis portalens FQDN afviger fra node-name.
             <em>Påvirker kun nye CSR'er — eksisterende cert skal genskabes via Nulstil registrering → Trin 1.</em>
           </div>
         </div>
@@ -310,6 +310,7 @@ export async function renderSettings(container) {
             <div class="actions" style="margin-top:0.25rem;">
               <button type="button" id="pxgrid-account-btn" class="secondary"></button>
             </div>
+            <div id="pxgrid-step5-msg" style="margin-top:0.5rem;"></div>
           </div>
         </div>
 
@@ -774,6 +775,7 @@ export async function renderSettings(container) {
       </div>
       <div id="gh-msg" style="margin-top:0.75rem;"></div>
       <div id="gh-info" style="margin-top:0.5rem;"></div>
+      <div id="gh-release-notes" style="display:none;margin-top:0.75rem;"></div>
       <div style="margin-top:1rem;padding-top:0.75rem;border-top:1px solid var(--border,#e2e8f0);">
         <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.9rem;">
           <input type="checkbox" id="gh-dev-branch-cb">

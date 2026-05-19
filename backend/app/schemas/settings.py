@@ -30,6 +30,7 @@ class BackendSettingsUpdate(BaseModel):
     cache_prewarm_concurrency: int = 5
     cache_prewarm_interval_s: float = 1800.0
     debug_pxgrid_sessions: bool = False
+    github_branch: str = "main"
 
 
 class BackendSettingsResponse(BaseModel):
@@ -52,6 +53,7 @@ class BackendSettingsResponse(BaseModel):
     cache_prewarm_concurrency: int = 5
     cache_prewarm_interval_s: float = 1800.0
     debug_pxgrid_sessions: bool = False
+    github_branch: str = "main"
 
 
 class TestConnectionRequest(BaseModel):
