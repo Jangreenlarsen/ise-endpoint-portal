@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.4 build 0431] — 2026-05-19 — fix: TACACS+ auto-admin crash — profile_record.get() på None
+
+**Berørte filer:** `backend/app/services/user_service.py`
+
+`tacacs_user`-opbygningen kaldte `profile_record.get("created_at", "")` selv når `profile_record` var `None` (ingen operatørprofiler konfigureret → auto-admin sti). Gav `AttributeError` → HTTP 500. Fix: `profile_record.get(...) if profile_record else ""`.
+
 ## [5.5.4 build 0430] — 2026-05-19 — feat: TACACS+ auto-admin når ingen operatørprofiler er konfigureret
 
 **Berørte filer:** `backend/app/services/user_service.py`

@@ -488,7 +488,7 @@ def login(payload: LoginRequest) -> LoginResponse:
                 id=f"tacacs:{payload.username}",
                 username=payload.username,
                 role=effective_role,  # type: ignore[arg-type]
-                created_at=profile_record.get("created_at", ""),
+                created_at=profile_record.get("created_at", "") if profile_record else "",
                 last_login=_now_iso(),
                 assigned_endpoint_roles=endpoint_roles,
                 assigned_templates=assigned_templates,
