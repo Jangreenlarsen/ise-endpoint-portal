@@ -389,6 +389,7 @@ class EndpointService:
         filters: list[str] | None = None,
         effective_roles: list[str] | None = None,
         is_psk_editor: bool = False,
+        full_text_q: str | None = None,
     ) -> list[EndpointDetail]:
         """Fetch ALL endpoints with full details (all ISE pages, concurrent).
 
@@ -416,6 +417,8 @@ class EndpointService:
                     d for d in items
                     if low in d.mac.lower() or low in (d.description or "").lower()
                 ]
+            if full_text_q:
+                items = _full_text_filter(items, full_text_q)
             items.sort(key=lambda d: d.mac or d.name)
             logger.info(
                 "roles-index list_all: %d endpoints (effective_roles=%s)",
@@ -453,6 +456,8 @@ class EndpointService:
                 len(all_items), len(visible), effective_roles,
             )
             all_items = visible
+        if full_text_q:
+            all_items = _full_text_filter(all_items, full_text_q)
         return all_items
 
     async def list_groups(self) -> list[EndpointGroupSummary]:
@@ -871,6 +876,32 @@ def _parse_roles_csv(csv: str) -> list[str]:
     if not csv:
         return []
     return [r.strip() for r in str(csv).split(",") if r.strip()]
+
+
+def _full_text_filter(items: list[EndpointDetail], q: str) -> list[EndpointDetail]:
+    """Fritekst-søgning på tværs af alle endpoint-felter (case-insensitiv)."""
+    low = q.strip().lower()
+    if not low:
+        return items
+
+    def _match(d: EndpointDetail) -> bool:
+        return any(
+            low in (v or "").lower()
+            for v in [
+                d.mac,
+                d.name,
+                d.description,
+                d.group_name,
+                d.profile,
+                d.vendor,
+                d.owner,
+                d.lokation,
+                d.endpoint_type,
+                d.platform_type,
+            ]
+        )
+
+    return [d for d in items if _match(d)]
 
 
 def _endpoint_visible(detail: EndpointDetail, effective_roles: list[str]) -> bool:

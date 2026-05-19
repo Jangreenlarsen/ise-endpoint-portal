@@ -43,6 +43,9 @@ export async function renderBrowse(container) {
           </div>
           <button id="portal-filter-btn" class="secondary"
                   title="Vis kun endpoints oprettet af HyperVision ISE Portal">${t("browse.btn_portal_filter")}</button>
+          <input id="global-q-input" type="search" placeholder="Fritekst søgning…"
+                 title="Søg på tværs af MAC, gruppe, profil, owner, lokation, beskrivelse, vendor"
+                 style="width:160px;padding:3px 6px;font-size:.85em;" />
         </div>
         <div class="spacer"></div>
         <div class="toolbar-group" title="${t("browse.tooltip_save")}">
@@ -56,6 +59,8 @@ export async function renderBrowse(container) {
           <span id="selection-count" class="hint"></span>
           <button id="bulk-edit-btn" class="secondary small" disabled>${t("browse.btn_bulk_edit")}</button>
           <button id="bulk-save-btn" class="small" disabled>${t("browse.btn_bulk_save")}</button>
+          <button id="bulk-coa-btn" class="secondary small" disabled
+                  title="CoA Reauth — tvinger re-autentificering af valgte klienter">CoA Reauth</button>
           <button id="bulk-disconnect-btn" class="danger small" disabled
                   title="CoA Disconnect — deautentificér valgte klienter på WLC/switch (tvinger ny DHCP ved re-associate)">${t("browse.btn_bulk_disconnect")}</button>
           <button id="bulk-del-btn" class="danger small" disabled>${t("browse.btn_bulk_delete")}</button>
@@ -114,6 +119,7 @@ export async function renderBrowse(container) {
           <button class="detail-tab-btn active" data-tab="endpoint">${t("detail.tab_endpoint")}</button>
           <button class="detail-tab-btn" data-tab="radius">${t("detail.tab_radius")}</button>
           <button class="detail-tab-btn" data-tab="profil">${t("detail.tab_profil")}</button>
+          <button class="detail-tab-btn" data-tab="historik">Historik</button>
         </div>
         <div class="detail-tab-panels">
           <div id="detail-tab-endpoint" class="detail-tab-panel">
@@ -189,6 +195,9 @@ export async function renderBrowse(container) {
           <div id="detail-tab-profil" class="detail-tab-panel hidden">
             <div id="d-profiling-content"></div>
             <div id="d-iseids-content"></div>
+          </div>
+          <div id="detail-tab-historik" class="detail-tab-panel hidden">
+            <div id="d-historik-content"><span class="hint">Klik på fanen for at indlæse historik.</span></div>
           </div>
         </div>
         <div class="modal-actions">

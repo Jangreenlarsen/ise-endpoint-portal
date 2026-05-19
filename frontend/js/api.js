@@ -68,12 +68,13 @@ export const api = {
     }
     return request(`/endpoints/details?${parts.join("&")}`);
   },
-  listAllEndpointDetails: (search = "", filters = []) => {
+  listAllEndpointDetails: (search = "", filters = [], q = "") => {
     const parts = [];
     if (search) parts.push(`search=${encodeURIComponent(search)}`);
     for (const f of filters || []) {
       if (f) parts.push(`filter=${encodeURIComponent(f)}`);
     }
+    if (q) parts.push(`q=${encodeURIComponent(q)}`);
     const qs = parts.length ? `?${parts.join("&")}` : "";
     return request(`/endpoints/details/all${qs}`);
   },
@@ -401,4 +402,32 @@ export const api = {
       method: "POST",
       body: JSON.stringify(epAttrs),
     }),
+  batchSimulate: (policy_set_id, endpoint_ids) =>
+    request("/policy/batch-simulate", {
+      method: "POST",
+      body: JSON.stringify({ policy_set_id, endpoint_ids }),
+    }),
+
+  // Endpoint history (5.6.0)
+  getEndpointHistory: (id, limit = 50) =>
+    request(`/endpoints/${encodeURIComponent(id)}/history?limit=${limit}`),
+
+  // Bulk CoA (5.6.0)
+  bulkCoa: (endpoint_ids, action = "reauth") =>
+    request("/endpoints/bulk-coa", {
+      method: "POST",
+      body: JSON.stringify({ endpoint_ids, action }),
+    }),
+
+  // ISE PSN nodes (5.6.0)
+  getIseNodes: () => request("/ise/nodes"),
+
+  // Endpoint lifecycle (5.6.0)
+  getStaleEndpoints: (days = 90) => request(`/lifecycle/stale?days=${days}`),
+
+  // Dashboard (5.6.0)
+  getDashboard: () => request("/dashboard"),
+
+  // Alerts (5.6.0)
+  getAlerts: () => request("/alerts"),
 };

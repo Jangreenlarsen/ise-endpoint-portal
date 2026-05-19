@@ -22,11 +22,15 @@ export function initFilter(container, state, api, cb) {
   const msg                = container.querySelector("#msg");
   const filterClearAllBtn  = container.querySelector("#filter-clear-all-btn");
   const authStatusSelect   = container.querySelector("#auth-status-filter");
+  const globalQInput       = container.querySelector("#global-q-input");
+
+  state.fullTextQ = "";
 
   function updateClearBtn() {
     const anyActive = state.portalOnly
       || Array.from(filterRow.querySelectorAll(".col-filter-input")).some((i) => i.value.trim())
-      || (authStatusSelect && authStatusSelect.value !== "all");
+      || (authStatusSelect && authStatusSelect.value !== "all")
+      || state.fullTextQ;
     filterClearAllBtn.classList.toggle("hidden", !anyActive);
   }
 
@@ -60,7 +64,8 @@ export function initFilter(container, state, api, cb) {
     return state.portalOnly
       || Array.from(filterRow.querySelectorAll(".col-filter-input")).some((i) => i.value.trim())
       || (authStatusSelect && authStatusSelect.value !== "all")
-      || state.sortCol !== null;
+      || state.sortCol !== null
+      || !!state.fullTextQ;
   }
 
   function anyFilterActive() {
@@ -130,7 +135,7 @@ export function initFilter(container, state, api, cb) {
       `<tr><td colspan="${cols}" class="empty">Henter alle endpoints fra ISE...</td></tr>`;
     msg.innerHTML = `<div class="alert info">Henter alle endpoints for at kunne filtrere på tværs af sider...</div>`;
     try {
-      const all = await api.listAllEndpointDetails("", state.currentFilters);
+      const all = await api.listAllEndpointDetails("", state.currentFilters, state.fullTextQ || "");
       state.allRowsCache = all;
       state.allRows = all;
       state.filterMode = true;
@@ -278,8 +283,25 @@ export function initFilter(container, state, api, cb) {
     });
   }
 
+  if (globalQInput) {
+    let qDebounce = null;
+    globalQInput.addEventListener("input", () => {
+      const newQ = globalQInput.value.trim();
+      if (newQ === state.fullTextQ) return;
+      state.fullTextQ = newQ;
+      state.allRowsCache = null;
+      updateClearBtn();
+      clearActiveView();
+      clearTimeout(qDebounce);
+      qDebounce = setTimeout(async () => { await onFilterChange(); }, 400);
+    });
+  }
+
   filterClearAllBtn.addEventListener("click", async () => {
     applyFilterSnapshot({ portalOnly: false, cols: [], authStatus: "all" });
+    state.fullTextQ = "";
+    if (globalQInput) globalQInput.value = "";
+    state.allRowsCache = null;
     persistFilters();
     clearActiveView();
     await onFilterChange();

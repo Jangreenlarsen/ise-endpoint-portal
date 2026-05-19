@@ -70,6 +70,21 @@ body {
 .sidebar nav a.nav-sub:hover { color: #fff; }
 .sidebar nav a.nav-sub.active { border-left-color: #6ee7b7; color: #fff; }
 
+.alert-badge {
+  display: inline-block;
+  background: #e67e22;
+  color: #fff;
+  border-radius: 10px;
+  font-size: .7em;
+  font-weight: 700;
+  padding: 1px 6px;
+  min-width: 16px;
+  text-align: center;
+  vertical-align: middle;
+  margin-left: 6px;
+}
+.alert-badge-error { background: #c0392b; }
+
 .sidebar nav .nav-group {
   display: block;
   padding: 0.55rem 1.5rem 0.2rem;

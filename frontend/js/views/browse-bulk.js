@@ -13,6 +13,7 @@ export function initBulk(container, state, api, cb) {
   const bulkEditOverlay = container.querySelector("#bulk-edit-overlay");
   const bulkDelBtn     = container.querySelector("#bulk-del-btn");
   const bulkDisconnBtn = container.querySelector("#bulk-disconnect-btn");
+  const bulkCoaBtn     = container.querySelector("#bulk-coa-btn");
 
   // ── Bulk-edit modal ──────────────────────────────────────────────────────
   bulkEditBtn.addEventListener("click", () => {
@@ -199,4 +200,26 @@ export function initBulk(container, state, api, cb) {
     msg.innerHTML = `<div class="alert ${cls}">${parts.join(", ")}${detail}</div>`;
     bulkDisconnBtn.disabled = false;
   });
+
+  // ── Bulk CoA Reauth ───────────────────────────────────────────────────────
+  if (bulkCoaBtn) {
+    bulkCoaBtn.addEventListener("click", async () => {
+      const ids = cb.getSelectedIds();
+      if (!ids.length) return;
+      if (!confirm(`CoA Reauth → ${ids.length} endpoint(s)?\n\nISE sender re-autentificeringskrav til klienterne.`)) return;
+      bulkCoaBtn.disabled = true;
+      msg.innerHTML = `<div class="alert info">CoA Reauth → ${ids.length} endpoints…</div>`;
+      try {
+        const res = await api.bulkCoa(ids, "reauth");
+        const ok   = res?.ok_count ?? 0;
+        const fail = (res?.results || []).filter((r) => !r.ok).length;
+        const cls  = fail ? (ok ? "info" : "error") : "success";
+        msg.innerHTML = `<div class="alert ${cls}">CoA Reauth: ${ok} OK, ${fail} fejlede</div>`;
+      } catch (err) {
+        msg.innerHTML = `<div class="alert error">Bulk CoA fejlede: ${esc(err.message)}</div>`;
+      } finally {
+        bulkCoaBtn.disabled = false;
+      }
+    });
+  }
 }

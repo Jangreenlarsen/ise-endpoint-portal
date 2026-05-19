@@ -3,6 +3,42 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.6.0 build 0445] — 2026-05-19 — feat: v5.6.0 — Dashboard, Bulk CoA, Alert-system, Fritekst-søgning, Endpoint historik, ISE PSN noder, Batch policy-sim, Endpoint livscyklus
+
+**Berørte filer:**
+- `backend/app/api/dashboard.py` (ny)
+- `backend/app/api/alerts.py` (ny)
+- `backend/app/api/lifecycle.py` (ny)
+- `backend/app/api/ise_nodes.py` (ny)
+- `backend/app/ise/nodes.py` (ny)
+- `backend/app/core/alert_store.py` (ny)
+- `backend/app/api/endpoints.py` (+bulk-coa, +history, +q-param)
+- `backend/app/api/policy.py` (+batch-simulate)
+- `backend/app/services/endpoint_service.py` (+full_text_q filter)
+- `backend/app/main.py` (+routers, +alert background task)
+- `frontend/js/views/dashboard.js` (ny)
+- `frontend/js/views/browse.js` (+Historik-tab, +Bulk CoA btn, +fritekst-søgefelt)
+- `frontend/js/views/browse-detail.js` (+historik tab handler + _lazyLoadHistorik)
+- `frontend/js/views/browse-bulk.js` (+bulkCoaBtn handler)
+- `frontend/js/views/browse-table.js` (+bulkCoaBtn enable/disable)
+- `frontend/js/views/browse-filter.js` (+fullTextQ state + q-input wiring)
+- `frontend/js/views/metrics.js` (+ISE PSN nodes kort via `/api/ise/nodes`)
+- `frontend/js/api.js` (+getEndpointHistory, +bulkCoa, +batchSimulate, +getIseNodes, +getStaleEndpoints, +getDashboard, +getAlerts, listAllEndpointDetails+q)
+- `frontend/js/app.js` (+dashboard route, +alert badge polling)
+- `frontend/index.html` (+Dashboard nav-link, +alert-badge)
+- `frontend/css/styles.css` (+.alert-badge styles)
+- `version.json`
+
+**8 nye features som samlet release v5.6.0:**
+1. **Dashboard** — Ny /#dashboard viser circuit breaker, endpoints, sessioner, cache-hit, prewarm-status og de 5 seneste audit-events. Opdateres automatisk hvert 30. sekund.
+2. **Bulk CoA Reauth** — "CoA Reauth"-knap i Browse selection-toolbar kalder `/api/endpoints/bulk-coa` med op til 200 endpoints ad gangen (semaphore=3).
+3. **Alert-badge** — Navigationsbadge med antal aktive systemadvarsler (orange=warning, rød=error). Polling hvert 60. sekund. Tre alert-betingelser: circuit breaker OPEN/HALF-OPEN, drip bagud, stale > 50%.
+4. **Fritekst-søgning** — "Fritekst søgning…"-inputfelt i Browse-toolbar. Søger server-side via `q`-param i `/api/endpoints/details/all` på tværs af 10 felter (MAC, gruppe, profil, owner, lokation, beskrivelse, vendor, type, endpoint_type, platform_type).
+5. **Endpoint historik** — "Historik"-tab i endpoint detail-modal. Lazy-loader via `GET /api/endpoints/{id}/history`. Viser audit-trail med tidspunkt, bruger og handling.
+6. **ISE PSN noder** — Nyt "ISE PSN noder"-kort på Metrics-siden fetcher `/api/ise/nodes` og viser alle ISE-noder med reachability-dot, roller og version.
+7. **Batch policy-simulering** — Ny `POST /api/policy/batch-simulate` backend-route. Kører policy-match for op til 100 endpoints parallelt (semaphore=5).
+8. **Endpoint livscyklus** — Ny `GET /api/lifecycle/stale?days=90` backend-route. Returnerer endpoints der ikke har haft portal-aktivitet i X dage (krydstjek af cache mod audit-log).
+
 ## [5.5.9 build 0444] — 2026-05-19 — fix: cache vedligehold-metrics eksponeret via Prometheus og vist på Metrics-siden
 
 **Berørte filer:** `backend/app/core/metrics.py`, `backend/app/services/cache_prewarm.py`, `frontend/js/views/metrics.js`, `version.json`

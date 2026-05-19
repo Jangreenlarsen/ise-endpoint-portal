@@ -16,6 +16,7 @@ import { renderMetrics } from "./views/metrics.js";
 import { renderUserPrefs } from "./views/user-prefs.js";
 import { renderCsvTemplate } from "./views/csv-template.js";
 import { renderPolicy } from "./views/policy.js";
+import { renderDashboard } from "./views/dashboard.js";
 
 const statusDot = document.getElementById("status-dot");
 const container = document.getElementById("view-container");
@@ -29,6 +30,7 @@ function runCleanup() {
 }
 
 const routes = {
+  dashboard:  { render: renderDashboard,  roles: ["admin", "editor", "editor-psk", "viewer"] },
   import:     { render: renderImport,     roles: ["admin", "editor", "editor-psk"] },
   browse:     { render: renderBrowse,     roles: ["admin", "editor", "editor-psk", "viewer"] },
   attributes: { render: renderAttributes, roles: ["admin", "editor"] },
@@ -44,6 +46,26 @@ const routes = {
 };
 
 const REGISTRAR_DEFAULT_ROUTE = "register";
+
+const alertBadgeEl = document.getElementById("alert-badge");
+
+async function refreshAlertBadge() {
+  if (!auth.getToken() || !alertBadgeEl) return;
+  try {
+    const res = await api.getAlerts();
+    const count = res?.count || 0;
+    const hasErrors = res?.has_errors || false;
+    if (count > 0) {
+      alertBadgeEl.textContent = count;
+      alertBadgeEl.className = hasErrors ? "alert-badge alert-badge-error" : "alert-badge alert-badge-warn";
+      alertBadgeEl.hidden = false;
+    } else {
+      alertBadgeEl.hidden = true;
+    }
+  } catch {
+    alertBadgeEl.hidden = true;
+  }
+}
 
 const versionEl = document.getElementById("version-info");
 const userInfoEl = document.getElementById("user-info");
@@ -162,6 +184,7 @@ function showLogin() {
     await resolveLocale(portalDefault, () => api.getMyPrefs()).catch(() => {});
     updateUserBadge(user);
     updateNavVisibility(user);
+    refreshAlertBadge();
     const isLimited = user.role === "registrant" || user.role === "registrant_templet";
     const landing = isLimited ? REGISTRAR_DEFAULT_ROUTE : "browse";
     if (!location.hash || location.hash === "#/") location.hash = `#/${landing}`;
@@ -188,6 +211,7 @@ async function boot() {
   });
   checkHealth();
   setInterval(checkHealth, 15000);
+  setInterval(refreshAlertBadge, 60_000);
 
   // PWA: registrér service worker så registreringssiden kan installeres og
   // boote uden netværk. Fejler stille hvis SW ikke er understøttet.
@@ -243,6 +267,7 @@ async function boot() {
     await resolveLocale(status.default_language, () => api.getMyPrefs());
     updateUserBadge(status.user || user);
     updateNavVisibility(status.user || user);
+    refreshAlertBadge();
     renderView();
   } catch {
     // Backend unreachable — token is not expired but backend is down.

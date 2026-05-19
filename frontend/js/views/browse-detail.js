@@ -147,10 +147,12 @@ export function initDetail(container, state, api, cb) {
     const wa = detailOverlay.querySelector("#d-policy-wizard-area");
     const pc = detailOverlay.querySelector("#d-profiling-content");
     const ic = detailOverlay.querySelector("#d-iseids-content");
+    const hc = detailOverlay.querySelector("#d-historik-content");
     if (ma) ma.innerHTML = "";
     if (wa) wa.innerHTML = "";
     if (pc) pc.innerHTML = "";
     if (ic) ic.innerHTML = "";
+    if (hc) hc.innerHTML = `<span class="hint">Klik på fanen for at indlæse historik.</span>`;
   }
 
   // ── ANC ──────────────────────────────────────────────────────────────────
@@ -258,8 +260,43 @@ export function initDetail(container, state, api, cb) {
       _switchTab(tab);
       if (tab === "radius" && matchArea.innerHTML === "") loadPolicyMatchUI();
       if (tab === "profil") _lazyLoadProfil();
+      if (tab === "historik") _lazyLoadHistorik();
     });
   });
+
+  async function _lazyLoadHistorik() {
+    const panel = container.querySelector("#d-historik-content");
+    if (!panel || !state.detailCurrentId) return;
+    panel.innerHTML = `<div class="alert info">Henter historik…</div>`;
+    try {
+      const res = await api.getEndpointHistory(state.detailCurrentId, 50);
+      const events = res?.events || [];
+      if (!events.length) {
+        panel.innerHTML = `<div class="hint">Ingen audit-hændelser registreret for dette endpoint.</div>`;
+        return;
+      }
+      panel.innerHTML = `
+        <table style="width:100%;border-collapse:collapse;font-size:.85em;">
+          <thead><tr>
+            <th style="text-align:left;padding:4px 6px;border-bottom:1px solid #e5e7eb;">Tidspunkt</th>
+            <th style="text-align:left;padding:4px 6px;border-bottom:1px solid #e5e7eb;">Bruger</th>
+            <th style="text-align:left;padding:4px 6px;border-bottom:1px solid #e5e7eb;">Handling</th>
+          </tr></thead>
+          <tbody>
+            ${events.map((e) => `
+              <tr style="border-bottom:1px solid #f3f4f6;">
+                <td style="padding:4px 6px;white-space:nowrap;">${esc(e.ts?.replace("T", " ").slice(0, 19) || "")}</td>
+                <td style="padding:4px 6px;">${esc(e.actor_username || "—")}</td>
+                <td style="padding:4px 6px;">${esc(e.action || "")}</td>
+              </tr>`).join("")}
+          </tbody>
+        </table>
+        <p class="hint" style="margin-top:.5rem;">Viser de seneste ${events.length} hændelser.</p>
+      `;
+    } catch (err) {
+      panel.innerHTML = `<div class="alert error">Kunne ikke hente historik: ${esc(err.message)}</div>`;
+    }
+  }
 
   // ── Policy areas ──────────────────────────────────────────────────────────
   const matchArea  = container.querySelector("#d-policy-match-area");

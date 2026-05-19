@@ -12,12 +12,16 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from app.api import audit as audit_api
 from app.api import metrics_api
 from app.core.rate_limiter import RateLimitMiddleware
+from app.api import alerts as alerts_api
 from app.api import auth as auth_api
 from app.api import cache as cache_api
 from app.api import custom_attributes as custom_attrs_api
 from app.api import dacls as dacls_api
+from app.api import dashboard as dashboard_api
 from app.api import endpoint_roles as endpoint_roles_api
 from app.api import endpoints, groups, health, logs, me, oui, users
+from app.api import ise_nodes as ise_nodes_api
+from app.api import lifecycle as lifecycle_api
 from app.api import templates as templates_api
 from app.api import pxgrid as pxgrid_api
 from app.api import authz_profiles as authz_profiles_api
@@ -127,12 +131,22 @@ async def lifespan(_: FastAPI):
 
     _mnt_enrich_task = asyncio.create_task(_mnt_enrich_loop(), name="mnt-session-enrich")
 
+    async def _alert_check_loop() -> None:
+        await asyncio.sleep(30)
+        while True:
+            from app.core.alert_store import check_conditions
+            check_conditions()
+            await asyncio.sleep(60)
+
+    _alert_task = asyncio.create_task(_alert_check_loop(), name="alert-check")
+
     try:
         yield
     finally:
         _heartbeat_task.cancel()
         _autosave_task.cancel()
         _mnt_enrich_task.cancel()
+        _alert_task.cancel()
         try:
             await _heartbeat_task
         except (asyncio.CancelledError, Exception):  # noqa: BLE001
@@ -143,6 +157,10 @@ async def lifespan(_: FastAPI):
             pass
         try:
             await _mnt_enrich_task
+        except (asyncio.CancelledError, Exception):  # noqa: BLE001
+            pass
+        try:
+            await _alert_task
         except (asyncio.CancelledError, Exception):  # noqa: BLE001
             pass
         await get_prewarm_worker().stop()
@@ -217,6 +235,10 @@ app.include_router(me.router, prefix="/api")
 app.include_router(update_api.router, prefix="/api")
 app.include_router(templates_api.router, prefix="/api")
 app.include_router(policy_api.router, prefix="/api")
+app.include_router(dashboard_api.router, prefix="/api")
+app.include_router(alerts_api.router, prefix="/api")
+app.include_router(lifecycle_api.router, prefix="/api")
+app.include_router(ise_nodes_api.router, prefix="/api")
 app.include_router(metrics_api.router)
 
 frontend_dir = Path(__file__).resolve().parents[2] / "frontend"

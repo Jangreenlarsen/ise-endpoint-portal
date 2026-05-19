@@ -9,6 +9,22 @@ Alle nye features registreres her FØR implementering påbegyndes.
 
 ## Planlagt / Under implementering
 
+- `[done 5.6.0 b0445] 2026-05-19 — Dashboard / Oversigt` — Ny startside der samler: total endpoints, aktive auth-sessioner, circuit breaker state, cache-sundhed, drip-status og de 5 seneste audit-events. **Berørte lag:** `backend/app/api/dashboard.py`, `frontend/js/views/dashboard.js`, `frontend/js/app.js`, `frontend/index.html`.
+
+- `[done 5.6.0 b0445] 2026-05-19 — Bulk CoA` — Tving re-auth på udvalgte endpoints direkte fra Browse-tabellen. Ny `POST /api/endpoints/bulk-coa`. **Berørte lag:** `backend/app/api/endpoints.py`, `frontend/js/views/browse.js`, `frontend/js/views/browse-bulk.js`.
+
+- `[done 5.6.0 b0445] 2026-05-19 — Endpoint livscyklus` — Vis endpoints med ingen portal-aktivitet i X dage. Ny `GET /api/lifecycle/stale`. Backend implementeret; API tilgængeligt. **Berørte lag:** `backend/app/api/lifecycle.py`.
+
+- `[done 5.6.0 b0445] 2026-05-19 — Alert-system` — In-memory advarsler for kritiske tilstande: circuit breaker OPEN, drip bagud, mange stale endpoints. Badge i navigation viser antal aktive alerts med farve (orange/rød). **Berørte lag:** `backend/app/core/alert_store.py`, `backend/app/api/alerts.py`, `frontend/js/app.js`, `frontend/css/styles.css`.
+
+- `[done 5.6.0 b0445] 2026-05-19 — Søgning på tværs af alle felter` — Ny `q`-parameter på `/api/endpoints/details/all` + fritekst-søgefelt i Browse-toolbar. Søger i MAC, gruppe, profil, owner, lokation, beskrivelse, vendor, type, platform. **Berørte lag:** `backend/app/api/endpoints.py`, `backend/app/services/endpoint_service.py`, `frontend/js/views/browse.js`, `frontend/js/views/browse-filter.js`.
+
+- `[done 5.6.0 b0445] 2026-05-19 — Batch policy-simulering` — Kør policy-match på udvalgte endpoints ad én gang. Ny `POST /api/policy/batch-simulate`. **Berørte lag:** `backend/app/api/policy.py`.
+
+- `[done 5.6.0 b0445] 2026-05-19 — Endpoint historik i detail-modal` — Ny "Historik"-tab i endpoint detail-modal viser audit-trail (hvem ændrede hvad og hvornår). Ny `GET /api/endpoints/{id}/history`. **Berørte lag:** `backend/app/api/endpoints.py`, `frontend/js/views/browse.js`, `frontend/js/views/browse-detail.js`.
+
+- `[done 5.6.0 b0445] 2026-05-19 — ISE PSN node-status` — Vis ISE-noder med roller og services. Ny `GET /api/ise/nodes`. Nyt kort på Metrics-siden. **Berørte lag:** `backend/app/ise/nodes.py`, `backend/app/api/ise_nodes.py`, `frontend/js/views/metrics.js`.
+
 - `[done 5.5.9 b0443] 2026-05-19 — Cache vedligehold-statistik: drip-metrics og staleness-fordeling` — Ny statistik i Settings → Cache: kapacitetsindikator (grøn/gul/rød), drip-tæller, cache-alder og staleness-fordeling som søjle. **Berørte lag:** `backend/app/services/cache_prewarm.py`, `backend/app/core/endpoint_cache.py`, `backend/app/api/cache.py`, `frontend/js/views/settings/section-cache.js`.
 
 - `[done 5.5.9] 2026-05-19 — Cache drip-refresh: kontinuerlig baggrunds-opdatering af endpoint-cache` — Ny `_drip_loop()` i pre-warm worker kører parallelt med liste-scans. Finder løbende ældste cachede entry og refresher fra ISE med `interval/total` sekunders mellemrum. Spreder load jævnt over 30-min-intervallet. **Berørte lag:** `backend/app/core/endpoint_cache.py` (get_oldest_id), `backend/app/services/cache_prewarm.py` (_drip_loop, _run refactor).
