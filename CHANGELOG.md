@@ -3,6 +3,18 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.9 build 0443] — 2026-05-19 — feat: cache vedligehold-statistik — drip-metrics og staleness-fordeling
+
+**Berørte filer:** `backend/app/services/cache_prewarm.py`, `backend/app/core/endpoint_cache.py`, `backend/app/api/cache.py`, `frontend/js/views/settings/section-cache.js`, `version.json`
+
+Ny statistik i Settings → Cache der viser om drip-refresh-mekanismen kan følge med i takt med at systemet vokser:
+- **Kapacitetsindikator (grøn/gul/rød):** sammenligner estimeret fuld-rotationstid med konfigureret scan-interval — grøn = drip'en er foran, rød = kan ikke følge med.
+- **Drip-tæller:** total antal endpoints refreshet og sprunget over (friske) siden opstart.
+- **Cache-alder:** ældste entry-alder, gennemsnitlig alder, stale-andel i procent.
+- **Staleness-fordeling:** visuel søjle der viser andelen af friske (grøn), stale (gul) og meget-stale (rød) entries.
+
+Backend: `PrewarmStatus` har fire nye felter (`drip_refreshed_total`, `drip_skipped_total`, `drip_current_sleep_s`, `drip_estimated_full_cycle_s`). `EndpointCache.stats()` returnerer nu et `staleness`-objekt med aldersfordeling.
+
 ## [5.5.9 build 0442] — 2026-05-19 — feat: cache drip-refresh — kontinuerlig baggrunds-opdatering af endpoint-cache
 
 **Berørte filer:** `backend/app/core/endpoint_cache.py`, `backend/app/services/cache_prewarm.py`, `version.json`

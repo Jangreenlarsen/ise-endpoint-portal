@@ -37,6 +37,11 @@ async def cache_stats() -> dict:
             "last_full_scan_at":   s.last_full_scan_at,
             "last_disk_save_at":   s.last_disk_save_at,
             "last_full_scan_age_s": round(now - s.last_full_scan_at, 0) if s.last_full_scan_at else None,
+            # Drip-refresh metrics
+            "drip_refreshed_total":       s.drip_refreshed_total,
+            "drip_skipped_total":         s.drip_skipped_total,
+            "drip_current_sleep_s":       round(s.drip_current_sleep_s, 2),
+            "drip_estimated_full_cycle_s": round(s.drip_estimated_full_cycle_s, 0) if s.drip_estimated_full_cycle_s is not None else None,
         }
     except Exception:  # noqa: BLE001
         stats["prewarm"] = None

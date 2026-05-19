@@ -49,6 +49,11 @@ class PrewarmStatus:
     last_error: str = ""
     hot_queue_size: int = 0
     started_at: float = 0.0
+    # Drip-refresh metrics
+    drip_refreshed_total: int = 0
+    drip_skipped_total: int = 0
+    drip_current_sleep_s: float = 0.0
+    drip_estimated_full_cycle_s: float | None = None
 
 
 class PrewarmWorker:
@@ -150,6 +155,8 @@ class PrewarmWorker:
             interval = float(getattr(config.settings, "cache_prewarm_interval_s", 1800.0))
             ttl = float(getattr(config.settings, "cache_ttl_seconds", 60.0))
             drip_sleep = max(0.5, interval / total)
+            self.status.drip_current_sleep_s = drip_sleep
+            self.status.drip_estimated_full_cycle_s = drip_sleep * total
 
             oldest_id = cache.get_oldest_id()
             if oldest_id:
@@ -161,9 +168,12 @@ class PrewarmWorker:
                         detail = await service._fetch_endpoint_detail(oldest_id)
                         detail.cache_stale = False
                         cache.put_detail(oldest_id, detail, from_disk=False)
+                        self.status.drip_refreshed_total += 1
                         logger.debug("drip: refreshed %s (age=%.0fs)", oldest_id, age)
                     except Exception as exc:  # noqa: BLE001
                         logger.debug("drip: fetch fejlede id=%s: %s", oldest_id, exc)
+                else:
+                    self.status.drip_skipped_total += 1
 
             try:
                 await asyncio.wait_for(self._stop.wait(), timeout=drip_sleep)
