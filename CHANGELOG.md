@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.5 build 0434] — 2026-05-19 — fix: release notes manglede sektioner for 5.5.4 og 5.5.5
+
+**Berørte filer:** `RELEASE_NOTES.md`, `version.json`
+
+Tilføjet `## [5.5.5]` og `## [5.5.4]` sektioner i RELEASE_NOTES.md. Uden disse sektioner returnerede backend tom streng og frontend skjulte release-notes-panelet selv ved korrekt version.
+
 ## [5.5.5 build 0433] — 2026-05-19 — security: Patch 2 — SEC-B/D/E/I/J/M implementeret
 
 **Berørte filer:** `backend/app/services/settings_service.py`, `backend/app/core/config.py`, `backend/app/services/update_service.py`, `backend/app/services/user_service.py`, `backend/app/core/operator_profile_store.py`, `FEATURES.md`, `reports/SECURITY_ANALYSIS_V2.md`
