@@ -233,8 +233,10 @@ export async function renderSettings(container) {
 
         <div id="pxgrid-upload-block">
           <p class="hint">
-            <strong>Upload-mode:</strong> upload tre PEM-filer (klient-cert, privat-key, CA-bundle der har signeret ISE pxGrid server-cert).
-            Filer gemmes i <code>backend/pxgrid/</code> med automatisk path-update.
+            <strong>Upload-mode:</strong> upload tre separate PEM-filer. Filer gemmes i <code>backend/pxgrid/</code> med automatisk path-update.<br>
+            <strong style="color:var(--danger,#991b1b);">Vigtigt:</strong> klient-certifikatet og CA-certifikatet <em>skal</em> være i separate filer.
+            Klient-cert-filen må kun indeholde portalens eget identitets-certifikat (ét <code>BEGIN CERTIFICATE</code> / <code>END CERTIFICATE</code> blok).
+            CA-certifikater uploades separat som CA-bundle — bland dem ikke i klient-cert-filen.
           </p>
           <div class="field">
             <label for="pxgrid-upload-cert" id="pxgrid-upload-cert-lbl"></label>
@@ -288,8 +290,12 @@ export async function renderSettings(container) {
           <div class="field">
             <label><strong id="pxgrid-csr-step2-lbl"></strong></label>
             <div class="hint">
-              <strong>ISE Internal CA</strong>: Administration → pxGrid Services → Certificates → Generate Certificate → "I have a certificate signing request" → upload CSR → download signeret cert. CA-chain hentes fra Administration → System → Certificates → Certificate Authority Certificates.<br>
-              <strong>MS certsrv</strong>: <code>https://&lt;ca&gt;/certsrv/</code> → advanced request → submit CSR (Base 64) → vælg template (typisk "pxGrid Client") → "Download certificate" (ikke chain). CA-bundle: forsiden → "Download a CA certificate chain" → konvertér p7b til PEM med <code>openssl pkcs7 -print_certs -in certnew.p7b -out ca.pem</code>.
+              <strong>ISE Internal CA</strong>: Administration → pxGrid Services → Certificates → Generate Certificate → "I have a certificate signing request" → upload CSR → download signeret cert.
+              <em>Download kun certifikatet — ikke chain-filen.</em>
+              CA-bundle hentes separat: Administration → System → Certificates → Certificate Authority Certificates → eksportér rod-CA'en som PEM (ét certifikat).<br>
+              <strong>MS certsrv</strong>: <code>https://&lt;ca&gt;/certsrv/</code> → advanced request → submit CSR (Base 64) → vælg template (typisk "pxGrid Client") → "Download certificate" (<em>ikke</em> "Download certificate chain").
+              CA-bundle: forsiden → "Download a CA certificate chain" → konvertér p7b til PEM med <code>openssl pkcs7 -print_certs -in certnew.p7b -out ca-bundle.pem</code>.<br>
+              <strong style="color:var(--danger,#991b1b);">Husk:</strong> identitets-certifikatet (trin 3) og CA-bundle (trin 4) skal altid være i to separate filer.
             </div>
           </div>
           <div class="field">

@@ -3,6 +3,16 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.3 build 0429] — 2026-05-19 — docs: pxGrid cert-opsætning præciserer at identitets-cert og CA-cert skal være separate filer
+
+**Berørte filer:** `frontend/js/views/settings.js`, `frontend/js/i18n.js`
+
+Upload-mode: tilføjet tydelig advarsel om at klient-cert-filen KUN må indeholde portalens eget identitets-certifikat (én BEGIN/END CERTIFICATE blok) — CA-certifikater uploades separat i CA-bundle-feltet.
+CSR trin 2: ISE Internal CA-instruks præciserer at man downloader kun certifikatet (ikke chain-filen), og at CA-bundle hentes separat fra Certificate Authority Certificates. MS certsrv-instruks præciserer "Download certificate" (ikke "Download certificate chain"). Rød advarsel: identitets-cert og CA-bundle skal altid være separate filer.
+CSR trin 3 hint: opdateret til "kun portalens eget identitets-certifikat — ikke en chain, ét certifikat i filen".
+CSR trin 4 hint: præciseret at CA-bundle er separat fra trin 3, og at den godt må indeholde rod-CA + intermediates som sammensatte PEM-blokke.
+Upload-cert label: ændret til "Identitets-certifikat (PEM) — kun klientcert, ikke chain" (DA + EN).
+
 ## [5.5.3 build 0428] — 2026-05-19 — feat: Release notes i GitHub-opdatering + RELEASE_NOTES.md
 
 **Berørte filer:** `RELEASE_NOTES.md` (ny), `backend/app/services/update_service.py`, `frontend/js/views/settings/section-update.js`, `frontend/js/views/settings.js`, `frontend/js/i18n.js`, `frontend/css/styles.css`
