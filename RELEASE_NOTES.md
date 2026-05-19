@@ -4,6 +4,18 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.5.6] — 2026-05-19 — Patch 1
+
+### Stabilitet og ydeevne
+
+**Frontend hænger ikke længere ved navigation.** Browseren krævede tidligere Ctrl+Shift+R efter at have navigeret væk fra Browse-siden. Årsagen var at EventSource (pxGrid SSE-stream) og badge-timeren aldrig blev lukket korrekt ved view-skift — de akkumulerede som zombied forbindelser for hvert Browse-besøg. Alle views cleaner nu op via en lifecycle-funktion der køres automatisk ved navigation.
+
+**API-kald har nu 30 sekunders timeout.** Langsomme ISE-kald kan ikke længere blokere UI'en ubestemt — de afbrydes og giver en fejlbesked i stedet.
+
+**Endpoint-cache holder nu i 30 minutter.** En fejl i cache-konfigurationen betød at cachen blev "for gammel" allerede efter 10 minutter og alle endpoints blev re-hentet fra ISE synkront — det lignede en manuel refresh. Cachen matcher nu korrekt pre-warm-intervallet på 30 minutter.
+
+---
+
 ## [5.5.5] — 2026-05-19 — Security Patch 1
 
 ### Sikkerhedsforbedringer

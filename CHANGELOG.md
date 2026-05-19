@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.6 build 0437] — 2026-05-19 — release: v5.5.6-P1 — stabilitet og ydeevne
+
+**Berørte filer:** `version.json`, `RELEASE_NOTES.md`, `CHANGELOG.md`
+
+Releaseversion 5.5.6-P1. Samler tre stabilitets- og ydeevnerettelser: frontend hang (SSE zombie-leak), cache dead-zone (STALE_MAX_FACTOR 10→30) og API-timeout. Se RELEASE_NOTES.md [5.5.6] for brugerbeskrivelse.
+
 ## [5.5.5 build 0436] — 2026-05-19 — fix: frontend hang — SSE/interval zombie-leak ved view-skift
 
 **Berørte filer:** `frontend/js/app.js`, `frontend/js/views/browse.js`, `frontend/js/api.js`, `BUGS.md`, `version.json`
