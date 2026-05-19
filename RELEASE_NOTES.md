@@ -4,6 +4,18 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.5.7] — 2026-05-19 — Patch 1
+
+### Sikkerhed og audit-dækning
+
+**Audit-log er nu kun tilgængeligt for admins.** Tidligere kunne alle loggede brugere (viewer, registrant m.fl.) søge og læse hele audit-historikken inkl. admin-operationer og settings-ændringer. Rettet: `GET /api/audit` kræver nu admin-rolle.
+
+**Logout registreres nu i audit-loggen.** Hvert logout med et gyldigt token opretter en `logout`-record med brugernavn og auth-type (lokal/TACACS+).
+
+**ISE connection-fejl registreres nu i audit-loggen.** Når ISE-circuit-breakeren tripper til OPEN (efter gentagne forbindelsesfejl) oprettes en `ise_circuit_open`-record med fejldetaljer. Når ISE er tilgængeligt igen oprettes en `ise_circuit_closed`-record.
+
+---
+
 ## [5.5.6] — 2026-05-19 — Patch 1
 
 ### Stabilitet og ydeevne

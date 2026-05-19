@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.7 build 0438] — 2026-05-19 — security+fix: audit-API admin-only + logout + circuit-breaker audit
+
+**Berørte filer:** `backend/app/api/audit.py`, `backend/app/api/auth.py`, `backend/app/ise/client.py`, `BUGS.md`, `RELEASE_NOTES.md`, `version.json`
+
+- **SEC (audit-API):** `GET /api/audit` og `GET /api/audit/{id}` kræver nu `require_admin` — tidligere `require_any` lod alle loggede brugere læse audit-historikken
+- **fix (logout):** `POST /api/auth/logout` auditerer nu `logout`-event med aktør og auth-type når token er gyldigt
+- **fix (circuit-breaker):** ISE-klienten auditerer `ise_circuit_open` ved CLOSED→OPEN transition og `ise_circuit_closed` ved recovery — begge med fejldetaljer
+
 ## [5.5.6 build 0437] — 2026-05-19 — release: v5.5.6-P1 — stabilitet og ydeevne
 
 **Berørte filer:** `version.json`, `RELEASE_NOTES.md`, `CHANGELOG.md`

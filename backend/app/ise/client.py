@@ -14,7 +14,7 @@ from tenacity import (
     wait_exponential,
 )
 
-from app.core import config
+from app.core import audit_store, config
 from app.core.exceptions import IseApiError
 from app.core.metrics import CIRCUIT_STATE, ISE_REQUEST_DURATION, ISE_REQUESTS, ISE_RETRIES
 from app.ise.circuit_breaker import CircuitBreaker
@@ -111,14 +111,28 @@ class IseClient:
         except httpx.TransportError as exc:
             ISE_REQUEST_DURATION.observe(time.perf_counter() - _t0)
             ISE_REQUESTS.labels(method=method, outcome="error").inc()
+            _prev_cb_state = self._cb.state
             self._cb.record_failure()
             _cb_state_map = {"closed": 0, "half_open": 1, "open": 2}
             CIRCUIT_STATE.set(_cb_state_map.get(self._cb.state, 0))
+            if self._cb.state == "open" and _prev_cb_state != "open":
+                audit_store.record_sync(
+                    "ise_circuit_open", "system", None,
+                    after={"failures": self._cb.stats()["failure_count"],
+                           "recovery_timeout_s": self._cb.stats()["recovery_timeout_s"],
+                           "last_error": str(exc)[:200]},
+                )
             logger.error("ISE transport error on %s %s: %s", method, path, exc)
             raise IseApiError(0, f"transport error: {exc}") from exc
 
         ISE_REQUEST_DURATION.observe(time.perf_counter() - _t0)
+        _prev_cb_state = self._cb.state
         self._cb.record_success()
+        if _prev_cb_state != "closed":
+            audit_store.record_sync(
+                "ise_circuit_closed", "system", None,
+                after={"recovered_from": _prev_cb_state},
+            )
         CIRCUIT_STATE.set(0)
 
         if response.status_code >= 400:
