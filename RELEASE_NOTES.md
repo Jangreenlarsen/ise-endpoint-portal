@@ -4,6 +4,38 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.5.5] — 2026-05-19 — Security Patch 1
+
+### Sikkerhedsforbedringer
+
+**PSK-nøglegenerator** bruger nu kryptografisk sikker tilfældighedsgenerator (`secrets`-modulet) i stedet for Mersenne Twister (`random`). Genererede PSK-nøgler er ikke længere forudsigelige.
+
+**ISE TLS-verifikation** er nu slået **til som standard** på nye installationer. Portalen validerer ISE-serverens certifikat ved al kommunikation. Eksisterende installationer med selvsigneret ISE-certifikat skal sætte `ise_ca_bundle` i Settings → ISE Connection.
+
+**Audit-log** dækker nu alle kritiske update-operationer: GitHub git pull, ZIP-pakke apply og server-genstart registreres i audit-loggen med aktør og resultat.
+
+**Første admin-oprettelse** logges nu i audit-DB, så bootstrap-aktiviteten er sporbar.
+
+**TACACS+ auto-admin bootstrap** registreres nu i audit-DB (`tacacs_auto_admin_bootstrap`) når en TACACS+-bruger automatisk tildeles admin-rollen fordi ingen operatørprofiler er konfigureret.
+
+**ZIP-pakke beskyttelse:** Uploadede opdateringspakker tjekkes nu for ukomprimeret størrelse (max 500 MB) for at forhindre ZIP-bomb-angreb.
+
+**Operatørprofiler** sættes nu til `chmod 0o600` på Unix-systemer ved skrivning — konsistent med øvrige konfigurationsfiler.
+
+---
+
+## [5.5.4] — 2026-05-19
+
+### TACACS+ Auto-Admin Bootstrap
+
+**Automatisk admin-adgang** tildeles den første TACACS+-bruger der logger ind, hvis ingen operatørprofiler er konfigureret i portalen. Dette muliggør første login uden manuel filoprettelse — TACACS+-serveren er autorisationskilde. Når én operatørprofil er oprettet, kræver alle efterfølgende TACACS+-brugere en matchende profil.
+
+### Rettelser
+
+**TACACS+ login** fejlede med HTTP 500 i bootstrap-tilstanden fordi kode forsøgte at kalde `.get()` på `None`. Rettet.
+
+---
+
 ## [5.5.3] — 2026-05-19
 
 ### PxGrid-opsætning — forbedret vejledning og workflow
