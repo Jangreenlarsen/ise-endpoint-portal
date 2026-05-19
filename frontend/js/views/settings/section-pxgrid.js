@@ -139,7 +139,7 @@ export async function initPxGridSection(container) {
       container.querySelector("#pxgrid_cert_path").value = s.pxgrid_cert_path || "";
       container.querySelector("#pxgrid_key_path").value = s.pxgrid_key_path || "";
       container.querySelector("#pxgrid_ca_bundle_path").value = s.pxgrid_ca_bundle_path || "";
-      container.querySelector("#pxgrid_worker_enabled").checked = s.pxgrid_worker_enabled !== false;
+      container.querySelector("#pxgrid_worker_enabled").checked = !!s.pxgrid_worker_enabled;
       container.querySelector("#pxgrid_session_topic").value = s.pxgrid_session_topic || "/topic/com.cisco.ise.session";
       container.querySelector("#pxgrid_stomp_heartbeat_ms").value = s.pxgrid_stomp_heartbeat_ms ?? 30000;
       container.querySelector("#pxgrid_stomp_reconnect_min_s").value = s.pxgrid_stomp_reconnect_min_s ?? 1;
@@ -199,16 +199,22 @@ export async function initPxGridSection(container) {
   });
 
   container.querySelector("#pxgrid-test-btn").addEventListener("click", async () => {
+    const step5Msg = container.querySelector("#pxgrid-step5-msg");
     msg.innerHTML = `<div class="alert info">${t("settings.pxgrid_testing")}</div>`;
+    if (step5Msg) step5Msg.innerHTML = `<div class="alert info">${t("settings.pxgrid_testing")}</div>`;
     try {
       const r = await api.testPxGridConnection();
       const cls = r.ok ? "success" : "error";
       const services = r.services_found?.length
         ? `<br><small>Services: ${r.services_found.map(esc).join(", ")}</small>`
         : "";
-      msg.innerHTML = `<div class="alert ${cls}">[${esc(r.step)}] ${esc(r.message)}${r.latency_ms ? ` (${r.latency_ms}ms)` : ""}${services}</div>`;
+      const html = `<div class="alert ${cls}">[${esc(r.step)}] ${esc(r.message)}${r.latency_ms ? ` (${r.latency_ms}ms)` : ""}${services}</div>`;
+      msg.innerHTML = html;
+      if (step5Msg) step5Msg.innerHTML = html;
     } catch (err) {
-      msg.innerHTML = `<div class="alert error">${t("settings.pxgrid_test_failed").replace("{msg}", esc(err.message))}</div>`;
+      const errHtml = `<div class="alert error">${t("settings.pxgrid_test_failed").replace("{msg}", esc(err.message))}</div>`;
+      msg.innerHTML = errHtml;
+      if (step5Msg) step5Msg.innerHTML = errHtml;
     }
   });
 
@@ -358,15 +364,43 @@ export async function initPxGridSection(container) {
   });
 
   container.querySelector("#pxgrid-account-btn").addEventListener("click", async () => {
-    msg.innerHTML = `<div class="alert info">${t("settings.pxgrid_account_load")}</div>`;
+    const step5Msg = container.querySelector("#pxgrid-step5-msg");
+    const loadingHtml = `<div class="alert info">${t("settings.pxgrid_account_load")}</div>`;
+    msg.innerHTML = loadingHtml;
+    if (step5Msg) step5Msg.innerHTML = loadingHtml;
     try {
       await autoSaveBeforeAction();
       const r = await api.createPxGridAccount();
       const cls = r.ok ? "success" : "error";
-      msg.innerHTML = `<div class="alert ${cls}">[${esc(r.account_state)}] ${esc(r.message)}</div>`;
+      const accountHtml = `<div class="alert ${cls}">[${esc(r.account_state)}] ${esc(r.message)}</div>`;
+      msg.innerHTML = accountHtml;
+      if (step5Msg) step5Msg.innerHTML = accountHtml;
+
+      // Konto er i INIT-tilstand: kør automatisk test-forbindelse for at
+      // trigge PENDING-overgangen (ISE skifter state ved første autentificerede
+      // forbindelsesforsøg fra klienten).
+      if (r.ok && r.account_state === "INIT") {
+        const initHtml = `<div class="alert info">${t("settings.pxgrid_account_init_test")}</div>`;
+        msg.innerHTML = accountHtml + initHtml;
+        if (step5Msg) step5Msg.innerHTML = accountHtml + initHtml;
+        try {
+          const tr = await api.testPxGridConnection();
+          const tcls = tr.ok ? "success" : "warning";
+          const testHtml = `<div class="alert ${tcls}">[${esc(tr.step)}] ${esc(tr.message)}${tr.latency_ms ? ` (${tr.latency_ms}ms)` : ""}</div>`;
+          msg.innerHTML = accountHtml + testHtml;
+          if (step5Msg) step5Msg.innerHTML = accountHtml + testHtml;
+        } catch (terr) {
+          const testErrHtml = `<div class="alert warning">${t("settings.pxgrid_test_failed").replace("{msg}", esc(terr.message))}</div>`;
+          msg.innerHTML = accountHtml + testErrHtml;
+          if (step5Msg) step5Msg.innerHTML = accountHtml + testErrHtml;
+        }
+      }
+
       await loadSettings();
     } catch (err) {
-      msg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
+      const errHtml = `<div class="alert error">${esc(err.message)}</div>`;
+      msg.innerHTML = errHtml;
+      if (step5Msg) step5Msg.innerHTML = errHtml;
     }
   });
 

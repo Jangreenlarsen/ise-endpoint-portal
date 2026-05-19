@@ -3,6 +3,15 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.3 build 0426] — 2026-05-19 — feat: PxGrid settings UX — SAN-præcisering, INIT→PENDING auto-test, Phase 2b off by default, step5-status
+
+**Berørte filer:** `frontend/js/views/settings.js`, `frontend/js/views/settings/section-pxgrid.js`, `frontend/js/i18n.js`
+
+1. **Extra SAN label + hint**: Label ændret til "Ekstra SAN-navne — portalens FQDN skal med". Hint-tekst præciserer at portalens FQDN er påkrævet (pxGrid 2.0 / RFC 6125 validerer mod hostnavn), med eksempel på komma-separerede FQDN'er.
+2. **Step 5 INIT→PENDING auto-flow**: Når "Opret pxGrid-konto" klikkes og ISE returnerer `accountState=INIT`, kører portalen automatisk en test-forbindelse. Første autentificerede forbindelsesforsøg fra klienten får ISE til at flytte kontoen fra INIT til PENDING-tilstand — klar til admin-approval. Step5-hint-tekst opdateret til at beskrive dette flow.
+3. **Phase 2b (STOMP-worker) disabled by default**: `pxgrid_worker_enabled` initialiseres nu til `false` ved ny installation (var `true` pga. `!== false`-logik). Worker skal eksplicit aktiveres af admin efter vellykket pxGrid-opsætning.
+4. **Test connection status under step 5**: Nyt `#pxgrid-step5-msg`-div under step 5-knappen viser resultat af både account-create-flowet og manuelle "Test forbindelse"-klik — så admin kan se status direkte i CSR-flowet uden at scrolle til bunden.
+
 ## [5.5.2 build 0425] — 2026-05-18 — fix: duplikat RADIUS-nøgle advarsel + hint om enkeltværdi-semantik
 
 **Berørte filer:** `frontend/js/views/browse-detail.js`, `frontend/css/styles.css`
