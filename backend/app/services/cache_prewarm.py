@@ -29,6 +29,16 @@ from typing import Any
 
 from app.core import config
 from app.core.endpoint_cache import get_cache
+from app.core.metrics import (
+    CACHE_AVG_AGE_S,
+    CACHE_DRIP_CYCLE_S,
+    CACHE_DRIP_REFRESHED,
+    CACHE_DRIP_SKIPPED,
+    CACHE_DRIP_SLEEP_S,
+    CACHE_OLDEST_AGE_S,
+    CACHE_STALE_COUNT,
+    CACHE_STALE_PCT,
+)
 from app.ise.client import get_ise_client
 
 logger = logging.getLogger(__name__)
@@ -157,6 +167,8 @@ class PrewarmWorker:
             drip_sleep = max(0.5, interval / total)
             self.status.drip_current_sleep_s = drip_sleep
             self.status.drip_estimated_full_cycle_s = drip_sleep * total
+            CACHE_DRIP_SLEEP_S.set(drip_sleep)
+            CACHE_DRIP_CYCLE_S.set(drip_sleep * total)
 
             oldest_id = cache.get_oldest_id()
             if oldest_id:
@@ -169,11 +181,23 @@ class PrewarmWorker:
                         detail.cache_stale = False
                         cache.put_detail(oldest_id, detail, from_disk=False)
                         self.status.drip_refreshed_total += 1
+                        CACHE_DRIP_REFRESHED.inc()
                         logger.debug("drip: refreshed %s (age=%.0fs)", oldest_id, age)
                     except Exception as exc:  # noqa: BLE001
                         logger.debug("drip: fetch fejlede id=%s: %s", oldest_id, exc)
                 else:
                     self.status.drip_skipped_total += 1
+                    CACHE_DRIP_SKIPPED.inc()
+
+            # Opdater staleness-gauges efter hver iteration
+            now = time.time()
+            ages = [now - e.fetched_at for e in cache._details.values()]
+            if ages:
+                CACHE_OLDEST_AGE_S.set(max(ages))
+                CACHE_AVG_AGE_S.set(sum(ages) / len(ages))
+                stale = sum(1 for a in ages if a > ttl)
+                CACHE_STALE_COUNT.set(stale)
+                CACHE_STALE_PCT.set(stale / len(ages) * 100)
 
             try:
                 await asyncio.wait_for(self._stop.wait(), timeout=drip_sleep)

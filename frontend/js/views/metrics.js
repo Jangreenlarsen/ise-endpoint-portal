@@ -78,6 +78,21 @@ function cbLabel(state) {
   return { text: t("metrics.cb_open"), cls: "cb-open" };
 }
 
+function fmtAge(seconds) {
+  if (seconds === null || seconds === undefined || isNaN(seconds)) return "–";
+  if (seconds < 60) return Math.round(seconds) + "s";
+  if (seconds < 3600) return (seconds / 60).toFixed(1) + "m";
+  return (seconds / 3600).toFixed(1) + "h";
+}
+
+function capacityBadge(cycleS, intervalS) {
+  if (!cycleS || !intervalS) return "";
+  const ratio = cycleS / intervalS;
+  if (ratio <= 0.9) return ` <span style="background:#27ae60;color:#fff;border-radius:4px;padding:1px 6px;font-size:.8em;">&#10003; følger med</span>`;
+  if (ratio <= 1.1) return ` <span style="background:#f39c12;color:#fff;border-radius:4px;padding:1px 6px;font-size:.8em;">&#9888; grænse</span>`;
+  return ` <span style="background:#c0392b;color:#fff;border-radius:4px;padding:1px 6px;font-size:.8em;">&#10007; bagud</span>`;
+}
+
 // ------------------------------------------------------------------ //
 // Render                                                               //
 // ------------------------------------------------------------------ //
@@ -118,6 +133,16 @@ function renderData(parsed) {
   const evictions = getScalar(parsed, "ise_portal_cache_evictions_total") ?? 0;
   const diskStale = getScalar(parsed, "ise_portal_cache_disk_stale_entries") ?? 0;
 
+  const dripRefreshed = getScalar(parsed, "ise_portal_cache_drip_refreshed_total");
+  const dripSkipped   = getScalar(parsed, "ise_portal_cache_drip_skipped_total");
+  const dripSleepS    = getScalar(parsed, "ise_portal_cache_drip_sleep_seconds");
+  const dripCycleS    = getScalar(parsed, "ise_portal_cache_drip_cycle_seconds");
+  const oldestAgeS    = getScalar(parsed, "ise_portal_cache_oldest_entry_age_seconds");
+  const avgAgeS       = getScalar(parsed, "ise_portal_cache_avg_entry_age_seconds");
+  const staleCount    = getScalar(parsed, "ise_portal_cache_stale_entries");
+  const stalePct      = getScalar(parsed, "ise_portal_cache_stale_pct");
+  const dripActive    = dripRefreshed !== null;
+
   const blocked = getScalar(parsed, "ise_portal_rate_limit_blocked_total") ?? 0;
 
   const bulkOk = getLabeled(parsed, "ise_portal_bulk_items_total", "outcome", "succeeded");
@@ -152,6 +177,15 @@ function renderData(parsed) {
         { label: t("metrics.cache_evictions"), value: fmt(evictions) },
         { label: t("metrics.cache_disk_stale"),value: fmt(diskStale) },
       ])}
+
+      ${dripActive ? buildStatCard("Cache vedligehold", [
+        { label: "Drip-interval",       value: fmtAge(dripSleepS),  sub: dripCycleS ? "Fuld rotation: " + fmtAge(dripCycleS) + capacityBadge(dripCycleS, 1800) : "" },
+        { label: "Refreshet (drip)",    value: dripRefreshed !== null ? fmt(dripRefreshed) : "–" },
+        { label: "Sprunget over",       value: dripSkipped !== null ? fmt(dripSkipped) : "–",  sub: "entries var friske" },
+        { label: "Ældste entry",        value: fmtAge(oldestAgeS) },
+        { label: "Gennemsnitlig alder", value: fmtAge(avgAgeS) },
+        { label: "Stale entries",       value: staleCount !== null ? fmt(staleCount) : "–",    sub: stalePct !== null ? fmt(stalePct, 1) + "%" : "" },
+      ]) : ""}
 
       ${buildStatCard(t("metrics.card_rate"), [
         { label: t("metrics.rate_blocked"), value: fmt(blocked) },

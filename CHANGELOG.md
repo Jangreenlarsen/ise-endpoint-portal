@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.9 build 0444] — 2026-05-19 — fix: cache vedligehold-metrics eksponeret via Prometheus og vist på Metrics-siden
+
+**Berørte filer:** `backend/app/core/metrics.py`, `backend/app/services/cache_prewarm.py`, `frontend/js/views/metrics.js`, `version.json`
+
+Drip-refresh og staleness-metrics tilføjet som Prometheus-gauges og counters, synlige på Metrics-siden som nyt "Cache vedligehold"-kort. Otte nye metrics: `drip_refreshed_total`, `drip_skipped_total`, `drip_sleep_seconds`, `drip_cycle_seconds`, `oldest_entry_age_seconds`, `avg_entry_age_seconds`, `stale_entries`, `stale_pct`. Kapacitetsindikator viser grøn/gul/rød badge ved siden af "Fuld rotation"-estimatet.
+
 ## [5.5.9 build 0443] — 2026-05-19 — feat: cache vedligehold-statistik — drip-metrics og staleness-fordeling
 
 **Berørte filer:** `backend/app/services/cache_prewarm.py`, `backend/app/core/endpoint_cache.py`, `backend/app/api/cache.py`, `frontend/js/views/settings/section-cache.js`, `version.json`
