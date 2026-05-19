@@ -173,12 +173,18 @@ form input[type="url"],
 form input[type="file"],
 form textarea,
 form select {
-  padding: 0.5rem 0.65rem;
+  padding: 0.5rem 2.2rem 0.5rem 0.65rem;
   border: 1px solid #d1d5db;
   border-radius: 4px;
   font-size: 0.9rem;
   font-family: inherit;
-  background: #fff;
+  background-color: #fff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4' stroke='%23374151' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.55rem center;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
 }
 form textarea {
   min-height: 140px;
@@ -1563,11 +1569,16 @@ td.psk-key-cell {
 [data-theme="dark"] form input[type="number"],
 [data-theme="dark"] form input[type="url"],
 [data-theme="dark"] form textarea,
-[data-theme="dark"] form select,
 [data-theme="dark"] td input,
 [data-theme="dark"] td select,
 [data-theme="dark"] .browse-table-wrap select {
   background: #1a1a2e;
+  color: #e0e0e0;
+  border-color: #3a3a5c;
+}
+[data-theme="dark"] form select {
+  background-color: #1a1a2e;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4' stroke='%239ca3af' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   color: #e0e0e0;
   border-color: #3a3a5c;
 }
@@ -1721,11 +1732,16 @@ td.psk-key-cell {
 [data-theme="midnight"] form input[type="number"],
 [data-theme="midnight"] form input[type="url"],
 [data-theme="midnight"] form textarea,
-[data-theme="midnight"] form select,
 [data-theme="midnight"] td input,
 [data-theme="midnight"] td select,
 [data-theme="midnight"] .browse-table-wrap select {
   background: #0d1117; color: #e6edf3; border-color: #30363d;
+}
+[data-theme="midnight"] form select {
+  background-color: #0d1117;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4' stroke='%238b949e' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  color: #e6edf3;
+  border-color: #30363d;
 }
 [data-theme="midnight"] .browse-table-wrap select { border-left-color: #60a5fa; }
 [data-theme="midnight"] .col-filter-input { background: #0d1117; color: #e6edf3; border-color: #30363d; }

@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.3 build 0427] — 2026-05-19 — fix: form select styled med tydelig chevron-pil (alle temaer)
+
+**Berørte filer:** `frontend/css/styles.css`
+
+`form select`-elementer har nu `appearance: none` + SVG-chevron som `background-image` så det er tydeligt at de er klikbare dropdowns. Padding-right justeret så tekst ikke overlapper pilen. Dark- og midnight-theme ovverides udskilt til separate regler der bevarer `background-image` med lys-farvet pil.
+
 ## [5.5.3 build 0426] — 2026-05-19 — feat: PxGrid settings UX — SAN-præcisering, INIT→PENDING auto-test, Phase 2b off by default, step5-status
 
 **Berørte filer:** `frontend/js/views/settings.js`, `frontend/js/views/settings/section-pxgrid.js`, `frontend/js/i18n.js`
