@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     ise_base_url: str = Field(default="https://ise.example.local")
     ise_username: str = "ers-admin"
     ise_password: str = ""
-    ise_verify_tls: bool = False
+    ise_verify_tls: bool = True
     ise_ca_bundle: str = Field(
         default="",
         description=(

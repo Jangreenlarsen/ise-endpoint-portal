@@ -403,6 +403,11 @@ def setup_first_admin(payload: SetupRequest) -> LoginResponse:
     save_users(users)
     token = auth_core.create_token(record["id"], record["username"], record["role"])
     logger.warning("first-run admin created: %s", record["username"])
+    from app.core import audit_store
+    audit_store.record_sync(
+        "setup_first_admin", "user", record["id"],
+        after={"username": record["username"], "role": "admin"},
+    )
     return LoginResponse(token=token, user=_to_public(record))
 
 
@@ -459,6 +464,11 @@ def login(payload: LoginRequest) -> LoginResponse:
                     effective_role = "admin"
                     endpoint_roles = [payload.username]
                     assigned_templates = []
+                    from app.core import audit_store
+                    audit_store.record_sync(
+                        "tacacs_auto_admin_bootstrap", "session", payload.username,
+                        after={"reason": "no_operator_profiles_configured", "granted_role": "admin"},
+                    )
                 else:
                     logger.warning(
                         "TACACS+ auth OK men operatørprofil '%s' ikke fundet i portal — afviser login",

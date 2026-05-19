@@ -104,7 +104,7 @@ Default: `ise_verify_tls: bool = False` — ISE-forbindelsen kører uden certifi
 
 | ID | OWASP 2021 | Beskrivelse | Fil | CVSS | Vektor | Sand. | Konsekvens | Status |
 |----|-----------|-------------|-----|------|--------|-------|------------|--------|
-| SEC-A | A04 Insecure Design | TACACS+ auto-admin genaktiveres ved sletning af operatørprofiler | `user_service.py:448` | A04 | Auth (TACACS) | Lav | Kritisk | **Ny** |
+| SEC-A | A04 Insecure Design | TACACS+ auto-admin genaktiveres ved sletning af operatørprofiler | `user_service.py:448` | A04 | Auth (TACACS) | Lav | Kritisk | **By Design** |
 | SEC-B | A02 Crypto Failures | PSK-nøgler genereres med `random` (ikke CSPRNG) | `settings_service.py:583` | A02 | Netværk | Lav | Høj | **Ny** |
 | SEC-C | A10 SSRF | `pxgrid_psn_fqdn` bruges direkte i udgående mTLS-URL | `client.py:93` | A10 | Auth (admin) | Lav | Medium | **Ny** |
 | SEC-D | A05 Misconfiguration | `ise_verify_tls` default `False` — ISE MitM-sårbar ved frisk installation | `config.py:19` | A05 | Netværk (MitM) | Medium | Høj | **Ny** |
@@ -120,45 +120,13 @@ Default: `ise_verify_tls: bool = False` — ISE-forbindelsen kører uden certifi
 
 ---
 
-### SEC-A — TACACS+ Auto-Admin Bootstrap Race Condition
+### SEC-A — TACACS+ Auto-Admin Bootstrap (By Design)
 
-**Sværhedsgrad:** Kritisk
+**Sværhedsgrad:** Kritisk (vurderet)
 **Fil:** `backend/app/services/user_service.py` linje 448–471
+**Status: By Design — ikke en sårbarhed**
 
-Bootstrap-betingelsen `any_operator_profiles` evalueres ved **hvert** login — ikke kun første opstart. Betingelsen er `False` (trigger auto-admin) hvis ingen `user_type=operator`-poster eksisterer i `users.json`.
-
-**PoC:**
-1. Kompromitteret admin-konto sletter alle operatørprofiler via `DELETE /api/operator-profiles/{id}`.
-2. Admin logger ud.
-3. Enhver bruger der kan autentisere via TACACS+-serveren logger ind og modtager admin-token.
-
-**Alternativt PoC:** Lokal angriber med skriveadgang til `backend/users.json` fjerner alle `user_type=operator`-poster → næste TACACS+-bruger er admin.
-
-**Anbefalet fix:** Persister bootstrap-tilstand som en engangs-flag i en separat fil:
-
-```python
-# backend/app/core/bootstrap_store.py (ny)
-_FLAG_FILE = PROJECT_ROOT / "backend" / "bootstrap_complete"
-
-def is_bootstrap_complete() -> bool:
-    return _FLAG_FILE.exists()
-
-def mark_bootstrap_complete() -> None:
-    _FLAG_FILE.touch()
-```
-
-I `operator_profile_store.create_profile()`:
-```python
-from app.core.bootstrap_store import mark_bootstrap_complete
-mark_bootstrap_complete()
-```
-
-I `user_service.login()`:
-```python
-from app.core.bootstrap_store import is_bootstrap_complete
-# Erstat: any_operator_profiles = any(u.get("user_type") == "operator" for u in users)
-any_operator_profiles = is_bootstrap_complete()
-```
+Bootstrap-betingelsen `any_operator_profiles` evalueres ved hvert login. Hvis alle operatørprofiler slettes genaktiveres auto-admin til næste TACACS+-bruger der logger ind. Dette er **intentionel adfærd**: hvis en administrator rydder alle operatørprofiler, skal portalen kunne bootstrappe en ny admin via TACACS+ uden manuel indgriben i filer. Forudsætter at TACACS+-server (ekstern authoritetskilde) er betroet.
 
 ---
 
@@ -416,15 +384,15 @@ audit_store.record_sync(
 
 | Pri | ID | Handling | Indsats |
 |-----|----|----------|---------|
-| 1 | SEC-A | Fix TACACS+ bootstrap: persister `bootstrap_complete`-flag som fil i stedet for at tælle aktive profiler ved hvert login | 1–2 timer |
-| 2 | SEC-B | Erstat `random` med `secrets` i PSK-nøglegenerator | 30 min |
-| 3 | SEC-D | Skift `ise_verify_tls` default til `True` + tilføj UI-advarselsbanner ved `False` | 1–2 timer |
-| 4 | SEC-E | Tilføj `audit_store.record()` i `git_pull()`, `apply_package()`, `schedule_restart()` og `setup_first_admin()` | 1–2 timer |
-| 5 | SEC-M | Tilføj `audit_store.record_sync()` ved auto-admin bootstrap-login | 30 min |
-| 6 | SEC-I | Tilføj `chmod(0o600)` i `operator_profile_store._save_raw()` | 15 min |
-| 7 | SEC-J | Tilføj max-ukomprimeret-størrelse tjek i `validate_package()` (500 MB total) | 30 min |
-| 8 | SEC-H | Persister lockout-tilstand i SQLite så servergenstart ikke nulstiller lockout | 2–3 timer |
-| 9 | SEC-C | Valider `pxgrid_psn_fqdn` — afvis RFC 1918/loopback/link-local adresser | 1 time |
+| 1 | SEC-B | Erstat `random` med `secrets` i PSK-nøglegenerator | 30 min |
+| 2 | SEC-D | Skift `ise_verify_tls` default til `True` + tilføj UI-advarselsbanner ved `False` | 1–2 timer |
+| 3 | SEC-E | Tilføj `audit_store.record()` i `git_pull()`, `apply_package()`, `schedule_restart()` og `setup_first_admin()` | 1–2 timer |
+| 4 | SEC-M | Tilføj `audit_store.record_sync()` ved auto-admin bootstrap-login | 30 min |
+| 5 | SEC-I | Tilføj `chmod(0o600)` i `operator_profile_store._save_raw()` | 15 min |
+| 6 | SEC-J | Tilføj max-ukomprimeret-størrelse tjek i `validate_package()` (500 MB total) | 30 min |
+| 7 | SEC-H | Persister lockout-tilstand i SQLite så servergenstart ikke nulstiller lockout | 2–3 timer |
+| 8 | SEC-C | Valider `pxgrid_psn_fqdn` — afvis RFC 1918/loopback/link-local adresser | 1 time |
+| 9 | SEC-K | Kryptér pxGrid private key med passphrase fra env-variabel | 1 time |
 | 10 | SEC-F | Plan for CSP hardening: erstat `'unsafe-inline'` med nonces (arkitekturprojekt) | 2–5 dage |
 
 ---
@@ -449,7 +417,7 @@ audit_store.record_sync(
 | SEC-12 | `/match`-endpoint accepterer fri dict | ✅ Fikset (Pydantic EndpointMatchRequest schema) |
 | SEC-13 | Token i localStorage | ⚠️ Delvist afhjulpet (TTL reduceret) — grundproblem uændret → **SEC-L** |
 
-**Nettoresultat:** 10 af 13 V1-fund er fuldt fiksede. 3 er delvist fiksede (SEC-F, SEC-G, SEC-L). 10 nye fund identificeret i nye angrebsflader.
+**Nettoresultat:** 10 af 13 V1-fund er fuldt fiksede. 3 er delvist fiksede (SEC-F, SEC-G, SEC-L). 10 nye fund identificeret i nye angrebsflader. SEC-A afklaret som By Design.
 
 ---
 

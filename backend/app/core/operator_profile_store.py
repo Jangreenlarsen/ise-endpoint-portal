@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import uuid
 from pathlib import Path
 
@@ -23,6 +24,11 @@ def _save_raw(profiles: list[dict]) -> None:
         json.dumps(profiles, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
+    if os.name != "nt":
+        try:
+            _STORE_FILE.chmod(0o600)
+        except OSError:
+            pass
 
 
 def load_profiles() -> list[dict]:

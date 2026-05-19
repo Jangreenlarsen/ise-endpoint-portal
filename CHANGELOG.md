@@ -3,6 +3,18 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.5 build 0433] — 2026-05-19 — security: Patch 2 — SEC-B/D/E/I/J/M implementeret
+
+**Berørte filer:** `backend/app/services/settings_service.py`, `backend/app/core/config.py`, `backend/app/services/update_service.py`, `backend/app/services/user_service.py`, `backend/app/core/operator_profile_store.py`, `FEATURES.md`, `reports/SECURITY_ANALYSIS_V2.md`
+
+- **SEC-B:** PSK-nøglegenerator bruger nu `secrets.choice()` + `secrets.randbelow()` i stedet for `random` (Mersenne Twister). Kryptografisk sikker PRNG.
+- **SEC-D:** `ise_verify_tls` default ændret fra `False` til `True`. Nyinstallationer validerer ISE-certifikatet.
+- **SEC-E:** Audit-records tilføjet i `git_pull()`, `apply_package()`, `schedule_restart()` og `setup_first_admin()`. Kritiske update-operationer er nu sporbare i audit-log.
+- **SEC-I:** `operator_profiles.json` sættes til `chmod 0o600` ved skrivning på Unix-systemer (no-op på Windows).
+- **SEC-J:** ZIP-bomb beskyttelse: ukomprimeret totalstørrelse tjekkes til max 500 MB i `validate_package()`.
+- **SEC-M:** TACACS+ auto-admin bootstrap logges nu til audit-DB (`tacacs_auto_admin_bootstrap`-action) i tillæg til app.log.
+- **SEC-A markeret By Design:** Auto-admin reaktivering ved tom operatørprofil-liste er intentionel adfærd.
+
 ## [5.5.4 build 0432] — 2026-05-19 — docs: Sikkerhedsanalyse V2 — to-faset statisk analyse med 13 fund (SEC-A til SEC-M)
 
 **Berørte filer:** `reports/SECURITY_ANALYSIS_V2.md` (ny), `version.json`
