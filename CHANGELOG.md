@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.5 build 0435] — 2026-05-19 — fix: cache STALE_MAX_FACTOR 10→30 — eliminer 20 min dead-zone
+
+**Berørte filer:** `backend/app/core/endpoint_cache.py`, `BUGS.md`, `version.json`
+
+`STALE_MAX_FACTOR = 10` × `cache_ttl_seconds = 60s` = 600s "too stale"-grænse. Pre-warm kørte hvert 1800s. I vinduet 600s–1800s var cachen ikke servérbar og browse hentede alle endpoints synkront fra ISE (ligner manuel refresh). Fix: hævet til 30 × 60s = 1800s — matcher pre-warm-intervallet præcist. Stale entries serveres nu via SWR (baggrunds-refresh) hele vejen til næste pre-warm scan.
+
 ## [5.5.5 build 0434] — 2026-05-19 — fix: release notes manglede sektioner for 5.5.4 og 5.5.5
 
 **Berørte filer:** `RELEASE_NOTES.md`, `version.json`
