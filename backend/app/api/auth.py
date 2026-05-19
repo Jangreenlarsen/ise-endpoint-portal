@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Request
+from app.core import audit_store
 
 from app.api.deps import get_current_user
 from app.core import auth as auth_core
@@ -60,8 +61,15 @@ async def login(req: LoginRequest) -> LoginResponse:
 
 
 @router.post("/logout")
-async def logout() -> dict[str, str]:
-    # Stateless token — client simply discards it.
+async def logout(request: Request) -> dict[str, str]:
+    header = request.headers.get("Authorization", "")
+    if header.startswith("Bearer "):
+        payload = auth_core.verify_token(header[7:].strip())
+        if payload:
+            audit_store.record_sync(
+                "logout", "session", payload.get("sub"),
+                after={"username": payload.get("username"), "auth_type": payload.get("auth_type", "local")},
+            )
     return {"status": "ok"}
 
 

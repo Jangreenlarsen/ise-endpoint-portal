@@ -24,7 +24,6 @@ from app.api.deps import (
     get_dacl_service,
     get_endpoint_service,
     require_admin,
-    require_any,
 )
 from app.core import audit_store
 from app.core.exceptions import IseApiError
@@ -64,7 +63,7 @@ def _to_event(row: dict) -> AuditEvent:
 
 
 @router.get(
-    "", response_model=AuditListResponse, dependencies=[Depends(require_any)]
+    "", response_model=AuditListResponse, dependencies=[Depends(require_admin)]
 )
 async def list_events(
     actor: str | None = Query(None),
@@ -100,7 +99,7 @@ async def list_events(
 @router.get(
     "/{event_id}",
     response_model=AuditEvent,
-    dependencies=[Depends(require_any)],
+    dependencies=[Depends(require_admin)],
 )
 async def get_event(event_id: int) -> AuditEvent:
     row = await audit_store.get(event_id)
