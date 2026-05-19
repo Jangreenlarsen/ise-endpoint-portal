@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.7 build 0439] — 2026-05-19 — feat: TACACS+ uden matchende profil → viewer (ikke 401)
+
+**Berørte filer:** `backend/app/services/user_service.py`, `version.json`
+
+Tidligere afviste portalen TACACS+-login med 401 hvis brugeren ikke havde en matchende operatørprofil. Nu tildeles `viewer`-rollen automatisk og hændelsen auditeres (`tacacs_fallback_viewer`). Bootstrap-tilstanden (ingen profiler overhovedet → admin) er uændret.
+
 ## [5.5.7 build 0438] — 2026-05-19 — security+fix: audit-API admin-only + logout + circuit-breaker audit
 
 **Berørte filer:** `backend/app/api/audit.py`, `backend/app/api/auth.py`, `backend/app/ise/client.py`, `BUGS.md`, `RELEASE_NOTES.md`, `version.json`

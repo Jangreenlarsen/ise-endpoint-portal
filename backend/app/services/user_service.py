@@ -470,14 +470,20 @@ def login(payload: LoginRequest) -> LoginResponse:
                         after={"reason": "no_operator_profiles_configured", "granted_role": "admin"},
                     )
                 else:
-                    logger.warning(
-                        "TACACS+ auth OK men operatørprofil '%s' ikke fundet i portal — afviser login",
+                    logger.info(
+                        "TACACS+ auth OK men operatørprofil '%s' ikke fundet i portal — "
+                        "tildeler viewer-rolle",
                         profile_name,
                     )
-                    raise HTTPException(
-                        status.HTTP_401_UNAUTHORIZED,
-                        f"Operatørprofil '{profile_name}' er ikke konfigureret i portalen. "
-                        "Kontakt din administrator.",
+                    effective_role = "viewer"
+                    endpoint_roles = [payload.username]
+                    assigned_templates = []
+                    from app.core import audit_store as _aud
+                    _aud.record_sync(
+                        "tacacs_fallback_viewer", "session", payload.username,
+                        after={"reason": "no_matching_operator_profile",
+                               "profile_name": profile_name,
+                               "granted_role": "viewer"},
                     )
             else:
                 effective_role = profile_record["role"]
