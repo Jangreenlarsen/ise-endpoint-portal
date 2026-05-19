@@ -3,6 +3,16 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.5 build 0436] — 2026-05-19 — fix: frontend hang — SSE/interval zombie-leak ved view-skift
+
+**Berørte filer:** `frontend/js/app.js`, `frontend/js/views/browse.js`, `frontend/js/api.js`, `BUGS.md`, `version.json`
+
+MutationObserver-cleanup i browse.js kørte aldrig — `#view-container` forbliver i DOM ved view-skift (kun `innerHTML = ""`), så `!document.body.contains(container)` var altid `false`. Hvert browse-besøg efterlod en zombied EventSource og et `setInterval` der aldrig stoppede.
+
+- **app.js:** `renderView()` kalder `currentCleanup()` (returneret fra forrige view) FØR `container.innerHTML = ""`
+- **browse.js:** Returnerer eksplicit `cleanup()`-funktion der stopper EventSource, clearer interval og fjerner resize-listener. Fjernet MutationObserver. `viewActive`-flag guards pxGrid reconnect-setTimeout så det ikke starter ny SSE-forbindelse fra en gammel closure
+- **api.js:** Alle `fetch()`-kald har nu `AbortSignal.timeout(30_000)` — forhindrer UI-blokering ved langsomme ISE-kald
+
 ## [5.5.5 build 0435] — 2026-05-19 — fix: cache STALE_MAX_FACTOR 10→30 — eliminer 20 min dead-zone
 
 **Berørte filer:** `backend/app/core/endpoint_cache.py`, `BUGS.md`, `version.json`

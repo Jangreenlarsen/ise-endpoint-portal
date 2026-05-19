@@ -20,6 +20,14 @@ import { renderPolicy } from "./views/policy.js";
 const statusDot = document.getElementById("status-dot");
 const container = document.getElementById("view-container");
 
+let currentCleanup = null;
+function runCleanup() {
+  if (typeof currentCleanup === "function") {
+    try { currentCleanup(); } catch {}
+  }
+  currentCleanup = null;
+}
+
 const routes = {
   import:     { render: renderImport,     roles: ["admin", "editor", "editor-psk"] },
   browse:     { render: renderBrowse,     roles: ["admin", "editor", "editor-psk", "viewer"] },
@@ -127,6 +135,7 @@ async function renderView() {
   }
   const route = currentRoute();
   const def = routes[route];
+  runCleanup();
   container.innerHTML = "";
   applyChromeMode();
   document.querySelectorAll(".sidebar nav a").forEach((a) => {
@@ -137,7 +146,8 @@ async function renderView() {
     return;
   }
   try {
-    await def.render(container);
+    const cleanup = await def.render(container);
+    if (typeof cleanup === "function") currentCleanup = cleanup;
   } catch (err) {
     const safeMsg = String(err.message || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
     container.innerHTML = `<div class="alert error">View error: ${safeMsg}</div>`;

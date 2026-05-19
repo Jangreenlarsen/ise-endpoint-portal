@@ -22,7 +22,7 @@ export function setUnauthorizedHandler(fn) {
 
 async function request(path, options = {}) {
   // _noContentType: true bruges ved FormData-uploads (browser sætter selv boundary)
-  const { _noContentType, ...fetchOpts } = options;
+  const { _noContentType, _timeout, ...fetchOpts } = options;
   const headers = _noContentType
     ? { ...(options.headers || {}) }
     : { "Content-Type": "application/json", ...(options.headers || {}) };
@@ -30,7 +30,9 @@ async function request(path, options = {}) {
   if (token && !UNAUTH_PATHS.has(path.split("?")[0])) {
     headers["Authorization"] = `Bearer ${token}`;
   }
-  const res = await fetch(`${BASE}/api${path}`, { ...fetchOpts, headers });
+  const timeoutMs = _timeout ?? 30_000;
+  const signal = AbortSignal.timeout ? AbortSignal.timeout(timeoutMs) : undefined;
+  const res = await fetch(`${BASE}/api${path}`, { ...fetchOpts, headers, signal });
   if (res.status === 401) {
     auth.clear();
     if (onUnauthorized) onUnauthorized();
