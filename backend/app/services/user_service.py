@@ -441,20 +441,38 @@ def login(payload: LoginRequest) -> LoginResponse:
             # TACACS+ klarer auth — portal-profilen bestemmer rolle + endpoint-roller.
             profile_name = result.operator_profile_name or payload.username
             profile_record = find_by_username(users, profile_name)
-            if not profile_record:
-                logger.warning(
-                    "TACACS+ auth OK men operatørprofil '%s' ikke fundet i portal — afviser login",
-                    profile_name,
-                )
-                raise HTTPException(
-                    status.HTTP_401_UNAUTHORIZED,
-                    f"Operatørprofil '{profile_name}' er ikke konfigureret i portalen. "
-                    "Kontakt din administrator.",
-                )
 
-            effective_role = profile_record["role"]
-            endpoint_roles = list(profile_record.get("assigned_endpoint_roles") or [])
-            assigned_templates = list(profile_record.get("assigned_templates") or [])
+            # Tjek om der overhovedet er oprettet operatørprofiler i portalen.
+            # Hvis ingen profiler findes → bootstrap-tilstand: giv TACACS-brugeren
+            # automatisk admin-adgang så admin kan logge ind og oprette profiler.
+            any_operator_profiles = any(
+                u.get("user_type") == "operator" for u in users
+            )
+
+            if not profile_record:
+                if not any_operator_profiles:
+                    logger.info(
+                        "TACACS+ auth OK — ingen operatørprofiler konfigureret i portal, "
+                        "tildeler automatisk admin til '%s'",
+                        payload.username,
+                    )
+                    effective_role = "admin"
+                    endpoint_roles = [payload.username]
+                    assigned_templates = []
+                else:
+                    logger.warning(
+                        "TACACS+ auth OK men operatørprofil '%s' ikke fundet i portal — afviser login",
+                        profile_name,
+                    )
+                    raise HTTPException(
+                        status.HTTP_401_UNAUTHORIZED,
+                        f"Operatørprofil '{profile_name}' er ikke konfigureret i portalen. "
+                        "Kontakt din administrator.",
+                    )
+            else:
+                effective_role = profile_record["role"]
+                endpoint_roles = list(profile_record.get("assigned_endpoint_roles") or [])
+                assigned_templates = list(profile_record.get("assigned_templates") or [])
 
             # Implicit endpoint role = username (samme som lokale brugere)
             if payload.username not in endpoint_roles:

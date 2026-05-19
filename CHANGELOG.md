@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.4 build 0430] — 2026-05-19 — feat: TACACS+ auto-admin når ingen operatørprofiler er konfigureret
+
+**Berørte filer:** `backend/app/services/user_service.py`
+
+Hvis TACACS+ auth lykkes men der ikke er oprettet nogen operatørprofiler i portalen (bootstrap-tilstand), tildeles TACACS-brugeren automatisk admin-rollen i stedet for at blive afvist med en fejl. Giver administrator mulighed for at logge ind via TACACS+ og oprette operatørprofiler uden at skulle bruge lokal fallback-konto.
+
+Når mindst én operatørprofil er oprettet, gælder den eksisterende logik: TACACS-brugerens profilnavn skal matche en konfigureret profil — ellers afvises login.
+
 ## [5.5.3 build 0429] — 2026-05-19 — docs: pxGrid cert-opsætning præciserer at identitets-cert og CA-cert skal være separate filer
 
 **Berørte filer:** `frontend/js/views/settings.js`, `frontend/js/i18n.js`
