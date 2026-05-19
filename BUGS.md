@@ -9,6 +9,12 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 ## Åbne
 
+- `[fixed 5.5.5 build 0436] 2026-05-19 — Frontend hænger — kræver Ctrl+Shift+R` — MutationObserver-cleanup i browse.js kørte aldrig ved view-skift fordi `#view-container` aldrig forlader DOM (kun `innerHTML = ""`). Resulterede i akkumulerede zombied EventSource-forbindelser og `setInterval`-timers per browse-besøg. Sekundært: pxGrid reconnect-loop startede nye SSE-forbindelser efter navigation. Tertiært: `fetch()` uden timeout blokerede UI ved langsomme ISE-kald. Fix: (1) cleanup lifecycle i `app.js` — `renderView()` kalder returneret cleanup-funktion før view-skift; (2) `renderBrowse()` returnerer eksplicit cleanup der stopper EventSource, clearer interval og fjerner resize-listener; (3) `viewActive`-guard på pxGrid reconnect-timeout; (4) 30s `AbortSignal.timeout` på alle API-kald. **Berørte filer:** `frontend/js/app.js`, `frontend/js/views/browse.js`, `frontend/js/api.js`.
+
+- `[fixed 5.5.5] 2026-05-19 — Cache "for gammel" efter 10 min — browse re-fetcher alle endpoints fra ISE` — `STALE_MAX_FACTOR = 10` × `cache_ttl_seconds = 60s` = 600s "too stale"-grænse. Pre-warm kører hvert 1800s. I vinduet 600s–1800s er cachen ikke servérbar → hvert browse-kald henter alle endpoints synkront fra ISE. Fix: `STALE_MAX_FACTOR` hævet til `30` (30×60=1800s matcher pre-warm-interval). **Berørt fil:** `backend/app/core/endpoint_cache.py`.
+
+---
+
 - `[fixed 5.5.2 build 0424] 2026-05-18 — Simulator viser kun én RADIUS-parameter selv om politikken bruger flere` — RADIUS-parametersektionen i endpoint-detail / simulatoren vises kun *efter* simulation og kun med de attributter politikken rapporterer som `radius_attrs_needed`. Der er ingen mulighed for proaktivt at tilføje flere RADIUS-parametre eller fjerne/redigere dem — UI'et genstarter parametre ved hvert kald. Fix: ny dynamisk add/remove RADIUS-sektion der altid er synlig; bruger kan tilføje/fjerne vilkårlige RADIUS-nøgle/værdi-par; manglende `radius_attrs_needed` merges ind automatisk efter simulation uden at nulstille eksisterende værdier. **Berørte filer:** `frontend/js/views/browse-detail.js`, `frontend/css/styles.css`.
 
 ---

@@ -356,6 +356,7 @@ export async function renderBrowse(container) {
 
   let pxgridEventSource = null;
   let pxgridErrorTimer  = null;
+  let viewActive        = true;
 
   function startPxGridStream() {
     if (pxgridEventSource) return;
@@ -435,7 +436,7 @@ export async function renderBrowse(container) {
       // worker_stopped = transient restart — forsøg at genoprette SSE-stream
       // efter kort delay. pxgrid_enabled=false = permanent, genopret ikke.
       if (reason === "worker_stopped") {
-        setTimeout(() => startPxGridStream(), 5000);
+        setTimeout(() => { if (viewActive) startPxGridStream(); }, 5000);
       }
     });
     pxgridEventSource.addEventListener("clear", () => {
@@ -515,18 +516,16 @@ export async function renderBrowse(container) {
   updatePxGridSourceBadge();
 
   const badgeTickTimer = setInterval(updatePxGridSourceBadge, 5000);
-  const cleanupObs = new MutationObserver(() => {
-    if (!document.body.contains(container)) {
-      stopPxGridStream();
-      clearInterval(badgeTickTimer);
-      cleanupObs.disconnect();
-      window.removeEventListener("resize", fitStickyTable);
-    }
-  });
-  cleanupObs.observe(document.body, { childList: true, subtree: true });
   window.addEventListener("resize", fitStickyTable);
 
   // force=true: poll altid MnT ved view-mount så auth-status er korrekt fra start.
   await tableAPI.load(true);
   fitStickyTable();
+
+  return function cleanup() {
+    viewActive = false;
+    stopPxGridStream();
+    clearInterval(badgeTickTimer);
+    window.removeEventListener("resize", fitStickyTable);
+  };
 }

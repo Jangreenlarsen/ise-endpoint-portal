@@ -3,6 +3,28 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.6 build 0437] — 2026-05-19 — release: v5.5.6-P1 — stabilitet og ydeevne
+
+**Berørte filer:** `version.json`, `RELEASE_NOTES.md`, `CHANGELOG.md`
+
+Releaseversion 5.5.6-P1. Samler tre stabilitets- og ydeevnerettelser: frontend hang (SSE zombie-leak), cache dead-zone (STALE_MAX_FACTOR 10→30) og API-timeout. Se RELEASE_NOTES.md [5.5.6] for brugerbeskrivelse.
+
+## [5.5.5 build 0436] — 2026-05-19 — fix: frontend hang — SSE/interval zombie-leak ved view-skift
+
+**Berørte filer:** `frontend/js/app.js`, `frontend/js/views/browse.js`, `frontend/js/api.js`, `BUGS.md`, `version.json`
+
+MutationObserver-cleanup i browse.js kørte aldrig — `#view-container` forbliver i DOM ved view-skift (kun `innerHTML = ""`), så `!document.body.contains(container)` var altid `false`. Hvert browse-besøg efterlod en zombied EventSource og et `setInterval` der aldrig stoppede.
+
+- **app.js:** `renderView()` kalder `currentCleanup()` (returneret fra forrige view) FØR `container.innerHTML = ""`
+- **browse.js:** Returnerer eksplicit `cleanup()`-funktion der stopper EventSource, clearer interval og fjerner resize-listener. Fjernet MutationObserver. `viewActive`-flag guards pxGrid reconnect-setTimeout så det ikke starter ny SSE-forbindelse fra en gammel closure
+- **api.js:** Alle `fetch()`-kald har nu `AbortSignal.timeout(30_000)` — forhindrer UI-blokering ved langsomme ISE-kald
+
+## [5.5.5 build 0435] — 2026-05-19 — fix: cache STALE_MAX_FACTOR 10→30 — eliminer 20 min dead-zone
+
+**Berørte filer:** `backend/app/core/endpoint_cache.py`, `BUGS.md`, `version.json`
+
+`STALE_MAX_FACTOR = 10` × `cache_ttl_seconds = 60s` = 600s "too stale"-grænse. Pre-warm kørte hvert 1800s. I vinduet 600s–1800s var cachen ikke servérbar og browse hentede alle endpoints synkront fra ISE (ligner manuel refresh). Fix: hævet til 30 × 60s = 1800s — matcher pre-warm-intervallet præcist. Stale entries serveres nu via SWR (baggrunds-refresh) hele vejen til næste pre-warm scan.
+
 ## [5.5.5 build 0434] — 2026-05-19 — fix: release notes manglede sektioner for 5.5.4 og 5.5.5
 
 **Berørte filer:** `RELEASE_NOTES.md`, `version.json`
