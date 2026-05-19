@@ -170,6 +170,17 @@ class EndpointCache:
     def detail_count(self) -> int:
         return len(self._details)
 
+    def get_oldest_id(self) -> str | None:
+        """Returnér ID på den cachede entry med den ældste fetched_at-timestamp.
+
+        Bruges af drip-refresh-loopen til at prioritere de mest forældede
+        endpoints og sikre at alle entries roteres jævnt frem for en stor burst.
+        Returnerer None hvis cachen er tom.
+        """
+        if not self._details:
+            return None
+        return min(self._details, key=lambda k: self._details[k].fetched_at)
+
     async def _fetch_and_store(
         self,
         endpoint_id: str,

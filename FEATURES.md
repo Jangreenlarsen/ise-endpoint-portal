@@ -9,6 +9,8 @@ Alle nye features registreres her FØR implementering påbegyndes.
 
 ## Planlagt / Under implementering
 
+- `[done 5.5.9] 2026-05-19 — Cache drip-refresh: kontinuerlig baggrunds-opdatering af endpoint-cache` — Ny `_drip_loop()` i pre-warm worker kører parallelt med liste-scans. Finder løbende ældste cachede entry og refresher fra ISE med `interval/total` sekunders mellemrum. Spreder load jævnt over 30-min-intervallet. **Berørte lag:** `backend/app/core/endpoint_cache.py` (get_oldest_id), `backend/app/services/cache_prewarm.py` (_drip_loop, _run refactor).
+
 - `[done 5.5.5] 2026-05-19 — Security Patch 2: SEC-B, SEC-D, SEC-E, SEC-I, SEC-J, SEC-M` — Implementering af sikkerhedsfund fra V2-analyse: (B) PSK CSPRNG, (D) ISE TLS default True, (E) audit-log for update-operationer + first-admin, (I) chmod 600 på operator_profiles.json, (J) ZIP-bomb ukomprimeret størrelsestjek, (M) audit for TACACS auto-admin bootstrap. **Berørte lag:** `backend/app/services/settings_service.py`, `backend/app/core/config.py`, `backend/app/services/update_service.py`, `backend/app/services/user_service.py`, `backend/app/core/operator_profile_store.py`.
 
 - `[done 5.5.4] 2026-05-19 — TACACS+ auto-admin ved tom operatørprofil-liste` — Hvis ingen operatørprofiler er konfigureret i portalen, tildeles TACACS-autentiserede brugere automatisk admin-rollen (bootstrap-tilstand). **Berørte lag:** `backend/app/services/user_service.py`.

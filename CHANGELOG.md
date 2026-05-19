@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.5.9 build 0442] — 2026-05-19 — feat: cache drip-refresh — kontinuerlig baggrunds-opdatering af endpoint-cache
+
+**Berørte filer:** `backend/app/core/endpoint_cache.py`, `backend/app/services/cache_prewarm.py`, `version.json`
+
+Ny `_drip_loop()` i pre-warm worker kører parallelt med den periodiske liste-scan. Loopen finder løbende den ældste cachede entry og refresher den fra ISE, derefter sover den `interval / antal_endpoints` sekunder (fx 1000 endpoints / 1800s = 1,8s pr. opdatering). Resultatet er at alle endpoints opdateres jævnt over pre-warm-intervallet — i stedet for én burst hvert 30. minut kun udløst af bruger-interaktion. Friske entries (yngre end `cache_ttl_seconds`) og entries der allerede er ved at blive hentet (`_inflight_detail`) springes over. Ny `get_oldest_id()` metode på `EndpointCache` finder den ældste entry i O(N).
+
 ## [5.5.8 build 0441] — 2026-05-19 — fix: detail-modal loading-besked rykker ikke længere layout
 
 **Berørte filer:** `frontend/css/styles.css`, `version.json`

@@ -4,6 +4,24 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.5.9] — 2026-05-19 — Patch 1
+
+### Endpoint-cache: kontinuerlig baggrundsopdatering
+
+**Alle endpoints opdateres nu automatisk i baggrunden** — uden at brugeren skal åbne Browse-siden. Tidligere blev cache kun opdateret ved bruger-interaktion (browse, edit) eller ved den periodiske fulde scan hvert 30. minut. Det betød at endpoints der ikke var besøgt i et stykke tid, altid udløste en synkron ISE-forespørgsel ved næste åbning.
+
+Den nye drip-refresh-mekanisme fungerer som et kontinuerligt baggrundstjek: portalen finder løbende det endpoint der har den ældste cachepost og opdaterer det fra ISE. Opdateringerne spredes jævnt over hele 30-minutters-intervallet (fx ~1,8s pr. endpoint ved 1000 endpoints) — ingen burst-belastning på ISE og ingen "kold cache" ved skift til Browse.
+
+---
+
+## [5.5.8] — 2026-05-19 — Patch 1
+
+### Detail-modal: loading-besked rykker ikke længere layout
+
+**Informationsbeskeder i endpoint detail-modal skubber ikke længere indholdet.** Tidligere sad loading/gem/fejl-beskeden i flex-flowet, så tab-baren og alle detaljer rykkede op og ned når beskeden dukkede op eller forsvandt. Beskeden er nu `position: absolute` og overlayer indholdet øverst — tab-baren forbliver stationær.
+
+---
+
 ## [5.5.7] — 2026-05-19 — Patch 1
 
 ### Sikkerhed og audit-dækning
