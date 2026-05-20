@@ -4,6 +4,14 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.6.6] — 2026-05-20 — Bug fix release
+
+### ISE Session VLAN: forkert værdi på visse endpoints
+
+**VLAN i ISE Session Auth-kolonnen viser nu korrekt VLAN for alle endpoints.** Et subset af endpoints viste forkert VLAN (fx 10 i stedet for 32). Root cause: ISE sender VLAN i pxGrid som `tunnelPrivateGroupId: "(tag=0) 32"` — portalen parsede ikke præfikset korrekt og gemte hele strengen. Derudover brugte getSessions-opdateringen stale VLAN fra den gamle cache i stedet for den friske pxGrid-payload. Begge fejl rettet: `_parse_vlan()` normaliserer ISE-formatet til rent tal; getSessions bruger nu VLAN direkte fra ISE-svaret.
+
+---
+
 ## [5.6.5] — 2026-05-20 — Bug fix release
 
 ### ISE Session: stale VLAN ryddes ved re-autentisering + ny debug-tab

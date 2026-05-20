@@ -504,6 +504,18 @@ def _extract_endpoints(payload: Any) -> list[dict[str, Any]]:
     return []
 
 
+def _parse_vlan(raw: str) -> str:
+    """Normaliser ISE tunnelPrivateGroupId til rent VLAN-nummer.
+
+    ISE sender fx '(tag=0) 32' — vi vil kun have '32'.
+    """
+    if not raw:
+        return ""
+    parts = raw.strip().split()
+    last = parts[-1] if parts else ""
+    return last if last.isdigit() else raw.strip()
+
+
 def _build_session_info(d: dict[str, Any]) -> SessionInfo:
     from app.ise import network_devices as _nd
     mac = (
@@ -566,10 +578,8 @@ def _build_session_info(d: dict[str, Any]) -> SessionInfo:
         or d.get("coa_vpn_acl", "")
         or ""
     )
-    vlan = str(
-        d.get("vlan", "")
-        or d.get("tunnelPrivateGroupId", "")
-        or ""
+    vlan = _parse_vlan(
+        str(d.get("vlan", "") or d.get("tunnelPrivateGroupId", "") or "")
     )
     cts_security_group = str(
         d.get("securityGroup", "")
@@ -663,9 +673,9 @@ async def _reconcile_from_pxgrid(cache, sessions: list[dict]) -> None:
             # Preserve nas_device_type/nas_name from disk if NAS cache not loaded yet.
             nas_device_type = info.nas_device_type or (existing.nas_device_type if existing else "")
             nas_name = info.nas_name or (existing.nas_name if existing else "")
-            # Bevar MnT-beriget data fra eksisterende entry — pxGrid getSessions
-            # returnerer ikke endpoint_policy, dacl, vlan, cts_security_group og
-            # heller ikke altid policy_set_name/authz_rule_name.
+            # getSessions-payload indeholder tunnelPrivateGroupId (→ vlan) direkte.
+            # Brug info.vlan (frisk fra ISE) hvis den er sat — ellers bevar MnT-beriget
+            # existing.vlan. Samme logik for dacl/endpoint_policy/cts_security_group.
             info_with_mac = SessionInfo(
                 mac=mac,
                 state=info.state or "STARTED",
@@ -677,12 +687,12 @@ async def _reconcile_from_pxgrid(cache, sessions: list[dict]) -> None:
                 authz_rule_name=info.authz_rule_name or (existing.authz_rule_name if existing else ""),
                 nas_name=nas_name,
                 nas_device_type=nas_device_type,
-                endpoint_policy=existing.endpoint_policy if existing else "",
-                dacl=existing.dacl if existing else "",
-                vlan=existing.vlan if existing else "",
-                cts_security_group=existing.cts_security_group if existing else "",
-                auth_method=existing.auth_method if existing else "",
-                identity_group=existing.identity_group if existing else "",
+                endpoint_policy=info.endpoint_policy or (existing.endpoint_policy if existing else ""),
+                dacl=info.dacl or (existing.dacl if existing else ""),
+                vlan=info.vlan or (existing.vlan if existing else ""),
+                cts_security_group=info.cts_security_group or (existing.cts_security_group if existing else ""),
+                auth_method=info.auth_method or (existing.auth_method if existing else ""),
+                identity_group=info.identity_group or (existing.identity_group if existing else ""),
                 raw=info.raw,
             )
             if mac not in cached_by_mac:
@@ -995,27 +1005,30 @@ async def reconcile_stale_sessions(session_cache, max_batch: int = 50) -> None: 
                     ] if mnt_profiles_str else []
                     existing = await session_cache.get(mac)
                     if existing:
-                        # Opdatér eksisterende entry — pxGrid real-time data har forrang,
-                        # MnT bruges kun til at fylde felter der mangler.
+                        # Opdatér eksisterende entry med MnT-data.
+                        # MnT VLAN foretrækkes over pxGrid — MnT henter RADIUS-accounting
+                        # data (tunnelPrivateGroupId fra RADIUS Accept) og er mere
+                        # pålidelig end STOMP-events der kan mangle eller komme i forkert
+                        # rækkefølge. pxGrid-event kan have "(tag=0) 32" der nu normaliseres.
                         updated = SessionInfo(
                             mac=existing.mac,
                             state=existing.state,
                             audit_session_id=existing.audit_session_id,
                             nas_ip=existing.nas_ip or data.get("nas_ip"),
                             user_name=existing.user_name or data.get("user_name"),
-                            policy_set_name=existing.policy_set_name or data.get("policy_set_name"),
+                            policy_set_name=data.get("policy_set_name") or existing.policy_set_name,
                             authz_profiles=existing.authz_profiles or mnt_profiles,
-                            authz_rule_name=existing.authz_rule_name or data.get("authz_rule_name"),
+                            authz_rule_name=data.get("authz_rule_name") or existing.authz_rule_name,
                             use_case=existing.use_case,
                             nas_name=existing.nas_name,
                             nas_device_type=existing.nas_device_type,
                             last_event_at=existing.last_event_at,
-                            endpoint_policy=existing.endpoint_policy or data.get("endpoint_policy"),
-                            dacl=existing.dacl or data.get("dacl"),
-                            vlan=existing.vlan or data.get("vlan"),
-                            cts_security_group=existing.cts_security_group or data.get("cts_security_group"),
-                            auth_method=existing.auth_method or data.get("auth_method"),
-                            identity_group=existing.identity_group or data.get("identity_group"),
+                            endpoint_policy=data.get("endpoint_policy") or existing.endpoint_policy,
+                            dacl=data.get("dacl") or existing.dacl,
+                            vlan=data.get("vlan") or existing.vlan,
+                            cts_security_group=data.get("cts_security_group") or existing.cts_security_group,
+                            auth_method=data.get("auth_method") or existing.auth_method,
+                            identity_group=data.get("identity_group") or existing.identity_group,
                             raw=existing.raw,
                         )
                         await session_cache.upsert(updated)

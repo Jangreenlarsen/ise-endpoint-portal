@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.6.6 build 0453] — 2026-05-20 — fix: tunnelPrivateGroupId "(tag=0) N" normaliseres + getSessions bruger frisk VLAN
+
+**Berørte filer:**
+- `backend/app/pxgrid/session_worker.py` — `_parse_vlan()`: normaliserer `"(tag=0) 32"` → `"32"` ved at tage det numeriske suffix. `_build_session_info`: bruger `_parse_vlan()` på tunnelPrivateGroupId-udtræk. getSessions bulk-load: `vlan=info.vlan or existing.vlan` (frisk payload foretrækkes). `reconcile_stale_sessions._process()`: reverted v5.6.4-prioritering for vlan/policy-felter — MnT foretrækkes som primær kilde (RADIUS accounting er mere pålidelig end STOMP-events der kan komme i forkert rækkefølge eller mangle).
+
+---
+
 ## [5.6.5 build 0452] — 2026-05-20 — fix: session debug mismatch-advarsel forklarer MnT-forsinkelse
 
 **Berørte filer:**
