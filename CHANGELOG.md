@@ -3,6 +3,16 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.6.10 build 0457] — 2026-05-20 — fix: 6 resterende telemetri-problemer fra analyse (P2-P7)
+
+**Berørte filer:**
+- `backend/app/pxgrid/session_worker.py` — (P2) `_reconcile_from_pxgrid`: ny `session_fields_changed`-betingelse opdaterer eksisterende entries når vlan/dacl/sgt er ændret siden sidst (STOMP offline-vindue). (P3+P5) `_enrich_in_flight: set[str]` modul-sæt forhindrer duplikate MnT-tasks per MAC; `_enrich_single_from_mnt` fjerner MAC i `finally`-blok.
+- `backend/app/pxgrid/session_cache.py` — (P4) `load_from_disk(max_age_s)`: sessions ældre end grænsen springes over ved indlæsning (default 4 timer via `pxgrid_session_disk_max_age_s`).
+- `backend/app/main.py` — (P4) Kalder `load_from_disk` med `max_age_s`. (P6) `mnt_stale_reconcile_max_batch` læses fra settings (default hævet 50→100).
+- `backend/app/ise/mnt_sessions.py` — (P7) `fetch_session_by_mac`: AuthStatus VLAN (RADIUS Accept AV-pair) foretrækkes over Session/MACAddress VLAN. VLAN samles til sidst: `out["vlan"] = auth_status_vlan or session_mac_vlan`.
+
+---
+
 ## [5.6.9 build 0456] — 2026-05-20 — fix: _enrich_sessions_from_mnt overskrev korrekt pxGrid VLAN (5-min-cyklus)
 
 **Berørt fil:**

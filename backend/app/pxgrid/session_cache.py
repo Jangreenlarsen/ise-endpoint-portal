@@ -202,9 +202,14 @@ class SessionCache:
             logger.warning("session cache: fejl ved gemning til %s: %s", path, exc)
             return 0
 
-    def load_from_disk(self, path: Path) -> int:
+    def load_from_disk(self, path: Path, max_age_s: float = 0.0) -> int:
         """Indlæs sessions fra JSON-fil og merge ind i cache.
-        Kald synkront FØR worker starter (ingen asyncio-lock nødvendig)."""
+        Kald synkront FØR worker starter (ingen asyncio-lock nødvendig).
+
+        ``max_age_s > 0`` udelader sessions hvis ``last_event_at`` er ældre end
+        dette antal sekunder — forhindrer at meget gamle disk-sessions vises
+        i Browse-vinduet inden pxGrid-reconcile er færdig.
+        """
         path = Path(path)
         if not path.exists():
             logger.debug("session cache: ingen disk-fil fundet på %s", path)
@@ -212,11 +217,17 @@ class SessionCache:
         try:
             with open(path, encoding="utf-8") as f:
                 data = json.load(f)
-            loaded = 0
+            now = time.time()
+            skipped = 0
             for item in data.get("sessions", []):
                 mac = self._norm(item.get("mac", ""))
                 if not mac:
                     continue
+                if max_age_s > 0:
+                    last_event = float(item.get("last_event_at") or 0.0)
+                    if last_event > 0 and (now - last_event) > max_age_s:
+                        skipped += 1
+                        continue
                 info = SessionInfo(
                     mac=mac,
                     state=item.get("state", ""),
@@ -239,7 +250,13 @@ class SessionCache:
                 )
                 self._sessions[mac] = info
                 loaded += 1
-            logger.info("session cache: indlæst %d sessioner fra %s", loaded, path)
+            if skipped:
+                logger.info(
+                    "session cache: indlæst %d sessioner fra %s (%d for gamle udeladt)",
+                    loaded, path, skipped,
+                )
+            else:
+                logger.info("session cache: indlæst %d sessioner fra %s", loaded, path)
             return loaded
         except Exception as exc:  # noqa: BLE001
             logger.warning("session cache: fejl ved indlæsning fra %s: %s", path, exc)

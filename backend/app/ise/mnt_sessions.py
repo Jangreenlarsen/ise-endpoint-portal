@@ -153,6 +153,8 @@ async def fetch_session_by_mac(mac: str) -> dict[str, str]:
         return out
 
     # ── Session/MACAddress ────────────────────────────────────────────────
+    # VLAN gemmes i session_mac_vlan — kombineres med AuthStatus VLAN til sidst.
+    session_mac_vlan = ""
     try:
         sc, text = await _mnt_get_xml(f"/admin/API/mnt/Session/MACAddress/{mac_encoded}")
         if sc < 400 and text:
@@ -164,7 +166,7 @@ async def fetch_session_by_mac(mac: str) -> dict[str, str]:
                 f.get("dacl") or f.get("downloadedDacl") or f.get("downloaded_dacl")
                 or f.get("downloadedAVPair") or ""
             )
-            out["vlan"] = (
+            session_mac_vlan = (
                 f.get("vlan") or f.get("tunnelPrivateGroupId") or f.get("tunnel_private_group_id") or ""
             )
             out["cts_security_group"] = (
@@ -175,15 +177,18 @@ async def fetch_session_by_mac(mac: str) -> dict[str, str]:
         logger.debug("MnT Session/MACAddress [%s] fejlede: %s", mac, exc)
 
     # ── AuthStatus/MACAddress — kræver /seconds/records/framed path-params ─
+    # VLAN udtrækkes fra RADIUS Accept AV-pair og gemmes i auth_status_vlan.
+    # AuthStatus foretrækkes over Session/MACAddress VLAN — Session/MACAddress kan
+    # indeholde data fra en stale session ved ISE session-overlap, mens AuthStatus
+    # AV-pairs direkte afspejler det seneste RADIUS Accept-svar.
+    auth_status_vlan = ""
     try:
         sc2, text2 = await _mnt_get_xml(
             f"/admin/API/mnt/AuthStatus/MACAddress/{mac_encoded}/3600/25/All"
         )
         if sc2 < 400 and text2:
             # AuthStatus returnerer FLERE authStatusElements sorteret nyeste-først.
-            # _parse_all_xml_fields() overskrives med sidst-fundne værdi = ÆLDSTE post.
-            # Vi parser i stedet hvert element individuelt og bruger det FØRSTE
-            # (nyeste) der har den relevante data — fx VLAN i response AV-pair.
+            # Vi parser hvert element individuelt og bruger FØRSTE (nyeste) fund per felt.
             elements = _parse_auth_status_elements(text2)
             for elem in elements:
                 if not out["auth_method"]:
@@ -205,13 +210,13 @@ async def fetch_session_by_mac(mac: str) -> dict[str, str]:
                         out["authz_profiles_mnt"] = ",".join(profiles)
                 # VLAN fra response AV-pair — tag fra FØRSTE element der har det.
                 # Format: "Tunnel-Private-Group-ID=(tag=1) 32" eller "=32"
-                if not out["vlan"]:
+                if not auth_status_vlan:
                     resp_str = elem.get("response", "")
                     m = re.search(
                         r"Tunnel-Private-Group-ID=(?:\(tag=\d+\)\s*)?(\d+)", resp_str
                     )
                     if m:
-                        out["vlan"] = m.group(1)
+                        auth_status_vlan = m.group(1)
                 if not out["endpoint_policy"]:
                     out["endpoint_policy"] = (
                         elem.get("endpointPolicy") or elem.get("EndpointPolicy") or ""
@@ -223,6 +228,8 @@ async def fetch_session_by_mac(mac: str) -> dict[str, str]:
     except IseApiError as exc:
         logger.debug("MnT AuthStatus/MACAddress [%s] fejlede: %s", mac, exc)
 
+    # AuthStatus VLAN (fra RADIUS Accept AV-pair) foretrækkes; Session/MACAddress som fallback.
+    out["vlan"] = auth_status_vlan or session_mac_vlan
     return out
 
 

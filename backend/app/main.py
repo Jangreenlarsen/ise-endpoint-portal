@@ -92,7 +92,10 @@ async def lifespan(_: FastAPI):
         _sess_cache_path = Path(_sess_disk_str)
         if not _sess_cache_path.is_absolute():
             _sess_cache_path = Path(__file__).resolve().parents[2] / _sess_cache_path
-        _n = get_session_cache().load_from_disk(_sess_cache_path)
+        # Disk-sessions ældre end max_age kasseres — forhindrer meget stale VLAN/auth-data
+        # i Browse-vinduet inden pxGrid-reconcile er færdig (standard: 4 timer).
+        _sess_disk_max_age = float(getattr(settings, "pxgrid_session_disk_max_age_s", 14400.0))
+        _n = get_session_cache().load_from_disk(_sess_cache_path, max_age_s=_sess_disk_max_age)
         logger.info("pxGrid session cache: indlæst %d sessioner fra disk ved start", _n)
 
     start_watchdog(timeout_s=120)
@@ -140,8 +143,9 @@ async def lifespan(_: FastAPI):
 
     async def _mnt_stale_reconcile_loop():
         await asyncio.sleep(120)
+        _max_batch = int(getattr(settings, "mnt_stale_reconcile_max_batch", 100))
         while True:
-            await reconcile_stale_sessions(get_session_cache(), max_batch=50)
+            await reconcile_stale_sessions(get_session_cache(), max_batch=_max_batch)
             await asyncio.sleep(_mnt_stale_reconcile_interval)
 
     _mnt_stale_task = asyncio.create_task(

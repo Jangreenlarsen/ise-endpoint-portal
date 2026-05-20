@@ -37,6 +37,9 @@ from app.pxgrid.session_cache import SessionInfo, get_cache
 
 logger = logging.getLogger(__name__)
 
+# MACs med igangværende MnT real-time berigelse — forhindrer duplikate tasks pr. MAC.
+_enrich_in_flight: set[str] = set()
+
 PUBSUB_SERVICE = "com.cisco.ise.pubsub"
 SUB_ID_SESSION = "sub-session"
 SUB_ID_ENDPOINT = "sub-endpoint"
@@ -423,11 +426,15 @@ async def _handle_message_body(body: bytes, cache) -> None:  # type: ignore[no-u
                     info.authz_profiles = existing.authz_profiles
             await cache.upsert(info)
             # Trigger real-time MnT-berigelse hvis MnT-felter mangler eller ved ny session.
+            # Dedupliceres per MAC — ingen duplikate tasks hvis events ankommer tæt i tid.
             if not info.identity_group or not info.endpoint_policy or not info.vlan:
-                asyncio.create_task(
-                    _enrich_single_from_mnt(cache, info.mac),
-                    name=f"mnt-enrich-{info.mac[:8]}",
-                )
+                _mac_key = info.mac.upper().replace("-", ":").strip()
+                if _mac_key not in _enrich_in_flight:
+                    _enrich_in_flight.add(_mac_key)
+                    asyncio.create_task(
+                        _enrich_single_from_mnt(cache, info.mac),
+                        name=f"mnt-enrich-{info.mac[:8]}",
+                    )
 
 
 def _extract_sessions(payload: Any) -> list[dict[str, Any]]:
@@ -699,12 +706,18 @@ async def _reconcile_from_pxgrid(cache, sessions: list[dict]) -> None:
                 await cache.upsert(info_with_mac)
                 seeded += 1
             else:
-                # Opdatér eksisterende entry hvis den mangler authz/policy-data
-                # ELLER hvis vi nu har bedre NAS-data (device type).
+                # Opdatér eksisterende entry hvis den mangler authz/policy-data,
+                # NAS-data er forbedret, ELLER session-specifikke felter er ændret
+                # (fx VLAN der skiftede mens STOMP var offline under PSN failover).
                 new_has_data = bool(info_with_mac.policy_set_name or info_with_mac.authz_profiles)
                 existing_lacks_data = existing and not existing.policy_set_name and not existing.authz_profiles
                 nas_improved = bool(nas_device_type and not (existing and existing.nas_device_type))
-                if (existing_lacks_data and new_has_data) or nas_improved:
+                session_fields_changed = existing and bool(
+                    (info_with_mac.vlan and info_with_mac.vlan != existing.vlan)
+                    or (info_with_mac.dacl and info_with_mac.dacl != existing.dacl)
+                    or (info_with_mac.cts_security_group and info_with_mac.cts_security_group != existing.cts_security_group)
+                )
+                if (existing_lacks_data and new_has_data) or nas_improved or session_fields_changed:
                     await cache.upsert(info_with_mac)
                     updated += 1
 
@@ -829,9 +842,11 @@ async def _enrich_single_from_mnt(cache, mac: str) -> None:  # type: ignore[no-u
     ankommer uden identity_group eller endpoint_policy. Kort timeout så vi
     ikke ophober tasks ved travl ISE-trafik.
     """
+    mac_key = mac.upper().replace("-", ":").strip()
     try:
         from app.ise.mnt_sessions import fetch_session_by_mac
     except ImportError:
+        _enrich_in_flight.discard(mac_key)
         return
     try:
         data = await asyncio.wait_for(fetch_session_by_mac(mac), timeout=15.0)
@@ -885,6 +900,8 @@ async def _enrich_single_from_mnt(cache, mac: str) -> None:  # type: ignore[no-u
         logger.debug("MnT real-time enrich timeout for %s", mac)
     except Exception as exc:  # noqa: BLE001
         logger.debug("MnT real-time enrich fejlede for %s: %s", mac, exc)
+    finally:
+        _enrich_in_flight.discard(mac_key)
 
 
 async def _enrich_sessions_from_mnt(cache) -> None:  # type: ignore[no-untyped-def]
