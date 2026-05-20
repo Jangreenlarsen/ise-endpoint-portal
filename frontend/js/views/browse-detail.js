@@ -461,6 +461,12 @@ export function initDetail(container, state, api, cb) {
             <button type="button" id="d-pol-radius-add" class="secondary small">+ Tilføj parameter</button>
           </div>
           <div class="radius-section-hint">Én attribut = én enkelt værdi — som i en rigtig RADIUS-pakke. For at matche <em>contains "hus"</em> OG <em>contains "802"</em> i samme regel: skriv én value der indeholder begge, fx <code>hus-802</code>.</div>
+          <div class="radius-tpl-bar">
+            <select id="d-pol-radius-tpl-sel" class="radius-tpl-sel"><option value="">— Vælg template —</option></select>
+            <button type="button" id="d-pol-radius-tpl-load" class="secondary small" title="Indlæs valgt template">Indlæs</button>
+            <button type="button" id="d-pol-radius-tpl-save" class="secondary small">Gem som template</button>
+            <button type="button" id="d-pol-radius-tpl-del" class="secondary small radius-tpl-del" title="Slet valgt template">✕ Slet</button>
+          </div>
           <div id="d-pol-radius-rows"></div>
         </div>
         <div id="d-pol-match-result"></div>
@@ -534,6 +540,61 @@ export function initDetail(container, state, api, cb) {
           resultEl.innerHTML = `<div class="alert error">Simulering fejlede: ${esc(err.message)}</div>`;
         }
       }
+
+      // ── RADIUS templates (localStorage) ──────────────────────────────────
+      const TPL_KEY = "ise_radius_templates";
+      function loadTemplates() {
+        try { return JSON.parse(localStorage.getItem(TPL_KEY) || "[]"); } catch { return []; }
+      }
+      function saveTemplates(tpls) { localStorage.setItem(TPL_KEY, JSON.stringify(tpls)); }
+
+      function renderTplSelect() {
+        const sel = matchArea.querySelector("#d-pol-radius-tpl-sel");
+        if (!sel) return;
+        const cur = sel.value;
+        const tpls = loadTemplates().sort((a, b) => a.name.localeCompare(b.name, "da"));
+        sel.innerHTML = `<option value="">— Vælg template —</option>`
+          + tpls.map((tp) => `<option value="${esc(tp.id)}"${tp.id === cur ? " selected" : ""}>${esc(tp.name)}</option>`).join("");
+      }
+
+      matchArea.querySelector("#d-pol-radius-tpl-load").addEventListener("click", () => {
+        const tplId = matchArea.querySelector("#d-pol-radius-tpl-sel")?.value;
+        if (!tplId) return;
+        const tpl = loadTemplates().find((tp) => tp.id === tplId);
+        if (!tpl) return;
+        matchArea.querySelector("#d-pol-radius-rows").innerHTML = "";
+        Object.entries(tpl.attrs).forEach(([k, v]) => addRadiusRow(k, v));
+      });
+
+      matchArea.querySelector("#d-pol-radius-tpl-save").addEventListener("click", () => {
+        const attrs = readRadiusAttrs();
+        if (!Object.keys(attrs).length) {
+          alert("Tilføj mindst ét RADIUS-parameter inden du gemmer som template.");
+          return;
+        }
+        const name = prompt("Navn på template (fx 'Wireless SSID voldby17'):", "");
+        if (!name?.trim()) return;
+        const tpls = loadTemplates();
+        const newTpl = { id: `tpl_${Date.now()}`, name: name.trim(), attrs };
+        tpls.push(newTpl);
+        saveTemplates(tpls);
+        renderTplSelect();
+        matchArea.querySelector("#d-pol-radius-tpl-sel").value = newTpl.id;
+      });
+
+      matchArea.querySelector("#d-pol-radius-tpl-del").addEventListener("click", () => {
+        const sel = matchArea.querySelector("#d-pol-radius-tpl-sel");
+        const tplId = sel?.value;
+        if (!tplId) return;
+        const tpls = loadTemplates();
+        const tpl = tpls.find((tp) => tp.id === tplId);
+        if (!tpl || !confirm(`Slet template "${tpl.name}"?`)) return;
+        saveTemplates(tpls.filter((tp) => tp.id !== tplId));
+        renderTplSelect();
+      });
+
+      renderTplSelect();
+      // ─────────────────────────────────────────────────────────────────────
 
       matchArea.querySelector("#d-pol-radius-add").addEventListener("click", () => {
         addRadiusRow();

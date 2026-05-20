@@ -3134,6 +3134,12 @@ body.register-route .login-card {
 [data-theme="dark"] .radius-attr-key,
 [data-theme="dark"] .radius-attr-val { background: #1e293b; border-color: #1d4ed8; color: #e2e8f0; }
 [data-theme="dark"] .radius-row-duplicate .radius-attr-key { border-color: #d97706 !important; background: #292524 !important; }
+/* RADIUS template bar */
+.radius-tpl-bar { display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.5rem; flex-wrap: wrap; }
+.radius-tpl-sel { font-size: 0.75rem; padding: 2px 6px; border: 1px solid #bfdbfe; border-radius: 4px; background: #eff6ff; color: #1e3a8a; flex: 1; min-width: 150px; max-width: 280px; }
+.radius-tpl-del { color: #dc2626 !important; border-color: #fca5a5 !important; }
+[data-theme="dark"] .radius-tpl-sel { background: #1e293b; border-color: #1d4ed8; color: #93c5fd; }
+[data-theme="dark"] .radius-tpl-del { color: #f87171 !important; border-color: #7f1d1d !important; }
 /* Wizard in detail */
 .policy-wizard-card {
   margin-top: 0.5rem;

@@ -9,6 +9,8 @@ Alle nye features registreres her FØR implementering påbegyndes.
 
 ## Planlagt / Under implementering
 
+- `[done 5.6.14 b0461] 2026-05-20 — RADIUS template-gemmer` — Gem og genindlæs sæt af RADIUS-parametre som navngivne templates (fx "Wireless SSID voldby17") direkte i simulate-formularen. Templates gemmes i `localStorage`. Dropdown med alle gemte templates; Indlæs/Gem/Slet-knapper. Ingen backend-ændringer. **Berørte lag:** `frontend/js/views/browse-detail.js`, `frontend/css/styles.css`.
+
 - `[done 5.6.13 b0460] 2026-05-20 — Policy match: ISE-editor-stil AND/OR visualisering` — Simulate match-resultatet viser nu politikkens betingelsestræ med farvekodede AND/OR-blokke ligesom ISE's policy-editor. Globale AND-betingelser wrapper OR-grene. Hvert betingelse viser `Dict.Attr`-notation med farvede spans. Matchede/fejlede OR-grene fremhæves grønt/rødt. CSS: `.pc-*`-klasser inkl. dark mode. **Berørte lag:** `frontend/js/views/browse-detail.js`, `frontend/css/styles.css`.
 
 - `[done 5.6.11 b0458] 2026-05-20 — Systemlog i Dashboard` — Backend-loggen vises direkte i Dashboard-siden (kun admin). Niveau-filter (WARNING+, ERROR+, INFO+, DEBUG/alt), antal (50/100/200), fritekst-søgning. Post-filtrering client-side sikrer korrekt "WARNING og derover"-semantik. Sektionen skjules stille ved 403 for ikke-admins. Auto-refresh hvert 30s med resten af dashboard. **Berørte lag:** `frontend/js/views/dashboard.js`.

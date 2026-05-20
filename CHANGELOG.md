@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.6.14 build 0461] — 2026-05-20 — feat: RADIUS template-gemmer i simulate
+
+**Berørte filer:**
+- `frontend/js/views/browse-detail.js` — Template-bar tilføjet til RADIUS-sektionen. `localStorage`-nøgle `ise_radius_templates` gemmer array af `{ id, name, attrs }`. `renderTplSelect()` sorterer alfabetisk (dansk locale). "Indlæs" rydder rækker og udfylder fra valgt template. "Gem som template" prompter for navn og gemmer nuværende nøgle/værdier. "✕ Slet" fjerner valgt template efter confirm-dialog. Nyoprettet template vælges automatisk i dropdown.
+- `frontend/css/styles.css` — Nye `.radius-tpl-bar`, `.radius-tpl-sel`, `.radius-tpl-del` klasser med light/dark theme support.
+
+---
+
 ## [5.6.13 build 0460] — 2026-05-20 — feat: policy match ISE-editor-stil AND/OR visualisering
 
 **Berørte filer:**
