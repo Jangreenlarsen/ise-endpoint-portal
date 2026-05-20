@@ -9,6 +9,8 @@ Alle nye features registreres her FØR implementering påbegyndes.
 
 ## Planlagt / Under implementering
 
+- `[done 5.6.15 b0463] 2026-05-20 — Simulate Auto-mode: test alle policy sets fra rank 0` — Ny "Auto — test alle policy sets (fra rank 0)"-option øverst i policy set-dropdown. I Auto-mode itererer simulatoren alle sets i rank-rækkefølge og returnerer første match. Indlæsning af RADIUS-template skifter automatisk til Auto. Resultatkort viser hvilket policy set der matchede. **Berørte lag:** `frontend/js/views/browse-detail.js`, `frontend/css/styles.css`.
+
 - `[done 5.6.14 b0461] 2026-05-20 — RADIUS template-gemmer` — Gem og genindlæs sæt af RADIUS-parametre som navngivne templates (fx "Wireless SSID voldby17") direkte i simulate-formularen. Templates gemmes i `localStorage`. Dropdown med alle gemte templates; Indlæs/Gem/Slet-knapper. Ingen backend-ændringer. **Berørte lag:** `frontend/js/views/browse-detail.js`, `frontend/css/styles.css`.
 
 - `[done 5.6.13 b0460] 2026-05-20 — Policy match: ISE-editor-stil AND/OR visualisering` — Simulate match-resultatet viser nu politikkens betingelsestræ med farvekodede AND/OR-blokke ligesom ISE's policy-editor. Globale AND-betingelser wrapper OR-grene. Hvert betingelse viser `Dict.Attr`-notation med farvede spans. Matchede/fejlede OR-grene fremhæves grønt/rødt. CSS: `.pc-*`-klasser inkl. dark mode. **Berørte lag:** `frontend/js/views/browse-detail.js`, `frontend/css/styles.css`.

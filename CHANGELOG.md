@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.6.15 build 0463] — 2026-05-20 — feat: simulate Auto-mode tester alle policy sets fra rank 0
+
+**Berørte filer:**
+- `frontend/js/views/browse-detail.js` — Ny `AUTO_SET = "--auto--"` sentinel. Policy set-dropdown har "Auto — test alle policy sets (fra rank 0)" som første og default valg. `runSimulate("--auto--")` itererer alle sets i rank-rækkefølge (sorteret af backend) og stopper ved første set der returnerer et match (definitivt eller partielt). Viser løbende hvilken set der testes. Indlæsning af RADIUS-template via "Indlæs"-knappen skifter automatisk dropdown til Auto. Simulate-knappen tjekker ikke længere `state.detailCurrentId` (unødvendig guard). `renderMatchResult` viser `.match-set-label` øverst i resultatkort med policy set-navn.
+- `frontend/css/styles.css` — Ny `.match-set-label`-klasse: lille caps label over regelnavnet der viser hvilket policy set der matchede.
+
+---
+
 ## [5.6.14 build 0462] — 2026-05-20 — fix: GitHub update-check CDN cache-bypass
 
 **Berørt fil:**

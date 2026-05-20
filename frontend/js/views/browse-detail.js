@@ -437,7 +437,9 @@ export function initDetail(container, state, api, cb) {
         matchArea.innerHTML = `<div class="hint">${t("detail.policy_none")}</div>`;
         return;
       }
-      const opts = sets.map((s) => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join("");
+      const AUTO_SET = "--auto--";
+      const opts = `<option value="${AUTO_SET}">Auto — test alle policy sets (fra rank 0)</option>`
+        + sets.map((s) => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join("");
       matchArea.innerHTML = `
         <datalist id="d-radius-attrs-list">
           <option value="Called-Station-ID">
@@ -533,9 +535,29 @@ export function initDetail(container, state, api, cb) {
         try {
           const radiusAttrs = readRadiusAttrs();
           const ep = { ...collectEndpointAttrs(), radius_attrs: radiusAttrs };
-          const result = await api.matchPolicyEndpoint(setId, ep);
-          resultEl.innerHTML = renderMatchResult(result);
-          mergeNeededRadiusAttrs(result.radius_attrs_needed || []);
+
+          if (setId === AUTO_SET) {
+            // Test alle policy sets i rank-rækkefølge — stop ved første match
+            let matchResult = null;
+            for (const set of sets) {
+              resultEl.innerHTML = `<div class="alert info">Simulerer… <em>${esc(set.name)}</em></div>`;
+              const r = await api.matchPolicyEndpoint(set.id, ep);
+              if (!r.no_rules && r.matched_rule_id) {
+                matchResult = r;
+                break;
+              }
+            }
+            if (matchResult) {
+              resultEl.innerHTML = renderMatchResult(matchResult);
+              mergeNeededRadiusAttrs(matchResult.radius_attrs_needed || []);
+            } else {
+              resultEl.innerHTML = `<div class="alert warning">${t("detail.policy_no_match")}</div>`;
+            }
+          } else {
+            const result = await api.matchPolicyEndpoint(setId, ep);
+            resultEl.innerHTML = renderMatchResult(result);
+            mergeNeededRadiusAttrs(result.radius_attrs_needed || []);
+          }
         } catch (err) {
           resultEl.innerHTML = `<div class="alert error">Simulering fejlede: ${esc(err.message)}</div>`;
         }
@@ -564,6 +586,8 @@ export function initDetail(container, state, api, cb) {
         if (!tpl) return;
         matchArea.querySelector("#d-pol-radius-rows").innerHTML = "";
         Object.entries(tpl.attrs).forEach(([k, v]) => addRadiusRow(k, v));
+        // Skift til Auto så næste simulate tester fra rank 0 af alle policy sets
+        matchArea.querySelector("#d-pol-set-sel").value = AUTO_SET;
       });
 
       matchArea.querySelector("#d-pol-radius-tpl-save").addEventListener("click", () => {
@@ -602,7 +626,7 @@ export function initDetail(container, state, api, cb) {
 
       matchArea.querySelector("#d-pol-match-btn").addEventListener("click", () => {
         const setId = matchArea.querySelector("#d-pol-set-sel")?.value;
-        if (!setId || !state.detailCurrentId) return;
+        if (!setId) return;
         runSimulate(setId);
       });
 
@@ -710,7 +734,11 @@ export function initDetail(container, state, api, cb) {
         : allConds.map(condRow).join("");
     }
 
+    const setLabel = r.policy_set_name
+      ? `<div class="match-set-label">${esc(r.policy_set_name)}</div>`
+      : "";
     return `<div class="${cardClass}">
+      ${setLabel}
       <div class="match-rule-name"><strong>${matchedLine}</strong></div>
       ${profilesRow}
       ${condTree}
