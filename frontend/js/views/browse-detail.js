@@ -582,72 +582,79 @@ export function initDetail(container, state, api, cb) {
     if (!r.matched_rule_id) {
       return `<div class="alert warning">${t("detail.policy_no_match")}</div>`;
     }
+
     const profiles    = (r.profiles || []).map((p) => `<span class="profile-chip">${esc(p)}</span>`).join(" ");
     const profilesRow = `<div class="match-profiles">${t("detail.policy_profiles")} ${profiles}</div>`;
     const subRules    = r.sub_rules || [];
-    const hasSubs     = subRules.length > 1;
+    const globals     = r.condition_details || [];
+    const isPartial   = r.partial_match;
 
-    // Renders a single MatchedCondition row
+    const cardClass  = isPartial ? "match-result-card match-possible" : "match-result-card match-hit";
+    const matchedLine = isPartial
+      ? t("detail.policy_possible_match").replace("{name}", esc(r.matched_rule_name)).replace("{rank}", r.matched_rule_rank)
+      : t("detail.policy_matched").replace("{name}", esc(r.matched_rule_name)).replace("{rank}", r.matched_rule_rank);
+
+    const allSkippedCount = globals.filter(c => c.skipped).length
+      + subRules.reduce((n, sr) => n + sr.conditions.filter(c => c.skipped).length, 0);
+    const partialNote = isPartial && allSkippedCount
+      ? `<div class="match-partial-note">${t("detail.policy_partial_match").replace("{n}", allSkippedCount)}</div>`
+      : "";
+
     function condRow(c) {
-      if (c.skipped) {
-        const isRef = c.operator === "ref";
-        const label = isRef
-          ? `<span class="match-cond-ref">${esc(c.attribute)}</span>`
-          : `${esc(c.attribute)} <span class="match-cond-op">${esc(c.operator)}</span> <em>${esc(c.value)}</em>`;
-        return `<div class="match-cond-row match-skip">? ${label}</div>`;
+      const stateClass = c.skipped ? "pc-cond-skip" : c.matched ? "pc-cond-ok" : "pc-cond-fail";
+      const icon = c.skipped ? "?" : c.matched ? "✓" : "✗";
+      if (c.skipped && c.operator === "ref") {
+        return `<div class="pc-cond-row ${stateClass}">${icon} <span class="match-cond-ref">${esc(c.attribute)}</span></div>`;
       }
-      return `<div class="match-cond-row ${c.matched ? "match-ok" : "match-fail"}">
-        ${c.matched ? "✓" : "✗"} ${esc(c.attribute)} ${esc(c.operator)} <em>${esc(c.value)}</em>
-      </div>`;
+      const raw = c.attribute || "";
+      const dot = raw.indexOf(".");
+      const attrHtml = dot > 0
+        ? `<span class="pc-cond-dict">${esc(raw.slice(0, dot))}</span><span class="pc-cond-op">.</span><span class="pc-cond-attr">${esc(raw.slice(dot + 1))}</span>`
+        : `<span class="pc-cond-attr">${esc(raw)}</span>`;
+      return `<div class="pc-cond-row ${stateClass}">${icon} ${attrHtml} <span class="pc-cond-op">${esc(c.operator || "")}</span> <span class="pc-cond-val">${esc(c.value || "")}</span></div>`;
     }
 
-    // Global conditions (outside OR branches)
-    const globalRows = (r.condition_details || []).map(condRow).join("");
-
-    if (r.partial_match) {
-      const allSkippedCount = (r.condition_details || []).filter(c => c.skipped).length
-        + subRules.reduce((n, sr) => n + sr.conditions.filter(c => c.skipped).length, 0);
-      const note = allSkippedCount
-        ? `<div class="match-partial-note">${t("detail.policy_partial_match").replace("{n}", allSkippedCount)}</div>`
-        : "";
-      const matchedLine = t("detail.policy_possible_match")
-        .replace("{name}", esc(r.matched_rule_name))
-        .replace("{rank}", r.matched_rule_rank);
-
-      let body;
-      if (hasSubs) {
-        const subHtml = subRules.map((sr) => {
-          const srRows = sr.conditions.map(condRow).join("");
-          return `<div class="match-subrule">
-            <div class="match-subrule-label">Sub rule ${sr.index}:</div>
-            ${srRows}
-            ${profilesRow}
-          </div>`;
-        }).join("");
-        body = `${globalRows}${note}${subHtml}`;
-      } else {
-        // Flat view (no OR branches or single branch)
-        const flatRows = subRules.flatMap(sr => sr.conditions).map(condRow).join("");
-        body = `${profilesRow}${globalRows}${flatRows}${note}`;
-      }
-      return `
-        <div class="match-result-card match-possible">
-          <div class="match-rule-name"><strong>${matchedLine}</strong></div>
-          ${body}
-        </div>`;
+    function branchMatched(sr) {
+      const active = sr.conditions.filter(c => !c.skipped);
+      return active.length > 0 && active.every(c => c.matched);
     }
 
-    // Full match
-    const allRows = globalRows + subRules.flatMap(sr => sr.conditions).map(condRow).join("");
-    const matchedLine = t("detail.policy_matched")
-      .replace("{name}", esc(r.matched_rule_name))
-      .replace("{rank}", r.matched_rule_rank);
-    return `
-      <div class="match-result-card match-hit">
-        <div class="match-rule-name"><strong>${matchedLine}</strong></div>
-        ${profilesRow}
-        ${allRows}
-      </div>`;
+    function renderOrBranches(subs) {
+      const inner = subs.map((sr, i) => {
+        const ok    = branchMatched(sr);
+        const cls   = `pc-or-branch ${ok ? "pc-branch-ok" : "pc-branch-fail"}`;
+        const sep   = i > 0 ? `<div class="pc-or-sep"><span></span><span>OR</span><span></span></div>` : "";
+        const conds = sr.conditions;
+        const body  = conds.length > 1
+          ? `<div class="pc-and-inner-label">AND</div>${conds.map(condRow).join("")}`
+          : conds.map(condRow).join("");
+        return `${sep}<div class="${cls}">${body}</div>`;
+      }).join("");
+      return `<div class="pc-block pc-or-block"><span class="pc-operator-label pc-or">OR</span><div class="pc-block-body">${inner}</div></div>`;
+    }
+
+    let condTree;
+    if (globals.length > 0 && subRules.length > 1) {
+      // Global AND conditions wrapping an OR block
+      const globalRows = globals.map(condRow).join("");
+      condTree = `<div class="pc-block pc-and-block"><span class="pc-operator-label pc-and">AND</span><div class="pc-block-body">${globalRows}${renderOrBranches(subRules)}</div></div>`;
+    } else if (subRules.length > 1) {
+      // Pure OR policy (no globals)
+      condTree = renderOrBranches(subRules);
+    } else {
+      // Flat: globals + at most one sub-rule branch → single AND block
+      const allConds = [...globals, ...subRules.flatMap(sr => sr.conditions)];
+      condTree = allConds.length > 1
+        ? `<div class="pc-block pc-and-block"><span class="pc-operator-label pc-and">AND</span><div class="pc-block-body">${allConds.map(condRow).join("")}</div></div>`
+        : allConds.map(condRow).join("");
+    }
+
+    return `<div class="${cardClass}">
+      <div class="match-rule-name"><strong>${matchedLine}</strong></div>
+      ${profilesRow}
+      ${condTree}
+      ${partialNote}
+    </div>`;
   }
 
 

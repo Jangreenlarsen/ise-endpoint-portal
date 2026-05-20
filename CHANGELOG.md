@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.6.13 build 0460] — 2026-05-20 — feat: policy match ISE-editor-stil AND/OR visualisering
+
+**Berørte filer:**
+- `frontend/js/views/browse-detail.js` — `renderMatchResult()` omskrevet. Viser nu betingelsestræet med farvekodede AND/OR-blokke: ét AND-block ved flad politik; ét OR-block ved rene OR-grene; AND-block der wrapper OR-block ved kombinerede globale+OR-betingelser. Hvert betingelse: `Dict.Attr` i `pc-cond-dict`/`pc-cond-attr` notation, operator ogværdi. Matchede OR-grene = grøn kant; fejlede = rød kant. AND-inner-label ved >1 betingelse i en OR-gren. Partial-match-note bevaret.
+- `frontend/css/styles.css` — Nye `.pc-*` klasser: `.pc-block`, `.pc-and-block`, `.pc-or-block`, `.pc-block-body`, `.pc-operator-label`, `.pc-and`, `.pc-or`, `.pc-or-sep`, `.pc-or-branch`, `.pc-branch-ok`, `.pc-branch-fail`, `.pc-and-inner-label`, `.pc-cond-row`, `.pc-cond-ok/fail/skip`, `.pc-cond-dict/attr/op/val`. Fuld dark mode support.
+
+---
+
 ## [5.6.12 build 0459] — 2026-05-20 — fix: operator-profil med admin-rolle kan ikke logge ind via TACACS+
 
 **Berørt fil:**
