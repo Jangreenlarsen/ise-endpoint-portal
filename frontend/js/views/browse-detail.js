@@ -387,14 +387,20 @@ export function initDetail(container, state, api, cb) {
 
         const vlanCached = c.vlan || "";
         const vlanMnt = mnt.vlan || "";
+        // Mismatch: kun relevant hvis MnT har en ANDEN ikke-tom VLAN end cachen.
+        // pxGrid real-time (cache) er altid mere aktuelt end MnT — MnT kan ligge
+        // mange minutter bagud efter en re-auth. Cache-værdien er autoritativ.
         const vlanMismatch = vlanCached && vlanMnt && vlanCached !== vlanMnt;
 
         resEl.innerHTML = `
           <h4 style="margin:.5rem 0 .25rem;font-size:.9em;color:#374151;">MnT enrichment (hvad backend henter)</h4>
+          <p style="font-size:.8em;color:#6b7280;margin:0 0 .4rem;">
+            pxGrid real-time data (cache) er autoritativ. MnT kan ligge minutter bagud efter re-auth.
+          </p>
           <table ${tableStyle}><tbody>
-            ${_row("VLAN (cache)", vlanCached, vlanMismatch)}
-            ${_row("VLAN (MnT)", vlanMnt, vlanMismatch)}
-            ${vlanMismatch ? `<tr><td colspan="2" style="padding:3px 8px;color:#e67e22;">⚠ Mismatch — MnT og cache er ude af sync</td></tr>` : ""}
+            ${_row("VLAN (cache / pxGrid ✓)", vlanCached)}
+            ${_row("VLAN (MnT — kan være forældet)", vlanMnt, vlanMismatch)}
+            ${vlanMismatch ? `<tr><td colspan="2" style="padding:3px 8px;color:#e67e22;font-size:.85em;">ℹ MnT er forældet for denne session — pxGrid real-time data foretrækkes. Normal ISE-adfærd.</td></tr>` : ""}
             ${_row("Authz profiles (cache)", (c.authz_profiles||[]).join(", "))}
             ${_row("Authz profiles MnT", mnt.authz_profiles_mnt||"")}
             ${_row("Auth method (MnT)", mnt.auth_method||"")}

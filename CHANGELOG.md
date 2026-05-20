@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.6.5 build 0452] — 2026-05-20 — fix: session debug mismatch-advarsel forklarer MnT-forsinkelse
+
+**Berørte filer:**
+- `frontend/js/views/browse-detail.js` — Probe MnT-resultatet: VLAN (cache) mærkes "pxGrid ✓"; VLAN (MnT) mærkes "kan være forældet"; mismatch-tekst forklarer at MnT normalt lagger bagud efter re-auth og at cache er autoritativ.
+
+---
+
 ## [5.6.5 build 0451] — 2026-05-20 — fix: stale VLAN fra gammel session + ISE Session debug-tab
 
 **Berørte filer:**
