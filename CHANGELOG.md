@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.6.9 build 0456] — 2026-05-20 — fix: _enrich_sessions_from_mnt overskrev korrekt pxGrid VLAN (5-min-cyklus)
+
+**Berørt fil:**
+- `backend/app/pxgrid/session_worker.py` — `_enrich_sessions_from_mnt`: ændret `vlan=data.get("vlan") or current.vlan` → `vlan=current.vlan or data.get("vlan")`. Funktionen kører hvert 5. minut på sessions med ufuldstændige felter — MnT lagger stadig bagud ved VLAN-ændringer i det vindue. Fix er parallel med v5.6.8-fix i `_enrich_single_from_mnt`. Identificeret i to-faset telemetri-analyse (Problem 1, HØJ prioritet).
+
+---
+
 ## [5.6.8 build 0455] — 2026-05-20 — fix: _enrich_single_from_mnt overskrev pxGrid VLAN med stale MnT-data
 
 **Berørt fil:**

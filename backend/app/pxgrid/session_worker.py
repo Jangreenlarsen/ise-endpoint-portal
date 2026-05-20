@@ -933,7 +933,10 @@ async def _enrich_sessions_from_mnt(cache) -> None:  # type: ignore[no-untyped-d
                     last_event_at=current.last_event_at,
                     endpoint_policy=data.get("endpoint_policy") or current.endpoint_policy,
                     dacl=data.get("dacl") or current.dacl,
-                    vlan=data.get("vlan") or current.vlan,
+                    # pxGrid STOMP (current.vlan) foretrækkes over MnT — samme rationale som
+                    # _enrich_single_from_mnt: MnT lagger sekunder til minutter bagud, og en
+                    # nylig VLAN-ændring kan sagtens ikke have nået MnT inden næste 5-minutters-kørsel.
+                    vlan=current.vlan or data.get("vlan"),
                     cts_security_group=data.get("cts_security_group") or current.cts_security_group,
                     auth_method=data.get("auth_method") or current.auth_method,
                     identity_group=data.get("identity_group") or current.identity_group,
