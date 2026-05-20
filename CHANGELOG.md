@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.6.14 build 0462] — 2026-05-20 — fix: GitHub update-check CDN cache-bypass
+
+**Berørt fil:**
+- `backend/app/services/update_service.py` — `check_github_version()`: tilføjer `?t=<unix-timestamp>` cache-buster til begge `raw.githubusercontent.com` URL'er. CDN'en ignorerer `Cache-Control`/`Pragma`-headers fra klienter, men kan ikke ignorere en unik query-parameter — sikrer at "Check for update" altid returnerer frisk indhold.
+
+---
+
 ## [5.6.14 build 0461] — 2026-05-20 — feat: RADIUS template-gemmer i simulate
 
 **Berørte filer:**

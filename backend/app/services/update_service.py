@@ -274,8 +274,9 @@ async def check_github_version(*, force: bool = False) -> dict[str, Any]:
     }
     try:
         import httpx
-        version_url = _GITHUB_RAW_TMPL.format(branch=branch)
-        notes_url = _GITHUB_RELEASE_NOTES_TMPL.format(branch=branch)
+        _cb = int(now)  # cache-buster — råt.githubusercontent.com CDN ignorerer headers
+        version_url = f"{_GITHUB_RAW_TMPL.format(branch=branch)}?t={_cb}"
+        notes_url = f"{_GITHUB_RELEASE_NOTES_TMPL.format(branch=branch)}?t={_cb}"
         no_cache = {"Cache-Control": "no-cache", "Pragma": "no-cache"}
         async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
             version_resp, notes_resp = await asyncio.gather(
