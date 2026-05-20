@@ -276,10 +276,11 @@ async def check_github_version(*, force: bool = False) -> dict[str, Any]:
         import httpx
         version_url = _GITHUB_RAW_TMPL.format(branch=branch)
         notes_url = _GITHUB_RELEASE_NOTES_TMPL.format(branch=branch)
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        no_cache = {"Cache-Control": "no-cache", "Pragma": "no-cache"}
+        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
             version_resp, notes_resp = await asyncio.gather(
-                client.get(version_url),
-                client.get(notes_url),
+                client.get(version_url, headers=no_cache),
+                client.get(notes_url, headers=no_cache),
                 return_exceptions=True,
             )
         if isinstance(version_resp, Exception):

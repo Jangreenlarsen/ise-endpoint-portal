@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.6.1 build 0447] — 2026-05-20 — fix: GitHub update-check sender nu Cache-Control: no-cache headers
+
+**Berørte filer:**
+- `backend/app/services/update_service.py` — `no-cache` headers + `follow_redirects=True` på httpx-kald til GitHub raw content
+
+---
+
 ## [5.6.1 build 0446] — 2026-05-20 — fix: 5 bugs fra v5.6.0 — fritekst-søgning, historik-tab, session-auth-refresh, stale-alert, Dashboard-session-count
 
 **Berørte filer:**
