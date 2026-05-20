@@ -106,6 +106,18 @@ def _check_stale_pct() -> None:
         sl = stats.get("staleness", {})
         pct = sl.get("stale_pct", 0.0)
         if pct and pct > 50.0:
+            # Supprimér advarsel indtil drip har gennemført mindst én fuld rotation
+            # (ellers fyrer advarslen straks ved genstart, mens drip varmer cachen op).
+            try:
+                from app.services.cache_prewarm import get_worker
+                pw = get_worker().status
+                total = pw.total_endpoints or 0
+                refreshed = pw.drip_refreshed_total or 0
+                if total == 0 or (total > 0 and refreshed < total):
+                    clear_alert("high_stale")
+                    return
+            except Exception:  # noqa: BLE001
+                pass
             set_alert(
                 "high_stale",
                 "warning",

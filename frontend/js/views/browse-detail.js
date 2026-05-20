@@ -266,10 +266,11 @@ export function initDetail(container, state, api, cb) {
 
   async function _lazyLoadHistorik() {
     const panel = container.querySelector("#d-historik-content");
-    if (!panel || !state.detailCurrentId) return;
+    const id = state.detailCurrentId || container.querySelector("#d-id")?.textContent?.trim();
+    if (!panel || !id) return;
     panel.innerHTML = `<div class="alert info">Henter historik…</div>`;
     try {
-      const res = await api.getEndpointHistory(state.detailCurrentId, 50);
+      const res = await api.getEndpointHistory(id, 50);
       const events = res?.events || [];
       if (!events.length) {
         panel.innerHTML = `<div class="hint">Ingen audit-hændelser registreret for dette endpoint.</div>`;

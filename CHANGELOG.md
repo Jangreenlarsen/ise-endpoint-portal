@@ -3,6 +3,18 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.6.1 build 0446] — 2026-05-20 — fix: 5 bugs fra v5.6.0 — fritekst-søgning, historik-tab, session-auth-refresh, stale-alert, Dashboard-session-count
+
+**Berørte filer:**
+- `frontend/js/views/browse-filter.js` — fix: `enterFilterMode()` returnerede tidligt ved q-ændring fordi `state.filterMode` var true; ny guard er kun `state.loadingAll`
+- `frontend/js/views/browse-detail.js` — fix: `_lazyLoadHistorik()` fallback til DOM-id hvis `state.detailCurrentId` er null
+- `frontend/js/views/browse.js` — fix: `setInterval` re-henter pxGrid sessions hvert 5. min for at merge MnT-beriget data
+- `backend/app/api/dashboard.py` — fix: `sess_stats.get("total")` → `"size"` (SessionCache.stats() bruger nøglen "size")
+- `backend/app/core/alert_store.py` — fix: stale-alert supprimeres også når `total_endpoints == 0` (endnu ingen scan kørt)
+- `frontend/css/styles.css` — tilføjet `.alert-badge-warn` klasse
+
+---
+
 ## [5.6.0 build 0445] — 2026-05-19 — feat: v5.6.0 — Dashboard, Bulk CoA, Alert-system, Fritekst-søgning, Endpoint historik, ISE PSN noder, Batch policy-sim, Endpoint livscyklus
 
 **Berørte filer:**

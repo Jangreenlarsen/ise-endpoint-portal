@@ -43,7 +43,7 @@ async def get_dashboard() -> dict:
     try:
         from app.pxgrid.session_cache import get_cache as get_sess_cache
         sess_stats = get_sess_cache().stats()
-        session_count = sess_stats.get("total", 0)
+        session_count = sess_stats.get("size", 0)
     except Exception:  # noqa: BLE001
         pass
 

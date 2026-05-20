@@ -84,6 +84,7 @@ body {
   margin-left: 6px;
 }
 .alert-badge-error { background: #c0392b; }
+.alert-badge-warn  { background: #e67e22; }
 
 .sidebar nav .nav-group {
   display: block;

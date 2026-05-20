@@ -9,6 +9,16 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 ## Åbne
 
+- `[fixed 5.6.1 build 0446] 2026-05-20 — Fritekst-søgning (q) virker ikke i Browse` — `enterFilterMode()` returnerede tidligt hvis `state.filterMode` allerede var `true`, selv om `allRowsCache` var ryddet fordi `q` ændrede sig. Ny `q`-søgning hentede aldrig data med det nye søgekriterie. Fix: fjernet `state.filterMode`-check fra early-return guard — funktionen tjekker nu kun `state.loadingAll`. **Berørt fil:** `frontend/js/views/browse-filter.js`.
+
+- `[fixed 5.6.1 build 0446] 2026-05-20 — Dashboard viser 0 sessioner (pxGrid)` — `dashboard.py` læste `sess_stats.get("total", 0)` men `SessionCache.stats()` returnerer nøglen `"size"`, ikke `"total"`. Session-tæller viste altid 0. Fix: `"total"` → `"size"`. **Berørt fil:** `backend/app/api/dashboard.py`.
+
+- `[fixed 5.6.1 build 0446] 2026-05-20 — Stale-cache-alert fyrer straks ved genstart` — `_check_stale_pct()` supprimerer alertet under drip-første-rotation (`drip_refreshed_total < total_endpoints`), men ikke før første scan er kørt (`total_endpoints == 0`). Umiddelbart efter genstart er alle disk-entries stale og `total_endpoints = 0` — betingelsen `total > 0` er false og alertet fyrer. Fix: supprimerer også når `total_endpoints == 0`. **Berørt fil:** `backend/app/core/alert_store.py`.
+
+- `[fixed 5.6.1 build 0446] 2026-05-20 — Historik-tab viser altid "Klik på fanen for at indlæse historik."` — `_lazyLoadHistorik()` hentede `state.detailCurrentId` der kan være null i edge-cases (timing). Fix: tilføjet DOM-fallback: `state.detailCurrentId || container.querySelector("#d-id")?.textContent?.trim()`. **Berørt fil:** `frontend/js/views/browse-detail.js`.
+
+- `[fixed 5.6.1 build 0446] 2026-05-20 — ISE session auth-data opdaterer ikke med MnT-data` — MnT-berigelse kører hvert 5. min i backend og tilføjer `ISEPolicySetName`, VLAN-info osv. til session-cachen. Frontend `pxgridSessionData` opdaterede kun via SSE-events, aldrig via MnT-berigelse. Fix: `setInterval` i browse.js gen-henter `GET /pxgrid/sessions` hvert 5. min og merger beriget data ind i `state.pxgridSessionData`. **Berørt fil:** `frontend/js/views/browse.js`.
+
 - `[fixed 5.5.7 build 0438] 2026-05-19 — Audit-API tilgængeligt for alle brugere (sikkerhedsbrist)` — `GET /api/audit` og `GET /api/audit/{id}` brugte `require_any` — alle loggede brugere (viewer, registrant) kunne søge og læse hele audit-historikken inkl. admin-operationer. Fix: skiftet til `require_admin` på begge endpoints. **Berørt fil:** `backend/app/api/audit.py`.
 
 - `[fixed 5.5.7 build 0438] 2026-05-19 — Logout og circuit-breaker events ikke i audit-log` — Logout-events manglede helt i audit-DB. ISE circuit-breaker OPEN/CLOSED-transitions loggede kun til app.log. Fix: logout auditeres med aktør og auth-type; circuit-breaker OPEN og recovered-to-CLOSED auditeres med fejldetaljer. **Berørte filer:** `backend/app/api/auth.py`, `backend/app/ise/client.py`.

@@ -122,7 +122,7 @@ export function initFilter(container, state, api, cb) {
 
   // ── Filter mode (client-side) ────────────────────────────────────────────
   async function enterFilterMode() {
-    if (state.filterMode || state.loadingAll) return;
+    if (state.loadingAll) return;
     if (state.allRowsCache) {
       state.allRows = state.allRowsCache;
       state.filterMode = true;

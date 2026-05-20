@@ -527,6 +527,24 @@ export async function renderBrowse(container) {
   const badgeTickTimer = setInterval(updatePxGridSourceBadge, 5000);
   window.addEventListener("resize", fitStickyTable);
 
+  // Periodisk re-hentning af alle pxGrid-sessioner for at opsamle MnT-berigelse
+  // (ISEPolicySetName, authorizationRuleName m.m. tilføjes af MnT-loopen hvert 5. min
+  //  men SSE-streamen sender ikke events for berigede sessions).
+  const sessionRefreshTimer = setInterval(async () => {
+    if (!viewActive || !state.pxgridLive) return;
+    try {
+      const res = await api.getPxGridSessions();
+      const sessions = res?.sessions || res || [];
+      if (!Array.isArray(sessions) || !sessions.length) return;
+      if (!state.pxgridSessionData) state.pxgridSessionData = new Map();
+      for (const s of sessions) {
+        const mac = normalizeMac(s.mac);
+        if (mac) state.pxgridSessionData.set(mac, s);
+      }
+      cb.applyAuthStatusColors?.();
+    } catch { /* ignore — SSE stream holder sessioner à jour i realtid */ }
+  }, 5 * 60 * 1000);
+
   // force=true: poll altid MnT ved view-mount så auth-status er korrekt fra start.
   await tableAPI.load(true);
   fitStickyTable();
@@ -535,6 +553,7 @@ export async function renderBrowse(container) {
     viewActive = false;
     stopPxGridStream();
     clearInterval(badgeTickTimer);
+    clearInterval(sessionRefreshTimer);
     window.removeEventListener("resize", fitStickyTable);
   };
 }
