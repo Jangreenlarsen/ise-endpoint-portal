@@ -9,6 +9,8 @@ Alle nye features registreres her FØR implementering påbegyndes.
 
 ## Planlagt / Under implementering
 
+- `[done 5.6.11 b0458] 2026-05-20 — Systemlog i Dashboard` — Backend-loggen vises direkte i Dashboard-siden (kun admin). Niveau-filter (WARNING+, ERROR+, INFO+, DEBUG/alt), antal (50/100/200), fritekst-søgning. Post-filtrering client-side sikrer korrekt "WARNING og derover"-semantik. Sektionen skjules stille ved 403 for ikke-admins. Auto-refresh hvert 30s med resten af dashboard. **Berørte lag:** `frontend/js/views/dashboard.js`.
+
 - `[done 5.6.0 b0445] 2026-05-19 — Dashboard / Oversigt` — Ny startside der samler: total endpoints, aktive auth-sessioner, circuit breaker state, cache-sundhed, drip-status og de 5 seneste audit-events. **Berørte lag:** `backend/app/api/dashboard.py`, `frontend/js/views/dashboard.js`, `frontend/js/app.js`, `frontend/index.html`.
 
 - `[done 5.6.0 b0445] 2026-05-19 — Bulk CoA` — Tving re-auth på udvalgte endpoints direkte fra Browse-tabellen. Ny `POST /api/endpoints/bulk-coa`. **Berørte lag:** `backend/app/api/endpoints.py`, `frontend/js/views/browse.js`, `frontend/js/views/browse-bulk.js`.

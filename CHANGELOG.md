@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.6.11 build 0458] — 2026-05-20 — feat: Systemlog-sektion i Dashboard
+
+**Berørte filer:**
+- `frontend/js/views/dashboard.js` — Ny Systemlog-sektion nederst i Dashboard (admin-only; skjules stille ved 403). Niveau-filter med korrekt "og derover"-semantik (WARNING+ = WARNING+ERROR+CRITICAL) via client-side post-filtrering. Antal-selector (50/100/200 linjer). Fritekst-søgning med 400ms debounce. Farvekodet niveau-badge per log-linje (DEBUG grå, INFO blå, WARNING orange, ERROR rød, CRITICAL lilla). Logger-navn forkortet (fjerner "app."-prefix). Auto-refresh hvert 30s med resten af dashboard.
+
+---
+
 ## [5.6.10 build 0457] — 2026-05-20 — fix: 6 resterende telemetri-problemer fra analyse (P2-P7)
 
 **Berørte filer:**

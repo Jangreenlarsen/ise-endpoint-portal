@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 /**
  * Dashboard view — aggregeret overblik over portal-sundhed.
- * Viser circuit breaker, endpoints, sessioner, cache, prewarm og seneste events.
+ * Viser circuit breaker, endpoints, sessioner, cache, prewarm, seneste events og systemlog.
  */
 
 import { api } from "../api.js";
@@ -53,6 +53,48 @@ function card(title, body) {
   return `<div class="card" style="min-width:220px;flex:1;">
     <h3 style="margin-top:0;margin-bottom:.75rem;font-size:1rem;">${title}</h3>
     ${body}
+  </div>`;
+}
+
+// ── Log-niveau farver ────────────────────────────────────────────────────────
+const LOG_COLORS = {
+  DEBUG:    { bg: "#f3f4f6", fg: "#6b7280" },
+  INFO:     { bg: "#eff6ff", fg: "#2563eb" },
+  WARNING:  { bg: "#fffbeb", fg: "#d97706" },
+  ERROR:    { bg: "#fef2f2", fg: "#dc2626" },
+  CRITICAL: { bg: "#fdf2f8", fg: "#9d174d" },
+};
+
+function logBadge(level) {
+  const c = LOG_COLORS[level] || { bg: "#f3f4f6", fg: "#6b7280" };
+  return `<span style="background:${c.bg};color:${c.fg};padding:1px 7px;border-radius:10px;font-size:.78em;font-weight:700;white-space:nowrap;">${esc(level)}</span>`;
+}
+
+function renderLogsTable(entries) {
+  if (!entries || !entries.length) {
+    return `<div class="hint" style="padding:.5rem 0;">Ingen log-linjer matcher filteret.</div>`;
+  }
+  return `<div style="overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;font-size:.82em;font-family:monospace;">
+      <thead><tr>
+        <th style="text-align:left;padding:4px 8px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-family:sans-serif;white-space:nowrap;">Tidspunkt</th>
+        <th style="text-align:left;padding:4px 8px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-family:sans-serif;">Niveau</th>
+        <th style="text-align:left;padding:4px 8px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-family:sans-serif;">Logger</th>
+        <th style="text-align:left;padding:4px 8px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-family:sans-serif;">Besked</th>
+      </tr></thead>
+      <tbody>
+        ${entries.map((e) => {
+          const c = LOG_COLORS[e.level] || { bg: "#fff", fg: "#111" };
+          const logger = (e.logger || "").replace(/^app\./, "");
+          return `<tr style="background:${c.bg};">
+            <td style="padding:3px 8px;border-bottom:1px solid #f3f4f6;white-space:nowrap;color:#6b7280;">${esc(e.timestamp)}</td>
+            <td style="padding:3px 8px;border-bottom:1px solid #f3f4f6;">${logBadge(e.level)}</td>
+            <td style="padding:3px 8px;border-bottom:1px solid #f3f4f6;white-space:nowrap;color:#374151;max-width:200px;overflow:hidden;text-overflow:ellipsis;" title="${esc(e.logger)}">${esc(logger)}</td>
+            <td style="padding:3px 8px;border-bottom:1px solid #f3f4f6;color:${c.fg};word-break:break-all;">${esc(e.message)}</td>
+          </tr>`;
+        }).join("")}
+      </tbody>
+    </table>
   </div>`;
 }
 
@@ -156,12 +198,80 @@ export async function renderDashboard(container) {
       <span id="dash-ts" class="hint" style="margin-left:.75rem;"></span>
     </div>
     <div id="dash-body"><div class="alert info">Henter dashboard…</div></div>
+
+    <div id="dash-logs-section" style="margin-top:1.25rem;">
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;flex-wrap:wrap;">
+          <h3 style="margin:0;font-size:1rem;flex:none;">Systemlog</h3>
+          <label style="display:flex;align-items:center;gap:.3rem;font-size:.85em;color:#6b7280;">
+            Niveau
+            <select id="dash-log-level" style="font-size:.9em;padding:2px 6px;border:1px solid #d1d5db;border-radius:4px;">
+              <option value="WARNING">WARNING+</option>
+              <option value="ERROR">ERROR+</option>
+              <option value="INFO">INFO+</option>
+              <option value="DEBUG">DEBUG (alt)</option>
+            </select>
+          </label>
+          <label style="display:flex;align-items:center;gap:.3rem;font-size:.85em;color:#6b7280;">
+            Antal
+            <select id="dash-log-lines" style="font-size:.9em;padding:2px 6px;border:1px solid #d1d5db;border-radius:4px;">
+              <option value="50">50</option>
+              <option value="100">100</option>
+              <option value="200">200</option>
+            </select>
+          </label>
+          <input id="dash-log-search" type="search" placeholder="Søg i log…"
+            style="font-size:.85em;padding:3px 8px;border:1px solid #d1d5db;border-radius:4px;flex:1;min-width:140px;max-width:280px;">
+          <span id="dash-log-ts" class="hint" style="font-size:.8em;margin-left:auto;"></span>
+        </div>
+        <div id="dash-logs-body"><div class="hint">Henter logs…</div></div>
+      </div>
+    </div>
   `;
 
-  const body = container.querySelector("#dash-body");
-  const tsEl = container.querySelector("#dash-ts");
-  const refreshBtn = container.querySelector("#dash-refresh");
-  let timer = null;
+  const body        = container.querySelector("#dash-body");
+  const tsEl        = container.querySelector("#dash-ts");
+  const refreshBtn  = container.querySelector("#dash-refresh");
+  const logsBody    = container.querySelector("#dash-logs-body");
+  const logLevelSel = container.querySelector("#dash-log-level");
+  const logLinesSel = container.querySelector("#dash-log-lines");
+  const logSearch   = container.querySelector("#dash-log-search");
+  const logTsEl     = container.querySelector("#dash-log-ts");
+  const logsSection = container.querySelector("#dash-logs-section");
+
+  // Logs er admin-only — skjul sektionen stille ved 403
+  let logsAvailable = true;
+  let logSearchTimer = null;
+
+  // Niveau-filter: prioritet DEBUG < INFO < WARNING < ERROR < CRITICAL
+  const LEVEL_ORDER = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"];
+
+  async function loadLogs() {
+    if (!logsAvailable) return;
+    const sel    = logLevelSel.value;
+    const lines  = parseInt(logLinesSel.value, 10) || 50;
+    const search = logSearch.value.trim();
+    // Backend level-param er exact match — vi henter altid uden filter og
+    // post-filtrerer client-side så "WARNING+" inkluderer ERROR og CRITICAL.
+    const minIdx = LEVEL_ORDER.indexOf(sel);
+    try {
+      const res = await api.getLogs(lines * 4, "", search);
+      let entries = res.entries || [];
+      if (minIdx >= 0) {
+        entries = entries.filter((e) => LEVEL_ORDER.indexOf(e.level) >= minIdx);
+      }
+      if (entries.length > lines) entries = entries.slice(0, lines);
+      logsBody.innerHTML = renderLogsTable(entries);
+      logTsEl.textContent = new Date().toLocaleTimeString();
+    } catch (err) {
+      if (err?.status === 403 || (err?.message || "").includes("403")) {
+        logsAvailable = false;
+        logsSection.style.display = "none";
+      } else {
+        logsBody.innerHTML = `<div class="hint">Kunne ikke hente log: ${esc(err.message)}</div>`;
+      }
+    }
+  }
 
   async function load() {
     try {
@@ -174,16 +284,27 @@ export async function renderDashboard(container) {
     } catch (err) {
       body.innerHTML = `<div class="alert error">Kunne ikke hente dashboard: ${esc(err.message)}</div>`;
     }
+    await loadLogs();
   }
 
   refreshBtn.addEventListener("click", load);
 
-  timer = setInterval(() => {
+  logLevelSel.addEventListener("change", loadLogs);
+  logLinesSel.addEventListener("change", loadLogs);
+  logSearch.addEventListener("input", () => {
+    clearTimeout(logSearchTimer);
+    logSearchTimer = setTimeout(loadLogs, 400);
+  });
+
+  const timer = setInterval(() => {
     if (!container.isConnected) { clearInterval(timer); return; }
     load();
   }, 30_000);
 
   await load();
 
-  return () => clearInterval(timer);
+  return () => {
+    clearInterval(timer);
+    clearTimeout(logSearchTimer);
+  };
 }
