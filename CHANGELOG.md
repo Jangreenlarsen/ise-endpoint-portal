@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.6.15 build 0464] — 2026-05-20 — docs: release notes v5.6.9–v5.6.15 tilføjet
+
+**Berørt fil:**
+- `RELEASE_NOTES.md` — Tilføjet release notes for v5.6.9, v5.6.10, v5.6.11, v5.6.12, v5.6.13, v5.6.14 og v5.6.15. Brugervende beskrivelser af alle ændringer siden v5.6.8.
+
+---
+
 ## [5.6.15 build 0463] — 2026-05-20 — feat: simulate Auto-mode tester alle policy sets fra rank 0
 
 **Berørte filer:**

@@ -4,6 +4,92 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.6.15] — 2026-05-20 — Forbedring
+
+### Simulate: Auto-mode tester alle policy sets fra rank 0
+
+**Simulate starter nu automatisk fra rank 0 af alle policy sets.** Tidligere skulle du manuelt vælge det rigtige policy set i dropdown'en — hvis RADIUS-parametrene ændrede hvilket policy set der ville matche, fik du et forkert svar. Nu er der en "Auto — test alle policy sets (fra rank 0)"-option som er default. Simulatoren gennemgår alle sets i rækkefølge og stopper ved det første match — præcis som ISE gør det ved en rigtig RADIUS-request.
+
+**Indlæsning af en RADIUS-template skifter automatisk til Auto-mode.** Så du ikke utilsigtet tester mod et forkert policy set.
+
+**Resultatet viser nu hvilket policy set der matchede** — praktisk i miljøer med mange sets.
+
+---
+
+## [5.6.14] — 2026-05-20 — Ny funktion + bug fix
+
+### RADIUS-parametre kan gemmes som navngivne templates
+
+**Du kan nu gemme et sæt RADIUS-parametre som en template og genindlæse det i fremtidige simulate-test.** I simulate-fanen finder du en ny template-bar under RADIUS-sektionen. Eksempel: gem `Called-Station-ID: voldby17:hus` og `NAS-Port-Type: 8` som "Wireless SSID voldby17" og indlæs det med ét klik næste gang. Du kan gemme så mange templates du ønsker, sorteret alfabetisk. Templates gemmes lokalt i browseren og er tilgængelige på tværs af alle endpoint-tests.
+
+### Fix: GitHub update-check viste altid gammel version
+
+**"Check for update"-knappen returnerer nu altid den rigtige seneste version fra GitHub.** Knappen hentede version.json via GitHub's CDN som ignorerer Cache-Control-headers fra klienter — resultatet var at portalen could vise en forældet version som "nyeste" selv sekunder efter et push. Rettet ved at tilføje et unikt timestamp som query-parameter der tvinger CDN'en til at hente frisk indhold.
+
+---
+
+## [5.6.13] — 2026-05-20 — Forbedring
+
+### Policy match: AND/OR-betingelser vises som i ISE's policy-editor
+
+**Simulate match-resultatet viser nu politikkens betingelsestræ med farvekodede AND/OR-blokke** — samme stil som ISE's policy-editor. Tidligere var alle betingelser listet fladt uden struktur.
+
+- **Blå AND-blok**: globale betingelser der alle skal opfyldes
+- **Grøn OR-blok**: alternative grene — kun én skal matche
+- Kombinerede politikker (AND + OR) vises indlejret korrekt
+- Hvert betingelse viser `Ordbog.Attribut`-notation med farvedifferentieret tekst
+- Matchede OR-grene fremhæves med grøn kant, fejlede med rød kant
+
+---
+
+## [5.6.12] — 2026-05-20 — Bug fix release
+
+### TACACS+: operatørprofil med admin-rolle kunne ikke logge ind
+
+**Brugere med en operatørprofil der har admin-rollen kan nu logge ind korrekt via TACACS+.** Tidligere fik disse brugere altid 401 — portalen fejlfortolkede dem som lokale admins og sprang TACACS-autentiseringen over, hvorefter den lokale adgangskodekontrol fejlede fordi operatørprofiler ikke har en lokal adgangskode. Rettet ved at skelne korrekt mellem lokale admins og TACACS-operatørprofiler med admin-rolle.
+
+---
+
+## [5.6.11] — 2026-05-20 — Ny funktion
+
+### Systemlog vises direkte i Dashboard (kun admin)
+
+**Administratorer kan nu se backend-loggen direkte i Dashboard** uden at skulle ssh'e ind på serveren. Systemlog-sektionen viser de seneste log-linjer med farvekodet niveau-badge (DEBUG, INFO, WARNING, ERROR, CRITICAL). Funktioner:
+
+- **Niveau-filter**: WARNING og derover, ERROR og derover, alt, osv. — filtrering er korrekt inklusiv ("WARNING+" inkluderer WARNING, ERROR og CRITICAL)
+- **Antal linjer**: vælg 50, 100 eller 200 linjer
+- **Fritekst-søgning**: filtrer direkte i log-output
+- **Auto-refresh**: opdateres hvert 30 sekunder med resten af dashboard
+- Sektionen er usynlig for ikke-admin-brugere
+
+---
+
+## [5.6.10] — 2026-05-20 — Bug fix release
+
+### 6 telemetri-fejl rettet (analyse-opfølgning)
+
+Opfølgning på to-faset telemetri-analyse der kortlagde alle datakilder og fejlmønstre i session-cachen.
+
+**VLAN-prioritet i periodisk MnT-berigelse**: Den 5-minutters MnT-opdatering kunne overskrive korrekte pxGrid-VLAN-data med forældede MnT-data — samme fejlmønster som i v5.6.9 men i en anden funktion. Rettet.
+
+**Deduplicering af samtidige MnT-kald**: Hvis flere pxGrid-events ankom til samme endpoint tæt på hinanden, startede portalen parallelle MnT-kald for samme MAC — dette kunne føre til race conditions. MnT-kald dedupliceres nu per MAC.
+
+**Forældet session-cache ved opstart**: Sessions der var meget gamle (over 4 timer) blev ved opstart genindlæst fra disk og betragtet som aktive. Disse hoppes nu over.
+
+**Begrænset MnT-reconcile ved opstart**: Reconcile-workeren kunne ved opstart forsøge at berige hundredvis af endpoints på én gang. Batchen er nu begrænset til 100 per kørsel.
+
+**VLAN-kilde i MnT-parser**: MnT returnerer VLAN to steder — portalen bruger nu AuthStatus AV-pair som primær kilde (tættere på hvad ISE faktisk assignede) frem for Session/MACAddress-feltet.
+
+---
+
+## [5.6.9] — 2026-05-20 — Bug fix release
+
+### ISE Session: periodisk MnT-berigelse overskrev korrekt VLAN
+
+**Den periodiske session-berigelse (hvert 5. minut) overskriver ikke længere korrekte VLAN-data.** Portalen henter session-data fra både pxGrid (real-time) og MnT (periodisk). MnT-berigelsen prioriterede fejlagtigt MnT-VLANet frem for det allerede kendte pxGrid-VLAN — selv om pxGrid-data altid er nyere og mere præcis. Rettet: eksisterende VLAN fra cachen bevares, og MnT bruges kun til at fylde felter der er tomme.
+
+---
+
 ## [5.6.8] — 2026-05-20 — Bug fix release
 
 ### ISE Session VLAN: altid ét trin bagud ved VLAN-ændring
