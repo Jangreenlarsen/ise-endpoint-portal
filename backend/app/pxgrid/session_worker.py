@@ -386,28 +386,44 @@ async def _handle_message_body(body: bytes, cache) -> None:  # type: ignore[no-u
             # sender ikke altid policy_set_name, authz_rule_name osv.
             existing = await cache.get(info.mac)
             if existing:
+                # Ny audit_session_id = re-auth; session-specifikke felter (vlan,
+                # dacl, cts_security_group) tilhører den GAMLE session og skal IKKE
+                # arves — de opdateres via MnT-berigelse med friske data.
+                is_new_session = bool(
+                    info.audit_session_id
+                    and existing.audit_session_id
+                    and info.audit_session_id != existing.audit_session_id
+                )
+                if is_new_session:
+                    logger.debug(
+                        "STOMP ny session [%s]: audit %r → %r, rydder stale vlan/dacl/sgt",
+                        info.mac, existing.audit_session_id[:16] if existing.audit_session_id else "",
+                        info.audit_session_id[:16] if info.audit_session_id else "",
+                    )
                 if not info.policy_set_name:
                     info.policy_set_name = existing.policy_set_name
                 if not info.authz_rule_name:
                     info.authz_rule_name = existing.authz_rule_name
                 if not info.endpoint_policy:
                     info.endpoint_policy = existing.endpoint_policy
-                if not info.dacl:
+                # Arv IKKE vlan/dacl/sgt fra gammel session — de er session-specifikke.
+                # MnT-berigelse henter friske værdier via _enrich_single_from_mnt.
+                if not info.dacl and not is_new_session:
                     info.dacl = existing.dacl
-                if not info.vlan:
+                if not info.vlan and not is_new_session:
                     info.vlan = existing.vlan
-                if not info.cts_security_group:
+                if not info.cts_security_group and not is_new_session:
                     info.cts_security_group = existing.cts_security_group
                 if not info.auth_method:
                     info.auth_method = existing.auth_method
                 if not info.identity_group:
                     info.identity_group = existing.identity_group
-                # Back-fill authz_profiles fra MnT hvis pxGrid-event leverede tomt
+                # Back-fill authz_profiles fra eksisterende hvis event leverede tomt
                 if not info.authz_profiles and existing.authz_profiles:
                     info.authz_profiles = existing.authz_profiles
             await cache.upsert(info)
-            # Trigger real-time MnT-berigelse hvis MnT-felter mangler.
-            if not info.identity_group or not info.endpoint_policy:
+            # Trigger real-time MnT-berigelse hvis MnT-felter mangler eller ved ny session.
+            if not info.identity_group or not info.endpoint_policy or not info.vlan:
                 asyncio.create_task(
                     _enrich_single_from_mnt(cache, info.mac),
                     name=f"mnt-enrich-{info.mac[:8]}",
@@ -832,6 +848,8 @@ async def _enrich_single_from_mnt(cache, mac: str) -> None:  # type: ignore[no-u
             last_event_at=current.last_event_at,
             endpoint_policy=data.get("endpoint_policy") or current.endpoint_policy,
             dacl=data.get("dacl") or current.dacl,
+            # Prefer MnT vlan her — current.vlan kan være tomt (ryddet ved ny session),
+            # og MnT leverer det friske VLAN fra den seneste auth-session.
             vlan=data.get("vlan") or current.vlan,
             cts_security_group=data.get("cts_security_group") or current.cts_security_group,
             auth_method=data.get("auth_method") or current.auth_method,
@@ -842,10 +860,12 @@ async def _enrich_single_from_mnt(cache, mac: str) -> None:  # type: ignore[no-u
                 or updated.auth_method != current.auth_method
                 or updated.endpoint_policy != current.endpoint_policy
                 or updated.dacl != current.dacl
+                or updated.vlan != current.vlan
                 or updated.authz_profiles != current.authz_profiles):
             logger.info(
-                "MnT real-time enrich [%s]: group=%r auth=%r profiles=%r dacl=%r",
-                mac, updated.identity_group, updated.auth_method, updated.authz_profiles, updated.dacl,
+                "MnT real-time enrich [%s]: group=%r auth=%r profiles=%r dacl=%r vlan=%r→%r",
+                mac, updated.identity_group, updated.auth_method, updated.authz_profiles,
+                updated.dacl, current.vlan, updated.vlan,
             )
             await cache.upsert(updated)
     except asyncio.TimeoutError:

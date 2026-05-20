@@ -4,6 +4,16 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.6.5] — 2026-05-20 — Bug fix release
+
+### ISE Session: stale VLAN ryddes ved re-autentisering + ny debug-tab
+
+**VLAN i ISE Session Auth-kolonnen er nu korrekt ved re-autentisering.** Når et endpoint skiftede VLAN (re-auth til ny policy), blev det gamle VLAN-nummer arvet fra den forrige session og viste forkert data — fx VLAN 210 mens endpoint faktisk var på VLAN 10. Årsag: STOMP-event-handleren arvede `vlan`/`dacl`/`cts_security_group` fra cachen uden at tjekke om det var en ny session (nyt audit_session_id). Fix: ved nyt audit_session_id ryddes session-specifikke felter, og MnT-berigelse trigges straks for at hente friske data.
+
+**Ny "ISE Session"-fane i endpoint-detaljer.** Viser alle felter fra session-cachen (hvad frontend aktuelt ser). Admin-knap "Probe MnT" kalder ISE MnT direkte og sammenligner cache vs. live MnT — VLAN-mismatch fremhæves i orange.
+
+---
+
 ## [5.6.4] — 2026-05-20 — Bug fix release
 
 ### ISE session auth: MnT-reconcile overskriver ikke korrekt VLAN-data

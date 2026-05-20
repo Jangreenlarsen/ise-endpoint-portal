@@ -153,6 +153,8 @@ export function initDetail(container, state, api, cb) {
     if (pc) pc.innerHTML = "";
     if (ic) ic.innerHTML = "";
     if (hc) hc.innerHTML = `<span class="hint">Klik på fanen for at indlæse historik.</span>`;
+    const sc = detailOverlay.querySelector("#d-session-debug-content");
+    if (sc) sc.innerHTML = `<span class="hint">Klik på fanen for at se session-data.</span>`;
   }
 
   // ── ANC ──────────────────────────────────────────────────────────────────
@@ -261,6 +263,7 @@ export function initDetail(container, state, api, cb) {
       if (tab === "radius" && matchArea.innerHTML === "") loadPolicyMatchUI();
       if (tab === "profil") _lazyLoadProfil();
       if (tab === "historik") _lazyLoadHistorik();
+      if (tab === "session") _lazyLoadSession();
     });
   });
 
@@ -318,6 +321,101 @@ export function initDetail(container, state, api, cb) {
     } catch (err) {
       panel.innerHTML = `<div class="alert error">Kunne ikke hente historik: ${esc(err.message)}</div>`;
     }
+  }
+
+  // ── ISE Session Debug tab ─────────────────────────────────────────────────
+  async function _lazyLoadSession() {
+    const panel = container.querySelector("#d-session-debug-content");
+    const mac = container.querySelector("#d-mac")?.textContent?.trim();
+    if (!panel) return;
+    if (!mac || mac === "—") {
+      panel.innerHTML = `<span class="hint">Ingen MAC tilgængelig.</span>`;
+      return;
+    }
+    panel.innerHTML = `<div class="alert info">Henter session-data…</div>`;
+
+    function _row(label, value, highlight) {
+      const style = highlight ? " style=\"color:#e67e22;font-weight:600;\"" : "";
+      return `<tr>
+        <td style="padding:3px 8px;color:#6b7280;white-space:nowrap;">${esc(label)}</td>
+        <td style="padding:3px 8px;font-family:monospace;"${style}>${esc(String(value ?? "—"))}</td>
+      </tr>`;
+    }
+
+    // Hent cached session
+    let cached = null;
+    try { cached = await api.getPxGridSession(mac); } catch (_) { /* ingen session */ }
+
+    const tableStyle = `style="width:100%;border-collapse:collapse;font-size:.85em;margin-bottom:.75rem;"`;
+    let html = "";
+
+    if (!cached) {
+      html += `<div class="alert warning">Ingen aktiv session i cache for ${esc(mac)}.</div>`;
+    } else {
+      html += `<h4 style="margin:.5rem 0 .25rem;font-size:.9em;color:#374151;">Cache (hvad frontend ser)</h4>
+        <table ${tableStyle}><tbody>
+          ${_row("MAC", cached.mac)}
+          ${_row("State", cached.state)}
+          ${_row("Auth method", cached.auth_method)}
+          ${_row("Authz profiles", (cached.authz_profiles||[]).join(", "))}
+          ${_row("VLAN", cached.vlan)}
+          ${_row("DACL", cached.dacl)}
+          ${_row("Policy set", cached.policy_set_name)}
+          ${_row("Authz rule", cached.authz_rule_name)}
+          ${_row("NAS IP", cached.nas_ip)}
+          ${_row("NAS name", cached.nas_name)}
+          ${_row("Identity group", cached.identity_group)}
+          ${_row("Endpoint policy", cached.endpoint_policy)}
+          ${_row("Audit session ID", (cached.audit_session_id||"").slice(0,40))}
+          ${_row("Last event", cached.last_event_at)}
+        </tbody></table>`;
+    }
+
+    html += `<button id="d-session-probe-btn" class="secondary small" style="margin-bottom:.5rem;">Probe MnT (admin)</button>
+      <div id="d-session-probe-result"></div>`;
+
+    panel.innerHTML = html;
+
+    panel.querySelector("#d-session-probe-btn")?.addEventListener("click", async () => {
+      const resEl = panel.querySelector("#d-session-probe-result");
+      resEl.innerHTML = `<div class="alert info">Kalder MnT…</div>`;
+      try {
+        const dbg = await api.debugPxGridSession(mac);
+        const mnt = dbg.mnt_enrichment_result || {};
+        const probe = dbg.mnt_probe || {};
+        const c = dbg.cached || {};
+
+        const vlanCached = c.vlan || "";
+        const vlanMnt = mnt.vlan || "";
+        const vlanMismatch = vlanCached && vlanMnt && vlanCached !== vlanMnt;
+
+        resEl.innerHTML = `
+          <h4 style="margin:.5rem 0 .25rem;font-size:.9em;color:#374151;">MnT enrichment (hvad backend henter)</h4>
+          <table ${tableStyle}><tbody>
+            ${_row("VLAN (cache)", vlanCached, vlanMismatch)}
+            ${_row("VLAN (MnT)", vlanMnt, vlanMismatch)}
+            ${vlanMismatch ? `<tr><td colspan="2" style="padding:3px 8px;color:#e67e22;">⚠ Mismatch — MnT og cache er ude af sync</td></tr>` : ""}
+            ${_row("Authz profiles (cache)", (c.authz_profiles||[]).join(", "))}
+            ${_row("Authz profiles MnT", mnt.authz_profiles_mnt||"")}
+            ${_row("Auth method (MnT)", mnt.auth_method||"")}
+            ${_row("Policy set (MnT)", mnt.policy_set_name||"")}
+            ${_row("Authz rule (MnT)", mnt.authz_rule_name||"")}
+            ${_row("Identity group (MnT)", mnt.identity_group||"")}
+            ${_row("Endpoint policy (MnT)", mnt.endpoint_policy||"")}
+            ${_row("DACL (MnT)", mnt.dacl||"")}
+          </tbody></table>
+          <details style="margin-top:.5rem;">
+            <summary style="cursor:pointer;font-size:.8em;color:#6b7280;">Raw pxGrid payload</summary>
+            <pre style="font-size:.75em;overflow:auto;background:#f9fafb;padding:.5rem;border-radius:4px;max-height:200px;">${esc(JSON.stringify(dbg.pxgrid_raw_all_fields||{}, null, 2))}</pre>
+          </details>
+          <details style="margin-top:.25rem;">
+            <summary style="cursor:pointer;font-size:.8em;color:#6b7280;">Raw MnT probe</summary>
+            <pre style="font-size:.75em;overflow:auto;background:#f9fafb;padding:.5rem;border-radius:4px;max-height:200px;">${esc(JSON.stringify(probe, null, 2))}</pre>
+          </details>`;
+      } catch (err) {
+        resEl.innerHTML = `<div class="alert error">Debug fejlede: ${esc(err.message)} (kræver admin-rolle)</div>`;
+      }
+    });
   }
 
   // ── Policy areas ──────────────────────────────────────────────────────────

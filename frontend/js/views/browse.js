@@ -120,6 +120,7 @@ export async function renderBrowse(container) {
           <button class="detail-tab-btn" data-tab="radius">${t("detail.tab_radius")}</button>
           <button class="detail-tab-btn" data-tab="profil">${t("detail.tab_profil")}</button>
           <button class="detail-tab-btn" data-tab="historik">Historik</button>
+          <button class="detail-tab-btn" data-tab="session">ISE Session</button>
         </div>
         <div class="detail-tab-panels">
           <div id="detail-tab-endpoint" class="detail-tab-panel">
@@ -198,6 +199,9 @@ export async function renderBrowse(container) {
           </div>
           <div id="detail-tab-historik" class="detail-tab-panel hidden">
             <div id="d-historik-content"><span class="hint">Klik på fanen for at indlæse historik.</span></div>
+          </div>
+          <div id="detail-tab-session" class="detail-tab-panel hidden">
+            <div id="d-session-debug-content"><span class="hint">Klik på fanen for at se session-data.</span></div>
           </div>
         </div>
         <div class="modal-actions">

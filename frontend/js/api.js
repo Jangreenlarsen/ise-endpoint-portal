@@ -211,6 +211,8 @@ export const api = {
     request(`/me/views/${encodeURIComponent(id)}`, { method: "DELETE" }),
   getPxGridSessions: () => request("/pxgrid/sessions"),
   getPxGridSession: (mac) => request(`/pxgrid/sessions/${encodeURIComponent(mac)}`),
+  debugPxGridSession: (mac) => request(`/pxgrid/sessions/${encodeURIComponent(mac)}/debug`),
+  probeMntSession: (mac) => request(`/pxgrid/probe/mnt/${encodeURIComponent(mac)}`),
   getPxGridWorkerStatus: () => request("/pxgrid/worker/status"),
   restartPxGridWorker: () =>
     request("/pxgrid/worker/restart", { method: "POST" }),

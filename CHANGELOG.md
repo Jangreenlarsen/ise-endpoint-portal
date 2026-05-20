@@ -3,6 +3,16 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.6.5 build 0451] — 2026-05-20 — fix: stale VLAN fra gammel session + ISE Session debug-tab
+
+**Berørte filer:**
+- `backend/app/pxgrid/session_worker.py` — `_handle_message_body`: detekterer nyt `audit_session_id` (ny session = re-auth); rydder `vlan`/`dacl`/`cts_security_group` fra gammel session i stedet for at arve dem; trigger MnT-berigelse ved tomt vlan. `_enrich_single_from_mnt`: log-output inkluderer nu vlan-ændringer (gammel→ny).
+- `frontend/js/views/browse.js` — tilføjet "ISE Session"-tab i detail-modal
+- `frontend/js/views/browse-detail.js` — `_lazyLoadSession()`: viser cache-indhold og admin Probe MnT-knap der kalder debug-endpoint og sammenligner cache vs. MnT (VLAN-mismatch fremhæves)
+- `frontend/js/api.js` — `debugPxGridSession()` og `probeMntSession()`
+
+---
+
 ## [5.6.4 build 0450] — 2026-05-20 — fix: reconcile_stale_sessions overskriver ikke pxGrid VLAN med MnT-data
 
 **Berørte filer:**
