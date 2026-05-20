@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.6.4 build 0450] — 2026-05-20 — fix: reconcile_stale_sessions overskriver ikke pxGrid VLAN med MnT-data
+
+**Berørte filer:**
+- `backend/app/pxgrid/session_worker.py` — `_process()` i `reconcile_stale_sessions`: vendt prioritet i `if existing:` grenen fra `mnt_data or existing.field` til `existing.field or mnt_data` for alle felter (nas_ip, user_name, policy_set_name, authz_profiles, authz_rule_name, endpoint_policy, dacl, vlan, cts_security_group, auth_method, identity_group). pxGrid real-time data overskrives aldrig — MnT bruges kun til at fylde tomme felter.
+
+---
+
 ## [5.6.3 build 0449] — 2026-05-20 — feat: endpoint historik viser sigende handlingsbeskrivelse
 
 **Berørte filer:**

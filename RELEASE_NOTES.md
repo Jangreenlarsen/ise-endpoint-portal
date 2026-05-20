@@ -4,6 +4,14 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.6.4] — 2026-05-20 — Bug fix release
+
+### ISE session auth: MnT-reconcile overskriver ikke korrekt VLAN-data
+
+**Reconcile-workeren kan ikke længere overskrive pxGrid real-time session data med forældet MnT-data.** Endpoints med en aktiv pxGrid-session (fx VLAN 10) kunne fejlagtigt vise VLAN fra en ældre MnT-session (fx VLAN 210) fordi reconcile-workeren prioriterede MnT-data over eksisterende pxGrid-data. Workeren bruger nu korrekt prioritet: eksisterende pxGrid-felter bevares altid — MnT fylder kun felter der er tomme.
+
+---
+
 ## [5.6.3] — 2026-05-20 — Forbedring
 
 ### Endpoint historik: sigende handlingstekst

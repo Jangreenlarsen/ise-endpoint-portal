@@ -975,26 +975,27 @@ async def reconcile_stale_sessions(session_cache, max_batch: int = 50) -> None: 
                     ] if mnt_profiles_str else []
                     existing = await session_cache.get(mac)
                     if existing:
-                        # Opdatér eksisterende entry med MnT-data
+                        # Opdatér eksisterende entry — pxGrid real-time data har forrang,
+                        # MnT bruges kun til at fylde felter der mangler.
                         updated = SessionInfo(
                             mac=existing.mac,
                             state=existing.state,
                             audit_session_id=existing.audit_session_id,
-                            nas_ip=data.get("nas_ip") or existing.nas_ip,
-                            user_name=data.get("user_name") or existing.user_name,
-                            policy_set_name=data.get("policy_set_name") or existing.policy_set_name,
-                            authz_profiles=mnt_profiles or existing.authz_profiles,
-                            authz_rule_name=data.get("authz_rule_name") or existing.authz_rule_name,
+                            nas_ip=existing.nas_ip or data.get("nas_ip"),
+                            user_name=existing.user_name or data.get("user_name"),
+                            policy_set_name=existing.policy_set_name or data.get("policy_set_name"),
+                            authz_profiles=existing.authz_profiles or mnt_profiles,
+                            authz_rule_name=existing.authz_rule_name or data.get("authz_rule_name"),
                             use_case=existing.use_case,
                             nas_name=existing.nas_name,
                             nas_device_type=existing.nas_device_type,
                             last_event_at=existing.last_event_at,
-                            endpoint_policy=data.get("endpoint_policy") or existing.endpoint_policy,
-                            dacl=data.get("dacl") or existing.dacl,
-                            vlan=data.get("vlan") or existing.vlan,
-                            cts_security_group=data.get("cts_security_group") or existing.cts_security_group,
-                            auth_method=data.get("auth_method") or existing.auth_method,
-                            identity_group=data.get("identity_group") or existing.identity_group,
+                            endpoint_policy=existing.endpoint_policy or data.get("endpoint_policy"),
+                            dacl=existing.dacl or data.get("dacl"),
+                            vlan=existing.vlan or data.get("vlan"),
+                            cts_security_group=existing.cts_security_group or data.get("cts_security_group"),
+                            auth_method=existing.auth_method or data.get("auth_method"),
+                            identity_group=existing.identity_group or data.get("identity_group"),
                             raw=existing.raw,
                         )
                         await session_cache.upsert(updated)

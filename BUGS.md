@@ -9,6 +9,8 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 ## Åbne
 
+- `[fixed 5.6.4 build 0450] 2026-05-20 — reconcile_stale_sessions overskriver pxGrid VLAN-data med forældet MnT-data` — For endpoints med eksisterende pxGrid real-time session (korrekt VLAN 10) kørte `reconcile_stale_sessions` og erstattede VLAN med det MnT returnerede (VLAN 210 fra en ældre session). Årsag: `_process()` brugte `mnt_data or existing.field` — MnT-prioritet — i stedet for `existing.field or mnt_data` — pxGrid-prioritet. Fix: vendt prioritet for alle felter i `if existing:` grenen: existing (pxGrid) foretrækkes, MnT fylder kun tomme felter. **Berørt fil:** `backend/app/pxgrid/session_worker.py`.
+
 - `[fixed 5.6.2 build 0448] 2026-05-20 — Fritekst-søgning giver 500 Internal Server Error` — `_full_text_filter()` refererede `d.profile` som ikke eksisterer på `EndpointDetail` (`d.profiler_name` er det korrekte felt). Årsag: `AttributeError` der ikke var fanget. Fix: `d.profile` → `d.profiler_name`. **Berørt fil:** `backend/app/services/endpoint_service.py`.
 
 - `[fixed 5.6.2 build 0448] 2026-05-20 — ISE session auth-status opdateres ikke hvis pxGrid push-event droppes` — pxGrid STOMP-forbindelsen kan miste events (WSS timeout, PSN failover, netværksfejl). Endpoints der aldrig modtager et push-event har ingen session-cache entry og ses aldrig som authenticated i Browse. Fix: ny baggrunds-worker `reconcile_stale_sessions` kører hvert 10. min, finder stale endpoint-cache entries, henter session-data fra MnT og opretter/opdaterer session-cache entries. **Berørte filer:** `backend/app/pxgrid/session_worker.py`, `backend/app/main.py`.
