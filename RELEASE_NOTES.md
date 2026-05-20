@@ -4,6 +4,22 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.6.1] — 2026-05-20 — Bug fix release
+
+### 5 fejl rettet fra v5.6.0
+
+**Fritekst-søgning (q) i Browse virker nu korrekt.** Søgefeltet i Browse-filterlinjen hentede ikke nye resultater når søgeteksten blev ændret mens filtertilstand allerede var aktiv. Resultatet var at portalen blev ved med at vise det første søgeresultat uanset hvad man søgte på efterfølgende. Rettet.
+
+**Endpoint historik-tab indlæser nu korrekt.** Fanen "Historik" i endpoint detail-modalen viste altid "Klik på fanen for at indlæse historik." og hentede aldrig audit-events. Årsag var en timing-race hvor fanen læste et tomt ID. Rettet med DOM-fallback.
+
+**ISE session auth-data viser nu MnT-beriget information.** Policy-sæt-navn, autorisationsregel og VLAN fra MnT-berigelse (kører hvert 5. min i baggrunden) vises nu korrekt i Browse. Tidligere lå MnT-data kun i backend-cachen uden at nå frontend. Rettet: frontend gen-henter session-data fra backend hvert 5. minut.
+
+**Dashboard viser nu korrekt antal aktive pxGrid-sessioner.** Session-tælleren viste altid 0 pga. en forkert dict-nøgle. Rettet.
+
+**Stale cache-advarsel vises ikke længere straks ved genstart.** Advarslen "Mange stale cache-entries" fyrede tidligere øjeblikkeligt efter genstart (alle disk-entries er per definition stale) og forblev aktiv i lang tid. Advarslen undertrykkes nu til drip-refresh har gennemført sin første fulde rotation — typisk 30 minutter.
+
+---
+
 ## [5.5.9] — 2026-05-19 — Patch 1
 
 ### Endpoint-cache: kontinuerlig baggrundsopdatering
