@@ -417,8 +417,15 @@ def login(payload: LoginRequest) -> LoginResponse:
     users = load_users()
     record = find_by_username(users, payload.username)
 
-    # Admin-brugere valideres ALTID lokalt, uanset TACACS+-konfiguration.
-    is_admin_user = record and record.get("role") == "admin"
+    # Ægte lokale admin-brugere (user_type != "operator") valideres ALTID lokalt,
+    # uanset TACACS+-konfiguration — de må aldrig låses ude af en TACACS-fejl.
+    # Operator-profiler med admin-rolle (user_type="operator") er TACACS-brugere
+    # og skal bruge TACACS-stien selv om rollen er "admin".
+    is_admin_user = bool(
+        record
+        and record.get("role") == "admin"
+        and record.get("user_type", "user") != "operator"
+    )
 
     auth_cfg = load_auth_config()
     use_tacacs = (

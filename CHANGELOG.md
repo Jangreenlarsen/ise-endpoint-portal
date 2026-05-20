@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.6.12 build 0459] — 2026-05-20 — fix: operator-profil med admin-rolle kan ikke logge ind via TACACS+
+
+**Berørt fil:**
+- `backend/app/services/user_service.py` — `login()`: `is_admin_user` tjekker nu `user_type != "operator"` foruden `role == "admin"`. Operator-profiler med admin-rolle (TACACS-brugere) fik tidligere `is_admin_user=True` → TACACS-sti sprunget over → lokal auth med random hash → altid 401. Nu routes de korrekt til TACACS-stien. Ægte lokale admins (`user_type` er None/ikke "operator") bypasser stadig TACACS som før.
+
+---
+
 ## [5.6.11 build 0458] — 2026-05-20 — feat: Systemlog-sektion i Dashboard
 
 **Berørte filer:**
