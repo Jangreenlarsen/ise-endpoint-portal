@@ -35,7 +35,7 @@ from app.core.watchdog import beat as watchdog_beat, start_watchdog
 from app.core.version import FULL as APP_VERSION, VERSION
 from app.ise.client import close_ise_client
 from app.pxgrid.session_cache import get_cache as get_session_cache
-from app.pxgrid.session_worker import _enrich_sessions_from_mnt, get_worker as get_pxgrid_worker
+from app.pxgrid.session_worker import _enrich_sessions_from_mnt, reconcile_stale_sessions, get_worker as get_pxgrid_worker
 from app.services.audit_retention import get_worker as get_audit_retention_worker
 from app.services.cache_prewarm import get_worker as get_prewarm_worker
 from app.services.cache_sync import get_worker as get_cache_sync_worker
@@ -131,6 +131,23 @@ async def lifespan(_: FastAPI):
 
     _mnt_enrich_task = asyncio.create_task(_mnt_enrich_loop(), name="mnt-session-enrich")
 
+    # Periodisk MnT-reconciliation for stale endpoint-cache entries.
+    # Fanger endpoints hvis pxGrid push-events er gået tabt (WSS timeout,
+    # PSN failover, network glitch). Venter 2 min ved start, kører hvert 10. min.
+    _mnt_stale_reconcile_interval = float(
+        getattr(settings, "mnt_stale_reconcile_interval_s", 600.0)
+    )
+
+    async def _mnt_stale_reconcile_loop():
+        await asyncio.sleep(120)
+        while True:
+            await reconcile_stale_sessions(get_session_cache(), max_batch=50)
+            await asyncio.sleep(_mnt_stale_reconcile_interval)
+
+    _mnt_stale_task = asyncio.create_task(
+        _mnt_stale_reconcile_loop(), name="mnt-stale-reconcile"
+    )
+
     async def _alert_check_loop() -> None:
         await asyncio.sleep(30)
         while True:
@@ -146,6 +163,7 @@ async def lifespan(_: FastAPI):
         _heartbeat_task.cancel()
         _autosave_task.cancel()
         _mnt_enrich_task.cancel()
+        _mnt_stale_task.cancel()
         _alert_task.cancel()
         try:
             await _heartbeat_task

@@ -3,6 +3,15 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.6.2 build 0448] — 2026-05-20 — fix: fritekst-søgning 500 + MnT stale-session reconcile worker
+
+**Berørte filer:**
+- `backend/app/services/endpoint_service.py` — fix: `d.profile` → `d.profiler_name` i `_full_text_filter()` (AttributeError → 500)
+- `backend/app/pxgrid/session_worker.py` — ny funktion `reconcile_stale_sessions()`: henter MnT-session for stale endpoint-cache entries, opretter/opdaterer session-cache entries for endpoints der ikke har modtaget pxGrid push-events
+- `backend/app/main.py` — ny `_mnt_stale_reconcile_loop` task: kører `reconcile_stale_sessions` hvert 10. min (konfigurerbar via `mnt_stale_reconcile_interval_s`)
+
+---
+
 ## [5.6.1 build 0447] — 2026-05-20 — fix: GitHub update-check sender nu Cache-Control: no-cache headers
 
 **Berørte filer:**

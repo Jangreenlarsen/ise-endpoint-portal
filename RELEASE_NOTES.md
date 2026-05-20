@@ -4,6 +4,16 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.6.2] — 2026-05-20 — Bug fix release
+
+### 2 fejl rettet
+
+**Fritekst-søgning fejlede med 500 Internal Server Error.** Søgning i fritekstfeltet i Browse udløste en intern Python-fejl (`AttributeError: 'EndpointDetail' object has no attribute 'profile'`). Rettet: det korrekte felt `profiler_name` bruges nu.
+
+**ISE session auth-status opdaterer ikke endpoints der har misset pxGrid push-events.** Hvis et pxGrid STOMP push-event droppede (WSS timeout, PSN failover, netværksfejl) forblev endpointets auth-status aldrig opdateret i Browse-kolonnen. Ny baggrunds-worker `reconcile_stale_sessions` kører hvert 10. minut: den finder endpoints der er stale i cachen, henter friske session-data fra MnT, og opretter eller opdaterer session-cache entries — selv for endpoints der aldrig har modtaget et push-event.
+
+---
+
 ## [5.6.1] — 2026-05-20 — Bug fix release
 
 ### 5 fejl rettet fra v5.6.0

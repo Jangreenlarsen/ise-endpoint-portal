@@ -892,7 +892,7 @@ def _full_text_filter(items: list[EndpointDetail], q: str) -> list[EndpointDetai
                 d.name,
                 d.description,
                 d.group_name,
-                d.profile,
+                d.profiler_name,
                 d.vendor,
                 d.owner,
                 d.lokation,

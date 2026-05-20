@@ -917,6 +917,123 @@ async def _enrich_sessions_from_mnt(cache) -> None:  # type: ignore[no-untyped-d
         logger.debug("MnT enrichment: uventet fejl: %s", exc)
 
 
+async def reconcile_stale_sessions(session_cache, max_batch: int = 50) -> None:  # type: ignore[no-untyped-def]
+    """Hent MnT-sessionsdata for endpoints der er stale i endpoint-cachen.
+
+    Løser det problem at pxGrid push-events kan droppes (WSS timeout, PSN
+    failover, network glitch) — hvis et endpoint aldrig modtager et push-event
+    forbliver dens auth-status aldrig opdateret i Browse-kolonnen.
+
+    Strategi:
+    - Henter alle stale endpoint-IDs fra endpoint-cachen (cache_age > TTL).
+    - Sorterer ældst-stale-først; behandler max ``max_batch`` pr. kørsel.
+    - For hvert stale endpoint hentes MnT Session/MACAddress.
+    - Hvis MnT returnerer session-data oprettes/opdateres et SessionInfo-entry.
+    - Endpoints uden aktiv MnT-session berøres ikke (session-cache bevares).
+    """
+    try:
+        from app.ise.mnt_sessions import fetch_session_by_mac
+    except ImportError:
+        return
+    try:
+        from app.core.endpoint_cache import get_cache as get_ep_cache
+        ep_cache = get_ep_cache()
+        ttl = ep_cache._ttl()
+        # Collect (age, ep_id, mac) for stale entries
+        candidates: list[tuple[float, str, str]] = []
+        for ep_id in ep_cache.detail_ids():
+            age = ep_cache.detail_age(ep_id)
+            if age is None or age <= ttl:
+                continue
+            entry = ep_cache._details.get(ep_id)
+            mac = entry.value.mac if entry and entry.value else None
+            if mac:
+                candidates.append((age, ep_id, mac))
+        if not candidates:
+            return
+        # Ældst-stale-først — de har størst risiko for forældet session-info
+        candidates.sort(key=lambda x: x[0], reverse=True)
+        batch = candidates[:max_batch]
+        logger.info(
+            "MnT stale-session reconcile: %d stale endpoints, behandler %d",
+            len(candidates), len(batch),
+        )
+        sem = asyncio.Semaphore(3)
+        enriched = 0
+        created = 0
+
+        async def _process(mac: str) -> None:
+            nonlocal enriched, created
+            async with sem:
+                try:
+                    data = await asyncio.wait_for(fetch_session_by_mac(mac), timeout=15.0)
+                    if not any(data.values()):
+                        return
+                    mnt_profiles_str = data.get("authz_profiles_mnt", "")
+                    mnt_profiles = [
+                        p.strip() for p in mnt_profiles_str.split(",") if p.strip()
+                    ] if mnt_profiles_str else []
+                    existing = await session_cache.get(mac)
+                    if existing:
+                        # Opdatér eksisterende entry med MnT-data
+                        updated = SessionInfo(
+                            mac=existing.mac,
+                            state=existing.state,
+                            audit_session_id=existing.audit_session_id,
+                            nas_ip=data.get("nas_ip") or existing.nas_ip,
+                            user_name=data.get("user_name") or existing.user_name,
+                            policy_set_name=data.get("policy_set_name") or existing.policy_set_name,
+                            authz_profiles=mnt_profiles or existing.authz_profiles,
+                            authz_rule_name=data.get("authz_rule_name") or existing.authz_rule_name,
+                            use_case=existing.use_case,
+                            nas_name=existing.nas_name,
+                            nas_device_type=existing.nas_device_type,
+                            last_event_at=existing.last_event_at,
+                            endpoint_policy=data.get("endpoint_policy") or existing.endpoint_policy,
+                            dacl=data.get("dacl") or existing.dacl,
+                            vlan=data.get("vlan") or existing.vlan,
+                            cts_security_group=data.get("cts_security_group") or existing.cts_security_group,
+                            auth_method=data.get("auth_method") or existing.auth_method,
+                            identity_group=data.get("identity_group") or existing.identity_group,
+                            raw=existing.raw,
+                        )
+                        await session_cache.upsert(updated)
+                        enriched += 1
+                    else:
+                        # Nyt entry — pxGrid-event aldrig modtaget for dette endpoint
+                        new_info = SessionInfo(
+                            mac=mac,
+                            state="STARTED",
+                            endpoint_policy=data.get("endpoint_policy") or "",
+                            dacl=data.get("dacl") or "",
+                            vlan=data.get("vlan") or "",
+                            cts_security_group=data.get("cts_security_group") or "",
+                            auth_method=data.get("auth_method") or "",
+                            identity_group=data.get("identity_group") or "",
+                            policy_set_name=data.get("policy_set_name") or "",
+                            authz_profiles=mnt_profiles,
+                            authz_rule_name=data.get("authz_rule_name") or "",
+                            nas_ip=data.get("nas_ip") or "",
+                            user_name=data.get("user_name") or "",
+                        )
+                        await session_cache.upsert(new_info)
+                        created += 1
+                    await asyncio.sleep(0.15)
+                except asyncio.TimeoutError:
+                    logger.debug("MnT stale-reconcile timeout for %s", mac)
+                except Exception as exc:  # noqa: BLE001
+                    logger.debug("MnT stale-reconcile fejlede for %s: %s", mac, exc)
+
+        await asyncio.gather(*(_process(mac) for _, _, mac in batch))
+        if enriched or created:
+            logger.info(
+                "MnT stale-session reconcile: opdateret=%d ny=%d/%d endpoints",
+                enriched, created, len(batch),
+            )
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("MnT stale-session reconcile: uventet fejl: %s", exc)
+
+
 _worker: PxGridSessionWorker | None = None
 
 

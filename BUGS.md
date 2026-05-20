@@ -9,6 +9,10 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 ## Åbne
 
+- `[fixed 5.6.2 build 0448] 2026-05-20 — Fritekst-søgning giver 500 Internal Server Error` — `_full_text_filter()` refererede `d.profile` som ikke eksisterer på `EndpointDetail` (`d.profiler_name` er det korrekte felt). Årsag: `AttributeError` der ikke var fanget. Fix: `d.profile` → `d.profiler_name`. **Berørt fil:** `backend/app/services/endpoint_service.py`.
+
+- `[fixed 5.6.2 build 0448] 2026-05-20 — ISE session auth-status opdateres ikke hvis pxGrid push-event droppes` — pxGrid STOMP-forbindelsen kan miste events (WSS timeout, PSN failover, netværksfejl). Endpoints der aldrig modtager et push-event har ingen session-cache entry og ses aldrig som authenticated i Browse. Fix: ny baggrunds-worker `reconcile_stale_sessions` kører hvert 10. min, finder stale endpoint-cache entries, henter session-data fra MnT og opretter/opdaterer session-cache entries. **Berørte filer:** `backend/app/pxgrid/session_worker.py`, `backend/app/main.py`.
+
 - `[fixed 5.6.1 build 0446] 2026-05-20 — Fritekst-søgning (q) virker ikke i Browse` — `enterFilterMode()` returnerede tidligt hvis `state.filterMode` allerede var `true`, selv om `allRowsCache` var ryddet fordi `q` ændrede sig. Ny `q`-søgning hentede aldrig data med det nye søgekriterie. Fix: fjernet `state.filterMode`-check fra early-return guard — funktionen tjekker nu kun `state.loadingAll`. **Berørt fil:** `frontend/js/views/browse-filter.js`.
 
 - `[fixed 5.6.1 build 0446] 2026-05-20 — Dashboard viser 0 sessioner (pxGrid)` — `dashboard.py` læste `sess_stats.get("total", 0)` men `SessionCache.stats()` returnerer nøglen `"size"`, ikke `"total"`. Session-tæller viste altid 0. Fix: `"total"` → `"size"`. **Berørt fil:** `backend/app/api/dashboard.py`.
