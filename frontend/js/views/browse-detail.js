@@ -264,6 +264,27 @@ export function initDetail(container, state, api, cb) {
     });
   });
 
+  function _describeAction(e) {
+    const LABELS = {
+      group_name: "Gruppe", description: "Beskrivelse", endpoint_type: "Type",
+      owner: "Owner", lokation: "Lokation", authz_vlan: "VLAN", authz_acl: "ACL",
+      platform_type: "Platform", static_group: "Statisk", psk_mode: "PSK",
+      psk_key: "PSK-nøgle", profiler_name: "Profil", hypervision: "Portal",
+    };
+    if (e.action !== "updated" || !e.before || !e.after) return e.action || "";
+    const parts = [];
+    for (const [k, label] of Object.entries(LABELS)) {
+      const bv = e.before[k], av = e.after[k];
+      if (JSON.stringify(bv) !== JSON.stringify(av)) {
+        const val = String(av ?? "").slice(0, 14);
+        parts.push(`${label}:${val}`);
+      }
+    }
+    if (!parts.length) return e.action;
+    const s = parts.join(", ");
+    return s.length > 32 ? s.slice(0, 31) + "…" : s;
+  }
+
   async function _lazyLoadHistorik() {
     const panel = container.querySelector("#d-historik-content");
     const id = state.detailCurrentId || container.querySelector("#d-id")?.textContent?.trim();
@@ -288,7 +309,7 @@ export function initDetail(container, state, api, cb) {
               <tr style="border-bottom:1px solid #f3f4f6;">
                 <td style="padding:4px 6px;white-space:nowrap;">${esc(e.ts?.replace("T", " ").slice(0, 19) || "")}</td>
                 <td style="padding:4px 6px;">${esc(e.actor_username || "—")}</td>
-                <td style="padding:4px 6px;">${esc(e.action || "")}</td>
+                <td style="padding:4px 6px;">${esc(_describeAction(e))}</td>
               </tr>`).join("")}
           </tbody>
         </table>

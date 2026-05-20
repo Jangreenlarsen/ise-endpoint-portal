@@ -4,6 +4,14 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.6.3] — 2026-05-20 — Forbedring
+
+### Endpoint historik: sigende handlingstekst
+
+**Historik-fanen i endpoint-detaljer viser nu præcis hvad der ændrede sig.** Tidligere stod der blot "updated" for alle ændringer. Nu vises de konkrete felter og nye værdier — fx `VLAN:10`, `Gruppe:Unknown` eller `Owner:adm, Type:PC`. Maks 32 tegn på én linje; hvis mange felter ændres vises de vigtigste kommasepareret og teksten trunkeres med "…".
+
+---
+
 ## [5.6.2] — 2026-05-20 — Bug fix release
 
 ### 2 fejl rettet

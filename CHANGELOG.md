@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.6.3 build 0449] — 2026-05-20 — feat: endpoint historik viser sigende handlingsbeskrivelse
+
+**Berørte filer:**
+- `frontend/js/views/browse-detail.js` — `_describeAction()`: differ `before`/`after`-snapshot og viser ændrede felter (fx `VLAN:10`, `Gruppe:Unknown`) maks 32 tegn; for ikke-update-handlinger vises action-teksten uændret
+
+---
+
 ## [5.6.2 build 0448] — 2026-05-20 — fix: fritekst-søgning 500 + MnT stale-session reconcile worker
 
 **Berørte filer:**
