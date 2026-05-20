@@ -4,6 +4,14 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.6.8] — 2026-05-20 — Bug fix release
+
+### ISE Session VLAN: altid ét trin bagud ved VLAN-ændring
+
+**Session-kolonnen viser nu korrekt VLAN med det samme efter en VLAN-ændring.** Tidligere viste portalen altid det *forrige* VLAN — fx VLAN 10 efter at have sat 32, og 32 efter at have sat 210. Årsag: MnT-berigelsen kørte straks efter pxGrid-eventet (mens MnT stadig havde det gamle VLAN) og overskrev det korrekte pxGrid-VLAN med det forældede MnT-VLAN. Symptom på at problemet var indkapslet: at sende en CoA *uden* at ændre VLAN "syncede" portalen, fordi efterfølgende events ikke triggede MnT-kaldet igen. Fix: `_enrich_single_from_mnt` bevarer nu pxGrid STOMP-VLANet og bruger kun MnT til at fylde tomme felter.
+
+---
+
 ## [5.6.7] — 2026-05-20 — Bug fix release
 
 ### ISE Session VLAN: MnT returnerede data fra gammel session

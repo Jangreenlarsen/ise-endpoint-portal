@@ -858,9 +858,12 @@ async def _enrich_single_from_mnt(cache, mac: str) -> None:  # type: ignore[no-u
             last_event_at=current.last_event_at,
             endpoint_policy=data.get("endpoint_policy") or current.endpoint_policy,
             dacl=data.get("dacl") or current.dacl,
-            # Prefer MnT vlan her — current.vlan kan være tomt (ryddet ved ny session),
-            # og MnT leverer det friske VLAN fra den seneste auth-session.
-            vlan=data.get("vlan") or current.vlan,
+            # pxGrid STOMP (current.vlan) foretrækkes over MnT her — denne funktion kører
+            # straks efter STOMP-event, og MnT er typisk ikke opdateret endnu (lagger
+            # sekunder til minutter bagud). Hvis STOMP-eventen SATTE et korrekt VLAN
+            # (fx tunnelPrivateGroupId=32) vil MnT stadig returnere det gamle VLAN (10).
+            # Kun hvis current.vlan er tomt (STOMP-event manglede VLAN) fyldes med MnT.
+            vlan=current.vlan or data.get("vlan"),
             cts_security_group=data.get("cts_security_group") or current.cts_security_group,
             auth_method=data.get("auth_method") or current.auth_method,
             identity_group=data.get("identity_group") or current.identity_group,

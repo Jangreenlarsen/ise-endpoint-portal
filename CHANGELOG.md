@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.6.8 build 0455] — 2026-05-20 — fix: _enrich_single_from_mnt overskrev pxGrid VLAN med stale MnT-data
+
+**Berørt fil:**
+- `backend/app/pxgrid/session_worker.py` — `_enrich_single_from_mnt`: ændret `vlan=data.get("vlan") or current.vlan` → `vlan=current.vlan or data.get("vlan")`. Funktionen kører straks efter STOMP-event mens MnT stadig returnerer gammelt VLAN → stale MnT overskrev korrekt pxGrid VLAN. Årsag til "ét step bagud"-symptom og til at CoA uden VLAN-ændring "syncede" portalen.
+
+---
+
 ## [5.6.7 build 0454] — 2026-05-20 — fix: MnT AuthStatus parsedes med ældste session i stedet for nyeste
 
 **Berørte filer:**
