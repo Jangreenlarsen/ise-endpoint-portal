@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.6.7 build 0454] — 2026-05-20 — fix: MnT AuthStatus parsedes med ældste session i stedet for nyeste
+
+**Berørte filer:**
+- `backend/app/ise/mnt_sessions.py` — `_parse_auth_status_elements()`: ny parser der returnerer én dict per `authStatusElement` i dokument-rækkefølge (nyeste-først). `fetch_session_by_mac`: ersatter `_parse_all_xml_fields(text2)` med iteration over `_parse_auth_status_elements()` — bruger FØRSTE element der har den relevante data per felt (auth_method, vlan, authz_profiles, identity_group osv.). Forhindrer at ældre sessions response (VLAN 210) overskrives NYERE sessions response (VLAN 64).
+
+---
+
 ## [5.6.6 build 0453] — 2026-05-20 — fix: tunnelPrivateGroupId "(tag=0) N" normaliseres + getSessions bruger frisk VLAN
 
 **Berørte filer:**

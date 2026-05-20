@@ -4,6 +4,14 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.6.7] — 2026-05-20 — Bug fix release
+
+### ISE Session VLAN: MnT returnerede data fra gammel session
+
+**VLAN fra MnT henter nu altid den nyeste sessions data.** ISE MnT AuthStatus-API returnerer flere autentiseringsposter per MAC (sorteret nyeste-først). Portalen parsede fejlagtigt alle poster samlet og endte med den ældste records VLAN-data — fx VLAN 210 fra en session fra i forgårs, mens den aktuelle session (samme audit_session_id som pxGrid) gav VLAN 64. Fix: portalen itererer nu posterne i rækkefølge og bruger det første (nyeste) fund per felt.
+
+---
+
 ## [5.6.6] — 2026-05-20 — Bug fix release
 
 ### ISE Session VLAN: forkert værdi på visse endpoints
