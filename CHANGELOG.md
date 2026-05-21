@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.6.25 build 0473] — 2026-05-21 — fix: batch-simulate brugte forkerte feltnavne på PolicyMatchResult
+
+**Berørt fil:**
+- `backend/app/api/policy.py` — `batch_simulate`: `result.matched_rule` → `result.matched_rule_name`, `result.matched_profile` → `", ".join(result.profiles)`. `matched`-check rettet tilsvarende. Fejlen betød at alle endpoints returnerede "has no attribute 'matched_rule'" i stedet for resultater.
+
+---
+
 ## [5.6.24 build 0472] — 2026-05-21 — feat: opdatering viser alle release notes fra nuværende til nyeste version
 
 **Berørte filer:**

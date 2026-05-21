@@ -208,10 +208,10 @@ async def batch_simulate(
                 return {
                     "id": ep_id,
                     "mac": detail.mac,
-                    "matched_rule": result.matched_rule,
-                    "matched_profile": result.matched_profile,
+                    "matched_rule": result.matched_rule_name,
+                    "matched_profile": ", ".join(result.profiles) if result.profiles else None,
                     "partial_match": result.partial_match,
-                    "matched": result.matched_rule is not None,
+                    "matched": result.matched_rule_name is not None,
                 }
             except Exception as exc:  # noqa: BLE001
                 return {"id": ep_id, "mac": None, "error": str(exc)}

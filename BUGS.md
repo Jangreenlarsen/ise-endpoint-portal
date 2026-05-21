@@ -3,6 +3,11 @@
 Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
+
+## [FIXED] 2026-05-21 — batch-simulate: `PolicyMatchResult has no attribute 'matched_rule'`
+- **Symptom:** Alle endpoints returnerede fejl ved batch-simulering.
+- **Årsag:** `batch_simulate` i `policy.py` brugte `result.matched_rule` og `result.matched_profile` — de korrekte feltnavne er `matched_rule_name` og `profiles` (liste).
+- **Fix:** `backend/app/api/policy.py` — rettet til `result.matched_rule_name` og `", ".join(result.profiles)`. `matched`-check opdateret tilsvarende. Løst i v5.6.25.
 **Status**: `open` · `investigating` · `fixed`
 
 ---
