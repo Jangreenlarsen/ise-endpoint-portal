@@ -4,6 +4,18 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.6.17] — 2026-05-21 — Bug fix release
+
+### Dashboard: cache disk-statistik viser nu meningsfulde data
+
+**Dashboard viser nu "Indlæst fra disk ved opstart" i stedet for den ubrugelige "Disk stale"-metric.** `disk_stale` tæller kun disk-indlæste entries der *endnu ikke* er refreshet af prewarm — en transient tilstand der forsvinder inden for få minutter efter opstart. I drift er den altid 0, hvilket gav det fejlagtige indtryk at disk-persistens ikke virkede.
+
+Nu vises i stedet:
+- **Indlæst fra disk ved opstart**: Antal endpoints der blev genoprettet fra `endpoints.json` ved seneste opstart (fx 1.843). Et tal over 0 bekræfter at disk-persistens fungerer.
+- **Disk stale (nu)**: Forklarende tekst — "0 ✓ (alle entries er live ISE-data)" i normal drift, eller antal med note om prewarm-refresh i startup-vinduet.
+
+---
+
 ## [5.6.15] — 2026-05-20 — Forbedring
 
 ### Simulate: Auto-mode tester alle policy sets fra rank 0

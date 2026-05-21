@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.6.17 build 0465] — 2026-05-21 — fix: Dashboard cache "Disk stale" viser altid 0 — manglende observability
+
+**Berørte filer:**
+- `backend/app/api/dashboard.py` — Prewarm-blok tilføjer nu `disk_loaded_at_startup: pw.disk_loaded` til `prewarm_data`. Dashboard-response eksponerer den som `cache.disk_loaded_at_startup`. Forklaring: `disk_loaded` er antallet af entries indlæst fra disk ved seneste opstart og holdes stabil gennem sessionens levetid — den eneste permanente indikator for om disk-persistence fungerede.
+- `frontend/js/views/dashboard.js` — Cache-kortet viser nu "Indlæst fra disk ved opstart: N" (eller "0 (ingen disk-cache fundet)" ved første opstart). "Disk stale (nu)"-rækken viser forklarende tekst: "0 ✓ (alle entries er live ISE-data)" i steady state, eller antal + "(afventer prewarm-refresh)" i startup-vinduet.
+
+---
+
 ## [5.6.15 build 0464] — 2026-05-20 — docs: release notes v5.6.9–v5.6.15 tilføjet
 
 **Berørt fil:**

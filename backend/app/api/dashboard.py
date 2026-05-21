@@ -34,6 +34,7 @@ async def get_dashboard() -> dict:
             "drip_sleep_s": pw.drip_current_sleep_s,
             "drip_refreshed_total": pw.drip_refreshed_total,
             "scanning": pw.scanning,
+            "disk_loaded_at_startup": pw.disk_loaded,
         }
     except Exception:  # noqa: BLE001
         pass
@@ -96,6 +97,7 @@ async def get_dashboard() -> dict:
             "misses": misses,
             "stale_serves": stale_serves,
             "disk_stale": stats.get("disk_stale_entries", 0),
+            "disk_loaded_at_startup": prewarm_data.get("disk_loaded_at_startup", 0),
         },
         "prewarm": prewarm_data,
         "recent_events": recent_events,

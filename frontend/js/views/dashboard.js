@@ -134,13 +134,20 @@ function renderDashboardData(dash, alerts) {
     statRow("Aktive sessioner", sess.active ?? "—"),
   );
 
+  const diskLoadedRow = cache.disk_loaded_at_startup > 0
+    ? statRow("Indlæst fra disk ved opstart", cache.disk_loaded_at_startup)
+    : statRow("Indlæst fra disk ved opstart", "0 (ingen disk-cache fundet)");
+  const diskStaleVal = cache.disk_stale > 0
+    ? cache.disk_stale + " (afventer prewarm-refresh)"
+    : "0 ✓ (alle entries er live ISE-data)";
   const cacheCard = card(
     "Cache-statistik",
     statRow("Hit rate", cache.hit_rate_pct != null ? cache.hit_rate_pct + "%" : "—") +
     statRow("Hits", cache.hits ?? "—") +
     statRow("Misses", cache.misses ?? "—") +
     statRow("Stale serves", cache.stale_serves ?? "—") +
-    statRow("Disk stale", cache.disk_stale ?? "—"),
+    diskLoadedRow +
+    statRow("Disk stale (nu)", diskStaleVal),
   );
 
   const prewarmCard = prewarm.scan_number ? card(
