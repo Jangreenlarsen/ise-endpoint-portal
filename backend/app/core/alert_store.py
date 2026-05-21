@@ -100,30 +100,23 @@ def _check_cache_drip() -> None:
 
 
 def _check_stale_pct() -> None:
+    # Bruger very_stale_pct (age > TTL × STALE_MAX_FACTOR = 1800s) — ikke stale_pct.
+    # stale_pct (age > TTL=60s) er altid ~98% i normal drift med 30-min drip-cyklus
+    # og SWR-design — ville give permanent falsk alarm. very_stale_pct bør være 0
+    # i normal drift; en høj værdi betyder at drip ikke følger med.
     try:
         from app.core.endpoint_cache import get_cache
         stats = get_cache().stats()
         sl = stats.get("staleness", {})
-        pct = sl.get("stale_pct", 0.0)
-        if pct and pct > 50.0:
-            # Supprimér advarsel indtil drip har gennemført mindst én fuld rotation
-            # (ellers fyrer advarslen straks ved genstart, mens drip varmer cachen op).
-            try:
-                from app.services.cache_prewarm import get_worker
-                pw = get_worker().status
-                total = pw.total_endpoints or 0
-                refreshed = pw.drip_refreshed_total or 0
-                if total == 0 or (total > 0 and refreshed < total):
-                    clear_alert("high_stale")
-                    return
-            except Exception:  # noqa: BLE001
-                pass
+        pct = sl.get("very_stale_pct", 0.0)
+        if pct and pct > 10.0:
             set_alert(
                 "high_stale",
                 "warning",
-                "Mange stale cache-entries",
-                f"{pct:.0f}% af endpoints er stale (ældre end TTL). "
-                "Overvej at justere cache_prewarm_interval_s.",
+                "Cache-entries udenfor SWR-vinduet",
+                f"{pct:.0f}% af endpoints er ældre end det maksimale SWR-vindue "
+                "og kan ikke serves fra cachen. Drip-refresh følger sandsynligvis ikke med. "
+                "Overvej at justere cache_prewarm_interval_s eller cache_prewarm_concurrency.",
             )
         else:
             clear_alert("high_stale")

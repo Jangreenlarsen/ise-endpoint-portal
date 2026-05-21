@@ -4,6 +4,16 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.6.18] — 2026-05-21 — Bug fix release
+
+### Dashboard: falsk "Mange stale cache-entries"-advarsel fjernet
+
+**Advarslen om stale cache-entries vises ikke længere i normal drift.** Den forkerte alert skyldtes at logikken sammenlignede cache-alder mod TTL (60 sekunder). Med en 30-minutters drip-refresh-cyklus og stale-while-revalidate-design har ~98% af endpoints altid en alder over 60 sekunder — det er tilsigtet og ufarligt. Alertet fandt aldrig ro og var en permanent falsk alarm.
+
+Alertet trigges nu kun hvis entries er **ældre end det maksimale SWR-vindue** (30 minutter) — altså entries der slet ikke kan serves fra cachen. Det indikerer at drip-refresh ikke følger med belastningen, og er en reel advarsel.
+
+---
+
 ## [5.6.17] — 2026-05-21 — Bug fix release
 
 ### Dashboard: cache disk-statistik viser nu meningsfulde data

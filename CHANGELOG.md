@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.6.18 build 0466] — 2026-05-21 — fix: cache-alert "Mange stale cache-entries" var permanent falsk alarm
+
+**Berørte filer:**
+- `backend/app/core/alert_store.py` — `_check_stale_pct()` bruger nu `very_stale_pct` i stedet for `stale_pct`. `stale_pct` (age > TTL=60s) er ~98% i normal drift med 30-min drip og SWR — var altid over threshold. `very_stale_pct` (age > TTL×30=1800s) er 0 i normal drift og stiger kun hvis drip ikke følger med. Threshold sænket til 10%; startup-suppression fjernet (ikke nødvendig med korrekt metric). Alerttitel og -tekst opdateret til at beskrive den reelle risiko (entries der KAN ikke serves fra cache).
+- `backend/app/core/endpoint_cache.py` — `stats()` returnerer nu `very_stale_pct` i `staleness`-dict.
+
+---
+
 ## [5.6.17 build 0465] — 2026-05-21 — fix: Dashboard cache "Disk stale" viser altid 0 — manglende observability
 
 **Berørte filer:**

@@ -571,6 +571,9 @@ class EndpointCache:
                 "stale_count": stale_count,
                 "very_stale_count": very_stale_count,
                 "stale_pct": round((stale_count + very_stale_count) / len(ages) * 100, 1) if ages else 0.0,
+                # very_stale_pct: andel der er UDENFOR SWR-vinduet (age > TTL × STALE_MAX_FACTOR).
+                # Disse entries kan ikke serves fra cache og er reelt miste. I normal drift = 0.
+                "very_stale_pct": round(very_stale_count / len(ages) * 100, 1) if ages else 0.0,
                 "oldest_entry_age_s": round(oldest_age, 1) if oldest_age is not None else None,
                 "average_entry_age_s": round(avg_age, 1) if avg_age is not None else None,
             },
