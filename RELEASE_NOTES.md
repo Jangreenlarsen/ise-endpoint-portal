@@ -4,6 +4,14 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.6.22] — 2026-05-21 — Ny funktion
+
+### Batch-simulering af policy-match direkte fra browse-tabellen
+
+**Vælg et eller flere endpoints i browse-tabellen og klik "Simulér match" i toolbar.** En modal åbner med alle policy-sæt i en dropdown. Klik "Kør simulering" og se resultater pr. endpoint: MAC-adresse, matchet regel, matchet profil og status (Match / Ingen match / Delvis / Fejl). Understøtter op til 100 endpoints pr. kørsel (begrænsning fra backend).
+
+---
+
 ## [5.6.21] — 2026-05-21 — Ny funktion
 
 ### Audit-log CSV-eksport

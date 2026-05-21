@@ -3336,6 +3336,19 @@ details[open] .rn-summary::before { transform: rotate(90deg); }
 [data-theme="midnight"] .rn-body code { background: #010409; }
 
 /* ------------------------------------------------------------------ */
+/* Batch simulate badges                                               */
+/* ------------------------------------------------------------------ */
+.bsim-badge { display:inline-block; padding:1px 7px; border-radius:10px; font-size:0.72rem; font-weight:600; margin-right:2px; }
+.bsim-ok      { background:#dcfce7; color:#15803d; }
+.bsim-fail    { background:#fee2e2; color:#b91c1c; }
+.bsim-err     { background:#fef9c3; color:#854d0e; }
+.bsim-partial { background:#dbeafe; color:#1e40af; }
+[data-theme="dark"] .bsim-ok    { background:#166534; color:#bbf7d0; }
+[data-theme="dark"] .bsim-fail  { background:#7f1d1d; color:#fecaca; }
+[data-theme="dark"] .bsim-err   { background:#713f12; color:#fef08a; }
+[data-theme="dark"] .bsim-partial { background:#1e3a8a; color:#bfdbfe; }
+
+/* ------------------------------------------------------------------ */
 /* Lifecycle view                                                       */
 /* ------------------------------------------------------------------ */
 .lc-controls { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem; }

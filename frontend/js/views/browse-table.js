@@ -26,6 +26,7 @@ export function initTable(container, state, api, cb) {
   const bulkDisconnBtn = container.querySelector("#bulk-disconnect-btn");
   const bulkCoaBtn     = container.querySelector("#bulk-coa-btn");
   const bulkEditBtn    = container.querySelector("#bulk-edit-btn");
+  const bulkSimBtn     = container.querySelector("#bulk-sim-btn");
   const selectionCount = container.querySelector("#selection-count");
   const pagePrev       = container.querySelector("#page-prev");
   const pageNext       = container.querySelector("#page-next");
@@ -427,7 +428,8 @@ export function initTable(container, state, api, cb) {
     bulkDelBtn.disabled     = !hasSelection;
     bulkDisconnBtn.disabled = !hasSelection;
     bulkEditBtn.disabled    = !hasSelection;
-    if (bulkCoaBtn) bulkCoaBtn.disabled = !hasSelection;
+    if (bulkCoaBtn)  bulkCoaBtn.disabled  = !hasSelection;
+    if (bulkSimBtn)  bulkSimBtn.disabled  = !hasSelection;
     selectionCount.textContent = hasSelection ? t("browse.selection_n").replace("{n}", selected.length) : "";
     selectAllCb.indeterminate  = selected.length > 0 && selected.length < tbody.querySelectorAll(".row-select").length;
   }

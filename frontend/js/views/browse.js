@@ -64,6 +64,8 @@ export async function renderBrowse(container) {
           <button id="bulk-disconnect-btn" class="danger small" disabled
                   title="CoA Disconnect — deautentificér valgte klienter på WLC/switch (tvinger ny DHCP ved re-associate)">${t("browse.btn_bulk_disconnect")}</button>
           <button id="bulk-del-btn" class="danger small" disabled>${t("browse.btn_bulk_delete")}</button>
+          <button id="bulk-sim-btn" class="secondary small" disabled
+                  title="Kør policy-simulering på valgte endpoints">Simulér match</button>
         </div>
         <span class="toolbar-divider"></span>
         <div class="toolbar-group" title="${t("browse.tooltip_view")}">
@@ -253,6 +255,34 @@ export async function renderBrowse(container) {
         <div class="modal-actions">
           <button id="be-apply">${t("bulk.btn_apply")}</button>
           <button id="be-cancel" class="secondary">${t("bulk.btn_cancel")}</button>
+        </div>
+      </div>
+    </div>
+    <div id="bulk-sim-overlay" class="modal-overlay hidden">
+      <div class="modal detail-modal">
+        <h3>Batch-simulering af policy-match</h3>
+        <p class="hint" id="bulk-sim-count"></p>
+        <div class="modal-body">
+          <label>Policy-sæt
+            <select id="bsim-policy-set">
+              <option value="">Indlæser policy-sæt…</option>
+            </select>
+          </label>
+        </div>
+        <div id="bsim-results" style="display:none;">
+          <p id="bsim-summary" class="hint" style="margin:8px 0;"></p>
+          <div class="table-scroll" style="max-height:340px;overflow-y:auto;">
+            <table class="lc-table">
+              <thead><tr>
+                <th>MAC</th><th>Regel</th><th>Profil</th><th>Status</th>
+              </tr></thead>
+              <tbody id="bsim-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button id="bsim-run">Kør simulering</button>
+          <button id="bsim-cancel" class="secondary">Luk</button>
         </div>
       </div>
     </div>

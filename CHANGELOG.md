@@ -3,6 +3,16 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.6.22 build 0470] — 2026-05-21 — feat: batch-simulering af policy-match fra browse-tabellen
+
+**Berørte filer:**
+- `frontend/js/views/browse.js` — "Simulér match"-knap tilføjet i bulk-toolbar (disabled til endpoints vælges). Batch-simulate modal tilføjet med policy-sæt dropdown og resultattabel.
+- `frontend/js/views/browse-bulk.js` — handler til bulk-sim-knap: loader policy-sæt via API, sender `batchSimulate(setId, ids)`, viser per-endpoint resultater med MAC, regel, profil og status-badge.
+- `frontend/js/views/browse-table.js` — `updateSelectionUI()` enabler/disabler ny knap ved ændret selektion.
+- `frontend/css/styles.css` — `.bsim-*` badge-styles (ok/fail/err/partial) med dark theme.
+
+---
+
 ## [5.6.21 build 0469] — 2026-05-21 — feat: audit-log CSV-eksport
 
 **Berørte filer:**
