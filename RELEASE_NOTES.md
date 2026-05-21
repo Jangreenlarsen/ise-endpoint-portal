@@ -4,6 +4,14 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.6.24] — 2026-05-21 — Forbedring
+
+### Opdatering viser alle release notes fra nuværende til nyeste version
+
+**Når portalen tjekker for opdateringer og der er en nyere version tilgængelig, vises nu alle release notes for mellemliggende versioner stacked i rækkefølge** — ikke blot den nyeste version. Er portalen eksempelvis på v5.6.19 og nyeste er v5.6.23, vises release notes for v5.6.20, v5.6.21, v5.6.22 og v5.6.23 under hinanden adskilt med en separator. Ældste øverst, nyeste nederst. Summary-linjen viser nu `v{nuværende} → v{nyeste}`.
+
+---
+
 ## [5.6.23] — 2026-05-21 — Ny funktion
 
 ### Config backup og restore

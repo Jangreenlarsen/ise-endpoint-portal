@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.6.24 build 0472] — 2026-05-21 — feat: opdatering viser alle release notes fra nuværende til nyeste version
+
+**Berørte filer:**
+- `backend/app/services/update_service.py` — ny `_parse_semver()` og `_extract_release_sections_since(current, latest)`: parser alle `## [x.y.z]`-sektioner fra RELEASE_NOTES.md, filtrerer dem i intervallet `current < v <= latest` og returnerer dem stacked med `---` separator, ældste øverst. Fallback til kun latest-sektionen hvis ingen matches. `check_github_version()` bruger nu denne funktion i stedet for `_extract_release_section()`.
+- `frontend/js/views/settings/section-update.js` — `showInfo()`: summary-linjen viser nu `v{current} → v{latest}` ved opdatering i stedet for kun `v{latest}`.
+
+---
+
 ## [5.6.23 build 0471] — 2026-05-21 — feat: config backup og restore
 
 **Berørte filer:**
