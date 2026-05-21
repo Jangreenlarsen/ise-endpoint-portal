@@ -4,6 +4,16 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.6.23] — 2026-05-21 — Ny funktion
+
+### Config backup og restore
+
+**Ny fane "Backup / Restore" i Settings (admin-only).** Download en komplet backup af alle portalens konfigurationsfiler som ét JSON-dokument — indstillinger, brugere, skabeloner, roller og mapping. Gendan en backup ved at uploade filen og bekræfte — filer overskrives straks. Genstart backend efter restore for at ISE-forbindelsesindstillinger træder i kraft.
+
+**Vigtigt:** Backup-filen indeholder credentials (ISE password og JWT-secret). Opbevar filen sikkert.
+
+---
+
 ## [5.6.22] — 2026-05-21 — Ny funktion
 
 ### Batch-simulering af policy-match direkte fra browse-tabellen

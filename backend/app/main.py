@@ -22,6 +22,7 @@ from app.api import endpoint_roles as endpoint_roles_api
 from app.api import endpoints, groups, health, logs, me, oui, users
 from app.api import ise_nodes as ise_nodes_api
 from app.api import lifecycle as lifecycle_api
+from app.api import config_backup as config_backup_api
 from app.api import templates as templates_api
 from app.api import pxgrid as pxgrid_api
 from app.api import authz_profiles as authz_profiles_api
@@ -260,6 +261,7 @@ app.include_router(policy_api.router, prefix="/api")
 app.include_router(dashboard_api.router, prefix="/api")
 app.include_router(alerts_api.router, prefix="/api")
 app.include_router(lifecycle_api.router, prefix="/api")
+app.include_router(config_backup_api.router, prefix="/api")
 app.include_router(ise_nodes_api.router, prefix="/api")
 app.include_router(metrics_api.router)
 

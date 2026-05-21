@@ -3,6 +3,18 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.6.23 build 0471] — 2026-05-21 — feat: config backup og restore
+
+**Berørte filer:**
+- `backend/app/api/config_backup.py` — ny router `GET /config/backup` (returnerer alle config-filer som JSON-download) og `POST /config/restore` (validerer og gendanner). Admin-only.
+- `backend/app/main.py` — `config_backup_api` router registreret.
+- `frontend/js/views/settings.js` — ny tab "Backup / Restore" i admin-settings. Panel med download-knap og fil-upload til gendannelse.
+- `frontend/js/views/settings/section-backup.js` — backup/restore UI-logik: download som blob, restore via POST med confirm-dialog.
+
+**Sikkerhed:** Backup indeholder credentials (ISE password, JWT-secret). Bruger får advarsel om dette ved download og restore.
+
+---
+
 ## [5.6.22 build 0470] — 2026-05-21 — feat: batch-simulering af policy-match fra browse-tabellen
 
 **Berørte filer:**

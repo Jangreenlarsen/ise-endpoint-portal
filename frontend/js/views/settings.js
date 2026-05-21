@@ -16,6 +16,7 @@ import { initPskPolicySection } from "./settings/section-psk.js";
 import { initPortalAuthConfigSection, initLocaleSection } from "./settings/section-auth.js";
 import { initSystemUpdateSection, initAdvancedSection, initGithubUpdateSection } from "./settings/section-update.js";
 import { initAuthzProfilesSection } from "./settings/section-authz-profiles.js";
+import { initBackupSection } from "./settings/section-backup.js";
 
 export async function renderSettings(container) {
   const isAdmin = auth.isAdmin();
@@ -32,6 +33,7 @@ export async function renderSettings(container) {
       <button class="settings-tab" data-tab="portal-performance">${t("settings.tab_performance")}</button>
       <button class="settings-tab" data-tab="portal-bruger-config">${t("settings.tab_user_config")}</button>
       <button class="settings-tab" data-tab="portal-auth-config">${t("settings.tab_auth_config")}</button>
+      <button class="settings-tab" data-tab="portal-backup">Backup / Restore</button>
       ` : ""}
       ${isPskEditorUser ? `
       <button class="settings-tab" data-tab="portal-config">${t("settings.tab_portal_config")}</button>
@@ -847,6 +849,35 @@ export async function renderSettings(container) {
     </div>
     ` : ""}
 
+    ${isAdmin ? `
+    <div class="card" data-tab="portal-backup">
+      <h3>Backup af portalens konfiguration</h3>
+      <p class="hint">
+        Backup gemmer alle portalens konfigurationsfiler i ét JSON-dokument.
+        <strong>Filen indeholder credentials (ISE password, JWT-secret)</strong> — opbevar den sikkert.
+      </p>
+      <div id="cfg-backup-msg"></div>
+      <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-start;margin-bottom:1.5rem;">
+        <div>
+          <h4 style="margin:0 0 0.4rem;">Download backup</h4>
+          <p class="hint" style="margin:0 0 0.5rem;">Henter aktuelle indstillinger, brugere, skabeloner og mapping.</p>
+          <button id="cfg-backup-btn">Download backup</button>
+        </div>
+      </div>
+      <hr style="border:0;border-top:1px solid var(--border);margin:1rem 0;" />
+      <h4>Gendan fra backup</h4>
+      <p class="hint">
+        Vælg en backup-fil for at gendanne konfigurationen.
+        Eksisterende filer overskrives straks — ingen fortryd.
+        Genstart backend efterfølgende for at ISE-forbindelsesindstillinger træder i kraft.
+      </p>
+      <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
+        <input type="file" id="cfg-restore-input" accept=".json" />
+        <button id="cfg-restore-btn" disabled class="danger">Gendan backup</button>
+      </div>
+    </div>
+    ` : ""}
+
     </div><!-- /settings-panels -->
   `;
 
@@ -871,5 +902,6 @@ export async function renderSettings(container) {
     initGithubUpdateSection(container);
     await initAuthzProfilesSection(container);
     initAdvancedSection(container);
+    initBackupSection(container);
   }
 }
