@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.6.21 build 0469] — 2026-05-21 — feat: audit-log CSV-eksport
+
+**Berørte filer:**
+- `backend/app/api/audit.py` — ny `GET /audit/export`-endpoint (admin-only): returnerer alle matchende audit-events som CSV-fil (maks. 10 000 rækker). Understøtter samme filter-parametre som list-endpoint (actor, resource_type, resource_id, from_ts, to_ts, search). Returnerer `StreamingResponse` med `Content-Disposition: attachment`.
+- `frontend/js/views/audit.js` — "Eksportér CSV"-knap tilføjet i toolbar. Henter CSV med auth-header, opretter blob-URL og trigger browser-download.
+
+---
+
 ## [5.6.20 build 0468] — 2026-05-21 — feat: Livscyklus-viewer — inaktive endpoints
 
 **Berørte filer:**

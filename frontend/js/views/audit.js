@@ -118,6 +118,7 @@ export async function renderAudit(container) {
           </select>
         </label>
         <button id="audit-refresh">${t("audit.btn_refresh")}</button>
+        <button id="audit-export" class="secondary" title="Eksportér filtreret audit-log som CSV (maks. 10 000 rækker)">Eksportér CSV</button>
         <span id="audit-meta" class="hint"></span>
       </div>
       <div id="audit-msg"></div>
@@ -157,6 +158,7 @@ export async function renderAudit(container) {
   const searchInput = container.querySelector("#audit-search");
   const limitSel = container.querySelector("#audit-limit");
   const refreshBtn = container.querySelector("#audit-refresh");
+  const exportBtn  = container.querySelector("#audit-export");
   const drawer = container.querySelector("#audit-drawer");
   const drawerTitle = container.querySelector("#audit-drawer-title");
   const drawerBody = container.querySelector("#audit-drawer-body");
@@ -294,6 +296,42 @@ export async function renderAudit(container) {
 
   drawerClose.addEventListener("click", () => { drawer.hidden = true; });
   refreshBtn.addEventListener("click", load);
+
+  exportBtn.addEventListener("click", async () => {
+    exportBtn.disabled = true;
+    exportBtn.textContent = "Eksporterer…";
+    try {
+      const BASE = window.location.origin.startsWith("file://") ? "http://localhost:8000" : "";
+      const token = auth.getToken();
+      const params = {
+        resource_type: typeSel.value || undefined,
+        search: searchInput.value.trim() || undefined,
+      };
+      const parts = [];
+      for (const [k, v] of Object.entries(params)) {
+        if (v !== undefined && v !== null && v !== "") {
+          parts.push(`${encodeURIComponent(k)}=${encodeURIComponent(v)}`);
+        }
+      }
+      const qs = parts.length ? `?${parts.join("&")}` : "";
+      const res = await fetch(`${BASE}/api/audit/export${qs}`, {
+        headers: { "Authorization": `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(`${res.status}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `audit_export_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      msg.innerHTML = `<div class="alert error">Eksport fejlede: ${esc(err.message)}</div>`;
+    } finally {
+      exportBtn.disabled = false;
+      exportBtn.textContent = "Eksportér CSV";
+    }
+  });
   typeSel.addEventListener("change", load);
   limitSel.addEventListener("change", load);
   searchInput.addEventListener("input", () => {

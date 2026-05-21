@@ -4,6 +4,14 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.6.21] — 2026-05-21 — Ny funktion
+
+### Audit-log CSV-eksport
+
+**Audit-siden har nu en "Eksportér CSV"-knap.** Eksporterer alle audit-events der matcher de aktuelle filtre (ressourcetype og søgetekst) som en CSV-fil — maks. 10 000 rækker. Filen indeholder tidsstempel, bruger, handling, ressourcetype, ressource-ID og IP-adresse. Filen downloades direkte i browseren.
+
+---
+
 ## [5.6.20] — 2026-05-21 — Ny funktion
 
 ### Livscyklus-viewer — find og ryd op i inaktive endpoints
