@@ -677,18 +677,22 @@ class EndpointService:
         )
         # Invalidate cache so the next read reflects the new ISE state.
         get_cache().invalidate_detail(endpoint_id)
-        after: dict[str, Any] | None = None
-        try:
-            after = (await self.get_endpoint(endpoint_id, is_psk_editor=True)).model_dump()
-        except IseApiError:
-            pass
-        await audit_store.record(
-            "updated",
-            "endpoint",
-            endpoint_id,
-            before=before,
-            after=after,
-        )
+
+        # "after"-snapshot og audit køres i baggrunden så HTTP-svaret
+        # returneres straks efter PUT+invalidation (sparer ét ISE-kald på hot path).
+        _before = before
+        _ep_id = endpoint_id
+        _svc = self
+
+        async def _audit_after() -> None:
+            after: dict[str, Any] | None = None
+            try:
+                after = (await _svc.get_endpoint(_ep_id, is_psk_editor=True)).model_dump()
+            except IseApiError:
+                pass
+            await audit_store.record("updated", "endpoint", _ep_id, before=_before, after=after)
+
+        asyncio.create_task(_audit_after(), name=f"audit-after-update-{endpoint_id[:8]}")
 
     async def bulk_create(
         self,

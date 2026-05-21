@@ -4,6 +4,14 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.6.19] — 2026-05-21 — Ydelsesforbedring
+
+### Endpoint save er nu markant hurtigere
+
+**Gemning af et enkelt endpoint er nu ca. 50% hurtigere.** Tidligere ventede portalen på to ISE API-kald i rækkefølge før siden responderede: først PUT (opdateringen) og derefter GET (snapshot til audit-log). Det betød typisk 600-1200ms ventetid. Nu returneres siden straks efter PUT — audit-snapshottet hentes i baggrunden uden at brugeren venter.
+
+---
+
 ## [5.6.18] — 2026-05-21 — Bug fix release
 
 ### Dashboard: falsk "Mange stale cache-entries"-advarsel fjernet

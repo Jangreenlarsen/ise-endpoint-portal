@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.6.19 build 0467] — 2026-05-21 — fix: save endpoint langsom — after-audit ISE-kald fjernet fra hot path
+
+**Berørt fil:**
+- `backend/app/services/endpoint_service.py` — `update_endpoint()`: "after"-snapshot til audit-log køres nu som `asyncio.create_task` i baggrunden i stedet for at blokere HTTP-svaret. HTTP 200 returneres straks efter ISE PUT + cache-invalidation. Baggrunds-tasken henter friske data fra ISE og recorder audit-entry asynkront. Besparelse: ét ISE GET-kald (~300-600ms) fjernet fra hot path per save-operation.
+
+---
+
 ## [5.6.18 build 0466] — 2026-05-21 — fix: cache-alert "Mange stale cache-entries" var permanent falsk alarm
 
 **Berørte filer:**
