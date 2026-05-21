@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.6.26 build 0474] — 2026-05-21 — fix: selektion i browse-tabel nulstilles ved automatisk re-render
+
+**Berørt fil:**
+- `frontend/js/views/browse-table.js` — `renderRows()`: fanger nu `prevSelected` (Set af endpoint-IDs med aktiv checkbox) inden `tbody.innerHTML` erstattes. Checkboksen sættes til `checked` hvis ID'et var valgt inden genrender. Retter at pxGrid `endpoint_changed`-events (og manuel refresh) sletttede brugerens selektion.
+
+---
+
 ## [5.6.25 build 0473] — 2026-05-21 — fix: batch-simulate brugte forkerte feltnavne på PolicyMatchResult
 
 **Berørt fil:**

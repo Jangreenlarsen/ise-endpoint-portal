@@ -4,6 +4,11 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED] 2026-05-21 — selektion af endpoints nulstilles ved automatisk portal-opdatering
+- **Symptom:** Valgte endpoints (checkbokse) blev fravalgt efter kort tid, selv uden bruger-interaktion.
+- **Årsag:** pxGrid `endpoint_changed`-events trigerede `scheduleEndpointReload()` → `cb.load()` → `renderRows()` som sætter `tbody.innerHTML` og dermed erstatter alle DOM-elementer inkl. checkbokse. Selektion var ikke gemt nogen steder og gik tabt.
+- **Fix:** `renderRows()` i `browse-table.js` fanger nu alle valgte IDs i `prevSelected` inden innerHTML-erstatning og sætter `checked` på de matchende rækker i den nye render. Fungerer for alle re-render-triggers (pxGrid auto-refresh, manuel refresh). Løst i v5.6.26.
+
 ## [FIXED] 2026-05-21 — batch-simulate: `PolicyMatchResult has no attribute 'matched_rule'`
 - **Symptom:** Alle endpoints returnerede fejl ved batch-simulering.
 - **Årsag:** `batch_simulate` i `policy.py` brugte `result.matched_rule` og `result.matched_profile` — de korrekte feltnavne er `matched_rule_name` og `profiles` (liste).

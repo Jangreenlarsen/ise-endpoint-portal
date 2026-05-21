@@ -191,6 +191,13 @@ export function initTable(container, state, api, cb) {
 
   // ── Row rendering ────────────────────────────────────────────────────────
   function renderRows(rows) {
+    // Bevar selektion på tværs af genrender (pxGrid auto-refresh, manuel refresh, osv.)
+    const prevSelected = new Set(
+      Array.from(tbody.querySelectorAll(".row-select:checked"))
+        .map((cb) => cb.closest("tr")?.dataset.id)
+        .filter(Boolean)
+    );
+
     const cols = getColumns().length + 2;
     if (!rows.length) {
       tbody.innerHTML = `<tr><td colspan="${cols}" class="empty">${t("browse.no_results")}</td></tr>`;
@@ -225,7 +232,7 @@ export function initTable(container, state, api, cb) {
       };
       return `
       <tr data-id="${esc(r.id)}"${state.dirtyIds.has(r.id) ? ' class="dirty"' : ''}>
-        <td class="select-cell"><input type="checkbox" class="row-select" /></td>
+        <td class="select-cell"><input type="checkbox" class="row-select"${prevSelected.has(r.id) ? " checked" : ""} /></td>
         ${getOrderedColumns().map(c => cells[c.key] || "").join("")}
       </tr>`;
     }).join("");
