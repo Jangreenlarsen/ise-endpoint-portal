@@ -17,6 +17,7 @@ import { renderUserPrefs } from "./views/user-prefs.js";
 import { renderCsvTemplate } from "./views/csv-template.js";
 import { renderPolicy } from "./views/policy.js";
 import { renderDashboard } from "./views/dashboard.js";
+import { renderLifecycle } from "./views/lifecycle.js";
 
 const statusDot = document.getElementById("status-dot");
 const container = document.getElementById("view-container");
@@ -39,6 +40,7 @@ const routes = {
   logs:       { render: renderLogs,       roles: ["admin"] },
   audit:      { render: renderAudit,      roles: ["admin", "editor", "editor-psk", "viewer"] },
   metrics:    { render: renderMetrics,    roles: ["admin"] },
+  lifecycle:  { render: renderLifecycle,  roles: ["admin"] },
   register:   { render: renderRegister,   roles: ["admin", "editor", "editor-psk", "registrant", "registrant_templet"] },
   settings:     { render: renderSettings,     roles: ["admin", "editor-psk"] },
   "user-prefs": { render: renderUserPrefs,    roles: ["admin", "editor", "editor-psk", "viewer", "registrant", "registrant_templet"] },

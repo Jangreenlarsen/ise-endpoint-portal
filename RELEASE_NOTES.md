@@ -4,6 +4,16 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.6.20] — 2026-05-21 — Ny funktion
+
+### Livscyklus-viewer — find og ryd op i inaktive endpoints
+
+**Ny side under Overvågning → Livscyklus (admin-only).** Viser alle endpoints der ikke har haft portal-aktivitet (opret, rediger, slet) i det valgte tidsrum. Valgmuligheder: 30, 60, 90, 180 eller 365 dage. Tabellen viser MAC-adresse, endpoint-gruppe, profil, ejer og cache-alder. Resultaterne kan eksporteres som CSV direkte fra browseren.
+
+Data baseres på audit-loggen — kun aktivitet registreret i portalen tæller (ikke ændringer foretaget direkte i ISE).
+
+---
+
 ## [5.6.19] — 2026-05-21 — Ydelsesforbedring
 
 ### Endpoint save er nu markant hurtigere

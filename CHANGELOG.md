@@ -3,6 +3,16 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.6.20 build 0468] — 2026-05-21 — feat: Livscyklus-viewer — inaktive endpoints
+
+**Berørte filer:**
+- `frontend/js/views/lifecycle.js` — ny view: viser endpoints uden portal-aktivitet i valgt periode (30/60/90/180/365 dage). Tabel med MAC, gruppe, profil, ejer, cache-alder. CSV-eksport direkte fra browseren. Admin-only.
+- `frontend/index.html` — nav-item "Livscyklus" tilføjet under Overvågning.
+- `frontend/js/app.js` — import og route `lifecycle` registreret (admin-only).
+- `frontend/css/styles.css` — `.lc-*` styles + dark/midnight theme.
+
+---
+
 ## [5.6.19 build 0467] — 2026-05-21 — fix: save endpoint langsom — after-audit ISE-kald fjernet fra hot path
 
 **Berørt fil:**
