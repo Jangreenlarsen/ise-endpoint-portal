@@ -108,6 +108,9 @@ async def lifespan(_: FastAPI):
 
     _heartbeat_task = asyncio.create_task(_heartbeat_loop(), name="watchdog-heartbeat")
 
+    from app.pxgrid.anomaly_detector import AnomalyDetector
+    AnomalyDetector(get_session_cache())
+
     get_cache_sync_worker().start()
     get_audit_retention_worker().start()
     get_pxgrid_worker().start()

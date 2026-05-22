@@ -4,6 +4,29 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.7.0] — 2026-05-22 — JSON-eksport, session anomali-detektion, silent token refresh
+
+### Tre nye features i Browse og sikkerhed
+
+**JSON-eksport fra Browse:**
+- Ny "Eksportér JSON"-knap i Browse-toolbar ved siden af CSV-knappen.
+- Eksporterer valgte, filtrerede eller alle endpoints som et JSON-array (`EndpointDetail`-format).
+- Nyttig til API-consumption og scripting.
+
+**Session anomali-detektion (pxGrid):**
+- Ny `pxgrid/anomaly_detector.py` overvåger session-stream i realtid via observer-hook på `SessionCache`.
+- Detekterer: **bulk-disconnect** (>10 disconnects på <30s) og **NAS-IP churn** (samme MAC skifter NAS-IP >3 gange på <60s).
+- Anomalier vises som dismissible advarselsbannere øverst i Browse, og tæller med i nav-badge.
+- Ny `GET /api/pxgrid/anomalies` returnerer aktive anomali-alerts.
+
+**Access token silent refresh:**
+- Opgraderet fra polling-baseret (`setInterval`) til scheduler-baseret (`scheduleTokenRefresh` i `auth.js`).
+- Token fornyes præcist 15 min inden udløb via `setTimeout` — ingen UI-forstyrrelse.
+- Polling-fallback hvert minut sikrer mod tab-sleep og clock-skew.
+- `cancelTokenRefresh()` kaldes ved logout.
+
+---
+
 ## [5.6.32] — 2026-05-22 — Kodebase-kvalitet P2 (tests, refaktor, arkitektur)
 
 ### 190 tests, service-split og API-split

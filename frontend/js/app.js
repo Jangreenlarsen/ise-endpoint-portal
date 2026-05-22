@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 import { api, setUnauthorizedHandler } from "./api.js";
-import { auth } from "./auth.js";
+import { auth, scheduleTokenRefresh, cancelTokenRefresh } from "./auth.js";
 import { t, resolveLocale, initLocaleFromStorage, registerRerenderCallback } from "./i18n.js";
 import { renderImport } from "./views/import.js";
 import { renderBrowse } from "./views/browse.js";
@@ -231,21 +231,28 @@ async function boot() {
   if (logoutBtn) {
     logoutBtn.addEventListener("click", async () => {
       try { await api.logout(); } catch {}
+      cancelTokenRefresh();
       auth.clear();
       showLogin();
     });
   }
 
-  // Silent token refresh — tjek hvert minut om token snart udløber.
-  // Refresh 5 min inden udløb så brugeren ikke kastes ud midt i arbejdet.
-  setInterval(async () => {
+  // Silent token refresh — scheduleret 15 min inden udløb (præcis setTimeout).
+  // Polling-fallback (hvert minut) fanger tab-sleep og andre edge-cases.
+  async function doSilentRefresh() {
     if (!auth.getToken() || auth.isTokenExpired()) return;
-    if (auth.secondsUntilExpiry() < 5 * 60) {
-      try {
-        const res = await api.refreshToken();
-        if (res?.token) auth.save(res.token, res.user || auth.getUser());
-      } catch { /* ignore — næste check prøver igen */ }
-    }
+    try {
+      const res = await api.refreshToken();
+      if (res?.token) {
+        auth.save(res.token, res.user || auth.getUser());
+        scheduleTokenRefresh(doSilentRefresh);
+      }
+    } catch { /* ignore — polling-fallback prøver igen */ }
+  }
+  scheduleTokenRefresh(doSilentRefresh);
+  setInterval(() => {
+    if (!auth.getToken() || auth.isTokenExpired()) return;
+    if (auth.secondsUntilExpiry() < 15 * 60) doSilentRefresh();
   }, 60_000);
 
   window.addEventListener("hashchange", renderView);

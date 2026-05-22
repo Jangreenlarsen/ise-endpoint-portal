@@ -213,6 +213,7 @@ export const api = {
   getPxGridSession: (mac) => request(`/pxgrid/sessions/${encodeURIComponent(mac)}`),
   debugPxGridSession: (mac) => request(`/pxgrid/sessions/${encodeURIComponent(mac)}/debug`),
   probeMntSession: (mac) => request(`/pxgrid/probe/mnt/${encodeURIComponent(mac)}`),
+  getAnomalies: () => request("/pxgrid/anomalies"),
   getPxGridWorkerStatus: () => request("/pxgrid/worker/status"),
   restartPxGridWorker: () =>
     request("/pxgrid/worker/restart", { method: "POST" }),

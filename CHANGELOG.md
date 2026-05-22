@@ -3,6 +3,22 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.7.0 build 0481] — 2026-05-22 — feat: JSON-eksport, session anomali-detektion, silent token refresh
+
+**Berørte filer:**
+- `frontend/js/i18n.js` — nye nøgler: btn_export_json, export_json_done_*, anomaly_banner_dismiss (da+en)
+- `frontend/js/views/browse.js` — #export-json-btn, #anomaly-banner, pollAnomalies(), renderAnomalyBanner()
+- `frontend/js/views/browse-table.js` — JSON-eksport event listener
+- `frontend/js/auth.js` — scheduleTokenRefresh(), cancelTokenRefresh() eksporteret
+- `frontend/js/app.js` — doSilentRefresh() med scheduleTokenRefresh + polling-fallback; cancelTokenRefresh() ved logout
+- `frontend/js/api.js` — getAnomalies()
+- `backend/app/pxgrid/session_cache.py` — register_observer(), _observers[] kaldt i _broadcast()
+- `backend/app/pxgrid/anomaly_detector.py` — ny: AnomalyDetector (bulk_disconnect + nas_ip_churn)
+- `backend/app/api/pxgrid.py` — GET /pxgrid/anomalies
+- `backend/app/main.py` — AnomalyDetector initialiseres ved startup
+
+---
+
 ## [5.6.32 build 0480] — 2026-05-22 — feat: P2 kodebase-kvalitet — tests 190/190, service-split, API-split, disabled-regel-fix
 
 **Berørte filer:**

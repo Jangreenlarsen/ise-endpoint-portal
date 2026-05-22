@@ -23,11 +23,13 @@ export async function renderBrowse(container) {
         ${t("browse.pxgrid_badge")}
       </span>
     </div>
+    <div id="anomaly-banner" style="display:none;"></div>
     <div class="card">
       <div class="toolbar">
         <div class="toolbar-group" title="${t("browse.tooltip_data")}">
           <button id="refresh-btn">${t("browse.btn_refresh")}</button>
           <button id="export-btn" class="secondary">${t("browse.btn_export")}</button>
+          <button id="export-json-btn" class="secondary">${t("browse.btn_export_json")}</button>
           <div class="col-vis-wrap">
             <button id="col-vis-btn" class="secondary small" type="button"
                     title="${t("browse.tooltip_columns")}">${t("browse.btn_columns")}</button>
@@ -579,6 +581,39 @@ export async function renderBrowse(container) {
     } catch { /* ignore — SSE stream holder sessioner à jour i realtid */ }
   }, 5 * 60 * 1000);
 
+  // ── Anomali-banner ────────────────────────────────────────────────────────
+  const anomalyBanner = container.querySelector("#anomaly-banner");
+  const _dismissedAnomalies = new Set();
+
+  function renderAnomalyBanner(anomalies) {
+    const active = (anomalies || []).filter((a) => !_dismissedAnomalies.has(a.id));
+    if (!active.length) { anomalyBanner.style.display = "none"; anomalyBanner.innerHTML = ""; return; }
+    anomalyBanner.style.display = "block";
+    anomalyBanner.innerHTML = active.map((a) => `
+      <div class="alert ${a.severity === "error" ? "error" : "warning"}" style="margin-bottom:4px;display:flex;justify-content:space-between;align-items:center;">
+        <span><strong>${esc(a.title)}</strong> — ${esc(a.body)}</span>
+        <button type="button" class="secondary small anomaly-dismiss" data-id="${esc(a.id)}"
+                style="margin-left:12px;">${t("browse.anomaly_banner_dismiss")}</button>
+      </div>`).join("");
+    anomalyBanner.querySelectorAll(".anomaly-dismiss").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        _dismissedAnomalies.add(btn.dataset.id);
+        renderAnomalyBanner(active.filter((a) => a.id !== btn.dataset.id));
+      });
+    });
+  }
+
+  async function pollAnomalies() {
+    if (!viewActive) return;
+    try {
+      const anomalies = await api.getAnomalies();
+      renderAnomalyBanner(anomalies || []);
+    } catch { /* silent — pxGrid kan være slukket */ }
+  }
+
+  pollAnomalies();
+  const anomalyPollTimer = setInterval(pollAnomalies, 30_000);
+
   // force=true: poll altid MnT ved view-mount så auth-status er korrekt fra start.
   await tableAPI.load(true);
   fitStickyTable();
@@ -588,6 +623,7 @@ export async function renderBrowse(container) {
     stopPxGridStream();
     clearInterval(badgeTickTimer);
     clearInterval(sessionRefreshTimer);
+    clearInterval(anomalyPollTimer);
     window.removeEventListener("resize", fitStickyTable);
   };
 }

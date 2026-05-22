@@ -81,3 +81,31 @@ export const auth = {
     }
   },
 };
+
+// ── Silent token refresh ──────────────────────────────────────────────────────
+// Schedules a single setTimeout to fire 15 min before token expiry.
+// refreshFn: async () => void — called when it's time to refresh.
+// Returns a cancel function.
+const REFRESH_BEFORE_EXPIRY_S = 15 * 60;
+let _refreshTimer = null;
+
+export function scheduleTokenRefresh(refreshFn) {
+  cancelTokenRefresh();
+  const secs = auth.secondsUntilExpiry();
+  if (secs <= 0) return;
+  const delay = Math.max(0, (secs - REFRESH_BEFORE_EXPIRY_S) * 1000);
+  _refreshTimer = setTimeout(async () => {
+    _refreshTimer = null;
+    if (auth.isTokenExpired()) return;
+    try {
+      await refreshFn();
+    } catch { /* ignore — next schedule picks it up */ }
+  }, delay);
+}
+
+export function cancelTokenRefresh() {
+  if (_refreshTimer !== null) {
+    clearTimeout(_refreshTimer);
+    _refreshTimer = null;
+  }
+}

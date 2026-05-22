@@ -35,6 +35,7 @@ export function initTable(container, state, api, cb) {
   const colVisBtn      = container.querySelector("#col-vis-btn");
   const colVisMenu     = container.querySelector("#col-vis-menu");
   const exportBtn      = container.querySelector("#export-btn");
+  const exportJsonBtn  = container.querySelector("#export-json-btn");
   const refreshBtn     = container.querySelector("#refresh-btn");
 
   // ── Render helpers (need state.groups / state.roleCatalog) ───────────────
@@ -746,6 +747,53 @@ export function initTable(container, state, api, cb) {
     }
     msg.innerHTML = `<div class="alert success">${doneMsg}</div>`;
   });
+
+  // Export JSON
+  exportJsonBtn.addEventListener("click", async () => {
+    const selectedIds = getSelectedIds();
+    let exportRows;
+    let allLabel = false;
+    if (selectedIds.length) {
+      const selSet = new Set(selectedIds);
+      exportRows   = state.allRows.filter((r) => selSet.has(r.id));
+    } else if (state.filterMode) {
+      exportRows = cb.applyFiltersToRows(state.allRows);
+    } else {
+      exportJsonBtn.disabled = true;
+      msg.innerHTML = `<div class="alert info">${t("browse.export_fetching")}</div>`;
+      try {
+        exportRows = state.allRowsCache || (state.allRowsCache = await api.listAllEndpointDetails("", state.currentFilters));
+        allLabel   = true;
+      } catch (err) {
+        msg.innerHTML = `<div class="alert error">${t("browse.export_error").replace("{msg}", esc(err.message))}</div>`;
+        exportJsonBtn.disabled = false;
+        return;
+      }
+      exportJsonBtn.disabled = false;
+    }
+    if (!exportRows.length) {
+      msg.innerHTML = `<div class="alert info">${t("browse.export_none")}</div>`;
+      return;
+    }
+    const json = JSON.stringify(exportRows, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href     = url;
+    a.download = `ise-endpoints-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    let doneMsg;
+    if (selectedIds.length) {
+      doneMsg = t("browse.export_json_done_selected").replace("{n}", exportRows.length);
+    } else if (allLabel) {
+      doneMsg = t("browse.export_json_done_all").replace("{n}", exportRows.length);
+    } else {
+      doneMsg = t("browse.export_json_done_filtered").replace("{n}", exportRows.length);
+    }
+    msg.innerHTML = `<div class="alert success">${doneMsg}</div>`;
+  });
+
 
   // Pagination
   pagePrev.addEventListener("click", () => {
