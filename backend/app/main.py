@@ -19,7 +19,7 @@ from app.api import custom_attributes as custom_attrs_api
 from app.api import dacls as dacls_api
 from app.api import dashboard as dashboard_api
 from app.api import endpoint_roles as endpoint_roles_api
-from app.api import endpoints, groups, health, logs, me, oui, users
+from app.api import endpoints, endpoints_ops, groups, health, logs, me, oui, users
 from app.api import ise_nodes as ise_nodes_api
 from app.api import lifecycle as lifecycle_api
 from app.api import config_backup as config_backup_api
@@ -240,6 +240,7 @@ app.include_router(health.router, prefix="/api")
 app.include_router(auth_api.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
 app.include_router(endpoints.router, prefix="/api")
+app.include_router(endpoints_ops.router, prefix="/api")
 app.include_router(groups.router, prefix="/api")
 app.include_router(settings_api.router, prefix="/api")
 app.include_router(settings_api.psk_router, prefix="/api")

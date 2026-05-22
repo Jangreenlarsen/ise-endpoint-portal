@@ -1,12 +1,13 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
-import asyncio
-import json
-from typing import Literal
-
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-from pydantic import BaseModel
 
+from app.api._endpoint_api_helpers import (
+    _autotag_for,
+    _is_psk_editor_for,
+    _ise_http_error,
+    _scope_for,
+)
 from app.api.deps import (
     get_current_user,
     get_endpoint_service,
@@ -19,13 +20,8 @@ from app.api.deps import (
 from app.core.endpoint_cache import get_cache
 from app.core.exceptions import IseApiError
 from app.schemas.endpoint import (
-    AncActionResponse,
-    AncPoliciesResponse,
-    AncQuarantineRequest,
-    AncStatusResponse,
     BulkCreateRequest,
     BulkResult,
-    CoaReauthResponse,
     CreateEndpointRequest,
     EndpointDetail,
     EndpointSummary,
@@ -33,53 +29,9 @@ from app.schemas.endpoint import (
     PaginatedEndpointDetails,
 )
 from app.schemas.user import User
-from app.services import user_service
 from app.services.endpoint_service import EndpointService
 
 router = APIRouter(prefix="/endpoints", tags=["endpoints"])
-
-
-def _ise_http_error(exc: IseApiError, not_found_msg: str = "Endpoint ikke fundet") -> HTTPException:
-    """Konvertér IseApiError til en brugervenlig HTTPException.
-
-    - 404          → 404 med dansk besked
-    - transport (0)→ 503 "ISE midlertidigt utilgængelig"
-    - andet        → 502 med HTTP-status
-    """
-    if exc.status_code == 404:
-        return HTTPException(status_code=404, detail=not_found_msg)
-    if exc.status_code == 0:
-        return HTTPException(
-            status_code=503,
-            detail="ISE er midlertidigt utilgængelig — prøv igen om lidt",
-        )
-    return HTTPException(
-        status_code=502,
-        detail=f"ISE returnerede en uventet fejl (HTTP {exc.status_code})",
-    )
-
-
-def _scope_for(user: User) -> list[str] | None:
-    """Returnér effektive roller eller None for admin (= ingen filter)."""
-    if user.role == "admin":
-        return None
-    return user_service.effective_roles(user)
-
-
-def _autotag_for(user: User) -> str | None:
-    """Returnér username der skal auto-tagges på write, eller None for admin.
-
-    Non-admin (editor/viewer/registrar) får deres username som fallback-tag
-    på create/update hvis ``HypervisionRoles`` ikke eksplicit er valgt.
-    Admin overrides ingenting.
-    """
-    if user.role == "admin":
-        return None
-    return user.username
-
-
-def _is_psk_editor_for(user: User) -> bool:
-    return user.role in ("admin", "editor-psk")
 
 
 @router.get("", response_model=list[EndpointSummary])
@@ -321,159 +273,3 @@ async def delete_endpoint(
         raise _ise_http_error(exc) from exc
 
 
-@router.post("/{endpoint_id}/coa-reauth", response_model=CoaReauthResponse, dependencies=[Depends(require_editor)])
-async def coa_reauth(
-    endpoint_id: str,
-    service: EndpointService = Depends(get_endpoint_service),
-) -> CoaReauthResponse:
-    """Trigger CoA reauth on ISE for the given endpoint's MAC."""
-    try:
-        ok, mac, msg = await service.coa_reauth(endpoint_id)
-    except IseApiError as exc:
-        raise _ise_http_error(exc) from exc
-    return CoaReauthResponse(ok=ok, mac=mac, message=msg)
-
-
-@router.post("/{endpoint_id}/coa-disconnect", response_model=CoaReauthResponse, dependencies=[Depends(require_editor)])
-async def coa_disconnect(
-    endpoint_id: str,
-    service: EndpointService = Depends(get_endpoint_service),
-) -> CoaReauthResponse:
-    """Trigger CoA disconnect (deauth) on ISE for the given endpoint's MAC.
-
-    Forces the WLC/switch to remove the session so the client must re-associate
-    and run a fresh DHCP DORA — useful when a VLAN change requires a new IP.
-    """
-    try:
-        ok, mac, msg = await service.coa_disconnect(endpoint_id)
-    except IseApiError as exc:
-        raise _ise_http_error(exc) from exc
-    return CoaReauthResponse(ok=ok, mac=mac, message=msg)
-
-
-# ------------------------------------------------------------------ #
-# Bulk CoA                                                            #
-# ------------------------------------------------------------------ #
-
-class BulkCoaRequest(BaseModel):
-    endpoint_ids: list[str]
-    action: Literal["reauth", "disconnect"] = "reauth"
-
-
-@router.post("/bulk-coa", dependencies=[Depends(require_editor)])
-async def bulk_coa(
-    body: BulkCoaRequest,
-    service: EndpointService = Depends(get_endpoint_service),
-) -> dict:
-    """Trigger CoA reauth eller disconnect for en liste af endpoints parallelt."""
-    sem = asyncio.Semaphore(3)
-
-    async def do_one(ep_id: str) -> dict:
-        async with sem:
-            try:
-                if body.action == "disconnect":
-                    ok, mac, msg = await service.coa_disconnect(ep_id)
-                else:
-                    ok, mac, msg = await service.coa_reauth(ep_id)
-                return {"id": ep_id, "ok": ok, "mac": mac, "message": msg}
-            except Exception as exc:  # noqa: BLE001
-                return {"id": ep_id, "ok": False, "mac": None, "message": str(exc)}
-
-    results = list(await asyncio.gather(*(do_one(ep_id) for ep_id in body.endpoint_ids[:200])))
-    return {"results": results, "ok_count": sum(1 for r in results if r["ok"])}
-
-
-# ------------------------------------------------------------------ #
-# Endpoint historik (audit trail)                                     #
-# ------------------------------------------------------------------ #
-
-@router.get("/{endpoint_id}/history", dependencies=[Depends(require_editor)])
-async def get_endpoint_history(
-    endpoint_id: str,
-    limit: int = Query(50, ge=1, le=200),
-) -> dict:
-    """Returnér audit-historik for ét endpoint (hvem ændrede hvad og hvornår)."""
-    from app.core import audit_store
-
-    def _parse(blob: str | None):
-        if blob is None:
-            return None
-        try:
-            return json.loads(blob)
-        except (TypeError, ValueError):
-            return blob
-
-    rows, total = await audit_store.query(
-        resource_type="endpoint",
-        resource_id=endpoint_id,
-        limit=limit,
-        offset=0,
-    )
-    events = [
-        {
-            "id": r["id"],
-            "ts": r["ts"],
-            "actor_username": r["actor_username"],
-            "action": r["action"],
-            "before": _parse(r.get("before_json")),
-            "after": _parse(r.get("after_json")),
-        }
-        for r in rows
-    ]
-    return {"events": events, "total": total}
-
-
-# ------------------------------------------------------------------ #
-# ANC (Adaptive Network Control) — editor/admin only                  #
-# ------------------------------------------------------------------ #
-
-@router.get("/anc-policies", response_model=AncPoliciesResponse, dependencies=[Depends(require_editor)])
-async def list_anc_policies(
-    service: EndpointService = Depends(get_endpoint_service),
-) -> AncPoliciesResponse:
-    """List all ANC policy names configured in ISE."""
-    try:
-        policies = await service.list_anc_policies()
-    except IseApiError as exc:
-        raise _ise_http_error(exc) from exc
-    return AncPoliciesResponse(policies=policies)
-
-
-@router.get("/{endpoint_id}/anc-status", response_model=AncStatusResponse, dependencies=[Depends(require_editor)])
-async def anc_status(
-    endpoint_id: str,
-    service: EndpointService = Depends(get_endpoint_service),
-) -> AncStatusResponse:
-    """Get the current ANC quarantine status for an endpoint."""
-    try:
-        mac, policy = await service.anc_status(endpoint_id)
-    except IseApiError as exc:
-        raise _ise_http_error(exc) from exc
-    return AncStatusResponse(mac=mac, policy=policy, quarantined=policy is not None)
-
-
-@router.post("/{endpoint_id}/anc-quarantine", response_model=AncActionResponse, dependencies=[Depends(require_editor)])
-async def anc_quarantine(
-    endpoint_id: str,
-    req: AncQuarantineRequest,
-    service: EndpointService = Depends(get_endpoint_service),
-) -> AncActionResponse:
-    """Apply an ANC quarantine policy to an endpoint."""
-    try:
-        ok, mac, msg = await service.anc_quarantine(endpoint_id, req.policy_name)
-    except IseApiError as exc:
-        raise _ise_http_error(exc) from exc
-    return AncActionResponse(ok=ok, mac=mac, message=msg)
-
-
-@router.post("/{endpoint_id}/anc-clear", response_model=AncActionResponse, dependencies=[Depends(require_editor)])
-async def anc_clear(
-    endpoint_id: str,
-    service: EndpointService = Depends(get_endpoint_service),
-) -> AncActionResponse:
-    """Clear the ANC quarantine policy from an endpoint."""
-    try:
-        ok, mac, msg = await service.anc_clear(endpoint_id)
-    except IseApiError as exc:
-        raise _ise_http_error(exc) from exc
-    return AncActionResponse(ok=ok, mac=mac, message=msg)

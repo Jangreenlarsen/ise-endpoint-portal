@@ -4,6 +4,31 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.6.32] — 2026-05-22 — Kodebase-kvalitet P2 (tests, refaktor, arkitektur)
+
+### 190 tests, service-split og API-split
+
+**Baggrund:** P2-sprint baseret på kvalitetskontrol-rapport v5.6.31. Fokus på testdækning, kodeorganisering og dokumentation.
+
+**Ny testdækning:**
+- **test_endpoints.py:** 20 unit-tests for EndpointService CRUD (create, get, update, delete) med mock ISE-klient. Dækker PSK-masking, rolle-filtrering, audit-records og cache-invalidering.
+- **test_policy.py:** 35 unit-tests for policy condition matching (`_eval_operator`, `_eval_identity_group`, `_get_ep_value`, AND/OR-blokke, Radius-skip, `match_endpoint` med disabled-regel-skip).
+- **test_pxgrid.py:** 30 unit-tests for PxGrid session worker (`_parse_vlan`, `_extract_sessions`, `_extract_endpoints`, WorkerStatus, lifecycle start/stop).
+- **Samlet: 190/190 tests bestået.**
+
+**Kodeorganisering:**
+- **`services/_endpoint_helpers.py`:** 144 linjer rene hjælpefunktioner udtrukket fra `endpoint_service.py` (PSK encode/mask/validate, custom attrs, rolle-filter, tekst-søgning).
+- **`api/endpoints_ops.py`:** 204 linjer operationelle ruter (CoA, ANC, historik, bulk-CoA) udtrukket fra `api/endpoints.py`.
+- **`api/_endpoint_api_helpers.py`:** Delte hjælpefunktioner til begge endpoint-routers.
+
+**Bugfix:**
+- `match_endpoint` sprang ikke disabled ISE-regler over under simulering — rettet til at matche ISE's faktiske evaluerings-adfærd.
+
+**Tooling:**
+- `pytest-cov` og `mypy` tilføjet til dev-afhængigheder.
+
+---
+
 ## [5.6.31] — 2026-05-22 — Kvalitet og stabilitet (P1 afslutning)
 
 ### Timerlækage og testdækning

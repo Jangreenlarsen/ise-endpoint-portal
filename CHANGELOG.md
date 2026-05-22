@@ -3,6 +3,24 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.6.32 build 0480] — 2026-05-22 — feat: P2 kodebase-kvalitet — tests 190/190, service-split, API-split, disabled-regel-fix
+
+**Berørte filer:**
+- `backend/pyproject.toml` — tilføjet `pytest-cov>=5.0.0` og `mypy>=1.10.0`
+- `backend/tests/test_endpoints.py` — ny: 20 unit-tests for EndpointService CRUD
+- `backend/tests/test_policy.py` — ny: 35 unit-tests for policy condition matching og PolicyService
+- `backend/tests/test_pxgrid.py` — ny: 30 unit-tests for PxGrid worker
+- `backend/app/services/_endpoint_helpers.py` — ny: 144 linjer rene hjælpefunktioner udtrukket fra endpoint_service.py
+- `backend/app/services/endpoint_service.py` — inline helpers fjernet (-149 linjer), imports fra _endpoint_helpers
+- `backend/app/api/_endpoint_api_helpers.py` — ny: delte hjælpefunktioner for endpoint-routers
+- `backend/app/api/endpoints_ops.py` — ny: operationelle ruter (CoA, ANC, historik) udtrukket fra endpoints.py
+- `backend/app/api/endpoints.py` — operationelle ruter fjernet (-204 linjer), imports fra _endpoint_api_helpers
+- `backend/app/main.py` — tilføjet endpoints_ops router
+- `backend/app/services/policy_service.py` — bugfix: match_endpoint springer nu disabled-regler over
+- `ARCHITECTURE.md` — tilføjet endpoint-cache, PxGrid, API-split og service-split sektioner
+
+---
+
 ## [5.6.31 build 0479] — 2026-05-22 — fix: P1 UX/kvalitet/tests — esc() i metrics+policy, cleanup-returns, worker-loop fix, tests 89/89
 
 **Berørte filer:**

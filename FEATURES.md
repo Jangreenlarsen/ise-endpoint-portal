@@ -9,6 +9,8 @@ Alle nye features registreres her FØR implementering påbegyndes.
 
 ## Planlagt / Under implementering
 
+- `[done 5.6.32 b0480] 2026-05-22 — P2 Kvalitetsforbedringer` — Test-dækning (~20% → 80%): `test_endpoints.py` (CRUD), `test_policy.py`, `test_pxgrid.py`. Kode-refaktor: `endpoint_service.py` (958 linjer → sub-moduler), `endpoints.py` API-router split. Tooling: `pytest-cov`, `mypy`. Dokumentation: ARCHITECTURE.md PxGrid/cache. **Berørte lag:** `backend/tests/`, `backend/app/services/`, `backend/app/api/`, `backend/pyproject.toml`, `ARCHITECTURE.md`.
+
 - `[done 5.6.15 b0463] 2026-05-20 — Simulate Auto-mode: test alle policy sets fra rank 0` — Ny "Auto — test alle policy sets (fra rank 0)"-option øverst i policy set-dropdown. I Auto-mode itererer simulatoren alle sets i rank-rækkefølge og returnerer første match. Indlæsning af RADIUS-template skifter automatisk til Auto. Resultatkort viser hvilket policy set der matchede. **Berørte lag:** `frontend/js/views/browse-detail.js`, `frontend/css/styles.css`.
 
 - `[done 5.6.14 b0461] 2026-05-20 — RADIUS template-gemmer` — Gem og genindlæs sæt af RADIUS-parametre som navngivne templates (fx "Wireless SSID voldby17") direkte i simulate-formularen. Templates gemmes i `localStorage`. Dropdown med alle gemte templates; Indlæs/Gem/Slet-knapper. Ingen backend-ændringer. **Berørte lag:** `frontend/js/views/browse-detail.js`, `frontend/css/styles.css`.
