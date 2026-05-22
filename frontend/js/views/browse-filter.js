@@ -107,7 +107,7 @@ export function initFilter(container, state, api, cb) {
       const colDef = getColumns().find((c) => c.key === state.sortCol);
       if (colDef) {
         rows = [...rows].sort((a, b) => {
-          if (state.sortCol === "create_time" || state.sortCol === "ise_updated") {
+          if (state.sortCol === "create_time") {
             const ta = new Date(endpointCreateTime(a) || 0).getTime();
             const tb = new Date(endpointCreateTime(b) || 0).getTime();
             return state.sortDir === "asc" ? ta - tb : tb - ta;

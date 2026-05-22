@@ -200,7 +200,6 @@ export function getColumns() {
     { key: "authz_acl",     label: t("col.authz_acl"),    field: (r) => r.authz_acl,           cls: "authz-col" },
     { key: "roles",         label: t("col.roles"),        field: (r) => (r.roles || []).join(", ") },
     { key: "first_seen",    label: t("col.first_seen"),   field: (r) => r.first_seen_at ? fmtDateTime(new Date(r.first_seen_at * 1000).toISOString()) : "—" },
-    { key: "ise_updated",   label: t("col.ise_updated"),  field: (r) => fmtDateTime(r.update_time || r.create_time || "") },
     { key: "nas",           label: t("col.nas"),          field: () => "" },
     { key: "ise_session",   label: t("col.ise_session"),  field: () => "" },
   ];
