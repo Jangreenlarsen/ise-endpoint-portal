@@ -69,7 +69,7 @@ class CreateEndpointRequest(BaseModel):
 
 
 class BulkCreateRequest(BaseModel):
-    items: list[CreateEndpointRequest]
+    items: list[CreateEndpointRequest] = Field(..., max_length=5_000)
     overwrite: bool = False
 
 

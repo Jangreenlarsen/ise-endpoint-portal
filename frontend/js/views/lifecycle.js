@@ -2,12 +2,7 @@
 // Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 import { api } from "../api.js";
 import { auth } from "../auth.js";
-
-function esc(s) {
-  return (s ?? "").toString().replace(/[&<>"']/g, (c) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-  }[c]));
-}
+import { esc } from "./browse-utils.js";
 
 function fmtAge(s) {
   if (s === null || s === undefined) return "—";

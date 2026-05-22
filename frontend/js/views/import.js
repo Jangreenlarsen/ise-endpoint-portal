@@ -3,12 +3,7 @@
 import { api } from "../api.js";
 import { t } from "../i18n.js";
 import { parseCsv } from "../csv.js";
-
-function escapeHtml(s) {
-  return (s || "").replace(/[&<>"']/g, (c) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-  }[c]));
-}
+import { esc } from "./browse-utils.js";
 
 export async function renderImport(container) {
   container.innerHTML = `

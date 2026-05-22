@@ -4,7 +4,7 @@ import { api } from "../api.js";
 import { auth } from "../auth.js";
 import { t } from "../i18n.js";
 import { offlineQueue } from "../offline_queue.js";
-import { groupHierarchyOptionsHtml } from "./browse-utils.js";
+import { esc, groupHierarchyOptionsHtml } from "./browse-utils.js";
 
 const MAC_RE = /^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$/;
 const MAC_EXTRACT_RE = /([0-9A-Fa-f]{2}[:\-]?){5}[0-9A-Fa-f]{2}/;
@@ -18,12 +18,6 @@ function normaliseMac(raw) {
   const hex = (raw || "").replace(/[^0-9A-Fa-f]/g, "").toUpperCase();
   if (hex.length !== 12) return raw;
   return hex.match(/.{2}/g).join(":");
-}
-
-function esc(s) {
-  return (s == null ? "" : String(s))
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
 const VENDOR_TO_PLATFORM = {

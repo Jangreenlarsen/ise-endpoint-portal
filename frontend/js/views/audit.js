@@ -3,12 +3,7 @@
 import { api } from "../api.js";
 import { auth } from "../auth.js";
 import { t, getLocale } from "../i18n.js";
-
-function esc(s) {
-  return (s ?? "").toString().replace(/[&<>"']/g, (c) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-  }[c]));
-}
+import { esc } from "./browse-utils.js";
 
 const RESOURCE_TYPES = [
   "", "endpoint", "dacl", "user", "custom_attribute",

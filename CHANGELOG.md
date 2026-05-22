@@ -3,6 +3,17 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.6.30 build 0478] — 2026-05-22 — fix: P1 kritiske sikkerhedsfix — esc() centralisering + BulkCreateRequest grænse
+
+**Berørte filer:**
+- `frontend/js/views/browse-utils.js` — esc() opgraderet til fuld 5-tegns escape (`&<>"'`); kun `"` og `<` blev escaped før
+- `frontend/js/views/import.js` — fjernet lokal `escapeHtml()` der aldrig blev brugt; tilføjet korrekt `import { esc }` (fix: ReferenceError ved fejlvisning)
+- `frontend/js/views/attributes.js`, `audit.js`, `csv-template.js`, `dacls.js`, `dashboard.js`, `lifecycle.js`, `login.js`, `logs.js`, `policy-condition-builder.js`, `register.js`, `user-prefs.js` — lokale esc()-kopier erstattet med `import { esc } from "./browse-utils.js"`
+- `frontend/js/views/settings/section-authz-profiles.js` — lokal esc() erstattet med `import { esc } from "../browse-utils.js"`
+- `backend/app/schemas/endpoint.py` — `BulkCreateRequest.items` tilføjet `max_length=5_000`
+
+---
+
 ## [5.6.29 build 0477] — 2026-05-22 — feat: policies-sektion refaktoreret til 3-panel sidebar-layout
 
 **Berørte filer:**

@@ -4,6 +4,19 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.6.30] — 2026-05-22 — Sikkerhedsfix (P1)
+
+### Kritisk: XSS-beskyttelse og bug-fix i HTML-escaping
+
+**Baggrund:** En kvalitetskontrol-analyse (P1 sprint) afslørede at HTML-escape-funktionen i browse-visningerne kun escaped `"` og `<` — ikke `&`, `>` eller `'`. En separat bug i importvisningen kaldte en funktion der ikke var defineret.
+
+**Rettelser:**
+- **Komplet HTML-escape overalt:** Alle views bruger nu én fælles `esc()`-funktion fra `browse-utils.js` med fuld escaping af `& < > " '`. Tidligere var 13 views afhængige af lokale kopier med varierende sikkerhedsniveau.
+- **Bug i importvisning:** Importvisningen kaldte `esc()` som aldrig var defineret (kun `escapeHtml()` fandtes) — dette udløste en `ReferenceError` ved fejlvisning. Rettet.
+- **Bulk-import grænse:** Maksimalt 5.000 endpoints ad gangen ved bulk-import (tidligere ingen grænse — potentiel ISE-overbelastning).
+
+---
+
 ## [5.6.29] — 2026-05-22 — Forbedring
 
 ### Nyt layout i Policies-sektionen

@@ -70,7 +70,9 @@ export function getOrderedColumns() {
 }
 
 export function esc(s) {
-  return (s || "").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+  return (s || "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }[c]));
 }
 export function endpointCreateTime(r) {
   return r.create_time || r.update_time || "";

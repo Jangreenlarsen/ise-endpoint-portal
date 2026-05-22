@@ -2,12 +2,7 @@
 // Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 import { getCsvTemplate, setCsvTemplate, resetCsvTemplate, parseTemplateHeader, extendTemplateWithPortalColumns } from "../csv.js";
 import { t } from "../i18n.js";
-
-function esc(s) {
-  return (s || "").replace(/[&<>"']/g, (c) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-  }[c]));
-}
+import { esc } from "./browse-utils.js";
 
 export async function renderCsvTemplate(container) {
   container.innerHTML = `

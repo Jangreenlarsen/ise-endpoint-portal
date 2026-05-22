@@ -6,10 +6,7 @@
  */
 
 import { api } from "../api.js";
-
-function esc(s) {
-  return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
+import { esc } from "./browse-utils.js";
 
 function fmtAge(s) {
   if (s === null || s === undefined) return "—";
