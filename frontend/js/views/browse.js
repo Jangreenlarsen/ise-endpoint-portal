@@ -43,6 +43,9 @@ export async function renderBrowse(container) {
           </div>
           <button id="portal-filter-btn" class="secondary"
                   title="Vis kun endpoints oprettet af HyperVision ISE Portal">${t("browse.btn_portal_filter")}</button>
+          <input id="global-q-input" type="search" placeholder="Fritekst søgning…"
+                 title="Søg på tværs af MAC, gruppe, profil, owner, lokation, beskrivelse, vendor"
+                 style="width:160px;padding:3px 6px;font-size:.85em;" />
         </div>
         <div class="spacer"></div>
         <div class="toolbar-group" title="${t("browse.tooltip_save")}">
@@ -56,9 +59,13 @@ export async function renderBrowse(container) {
           <span id="selection-count" class="hint"></span>
           <button id="bulk-edit-btn" class="secondary small" disabled>${t("browse.btn_bulk_edit")}</button>
           <button id="bulk-save-btn" class="small" disabled>${t("browse.btn_bulk_save")}</button>
+          <button id="bulk-coa-btn" class="secondary small" disabled
+                  title="CoA Reauth — tvinger re-autentificering af valgte klienter">CoA Reauth</button>
           <button id="bulk-disconnect-btn" class="danger small" disabled
                   title="CoA Disconnect — deautentificér valgte klienter på WLC/switch (tvinger ny DHCP ved re-associate)">${t("browse.btn_bulk_disconnect")}</button>
           <button id="bulk-del-btn" class="danger small" disabled>${t("browse.btn_bulk_delete")}</button>
+          <button id="bulk-sim-btn" class="secondary small" disabled
+                  title="Kør policy-simulering på valgte endpoints">Simulér match</button>
         </div>
         <span class="toolbar-divider"></span>
         <div class="toolbar-group" title="${t("browse.tooltip_view")}">
@@ -114,6 +121,8 @@ export async function renderBrowse(container) {
           <button class="detail-tab-btn active" data-tab="endpoint">${t("detail.tab_endpoint")}</button>
           <button class="detail-tab-btn" data-tab="radius">${t("detail.tab_radius")}</button>
           <button class="detail-tab-btn" data-tab="profil">${t("detail.tab_profil")}</button>
+          <button class="detail-tab-btn" data-tab="historik">Historik</button>
+          <button class="detail-tab-btn" data-tab="session">ISE Session</button>
         </div>
         <div class="detail-tab-panels">
           <div id="detail-tab-endpoint" class="detail-tab-panel">
@@ -190,6 +199,12 @@ export async function renderBrowse(container) {
             <div id="d-profiling-content"></div>
             <div id="d-iseids-content"></div>
           </div>
+          <div id="detail-tab-historik" class="detail-tab-panel hidden">
+            <div id="d-historik-content"><span class="hint">Klik på fanen for at indlæse historik.</span></div>
+          </div>
+          <div id="detail-tab-session" class="detail-tab-panel hidden">
+            <div id="d-session-debug-content"><span class="hint">Klik på fanen for at se session-data.</span></div>
+          </div>
         </div>
         <div class="modal-actions">
           <button id="d-save">${t("detail.btn_save")}</button>
@@ -240,6 +255,34 @@ export async function renderBrowse(container) {
         <div class="modal-actions">
           <button id="be-apply">${t("bulk.btn_apply")}</button>
           <button id="be-cancel" class="secondary">${t("bulk.btn_cancel")}</button>
+        </div>
+      </div>
+    </div>
+    <div id="bulk-sim-overlay" class="modal-overlay hidden">
+      <div class="modal detail-modal">
+        <h3>Batch-simulering af policy-match</h3>
+        <p class="hint" id="bulk-sim-count"></p>
+        <div class="modal-body">
+          <label>Policy-sæt
+            <select id="bsim-policy-set">
+              <option value="">Indlæser policy-sæt…</option>
+            </select>
+          </label>
+        </div>
+        <div id="bsim-results" style="display:none;">
+          <p id="bsim-summary" class="hint" style="margin:8px 0;"></p>
+          <div class="table-scroll" style="max-height:340px;overflow-y:auto;">
+            <table class="lc-table">
+              <thead><tr>
+                <th>MAC</th><th>Regel</th><th>Profil</th><th>Status</th>
+              </tr></thead>
+              <tbody id="bsim-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button id="bsim-run">Kør simulering</button>
+          <button id="bsim-cancel" class="secondary">Luk</button>
         </div>
       </div>
     </div>
@@ -518,6 +561,24 @@ export async function renderBrowse(container) {
   const badgeTickTimer = setInterval(updatePxGridSourceBadge, 5000);
   window.addEventListener("resize", fitStickyTable);
 
+  // Periodisk re-hentning af alle pxGrid-sessioner for at opsamle MnT-berigelse
+  // (ISEPolicySetName, authorizationRuleName m.m. tilføjes af MnT-loopen hvert 5. min
+  //  men SSE-streamen sender ikke events for berigede sessions).
+  const sessionRefreshTimer = setInterval(async () => {
+    if (!viewActive || !state.pxgridLive) return;
+    try {
+      const res = await api.getPxGridSessions();
+      const sessions = res?.sessions || res || [];
+      if (!Array.isArray(sessions) || !sessions.length) return;
+      if (!state.pxgridSessionData) state.pxgridSessionData = new Map();
+      for (const s of sessions) {
+        const mac = normalizeMac(s.mac);
+        if (mac) state.pxgridSessionData.set(mac, s);
+      }
+      cb.applyAuthStatusColors?.();
+    } catch { /* ignore — SSE stream holder sessioner à jour i realtid */ }
+  }, 5 * 60 * 1000);
+
   // force=true: poll altid MnT ved view-mount så auth-status er korrekt fra start.
   await tableAPI.load(true);
   fitStickyTable();
@@ -526,6 +587,7 @@ export async function renderBrowse(container) {
     viewActive = false;
     stopPxGridStream();
     clearInterval(badgeTickTimer);
+    clearInterval(sessionRefreshTimer);
     window.removeEventListener("resize", fitStickyTable);
   };
 }

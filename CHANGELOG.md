@@ -3,6 +3,372 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.6.31 build 0479] — 2026-05-22 — fix: P1 UX/kvalitet/tests — esc() i metrics+policy, cleanup-returns, worker-loop fix, tests 89/89
+
+**Berørte filer:**
+- `frontend/js/views/metrics.js` — esc() centraliseret (fjernet lokal kopi); cleanup-funktion returneret (clearInterval ved nav)
+- `frontend/js/views/policy.js` — esc() centraliseret; silent catches opgraderet til console.warn; cleanup-funktion returneret
+- `backend/app/services/cache_sync.py` — `start()`: `self._stop = asyncio.Event()` i stedet for `.clear()` (fix: "bound to different event loop" ved genstart)
+- `backend/app/services/cache_prewarm.py` — samme fix + `self._hot = asyncio.Queue()` resettet i `start()`
+- `backend/app/services/audit_retention.py` — samme event-loop fix i `start()`
+- `backend/app/services/user_service.py` — fjernet lokal `from app.core import audit_store` inde i `login()` der skygger modul-import og forårsager `UnboundLocalError` på Python 3.14
+- `backend/tests/test_auth.py` — ny fil: 13 tests for auth-endpoints; module-scoped fixture + korrekte mock-targets
+- `backend/tests/test_authz.py` — ny fil: 10 tests for rolle-håndhævelse; module-scoped fixture + korrekte mock-targets
+
+**Ændringer:**
+- 89 tests → 89 passed (fra 22 fejlende)
+- Cleanup-returns i metrics.js og policy.js forhindrer timer-lækage ved navigation
+- Worker `start()` opretter altid et nyt `asyncio.Event()` så de kan genstartes i en ny event loop (relevant ved test + fremtidig hot-reload)
+
+---
+
+## [5.6.30 build 0478] — 2026-05-22 — fix: P1 kritiske sikkerhedsfix — esc() centralisering + BulkCreateRequest grænse
+
+**Berørte filer:**
+- `frontend/js/views/browse-utils.js` — esc() opgraderet til fuld 5-tegns escape (`&<>"'`); kun `"` og `<` blev escaped før
+- `frontend/js/views/import.js` — fjernet lokal `escapeHtml()` der aldrig blev brugt; tilføjet korrekt `import { esc }` (fix: ReferenceError ved fejlvisning)
+- `frontend/js/views/attributes.js`, `audit.js`, `csv-template.js`, `dacls.js`, `dashboard.js`, `lifecycle.js`, `login.js`, `logs.js`, `policy-condition-builder.js`, `register.js`, `user-prefs.js` — lokale esc()-kopier erstattet med `import { esc } from "./browse-utils.js"`
+- `frontend/js/views/settings/section-authz-profiles.js` — lokal esc() erstattet med `import { esc } from "../browse-utils.js"`
+- `backend/app/schemas/endpoint.py` — `BulkCreateRequest.items` tilføjet `max_length=5_000`
+
+---
+
+## [5.6.29 build 0477] — 2026-05-22 — feat: policies-sektion refaktoreret til 3-panel sidebar-layout
+
+**Berørte filer:**
+- `frontend/js/views/policy.js` — ny HTML-struktur: sidebar (Policy Sets) + rules-panel + detail-panel (3-panel)
+- `frontend/css/styles.css` — ny `.pol-sidebar`, `.pol-set-item`, `.pol-set-dot`, `.pol-set-state-pill`, `.pol-rules-panel`, `.pol-detail-panel`; fjernet: `.pol-sets-bar`, `.pol-set-card`, `.pol-inner`, `.pol-body`, `.pol-split`, `.pol-list-col`, `.pol-detail-col`; opdateret dark theme
+
+**Ændringer:**
+- Policy Sets vises nu i en vertikal sidebar (240px) til venstre med state-dot (grøn/grå), navn, service-navn og aktiv/inaktiv-pill
+- Aktiv set markeres med blå venstre-kant og lys blå baggrund
+- Regler-listen er nu et selvstændigt panel med scroll
+- Detail/editor-panel fylder resten af bredden
+- Dark theme opdateret med korrekte sidebar-farver
+
+---
+
+## [5.6.28 build 0476] — 2026-05-22 — docs: tilføjet manglende release notes for v5.6.25 og v5.6.26
+
+**Berørt fil:**
+- `RELEASE_NOTES.md` — tilføjet Bug fix release-sektioner for v5.6.25 (batch-simulate feltnavne) og v5.6.26 (selektion nulstillet ved re-render).
+
+---
+
+## [5.6.27 build 0475] — 2026-05-22 — feat: progress-indikator ved gem af multiple endpoints
+
+**Berørte filer:**
+- `frontend/js/views/browse-table.js` — fælles `runSaveLoop(ids)` erstatter de to separate save-loops i `saveAllBtn` og `bulkSaveBtn`. Kalder `showSaveProgress(done, total, mac)` på hver iteration: viser "Gemmer X / Y… [MAC]" + en blå progress-bar der fyldes op efterhånden som endpoints gemmes. MAC vises kun ved mere end ét endpoint.
+- `frontend/css/styles.css` — `.save-progress-*` styles + dark/midnight theme.
+
+---
+
+## [5.6.26 build 0474] — 2026-05-21 — fix: selektion i browse-tabel nulstilles ved automatisk re-render
+
+**Berørt fil:**
+- `frontend/js/views/browse-table.js` — `renderRows()`: fanger nu `prevSelected` (Set af endpoint-IDs med aktiv checkbox) inden `tbody.innerHTML` erstattes. Checkboksen sættes til `checked` hvis ID'et var valgt inden genrender. Retter at pxGrid `endpoint_changed`-events (og manuel refresh) sletttede brugerens selektion.
+
+---
+
+## [5.6.25 build 0473] — 2026-05-21 — fix: batch-simulate brugte forkerte feltnavne på PolicyMatchResult
+
+**Berørt fil:**
+- `backend/app/api/policy.py` — `batch_simulate`: `result.matched_rule` → `result.matched_rule_name`, `result.matched_profile` → `", ".join(result.profiles)`. `matched`-check rettet tilsvarende. Fejlen betød at alle endpoints returnerede "has no attribute 'matched_rule'" i stedet for resultater.
+
+---
+
+## [5.6.24 build 0472] — 2026-05-21 — feat: opdatering viser alle release notes fra nuværende til nyeste version
+
+**Berørte filer:**
+- `backend/app/services/update_service.py` — ny `_parse_semver()` og `_extract_release_sections_since(current, latest)`: parser alle `## [x.y.z]`-sektioner fra RELEASE_NOTES.md, filtrerer dem i intervallet `current < v <= latest` og returnerer dem stacked med `---` separator, ældste øverst. Fallback til kun latest-sektionen hvis ingen matches. `check_github_version()` bruger nu denne funktion i stedet for `_extract_release_section()`.
+- `frontend/js/views/settings/section-update.js` — `showInfo()`: summary-linjen viser nu `v{current} → v{latest}` ved opdatering i stedet for kun `v{latest}`.
+
+---
+
+## [5.6.23 build 0471] — 2026-05-21 — feat: config backup og restore
+
+**Berørte filer:**
+- `backend/app/api/config_backup.py` — ny router `GET /config/backup` (returnerer alle config-filer som JSON-download) og `POST /config/restore` (validerer og gendanner). Admin-only.
+- `backend/app/main.py` — `config_backup_api` router registreret.
+- `frontend/js/views/settings.js` — ny tab "Backup / Restore" i admin-settings. Panel med download-knap og fil-upload til gendannelse.
+- `frontend/js/views/settings/section-backup.js` — backup/restore UI-logik: download som blob, restore via POST med confirm-dialog.
+
+**Sikkerhed:** Backup indeholder credentials (ISE password, JWT-secret). Bruger får advarsel om dette ved download og restore.
+
+---
+
+## [5.6.22 build 0470] — 2026-05-21 — feat: batch-simulering af policy-match fra browse-tabellen
+
+**Berørte filer:**
+- `frontend/js/views/browse.js` — "Simulér match"-knap tilføjet i bulk-toolbar (disabled til endpoints vælges). Batch-simulate modal tilføjet med policy-sæt dropdown og resultattabel.
+- `frontend/js/views/browse-bulk.js` — handler til bulk-sim-knap: loader policy-sæt via API, sender `batchSimulate(setId, ids)`, viser per-endpoint resultater med MAC, regel, profil og status-badge.
+- `frontend/js/views/browse-table.js` — `updateSelectionUI()` enabler/disabler ny knap ved ændret selektion.
+- `frontend/css/styles.css` — `.bsim-*` badge-styles (ok/fail/err/partial) med dark theme.
+
+---
+
+## [5.6.21 build 0469] — 2026-05-21 — feat: audit-log CSV-eksport
+
+**Berørte filer:**
+- `backend/app/api/audit.py` — ny `GET /audit/export`-endpoint (admin-only): returnerer alle matchende audit-events som CSV-fil (maks. 10 000 rækker). Understøtter samme filter-parametre som list-endpoint (actor, resource_type, resource_id, from_ts, to_ts, search). Returnerer `StreamingResponse` med `Content-Disposition: attachment`.
+- `frontend/js/views/audit.js` — "Eksportér CSV"-knap tilføjet i toolbar. Henter CSV med auth-header, opretter blob-URL og trigger browser-download.
+
+---
+
+## [5.6.20 build 0468] — 2026-05-21 — feat: Livscyklus-viewer — inaktive endpoints
+
+**Berørte filer:**
+- `frontend/js/views/lifecycle.js` — ny view: viser endpoints uden portal-aktivitet i valgt periode (30/60/90/180/365 dage). Tabel med MAC, gruppe, profil, ejer, cache-alder. CSV-eksport direkte fra browseren. Admin-only.
+- `frontend/index.html` — nav-item "Livscyklus" tilføjet under Overvågning.
+- `frontend/js/app.js` — import og route `lifecycle` registreret (admin-only).
+- `frontend/css/styles.css` — `.lc-*` styles + dark/midnight theme.
+
+---
+
+## [5.6.19 build 0467] — 2026-05-21 — fix: save endpoint langsom — after-audit ISE-kald fjernet fra hot path
+
+**Berørt fil:**
+- `backend/app/services/endpoint_service.py` — `update_endpoint()`: "after"-snapshot til audit-log køres nu som `asyncio.create_task` i baggrunden i stedet for at blokere HTTP-svaret. HTTP 200 returneres straks efter ISE PUT + cache-invalidation. Baggrunds-tasken henter friske data fra ISE og recorder audit-entry asynkront. Besparelse: ét ISE GET-kald (~300-600ms) fjernet fra hot path per save-operation.
+
+---
+
+## [5.6.18 build 0466] — 2026-05-21 — fix: cache-alert "Mange stale cache-entries" var permanent falsk alarm
+
+**Berørte filer:**
+- `backend/app/core/alert_store.py` — `_check_stale_pct()` bruger nu `very_stale_pct` i stedet for `stale_pct`. `stale_pct` (age > TTL=60s) er ~98% i normal drift med 30-min drip og SWR — var altid over threshold. `very_stale_pct` (age > TTL×30=1800s) er 0 i normal drift og stiger kun hvis drip ikke følger med. Threshold sænket til 10%; startup-suppression fjernet (ikke nødvendig med korrekt metric). Alerttitel og -tekst opdateret til at beskrive den reelle risiko (entries der KAN ikke serves fra cache).
+- `backend/app/core/endpoint_cache.py` — `stats()` returnerer nu `very_stale_pct` i `staleness`-dict.
+
+---
+
+## [5.6.17 build 0465] — 2026-05-21 — fix: Dashboard cache "Disk stale" viser altid 0 — manglende observability
+
+**Berørte filer:**
+- `backend/app/api/dashboard.py` — Prewarm-blok tilføjer nu `disk_loaded_at_startup: pw.disk_loaded` til `prewarm_data`. Dashboard-response eksponerer den som `cache.disk_loaded_at_startup`. Forklaring: `disk_loaded` er antallet af entries indlæst fra disk ved seneste opstart og holdes stabil gennem sessionens levetid — den eneste permanente indikator for om disk-persistence fungerede.
+- `frontend/js/views/dashboard.js` — Cache-kortet viser nu "Indlæst fra disk ved opstart: N" (eller "0 (ingen disk-cache fundet)" ved første opstart). "Disk stale (nu)"-rækken viser forklarende tekst: "0 ✓ (alle entries er live ISE-data)" i steady state, eller antal + "(afventer prewarm-refresh)" i startup-vinduet.
+
+---
+
+## [5.6.15 build 0464] — 2026-05-20 — docs: release notes v5.6.9–v5.6.15 tilføjet
+
+**Berørt fil:**
+- `RELEASE_NOTES.md` — Tilføjet release notes for v5.6.9, v5.6.10, v5.6.11, v5.6.12, v5.6.13, v5.6.14 og v5.6.15. Brugervende beskrivelser af alle ændringer siden v5.6.8.
+
+---
+
+## [5.6.15 build 0463] — 2026-05-20 — feat: simulate Auto-mode tester alle policy sets fra rank 0
+
+**Berørte filer:**
+- `frontend/js/views/browse-detail.js` — Ny `AUTO_SET = "--auto--"` sentinel. Policy set-dropdown har "Auto — test alle policy sets (fra rank 0)" som første og default valg. `runSimulate("--auto--")` itererer alle sets i rank-rækkefølge (sorteret af backend) og stopper ved første set der returnerer et match (definitivt eller partielt). Viser løbende hvilken set der testes. Indlæsning af RADIUS-template via "Indlæs"-knappen skifter automatisk dropdown til Auto. Simulate-knappen tjekker ikke længere `state.detailCurrentId` (unødvendig guard). `renderMatchResult` viser `.match-set-label` øverst i resultatkort med policy set-navn.
+- `frontend/css/styles.css` — Ny `.match-set-label`-klasse: lille caps label over regelnavnet der viser hvilket policy set der matchede.
+
+---
+
+## [5.6.14 build 0462] — 2026-05-20 — fix: GitHub update-check CDN cache-bypass
+
+**Berørt fil:**
+- `backend/app/services/update_service.py` — `check_github_version()`: tilføjer `?t=<unix-timestamp>` cache-buster til begge `raw.githubusercontent.com` URL'er. CDN'en ignorerer `Cache-Control`/`Pragma`-headers fra klienter, men kan ikke ignorere en unik query-parameter — sikrer at "Check for update" altid returnerer frisk indhold.
+
+---
+
+## [5.6.14 build 0461] — 2026-05-20 — feat: RADIUS template-gemmer i simulate
+
+**Berørte filer:**
+- `frontend/js/views/browse-detail.js` — Template-bar tilføjet til RADIUS-sektionen. `localStorage`-nøgle `ise_radius_templates` gemmer array af `{ id, name, attrs }`. `renderTplSelect()` sorterer alfabetisk (dansk locale). "Indlæs" rydder rækker og udfylder fra valgt template. "Gem som template" prompter for navn og gemmer nuværende nøgle/værdier. "✕ Slet" fjerner valgt template efter confirm-dialog. Nyoprettet template vælges automatisk i dropdown.
+- `frontend/css/styles.css` — Nye `.radius-tpl-bar`, `.radius-tpl-sel`, `.radius-tpl-del` klasser med light/dark theme support.
+
+---
+
+## [5.6.13 build 0460] — 2026-05-20 — feat: policy match ISE-editor-stil AND/OR visualisering
+
+**Berørte filer:**
+- `frontend/js/views/browse-detail.js` — `renderMatchResult()` omskrevet. Viser nu betingelsestræet med farvekodede AND/OR-blokke: ét AND-block ved flad politik; ét OR-block ved rene OR-grene; AND-block der wrapper OR-block ved kombinerede globale+OR-betingelser. Hvert betingelse: `Dict.Attr` i `pc-cond-dict`/`pc-cond-attr` notation, operator ogværdi. Matchede OR-grene = grøn kant; fejlede = rød kant. AND-inner-label ved >1 betingelse i en OR-gren. Partial-match-note bevaret.
+- `frontend/css/styles.css` — Nye `.pc-*` klasser: `.pc-block`, `.pc-and-block`, `.pc-or-block`, `.pc-block-body`, `.pc-operator-label`, `.pc-and`, `.pc-or`, `.pc-or-sep`, `.pc-or-branch`, `.pc-branch-ok`, `.pc-branch-fail`, `.pc-and-inner-label`, `.pc-cond-row`, `.pc-cond-ok/fail/skip`, `.pc-cond-dict/attr/op/val`. Fuld dark mode support.
+
+---
+
+## [5.6.12 build 0459] — 2026-05-20 — fix: operator-profil med admin-rolle kan ikke logge ind via TACACS+
+
+**Berørt fil:**
+- `backend/app/services/user_service.py` — `login()`: `is_admin_user` tjekker nu `user_type != "operator"` foruden `role == "admin"`. Operator-profiler med admin-rolle (TACACS-brugere) fik tidligere `is_admin_user=True` → TACACS-sti sprunget over → lokal auth med random hash → altid 401. Nu routes de korrekt til TACACS-stien. Ægte lokale admins (`user_type` er None/ikke "operator") bypasser stadig TACACS som før.
+
+---
+
+## [5.6.11 build 0458] — 2026-05-20 — feat: Systemlog-sektion i Dashboard
+
+**Berørte filer:**
+- `frontend/js/views/dashboard.js` — Ny Systemlog-sektion nederst i Dashboard (admin-only; skjules stille ved 403). Niveau-filter med korrekt "og derover"-semantik (WARNING+ = WARNING+ERROR+CRITICAL) via client-side post-filtrering. Antal-selector (50/100/200 linjer). Fritekst-søgning med 400ms debounce. Farvekodet niveau-badge per log-linje (DEBUG grå, INFO blå, WARNING orange, ERROR rød, CRITICAL lilla). Logger-navn forkortet (fjerner "app."-prefix). Auto-refresh hvert 30s med resten af dashboard.
+
+---
+
+## [5.6.10 build 0457] — 2026-05-20 — fix: 6 resterende telemetri-problemer fra analyse (P2-P7)
+
+**Berørte filer:**
+- `backend/app/pxgrid/session_worker.py` — (P2) `_reconcile_from_pxgrid`: ny `session_fields_changed`-betingelse opdaterer eksisterende entries når vlan/dacl/sgt er ændret siden sidst (STOMP offline-vindue). (P3+P5) `_enrich_in_flight: set[str]` modul-sæt forhindrer duplikate MnT-tasks per MAC; `_enrich_single_from_mnt` fjerner MAC i `finally`-blok.
+- `backend/app/pxgrid/session_cache.py` — (P4) `load_from_disk(max_age_s)`: sessions ældre end grænsen springes over ved indlæsning (default 4 timer via `pxgrid_session_disk_max_age_s`).
+- `backend/app/main.py` — (P4) Kalder `load_from_disk` med `max_age_s`. (P6) `mnt_stale_reconcile_max_batch` læses fra settings (default hævet 50→100).
+- `backend/app/ise/mnt_sessions.py` — (P7) `fetch_session_by_mac`: AuthStatus VLAN (RADIUS Accept AV-pair) foretrækkes over Session/MACAddress VLAN. VLAN samles til sidst: `out["vlan"] = auth_status_vlan or session_mac_vlan`.
+
+---
+
+## [5.6.9 build 0456] — 2026-05-20 — fix: _enrich_sessions_from_mnt overskrev korrekt pxGrid VLAN (5-min-cyklus)
+
+**Berørt fil:**
+- `backend/app/pxgrid/session_worker.py` — `_enrich_sessions_from_mnt`: ændret `vlan=data.get("vlan") or current.vlan` → `vlan=current.vlan or data.get("vlan")`. Funktionen kører hvert 5. minut på sessions med ufuldstændige felter — MnT lagger stadig bagud ved VLAN-ændringer i det vindue. Fix er parallel med v5.6.8-fix i `_enrich_single_from_mnt`. Identificeret i to-faset telemetri-analyse (Problem 1, HØJ prioritet).
+
+---
+
+## [5.6.8 build 0455] — 2026-05-20 — fix: _enrich_single_from_mnt overskrev pxGrid VLAN med stale MnT-data
+
+**Berørt fil:**
+- `backend/app/pxgrid/session_worker.py` — `_enrich_single_from_mnt`: ændret `vlan=data.get("vlan") or current.vlan` → `vlan=current.vlan or data.get("vlan")`. Funktionen kører straks efter STOMP-event mens MnT stadig returnerer gammelt VLAN → stale MnT overskrev korrekt pxGrid VLAN. Årsag til "ét step bagud"-symptom og til at CoA uden VLAN-ændring "syncede" portalen.
+
+---
+
+## [5.6.7 build 0454] — 2026-05-20 — fix: MnT AuthStatus parsedes med ældste session i stedet for nyeste
+
+**Berørte filer:**
+- `backend/app/ise/mnt_sessions.py` — `_parse_auth_status_elements()`: ny parser der returnerer én dict per `authStatusElement` i dokument-rækkefølge (nyeste-først). `fetch_session_by_mac`: ersatter `_parse_all_xml_fields(text2)` med iteration over `_parse_auth_status_elements()` — bruger FØRSTE element der har den relevante data per felt (auth_method, vlan, authz_profiles, identity_group osv.). Forhindrer at ældre sessions response (VLAN 210) overskrives NYERE sessions response (VLAN 64).
+
+---
+
+## [5.6.6 build 0453] — 2026-05-20 — fix: tunnelPrivateGroupId "(tag=0) N" normaliseres + getSessions bruger frisk VLAN
+
+**Berørte filer:**
+- `backend/app/pxgrid/session_worker.py` — `_parse_vlan()`: normaliserer `"(tag=0) 32"` → `"32"` ved at tage det numeriske suffix. `_build_session_info`: bruger `_parse_vlan()` på tunnelPrivateGroupId-udtræk. getSessions bulk-load: `vlan=info.vlan or existing.vlan` (frisk payload foretrækkes). `reconcile_stale_sessions._process()`: reverted v5.6.4-prioritering for vlan/policy-felter — MnT foretrækkes som primær kilde (RADIUS accounting er mere pålidelig end STOMP-events der kan komme i forkert rækkefølge eller mangle).
+
+---
+
+## [5.6.5 build 0452] — 2026-05-20 — fix: session debug mismatch-advarsel forklarer MnT-forsinkelse
+
+**Berørte filer:**
+- `frontend/js/views/browse-detail.js` — Probe MnT-resultatet: VLAN (cache) mærkes "pxGrid ✓"; VLAN (MnT) mærkes "kan være forældet"; mismatch-tekst forklarer at MnT normalt lagger bagud efter re-auth og at cache er autoritativ.
+
+---
+
+## [5.6.5 build 0451] — 2026-05-20 — fix: stale VLAN fra gammel session + ISE Session debug-tab
+
+**Berørte filer:**
+- `backend/app/pxgrid/session_worker.py` — `_handle_message_body`: detekterer nyt `audit_session_id` (ny session = re-auth); rydder `vlan`/`dacl`/`cts_security_group` fra gammel session i stedet for at arve dem; trigger MnT-berigelse ved tomt vlan. `_enrich_single_from_mnt`: log-output inkluderer nu vlan-ændringer (gammel→ny).
+- `frontend/js/views/browse.js` — tilføjet "ISE Session"-tab i detail-modal
+- `frontend/js/views/browse-detail.js` — `_lazyLoadSession()`: viser cache-indhold og admin Probe MnT-knap der kalder debug-endpoint og sammenligner cache vs. MnT (VLAN-mismatch fremhæves)
+- `frontend/js/api.js` — `debugPxGridSession()` og `probeMntSession()`
+
+---
+
+## [5.6.4 build 0450] — 2026-05-20 — fix: reconcile_stale_sessions overskriver ikke pxGrid VLAN med MnT-data
+
+**Berørte filer:**
+- `backend/app/pxgrid/session_worker.py` — `_process()` i `reconcile_stale_sessions`: vendt prioritet i `if existing:` grenen fra `mnt_data or existing.field` til `existing.field or mnt_data` for alle felter (nas_ip, user_name, policy_set_name, authz_profiles, authz_rule_name, endpoint_policy, dacl, vlan, cts_security_group, auth_method, identity_group). pxGrid real-time data overskrives aldrig — MnT bruges kun til at fylde tomme felter.
+
+---
+
+## [5.6.3 build 0449] — 2026-05-20 — feat: endpoint historik viser sigende handlingsbeskrivelse
+
+**Berørte filer:**
+- `frontend/js/views/browse-detail.js` — `_describeAction()`: differ `before`/`after`-snapshot og viser ændrede felter (fx `VLAN:10`, `Gruppe:Unknown`) maks 32 tegn; for ikke-update-handlinger vises action-teksten uændret
+
+---
+
+## [5.6.2 build 0448] — 2026-05-20 — fix: fritekst-søgning 500 + MnT stale-session reconcile worker
+
+**Berørte filer:**
+- `backend/app/services/endpoint_service.py` — fix: `d.profile` → `d.profiler_name` i `_full_text_filter()` (AttributeError → 500)
+- `backend/app/pxgrid/session_worker.py` — ny funktion `reconcile_stale_sessions()`: henter MnT-session for stale endpoint-cache entries, opretter/opdaterer session-cache entries for endpoints der ikke har modtaget pxGrid push-events
+- `backend/app/main.py` — ny `_mnt_stale_reconcile_loop` task: kører `reconcile_stale_sessions` hvert 10. min (konfigurerbar via `mnt_stale_reconcile_interval_s`)
+
+---
+
+## [5.6.1 build 0447] — 2026-05-20 — fix: GitHub update-check sender nu Cache-Control: no-cache headers
+
+**Berørte filer:**
+- `backend/app/services/update_service.py` — `no-cache` headers + `follow_redirects=True` på httpx-kald til GitHub raw content
+
+---
+
+## [5.6.1 build 0446] — 2026-05-20 — fix: 5 bugs fra v5.6.0 — fritekst-søgning, historik-tab, session-auth-refresh, stale-alert, Dashboard-session-count
+
+**Berørte filer:**
+- `frontend/js/views/browse-filter.js` — fix: `enterFilterMode()` returnerede tidligt ved q-ændring fordi `state.filterMode` var true; ny guard er kun `state.loadingAll`
+- `frontend/js/views/browse-detail.js` — fix: `_lazyLoadHistorik()` fallback til DOM-id hvis `state.detailCurrentId` er null
+- `frontend/js/views/browse.js` — fix: `setInterval` re-henter pxGrid sessions hvert 5. min for at merge MnT-beriget data
+- `backend/app/api/dashboard.py` — fix: `sess_stats.get("total")` → `"size"` (SessionCache.stats() bruger nøglen "size")
+- `backend/app/core/alert_store.py` — fix: stale-alert supprimeres også når `total_endpoints == 0` (endnu ingen scan kørt)
+- `frontend/css/styles.css` — tilføjet `.alert-badge-warn` klasse
+
+---
+
+## [5.6.0 build 0445] — 2026-05-19 — feat: v5.6.0 — Dashboard, Bulk CoA, Alert-system, Fritekst-søgning, Endpoint historik, ISE PSN noder, Batch policy-sim, Endpoint livscyklus
+
+**Berørte filer:**
+- `backend/app/api/dashboard.py` (ny)
+- `backend/app/api/alerts.py` (ny)
+- `backend/app/api/lifecycle.py` (ny)
+- `backend/app/api/ise_nodes.py` (ny)
+- `backend/app/ise/nodes.py` (ny)
+- `backend/app/core/alert_store.py` (ny)
+- `backend/app/api/endpoints.py` (+bulk-coa, +history, +q-param)
+- `backend/app/api/policy.py` (+batch-simulate)
+- `backend/app/services/endpoint_service.py` (+full_text_q filter)
+- `backend/app/main.py` (+routers, +alert background task)
+- `frontend/js/views/dashboard.js` (ny)
+- `frontend/js/views/browse.js` (+Historik-tab, +Bulk CoA btn, +fritekst-søgefelt)
+- `frontend/js/views/browse-detail.js` (+historik tab handler + _lazyLoadHistorik)
+- `frontend/js/views/browse-bulk.js` (+bulkCoaBtn handler)
+- `frontend/js/views/browse-table.js` (+bulkCoaBtn enable/disable)
+- `frontend/js/views/browse-filter.js` (+fullTextQ state + q-input wiring)
+- `frontend/js/views/metrics.js` (+ISE PSN nodes kort via `/api/ise/nodes`)
+- `frontend/js/api.js` (+getEndpointHistory, +bulkCoa, +batchSimulate, +getIseNodes, +getStaleEndpoints, +getDashboard, +getAlerts, listAllEndpointDetails+q)
+- `frontend/js/app.js` (+dashboard route, +alert badge polling)
+- `frontend/index.html` (+Dashboard nav-link, +alert-badge)
+- `frontend/css/styles.css` (+.alert-badge styles)
+- `version.json`
+
+**8 nye features som samlet release v5.6.0:**
+1. **Dashboard** — Ny /#dashboard viser circuit breaker, endpoints, sessioner, cache-hit, prewarm-status og de 5 seneste audit-events. Opdateres automatisk hvert 30. sekund.
+2. **Bulk CoA Reauth** — "CoA Reauth"-knap i Browse selection-toolbar kalder `/api/endpoints/bulk-coa` med op til 200 endpoints ad gangen (semaphore=3).
+3. **Alert-badge** — Navigationsbadge med antal aktive systemadvarsler (orange=warning, rød=error). Polling hvert 60. sekund. Tre alert-betingelser: circuit breaker OPEN/HALF-OPEN, drip bagud, stale > 50%.
+4. **Fritekst-søgning** — "Fritekst søgning…"-inputfelt i Browse-toolbar. Søger server-side via `q`-param i `/api/endpoints/details/all` på tværs af 10 felter (MAC, gruppe, profil, owner, lokation, beskrivelse, vendor, type, endpoint_type, platform_type).
+5. **Endpoint historik** — "Historik"-tab i endpoint detail-modal. Lazy-loader via `GET /api/endpoints/{id}/history`. Viser audit-trail med tidspunkt, bruger og handling.
+6. **ISE PSN noder** — Nyt "ISE PSN noder"-kort på Metrics-siden fetcher `/api/ise/nodes` og viser alle ISE-noder med reachability-dot, roller og version.
+7. **Batch policy-simulering** — Ny `POST /api/policy/batch-simulate` backend-route. Kører policy-match for op til 100 endpoints parallelt (semaphore=5).
+8. **Endpoint livscyklus** — Ny `GET /api/lifecycle/stale?days=90` backend-route. Returnerer endpoints der ikke har haft portal-aktivitet i X dage (krydstjek af cache mod audit-log).
+
+## [5.5.9 build 0444] — 2026-05-19 — fix: cache vedligehold-metrics eksponeret via Prometheus og vist på Metrics-siden
+
+**Berørte filer:** `backend/app/core/metrics.py`, `backend/app/services/cache_prewarm.py`, `frontend/js/views/metrics.js`, `version.json`
+
+Drip-refresh og staleness-metrics tilføjet som Prometheus-gauges og counters, synlige på Metrics-siden som nyt "Cache vedligehold"-kort. Otte nye metrics: `drip_refreshed_total`, `drip_skipped_total`, `drip_sleep_seconds`, `drip_cycle_seconds`, `oldest_entry_age_seconds`, `avg_entry_age_seconds`, `stale_entries`, `stale_pct`. Kapacitetsindikator viser grøn/gul/rød badge ved siden af "Fuld rotation"-estimatet.
+
+## [5.5.9 build 0443] — 2026-05-19 — feat: cache vedligehold-statistik — drip-metrics og staleness-fordeling
+
+**Berørte filer:** `backend/app/services/cache_prewarm.py`, `backend/app/core/endpoint_cache.py`, `backend/app/api/cache.py`, `frontend/js/views/settings/section-cache.js`, `version.json`
+
+Ny statistik i Settings → Cache der viser om drip-refresh-mekanismen kan følge med i takt med at systemet vokser:
+- **Kapacitetsindikator (grøn/gul/rød):** sammenligner estimeret fuld-rotationstid med konfigureret scan-interval — grøn = drip'en er foran, rød = kan ikke følge med.
+- **Drip-tæller:** total antal endpoints refreshet og sprunget over (friske) siden opstart.
+- **Cache-alder:** ældste entry-alder, gennemsnitlig alder, stale-andel i procent.
+- **Staleness-fordeling:** visuel søjle der viser andelen af friske (grøn), stale (gul) og meget-stale (rød) entries.
+
+Backend: `PrewarmStatus` har fire nye felter (`drip_refreshed_total`, `drip_skipped_total`, `drip_current_sleep_s`, `drip_estimated_full_cycle_s`). `EndpointCache.stats()` returnerer nu et `staleness`-objekt med aldersfordeling.
+
+## [5.5.9 build 0442] — 2026-05-19 — feat: cache drip-refresh — kontinuerlig baggrunds-opdatering af endpoint-cache
+
+**Berørte filer:** `backend/app/core/endpoint_cache.py`, `backend/app/services/cache_prewarm.py`, `version.json`
+
+Ny `_drip_loop()` i pre-warm worker kører parallelt med den periodiske liste-scan. Loopen finder løbende den ældste cachede entry og refresher den fra ISE, derefter sover den `interval / antal_endpoints` sekunder (fx 1000 endpoints / 1800s = 1,8s pr. opdatering). Resultatet er at alle endpoints opdateres jævnt over pre-warm-intervallet — i stedet for én burst hvert 30. minut kun udløst af bruger-interaktion. Friske entries (yngre end `cache_ttl_seconds`) og entries der allerede er ved at blive hentet (`_inflight_detail`) springes over. Ny `get_oldest_id()` metode på `EndpointCache` finder den ældste entry i O(N).
+
+## [5.5.8 build 0441] — 2026-05-19 — fix: detail-modal loading-besked rykker ikke længere layout
+
+**Berørte filer:** `frontend/css/styles.css`, `version.json`
+
+`#detail-msg` sad i flex-flowet mellem `<h3>` og `.detail-tab-bar` — hvert gang loading/gem/fejl-besked dukkede op eller forsvandt rykkede tab-baren og alt indhold op/ned. Fix: `#detail-msg` er nu `position: absolute` (taget ud af flex-flowet) og overlayer indholdet øverst i modal uden at påvirke tab-barens position. `pointer-events: none` på wrapper sikrer at klik stadig virker igennem tom besked-area.
+
+## [5.5.7 build 0440] — 2026-05-19 — fix: TACACS+ bootstrap → viewer (ikke admin); mismatch → 401 (uændret)
+
+**Berørte filer:** `backend/app/services/user_service.py`, `version.json`
+
+Bootstrap-tilstanden (ingen operatørprofiler konfigureret overhovedet) tildeler nu `viewer`-rollen i stedet for `admin`. Mismatch-tilstanden (profiler findes men ingen matcher brugeren) afviser stadig med 401. Auditeres som `tacacs_auto_viewer_bootstrap`.
+
 ## [5.5.7 build 0438] — 2026-05-19 — security+fix: audit-API admin-only + logout + circuit-breaker audit
 
 **Berørte filer:** `backend/app/api/audit.py`, `backend/app/api/auth.py`, `backend/app/ise/client.py`, `BUGS.md`, `RELEASE_NOTES.md`, `version.json`

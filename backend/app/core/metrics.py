@@ -45,6 +45,43 @@ CACHE_DISK_STALE = Gauge(
 )
 
 # ------------------------------------------------------------------ #
+# Cache vedligehold / drip-refresh metrics                            #
+# ------------------------------------------------------------------ #
+
+CACHE_DRIP_REFRESHED = Counter(
+    "ise_portal_cache_drip_refreshed_total",
+    "Endpoints refreshed by the continuous drip-refresh loop since last restart.",
+)
+CACHE_DRIP_SKIPPED = Counter(
+    "ise_portal_cache_drip_skipped_total",
+    "Endpoints skipped by drip-refresh because they were still fresh (age <= TTL).",
+)
+CACHE_DRIP_SLEEP_S = Gauge(
+    "ise_portal_cache_drip_sleep_seconds",
+    "Current drip-refresh sleep interval between individual endpoint refreshes (interval / total).",
+)
+CACHE_DRIP_CYCLE_S = Gauge(
+    "ise_portal_cache_drip_cycle_seconds",
+    "Estimated time to rotate through all cached endpoints once at the current drip rate.",
+)
+CACHE_OLDEST_AGE_S = Gauge(
+    "ise_portal_cache_oldest_entry_age_seconds",
+    "Age in seconds of the oldest cached endpoint entry.",
+)
+CACHE_AVG_AGE_S = Gauge(
+    "ise_portal_cache_avg_entry_age_seconds",
+    "Average age in seconds of all cached endpoint entries.",
+)
+CACHE_STALE_COUNT = Gauge(
+    "ise_portal_cache_stale_entries",
+    "Number of cached entries with age greater than TTL (needing refresh).",
+)
+CACHE_STALE_PCT = Gauge(
+    "ise_portal_cache_stale_pct",
+    "Percentage of cached entries that are stale (age > TTL).",
+)
+
+# ------------------------------------------------------------------ #
 # ISE API metrics                                                      #
 # ------------------------------------------------------------------ #
 

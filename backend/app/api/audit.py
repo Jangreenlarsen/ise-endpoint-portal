@@ -16,9 +16,11 @@ from __future__ import annotations
 
 import json
 import logging
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import StreamingResponse
 
 from app.api.deps import (
     get_dacl_service,
@@ -93,6 +95,54 @@ async def list_events(
         total=total,
         limit=limit,
         offset=offset,
+    )
+
+
+@router.get("/export", dependencies=[Depends(require_admin)])
+async def export_events(
+    actor: str | None = Query(None),
+    resource_type: str | None = Query(None),
+    resource_id: str | None = Query(None),
+    from_ts: str | None = Query(None),
+    to_ts: str | None = Query(None),
+    search: str | None = Query(None),
+) -> StreamingResponse:
+    """Eksportér audit-log som CSV (max 10 000 rækker)."""
+    rows, _ = await audit_store.query(
+        actor=actor,
+        resource_type=resource_type,
+        resource_id=resource_id,
+        from_ts=from_ts,
+        to_ts=to_ts,
+        search=search,
+        limit=10_000,
+        offset=0,
+    )
+
+    def _cell(v: Any) -> str:
+        s = "" if v is None else str(v)
+        if "," in s or '"' in s or "\n" in s:
+            return f'"{s.replace(chr(34), chr(34) + chr(34))}"'
+        return s
+
+    def generate():
+        yield "Tidsstempel,Bruger,Handling,Ressourcetype,Ressource-ID,IP-adresse\r\n"
+        for r in rows:
+            yield ",".join([
+                _cell(r.get("ts")),
+                _cell(r.get("actor_username")),
+                _cell(r.get("action")),
+                _cell(r.get("resource_type")),
+                _cell(r.get("resource_id")),
+                _cell(r.get("source_ip")),
+            ]) + "\r\n"
+
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    filename = f"audit_export_{ts}.csv"
+    return StreamingResponse(
+        generate(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 

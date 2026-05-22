@@ -6,6 +6,8 @@
  */
 
 import { t, getLocale } from "../i18n.js";
+import { api } from "../api.js";
+import { esc } from "./browse-utils.js";
 
 const BASE = window.location.origin.startsWith("file://")
   ? "http://localhost:8000"
@@ -78,6 +80,21 @@ function cbLabel(state) {
   return { text: t("metrics.cb_open"), cls: "cb-open" };
 }
 
+function fmtAge(seconds) {
+  if (seconds === null || seconds === undefined || isNaN(seconds)) return "–";
+  if (seconds < 60) return Math.round(seconds) + "s";
+  if (seconds < 3600) return (seconds / 60).toFixed(1) + "m";
+  return (seconds / 3600).toFixed(1) + "h";
+}
+
+function capacityBadge(cycleS, intervalS) {
+  if (!cycleS || !intervalS) return "";
+  const ratio = cycleS / intervalS;
+  if (ratio <= 0.9) return ` <span style="background:#27ae60;color:#fff;border-radius:4px;padding:1px 6px;font-size:.8em;">&#10003; følger med</span>`;
+  if (ratio <= 1.1) return ` <span style="background:#f39c12;color:#fff;border-radius:4px;padding:1px 6px;font-size:.8em;">&#9888; grænse</span>`;
+  return ` <span style="background:#c0392b;color:#fff;border-radius:4px;padding:1px 6px;font-size:.8em;">&#10007; bagud</span>`;
+}
+
 // ------------------------------------------------------------------ //
 // Render                                                               //
 // ------------------------------------------------------------------ //
@@ -118,6 +135,16 @@ function renderData(parsed) {
   const evictions = getScalar(parsed, "ise_portal_cache_evictions_total") ?? 0;
   const diskStale = getScalar(parsed, "ise_portal_cache_disk_stale_entries") ?? 0;
 
+  const dripRefreshed = getScalar(parsed, "ise_portal_cache_drip_refreshed_total");
+  const dripSkipped   = getScalar(parsed, "ise_portal_cache_drip_skipped_total");
+  const dripSleepS    = getScalar(parsed, "ise_portal_cache_drip_sleep_seconds");
+  const dripCycleS    = getScalar(parsed, "ise_portal_cache_drip_cycle_seconds");
+  const oldestAgeS    = getScalar(parsed, "ise_portal_cache_oldest_entry_age_seconds");
+  const avgAgeS       = getScalar(parsed, "ise_portal_cache_avg_entry_age_seconds");
+  const staleCount    = getScalar(parsed, "ise_portal_cache_stale_entries");
+  const stalePct      = getScalar(parsed, "ise_portal_cache_stale_pct");
+  const dripActive    = dripRefreshed !== null;
+
   const blocked = getScalar(parsed, "ise_portal_rate_limit_blocked_total") ?? 0;
 
   const bulkOk = getLabeled(parsed, "ise_portal_bulk_items_total", "outcome", "succeeded");
@@ -153,6 +180,15 @@ function renderData(parsed) {
         { label: t("metrics.cache_disk_stale"),value: fmt(diskStale) },
       ])}
 
+      ${dripActive ? buildStatCard("Cache vedligehold", [
+        { label: "Drip-interval",       value: fmtAge(dripSleepS),  sub: dripCycleS ? "Fuld rotation: " + fmtAge(dripCycleS) + capacityBadge(dripCycleS, 1800) : "" },
+        { label: "Refreshet (drip)",    value: dripRefreshed !== null ? fmt(dripRefreshed) : "–" },
+        { label: "Sprunget over",       value: dripSkipped !== null ? fmt(dripSkipped) : "–",  sub: "entries var friske" },
+        { label: "Ældste entry",        value: fmtAge(oldestAgeS) },
+        { label: "Gennemsnitlig alder", value: fmtAge(avgAgeS) },
+        { label: "Stale entries",       value: staleCount !== null ? fmt(staleCount) : "–",    sub: stalePct !== null ? fmt(stalePct, 1) + "%" : "" },
+      ]) : ""}
+
       ${buildStatCard(t("metrics.card_rate"), [
         { label: t("metrics.rate_blocked"), value: fmt(blocked) },
       ])}
@@ -187,17 +223,37 @@ export async function renderMetrics(container) {
   const refreshBtn = container.querySelector("#metrics-refresh");
   let timer = null;
 
+  function renderNodesCard(nodes) {
+    if (!nodes || !nodes.length) return "";
+    const rows = nodes.map((n) => {
+      const reachable = n.reachable !== false;
+      const dot = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${reachable ? "#27ae60" : "#c0392b"};margin-right:5px;"></span>`;
+      return `<div class="metric-stat">
+        <span class="metric-stat-label">${dot}${esc(n.name || n.hostname || n.id)}</span>
+        <span class="metric-stat-value" style="font-size:.8em;">${esc(n.roles?.join(", ") || "—")}</span>
+        ${n.version ? `<span class="metric-stat-sub">v${esc(n.version)}</span>` : ""}
+      </div>`;
+    }).join("");
+    return `<div class="card metrics-card"><h3>ISE PSN noder</h3><div class="metric-stats">${rows}</div></div>`;
+  }
+
   async function load() {
     try {
-      const res = await fetch(`${BASE}/metrics`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const text = await res.text();
+      const [metricsRes, nodesRes] = await Promise.allSettled([
+        fetch(`${BASE}/metrics`),
+        api.getIseNodes().catch(() => null),
+      ]);
+      if (metricsRes.status === "rejected" || !metricsRes.value.ok) {
+        throw new Error(metricsRes.reason?.message || `HTTP ${metricsRes.value?.status}`);
+      }
+      const text = await metricsRes.value.text();
       const parsed = parsePrometheus(text);
-      body.innerHTML = renderData(parsed);
+      const nodes = nodesRes.status === "fulfilled" ? (nodesRes.value?.nodes || null) : null;
+      body.innerHTML = renderData(parsed) + (nodes ? renderNodesCard(nodes) : "");
       const locale = getLocale() === "da" ? "da-DK" : "en-GB";
       tsEl.textContent = t("metrics.last_updated") + new Date().toLocaleTimeString(locale);
     } catch (err) {
-      body.innerHTML = `<div class="alert error">${t("metrics.error").replace("{msg}", esc(err.message))}</div>`;
+      body.innerHTML = `<div class="alert error">${t("metrics.error").replace("{msg}", String(err.message || "").replace(/&/g,"&amp;").replace(/</g,"&lt;"))}</div>`;
     }
   }
 
@@ -215,4 +271,8 @@ export async function renderMetrics(container) {
 
   await load();
   startTimer();
+
+  return function cleanup() {
+    if (timer) { clearInterval(timer); timer = null; }
+  };
 }

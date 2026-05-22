@@ -26,7 +26,7 @@ class AuditRetentionWorker:
     def start(self) -> None:
         if self._task and not self._task.done():
             return
-        self._stop.clear()
+        self._stop = asyncio.Event()
         self._task = asyncio.create_task(self._run(), name="audit-retention")
         logger.info("audit-retention worker started")
 

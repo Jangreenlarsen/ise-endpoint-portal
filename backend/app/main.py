@@ -12,12 +12,17 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from app.api import audit as audit_api
 from app.api import metrics_api
 from app.core.rate_limiter import RateLimitMiddleware
+from app.api import alerts as alerts_api
 from app.api import auth as auth_api
 from app.api import cache as cache_api
 from app.api import custom_attributes as custom_attrs_api
 from app.api import dacls as dacls_api
+from app.api import dashboard as dashboard_api
 from app.api import endpoint_roles as endpoint_roles_api
 from app.api import endpoints, groups, health, logs, me, oui, users
+from app.api import ise_nodes as ise_nodes_api
+from app.api import lifecycle as lifecycle_api
+from app.api import config_backup as config_backup_api
 from app.api import templates as templates_api
 from app.api import pxgrid as pxgrid_api
 from app.api import authz_profiles as authz_profiles_api
@@ -31,7 +36,7 @@ from app.core.watchdog import beat as watchdog_beat, start_watchdog
 from app.core.version import FULL as APP_VERSION, VERSION
 from app.ise.client import close_ise_client
 from app.pxgrid.session_cache import get_cache as get_session_cache
-from app.pxgrid.session_worker import _enrich_sessions_from_mnt, get_worker as get_pxgrid_worker
+from app.pxgrid.session_worker import _enrich_sessions_from_mnt, reconcile_stale_sessions, get_worker as get_pxgrid_worker
 from app.services.audit_retention import get_worker as get_audit_retention_worker
 from app.services.cache_prewarm import get_worker as get_prewarm_worker
 from app.services.cache_sync import get_worker as get_cache_sync_worker
@@ -88,7 +93,10 @@ async def lifespan(_: FastAPI):
         _sess_cache_path = Path(_sess_disk_str)
         if not _sess_cache_path.is_absolute():
             _sess_cache_path = Path(__file__).resolve().parents[2] / _sess_cache_path
-        _n = get_session_cache().load_from_disk(_sess_cache_path)
+        # Disk-sessions ældre end max_age kasseres — forhindrer meget stale VLAN/auth-data
+        # i Browse-vinduet inden pxGrid-reconcile er færdig (standard: 4 timer).
+        _sess_disk_max_age = float(getattr(settings, "pxgrid_session_disk_max_age_s", 14400.0))
+        _n = get_session_cache().load_from_disk(_sess_cache_path, max_age_s=_sess_disk_max_age)
         logger.info("pxGrid session cache: indlæst %d sessioner fra disk ved start", _n)
 
     start_watchdog(timeout_s=120)
@@ -127,12 +135,41 @@ async def lifespan(_: FastAPI):
 
     _mnt_enrich_task = asyncio.create_task(_mnt_enrich_loop(), name="mnt-session-enrich")
 
+    # Periodisk MnT-reconciliation for stale endpoint-cache entries.
+    # Fanger endpoints hvis pxGrid push-events er gået tabt (WSS timeout,
+    # PSN failover, network glitch). Venter 2 min ved start, kører hvert 10. min.
+    _mnt_stale_reconcile_interval = float(
+        getattr(settings, "mnt_stale_reconcile_interval_s", 600.0)
+    )
+
+    async def _mnt_stale_reconcile_loop():
+        await asyncio.sleep(120)
+        _max_batch = int(getattr(settings, "mnt_stale_reconcile_max_batch", 100))
+        while True:
+            await reconcile_stale_sessions(get_session_cache(), max_batch=_max_batch)
+            await asyncio.sleep(_mnt_stale_reconcile_interval)
+
+    _mnt_stale_task = asyncio.create_task(
+        _mnt_stale_reconcile_loop(), name="mnt-stale-reconcile"
+    )
+
+    async def _alert_check_loop() -> None:
+        await asyncio.sleep(30)
+        while True:
+            from app.core.alert_store import check_conditions
+            check_conditions()
+            await asyncio.sleep(60)
+
+    _alert_task = asyncio.create_task(_alert_check_loop(), name="alert-check")
+
     try:
         yield
     finally:
         _heartbeat_task.cancel()
         _autosave_task.cancel()
         _mnt_enrich_task.cancel()
+        _mnt_stale_task.cancel()
+        _alert_task.cancel()
         try:
             await _heartbeat_task
         except (asyncio.CancelledError, Exception):  # noqa: BLE001
@@ -143,6 +180,10 @@ async def lifespan(_: FastAPI):
             pass
         try:
             await _mnt_enrich_task
+        except (asyncio.CancelledError, Exception):  # noqa: BLE001
+            pass
+        try:
+            await _alert_task
         except (asyncio.CancelledError, Exception):  # noqa: BLE001
             pass
         await get_prewarm_worker().stop()
@@ -217,6 +258,11 @@ app.include_router(me.router, prefix="/api")
 app.include_router(update_api.router, prefix="/api")
 app.include_router(templates_api.router, prefix="/api")
 app.include_router(policy_api.router, prefix="/api")
+app.include_router(dashboard_api.router, prefix="/api")
+app.include_router(alerts_api.router, prefix="/api")
+app.include_router(lifecycle_api.router, prefix="/api")
+app.include_router(config_backup_api.router, prefix="/api")
+app.include_router(ise_nodes_api.router, prefix="/api")
 app.include_router(metrics_api.router)
 
 frontend_dir = Path(__file__).resolve().parents[2] / "frontend"

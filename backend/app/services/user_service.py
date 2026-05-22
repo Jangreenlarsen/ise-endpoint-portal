@@ -417,8 +417,15 @@ def login(payload: LoginRequest) -> LoginResponse:
     users = load_users()
     record = find_by_username(users, payload.username)
 
-    # Admin-brugere valideres ALTID lokalt, uanset TACACS+-konfiguration.
-    is_admin_user = record and record.get("role") == "admin"
+    # Ægte lokale admin-brugere (user_type != "operator") valideres ALTID lokalt,
+    # uanset TACACS+-konfiguration — de må aldrig låses ude af en TACACS-fejl.
+    # Operator-profiler med admin-rolle (user_type="operator") er TACACS-brugere
+    # og skal bruge TACACS-stien selv om rollen er "admin".
+    is_admin_user = bool(
+        record
+        and record.get("role") == "admin"
+        and record.get("user_type", "user") != "operator"
+    )
 
     auth_cfg = load_auth_config()
     use_tacacs = (
@@ -458,16 +465,15 @@ def login(payload: LoginRequest) -> LoginResponse:
                 if not any_operator_profiles:
                     logger.info(
                         "TACACS+ auth OK — ingen operatørprofiler konfigureret i portal, "
-                        "tildeler automatisk admin til '%s'",
+                        "tildeler automatisk viewer til '%s'",
                         payload.username,
                     )
-                    effective_role = "admin"
+                    effective_role = "viewer"
                     endpoint_roles = [payload.username]
                     assigned_templates = []
-                    from app.core import audit_store
                     audit_store.record_sync(
-                        "tacacs_auto_admin_bootstrap", "session", payload.username,
-                        after={"reason": "no_operator_profiles_configured", "granted_role": "admin"},
+                        "tacacs_auto_viewer_bootstrap", "session", payload.username,
+                        after={"reason": "no_operator_profiles_configured", "granted_role": "viewer"},
                     )
                 else:
                     logger.warning(

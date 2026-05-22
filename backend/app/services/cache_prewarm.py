@@ -29,6 +29,16 @@ from typing import Any
 
 from app.core import config
 from app.core.endpoint_cache import get_cache
+from app.core.metrics import (
+    CACHE_AVG_AGE_S,
+    CACHE_DRIP_CYCLE_S,
+    CACHE_DRIP_REFRESHED,
+    CACHE_DRIP_SKIPPED,
+    CACHE_DRIP_SLEEP_S,
+    CACHE_OLDEST_AGE_S,
+    CACHE_STALE_COUNT,
+    CACHE_STALE_PCT,
+)
 from app.ise.client import get_ise_client
 
 logger = logging.getLogger(__name__)
@@ -49,6 +59,11 @@ class PrewarmStatus:
     last_error: str = ""
     hot_queue_size: int = 0
     started_at: float = 0.0
+    # Drip-refresh metrics
+    drip_refreshed_total: int = 0
+    drip_skipped_total: int = 0
+    drip_current_sleep_s: float = 0.0
+    drip_estimated_full_cycle_s: float | None = None
 
 
 class PrewarmWorker:
@@ -66,7 +81,8 @@ class PrewarmWorker:
     def start(self) -> None:
         if self._task and not self._task.done():
             return
-        self._stop.clear()
+        self._stop = asyncio.Event()
+        self._hot = asyncio.Queue()
         self.status = PrewarmStatus(
             running=True,
             started_at=time.time(),
@@ -103,31 +119,92 @@ class PrewarmWorker:
         # Trin 2: Første fulde scan (bag scenen, blokerer ikke UI)
         await self._full_scan()
 
-        # Trin 3: Behandl hot-queue løbende + periodisk rescan
+        # Trin 3: Drip-refresh + periodisk liste-scan kører parallelt
         interval = float(getattr(config.settings, "cache_prewarm_interval_s", 1800.0))
-        while not self._stop.is_set():
-            # Tøm hot-queue mellem scans
-            await self._drain_hot_queue()
 
-            if interval <= 0:
-                # Kun ét scan ved startup; sov og hop til stop
+        async def _list_scan_loop() -> None:
+            """Periodisk: hent ISE-liste og invalider slettede endpoints."""
+            while not self._stop.is_set():
+                if interval <= 0:
+                    return
                 try:
-                    await asyncio.wait_for(self._stop.wait(), timeout=60.0)
+                    await asyncio.wait_for(self._stop.wait(), timeout=interval)
+                    return
                 except asyncio.TimeoutError:
-                    continue
-                break
+                    pass
+                if self._stop.is_set():
+                    return
+                await self._drain_hot_queue()
+                await self._full_scan()
+
+        await asyncio.gather(
+            _list_scan_loop(),
+            self._drip_loop(),
+        )
+        self.status.running = False
+
+    async def _drip_loop(self) -> None:
+        """Kontinuerlig baggrunds-drip: refresh ældste cachede endpoint løbende.
+
+        Spreder opdateringer jævnt over pre-warm-intervallet i stedet for én
+        burst hvert 30. minut. Rate: prewarm_interval / antal_endpoints sekunder
+        pr. refresh (fx 1000 endpoints / 1800s = ét refresh hvert 1.8s).
+        Kun entries ældre end cache_ttl_seconds refreshes — friske springes over.
+        """
+        from app.services.endpoint_service import EndpointService
+        cache = get_cache()
+
+        while not self._stop.is_set():
+            total = cache.detail_count()
+            if total == 0:
+                try:
+                    await asyncio.wait_for(self._stop.wait(), timeout=10.0)
+                except asyncio.TimeoutError:
+                    pass
+                continue
+
+            interval = float(getattr(config.settings, "cache_prewarm_interval_s", 1800.0))
+            ttl = float(getattr(config.settings, "cache_ttl_seconds", 60.0))
+            drip_sleep = max(0.5, interval / total)
+            self.status.drip_current_sleep_s = drip_sleep
+            self.status.drip_estimated_full_cycle_s = drip_sleep * total
+            CACHE_DRIP_SLEEP_S.set(drip_sleep)
+            CACHE_DRIP_CYCLE_S.set(drip_sleep * total)
+
+            oldest_id = cache.get_oldest_id()
+            if oldest_id:
+                age = cache.detail_age(oldest_id)
+                # Kun refresh entries der er stale (ældre end TTL) og ikke inflight
+                if age is not None and age > ttl and oldest_id not in cache._inflight_detail:
+                    try:
+                        service = EndpointService(get_ise_client())
+                        detail = await service._fetch_endpoint_detail(oldest_id)
+                        detail.cache_stale = False
+                        cache.put_detail(oldest_id, detail, from_disk=False)
+                        self.status.drip_refreshed_total += 1
+                        CACHE_DRIP_REFRESHED.inc()
+                        logger.debug("drip: refreshed %s (age=%.0fs)", oldest_id, age)
+                    except Exception as exc:  # noqa: BLE001
+                        logger.debug("drip: fetch fejlede id=%s: %s", oldest_id, exc)
+                else:
+                    self.status.drip_skipped_total += 1
+                    CACHE_DRIP_SKIPPED.inc()
+
+            # Opdater staleness-gauges efter hver iteration
+            now = time.time()
+            ages = [now - e.fetched_at for e in cache._details.values()]
+            if ages:
+                CACHE_OLDEST_AGE_S.set(max(ages))
+                CACHE_AVG_AGE_S.set(sum(ages) / len(ages))
+                stale = sum(1 for a in ages if a > ttl)
+                CACHE_STALE_COUNT.set(stale)
+                CACHE_STALE_PCT.set(stale / len(ages) * 100)
 
             try:
-                await asyncio.wait_for(self._stop.wait(), timeout=interval)
-                break  # stop requested
+                await asyncio.wait_for(self._stop.wait(), timeout=drip_sleep)
+                break
             except asyncio.TimeoutError:
                 pass
-
-            if self._stop.is_set():
-                break
-            await self._full_scan()
-
-        self.status.running = False
 
     async def _full_scan(self) -> None:
         """Inkrementel ISE-scan: hent ID-liste, invalider slettede, skip friske."""

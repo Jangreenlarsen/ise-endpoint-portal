@@ -214,16 +214,57 @@ _github_cache_branch: str = ""
 _GITHUB_CACHE_TTL = 3600.0  # 1 time
 
 
-def _extract_release_section(md_text: str, version: str) -> str:
-    """Udtræk release notes-sektion for en specifik version fra RELEASE_NOTES.md.
+def _parse_semver(v: str) -> tuple[int, int, int]:
+    """Parse 'X.Y.Z' → (X, Y, Z). Returnerer (0,0,0) ved fejl."""
+    import re
+    m = re.match(r"(\d+)\.(\d+)\.(\d+)", v or "")
+    if not m:
+        return (0, 0, 0)
+    return (int(m.group(1)), int(m.group(2)), int(m.group(3)))
 
-    Finder første overskrift der matcher ## [{version}] og returnerer al tekst
-    frem til næste ## [-sektion eller slutningen af filen.
-    """
+
+def _extract_release_section(md_text: str, version: str) -> str:
+    """Udtræk release notes-sektion for en specifik version fra RELEASE_NOTES.md."""
     import re
     pattern = rf'## \[{re.escape(version)}\].*?(?=\n## \[|\Z)'
     m = re.search(pattern, md_text, re.DOTALL)
     return m.group(0).strip() if m else ""
+
+
+def _extract_release_sections_since(
+    md_text: str, current_version: str, latest_version: str
+) -> str:
+    """Udtræk alle release notes-sektioner nyere end current_version og op til latest_version.
+
+    Returnerer dem stacked med --- separator, ældste øverst — klar til at vise
+    som en sammenhængende upgrade-log fra nuværende til nyeste version.
+    Fallback til kun latest_version-sektionen hvis ingen sektioner er i intervallet.
+    """
+    import re
+
+    current = _parse_semver(current_version)
+    latest  = _parse_semver(latest_version)
+
+    # Split på ## [ for at finde alle sektioner
+    # Regex: hver sektion starter ved ## [ og løber til næste ## [ eller EOF
+    section_re = re.compile(r'(## \[\d+\.\d+\.\d+\][^\n]*(?:\n(?!## \[).*)*)', re.MULTILINE)
+    all_sections = section_re.findall(md_text)
+
+    relevant: list[tuple[tuple[int, int, int], str]] = []
+    for section in all_sections:
+        m = re.match(r'## \[(\d+\.\d+\.\d+)\]', section)
+        if not m:
+            continue
+        v = _parse_semver(m.group(1))
+        if current < v <= latest:
+            relevant.append((v, section.strip()))
+
+    if not relevant:
+        return _extract_release_section(md_text, latest_version)
+
+    # Sorter ældste øverst
+    relevant.sort(key=lambda x: x[0])
+    return "\n\n---\n\n".join(s for _, s in relevant)
 
 
 def _github_branch() -> str:
@@ -274,12 +315,14 @@ async def check_github_version(*, force: bool = False) -> dict[str, Any]:
     }
     try:
         import httpx
-        version_url = _GITHUB_RAW_TMPL.format(branch=branch)
-        notes_url = _GITHUB_RELEASE_NOTES_TMPL.format(branch=branch)
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        _cb = int(now)  # cache-buster — råt.githubusercontent.com CDN ignorerer headers
+        version_url = f"{_GITHUB_RAW_TMPL.format(branch=branch)}?t={_cb}"
+        notes_url = f"{_GITHUB_RELEASE_NOTES_TMPL.format(branch=branch)}?t={_cb}"
+        no_cache = {"Cache-Control": "no-cache", "Pragma": "no-cache"}
+        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
             version_resp, notes_resp = await asyncio.gather(
-                client.get(version_url),
-                client.get(notes_url),
+                client.get(version_url, headers=no_cache),
+                client.get(notes_url, headers=no_cache),
                 return_exceptions=True,
             )
         if isinstance(version_resp, Exception):
@@ -292,10 +335,10 @@ async def check_github_version(*, force: bool = False) -> dict[str, Any]:
             result["update_available"] = int(data.get("build", "0")) > int(BUILD)
         except ValueError:
             result["update_available"] = data.get("build") != BUILD
-        # Release notes — fejl her er ikke fatalt
+        # Release notes — vis alle sektioner fra current → latest (fejl her er ikke fatalt)
         if not isinstance(notes_resp, Exception) and notes_resp.status_code == 200:
-            result["release_notes"] = _extract_release_section(
-                notes_resp.text, result["latest_version"]
+            result["release_notes"] = _extract_release_sections_since(
+                notes_resp.text, VERSION, result["latest_version"]
             )
         _github_cache = result
         _github_cache_ts = now

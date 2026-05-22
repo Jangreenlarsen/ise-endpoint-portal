@@ -13,6 +13,9 @@ export function initBulk(container, state, api, cb) {
   const bulkEditOverlay = container.querySelector("#bulk-edit-overlay");
   const bulkDelBtn     = container.querySelector("#bulk-del-btn");
   const bulkDisconnBtn = container.querySelector("#bulk-disconnect-btn");
+  const bulkCoaBtn     = container.querySelector("#bulk-coa-btn");
+  const bulkSimBtn     = container.querySelector("#bulk-sim-btn");
+  const bulkSimOverlay = container.querySelector("#bulk-sim-overlay");
 
   // ── Bulk-edit modal ──────────────────────────────────────────────────────
   bulkEditBtn.addEventListener("click", () => {
@@ -199,4 +202,117 @@ export function initBulk(container, state, api, cb) {
     msg.innerHTML = `<div class="alert ${cls}">${parts.join(", ")}${detail}</div>`;
     bulkDisconnBtn.disabled = false;
   });
+
+  // ── Bulk CoA Reauth ───────────────────────────────────────────────────────
+  if (bulkCoaBtn) {
+    bulkCoaBtn.addEventListener("click", async () => {
+      const ids = cb.getSelectedIds();
+      if (!ids.length) return;
+      if (!confirm(`CoA Reauth → ${ids.length} endpoint(s)?\n\nISE sender re-autentificeringskrav til klienterne.`)) return;
+      bulkCoaBtn.disabled = true;
+      msg.innerHTML = `<div class="alert info">CoA Reauth → ${ids.length} endpoints…</div>`;
+      try {
+        const res = await api.bulkCoa(ids, "reauth");
+        const ok   = res?.ok_count ?? 0;
+        const fail = (res?.results || []).filter((r) => !r.ok).length;
+        const cls  = fail ? (ok ? "info" : "error") : "success";
+        msg.innerHTML = `<div class="alert ${cls}">CoA Reauth: ${ok} OK, ${fail} fejlede</div>`;
+      } catch (err) {
+        msg.innerHTML = `<div class="alert error">Bulk CoA fejlede: ${esc(err.message)}</div>`;
+      } finally {
+        bulkCoaBtn.disabled = false;
+      }
+    });
+  }
+
+  // ── Bulk Simulate match ───────────────────────────────────────────────────
+  if (bulkSimBtn && bulkSimOverlay) {
+    const policySetSel = bulkSimOverlay.querySelector("#bsim-policy-set");
+    const simCount     = bulkSimOverlay.querySelector("#bulk-sim-count");
+    const runBtn       = bulkSimOverlay.querySelector("#bsim-run");
+    const cancelBtn    = bulkSimOverlay.querySelector("#bsim-cancel");
+    const resultsDiv   = bulkSimOverlay.querySelector("#bsim-results");
+    const summaryEl    = bulkSimOverlay.querySelector("#bsim-summary");
+    const tbody2       = bulkSimOverlay.querySelector("#bsim-tbody");
+
+    let policySetsLoaded = false;
+
+    async function loadPolicySets() {
+      if (policySetsLoaded) return;
+      try {
+        const data = await api.listPolicySets();
+        const sets = data.policy_sets || data || [];
+        policySetSel.innerHTML = sets.length
+          ? sets.map((s) => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join("")
+          : `<option value="">Ingen policy-sæt fundet</option>`;
+        policySetsLoaded = true;
+      } catch (err) {
+        policySetSel.innerHTML = `<option value="">Fejl: ${esc(err.message)}</option>`;
+      }
+    }
+
+    bulkSimBtn.addEventListener("click", async () => {
+      const ids = cb.getSelectedIds();
+      if (!ids.length) return;
+      simCount.textContent = `${ids.length} endpoint(s) valgt`;
+      resultsDiv.style.display = "none";
+      tbody2.innerHTML = "";
+      summaryEl.textContent = "";
+      runBtn.disabled = false;
+      runBtn.textContent = "Kør simulering";
+      bulkSimOverlay.classList.remove("hidden");
+      await loadPolicySets();
+    });
+
+    cancelBtn.addEventListener("click", () => {
+      bulkSimOverlay.classList.add("hidden");
+    });
+
+    runBtn.addEventListener("click", async () => {
+      const setId = policySetSel.value;
+      if (!setId) return;
+      const ids = cb.getSelectedIds();
+      if (!ids.length) { bulkSimOverlay.classList.add("hidden"); return; }
+
+      runBtn.disabled = true;
+      runBtn.textContent = "Simulerer…";
+      resultsDiv.style.display = "none";
+
+      try {
+        const data = await api.batchSimulate(setId, ids);
+        const results = data.results || [];
+
+        tbody2.innerHTML = results.map((r) => {
+          if (r.error) {
+            return `<tr>
+              <td><code class="lc-mac">${esc(r.mac || r.id)}</code></td>
+              <td colspan="2" style="color:#dc2626;font-size:0.78rem;">${esc(r.error)}</td>
+              <td><span class="bsim-badge bsim-err">Fejl</span></td>
+            </tr>`;
+          }
+          const badge = r.matched
+            ? `<span class="bsim-badge bsim-ok">Match</span>`
+            : `<span class="bsim-badge bsim-fail">Ingen match</span>`;
+          const partial = r.partial_match
+            ? `<span class="bsim-badge bsim-partial">Delvis</span>` : "";
+          return `<tr>
+            <td><code class="lc-mac">${esc(r.mac || r.id)}</code></td>
+            <td style="font-size:0.8rem;">${esc(r.matched_rule || "—")}</td>
+            <td style="font-size:0.8rem;">${esc(r.matched_profile || "—")}</td>
+            <td>${badge}${partial}</td>
+          </tr>`;
+        }).join("");
+
+        summaryEl.textContent =
+          `Match: ${data.matched_count} / Ingen match: ${data.unmatched_count} / Fejl: ${data.error_count}`;
+        resultsDiv.style.display = "";
+      } catch (err) {
+        msg.innerHTML = `<div class="alert error">Batch-simulering fejlede: ${esc(err.message)}</div>`;
+        bulkSimOverlay.classList.add("hidden");
+      } finally {
+        runBtn.disabled = false;
+        runBtn.textContent = "Kør simulering";
+      }
+    });
+  }
 }

@@ -170,6 +170,17 @@ class EndpointCache:
     def detail_count(self) -> int:
         return len(self._details)
 
+    def get_oldest_id(self) -> str | None:
+        """Returnér ID på den cachede entry med den ældste fetched_at-timestamp.
+
+        Bruges af drip-refresh-loopen til at prioritere de mest forældede
+        endpoints og sikre at alle entries roteres jævnt frem for en stor burst.
+        Returnerer None hvis cachen er tom.
+        """
+        if not self._details:
+            return None
+        return min(self._details, key=lambda k: self._details[k].fetched_at)
+
     async def _fetch_and_store(
         self,
         endpoint_id: str,
@@ -516,9 +527,21 @@ class EndpointCache:
     def stats(self) -> dict[str, Any]:
         max_entries = self._max_entries()
         max_bytes = self._max_memory_bytes()
+
+        # Staleness distribution
+        now = self._now()
+        ttl = self._ttl()
+        stale_max = ttl * STALE_MAX_FACTOR
+        ages = [now - e.fetched_at for e in self._details.values()] if self._details else []
+        fresh_count = sum(1 for a in ages if a <= ttl)
+        stale_count = sum(1 for a in ages if ttl < a <= stale_max)
+        very_stale_count = sum(1 for a in ages if a > stale_max)
+        oldest_age = max(ages) if ages else None
+        avg_age = (sum(ages) / len(ages)) if ages else None
+
         return {
             "enabled": self.enabled(),
-            "ttl_seconds": self._ttl(),
+            "ttl_seconds": ttl,
             "stale_while_revalidate": self._swr(),
             "detail_entries": len(self._details),
             "max_entries": max_entries if max_entries > 0 else "unlimited",
@@ -542,6 +565,18 @@ class EndpointCache:
             "inflight_groups_refresh": bool(
                 self._inflight_groups and not self._inflight_groups.done()
             ),
+            # Staleness metrics
+            "staleness": {
+                "fresh_count": fresh_count,
+                "stale_count": stale_count,
+                "very_stale_count": very_stale_count,
+                "stale_pct": round((stale_count + very_stale_count) / len(ages) * 100, 1) if ages else 0.0,
+                # very_stale_pct: andel der er UDENFOR SWR-vinduet (age > TTL × STALE_MAX_FACTOR).
+                # Disse entries kan ikke serves fra cache og er reelt miste. I normal drift = 0.
+                "very_stale_pct": round(very_stale_count / len(ages) * 100, 1) if ages else 0.0,
+                "oldest_entry_age_s": round(oldest_age, 1) if oldest_age is not None else None,
+                "average_entry_age_s": round(avg_age, 1) if avg_age is not None else None,
+            },
         }
 
 

@@ -147,10 +147,14 @@ export function initDetail(container, state, api, cb) {
     const wa = detailOverlay.querySelector("#d-policy-wizard-area");
     const pc = detailOverlay.querySelector("#d-profiling-content");
     const ic = detailOverlay.querySelector("#d-iseids-content");
+    const hc = detailOverlay.querySelector("#d-historik-content");
     if (ma) ma.innerHTML = "";
     if (wa) wa.innerHTML = "";
     if (pc) pc.innerHTML = "";
     if (ic) ic.innerHTML = "";
+    if (hc) hc.innerHTML = `<span class="hint">Klik på fanen for at indlæse historik.</span>`;
+    const sc = detailOverlay.querySelector("#d-session-debug-content");
+    if (sc) sc.innerHTML = `<span class="hint">Klik på fanen for at se session-data.</span>`;
   }
 
   // ── ANC ──────────────────────────────────────────────────────────────────
@@ -258,8 +262,167 @@ export function initDetail(container, state, api, cb) {
       _switchTab(tab);
       if (tab === "radius" && matchArea.innerHTML === "") loadPolicyMatchUI();
       if (tab === "profil") _lazyLoadProfil();
+      if (tab === "historik") _lazyLoadHistorik();
+      if (tab === "session") _lazyLoadSession();
     });
   });
+
+  function _describeAction(e) {
+    const LABELS = {
+      group_name: "Gruppe", description: "Beskrivelse", endpoint_type: "Type",
+      owner: "Owner", lokation: "Lokation", authz_vlan: "VLAN", authz_acl: "ACL",
+      platform_type: "Platform", static_group: "Statisk", psk_mode: "PSK",
+      psk_key: "PSK-nøgle", profiler_name: "Profil", hypervision: "Portal",
+    };
+    if (e.action !== "updated" || !e.before || !e.after) return e.action || "";
+    const parts = [];
+    for (const [k, label] of Object.entries(LABELS)) {
+      const bv = e.before[k], av = e.after[k];
+      if (JSON.stringify(bv) !== JSON.stringify(av)) {
+        const val = String(av ?? "").slice(0, 14);
+        parts.push(`${label}:${val}`);
+      }
+    }
+    if (!parts.length) return e.action;
+    const s = parts.join(", ");
+    return s.length > 32 ? s.slice(0, 31) + "…" : s;
+  }
+
+  async function _lazyLoadHistorik() {
+    const panel = container.querySelector("#d-historik-content");
+    const id = state.detailCurrentId || container.querySelector("#d-id")?.textContent?.trim();
+    if (!panel || !id) return;
+    panel.innerHTML = `<div class="alert info">Henter historik…</div>`;
+    try {
+      const res = await api.getEndpointHistory(id, 50);
+      const events = res?.events || [];
+      if (!events.length) {
+        panel.innerHTML = `<div class="hint">Ingen audit-hændelser registreret for dette endpoint.</div>`;
+        return;
+      }
+      panel.innerHTML = `
+        <table style="width:100%;border-collapse:collapse;font-size:.85em;">
+          <thead><tr>
+            <th style="text-align:left;padding:4px 6px;border-bottom:1px solid #e5e7eb;">Tidspunkt</th>
+            <th style="text-align:left;padding:4px 6px;border-bottom:1px solid #e5e7eb;">Bruger</th>
+            <th style="text-align:left;padding:4px 6px;border-bottom:1px solid #e5e7eb;">Handling</th>
+          </tr></thead>
+          <tbody>
+            ${events.map((e) => `
+              <tr style="border-bottom:1px solid #f3f4f6;">
+                <td style="padding:4px 6px;white-space:nowrap;">${esc(e.ts?.replace("T", " ").slice(0, 19) || "")}</td>
+                <td style="padding:4px 6px;">${esc(e.actor_username || "—")}</td>
+                <td style="padding:4px 6px;">${esc(_describeAction(e))}</td>
+              </tr>`).join("")}
+          </tbody>
+        </table>
+        <p class="hint" style="margin-top:.5rem;">Viser de seneste ${events.length} hændelser.</p>
+      `;
+    } catch (err) {
+      panel.innerHTML = `<div class="alert error">Kunne ikke hente historik: ${esc(err.message)}</div>`;
+    }
+  }
+
+  // ── ISE Session Debug tab ─────────────────────────────────────────────────
+  async function _lazyLoadSession() {
+    const panel = container.querySelector("#d-session-debug-content");
+    const mac = container.querySelector("#d-mac")?.textContent?.trim();
+    if (!panel) return;
+    if (!mac || mac === "—") {
+      panel.innerHTML = `<span class="hint">Ingen MAC tilgængelig.</span>`;
+      return;
+    }
+    panel.innerHTML = `<div class="alert info">Henter session-data…</div>`;
+
+    function _row(label, value, highlight) {
+      const style = highlight ? " style=\"color:#e67e22;font-weight:600;\"" : "";
+      return `<tr>
+        <td style="padding:3px 8px;color:#6b7280;white-space:nowrap;">${esc(label)}</td>
+        <td style="padding:3px 8px;font-family:monospace;"${style}>${esc(String(value ?? "—"))}</td>
+      </tr>`;
+    }
+
+    // Hent cached session
+    let cached = null;
+    try { cached = await api.getPxGridSession(mac); } catch (_) { /* ingen session */ }
+
+    const tableStyle = `style="width:100%;border-collapse:collapse;font-size:.85em;margin-bottom:.75rem;"`;
+    let html = "";
+
+    if (!cached) {
+      html += `<div class="alert warning">Ingen aktiv session i cache for ${esc(mac)}.</div>`;
+    } else {
+      html += `<h4 style="margin:.5rem 0 .25rem;font-size:.9em;color:#374151;">Cache (hvad frontend ser)</h4>
+        <table ${tableStyle}><tbody>
+          ${_row("MAC", cached.mac)}
+          ${_row("State", cached.state)}
+          ${_row("Auth method", cached.auth_method)}
+          ${_row("Authz profiles", (cached.authz_profiles||[]).join(", "))}
+          ${_row("VLAN", cached.vlan)}
+          ${_row("DACL", cached.dacl)}
+          ${_row("Policy set", cached.policy_set_name)}
+          ${_row("Authz rule", cached.authz_rule_name)}
+          ${_row("NAS IP", cached.nas_ip)}
+          ${_row("NAS name", cached.nas_name)}
+          ${_row("Identity group", cached.identity_group)}
+          ${_row("Endpoint policy", cached.endpoint_policy)}
+          ${_row("Audit session ID", (cached.audit_session_id||"").slice(0,40))}
+          ${_row("Last event", cached.last_event_at)}
+        </tbody></table>`;
+    }
+
+    html += `<button id="d-session-probe-btn" class="secondary small" style="margin-bottom:.5rem;">Probe MnT (admin)</button>
+      <div id="d-session-probe-result"></div>`;
+
+    panel.innerHTML = html;
+
+    panel.querySelector("#d-session-probe-btn")?.addEventListener("click", async () => {
+      const resEl = panel.querySelector("#d-session-probe-result");
+      resEl.innerHTML = `<div class="alert info">Kalder MnT…</div>`;
+      try {
+        const dbg = await api.debugPxGridSession(mac);
+        const mnt = dbg.mnt_enrichment_result || {};
+        const probe = dbg.mnt_probe || {};
+        const c = dbg.cached || {};
+
+        const vlanCached = c.vlan || "";
+        const vlanMnt = mnt.vlan || "";
+        // Mismatch: kun relevant hvis MnT har en ANDEN ikke-tom VLAN end cachen.
+        // pxGrid real-time (cache) er altid mere aktuelt end MnT — MnT kan ligge
+        // mange minutter bagud efter en re-auth. Cache-værdien er autoritativ.
+        const vlanMismatch = vlanCached && vlanMnt && vlanCached !== vlanMnt;
+
+        resEl.innerHTML = `
+          <h4 style="margin:.5rem 0 .25rem;font-size:.9em;color:#374151;">MnT enrichment (hvad backend henter)</h4>
+          <p style="font-size:.8em;color:#6b7280;margin:0 0 .4rem;">
+            pxGrid real-time data (cache) er autoritativ. MnT kan ligge minutter bagud efter re-auth.
+          </p>
+          <table ${tableStyle}><tbody>
+            ${_row("VLAN (cache / pxGrid ✓)", vlanCached)}
+            ${_row("VLAN (MnT — kan være forældet)", vlanMnt, vlanMismatch)}
+            ${vlanMismatch ? `<tr><td colspan="2" style="padding:3px 8px;color:#e67e22;font-size:.85em;">ℹ MnT er forældet for denne session — pxGrid real-time data foretrækkes. Normal ISE-adfærd.</td></tr>` : ""}
+            ${_row("Authz profiles (cache)", (c.authz_profiles||[]).join(", "))}
+            ${_row("Authz profiles MnT", mnt.authz_profiles_mnt||"")}
+            ${_row("Auth method (MnT)", mnt.auth_method||"")}
+            ${_row("Policy set (MnT)", mnt.policy_set_name||"")}
+            ${_row("Authz rule (MnT)", mnt.authz_rule_name||"")}
+            ${_row("Identity group (MnT)", mnt.identity_group||"")}
+            ${_row("Endpoint policy (MnT)", mnt.endpoint_policy||"")}
+            ${_row("DACL (MnT)", mnt.dacl||"")}
+          </tbody></table>
+          <details style="margin-top:.5rem;">
+            <summary style="cursor:pointer;font-size:.8em;color:#6b7280;">Raw pxGrid payload</summary>
+            <pre style="font-size:.75em;overflow:auto;background:#f9fafb;padding:.5rem;border-radius:4px;max-height:200px;">${esc(JSON.stringify(dbg.pxgrid_raw_all_fields||{}, null, 2))}</pre>
+          </details>
+          <details style="margin-top:.25rem;">
+            <summary style="cursor:pointer;font-size:.8em;color:#6b7280;">Raw MnT probe</summary>
+            <pre style="font-size:.75em;overflow:auto;background:#f9fafb;padding:.5rem;border-radius:4px;max-height:200px;">${esc(JSON.stringify(probe, null, 2))}</pre>
+          </details>`;
+      } catch (err) {
+        resEl.innerHTML = `<div class="alert error">Debug fejlede: ${esc(err.message)} (kræver admin-rolle)</div>`;
+      }
+    });
+  }
 
   // ── Policy areas ──────────────────────────────────────────────────────────
   const matchArea  = container.querySelector("#d-policy-match-area");
@@ -274,7 +437,9 @@ export function initDetail(container, state, api, cb) {
         matchArea.innerHTML = `<div class="hint">${t("detail.policy_none")}</div>`;
         return;
       }
-      const opts = sets.map((s) => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join("");
+      const AUTO_SET = "--auto--";
+      const opts = `<option value="${AUTO_SET}">Auto — test alle policy sets (fra rank 0)</option>`
+        + sets.map((s) => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join("");
       matchArea.innerHTML = `
         <datalist id="d-radius-attrs-list">
           <option value="Called-Station-ID">
@@ -298,6 +463,12 @@ export function initDetail(container, state, api, cb) {
             <button type="button" id="d-pol-radius-add" class="secondary small">+ Tilføj parameter</button>
           </div>
           <div class="radius-section-hint">Én attribut = én enkelt værdi — som i en rigtig RADIUS-pakke. For at matche <em>contains "hus"</em> OG <em>contains "802"</em> i samme regel: skriv én value der indeholder begge, fx <code>hus-802</code>.</div>
+          <div class="radius-tpl-bar">
+            <select id="d-pol-radius-tpl-sel" class="radius-tpl-sel"><option value="">— Vælg template —</option></select>
+            <button type="button" id="d-pol-radius-tpl-load" class="secondary small" title="Indlæs valgt template">Indlæs</button>
+            <button type="button" id="d-pol-radius-tpl-save" class="secondary small">Gem som template</button>
+            <button type="button" id="d-pol-radius-tpl-del" class="secondary small radius-tpl-del" title="Slet valgt template">✕ Slet</button>
+          </div>
           <div id="d-pol-radius-rows"></div>
         </div>
         <div id="d-pol-match-result"></div>
@@ -364,13 +535,90 @@ export function initDetail(container, state, api, cb) {
         try {
           const radiusAttrs = readRadiusAttrs();
           const ep = { ...collectEndpointAttrs(), radius_attrs: radiusAttrs };
-          const result = await api.matchPolicyEndpoint(setId, ep);
-          resultEl.innerHTML = renderMatchResult(result);
-          mergeNeededRadiusAttrs(result.radius_attrs_needed || []);
+
+          if (setId === AUTO_SET) {
+            // Test alle policy sets i rank-rækkefølge — stop ved første match
+            let matchResult = null;
+            for (const set of sets) {
+              resultEl.innerHTML = `<div class="alert info">Simulerer… <em>${esc(set.name)}</em></div>`;
+              const r = await api.matchPolicyEndpoint(set.id, ep);
+              if (!r.no_rules && r.matched_rule_id) {
+                matchResult = r;
+                break;
+              }
+            }
+            if (matchResult) {
+              resultEl.innerHTML = renderMatchResult(matchResult);
+              mergeNeededRadiusAttrs(matchResult.radius_attrs_needed || []);
+            } else {
+              resultEl.innerHTML = `<div class="alert warning">${t("detail.policy_no_match")}</div>`;
+            }
+          } else {
+            const result = await api.matchPolicyEndpoint(setId, ep);
+            resultEl.innerHTML = renderMatchResult(result);
+            mergeNeededRadiusAttrs(result.radius_attrs_needed || []);
+          }
         } catch (err) {
           resultEl.innerHTML = `<div class="alert error">Simulering fejlede: ${esc(err.message)}</div>`;
         }
       }
+
+      // ── RADIUS templates (localStorage) ──────────────────────────────────
+      const TPL_KEY = "ise_radius_templates";
+      function loadTemplates() {
+        try { return JSON.parse(localStorage.getItem(TPL_KEY) || "[]"); } catch { return []; }
+      }
+      function saveTemplates(tpls) { localStorage.setItem(TPL_KEY, JSON.stringify(tpls)); }
+
+      function renderTplSelect() {
+        const sel = matchArea.querySelector("#d-pol-radius-tpl-sel");
+        if (!sel) return;
+        const cur = sel.value;
+        const tpls = loadTemplates().sort((a, b) => a.name.localeCompare(b.name, "da"));
+        sel.innerHTML = `<option value="">— Vælg template —</option>`
+          + tpls.map((tp) => `<option value="${esc(tp.id)}"${tp.id === cur ? " selected" : ""}>${esc(tp.name)}</option>`).join("");
+      }
+
+      matchArea.querySelector("#d-pol-radius-tpl-load").addEventListener("click", () => {
+        const tplId = matchArea.querySelector("#d-pol-radius-tpl-sel")?.value;
+        if (!tplId) return;
+        const tpl = loadTemplates().find((tp) => tp.id === tplId);
+        if (!tpl) return;
+        matchArea.querySelector("#d-pol-radius-rows").innerHTML = "";
+        Object.entries(tpl.attrs).forEach(([k, v]) => addRadiusRow(k, v));
+        // Skift til Auto så næste simulate tester fra rank 0 af alle policy sets
+        matchArea.querySelector("#d-pol-set-sel").value = AUTO_SET;
+      });
+
+      matchArea.querySelector("#d-pol-radius-tpl-save").addEventListener("click", () => {
+        const attrs = readRadiusAttrs();
+        if (!Object.keys(attrs).length) {
+          alert("Tilføj mindst ét RADIUS-parameter inden du gemmer som template.");
+          return;
+        }
+        const name = prompt("Navn på template (fx 'Wireless SSID voldby17'):", "");
+        if (!name?.trim()) return;
+        const tpls = loadTemplates();
+        const newTpl = { id: `tpl_${Date.now()}`, name: name.trim(), attrs };
+        tpls.push(newTpl);
+        saveTemplates(tpls);
+        renderTplSelect();
+        matchArea.querySelector("#d-pol-radius-tpl-sel").value = newTpl.id;
+      });
+
+      matchArea.querySelector("#d-pol-radius-tpl-del").addEventListener("click", () => {
+        const sel = matchArea.querySelector("#d-pol-radius-tpl-sel");
+        const tplId = sel?.value;
+        if (!tplId) return;
+        const tpls = loadTemplates();
+        const tpl = tpls.find((tp) => tp.id === tplId);
+        if (!tpl || !confirm(`Slet template "${tpl.name}"?`)) return;
+        saveTemplates(tpls.filter((tp) => tp.id !== tplId));
+        renderTplSelect();
+      });
+
+      renderTplSelect();
+      // ─────────────────────────────────────────────────────────────────────
 
       matchArea.querySelector("#d-pol-radius-add").addEventListener("click", () => {
         addRadiusRow();
@@ -378,7 +626,7 @@ export function initDetail(container, state, api, cb) {
 
       matchArea.querySelector("#d-pol-match-btn").addEventListener("click", () => {
         const setId = matchArea.querySelector("#d-pol-set-sel")?.value;
-        if (!setId || !state.detailCurrentId) return;
+        if (!setId) return;
         runSimulate(setId);
       });
 
@@ -419,72 +667,83 @@ export function initDetail(container, state, api, cb) {
     if (!r.matched_rule_id) {
       return `<div class="alert warning">${t("detail.policy_no_match")}</div>`;
     }
+
     const profiles    = (r.profiles || []).map((p) => `<span class="profile-chip">${esc(p)}</span>`).join(" ");
     const profilesRow = `<div class="match-profiles">${t("detail.policy_profiles")} ${profiles}</div>`;
     const subRules    = r.sub_rules || [];
-    const hasSubs     = subRules.length > 1;
+    const globals     = r.condition_details || [];
+    const isPartial   = r.partial_match;
 
-    // Renders a single MatchedCondition row
+    const cardClass  = isPartial ? "match-result-card match-possible" : "match-result-card match-hit";
+    const matchedLine = isPartial
+      ? t("detail.policy_possible_match").replace("{name}", esc(r.matched_rule_name)).replace("{rank}", r.matched_rule_rank)
+      : t("detail.policy_matched").replace("{name}", esc(r.matched_rule_name)).replace("{rank}", r.matched_rule_rank);
+
+    const allSkippedCount = globals.filter(c => c.skipped).length
+      + subRules.reduce((n, sr) => n + sr.conditions.filter(c => c.skipped).length, 0);
+    const partialNote = isPartial && allSkippedCount
+      ? `<div class="match-partial-note">${t("detail.policy_partial_match").replace("{n}", allSkippedCount)}</div>`
+      : "";
+
     function condRow(c) {
-      if (c.skipped) {
-        const isRef = c.operator === "ref";
-        const label = isRef
-          ? `<span class="match-cond-ref">${esc(c.attribute)}</span>`
-          : `${esc(c.attribute)} <span class="match-cond-op">${esc(c.operator)}</span> <em>${esc(c.value)}</em>`;
-        return `<div class="match-cond-row match-skip">? ${label}</div>`;
+      const stateClass = c.skipped ? "pc-cond-skip" : c.matched ? "pc-cond-ok" : "pc-cond-fail";
+      const icon = c.skipped ? "?" : c.matched ? "✓" : "✗";
+      if (c.skipped && c.operator === "ref") {
+        return `<div class="pc-cond-row ${stateClass}">${icon} <span class="match-cond-ref">${esc(c.attribute)}</span></div>`;
       }
-      return `<div class="match-cond-row ${c.matched ? "match-ok" : "match-fail"}">
-        ${c.matched ? "✓" : "✗"} ${esc(c.attribute)} ${esc(c.operator)} <em>${esc(c.value)}</em>
-      </div>`;
+      const raw = c.attribute || "";
+      const dot = raw.indexOf(".");
+      const attrHtml = dot > 0
+        ? `<span class="pc-cond-dict">${esc(raw.slice(0, dot))}</span><span class="pc-cond-op">.</span><span class="pc-cond-attr">${esc(raw.slice(dot + 1))}</span>`
+        : `<span class="pc-cond-attr">${esc(raw)}</span>`;
+      return `<div class="pc-cond-row ${stateClass}">${icon} ${attrHtml} <span class="pc-cond-op">${esc(c.operator || "")}</span> <span class="pc-cond-val">${esc(c.value || "")}</span></div>`;
     }
 
-    // Global conditions (outside OR branches)
-    const globalRows = (r.condition_details || []).map(condRow).join("");
-
-    if (r.partial_match) {
-      const allSkippedCount = (r.condition_details || []).filter(c => c.skipped).length
-        + subRules.reduce((n, sr) => n + sr.conditions.filter(c => c.skipped).length, 0);
-      const note = allSkippedCount
-        ? `<div class="match-partial-note">${t("detail.policy_partial_match").replace("{n}", allSkippedCount)}</div>`
-        : "";
-      const matchedLine = t("detail.policy_possible_match")
-        .replace("{name}", esc(r.matched_rule_name))
-        .replace("{rank}", r.matched_rule_rank);
-
-      let body;
-      if (hasSubs) {
-        const subHtml = subRules.map((sr) => {
-          const srRows = sr.conditions.map(condRow).join("");
-          return `<div class="match-subrule">
-            <div class="match-subrule-label">Sub rule ${sr.index}:</div>
-            ${srRows}
-            ${profilesRow}
-          </div>`;
-        }).join("");
-        body = `${globalRows}${note}${subHtml}`;
-      } else {
-        // Flat view (no OR branches or single branch)
-        const flatRows = subRules.flatMap(sr => sr.conditions).map(condRow).join("");
-        body = `${profilesRow}${globalRows}${flatRows}${note}`;
-      }
-      return `
-        <div class="match-result-card match-possible">
-          <div class="match-rule-name"><strong>${matchedLine}</strong></div>
-          ${body}
-        </div>`;
+    function branchMatched(sr) {
+      const active = sr.conditions.filter(c => !c.skipped);
+      return active.length > 0 && active.every(c => c.matched);
     }
 
-    // Full match
-    const allRows = globalRows + subRules.flatMap(sr => sr.conditions).map(condRow).join("");
-    const matchedLine = t("detail.policy_matched")
-      .replace("{name}", esc(r.matched_rule_name))
-      .replace("{rank}", r.matched_rule_rank);
-    return `
-      <div class="match-result-card match-hit">
-        <div class="match-rule-name"><strong>${matchedLine}</strong></div>
-        ${profilesRow}
-        ${allRows}
-      </div>`;
+    function renderOrBranches(subs) {
+      const inner = subs.map((sr, i) => {
+        const ok    = branchMatched(sr);
+        const cls   = `pc-or-branch ${ok ? "pc-branch-ok" : "pc-branch-fail"}`;
+        const sep   = i > 0 ? `<div class="pc-or-sep"><span></span><span>OR</span><span></span></div>` : "";
+        const conds = sr.conditions;
+        const body  = conds.length > 1
+          ? `<div class="pc-and-inner-label">AND</div>${conds.map(condRow).join("")}`
+          : conds.map(condRow).join("");
+        return `${sep}<div class="${cls}">${body}</div>`;
+      }).join("");
+      return `<div class="pc-block pc-or-block"><span class="pc-operator-label pc-or">OR</span><div class="pc-block-body">${inner}</div></div>`;
+    }
+
+    let condTree;
+    if (globals.length > 0 && subRules.length > 1) {
+      // Global AND conditions wrapping an OR block
+      const globalRows = globals.map(condRow).join("");
+      condTree = `<div class="pc-block pc-and-block"><span class="pc-operator-label pc-and">AND</span><div class="pc-block-body">${globalRows}${renderOrBranches(subRules)}</div></div>`;
+    } else if (subRules.length > 1) {
+      // Pure OR policy (no globals)
+      condTree = renderOrBranches(subRules);
+    } else {
+      // Flat: globals + at most one sub-rule branch → single AND block
+      const allConds = [...globals, ...subRules.flatMap(sr => sr.conditions)];
+      condTree = allConds.length > 1
+        ? `<div class="pc-block pc-and-block"><span class="pc-operator-label pc-and">AND</span><div class="pc-block-body">${allConds.map(condRow).join("")}</div></div>`
+        : allConds.map(condRow).join("");
+    }
+
+    const setLabel = r.policy_set_name
+      ? `<div class="match-set-label">${esc(r.policy_set_name)}</div>`
+      : "";
+    return `<div class="${cardClass}">
+      ${setLabel}
+      <div class="match-rule-name"><strong>${matchedLine}</strong></div>
+      ${profilesRow}
+      ${condTree}
+      ${partialNote}
+    </div>`;
   }
 
 

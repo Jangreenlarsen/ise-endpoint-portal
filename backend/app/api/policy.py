@@ -3,11 +3,13 @@
 """RADIUS Policy API — policy sets, authorization rules, and match simulation."""
 from __future__ import annotations
 
+import asyncio
 import re
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel
 
-from app.api.deps import get_policy_service, require_admin, require_any, require_editor
+from app.api.deps import get_endpoint_service, get_policy_service, require_admin, require_any, require_editor
 from app.core.exceptions import IseApiError
 from app.schemas.policy import (
     AuthzRuleDetail,
@@ -18,6 +20,7 @@ from app.schemas.policy import (
     PolicySetListResponse,
     UpdateAuthzRuleRequest,
 )
+from app.services.endpoint_service import EndpointService
 from app.services.policy_service import PolicyService
 
 router = APIRouter(prefix="/policy", tags=["policy"])
@@ -166,3 +169,58 @@ async def match_endpoint(
         return await svc.match_endpoint(policy_set_id, ep.model_dump(exclude_none=True))
     except IseApiError as exc:
         raise _502(exc) from exc
+
+
+# ── Batch policy-simulering ──────────────────────────────────────────────────
+
+
+class BatchSimRequest(BaseModel):
+    policy_set_id: str
+    endpoint_ids: list[str]
+
+
+@router.post(
+    "/batch-simulate",
+    dependencies=[Depends(require_any)],
+)
+async def batch_simulate(
+    body: BatchSimRequest,
+    svc: PolicyService = Depends(get_policy_service),
+    ep_service: EndpointService = Depends(get_endpoint_service),
+) -> dict:
+    """Kør policy-match-simulering på op til 100 endpoints mod ét policy set."""
+    sem = asyncio.Semaphore(5)
+
+    async def sim_one(ep_id: str) -> dict:
+        async with sem:
+            try:
+                detail = await ep_service.get_endpoint(ep_id)
+                ep_dict = {
+                    "mac": detail.mac,
+                    "endpoint_type": detail.endpoint_type or "",
+                    "owner": detail.owner or "",
+                    "lokation": detail.lokation or "",
+                    "platform_type": detail.platform_type or "",
+                    "group_id": detail.group_id or "",
+                    "group_name": detail.group_name or "",
+                }
+                result = await svc.match_endpoint(body.policy_set_id, ep_dict)
+                return {
+                    "id": ep_id,
+                    "mac": detail.mac,
+                    "matched_rule": result.matched_rule_name,
+                    "matched_profile": ", ".join(result.profiles) if result.profiles else None,
+                    "partial_match": result.partial_match,
+                    "matched": result.matched_rule_name is not None,
+                }
+            except Exception as exc:  # noqa: BLE001
+                return {"id": ep_id, "mac": None, "error": str(exc)}
+
+    results = list(await asyncio.gather(*(sim_one(i) for i in body.endpoint_ids[:100])))
+    return {
+        "policy_set_id": body.policy_set_id,
+        "results": results,
+        "matched_count": sum(1 for r in results if r.get("matched")),
+        "unmatched_count": sum(1 for r in results if not r.get("matched") and not r.get("error")),
+        "error_count": sum(1 for r in results if r.get("error")),
+    }

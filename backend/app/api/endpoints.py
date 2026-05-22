@@ -1,6 +1,11 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
+import asyncio
+import json
+from typing import Literal
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from pydantic import BaseModel
 
 from app.api.deps import (
     get_current_user,
@@ -124,6 +129,7 @@ async def list_endpoint_details(
 @router.get("/details/all", response_model=list[EndpointDetail])
 async def list_all_endpoint_details(
     search: str | None = None,
+    q: str | None = Query(None, description="Fritekst-søgning: MAC, gruppe, profil, owner, lokation, beskrivelse, vendor"),
     filter: list[str] | None = Query(default=None),
     user: User = Depends(require_register_lookup),
     service: EndpointService = Depends(get_endpoint_service),
@@ -141,6 +147,7 @@ async def list_all_endpoint_details(
             filters=filter,
             effective_roles=_scope_for(user),
             is_psk_editor=_is_psk_editor_for(user),
+            full_text_q=q,
         )
     except IseApiError as exc:
         raise _ise_http_error(exc) from exc
@@ -342,6 +349,78 @@ async def coa_disconnect(
     except IseApiError as exc:
         raise _ise_http_error(exc) from exc
     return CoaReauthResponse(ok=ok, mac=mac, message=msg)
+
+
+# ------------------------------------------------------------------ #
+# Bulk CoA                                                            #
+# ------------------------------------------------------------------ #
+
+class BulkCoaRequest(BaseModel):
+    endpoint_ids: list[str]
+    action: Literal["reauth", "disconnect"] = "reauth"
+
+
+@router.post("/bulk-coa", dependencies=[Depends(require_editor)])
+async def bulk_coa(
+    body: BulkCoaRequest,
+    service: EndpointService = Depends(get_endpoint_service),
+) -> dict:
+    """Trigger CoA reauth eller disconnect for en liste af endpoints parallelt."""
+    sem = asyncio.Semaphore(3)
+
+    async def do_one(ep_id: str) -> dict:
+        async with sem:
+            try:
+                if body.action == "disconnect":
+                    ok, mac, msg = await service.coa_disconnect(ep_id)
+                else:
+                    ok, mac, msg = await service.coa_reauth(ep_id)
+                return {"id": ep_id, "ok": ok, "mac": mac, "message": msg}
+            except Exception as exc:  # noqa: BLE001
+                return {"id": ep_id, "ok": False, "mac": None, "message": str(exc)}
+
+    results = list(await asyncio.gather(*(do_one(ep_id) for ep_id in body.endpoint_ids[:200])))
+    return {"results": results, "ok_count": sum(1 for r in results if r["ok"])}
+
+
+# ------------------------------------------------------------------ #
+# Endpoint historik (audit trail)                                     #
+# ------------------------------------------------------------------ #
+
+@router.get("/{endpoint_id}/history", dependencies=[Depends(require_editor)])
+async def get_endpoint_history(
+    endpoint_id: str,
+    limit: int = Query(50, ge=1, le=200),
+) -> dict:
+    """Returnér audit-historik for ét endpoint (hvem ændrede hvad og hvornår)."""
+    from app.core import audit_store
+
+    def _parse(blob: str | None):
+        if blob is None:
+            return None
+        try:
+            return json.loads(blob)
+        except (TypeError, ValueError):
+            return blob
+
+    rows, total = await audit_store.query(
+        resource_type="endpoint",
+        resource_id=endpoint_id,
+        limit=limit,
+        offset=0,
+    )
+    events = [
+        {
+            "id": r["id"],
+            "ts": r["ts"],
+            "actor_username": r["actor_username"],
+            "action": r["action"],
+            "before": _parse(r.get("before_json")),
+            "after": _parse(r.get("after_json")),
+        }
+        for r in rows
+    ]
+    return {"events": events, "total": total}
 
 
 # ------------------------------------------------------------------ #

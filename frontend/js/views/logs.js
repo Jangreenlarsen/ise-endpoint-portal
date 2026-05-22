@@ -2,12 +2,7 @@
 // Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 import { api } from "../api.js";
 import { t } from "../i18n.js";
-
-function esc(s) {
-  return (s || "").replace(/[&<>"']/g, (c) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-  }[c]));
-}
+import { esc } from "./browse-utils.js";
 
 const LEVELS = ["", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"];
 const LINE_OPTIONS = [100, 250, 500, 1000, 2500, 5000];

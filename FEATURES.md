@@ -9,6 +9,34 @@ Alle nye features registreres her FØR implementering påbegyndes.
 
 ## Planlagt / Under implementering
 
+- `[done 5.6.15 b0463] 2026-05-20 — Simulate Auto-mode: test alle policy sets fra rank 0` — Ny "Auto — test alle policy sets (fra rank 0)"-option øverst i policy set-dropdown. I Auto-mode itererer simulatoren alle sets i rank-rækkefølge og returnerer første match. Indlæsning af RADIUS-template skifter automatisk til Auto. Resultatkort viser hvilket policy set der matchede. **Berørte lag:** `frontend/js/views/browse-detail.js`, `frontend/css/styles.css`.
+
+- `[done 5.6.14 b0461] 2026-05-20 — RADIUS template-gemmer` — Gem og genindlæs sæt af RADIUS-parametre som navngivne templates (fx "Wireless SSID voldby17") direkte i simulate-formularen. Templates gemmes i `localStorage`. Dropdown med alle gemte templates; Indlæs/Gem/Slet-knapper. Ingen backend-ændringer. **Berørte lag:** `frontend/js/views/browse-detail.js`, `frontend/css/styles.css`.
+
+- `[done 5.6.13 b0460] 2026-05-20 — Policy match: ISE-editor-stil AND/OR visualisering` — Simulate match-resultatet viser nu politikkens betingelsestræ med farvekodede AND/OR-blokke ligesom ISE's policy-editor. Globale AND-betingelser wrapper OR-grene. Hvert betingelse viser `Dict.Attr`-notation med farvede spans. Matchede/fejlede OR-grene fremhæves grønt/rødt. CSS: `.pc-*`-klasser inkl. dark mode. **Berørte lag:** `frontend/js/views/browse-detail.js`, `frontend/css/styles.css`.
+
+- `[done 5.6.11 b0458] 2026-05-20 — Systemlog i Dashboard` — Backend-loggen vises direkte i Dashboard-siden (kun admin). Niveau-filter (WARNING+, ERROR+, INFO+, DEBUG/alt), antal (50/100/200), fritekst-søgning. Post-filtrering client-side sikrer korrekt "WARNING og derover"-semantik. Sektionen skjules stille ved 403 for ikke-admins. Auto-refresh hvert 30s med resten af dashboard. **Berørte lag:** `frontend/js/views/dashboard.js`.
+
+- `[done 5.6.0 b0445] 2026-05-19 — Dashboard / Oversigt` — Ny startside der samler: total endpoints, aktive auth-sessioner, circuit breaker state, cache-sundhed, drip-status og de 5 seneste audit-events. **Berørte lag:** `backend/app/api/dashboard.py`, `frontend/js/views/dashboard.js`, `frontend/js/app.js`, `frontend/index.html`.
+
+- `[done 5.6.0 b0445] 2026-05-19 — Bulk CoA` — Tving re-auth på udvalgte endpoints direkte fra Browse-tabellen. Ny `POST /api/endpoints/bulk-coa`. **Berørte lag:** `backend/app/api/endpoints.py`, `frontend/js/views/browse.js`, `frontend/js/views/browse-bulk.js`.
+
+- `[done 5.6.0 b0445] 2026-05-19 — Endpoint livscyklus` — Vis endpoints med ingen portal-aktivitet i X dage. Ny `GET /api/lifecycle/stale`. Backend implementeret; API tilgængeligt. **Berørte lag:** `backend/app/api/lifecycle.py`.
+
+- `[done 5.6.0 b0445] 2026-05-19 — Alert-system` — In-memory advarsler for kritiske tilstande: circuit breaker OPEN, drip bagud, mange stale endpoints. Badge i navigation viser antal aktive alerts med farve (orange/rød). **Berørte lag:** `backend/app/core/alert_store.py`, `backend/app/api/alerts.py`, `frontend/js/app.js`, `frontend/css/styles.css`.
+
+- `[done 5.6.0 b0445] 2026-05-19 — Søgning på tværs af alle felter` — Ny `q`-parameter på `/api/endpoints/details/all` + fritekst-søgefelt i Browse-toolbar. Søger i MAC, gruppe, profil, owner, lokation, beskrivelse, vendor, type, platform. **Berørte lag:** `backend/app/api/endpoints.py`, `backend/app/services/endpoint_service.py`, `frontend/js/views/browse.js`, `frontend/js/views/browse-filter.js`.
+
+- `[done 5.6.0 b0445] 2026-05-19 — Batch policy-simulering` — Kør policy-match på udvalgte endpoints ad én gang. Ny `POST /api/policy/batch-simulate`. **Berørte lag:** `backend/app/api/policy.py`.
+
+- `[done 5.6.0 b0445] 2026-05-19 — Endpoint historik i detail-modal` — Ny "Historik"-tab i endpoint detail-modal viser audit-trail (hvem ændrede hvad og hvornår). Ny `GET /api/endpoints/{id}/history`. **Berørte lag:** `backend/app/api/endpoints.py`, `frontend/js/views/browse.js`, `frontend/js/views/browse-detail.js`.
+
+- `[done 5.6.0 b0445] 2026-05-19 — ISE PSN node-status` — Vis ISE-noder med roller og services. Ny `GET /api/ise/nodes`. Nyt kort på Metrics-siden. **Berørte lag:** `backend/app/ise/nodes.py`, `backend/app/api/ise_nodes.py`, `frontend/js/views/metrics.js`.
+
+- `[done 5.5.9 b0443] 2026-05-19 — Cache vedligehold-statistik: drip-metrics og staleness-fordeling` — Ny statistik i Settings → Cache: kapacitetsindikator (grøn/gul/rød), drip-tæller, cache-alder og staleness-fordeling som søjle. **Berørte lag:** `backend/app/services/cache_prewarm.py`, `backend/app/core/endpoint_cache.py`, `backend/app/api/cache.py`, `frontend/js/views/settings/section-cache.js`.
+
+- `[done 5.5.9] 2026-05-19 — Cache drip-refresh: kontinuerlig baggrunds-opdatering af endpoint-cache` — Ny `_drip_loop()` i pre-warm worker kører parallelt med liste-scans. Finder løbende ældste cachede entry og refresher fra ISE med `interval/total` sekunders mellemrum. Spreder load jævnt over 30-min-intervallet. **Berørte lag:** `backend/app/core/endpoint_cache.py` (get_oldest_id), `backend/app/services/cache_prewarm.py` (_drip_loop, _run refactor).
+
 - `[done 5.5.5] 2026-05-19 — Security Patch 2: SEC-B, SEC-D, SEC-E, SEC-I, SEC-J, SEC-M` — Implementering af sikkerhedsfund fra V2-analyse: (B) PSK CSPRNG, (D) ISE TLS default True, (E) audit-log for update-operationer + first-admin, (I) chmod 600 på operator_profiles.json, (J) ZIP-bomb ukomprimeret størrelsestjek, (M) audit for TACACS auto-admin bootstrap. **Berørte lag:** `backend/app/services/settings_service.py`, `backend/app/core/config.py`, `backend/app/services/update_service.py`, `backend/app/services/user_service.py`, `backend/app/core/operator_profile_store.py`.
 
 - `[done 5.5.4] 2026-05-19 — TACACS+ auto-admin ved tom operatørprofil-liste` — Hvis ingen operatørprofiler er konfigureret i portalen, tildeles TACACS-autentiserede brugere automatisk admin-rollen (bootstrap-tilstand). **Berørte lag:** `backend/app/services/user_service.py`.

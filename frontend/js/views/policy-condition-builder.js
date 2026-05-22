@@ -4,12 +4,7 @@
 // Supports nested AND/OR groups matching ISE's ConditionAndBlock/ConditionOrBlock structure.
 
 import { t } from "../i18n.js";
-
-function esc(s) {
-  return (s || "").replace(/[&<>"']/g, (c) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-  }[c]));
-}
+import { esc } from "./browse-utils.js";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

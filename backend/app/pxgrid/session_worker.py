@@ -37,6 +37,9 @@ from app.pxgrid.session_cache import SessionInfo, get_cache
 
 logger = logging.getLogger(__name__)
 
+# MACs med igangværende MnT real-time berigelse — forhindrer duplikate tasks pr. MAC.
+_enrich_in_flight: set[str] = set()
+
 PUBSUB_SERVICE = "com.cisco.ise.pubsub"
 SUB_ID_SESSION = "sub-session"
 SUB_ID_ENDPOINT = "sub-endpoint"
@@ -386,32 +389,52 @@ async def _handle_message_body(body: bytes, cache) -> None:  # type: ignore[no-u
             # sender ikke altid policy_set_name, authz_rule_name osv.
             existing = await cache.get(info.mac)
             if existing:
+                # Ny audit_session_id = re-auth; session-specifikke felter (vlan,
+                # dacl, cts_security_group) tilhører den GAMLE session og skal IKKE
+                # arves — de opdateres via MnT-berigelse med friske data.
+                is_new_session = bool(
+                    info.audit_session_id
+                    and existing.audit_session_id
+                    and info.audit_session_id != existing.audit_session_id
+                )
+                if is_new_session:
+                    logger.debug(
+                        "STOMP ny session [%s]: audit %r → %r, rydder stale vlan/dacl/sgt",
+                        info.mac, existing.audit_session_id[:16] if existing.audit_session_id else "",
+                        info.audit_session_id[:16] if info.audit_session_id else "",
+                    )
                 if not info.policy_set_name:
                     info.policy_set_name = existing.policy_set_name
                 if not info.authz_rule_name:
                     info.authz_rule_name = existing.authz_rule_name
                 if not info.endpoint_policy:
                     info.endpoint_policy = existing.endpoint_policy
-                if not info.dacl:
+                # Arv IKKE vlan/dacl/sgt fra gammel session — de er session-specifikke.
+                # MnT-berigelse henter friske værdier via _enrich_single_from_mnt.
+                if not info.dacl and not is_new_session:
                     info.dacl = existing.dacl
-                if not info.vlan:
+                if not info.vlan and not is_new_session:
                     info.vlan = existing.vlan
-                if not info.cts_security_group:
+                if not info.cts_security_group and not is_new_session:
                     info.cts_security_group = existing.cts_security_group
                 if not info.auth_method:
                     info.auth_method = existing.auth_method
                 if not info.identity_group:
                     info.identity_group = existing.identity_group
-                # Back-fill authz_profiles fra MnT hvis pxGrid-event leverede tomt
+                # Back-fill authz_profiles fra eksisterende hvis event leverede tomt
                 if not info.authz_profiles and existing.authz_profiles:
                     info.authz_profiles = existing.authz_profiles
             await cache.upsert(info)
-            # Trigger real-time MnT-berigelse hvis MnT-felter mangler.
-            if not info.identity_group or not info.endpoint_policy:
-                asyncio.create_task(
-                    _enrich_single_from_mnt(cache, info.mac),
-                    name=f"mnt-enrich-{info.mac[:8]}",
-                )
+            # Trigger real-time MnT-berigelse hvis MnT-felter mangler eller ved ny session.
+            # Dedupliceres per MAC — ingen duplikate tasks hvis events ankommer tæt i tid.
+            if not info.identity_group or not info.endpoint_policy or not info.vlan:
+                _mac_key = info.mac.upper().replace("-", ":").strip()
+                if _mac_key not in _enrich_in_flight:
+                    _enrich_in_flight.add(_mac_key)
+                    asyncio.create_task(
+                        _enrich_single_from_mnt(cache, info.mac),
+                        name=f"mnt-enrich-{info.mac[:8]}",
+                    )
 
 
 def _extract_sessions(payload: Any) -> list[dict[str, Any]]:
@@ -488,6 +511,18 @@ def _extract_endpoints(payload: Any) -> list[dict[str, Any]]:
     return []
 
 
+def _parse_vlan(raw: str) -> str:
+    """Normaliser ISE tunnelPrivateGroupId til rent VLAN-nummer.
+
+    ISE sender fx '(tag=0) 32' — vi vil kun have '32'.
+    """
+    if not raw:
+        return ""
+    parts = raw.strip().split()
+    last = parts[-1] if parts else ""
+    return last if last.isdigit() else raw.strip()
+
+
 def _build_session_info(d: dict[str, Any]) -> SessionInfo:
     from app.ise import network_devices as _nd
     mac = (
@@ -550,10 +585,8 @@ def _build_session_info(d: dict[str, Any]) -> SessionInfo:
         or d.get("coa_vpn_acl", "")
         or ""
     )
-    vlan = str(
-        d.get("vlan", "")
-        or d.get("tunnelPrivateGroupId", "")
-        or ""
+    vlan = _parse_vlan(
+        str(d.get("vlan", "") or d.get("tunnelPrivateGroupId", "") or "")
     )
     cts_security_group = str(
         d.get("securityGroup", "")
@@ -647,9 +680,9 @@ async def _reconcile_from_pxgrid(cache, sessions: list[dict]) -> None:
             # Preserve nas_device_type/nas_name from disk if NAS cache not loaded yet.
             nas_device_type = info.nas_device_type or (existing.nas_device_type if existing else "")
             nas_name = info.nas_name or (existing.nas_name if existing else "")
-            # Bevar MnT-beriget data fra eksisterende entry — pxGrid getSessions
-            # returnerer ikke endpoint_policy, dacl, vlan, cts_security_group og
-            # heller ikke altid policy_set_name/authz_rule_name.
+            # getSessions-payload indeholder tunnelPrivateGroupId (→ vlan) direkte.
+            # Brug info.vlan (frisk fra ISE) hvis den er sat — ellers bevar MnT-beriget
+            # existing.vlan. Samme logik for dacl/endpoint_policy/cts_security_group.
             info_with_mac = SessionInfo(
                 mac=mac,
                 state=info.state or "STARTED",
@@ -661,24 +694,30 @@ async def _reconcile_from_pxgrid(cache, sessions: list[dict]) -> None:
                 authz_rule_name=info.authz_rule_name or (existing.authz_rule_name if existing else ""),
                 nas_name=nas_name,
                 nas_device_type=nas_device_type,
-                endpoint_policy=existing.endpoint_policy if existing else "",
-                dacl=existing.dacl if existing else "",
-                vlan=existing.vlan if existing else "",
-                cts_security_group=existing.cts_security_group if existing else "",
-                auth_method=existing.auth_method if existing else "",
-                identity_group=existing.identity_group if existing else "",
+                endpoint_policy=info.endpoint_policy or (existing.endpoint_policy if existing else ""),
+                dacl=info.dacl or (existing.dacl if existing else ""),
+                vlan=info.vlan or (existing.vlan if existing else ""),
+                cts_security_group=info.cts_security_group or (existing.cts_security_group if existing else ""),
+                auth_method=info.auth_method or (existing.auth_method if existing else ""),
+                identity_group=info.identity_group or (existing.identity_group if existing else ""),
                 raw=info.raw,
             )
             if mac not in cached_by_mac:
                 await cache.upsert(info_with_mac)
                 seeded += 1
             else:
-                # Opdatér eksisterende entry hvis den mangler authz/policy-data
-                # ELLER hvis vi nu har bedre NAS-data (device type).
+                # Opdatér eksisterende entry hvis den mangler authz/policy-data,
+                # NAS-data er forbedret, ELLER session-specifikke felter er ændret
+                # (fx VLAN der skiftede mens STOMP var offline under PSN failover).
                 new_has_data = bool(info_with_mac.policy_set_name or info_with_mac.authz_profiles)
                 existing_lacks_data = existing and not existing.policy_set_name and not existing.authz_profiles
                 nas_improved = bool(nas_device_type and not (existing and existing.nas_device_type))
-                if (existing_lacks_data and new_has_data) or nas_improved:
+                session_fields_changed = existing and bool(
+                    (info_with_mac.vlan and info_with_mac.vlan != existing.vlan)
+                    or (info_with_mac.dacl and info_with_mac.dacl != existing.dacl)
+                    or (info_with_mac.cts_security_group and info_with_mac.cts_security_group != existing.cts_security_group)
+                )
+                if (existing_lacks_data and new_has_data) or nas_improved or session_fields_changed:
                     await cache.upsert(info_with_mac)
                     updated += 1
 
@@ -803,9 +842,11 @@ async def _enrich_single_from_mnt(cache, mac: str) -> None:  # type: ignore[no-u
     ankommer uden identity_group eller endpoint_policy. Kort timeout så vi
     ikke ophober tasks ved travl ISE-trafik.
     """
+    mac_key = mac.upper().replace("-", ":").strip()
     try:
         from app.ise.mnt_sessions import fetch_session_by_mac
     except ImportError:
+        _enrich_in_flight.discard(mac_key)
         return
     try:
         data = await asyncio.wait_for(fetch_session_by_mac(mac), timeout=15.0)
@@ -832,7 +873,12 @@ async def _enrich_single_from_mnt(cache, mac: str) -> None:  # type: ignore[no-u
             last_event_at=current.last_event_at,
             endpoint_policy=data.get("endpoint_policy") or current.endpoint_policy,
             dacl=data.get("dacl") or current.dacl,
-            vlan=data.get("vlan") or current.vlan,
+            # pxGrid STOMP (current.vlan) foretrækkes over MnT her — denne funktion kører
+            # straks efter STOMP-event, og MnT er typisk ikke opdateret endnu (lagger
+            # sekunder til minutter bagud). Hvis STOMP-eventen SATTE et korrekt VLAN
+            # (fx tunnelPrivateGroupId=32) vil MnT stadig returnere det gamle VLAN (10).
+            # Kun hvis current.vlan er tomt (STOMP-event manglede VLAN) fyldes med MnT.
+            vlan=current.vlan or data.get("vlan"),
             cts_security_group=data.get("cts_security_group") or current.cts_security_group,
             auth_method=data.get("auth_method") or current.auth_method,
             identity_group=data.get("identity_group") or current.identity_group,
@@ -842,16 +888,20 @@ async def _enrich_single_from_mnt(cache, mac: str) -> None:  # type: ignore[no-u
                 or updated.auth_method != current.auth_method
                 or updated.endpoint_policy != current.endpoint_policy
                 or updated.dacl != current.dacl
+                or updated.vlan != current.vlan
                 or updated.authz_profiles != current.authz_profiles):
             logger.info(
-                "MnT real-time enrich [%s]: group=%r auth=%r profiles=%r dacl=%r",
-                mac, updated.identity_group, updated.auth_method, updated.authz_profiles, updated.dacl,
+                "MnT real-time enrich [%s]: group=%r auth=%r profiles=%r dacl=%r vlan=%r→%r",
+                mac, updated.identity_group, updated.auth_method, updated.authz_profiles,
+                updated.dacl, current.vlan, updated.vlan,
             )
             await cache.upsert(updated)
     except asyncio.TimeoutError:
         logger.debug("MnT real-time enrich timeout for %s", mac)
     except Exception as exc:  # noqa: BLE001
         logger.debug("MnT real-time enrich fejlede for %s: %s", mac, exc)
+    finally:
+        _enrich_in_flight.discard(mac_key)
 
 
 async def _enrich_sessions_from_mnt(cache) -> None:  # type: ignore[no-untyped-def]
@@ -900,7 +950,10 @@ async def _enrich_sessions_from_mnt(cache) -> None:  # type: ignore[no-untyped-d
                     last_event_at=current.last_event_at,
                     endpoint_policy=data.get("endpoint_policy") or current.endpoint_policy,
                     dacl=data.get("dacl") or current.dacl,
-                    vlan=data.get("vlan") or current.vlan,
+                    # pxGrid STOMP (current.vlan) foretrækkes over MnT — samme rationale som
+                    # _enrich_single_from_mnt: MnT lagger sekunder til minutter bagud, og en
+                    # nylig VLAN-ændring kan sagtens ikke have nået MnT inden næste 5-minutters-kørsel.
+                    vlan=current.vlan or data.get("vlan"),
                     cts_security_group=data.get("cts_security_group") or current.cts_security_group,
                     auth_method=data.get("auth_method") or current.auth_method,
                     identity_group=data.get("identity_group") or current.identity_group,
@@ -915,6 +968,127 @@ async def _enrich_sessions_from_mnt(cache) -> None:  # type: ignore[no-untyped-d
             logger.info("MnT enrichment: beriget %d/%d sessioner", enriched, len(to_enrich))
     except Exception as exc:  # noqa: BLE001
         logger.debug("MnT enrichment: uventet fejl: %s", exc)
+
+
+async def reconcile_stale_sessions(session_cache, max_batch: int = 50) -> None:  # type: ignore[no-untyped-def]
+    """Hent MnT-sessionsdata for endpoints der er stale i endpoint-cachen.
+
+    Løser det problem at pxGrid push-events kan droppes (WSS timeout, PSN
+    failover, network glitch) — hvis et endpoint aldrig modtager et push-event
+    forbliver dens auth-status aldrig opdateret i Browse-kolonnen.
+
+    Strategi:
+    - Henter alle stale endpoint-IDs fra endpoint-cachen (cache_age > TTL).
+    - Sorterer ældst-stale-først; behandler max ``max_batch`` pr. kørsel.
+    - For hvert stale endpoint hentes MnT Session/MACAddress.
+    - Hvis MnT returnerer session-data oprettes/opdateres et SessionInfo-entry.
+    - Endpoints uden aktiv MnT-session berøres ikke (session-cache bevares).
+    """
+    try:
+        from app.ise.mnt_sessions import fetch_session_by_mac
+    except ImportError:
+        return
+    try:
+        from app.core.endpoint_cache import get_cache as get_ep_cache
+        ep_cache = get_ep_cache()
+        ttl = ep_cache._ttl()
+        # Collect (age, ep_id, mac) for stale entries
+        candidates: list[tuple[float, str, str]] = []
+        for ep_id in ep_cache.detail_ids():
+            age = ep_cache.detail_age(ep_id)
+            if age is None or age <= ttl:
+                continue
+            entry = ep_cache._details.get(ep_id)
+            mac = entry.value.mac if entry and entry.value else None
+            if mac:
+                candidates.append((age, ep_id, mac))
+        if not candidates:
+            return
+        # Ældst-stale-først — de har størst risiko for forældet session-info
+        candidates.sort(key=lambda x: x[0], reverse=True)
+        batch = candidates[:max_batch]
+        logger.info(
+            "MnT stale-session reconcile: %d stale endpoints, behandler %d",
+            len(candidates), len(batch),
+        )
+        sem = asyncio.Semaphore(3)
+        enriched = 0
+        created = 0
+
+        async def _process(mac: str) -> None:
+            nonlocal enriched, created
+            async with sem:
+                try:
+                    data = await asyncio.wait_for(fetch_session_by_mac(mac), timeout=15.0)
+                    if not any(data.values()):
+                        return
+                    mnt_profiles_str = data.get("authz_profiles_mnt", "")
+                    mnt_profiles = [
+                        p.strip() for p in mnt_profiles_str.split(",") if p.strip()
+                    ] if mnt_profiles_str else []
+                    existing = await session_cache.get(mac)
+                    if existing:
+                        # Opdatér eksisterende entry med MnT-data.
+                        # MnT VLAN foretrækkes over pxGrid — MnT henter RADIUS-accounting
+                        # data (tunnelPrivateGroupId fra RADIUS Accept) og er mere
+                        # pålidelig end STOMP-events der kan mangle eller komme i forkert
+                        # rækkefølge. pxGrid-event kan have "(tag=0) 32" der nu normaliseres.
+                        updated = SessionInfo(
+                            mac=existing.mac,
+                            state=existing.state,
+                            audit_session_id=existing.audit_session_id,
+                            nas_ip=existing.nas_ip or data.get("nas_ip"),
+                            user_name=existing.user_name or data.get("user_name"),
+                            policy_set_name=data.get("policy_set_name") or existing.policy_set_name,
+                            authz_profiles=existing.authz_profiles or mnt_profiles,
+                            authz_rule_name=data.get("authz_rule_name") or existing.authz_rule_name,
+                            use_case=existing.use_case,
+                            nas_name=existing.nas_name,
+                            nas_device_type=existing.nas_device_type,
+                            last_event_at=existing.last_event_at,
+                            endpoint_policy=data.get("endpoint_policy") or existing.endpoint_policy,
+                            dacl=data.get("dacl") or existing.dacl,
+                            vlan=data.get("vlan") or existing.vlan,
+                            cts_security_group=data.get("cts_security_group") or existing.cts_security_group,
+                            auth_method=data.get("auth_method") or existing.auth_method,
+                            identity_group=data.get("identity_group") or existing.identity_group,
+                            raw=existing.raw,
+                        )
+                        await session_cache.upsert(updated)
+                        enriched += 1
+                    else:
+                        # Nyt entry — pxGrid-event aldrig modtaget for dette endpoint
+                        new_info = SessionInfo(
+                            mac=mac,
+                            state="STARTED",
+                            endpoint_policy=data.get("endpoint_policy") or "",
+                            dacl=data.get("dacl") or "",
+                            vlan=data.get("vlan") or "",
+                            cts_security_group=data.get("cts_security_group") or "",
+                            auth_method=data.get("auth_method") or "",
+                            identity_group=data.get("identity_group") or "",
+                            policy_set_name=data.get("policy_set_name") or "",
+                            authz_profiles=mnt_profiles,
+                            authz_rule_name=data.get("authz_rule_name") or "",
+                            nas_ip=data.get("nas_ip") or "",
+                            user_name=data.get("user_name") or "",
+                        )
+                        await session_cache.upsert(new_info)
+                        created += 1
+                    await asyncio.sleep(0.15)
+                except asyncio.TimeoutError:
+                    logger.debug("MnT stale-reconcile timeout for %s", mac)
+                except Exception as exc:  # noqa: BLE001
+                    logger.debug("MnT stale-reconcile fejlede for %s: %s", mac, exc)
+
+        await asyncio.gather(*(_process(mac) for _, _, mac in batch))
+        if enriched or created:
+            logger.info(
+                "MnT stale-session reconcile: opdateret=%d ny=%d/%d endpoints",
+                enriched, created, len(batch),
+            )
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("MnT stale-session reconcile: uventet fejl: %s", exc)
 
 
 _worker: PxGridSessionWorker | None = None

@@ -4,12 +4,7 @@ import { api } from "../api.js";
 import { auth } from "../auth.js";
 import { t, setLocale, getLocale } from "../i18n.js";
 import { applyTheme } from "./settings.js";
-
-function esc(s) {
-  return (s || "").replace(/[&<>"']/g, (c) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-  }[c]));
-}
+import { esc } from "./browse-utils.js";
 
 const FRONTEND_PREFS_KEY = "ise_portal_prefs";
 

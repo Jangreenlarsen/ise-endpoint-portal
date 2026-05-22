@@ -3,12 +3,7 @@
 import { api } from "../api.js";
 import { auth } from "../auth.js";
 import { t } from "../i18n.js";
-
-function esc(s) {
-  return (s || "").replace(/[&<>"']/g, (c) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-  }[c]));
-}
+import { esc } from "./browse-utils.js";
 
 export async function renderLogin(onSuccess) {
   document.body.classList.add("auth-mode");

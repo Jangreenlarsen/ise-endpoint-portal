@@ -4,6 +4,325 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.6.31] — 2026-05-22 — Kvalitet og stabilitet (P1 afslutning)
+
+### Timerlækage og testdækning
+
+**Baggrund:** Fortsættelse af P1-kvalitetssprint — UX, robusthed og automatiseret testdækning.
+
+**Rettelser:**
+- **Timerlækage i metrics og policy:** Metrics- og policy-visningerne returnerer nu en cleanup-funktion der afregistrerer intervaller ved navigation. Forhindrer CPU-spild ved hyppig side-skift.
+- **XSS-beskyttelse i metrics og policy:** De to resterende visninger med lokale `esc()`-kopier bruger nu den centrale implementation.
+- **Async event loop stabilitet:** Tre baggrundstjenester (cache-sync, cache-prewarm, audit-retention) oprettede `asyncio.Event()` i `__init__` i stedet for ved `start()`. Dette forårsagede fejl ved genstart i en ny event loop. Rettet.
+- **Python 3.14 UnboundLocalError:** En betinget lokal import i `login()` skyggede modul-level import og forårsagede `UnboundLocalError` på Python 3.14. Rettet.
+- **Testsuite: 89/89 bestået:** 22 nye tests for auth og autorisation tilføjet og alle 89 tests kører nu fejlfrit.
+
+---
+
+## [5.6.30] — 2026-05-22 — Sikkerhedsfix (P1)
+
+### Kritisk: XSS-beskyttelse og bug-fix i HTML-escaping
+
+**Baggrund:** En kvalitetskontrol-analyse (P1 sprint) afslørede at HTML-escape-funktionen i browse-visningerne kun escaped `"` og `<` — ikke `&`, `>` eller `'`. En separat bug i importvisningen kaldte en funktion der ikke var defineret.
+
+**Rettelser:**
+- **Komplet HTML-escape overalt:** Alle views bruger nu én fælles `esc()`-funktion fra `browse-utils.js` med fuld escaping af `& < > " '`. Tidligere var 13 views afhængige af lokale kopier med varierende sikkerhedsniveau.
+- **Bug i importvisning:** Importvisningen kaldte `esc()` som aldrig var defineret (kun `escapeHtml()` fandtes) — dette udløste en `ReferenceError` ved fejlvisning. Rettet.
+- **Bulk-import grænse:** Maksimalt 5.000 endpoints ad gangen ved bulk-import (tidligere ingen grænse — potentiel ISE-overbelastning).
+
+---
+
+## [5.6.29] — 2026-05-22 — Forbedring
+
+### Nyt layout i Policies-sektionen
+
+**Policy-siden har fået et nyt, mere overskueligt 3-panel layout.**
+
+- **Sidebar til venstre (Policy Sets):** Policy sets vises nu som en vertikal navigationsliste i stedet for en horisontal kortræk. Hvert set viser en farvet state-indikator (grøn = aktiv, grå = inaktiv), setnavn, service-navn og en status-pill. Det aktive set fremhæves med en blå kant og lysblå baggrund.
+- **Regler i midten:** Autoriseringsreglerne for det valgte policy set er i et eget panel med selvstændig scroll.
+- **Detalje/editor til højre:** Detaljepanelet fylder den resterende plads.
+- Designet virker i både lys, mørk og midnight-tema.
+
+---
+
+## [5.6.27] — 2026-05-22 — Forbedring
+
+### Progress-indikator ved gem af multiple endpoints
+
+**Når du gemmer flere endpoints på én gang (Gem alle ændrede / Gem valgte) vises nu en fremgangsindikator.** Meldingsfeltet over tabellen viser "Gemmer X / Y… [MAC]" og en blå progress-bar der fylder sig op i takt med at hvert endpoint gemmes. Ved afslutning erstattes indikatoren af den sædvanlige succes/fejl-besked.
+
+---
+
+## [5.6.26] — 2026-05-21 — Bug fix release
+
+### Valgte endpoints i browse-tabellen mistede selektion ved automatisk opdatering
+
+**Valgte checkbokse i browse-tabellen nulstilles ikke længere ved automatisk baggrundsopdatering.** Fejlen opstod fordi pxGrid `endpoint_changed`-events triggede en fuld re-render af tabellen via `renderRows()`, som erstatter hele `tbody.innerHTML` og dermed sletter alle checkboks-tilstande. `renderRows()` gemmer nu de valgte endpoint-IDs inden re-render og gendanner dem i den nye HTML.
+
+---
+
+## [5.6.25] — 2026-05-21 — Bug fix release
+
+### Batch-simulering viste fejl på alle endpoints
+
+**Batch-simulering fra browse-tabellen virker nu korrekt.** Fejlen skyldtes at backend-koden refererede `result.matched_rule` og `result.matched_profile` — de korrekte feltnavne på `PolicyMatchResult`-objektet er `matched_rule_name` og `profiles`. Alle endpoints returnerede "has no attribute 'matched_rule'" i stedet for simuleringsresultater.
+
+---
+
+## [5.6.24] — 2026-05-21 — Forbedring
+
+### Opdatering viser alle release notes fra nuværende til nyeste version
+
+**Når portalen tjekker for opdateringer og der er en nyere version tilgængelig, vises nu alle release notes for mellemliggende versioner stacked i rækkefølge** — ikke blot den nyeste version. Er portalen eksempelvis på v5.6.19 og nyeste er v5.6.23, vises release notes for v5.6.20, v5.6.21, v5.6.22 og v5.6.23 under hinanden adskilt med en separator. Ældste øverst, nyeste nederst. Summary-linjen viser nu `v{nuværende} → v{nyeste}`.
+
+---
+
+## [5.6.23] — 2026-05-21 — Ny funktion
+
+### Config backup og restore
+
+**Ny fane "Backup / Restore" i Settings (admin-only).** Download en komplet backup af alle portalens konfigurationsfiler som ét JSON-dokument — indstillinger, brugere, skabeloner, roller og mapping. Gendan en backup ved at uploade filen og bekræfte — filer overskrives straks. Genstart backend efter restore for at ISE-forbindelsesindstillinger træder i kraft.
+
+**Vigtigt:** Backup-filen indeholder credentials (ISE password og JWT-secret). Opbevar filen sikkert.
+
+---
+
+## [5.6.22] — 2026-05-21 — Ny funktion
+
+### Batch-simulering af policy-match direkte fra browse-tabellen
+
+**Vælg et eller flere endpoints i browse-tabellen og klik "Simulér match" i toolbar.** En modal åbner med alle policy-sæt i en dropdown. Klik "Kør simulering" og se resultater pr. endpoint: MAC-adresse, matchet regel, matchet profil og status (Match / Ingen match / Delvis / Fejl). Understøtter op til 100 endpoints pr. kørsel (begrænsning fra backend).
+
+---
+
+## [5.6.21] — 2026-05-21 — Ny funktion
+
+### Audit-log CSV-eksport
+
+**Audit-siden har nu en "Eksportér CSV"-knap.** Eksporterer alle audit-events der matcher de aktuelle filtre (ressourcetype og søgetekst) som en CSV-fil — maks. 10 000 rækker. Filen indeholder tidsstempel, bruger, handling, ressourcetype, ressource-ID og IP-adresse. Filen downloades direkte i browseren.
+
+---
+
+## [5.6.20] — 2026-05-21 — Ny funktion
+
+### Livscyklus-viewer — find og ryd op i inaktive endpoints
+
+**Ny side under Overvågning → Livscyklus (admin-only).** Viser alle endpoints der ikke har haft portal-aktivitet (opret, rediger, slet) i det valgte tidsrum. Valgmuligheder: 30, 60, 90, 180 eller 365 dage. Tabellen viser MAC-adresse, endpoint-gruppe, profil, ejer og cache-alder. Resultaterne kan eksporteres som CSV direkte fra browseren.
+
+Data baseres på audit-loggen — kun aktivitet registreret i portalen tæller (ikke ændringer foretaget direkte i ISE).
+
+---
+
+## [5.6.19] — 2026-05-21 — Ydelsesforbedring
+
+### Endpoint save er nu markant hurtigere
+
+**Gemning af et enkelt endpoint er nu ca. 50% hurtigere.** Tidligere ventede portalen på to ISE API-kald i rækkefølge før siden responderede: først PUT (opdateringen) og derefter GET (snapshot til audit-log). Det betød typisk 600-1200ms ventetid. Nu returneres siden straks efter PUT — audit-snapshottet hentes i baggrunden uden at brugeren venter.
+
+---
+
+## [5.6.18] — 2026-05-21 — Bug fix release
+
+### Dashboard: falsk "Mange stale cache-entries"-advarsel fjernet
+
+**Advarslen om stale cache-entries vises ikke længere i normal drift.** Den forkerte alert skyldtes at logikken sammenlignede cache-alder mod TTL (60 sekunder). Med en 30-minutters drip-refresh-cyklus og stale-while-revalidate-design har ~98% af endpoints altid en alder over 60 sekunder — det er tilsigtet og ufarligt. Alertet fandt aldrig ro og var en permanent falsk alarm.
+
+Alertet trigges nu kun hvis entries er **ældre end det maksimale SWR-vindue** (30 minutter) — altså entries der slet ikke kan serves fra cachen. Det indikerer at drip-refresh ikke følger med belastningen, og er en reel advarsel.
+
+---
+
+## [5.6.17] — 2026-05-21 — Bug fix release
+
+### Dashboard: cache disk-statistik viser nu meningsfulde data
+
+**Dashboard viser nu "Indlæst fra disk ved opstart" i stedet for den ubrugelige "Disk stale"-metric.** `disk_stale` tæller kun disk-indlæste entries der *endnu ikke* er refreshet af prewarm — en transient tilstand der forsvinder inden for få minutter efter opstart. I drift er den altid 0, hvilket gav det fejlagtige indtryk at disk-persistens ikke virkede.
+
+Nu vises i stedet:
+- **Indlæst fra disk ved opstart**: Antal endpoints der blev genoprettet fra `endpoints.json` ved seneste opstart (fx 1.843). Et tal over 0 bekræfter at disk-persistens fungerer.
+- **Disk stale (nu)**: Forklarende tekst — "0 ✓ (alle entries er live ISE-data)" i normal drift, eller antal med note om prewarm-refresh i startup-vinduet.
+
+---
+
+## [5.6.15] — 2026-05-20 — Forbedring
+
+### Simulate: Auto-mode tester alle policy sets fra rank 0
+
+**Simulate starter nu automatisk fra rank 0 af alle policy sets.** Tidligere skulle du manuelt vælge det rigtige policy set i dropdown'en — hvis RADIUS-parametrene ændrede hvilket policy set der ville matche, fik du et forkert svar. Nu er der en "Auto — test alle policy sets (fra rank 0)"-option som er default. Simulatoren gennemgår alle sets i rækkefølge og stopper ved det første match — præcis som ISE gør det ved en rigtig RADIUS-request.
+
+**Indlæsning af en RADIUS-template skifter automatisk til Auto-mode.** Så du ikke utilsigtet tester mod et forkert policy set.
+
+**Resultatet viser nu hvilket policy set der matchede** — praktisk i miljøer med mange sets.
+
+---
+
+## [5.6.14] — 2026-05-20 — Ny funktion + bug fix
+
+### RADIUS-parametre kan gemmes som navngivne templates
+
+**Du kan nu gemme et sæt RADIUS-parametre som en template og genindlæse det i fremtidige simulate-test.** I simulate-fanen finder du en ny template-bar under RADIUS-sektionen. Eksempel: gem `Called-Station-ID: voldby17:hus` og `NAS-Port-Type: 8` som "Wireless SSID voldby17" og indlæs det med ét klik næste gang. Du kan gemme så mange templates du ønsker, sorteret alfabetisk. Templates gemmes lokalt i browseren og er tilgængelige på tværs af alle endpoint-tests.
+
+### Fix: GitHub update-check viste altid gammel version
+
+**"Check for update"-knappen returnerer nu altid den rigtige seneste version fra GitHub.** Knappen hentede version.json via GitHub's CDN som ignorerer Cache-Control-headers fra klienter — resultatet var at portalen could vise en forældet version som "nyeste" selv sekunder efter et push. Rettet ved at tilføje et unikt timestamp som query-parameter der tvinger CDN'en til at hente frisk indhold.
+
+---
+
+## [5.6.13] — 2026-05-20 — Forbedring
+
+### Policy match: AND/OR-betingelser vises som i ISE's policy-editor
+
+**Simulate match-resultatet viser nu politikkens betingelsestræ med farvekodede AND/OR-blokke** — samme stil som ISE's policy-editor. Tidligere var alle betingelser listet fladt uden struktur.
+
+- **Blå AND-blok**: globale betingelser der alle skal opfyldes
+- **Grøn OR-blok**: alternative grene — kun én skal matche
+- Kombinerede politikker (AND + OR) vises indlejret korrekt
+- Hvert betingelse viser `Ordbog.Attribut`-notation med farvedifferentieret tekst
+- Matchede OR-grene fremhæves med grøn kant, fejlede med rød kant
+
+---
+
+## [5.6.12] — 2026-05-20 — Bug fix release
+
+### TACACS+: operatørprofil med admin-rolle kunne ikke logge ind
+
+**Brugere med en operatørprofil der har admin-rollen kan nu logge ind korrekt via TACACS+.** Tidligere fik disse brugere altid 401 — portalen fejlfortolkede dem som lokale admins og sprang TACACS-autentiseringen over, hvorefter den lokale adgangskodekontrol fejlede fordi operatørprofiler ikke har en lokal adgangskode. Rettet ved at skelne korrekt mellem lokale admins og TACACS-operatørprofiler med admin-rolle.
+
+---
+
+## [5.6.11] — 2026-05-20 — Ny funktion
+
+### Systemlog vises direkte i Dashboard (kun admin)
+
+**Administratorer kan nu se backend-loggen direkte i Dashboard** uden at skulle ssh'e ind på serveren. Systemlog-sektionen viser de seneste log-linjer med farvekodet niveau-badge (DEBUG, INFO, WARNING, ERROR, CRITICAL). Funktioner:
+
+- **Niveau-filter**: WARNING og derover, ERROR og derover, alt, osv. — filtrering er korrekt inklusiv ("WARNING+" inkluderer WARNING, ERROR og CRITICAL)
+- **Antal linjer**: vælg 50, 100 eller 200 linjer
+- **Fritekst-søgning**: filtrer direkte i log-output
+- **Auto-refresh**: opdateres hvert 30 sekunder med resten af dashboard
+- Sektionen er usynlig for ikke-admin-brugere
+
+---
+
+## [5.6.10] — 2026-05-20 — Bug fix release
+
+### 6 telemetri-fejl rettet (analyse-opfølgning)
+
+Opfølgning på to-faset telemetri-analyse der kortlagde alle datakilder og fejlmønstre i session-cachen.
+
+**VLAN-prioritet i periodisk MnT-berigelse**: Den 5-minutters MnT-opdatering kunne overskrive korrekte pxGrid-VLAN-data med forældede MnT-data — samme fejlmønster som i v5.6.9 men i en anden funktion. Rettet.
+
+**Deduplicering af samtidige MnT-kald**: Hvis flere pxGrid-events ankom til samme endpoint tæt på hinanden, startede portalen parallelle MnT-kald for samme MAC — dette kunne føre til race conditions. MnT-kald dedupliceres nu per MAC.
+
+**Forældet session-cache ved opstart**: Sessions der var meget gamle (over 4 timer) blev ved opstart genindlæst fra disk og betragtet som aktive. Disse hoppes nu over.
+
+**Begrænset MnT-reconcile ved opstart**: Reconcile-workeren kunne ved opstart forsøge at berige hundredvis af endpoints på én gang. Batchen er nu begrænset til 100 per kørsel.
+
+**VLAN-kilde i MnT-parser**: MnT returnerer VLAN to steder — portalen bruger nu AuthStatus AV-pair som primær kilde (tættere på hvad ISE faktisk assignede) frem for Session/MACAddress-feltet.
+
+---
+
+## [5.6.9] — 2026-05-20 — Bug fix release
+
+### ISE Session: periodisk MnT-berigelse overskrev korrekt VLAN
+
+**Den periodiske session-berigelse (hvert 5. minut) overskriver ikke længere korrekte VLAN-data.** Portalen henter session-data fra både pxGrid (real-time) og MnT (periodisk). MnT-berigelsen prioriterede fejlagtigt MnT-VLANet frem for det allerede kendte pxGrid-VLAN — selv om pxGrid-data altid er nyere og mere præcis. Rettet: eksisterende VLAN fra cachen bevares, og MnT bruges kun til at fylde felter der er tomme.
+
+---
+
+## [5.6.8] — 2026-05-20 — Bug fix release
+
+### ISE Session VLAN: altid ét trin bagud ved VLAN-ændring
+
+**Session-kolonnen viser nu korrekt VLAN med det samme efter en VLAN-ændring.** Tidligere viste portalen altid det *forrige* VLAN — fx VLAN 10 efter at have sat 32, og 32 efter at have sat 210. Årsag: MnT-berigelsen kørte straks efter pxGrid-eventet (mens MnT stadig havde det gamle VLAN) og overskrev det korrekte pxGrid-VLAN med det forældede MnT-VLAN. Symptom på at problemet var indkapslet: at sende en CoA *uden* at ændre VLAN "syncede" portalen, fordi efterfølgende events ikke triggede MnT-kaldet igen. Fix: `_enrich_single_from_mnt` bevarer nu pxGrid STOMP-VLANet og bruger kun MnT til at fylde tomme felter.
+
+---
+
+## [5.6.7] — 2026-05-20 — Bug fix release
+
+### ISE Session VLAN: MnT returnerede data fra gammel session
+
+**VLAN fra MnT henter nu altid den nyeste sessions data.** ISE MnT AuthStatus-API returnerer flere autentiseringsposter per MAC (sorteret nyeste-først). Portalen parsede fejlagtigt alle poster samlet og endte med den ældste records VLAN-data — fx VLAN 210 fra en session fra i forgårs, mens den aktuelle session (samme audit_session_id som pxGrid) gav VLAN 64. Fix: portalen itererer nu posterne i rækkefølge og bruger det første (nyeste) fund per felt.
+
+---
+
+## [5.6.6] — 2026-05-20 — Bug fix release
+
+### ISE Session VLAN: forkert værdi på visse endpoints
+
+**VLAN i ISE Session Auth-kolonnen viser nu korrekt VLAN for alle endpoints.** Et subset af endpoints viste forkert VLAN (fx 10 i stedet for 32). Root cause: ISE sender VLAN i pxGrid som `tunnelPrivateGroupId: "(tag=0) 32"` — portalen parsede ikke præfikset korrekt og gemte hele strengen. Derudover brugte getSessions-opdateringen stale VLAN fra den gamle cache i stedet for den friske pxGrid-payload. Begge fejl rettet: `_parse_vlan()` normaliserer ISE-formatet til rent tal; getSessions bruger nu VLAN direkte fra ISE-svaret.
+
+---
+
+## [5.6.5] — 2026-05-20 — Bug fix release
+
+### ISE Session: stale VLAN ryddes ved re-autentisering + ny debug-tab
+
+**VLAN i ISE Session Auth-kolonnen er nu korrekt ved re-autentisering.** Når et endpoint skiftede VLAN (re-auth til ny policy), blev det gamle VLAN-nummer arvet fra den forrige session og viste forkert data — fx VLAN 210 mens endpoint faktisk var på VLAN 10. Årsag: STOMP-event-handleren arvede `vlan`/`dacl`/`cts_security_group` fra cachen uden at tjekke om det var en ny session (nyt audit_session_id). Fix: ved nyt audit_session_id ryddes session-specifikke felter, og MnT-berigelse trigges straks for at hente friske data.
+
+**Ny "ISE Session"-fane i endpoint-detaljer.** Viser alle felter fra session-cachen (hvad frontend aktuelt ser). Admin-knap "Probe MnT" kalder ISE MnT direkte og sammenligner cache vs. live MnT — VLAN-mismatch fremhæves i orange.
+
+---
+
+## [5.6.4] — 2026-05-20 — Bug fix release
+
+### ISE session auth: MnT-reconcile overskriver ikke korrekt VLAN-data
+
+**Reconcile-workeren kan ikke længere overskrive pxGrid real-time session data med forældet MnT-data.** Endpoints med en aktiv pxGrid-session (fx VLAN 10) kunne fejlagtigt vise VLAN fra en ældre MnT-session (fx VLAN 210) fordi reconcile-workeren prioriterede MnT-data over eksisterende pxGrid-data. Workeren bruger nu korrekt prioritet: eksisterende pxGrid-felter bevares altid — MnT fylder kun felter der er tomme.
+
+---
+
+## [5.6.3] — 2026-05-20 — Forbedring
+
+### Endpoint historik: sigende handlingstekst
+
+**Historik-fanen i endpoint-detaljer viser nu præcis hvad der ændrede sig.** Tidligere stod der blot "updated" for alle ændringer. Nu vises de konkrete felter og nye værdier — fx `VLAN:10`, `Gruppe:Unknown` eller `Owner:adm, Type:PC`. Maks 32 tegn på én linje; hvis mange felter ændres vises de vigtigste kommasepareret og teksten trunkeres med "…".
+
+---
+
+## [5.6.2] — 2026-05-20 — Bug fix release
+
+### 2 fejl rettet
+
+**Fritekst-søgning fejlede med 500 Internal Server Error.** Søgning i fritekstfeltet i Browse udløste en intern Python-fejl (`AttributeError: 'EndpointDetail' object has no attribute 'profile'`). Rettet: det korrekte felt `profiler_name` bruges nu.
+
+**ISE session auth-status opdaterer ikke endpoints der har misset pxGrid push-events.** Hvis et pxGrid STOMP push-event droppede (WSS timeout, PSN failover, netværksfejl) forblev endpointets auth-status aldrig opdateret i Browse-kolonnen. Ny baggrunds-worker `reconcile_stale_sessions` kører hvert 10. minut: den finder endpoints der er stale i cachen, henter friske session-data fra MnT, og opretter eller opdaterer session-cache entries — selv for endpoints der aldrig har modtaget et push-event.
+
+---
+
+## [5.6.1] — 2026-05-20 — Bug fix release
+
+### 5 fejl rettet fra v5.6.0
+
+**Fritekst-søgning (q) i Browse virker nu korrekt.** Søgefeltet i Browse-filterlinjen hentede ikke nye resultater når søgeteksten blev ændret mens filtertilstand allerede var aktiv. Resultatet var at portalen blev ved med at vise det første søgeresultat uanset hvad man søgte på efterfølgende. Rettet.
+
+**Endpoint historik-tab indlæser nu korrekt.** Fanen "Historik" i endpoint detail-modalen viste altid "Klik på fanen for at indlæse historik." og hentede aldrig audit-events. Årsag var en timing-race hvor fanen læste et tomt ID. Rettet med DOM-fallback.
+
+**ISE session auth-data viser nu MnT-beriget information.** Policy-sæt-navn, autorisationsregel og VLAN fra MnT-berigelse (kører hvert 5. min i baggrunden) vises nu korrekt i Browse. Tidligere lå MnT-data kun i backend-cachen uden at nå frontend. Rettet: frontend gen-henter session-data fra backend hvert 5. minut.
+
+**Dashboard viser nu korrekt antal aktive pxGrid-sessioner.** Session-tælleren viste altid 0 pga. en forkert dict-nøgle. Rettet.
+
+**Stale cache-advarsel vises ikke længere straks ved genstart.** Advarslen "Mange stale cache-entries" fyrede tidligere øjeblikkeligt efter genstart (alle disk-entries er per definition stale) og forblev aktiv i lang tid. Advarslen undertrykkes nu til drip-refresh har gennemført sin første fulde rotation — typisk 30 minutter.
+
+---
+
+## [5.5.9] — 2026-05-19 — Patch 1
+
+### Endpoint-cache: kontinuerlig baggrundsopdatering
+
+**Alle endpoints opdateres nu automatisk i baggrunden** — uden at brugeren skal åbne Browse-siden. Tidligere blev cache kun opdateret ved bruger-interaktion (browse, edit) eller ved den periodiske fulde scan hvert 30. minut. Det betød at endpoints der ikke var besøgt i et stykke tid, altid udløste en synkron ISE-forespørgsel ved næste åbning.
+
+Den nye drip-refresh-mekanisme fungerer som et kontinuerligt baggrundstjek: portalen finder løbende det endpoint der har den ældste cachepost og opdaterer det fra ISE. Opdateringerne spredes jævnt over hele 30-minutters-intervallet (fx ~1,8s pr. endpoint ved 1000 endpoints) — ingen burst-belastning på ISE og ingen "kold cache" ved skift til Browse.
+
+---
+
+## [5.5.8] — 2026-05-19 — Patch 1
+
+### Detail-modal: loading-besked rykker ikke længere layout
+
+**Informationsbeskeder i endpoint detail-modal skubber ikke længere indholdet.** Tidligere sad loading/gem/fejl-beskeden i flex-flowet, så tab-baren og alle detaljer rykkede op og ned når beskeden dukkede op eller forsvandt. Beskeden er nu `position: absolute` og overlayer indholdet øverst — tab-baren forbliver stationær.
+
+---
+
 ## [5.5.7] — 2026-05-19 — Patch 1
 
 ### Sikkerhed og audit-dækning

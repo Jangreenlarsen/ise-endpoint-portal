@@ -26,6 +26,7 @@ function renderCacheStats(container, stats) {
   const hitRate = total > 0 ? ((hits + staleServes) / total * 100).toFixed(1) : "—";
 
   const pw = stats.prewarm;
+  const sl = stats.staleness;
   let prewarmRows = "";
   if (pw == null) {
     prewarmRows = `<tr><td colspan="2" style="color:#888;font-style:italic;">${t("settings.cache_prewarm_na")}</td></tr>`;
@@ -38,6 +39,47 @@ function renderCacheStats(container, stats) {
       ? t("settings.cache_ago").replace("{t}", fmtAge(pw.last_full_scan_age_s * 1000)) : "—";
     const diskSave = pw.last_disk_save_at
       ? fmtTimestamp(pw.last_disk_save_at) : "—";
+
+    // Drip capacity: compare estimated full cycle vs configured interval
+    let dripCapacityBadge = "";
+    if (pw.drip_estimated_full_cycle_s != null && pw.drip_current_sleep_s > 0) {
+      const configInterval = parseFloat(document.getElementById("cache_prewarm_interval_s")?.value) || 1800;
+      const ratio = pw.drip_estimated_full_cycle_s / configInterval;
+      const cycleStr = fmtAge(pw.drip_estimated_full_cycle_s);
+      if (ratio <= 0.9) {
+        dripCapacityBadge = `<span style="background:#27ae60;color:#fff;border-radius:4px;padding:1px 7px;font-size:.82em;margin-left:6px;">&#10003; følger med (${cycleStr})</span>`;
+      } else if (ratio <= 1.1) {
+        dripCapacityBadge = `<span style="background:#f39c12;color:#fff;border-radius:4px;padding:1px 7px;font-size:.82em;margin-left:6px;">&#9888; grænsetilfælde (${cycleStr})</span>`;
+      } else {
+        dripCapacityBadge = `<span style="background:#c0392b;color:#fff;border-radius:4px;padding:1px 7px;font-size:.82em;margin-left:6px;">&#10007; kan ikke følge med (${cycleStr})</span>`;
+      }
+    }
+
+    // Staleness distribution bar
+    let staleBar = "";
+    if (sl) {
+      const total = (sl.fresh_count || 0) + (sl.stale_count || 0) + (sl.very_stale_count || 0);
+      if (total > 0) {
+        const freshPct = (sl.fresh_count / total * 100).toFixed(0);
+        const stalePct = (sl.stale_count / total * 100).toFixed(0);
+        const veryPct = (sl.very_stale_count / total * 100).toFixed(0);
+        staleBar = `
+          <tr><td colspan="2" style="padding-top:.3rem;">
+            <div title="Frisk: ${sl.fresh_count} | Stale: ${sl.stale_count} | Meget stale: ${sl.very_stale_count}"
+                 style="display:flex;height:10px;border-radius:4px;overflow:hidden;width:100%;margin-top:2px;">
+              <div style="width:${freshPct}%;background:#27ae60;" title="Frisk ${freshPct}%"></div>
+              <div style="width:${stalePct}%;background:#f39c12;" title="Stale ${stalePct}%"></div>
+              <div style="width:${veryPct}%;background:#c0392b;" title="Meget stale ${veryPct}%"></div>
+            </div>
+            <div style="font-size:.78em;color:#888;margin-top:2px;">
+              <span style="color:#27ae60;">&#9632;</span> Frisk: ${sl.fresh_count}
+              &nbsp;<span style="color:#f39c12;">&#9632;</span> Stale: ${sl.stale_count}
+              &nbsp;<span style="color:#c0392b;">&#9632;</span> Meget stale: ${sl.very_stale_count}
+            </div>
+          </td></tr>`;
+      }
+    }
+
     prewarmRows = `
         <tr><td colspan="2" style="font-weight:600;padding-top:.6rem;">Pre-warm worker</td></tr>
         <tr><td>Status</td><td>${scanStatus}</td></tr>
@@ -45,7 +87,18 @@ function renderCacheStats(container, stats) {
         <tr><td>${t("settings.cache_prewarm_disk")}</td><td>${diskSave}</td></tr>
         <tr><td>${t("settings.cache_prewarm_loaded")}</td><td>${pw.disk_loaded}</td></tr>
         <tr><td>${t("settings.cache_hot_queue")}</td><td>${t("settings.cache_hot_n").replace("{n}", pw.hot_queue_size)}</td></tr>
-        ${pw.last_error ? `<tr><td>${t("settings.cache_last_err")}</td><td><span style="color:#c0392b;">${esc(pw.last_error)}</span></td></tr>` : ""}`;
+        ${pw.last_error ? `<tr><td>${t("settings.cache_last_err")}</td><td><span style="color:#c0392b;">${esc(pw.last_error)}</span></td></tr>` : ""}
+        <tr><td colspan="2" style="font-weight:600;padding-top:.6rem;">Drip-refresh</td></tr>
+        <tr><td>Kapacitet</td><td>
+          Opdateringsinterval: ${fmtAge(pw.drip_current_sleep_s)}${dripCapacityBadge}
+        </td></tr>
+        <tr><td>Refreshet i alt</td><td>${pw.drip_refreshed_total} endpoints (sprunget over: ${pw.drip_skipped_total})</td></tr>
+        ${sl ? `
+        <tr><td colspan="2" style="font-weight:600;padding-top:.6rem;">Cache-alder</td></tr>
+        <tr><td>Ældste entry</td><td>${sl.oldest_entry_age_s != null ? fmtAge(sl.oldest_entry_age_s) : "—"}</td></tr>
+        <tr><td>Gennemsnitlig alder</td><td>${sl.average_entry_age_s != null ? fmtAge(sl.average_entry_age_s) : "—"}</td></tr>
+        <tr><td>Stale-andel</td><td>${sl.stale_pct}% (${(sl.stale_count || 0) + (sl.very_stale_count || 0)} af ${(sl.fresh_count || 0) + (sl.stale_count || 0) + (sl.very_stale_count || 0)} entries)</td></tr>
+        ${staleBar}` : ""}`;
   }
 
   container.innerHTML = `
