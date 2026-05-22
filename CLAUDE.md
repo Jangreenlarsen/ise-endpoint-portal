@@ -5,11 +5,15 @@ Dette er Claudes system-prompt for dette projekt. Den læses altid først og fø
 ## Faste regler
 
 1. **Versionering (UFRAVIGELIG)**: Projektet versioneres via [version.json](version.json). Denne fil er den **eneste** kilde til versionsnumre — alle andre steder (backend, frontend, changelog) læser herfra.
-   - Format: `{ "version": "MAJOR.MINOR.PATCH", "build": "NNNN" }`
-   - **build**: incrementeres med **1** ved HVERT commit (0001 → 0002 → 0003 ...).
-   - **PATCH**: incrementeres ved bug fixes. Build nulstilles IKKE.
+   - Normalt format: `{ "version": "MAJOR.MINOR.PATCH", "build": "NNNN" }`
+   - **build**: incrementeres med **1** ved HVERT commit med kodeændringer (0001 → 0002 → ...).
+   - **PATCH**: incrementeres ved bug fixes (afsluttede). Build nulstilles IKKE.
    - **MINOR**: incrementeres ved nye features. PATCH sættes til 0.
    - **MAJOR**: incrementeres ved breaking changes eller store milepæle. MINOR og PATCH sættes til 0.
+   - **Debugging-format (4 decimaler)**: Under aktiv fejlsøgning bruges `MAJOR.MINOR.PATCH.D` hvor D starter på 1 og incrementeres for hvert debug-commit: `v5.6.25.1`, `v5.6.25.2`, osv. Commit-beskeder præfikses `vX.X.X.D-bNNNN: debug: beskrivelse`.
+   - **Afslutning af debugging**: Når Jan bekræfter *"nu virker det som det skal"*, incrementeres PATCH og D nulstilles: `v5.6.25.3` → `v5.6.26.0`. Commit markeres som `fix:` og afslutter debug-serien.
+   - **Kun-dokumentations-commits** (RELEASE_NOTES.md, CHANGELOG.md, BUGS.md, FEATURES.md uden kodeændringer): bump IKKE version — lav commit uden versionsbump.
+   - **RELEASE_NOTES.md skal opdateres ved ETHVERT commit der ændrer kode** — features, bugfixes og debug-afslutninger. Dokumentations-commits er undtaget. Glem aldrig dette.
    - Changelog-entries tagges med versionsnummer: `## [1.0.0 build 0001] — 2026-04-16 — beskrivelse`.
    - Claude **skal** opdatere `version.json` og vise den nye version i commit-beskeden.
 2. **Ny funktionalitet (features)** skal ALTID registreres i [FEATURES.md](FEATURES.md) *før* implementering påbegyndes. Opdatér status når den er færdig.
