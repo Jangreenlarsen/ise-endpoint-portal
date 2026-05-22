@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.6.28 build 0476] — 2026-05-22 — docs: tilføjet manglende release notes for v5.6.25 og v5.6.26
+
+**Berørt fil:**
+- `RELEASE_NOTES.md` — tilføjet Bug fix release-sektioner for v5.6.25 (batch-simulate feltnavne) og v5.6.26 (selektion nulstillet ved re-render).
+
+---
+
 ## [5.6.27 build 0475] — 2026-05-22 — feat: progress-indikator ved gem af multiple endpoints
 
 **Berørte filer:**

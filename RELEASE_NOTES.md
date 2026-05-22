@@ -12,6 +12,22 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.6.26] — 2026-05-21 — Bug fix release
+
+### Valgte endpoints i browse-tabellen mistede selektion ved automatisk opdatering
+
+**Valgte checkbokse i browse-tabellen nulstilles ikke længere ved automatisk baggrundsopdatering.** Fejlen opstod fordi pxGrid `endpoint_changed`-events triggede en fuld re-render af tabellen via `renderRows()`, som erstatter hele `tbody.innerHTML` og dermed sletter alle checkboks-tilstande. `renderRows()` gemmer nu de valgte endpoint-IDs inden re-render og gendanner dem i den nye HTML.
+
+---
+
+## [5.6.25] — 2026-05-21 — Bug fix release
+
+### Batch-simulering viste fejl på alle endpoints
+
+**Batch-simulering fra browse-tabellen virker nu korrekt.** Fejlen skyldtes at backend-koden refererede `result.matched_rule` og `result.matched_profile` — de korrekte feltnavne på `PolicyMatchResult`-objektet er `matched_rule_name` og `profiles`. Alle endpoints returnerede "has no attribute 'matched_rule'" i stedet for simuleringsresultater.
+
+---
+
 ## [5.6.24] — 2026-05-21 — Forbedring
 
 ### Opdatering viser alle release notes fra nuværende til nyeste version
