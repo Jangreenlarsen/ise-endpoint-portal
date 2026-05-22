@@ -4,6 +4,20 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.7.1] — 2026-05-22 — Batch-simulering: RADIUS-parametre og templates
+
+### RADIUS-attributter i Batch policy-match
+
+**Baggrund:** Batch-simulatoren matchede kun på endpoint-attributter (Owner, Type, Group m.m.) — RADIUS-betingelser (NAS-Port-Type, Called-Station-ID osv.) blev altid skippet. Nu kan man angive de samme RADIUS-parametre som i single-endpoint simulatoren.
+
+**Ændringer:**
+- Ny RADIUS-sektion i Batch-simuleringsmodalen: "+ Tilføj parameter"-knap, nøgle/værdi-felter med datalist-autocomplete.
+- Template-support med load/gem/slet — deler localStorage-nøgle med single-endpoint simulatoren, så gemte templates er tilgængelige begge steder.
+- Alle valgte endpoints simuleres med de samme RADIUS-værdier.
+- Backend `BatchSimRequest` udvides med `radius_attrs: dict` — nul breaking change (default `{}`).
+
+---
+
 ## [5.7.0] — 2026-05-22 — JSON-eksport, session anomali-detektion, silent token refresh
 
 ### Tre nye features i Browse og sikkerhed

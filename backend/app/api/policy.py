@@ -177,6 +177,7 @@ async def match_endpoint(
 class BatchSimRequest(BaseModel):
     policy_set_id: str
     endpoint_ids: list[str]
+    radius_attrs: dict[str, str] = {}
 
 
 @router.post(
@@ -203,6 +204,7 @@ async def batch_simulate(
                     "platform_type": detail.platform_type or "",
                     "group_id": detail.group_id or "",
                     "group_name": detail.group_name or "",
+                    "radius_attrs": body.radius_attrs,
                 }
                 result = await svc.match_endpoint(body.policy_set_id, ep_dict)
                 return {

@@ -270,6 +270,32 @@ export async function renderBrowse(container) {
               <option value="">Indlæser policy-sæt…</option>
             </select>
           </label>
+          <datalist id="bsim-radius-attrs-list">
+            <option value="Called-Station-ID">
+            <option value="NAS-Port-Type">
+            <option value="NAS-Identifier">
+            <option value="NAS-IP-Address">
+            <option value="User-Name">
+            <option value="Framed-IP-Address">
+            <option value="Service-Type">
+            <option value="Calling-Station-Id">
+            <option value="EAP-Type">
+            <option value="AuthenticationMethod">
+          </datalist>
+          <div class="radius-section">
+            <div class="radius-section-header">
+              <span class="radius-prompt-title">RADIUS-parametre (præciser match):</span>
+              <button type="button" id="bsim-radius-add" class="secondary small">+ Tilføj parameter</button>
+            </div>
+            <div class="radius-section-hint">Bruges til regler der kræver Radius.NAS-Port-Type, Called-Station-ID m.m. Alle valgte endpoints simuleres med de samme RADIUS-værdier.</div>
+            <div class="radius-tpl-bar">
+              <select id="bsim-radius-tpl-sel" class="radius-tpl-sel"><option value="">— Vælg template —</option></select>
+              <button type="button" id="bsim-radius-tpl-load" class="secondary small" title="Indlæs valgt template">Indlæs</button>
+              <button type="button" id="bsim-radius-tpl-save" class="secondary small">Gem som template</button>
+              <button type="button" id="bsim-radius-tpl-del" class="secondary small radius-tpl-del" title="Slet valgt template">✕ Slet</button>
+            </div>
+            <div id="bsim-radius-rows"></div>
+          </div>
         </div>
         <div id="bsim-results" style="display:none;">
           <p id="bsim-summary" class="hint" style="margin:8px 0;"></p>

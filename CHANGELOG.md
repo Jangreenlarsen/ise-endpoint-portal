@@ -3,6 +3,16 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.7.1 build 0482] — 2026-05-22 — feat: Batch-simulering RADIUS-parametre og templates
+
+**Berørte filer:**
+- `backend/app/api/policy.py` — BatchSimRequest +radius_attrs; sim_one sender radius_attrs til match_endpoint
+- `frontend/js/api.js` — batchSimulate(setId, ids, radius_attrs)
+- `frontend/js/views/browse.js` — RADIUS-sektion i batch-sim modal (datalist, rows container, template bar)
+- `frontend/js/views/browse-bulk.js` — addBsimRadiusRow(), readBsimRadiusAttrs(), template load/save/del, sender radius_attrs
+
+---
+
 ## [5.7.0 build 0481] — 2026-05-22 — feat: JSON-eksport, session anomali-detektion, silent token refresh
 
 **Berørte filer:**
