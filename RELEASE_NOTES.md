@@ -4,6 +4,21 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.6.31] — 2026-05-22 — Kvalitet og stabilitet (P1 afslutning)
+
+### Timerlækage og testdækning
+
+**Baggrund:** Fortsættelse af P1-kvalitetssprint — UX, robusthed og automatiseret testdækning.
+
+**Rettelser:**
+- **Timerlækage i metrics og policy:** Metrics- og policy-visningerne returnerer nu en cleanup-funktion der afregistrerer intervaller ved navigation. Forhindrer CPU-spild ved hyppig side-skift.
+- **XSS-beskyttelse i metrics og policy:** De to resterende visninger med lokale `esc()`-kopier bruger nu den centrale implementation.
+- **Async event loop stabilitet:** Tre baggrundstjenester (cache-sync, cache-prewarm, audit-retention) oprettede `asyncio.Event()` i `__init__` i stedet for ved `start()`. Dette forårsagede fejl ved genstart i en ny event loop. Rettet.
+- **Python 3.14 UnboundLocalError:** En betinget lokal import i `login()` skyggede modul-level import og forårsagede `UnboundLocalError` på Python 3.14. Rettet.
+- **Testsuite: 89/89 bestået:** 22 nye tests for auth og autorisation tilføjet og alle 89 tests kører nu fejlfrit.
+
+---
+
 ## [5.6.30] — 2026-05-22 — Sikkerhedsfix (P1)
 
 ### Kritisk: XSS-beskyttelse og bug-fix i HTML-escaping

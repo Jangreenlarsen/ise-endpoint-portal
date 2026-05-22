@@ -471,7 +471,6 @@ def login(payload: LoginRequest) -> LoginResponse:
                     effective_role = "viewer"
                     endpoint_roles = [payload.username]
                     assigned_templates = []
-                    from app.core import audit_store
                     audit_store.record_sync(
                         "tacacs_auto_viewer_bootstrap", "session", payload.username,
                         after={"reason": "no_operator_profiles_configured", "granted_role": "viewer"},

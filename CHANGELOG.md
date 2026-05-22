@@ -3,6 +3,25 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.6.31 build 0479] — 2026-05-22 — fix: P1 UX/kvalitet/tests — esc() i metrics+policy, cleanup-returns, worker-loop fix, tests 89/89
+
+**Berørte filer:**
+- `frontend/js/views/metrics.js` — esc() centraliseret (fjernet lokal kopi); cleanup-funktion returneret (clearInterval ved nav)
+- `frontend/js/views/policy.js` — esc() centraliseret; silent catches opgraderet til console.warn; cleanup-funktion returneret
+- `backend/app/services/cache_sync.py` — `start()`: `self._stop = asyncio.Event()` i stedet for `.clear()` (fix: "bound to different event loop" ved genstart)
+- `backend/app/services/cache_prewarm.py` — samme fix + `self._hot = asyncio.Queue()` resettet i `start()`
+- `backend/app/services/audit_retention.py` — samme event-loop fix i `start()`
+- `backend/app/services/user_service.py` — fjernet lokal `from app.core import audit_store` inde i `login()` der skygger modul-import og forårsager `UnboundLocalError` på Python 3.14
+- `backend/tests/test_auth.py` — ny fil: 13 tests for auth-endpoints; module-scoped fixture + korrekte mock-targets
+- `backend/tests/test_authz.py` — ny fil: 10 tests for rolle-håndhævelse; module-scoped fixture + korrekte mock-targets
+
+**Ændringer:**
+- 89 tests → 89 passed (fra 22 fejlende)
+- Cleanup-returns i metrics.js og policy.js forhindrer timer-lækage ved navigation
+- Worker `start()` opretter altid et nyt `asyncio.Event()` så de kan genstartes i en ny event loop (relevant ved test + fremtidig hot-reload)
+
+---
+
 ## [5.6.30 build 0478] — 2026-05-22 — fix: P1 kritiske sikkerhedsfix — esc() centralisering + BulkCreateRequest grænse
 
 **Berørte filer:**

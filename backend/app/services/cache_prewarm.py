@@ -81,7 +81,8 @@ class PrewarmWorker:
     def start(self) -> None:
         if self._task and not self._task.done():
             return
-        self._stop.clear()
+        self._stop = asyncio.Event()
+        self._hot = asyncio.Queue()
         self.status = PrewarmStatus(
             running=True,
             started_at=time.time(),

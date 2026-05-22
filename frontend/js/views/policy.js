@@ -5,17 +5,12 @@
 import { api } from "../api.js";
 import { auth } from "../auth.js";
 import { t } from "../i18n.js";
+import { esc } from "./browse-utils.js";
 import {
   groupEditorHtml, wireGroupEditor, readGroupCondition,
   renderConditionTree, renderConditionChips,
   profilesHtml, readProfiles, wireProfileEvents,
 } from "./policy-condition-builder.js";
-
-function esc(s) {
-  return (s || "").replace(/[&<>"']/g, (c) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-  }[c]));
-}
 
 function stateLabel(s) {
   return s === "enabled" ? t("pol.state_enabled") : t("pol.state_disabled");
@@ -74,14 +69,18 @@ export async function renderPolicy(container) {
     if (res?.attributes) {
       for (const a of res.attributes) caValues[a.name] = a.values || [];
     }
-  }).catch(() => {});
+  }).catch((err) => {
+    console.warn("[policy] Custom attributes unavailable:", err.message);
+  });
 
   api.listGroups().then((res) => {
     const groups = Array.isArray(res) ? res : (res?.groups || []);
     caValues["__IdentityGroup_Name__"] = groups
       .map((g) => g.name).filter(Boolean)
       .map((n) => n.startsWith("Endpoint Identity Groups:") ? n : "Endpoint Identity Groups:" + n);
-  }).catch(() => {});
+  }).catch((err) => {
+    console.warn("[policy] Identity groups unavailable:", err.message);
+  });
 
   function clearDetail() {
     selectedRuleId = null;
@@ -349,4 +348,9 @@ export async function renderPolicy(container) {
   container.querySelector("#pol-refresh").addEventListener("click", loadSets);
 
   await loadSets();
+
+  return function cleanup() {
+    // Listeners er på container-children der erstattes ved næste render.
+    // Cleanup bruges primært til at signalere til app.js at view håndterer livscyklus korrekt.
+  };
 }

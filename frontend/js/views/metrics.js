@@ -7,6 +7,7 @@
 
 import { t, getLocale } from "../i18n.js";
 import { api } from "../api.js";
+import { esc } from "./browse-utils.js";
 
 const BASE = window.location.origin.startsWith("file://")
   ? "http://localhost:8000"
@@ -236,10 +237,6 @@ export async function renderMetrics(container) {
     return `<div class="card metrics-card"><h3>ISE PSN noder</h3><div class="metric-stats">${rows}</div></div>`;
   }
 
-  function esc(s) {
-    return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  }
-
   async function load() {
     try {
       const [metricsRes, nodesRes] = await Promise.allSettled([
@@ -274,4 +271,8 @@ export async function renderMetrics(container) {
 
   await load();
   startTimer();
+
+  return function cleanup() {
+    if (timer) { clearInterval(timer); timer = null; }
+  };
 }
