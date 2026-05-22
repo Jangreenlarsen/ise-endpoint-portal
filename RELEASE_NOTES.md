@@ -4,6 +4,14 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.6.27] — 2026-05-22 — Forbedring
+
+### Progress-indikator ved gem af multiple endpoints
+
+**Når du gemmer flere endpoints på én gang (Gem alle ændrede / Gem valgte) vises nu en fremgangsindikator.** Meldingsfeltet over tabellen viser "Gemmer X / Y… [MAC]" og en blå progress-bar der fylder sig op i takt med at hvert endpoint gemmes. Ved afslutning erstattes indikatoren af den sædvanlige succes/fejl-besked.
+
+---
+
 ## [5.6.24] — 2026-05-21 — Forbedring
 
 ### Opdatering viser alle release notes fra nuværende til nyeste version

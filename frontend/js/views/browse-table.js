@@ -620,17 +620,28 @@ export function initTable(container, state, api, cb) {
     msg.innerHTML = `<div class="alert info">Ændringer fortrudt.</div>`;
   });
 
-  // Save all dirty rows
-  saveAllBtn.addEventListener("click", async () => {
-    if (!state.dirtyIds.size) return;
-    saveAllBtn.disabled = true;
-    const ids = [...state.dirtyIds];
-    msg.innerHTML = `<div class="alert info">${t("browse.saving_n").replace("{n}", ids.length)}</div>`;
+  // ── Fælles save-loop med progress-indikator ──────────────────────────────
+  function showSaveProgress(done, total, mac) {
+    const pct = total > 1 ? Math.round((done / total) * 100) : 100;
+    const macHint = mac ? ` <span class="save-progress-mac">${esc(mac)}</span>` : "";
+    msg.innerHTML = `
+      <div class="alert info save-progress-wrap">
+        <span class="save-progress-label">Gemmer ${done} / ${total}…${macHint}</span>
+        <div class="save-progress-bar"><div class="save-progress-fill" style="width:${pct}%"></div></div>
+      </div>`;
+  }
+
+  async function runSaveLoop(ids) {
     let ok = 0, fail = 0;
     const savedEntries = [];
-    for (const id of ids) {
+    const total = ids.length;
+    showSaveProgress(0, total, null);
+    for (let i = 0; i < ids.length; i++) {
+      const id = ids[i];
       const tr = tbody.querySelector(`tr[data-id="${id}"]`);
       if (!tr) continue;
+      const mac = tr.querySelector(".mac-cell")?.textContent?.trim() || id;
+      showSaveProgress(i + 1, total, total > 1 ? mac : null);
       const { payload, platformType } = buildSavePayload(tr);
       try {
         await api.updateEndpoint(id, payload);
@@ -639,6 +650,15 @@ export function initTable(container, state, api, cb) {
         ok++;
       } catch { fail++; }
     }
+    return { ok, fail, savedEntries };
+  }
+
+  // Save all dirty rows
+  saveAllBtn.addEventListener("click", async () => {
+    if (!state.dirtyIds.size) return;
+    saveAllBtn.disabled = true;
+    const ids = [...state.dirtyIds];
+    const { ok, fail, savedEntries } = await runSaveLoop(ids);
     let coaSummary = "";
     if (state.coaOnSave && savedEntries.length) {
       msg.innerHTML = `<div class="alert info">${t("browse.coa_n").replace("{n}", savedEntries.length)}</div>`;
@@ -650,6 +670,7 @@ export function initTable(container, state, api, cb) {
     if (ok)   parts.push(t("browse.saved_n").replace("{n}", ok));
     if (fail) parts.push(t("browse.failed_n").replace("{n}", fail));
     msg.innerHTML = `<div class="alert ${fail ? "error" : "success"}">${parts.join(", ")}${coaSummary}</div>`;
+    saveAllBtn.disabled = false;
   });
 
   // Bulk save selected rows
@@ -657,20 +678,7 @@ export function initTable(container, state, api, cb) {
     const ids = getSelectedIds();
     if (!ids.length) return;
     bulkSaveBtn.disabled = true;
-    msg.innerHTML = `<div class="alert info">${t("browse.saving_selected_n").replace("{n}", ids.length)}</div>`;
-    let ok = 0, fail = 0;
-    const savedEntries = [];
-    for (const id of ids) {
-      const tr = tbody.querySelector(`tr[data-id="${id}"]`);
-      if (!tr) continue;
-      const { payload, platformType } = buildSavePayload(tr);
-      try {
-        await api.updateEndpoint(id, payload);
-        state.dirtyIds.delete(id);
-        savedEntries.push({ id, platformType });
-        ok++;
-      } catch { fail++; }
-    }
+    const { ok, fail, savedEntries } = await runSaveLoop(ids);
     let coaSummary = "";
     if (state.coaOnSave && savedEntries.length) {
       msg.innerHTML = `<div class="alert info">${t("browse.coa_n").replace("{n}", savedEntries.length)}</div>`;

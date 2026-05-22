@@ -3336,6 +3336,19 @@ details[open] .rn-summary::before { transform: rotate(90deg); }
 [data-theme="midnight"] .rn-body code { background: #010409; }
 
 /* ------------------------------------------------------------------ */
+/* Save progress indikator                                             */
+/* ------------------------------------------------------------------ */
+.save-progress-wrap { display: flex; flex-direction: column; gap: 0.4rem; }
+.save-progress-label { font-size: 0.85rem; }
+.save-progress-mac { font-family: monospace; font-size: 0.78rem; opacity: 0.75; }
+.save-progress-bar { height: 6px; background: #bfdbfe; border-radius: 3px; overflow: hidden; }
+.save-progress-fill { height: 100%; background: #2563eb; border-radius: 3px; transition: width 0.2s ease; }
+[data-theme="dark"] .save-progress-bar { background: #1e3a5f; }
+[data-theme="dark"] .save-progress-fill { background: #3b82f6; }
+[data-theme="midnight"] .save-progress-bar { background: #0d2137; }
+[data-theme="midnight"] .save-progress-fill { background: #58a6ff; }
+
+/* ------------------------------------------------------------------ */
 /* Batch simulate badges                                               */
 /* ------------------------------------------------------------------ */
 .bsim-badge { display:inline-block; padding:1px 7px; border-radius:10px; font-size:0.72rem; font-weight:600; margin-right:2px; }

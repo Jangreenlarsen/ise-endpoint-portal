@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.6.27 build 0475] — 2026-05-22 — feat: progress-indikator ved gem af multiple endpoints
+
+**Berørte filer:**
+- `frontend/js/views/browse-table.js` — fælles `runSaveLoop(ids)` erstatter de to separate save-loops i `saveAllBtn` og `bulkSaveBtn`. Kalder `showSaveProgress(done, total, mac)` på hver iteration: viser "Gemmer X / Y… [MAC]" + en blå progress-bar der fyldes op efterhånden som endpoints gemmes. MAC vises kun ved mere end ét endpoint.
+- `frontend/css/styles.css` — `.save-progress-*` styles + dark/midnight theme.
+
+---
+
 ## [5.6.26 build 0474] — 2026-05-21 — fix: selektion i browse-tabel nulstilles ved automatisk re-render
 
 **Berørt fil:**
