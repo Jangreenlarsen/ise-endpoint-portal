@@ -181,6 +181,7 @@ const TRANSLATIONS = {
     "col.first_seen":   "Første gang set",
     "filter.first_seen_from": "Fra dato",
     "filter.first_seen_to":   "Til dato",
+    "col.ise_updated":  "ISE opdateret",
     "col.nas":          "NAS",
     "col.ise_session":  "ISE Session Auth",
 
@@ -1226,6 +1227,7 @@ const TRANSLATIONS = {
     "col.first_seen":   "First seen",
     "filter.first_seen_from": "From date",
     "filter.first_seen_to":   "To date",
+    "col.ise_updated":  "ISE updated",
     "col.nas":          "NAS",
     "col.ise_session":  "ISE Session Auth",
 
