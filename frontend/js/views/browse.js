@@ -96,11 +96,18 @@ export async function renderBrowse(container) {
               <th><button type="button" id="filter-clear-all-btn" class="filter-clear-all-btn hidden" title="Nulstil alle søgefelter">×</button></th>
               ${getOrderedColumns().map((c) => `
                 <th data-col="${c.key}"${c.cls ? ` class="${c.cls}"` : ""}>
-                  ${c.key === "auth_status" ? `<select id="auth-status-filter" class="auth-status-select" title="${t("browse.auth_filter_label")}">
-                      <option value="all">${t("browse.auth_filter_all")}</option>
-                      <option value="auth">${t("browse.auth_filter_auth")}</option>
-                      <option value="notauth">${t("browse.auth_filter_notauth")}</option>
-                    </select>` : `<input type="text" class="col-filter-input" data-col="${c.key}" placeholder="…" />`}
+                  ${c.key === "auth_status"
+                    ? `<select id="auth-status-filter" class="auth-status-select" title="${t("browse.auth_filter_label")}">
+                        <option value="all">${t("browse.auth_filter_all")}</option>
+                        <option value="auth">${t("browse.auth_filter_auth")}</option>
+                        <option value="notauth">${t("browse.auth_filter_notauth")}</option>
+                      </select>`
+                    : c.key === "first_seen"
+                      ? `<div class="first-seen-filter-wrap">
+                          <input type="date" id="first-seen-from" class="first-seen-date" title="${t("filter.first_seen_from")}" />
+                          <input type="date" id="first-seen-to" class="first-seen-date" title="${t("filter.first_seen_to")}" />
+                        </div>`
+                      : `<input type="text" class="col-filter-input" data-col="${c.key}" placeholder="…" />`}
                 </th>`).join("")}
             </tr>
           </thead>

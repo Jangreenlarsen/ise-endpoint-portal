@@ -9,6 +9,8 @@ Alle nye features registreres her FØR implementering påbegyndes.
 
 ## Planlagt / Under implementering
 
+- `[done 5.7.2 b0483] 2026-05-22 — Første gang set: endpoint-historik database + dato-filter` — SQLite-database (`first_seen.db`) gemmer første observerede tidsstempel per MAC (immutable INSERT OR IGNORE). Browse erstatter Age-kolonnen med "Første gang set" (relativ alder). Filterpanel på kolonnen viser Fra/Til dato-picker. Filter, sortering og saved-views-persistens. **Berørte lag:** `backend/app/core/first_seen_store.py`, `backend/app/schemas/endpoint.py`, `backend/app/services/endpoint_service.py`, `backend/app/main.py`, `frontend/js/views/browse-utils.js`, `frontend/js/views/browse.js`, `frontend/js/views/browse-filter.js`, `frontend/css/styles.css`.
+
 - `[done 5.6.32 b0480] 2026-05-22 — P2 Kvalitetsforbedringer` — Test-dækning (~20% → 80%): `test_endpoints.py` (CRUD), `test_policy.py`, `test_pxgrid.py`. Kode-refaktor: `endpoint_service.py` (958 linjer → sub-moduler), `endpoints.py` API-router split. Tooling: `pytest-cov`, `mypy`. Dokumentation: ARCHITECTURE.md PxGrid/cache. **Berørte lag:** `backend/tests/`, `backend/app/services/`, `backend/app/api/`, `backend/pyproject.toml`, `ARCHITECTURE.md`.
 
 - `[done 5.6.15 b0463] 2026-05-20 — Simulate Auto-mode: test alle policy sets fra rank 0` — Ny "Auto — test alle policy sets (fra rank 0)"-option øverst i policy set-dropdown. I Auto-mode itererer simulatoren alle sets i rank-rækkefølge og returnerer første match. Indlæsning af RADIUS-template skifter automatisk til Auto. Resultatkort viser hvilket policy set der matchede. **Berørte lag:** `frontend/js/views/browse-detail.js`, `frontend/css/styles.css`.

@@ -4,6 +4,23 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.7.2] — 2026-05-22 — Første gang set: endpoint-database med dato-filter
+
+### Ny "Første gang set" kolonne med historik-database
+
+**Baggrund:** Portalen viste ingen information om hvornår et endpoint første gang dukkede op i ISE. Nu gemmer backend tidsstemplet for det første observerede tidspunkt i en SQLite-database — permanent og uforanderlig for hvert endpoint.
+
+**Ændringer:**
+- Ny SQLite-database `backend/cache/first_seen.db` — gemmer `(mac, first_seen_at, endpoint_id)` med `INSERT OR IGNORE` (første observation er immutable).
+- `EndpointDetail.first_seen_at` (Unix-timestamp float) tilgængeligt på alle endpoints via `_fetch_endpoint_detail`.
+- Browse-tabellen erstatter den gamle "Age"-kolonne med **"Første gang set"** — viser relativ alder (i dag, i går, N dage, N måneder, N år).
+- Filterpanelet på kolonnen viser to dato-picker inputs (Fra / Til) i stedet for tekstfilter.
+- Filter understøtter åbne intervaller (kun fra-dato, kun til-dato, eller begge).
+- Dato-filter gemmes/gendannes i saved views og ved sidegenindlæsning.
+- Sortering på kolonnen virker numerisk på timestamp.
+
+---
+
 ## [5.7.1] — 2026-05-22 — Batch-simulering: RADIUS-parametre og templates
 
 ### RADIUS-attributter i Batch policy-match

@@ -3,6 +3,19 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.7.2 build 0483] — 2026-05-22 — feat: Første gang set — endpoint-historik database + dato-filter
+
+**Berørte filer:**
+- `backend/app/core/first_seen_store.py` (NY) — SQLite-store, INSERT OR IGNORE immutable timestamps
+- `backend/app/schemas/endpoint.py` — EndpointDetail +first_seen_at: float|None
+- `backend/app/services/endpoint_service.py` — _fetch_endpoint_detail kalder first_seen_store.record()
+- `backend/app/main.py` — init_first_seen_db() ved startup
+- `frontend/js/i18n.js` — col.first_seen, filter.first_seen_from, filter.first_seen_to
+- `frontend/js/views/browse-utils.js` — erstatter age-kolonnen med first_seen
+- `frontend/js/views/browse.js` — dato-filter inputs i HTML
+- `frontend/js/views/browse-filter.js` — dato-range filter, change-listeners, snapshot save/restore
+- `frontend/css/styles.css` — .first-seen-filter-wrap, .first-seen-date + dark/midnight themes
+
 ## [5.7.1 build 0482] — 2026-05-22 — feat: Batch-simulering RADIUS-parametre og templates
 
 **Berørte filer:**

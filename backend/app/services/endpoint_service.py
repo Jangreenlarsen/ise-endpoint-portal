@@ -7,7 +7,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
-from app.core import audit_store, config
+from app.core import audit_store, config, first_seen_store
 from app.core.metrics import BULK_ITEMS
 from app.core.custom_attr_store import (
     ALL_ATTRS,
@@ -247,6 +247,7 @@ class EndpointService:
             psk_key=_psk_decode(ca.get(PSK_KEY_ATTR, "")),
             create_time=create_time,
             update_time=update_time,
+            first_seen_at=first_seen_store.record(mac_val, endpoint_id),
         )
 
     async def _resolve_group_name(self, group_id: str) -> str:
