@@ -2622,98 +2622,125 @@ body.register-route .login-card {
 [data-theme="dark"] .cb-open    { background: #450a0a; color: #fca5a5; }
 
 
-/* ── Policy Dashboard (master-detail layout) ── */
+/* ── Policy Dashboard — 3-panel layout ── */
 .pol-page {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   height: calc(100vh - 60px);
   overflow: hidden;
 }
 
-/* Centered inner wrapper — caps max width */
-.pol-inner {
-  max-width: 1600px;
-  width: 100%;
-  margin: 0 auto;
-  padding: 0 1rem;
-}
-
-/* Policy set bar (top) */
-.pol-sets-bar {
+/* ── Sidebar: Policy Sets ── */
+.pol-sidebar {
+  width: 240px;
   flex-shrink: 0;
-  border-bottom: 2px solid var(--border);
-  padding: 0.55rem 0 0.45rem;
+  display: flex;
+  flex-direction: column;
+  border-right: 2px solid var(--border);
   background: var(--card-bg, #fff);
+  overflow: hidden;
 }
-.pol-sets-header {
+.pol-sidebar-hd {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.4rem;
+  justify-content: space-between;
+  padding: 0.65rem 0.85rem 0.55rem;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
 }
-.pol-sets-label {
-  font-size: 0.72rem;
+.pol-sidebar-title {
+  font-size: 0.7rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.07em;
   color: var(--text-muted, #6b7280);
 }
-.pol-sets-row {
-  display: flex;
-  gap: 0.45rem;
-  overflow-x: auto;
-  padding-bottom: 0.15rem;
-}
-.pol-set-card {
-  flex-shrink: 0;
-  min-width: 130px;
-  max-width: 200px;
-  padding: 0.45rem 0.65rem;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  cursor: pointer;
-  transition: border-color 0.15s, box-shadow 0.15s;
-  background: var(--card-bg, #fff);
-}
-.pol-set-card:hover { border-color: #3b82f6; box-shadow: 0 1px 4px rgba(59,130,246,.15); }
-.pol-set-card.active {
-  border-color: #3b82f6;
-  background: #eff6ff;
-  box-shadow: 0 2px 6px rgba(59,130,246,.2);
-}
-.pol-set-name { font-weight: 700; font-size: 0.8rem; margin-bottom: 0.12rem; }
-.pol-set-meta { font-size: 0.68rem; color: var(--text-muted, #6b7280); margin-bottom: 0.25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pol-set-badge {
-  display: inline-block;
-  font-size: 0.63rem;
-  font-weight: 600;
-  padding: 0.08rem 0.35rem;
-  border-radius: 8px;
-}
-.pol-set-badge.enabled  { background: #dcfce7; color: #166534; }
-.pol-set-badge.disabled { background: #fee2e2; color: #991b1b; }
-
-/* Body — two-column master-detail */
-.pol-body {
+.pol-sets-list {
   flex: 1;
-  overflow: hidden;
-  padding: 0.65rem 0 0;
-}
-.pol-split {
-  display: grid;
-  grid-template-columns: 380px 1fr;
-  gap: 0;
-  height: 100%;
-  overflow: hidden;
-}
-.pol-list-col {
   overflow-y: auto;
-  padding-right: 0.75rem;
+  padding: 0.3rem 0;
+}
+.pol-sets-loading,
+.pol-sets-empty {
+  padding: 0.75rem 1rem;
+  font-size: 0.82rem;
+  color: var(--text-muted, #6b7280);
+}
+
+/* Sidebar nav item */
+.pol-set-item {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.6rem 0.85rem 0.6rem 0.7rem;
+  cursor: pointer;
+  border-left: 3px solid transparent;
+  transition: background 0.1s, border-color 0.1s;
+  user-select: none;
+}
+.pol-set-item:hover { background: rgba(59,130,246,.06); }
+.pol-set-item.active {
+  border-left-color: #3b82f6;
+  background: #eff6ff;
+}
+
+/* State dot */
+.pol-set-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.pol-set-dot.enabled  { background: #22c55e; box-shadow: 0 0 0 2px rgba(34,197,94,.2); }
+.pol-set-dot.disabled { background: #d1d5db; }
+
+.pol-set-item-info { flex: 1; min-width: 0; }
+.pol-set-item-name {
+  font-weight: 600;
+  font-size: 0.83rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text, #111827);
+}
+.pol-set-item.active .pol-set-item-name { color: #1d4ed8; }
+.pol-set-item-meta {
+  font-size: 0.68rem;
+  color: var(--text-muted, #6b7280);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 0.06rem;
+}
+
+/* State pill in sidebar item */
+.pol-set-state-pill {
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 0.06rem 0.35rem;
+  border-radius: 8px;
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+}
+.pol-set-state-pill.enabled  { background: #dcfce7; color: #166534; }
+.pol-set-state-pill.disabled { background: #f3f4f6; color: #6b7280; }
+
+/* ── Center: Rule list panel ── */
+.pol-rules-panel {
+  width: 380px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  padding: 0.7rem 0.75rem;
   border-right: 1px solid var(--border);
+  background: var(--bg, #f9fafb);
 }
-.pol-detail-col {
+
+/* ── Right: Detail / editor panel ── */
+.pol-detail-panel {
+  flex: 1;
   overflow-y: auto;
-  padding-left: 0.75rem;
+  padding: 0.7rem 0.9rem;
+  min-width: 0;
 }
 
 .pol-rules-header {
@@ -3156,14 +3183,21 @@ body.register-route .login-card {
   margin-bottom: 0.5rem;
 }
 
-[data-theme="dark"] .pol-sets-bar       { background: #12121e; }
-[data-theme="dark"] .pol-set-card        { background: #1e1e2e; }
-[data-theme="dark"] .pol-set-card.active { background: #1e3a5f; border-color: #3b82f6; }
-[data-theme="dark"] .pol-set-badge.enabled  { background: #052e16; color: #86efac; }
-[data-theme="dark"] .pol-set-badge.disabled { background: #1f1f1f; color: #9ca3af; }
+/* Policy 3-panel — dark theme */
+[data-theme="dark"] .pol-sidebar        { background: #12121e; border-color: #2a2a4a; }
+[data-theme="dark"] .pol-sidebar-hd     { border-color: #2a2a4a; }
+[data-theme="dark"] .pol-set-item:hover { background: rgba(59,130,246,.08); }
+[data-theme="dark"] .pol-set-item.active { background: #1e3a5f; border-left-color: #3b82f6; }
+[data-theme="dark"] .pol-set-item.active .pol-set-item-name { color: #93c5fd; }
+[data-theme="dark"] .pol-set-item-name  { color: #e2e8f0; }
+[data-theme="dark"] .pol-set-dot.enabled  { background: #4ade80; box-shadow: 0 0 0 2px rgba(74,222,128,.2); }
+[data-theme="dark"] .pol-set-dot.disabled { background: #374151; }
+[data-theme="dark"] .pol-set-state-pill.enabled  { background: #052e16; color: #86efac; }
+[data-theme="dark"] .pol-set-state-pill.disabled { background: #1f1f1f; color: #9ca3af; }
+[data-theme="dark"] .pol-rules-panel    { background: #12121e; border-color: #2a2a4a; }
+[data-theme="dark"] .pol-rules-header   { background: #12121e; }
 [data-theme="dark"] .pol-rule-card      { background: #1e1e2e; }
 [data-theme="dark"] .pol-rule-card.active { background: #1e3a5f; border-color: #3b82f6; }
-[data-theme="dark"] .pol-rules-header   { background: #12121e; }
 [data-theme="dark"] .pol-rank-badge     { background: #1e3a5f; color: #93c5fd; border-color: #1e40af; }
 [data-theme="dark"] .pol-state-badge.enabled  { background: #052e16; color: #86efac; }
 [data-theme="dark"] .pol-state-badge.disabled { background: #1f1f1f; color: #9ca3af; }

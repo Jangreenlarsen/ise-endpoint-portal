@@ -4,6 +4,19 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.6.29] — 2026-05-22 — Forbedring
+
+### Nyt layout i Policies-sektionen
+
+**Policy-siden har fået et nyt, mere overskueligt 3-panel layout.**
+
+- **Sidebar til venstre (Policy Sets):** Policy sets vises nu som en vertikal navigationsliste i stedet for en horisontal kortræk. Hvert set viser en farvet state-indikator (grøn = aktiv, grå = inaktiv), setnavn, service-navn og en status-pill. Det aktive set fremhæves med en blå kant og lysblå baggrund.
+- **Regler i midten:** Autoriseringsreglerne for det valgte policy set er i et eget panel med selvstændig scroll.
+- **Detalje/editor til højre:** Detaljepanelet fylder den resterende plads.
+- Designet virker i både lys, mørk og midnight-tema.
+
+---
+
 ## [5.6.27] — 2026-05-22 — Forbedring
 
 ### Progress-indikator ved gem af multiple endpoints

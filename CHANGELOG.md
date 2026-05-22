@@ -3,6 +3,21 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.6.29 build 0477] — 2026-05-22 — feat: policies-sektion refaktoreret til 3-panel sidebar-layout
+
+**Berørte filer:**
+- `frontend/js/views/policy.js` — ny HTML-struktur: sidebar (Policy Sets) + rules-panel + detail-panel (3-panel)
+- `frontend/css/styles.css` — ny `.pol-sidebar`, `.pol-set-item`, `.pol-set-dot`, `.pol-set-state-pill`, `.pol-rules-panel`, `.pol-detail-panel`; fjernet: `.pol-sets-bar`, `.pol-set-card`, `.pol-inner`, `.pol-body`, `.pol-split`, `.pol-list-col`, `.pol-detail-col`; opdateret dark theme
+
+**Ændringer:**
+- Policy Sets vises nu i en vertikal sidebar (240px) til venstre med state-dot (grøn/grå), navn, service-navn og aktiv/inaktiv-pill
+- Aktiv set markeres med blå venstre-kant og lys blå baggrund
+- Regler-listen er nu et selvstændigt panel med scroll
+- Detail/editor-panel fylder resten af bredden
+- Dark theme opdateret med korrekte sidebar-farver
+
+---
+
 ## [5.6.28 build 0476] — 2026-05-22 — docs: tilføjet manglende release notes for v5.6.25 og v5.6.26
 
 **Berørt fil:**
