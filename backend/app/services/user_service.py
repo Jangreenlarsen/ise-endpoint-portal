@@ -5,14 +5,13 @@ from __future__ import annotations
 import logging
 import time
 import uuid
-from collections import defaultdict
 from datetime import datetime, timezone
-from threading import Lock
 
 from fastapi import HTTPException, status
 
 from app.core import audit_store
 from app.core import auth as auth_core
+from app.core import lockout_store
 from app.core import role_catalog
 from app.core.user_store import (
     find_by_id,
@@ -38,46 +37,40 @@ _LOCKOUT_MAX_ATTEMPTS = 5       # fejl inden lockout
 _LOCKOUT_WINDOW_S     = 600     # 10 min glidende vindue
 _LOCKOUT_DURATION_S   = 900     # 15 min lockout
 
-_failed_attempts: dict[str, list[float]] = defaultdict(list)  # username → [timestamps]
-_lockout_until:   dict[str, float]       = {}                 # username → epoch
-_lockout_lock = Lock()
+# Lockout-state gemmes persistenteret i SQLite via lockout_store
+# så genstart af backend ikke nulstiller aktive lockouts.
 
 
 def _check_and_record_failure(username: str) -> None:
     """Registrér fejlet login-forsøg. Kaster 429 hvis bruger er låst."""
-    with _lockout_lock:
-        now = time.time()
-        # Udløbet lockout ryddes automatisk
-        if username in _lockout_until and now >= _lockout_until[username]:
-            del _lockout_until[username]
-            _failed_attempts[username] = []
+    now = time.time()
 
-        if username in _lockout_until:
-            remaining = int(_lockout_until[username] - now)
+    locked_until = lockout_store.get_lockout_until(username)
+    if locked_until is not None:
+        if now < locked_until:
+            remaining = int(locked_until - now)
             logger.warning("login blocked (lockout) for username=%s remaining=%ds", username, remaining)
             raise HTTPException(
                 status.HTTP_429_TOO_MANY_REQUESTS,
                 f"For mange fejlede loginforsøg. Prøv igen om {remaining // 60 + 1} minut(ter).",
             )
+        # Udløbet lockout — ryd op
+        lockout_store.clear_lockout(username)
 
-        # Tilføj timestamp og ryd gamle poster udenfor vinduet
-        _failed_attempts[username].append(now)
-        _failed_attempts[username] = [t for t in _failed_attempts[username] if now - t < _LOCKOUT_WINDOW_S]
+    lockout_store.add_failure(username, now)
+    failures = lockout_store.get_failures_since(username, now - _LOCKOUT_WINDOW_S)
 
-        if len(_failed_attempts[username]) >= _LOCKOUT_MAX_ATTEMPTS:
-            _lockout_until[username] = now + _LOCKOUT_DURATION_S
-            _failed_attempts[username] = []
-            logger.warning(
-                "account locked for %ds after %d failed attempts: username=%s",
-                _LOCKOUT_DURATION_S, _LOCKOUT_MAX_ATTEMPTS, username,
-            )
+    if len(failures) >= _LOCKOUT_MAX_ATTEMPTS:
+        lockout_store.set_lockout(username, now + _LOCKOUT_DURATION_S)
+        logger.warning(
+            "account locked for %ds after %d failed attempts: username=%s",
+            _LOCKOUT_DURATION_S, _LOCKOUT_MAX_ATTEMPTS, username,
+        )
 
 
 def _clear_failures(username: str) -> None:
     """Ryd fejltæller ved successfuldt login."""
-    with _lockout_lock:
-        _failed_attempts.pop(username, None)
-        _lockout_until.pop(username, None)
+    lockout_store.clear_lockout(username)
 
 
 _PW_MIN_LEN = 10

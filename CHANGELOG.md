@@ -15,7 +15,7 @@ Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md
 - `frontend/js/app.js` — tilføjer `trends`-rute (alle roller undtagen registrant)
 - `frontend/index.html` — nav-link "Trend Analyse" under Overvågning
 
-## [5.7.13 build 0513] — 2026-05-23 — sec: Security Patch 3 — XSS, CSP, lockout, input-validering, ACL
+## [5.8.0 build 0515] — 2026-05-23 — sec: Security Patch 3 — input-validering, ACL, persistent lockout
 
 **Sikkerheds-patch (7 fixes implementeret fra dyb sikkerhedsanalyse):**
 

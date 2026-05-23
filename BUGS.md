@@ -4,6 +4,31 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 5.7.13 b0513] 2026-05-23 — XSS: user.role ukrypteret i innerHTML (app.js)
+- **Symptom:** `user.role` fra JWT-payload indsættes direkte i `innerHTML` uden HTML-escaping.
+- **Risiko:** Hvis en angriber kan påvirke rolle-værdien (kompromitteret token), kan vilkårligt HTML/JS injiceres.
+- **Fix:** `esc(user.role)` bruges nu i `app.js:171`. `esc()` importeres fra `browse-utils.js`.
+
+## [FIXED 5.7.13 b0513] 2026-05-23 — CSP: script-src tillod unsafe-inline scripts (main.py)
+- **Symptom:** `Content-Security-Policy` indeholdt `script-src 'self' 'unsafe-inline'`.
+- **Risiko:** En XSS-sårbarhed kunne udnyttes til at køre vilkårlige scripts da CSP ikke blokerede inline scripts.
+- **Fix:** `'unsafe-inline'` fjernet fra `script-src`. Alle scripts er `type="module" src="..."` (externe).
+
+## [FIXED 5.7.13 b0513] 2026-05-23 — Account lockout gemtes kun i memory — tabt ved genstart
+- **Symptom:** Backend-genstart nulstillede aktive account lockouts.
+- **Risiko:** En angriber kunne omgå lockout ved at provokere en genstart (f.eks. systemfejl eller deployment).
+- **Fix:** Ny `lockout_store.py` gemmer failures og lockout-state i SQLite (`audit.db`). Overlever genstarter.
+
+## [FIXED 5.7.13 b0513] 2026-05-23 — Ingen input-validering på search-parametre i API
+- **Symptom:** `search`-parameter i `/api/endpoints` og `/api/audit` havde ingen længdebegrænsning.
+- **Risiko:** Ekstremt lange søgestrenge kunne forårsage DoS (CPU/memory) i FTS5-søgningen.
+- **Fix:** `max_length=500` på alle søge-parametre; `page`/`size` valideret med `ge`/`le`.
+
+## [FIXED 5.7.13 b0513] 2026-05-23 — Windows: config.json fik ikke filadgangsbegrænsning
+- **Symptom:** `settings_store.py` satte kun Unix `chmod 0o600`; Windows-blokken var tom.
+- **Risiko:** `config.json` (indeholder ISE-credentials) var læsbar for alle brugere på systemet.
+- **Fix:** `icacls` bruges nu til at fjerne nedarvet adgang og give kun aktuel bruger fuld kontrol.
+
 ## [FIXED 5.7.11 b0511] 2026-05-23 — 502 ved "Show 500" — ISE ERS max 100/side
 - **Symptom:** Valg af 500 i "Show"-dropdown gav `502: ISE returnerede en uventet fejl (HTTP 400)`.
 - **Årsag:** Admin-stien i `list_endpoint_details` sendte `size=500` direkte til ISE ERS API der kun accepterer max 100 per side.

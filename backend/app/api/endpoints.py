@@ -36,9 +36,9 @@ router = APIRouter(prefix="/endpoints", tags=["endpoints"])
 
 @router.get("", response_model=list[EndpointSummary])
 async def list_endpoints(
-    page: int = 1,
-    size: int = 100,
-    search: str | None = None,
+    page: int = Query(1, ge=1),
+    size: int = Query(100, ge=1, le=1000),
+    search: str | None = Query(default=None, max_length=500),
     filter: list[str] | None = Query(default=None),
     user: User = Depends(require_any),
     service: EndpointService = Depends(get_endpoint_service),
@@ -57,9 +57,9 @@ async def list_endpoints(
 
 @router.get("/details", response_model=PaginatedEndpointDetails)
 async def list_endpoint_details(
-    page: int = 1,
-    size: int = 100,
-    search: str | None = None,
+    page: int = Query(1, ge=1),
+    size: int = Query(100, ge=1, le=1000),
+    search: str | None = Query(default=None, max_length=500),
     filter: list[str] | None = Query(default=None),
     user: User = Depends(require_any),
     service: EndpointService = Depends(get_endpoint_service),

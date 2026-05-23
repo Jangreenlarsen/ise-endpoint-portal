@@ -4,7 +4,9 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
-## [5.8.0] — 2026-05-23 — Trend Analyse: endpoint bevægelser og private MACs over tid
+## [5.8.0] — 2026-05-23 — Trend Analyse + Security Patch 3
+
+### Trend Analyse: endpoint bevægelser og private MACs over tid
 
 Nyt **Trend Analyse**-view i sidebaren (under Overvågning). Viser:
 
@@ -13,6 +15,18 @@ Nyt **Trend Analyse**-view i sidebaren (under Overvågning). Viser:
 - **Stat-kort** — snapshot: total endpoints, antal private MACs, LAA-%, periode-summer
 
 Periode-vælger: 7 dage / 30 dage / 90 dage / 1 år. Data hentes fra audit-loggen uden eksterne chart-afhængigheder (ren SVG).
+
+### Security Patch 3 (7 sikkerheds-fixes)
+
+| Fix | Komponent | Detalje |
+|-----|-----------|---------|
+| XSS-fix | Frontend `app.js` | `user.role` escaped med `esc()` ved innerHTML-indsætning |
+| CSP hardening | Backend `main.py` | `script-src` fjerner `unsafe-inline` |
+| Opstartsadvarsler | Backend `main.py` | SECURITY WARNING ved TLS=false og dev-CORS-origins i log |
+| Windows ACL | `settings_store.py` | `icacls` begræns `config.json` til aktuel bruger |
+| Persistent lockout | Ny `lockout_store.py` | Account lockout i SQLite — overlever backend-genstart |
+| Input-validering | `endpoints.py` | `search` max 500 tegn; `page`/`size` valideret |
+| Input-validering | `audit.py` | `search`, `actor`, `resource_type`, `resource_id` max_length |
 
 ---
 
