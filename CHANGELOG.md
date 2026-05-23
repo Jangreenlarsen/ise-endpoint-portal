@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.7.10.2 build 0510] — 2026-05-23 — debug: fix /endpoints/stats — value er EndpointDetail Pydantic, ikke dict
+
+**Rodårsag:** `ep.get("mac")` fejler på Pydantic-objekt — `EndpointDetail` har ikke `.get()`. Cachet value er `EndpointDetail` (fra `_fetch_endpoint_detail`), ikke et dict.
+**Fix:** Tjekker `isinstance(ep, dict)` og bruger ellers `getattr(ep, "mac")`.
+
+**Berørte filer:**
+- `backend/app/api/endpoints.py` — `/stats` bruger nu `getattr` for Pydantic-objekter
+
 ## [5.7.10.1 build 0509] — 2026-05-23 — debug: fix /endpoints/stats — cache._details.value korrekt tilgang
 
 **Rodårsag:** `get_cache().values()` — `EndpointCache` er ikke et dict; har ingen `.values()`. Endpoint kastede `AttributeError` → frontend-catch returnerede null → badge forsvandt.
