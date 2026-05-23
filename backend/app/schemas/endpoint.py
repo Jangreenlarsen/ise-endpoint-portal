@@ -40,6 +40,9 @@ class EndpointDetail(BaseModel):
     # eller HypervisionRegisteredAt custom attr i ERS-mode.
     create_time: str = ""
     update_time: str = ""
+    # Unix-timestamp (float) — første gang portalen observerede dette endpoint.
+    # Sættes af first_seen_store ved cache-prewarm og create. None = endnu ikke set.
+    first_seen_at: float | None = None
 
 
 class EndpointGroupSummary(BaseModel):

@@ -23,11 +23,13 @@ export async function renderBrowse(container) {
         ${t("browse.pxgrid_badge")}
       </span>
     </div>
+    <div id="anomaly-banner" style="display:none;"></div>
     <div class="card">
       <div class="toolbar">
         <div class="toolbar-group" title="${t("browse.tooltip_data")}">
           <button id="refresh-btn">${t("browse.btn_refresh")}</button>
           <button id="export-btn" class="secondary">${t("browse.btn_export")}</button>
+          <button id="export-json-btn" class="secondary">${t("browse.btn_export_json")}</button>
           <div class="col-vis-wrap">
             <button id="col-vis-btn" class="secondary small" type="button"
                     title="${t("browse.tooltip_columns")}">${t("browse.btn_columns")}</button>
@@ -94,11 +96,18 @@ export async function renderBrowse(container) {
               <th><button type="button" id="filter-clear-all-btn" class="filter-clear-all-btn hidden" title="Nulstil alle søgefelter">×</button></th>
               ${getOrderedColumns().map((c) => `
                 <th data-col="${c.key}"${c.cls ? ` class="${c.cls}"` : ""}>
-                  ${c.key === "auth_status" ? `<select id="auth-status-filter" class="auth-status-select" title="${t("browse.auth_filter_label")}">
-                      <option value="all">${t("browse.auth_filter_all")}</option>
-                      <option value="auth">${t("browse.auth_filter_auth")}</option>
-                      <option value="notauth">${t("browse.auth_filter_notauth")}</option>
-                    </select>` : `<input type="text" class="col-filter-input" data-col="${c.key}" placeholder="…" />`}
+                  ${c.key === "auth_status"
+                    ? `<select id="auth-status-filter" class="auth-status-select" title="${t("browse.auth_filter_label")}">
+                        <option value="all">${t("browse.auth_filter_all")}</option>
+                        <option value="auth">${t("browse.auth_filter_auth")}</option>
+                        <option value="notauth">${t("browse.auth_filter_notauth")}</option>
+                      </select>`
+                    : c.key === "first_seen"
+                      ? `<div class="first-seen-filter-wrap">
+                          <input type="date" id="first-seen-from" class="first-seen-date" title="${t("filter.first_seen_from")}" />
+                          <input type="date" id="first-seen-to" class="first-seen-date" title="${t("filter.first_seen_to")}" />
+                        </div>`
+                      : `<input type="text" class="col-filter-input" data-col="${c.key}" placeholder="…" />`}
                 </th>`).join("")}
             </tr>
           </thead>
@@ -268,6 +277,32 @@ export async function renderBrowse(container) {
               <option value="">Indlæser policy-sæt…</option>
             </select>
           </label>
+          <datalist id="bsim-radius-attrs-list">
+            <option value="Called-Station-ID">
+            <option value="NAS-Port-Type">
+            <option value="NAS-Identifier">
+            <option value="NAS-IP-Address">
+            <option value="User-Name">
+            <option value="Framed-IP-Address">
+            <option value="Service-Type">
+            <option value="Calling-Station-Id">
+            <option value="EAP-Type">
+            <option value="AuthenticationMethod">
+          </datalist>
+          <div class="radius-section">
+            <div class="radius-section-header">
+              <span class="radius-prompt-title">RADIUS-parametre (præciser match):</span>
+              <button type="button" id="bsim-radius-add" class="secondary small">+ Tilføj parameter</button>
+            </div>
+            <div class="radius-section-hint">Bruges til regler der kræver Radius.NAS-Port-Type, Called-Station-ID m.m. Alle valgte endpoints simuleres med de samme RADIUS-værdier.</div>
+            <div class="radius-tpl-bar">
+              <select id="bsim-radius-tpl-sel" class="radius-tpl-sel"><option value="">— Vælg template —</option></select>
+              <button type="button" id="bsim-radius-tpl-load" class="secondary small" title="Indlæs valgt template">Indlæs</button>
+              <button type="button" id="bsim-radius-tpl-save" class="secondary small">Gem som template</button>
+              <button type="button" id="bsim-radius-tpl-del" class="secondary small radius-tpl-del" title="Slet valgt template">✕ Slet</button>
+            </div>
+            <div id="bsim-radius-rows"></div>
+          </div>
         </div>
         <div id="bsim-results" style="display:none;">
           <p id="bsim-summary" class="hint" style="margin:8px 0;"></p>
@@ -579,6 +614,39 @@ export async function renderBrowse(container) {
     } catch { /* ignore — SSE stream holder sessioner à jour i realtid */ }
   }, 5 * 60 * 1000);
 
+  // ── Anomali-banner ────────────────────────────────────────────────────────
+  const anomalyBanner = container.querySelector("#anomaly-banner");
+  const _dismissedAnomalies = new Set();
+
+  function renderAnomalyBanner(anomalies) {
+    const active = (anomalies || []).filter((a) => !_dismissedAnomalies.has(a.id));
+    if (!active.length) { anomalyBanner.style.display = "none"; anomalyBanner.innerHTML = ""; return; }
+    anomalyBanner.style.display = "block";
+    anomalyBanner.innerHTML = active.map((a) => `
+      <div class="alert ${a.severity === "error" ? "error" : "warning"}" style="margin-bottom:4px;display:flex;justify-content:space-between;align-items:center;">
+        <span><strong>${esc(a.title)}</strong> — ${esc(a.body)}</span>
+        <button type="button" class="secondary small anomaly-dismiss" data-id="${esc(a.id)}"
+                style="margin-left:12px;">${t("browse.anomaly_banner_dismiss")}</button>
+      </div>`).join("");
+    anomalyBanner.querySelectorAll(".anomaly-dismiss").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        _dismissedAnomalies.add(btn.dataset.id);
+        renderAnomalyBanner(active.filter((a) => a.id !== btn.dataset.id));
+      });
+    });
+  }
+
+  async function pollAnomalies() {
+    if (!viewActive) return;
+    try {
+      const anomalies = await api.getAnomalies();
+      renderAnomalyBanner(anomalies || []);
+    } catch { /* silent — pxGrid kan være slukket */ }
+  }
+
+  pollAnomalies();
+  const anomalyPollTimer = setInterval(pollAnomalies, 30_000);
+
   // force=true: poll altid MnT ved view-mount så auth-status er korrekt fra start.
   await tableAPI.load(true);
   fitStickyTable();
@@ -588,6 +656,7 @@ export async function renderBrowse(container) {
     stopPxGridStream();
     clearInterval(badgeTickTimer);
     clearInterval(sessionRefreshTimer);
+    clearInterval(anomalyPollTimer);
     window.removeEventListener("resize", fitStickyTable);
   };
 }

@@ -7,7 +7,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
-from app.core import audit_store, config
+from app.core import audit_store, config, first_seen_store
 from app.core.metrics import BULK_ITEMS
 from app.core.custom_attr_store import (
     ALL_ATTRS,
@@ -43,29 +43,23 @@ from app.schemas.endpoint import (
     EndpointUpdate,
     PaginatedEndpointDetails,
 )
+from app.services._endpoint_helpers import (
+    PSK_MASKED,
+    PSK_IPSK_PREFIX,
+    _apply_auto_tag,
+    _combine_filters,
+    _endpoint_visible,
+    _extract_custom_attrs,
+    _full_text_filter,
+    _mask_psk,
+    _parse_roles_csv,
+    _psk_decode,
+    _psk_encode,
+    _psk_encode_ca,
+    _validate_psk,
+)
 
 logger = logging.getLogger(__name__)
-
-PSK_MASKED = "****"
-PSK_IPSK_PREFIX = "psk="
-
-
-def _psk_encode(key: str) -> str:
-    """Tilføj 'psk='-prefix til nøglen hvis IPSK mode er aktiv i settings."""
-    if not key:
-        return key
-    if str(getattr(config.settings, "psk_type", "MPSK")).upper() != "IPSK":
-        return key
-    if key.startswith(PSK_IPSK_PREFIX):
-        return key
-    return PSK_IPSK_PREFIX + key
-
-
-def _psk_decode(raw: str) -> str:
-    """Strip 'psk='-prefix så UI aldrig ser det (transparent uanset mode)."""
-    if raw and raw.startswith(PSK_IPSK_PREFIX):
-        return raw[len(PSK_IPSK_PREFIX):]
-    return raw
 
 # Module-level flag: have we ensured custom attribute definitions in ISE this session?
 _ca_definitions_ensured = False
@@ -253,6 +247,7 @@ class EndpointService:
             psk_key=_psk_decode(ca.get(PSK_KEY_ATTR, "")),
             create_time=create_time,
             update_time=update_time,
+            first_seen_at=first_seen_store.record(mac_val, endpoint_id),
         )
 
     async def _resolve_group_name(self, group_id: str) -> str:
@@ -547,6 +542,11 @@ class EndpointService:
                            endpoint_id, exc)
         await self.endpoints.delete(endpoint_id)
         get_cache().invalidate_detail(endpoint_id)
+        if before:
+            mac = before.get("mac") or before.get("name") or ""
+            if mac:
+                from app.core import first_seen_store
+                first_seen_store.delete(mac)
         await audit_store.record(
             "deleted",
             "endpoint",
@@ -813,146 +813,3 @@ class EndpointService:
         )
 
 
-def _mask_psk(detail: EndpointDetail) -> EndpointDetail:
-    """Return a copy of detail with psk_key replaced by PSK_MASKED (if non-empty)."""
-    if detail.psk_key:
-        return detail.model_copy(update={"psk_key": PSK_MASKED})
-    return detail
-
-
-def _psk_encode_ca(ca: dict[str, Any]) -> None:
-    """In-place: tilføj 'psk='-prefix på PSK_Key i ca-dict hvis IPSK mode aktiv."""
-    key = str(ca.get(PSK_KEY_ATTR, "") or "")
-    if key:
-        ca[PSK_KEY_ATTR] = _psk_encode(key)
-
-
-def _validate_psk(ca: dict[str, Any]) -> None:
-    """Validate PSK fields before write. Raises ValueError on violation."""
-    key = str(ca.get(PSK_KEY_ATTR, "") or "")
-    if key == PSK_MASKED:
-        raise ValueError(
-            "PSK Key indeholder den maskerede sentinel-værdi '****' — "
-            "send den faktiske nøgle eller lad feltet være tomt"
-        )
-    mode = str(ca.get(PSK_MODE_ATTR, "") or "").lower()
-    if mode == "true" and key:
-        from app.services.settings_service import get_psk_policy, validate_psk_key
-        policy = get_psk_policy()
-        errors = validate_psk_key(key, policy)
-        if errors:
-            raise ValueError(f"PSK Key overholder ikke politik: {'; '.join(errors)}")
-
-
-def _extract_custom_attrs(endpoint: dict[str, Any]) -> dict[str, str]:
-    """Extract custom attributes from an ERSEndPoint response."""
-    ca = endpoint.get("customAttributes", {})
-    if isinstance(ca, dict):
-        inner = ca.get("customAttributes", ca)
-        if isinstance(inner, dict):
-            return {k: str(v) for k, v in inner.items()}
-    return {}
-
-
-def _apply_auto_tag(ca: dict[str, Any], auto_tag_username: str | None) -> None:
-    """Hvis non-admin opretter/opdaterer og ``HypervisionRoles`` er tom,
-    auto-tag med deres username så de straks kan se egne endpoints
-    via read-path-filteret. Mutates ``ca`` in-place.
-
-    Eksplicit valgte roller respekteres (admin/editor kan vælge
-    yderligere fra kataloget i UI). Admin (``auto_tag_username=None``)
-    er ikke berørt.
-    """
-    if not auto_tag_username:
-        return
-    current = str(ca.get(ROLES_ATTR, "") or "").strip()
-    if current:
-        return
-    ca[ROLES_ATTR] = auto_tag_username
-
-
-def _parse_roles_csv(csv: str) -> list[str]:
-    """Parse comma-separated rolle-CSV til en liste af strippede navne.
-
-    Tomme stykker (fx ``"a,,b"``) frasorteres så CSV-noise ikke giver
-    falske rolle-navne. Bevarer original stavning.
-    """
-    if not csv:
-        return []
-    return [r.strip() for r in str(csv).split(",") if r.strip()]
-
-
-def _full_text_filter(items: list[EndpointDetail], q: str) -> list[EndpointDetail]:
-    """Fritekst-søgning på tværs af alle endpoint-felter (case-insensitiv)."""
-    low = q.strip().lower()
-    if not low:
-        return items
-
-    def _match(d: EndpointDetail) -> bool:
-        return any(
-            low in (v or "").lower()
-            for v in [
-                d.mac,
-                d.name,
-                d.description,
-                d.group_name,
-                d.profiler_name,
-                d.vendor,
-                d.owner,
-                d.lokation,
-                d.endpoint_type,
-                d.platform_type,
-            ]
-        )
-
-    return [d for d in items if _match(d)]
-
-
-def _endpoint_visible(detail: EndpointDetail, effective_roles: list[str]) -> bool:
-    """Returnér True hvis endpointets roller overlapper brugerens.
-
-    Sammenligning er case-insensitiv så stavningsforskelle (fx
-    ``svendbent`` vs ``SvendBent``) ikke skjuler endpoints. Et endpoint
-    uden roller (CA tom) er usynligt for non-admin — least-privilege
-    default som diskuteret i FEATURES.md.
-    """
-    if not effective_roles:
-        return False
-    user_set = {r.lower() for r in effective_roles if r}
-    for role in detail.roles:
-        if role and role.lower() in user_set:
-            return True
-    return False
-
-
-def _build_search_filters(search: str | None) -> list[str] | None:
-    """Convert a free-text search string into ERS filter expressions.
-
-    A non-empty search is mapped to `mac.CONTAINS.<value>` which is the
-    most common lookup. ERS only supports filtering on a fixed set of
-    fields (mac, name, description, groupId, profileId, ...); any richer
-    multi-field OR needs to be handled with multiple calls — out of scope
-    here.
-    """
-    if not search or not search.strip():
-        return None
-    value = search.strip()
-    return [f"mac.CONTAINS.{value}"]
-
-
-def _combine_filters(
-    search: str | None, explicit: list[str] | None
-) -> list[str] | None:
-    """Merge explicit ERS filter expressions with a free-text search shortcut.
-
-    Explicit filters take precedence. If only `search` is provided, it is
-    expanded via `_build_search_filters` (mac.CONTAINS). Both can be used
-    together — they're ANDed by ERS.
-    """
-    filters: list[str] = []
-    if explicit:
-        filters.extend(f for f in explicit if f and f.strip())
-    search_filters = _build_search_filters(search)
-    if search_filters:
-        filters.extend(search_filters)
-    return filters or None

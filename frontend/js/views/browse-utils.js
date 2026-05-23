@@ -199,7 +199,7 @@ export function getColumns() {
     { key: "authz_vlan",    label: t("col.authz_vlan"),   field: (r) => r.authz_vlan,          cls: "authz-col" },
     { key: "authz_acl",     label: t("col.authz_acl"),    field: (r) => r.authz_acl,           cls: "authz-col" },
     { key: "roles",         label: t("col.roles"),        field: (r) => (r.roles || []).join(", ") },
-    { key: "create_time",   label: t("col.create_time"),  field: (r) => fmtRelativeAge(endpointCreateTime(r)) },
+    { key: "first_seen",    label: t("col.first_seen"),   field: (r) => r.first_seen_at ? fmtDateTime(new Date(r.first_seen_at * 1000).toISOString()) : "—" },
     { key: "nas",           label: t("col.nas"),          field: () => "" },
     { key: "ise_session",   label: t("col.ise_session"),  field: () => "" },
   ];

@@ -234,6 +234,77 @@ export function initBulk(container, state, api, cb) {
     const resultsDiv   = bulkSimOverlay.querySelector("#bsim-results");
     const summaryEl    = bulkSimOverlay.querySelector("#bsim-summary");
     const tbody2       = bulkSimOverlay.querySelector("#bsim-tbody");
+    const radiusAddBtn = bulkSimOverlay.querySelector("#bsim-radius-add");
+    const radiusRowsEl = bulkSimOverlay.querySelector("#bsim-radius-rows");
+
+    // ── RADIUS rows ──────────────────────────────────────────────────────────
+    function addBsimRadiusRow(key = "", val = "") {
+      const row = document.createElement("div");
+      row.className = "radius-attr-row";
+      row.innerHTML = `
+        <input type="text" class="radius-attr-key" list="bsim-radius-attrs-list"
+               placeholder="Attribut (fx NAS-Port-Type)" value="${esc(key)}" />
+        <input type="text" class="radius-attr-val" placeholder="Værdi" value="${esc(val)}" />
+        <button type="button" class="radius-row-remove secondary small" title="Fjern">✕</button>
+      `;
+      row.querySelector(".radius-row-remove").addEventListener("click", () => row.remove());
+      radiusRowsEl.appendChild(row);
+    }
+
+    function readBsimRadiusAttrs() {
+      const attrs = {};
+      radiusRowsEl.querySelectorAll(".radius-attr-row").forEach((row) => {
+        const k = row.querySelector(".radius-attr-key")?.value.trim();
+        const v = row.querySelector(".radius-attr-val")?.value.trim();
+        if (k && v) attrs[k] = v;
+      });
+      return attrs;
+    }
+
+    radiusAddBtn.addEventListener("click", () => addBsimRadiusRow());
+
+    // ── RADIUS templates (shared localStorage key med single-endpoint simulator) ──
+    const TPL_KEY = "ise_radius_templates";
+    function loadTpls() {
+      try { return JSON.parse(localStorage.getItem(TPL_KEY) || "[]"); } catch { return []; }
+    }
+    function saveTpls(tpls) { localStorage.setItem(TPL_KEY, JSON.stringify(tpls)); }
+
+    function renderBsimTplSelect() {
+      const sel = bulkSimOverlay.querySelector("#bsim-radius-tpl-sel");
+      if (!sel) return;
+      const cur = sel.value;
+      const tpls = loadTpls().sort((a, b) => a.name.localeCompare(b.name, "da"));
+      sel.innerHTML = `<option value="">— Vælg template —</option>`
+        + tpls.map((tp) => `<option value="${esc(tp.id)}"${tp.id === cur ? " selected" : ""}>${esc(tp.name)}</option>`).join("");
+    }
+
+    bulkSimOverlay.querySelector("#bsim-radius-tpl-load").addEventListener("click", () => {
+      const tplId = bulkSimOverlay.querySelector("#bsim-radius-tpl-sel")?.value;
+      if (!tplId) return;
+      const tpl = loadTpls().find((tp) => tp.id === tplId);
+      if (!tpl) return;
+      radiusRowsEl.innerHTML = "";
+      for (const [k, v] of Object.entries(tpl.attrs || {})) addBsimRadiusRow(k, v);
+    });
+
+    bulkSimOverlay.querySelector("#bsim-radius-tpl-save").addEventListener("click", () => {
+      const attrs = readBsimRadiusAttrs();
+      if (!Object.keys(attrs).length) { alert("Tilføj mindst én RADIUS-attribut før du gemmer."); return; }
+      const name = prompt("Giv templaten et navn:");
+      if (!name?.trim()) return;
+      const tpls = loadTpls();
+      tpls.push({ id: Date.now().toString(36), name: name.trim(), attrs });
+      saveTpls(tpls);
+      renderBsimTplSelect();
+    });
+
+    bulkSimOverlay.querySelector("#bsim-radius-tpl-del").addEventListener("click", () => {
+      const tplId = bulkSimOverlay.querySelector("#bsim-radius-tpl-sel")?.value;
+      if (!tplId) return;
+      saveTpls(loadTpls().filter((tp) => tp.id !== tplId));
+      renderBsimTplSelect();
+    });
 
     let policySetsLoaded = false;
 
@@ -260,6 +331,7 @@ export function initBulk(container, state, api, cb) {
       summaryEl.textContent = "";
       runBtn.disabled = false;
       runBtn.textContent = "Kør simulering";
+      renderBsimTplSelect();
       bulkSimOverlay.classList.remove("hidden");
       await loadPolicySets();
     });
@@ -279,7 +351,8 @@ export function initBulk(container, state, api, cb) {
       resultsDiv.style.display = "none";
 
       try {
-        const data = await api.batchSimulate(setId, ids);
+        const radiusAttrs = readBsimRadiusAttrs();
+        const data = await api.batchSimulate(setId, ids, radiusAttrs);
         const results = data.results || [];
 
         tbody2.innerHTML = results.map((r) => {

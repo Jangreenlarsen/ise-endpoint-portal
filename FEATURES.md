@@ -9,6 +9,10 @@ Alle nye features registreres her FØR implementering påbegyndes.
 
 ## Planlagt / Under implementering
 
+- `[done 5.7.2 b0483] 2026-05-22 — Første gang set: endpoint-historik database + dato-filter` — SQLite-database (`first_seen.db`) gemmer første observerede tidsstempel per MAC (immutable INSERT OR IGNORE). Browse erstatter Age-kolonnen med "Første gang set" (relativ alder). Filterpanel på kolonnen viser Fra/Til dato-picker. Filter, sortering og saved-views-persistens. **Berørte lag:** `backend/app/core/first_seen_store.py`, `backend/app/schemas/endpoint.py`, `backend/app/services/endpoint_service.py`, `backend/app/main.py`, `frontend/js/views/browse-utils.js`, `frontend/js/views/browse.js`, `frontend/js/views/browse-filter.js`, `frontend/css/styles.css`.
+
+- `[done 5.6.32 b0480] 2026-05-22 — P2 Kvalitetsforbedringer` — Test-dækning (~20% → 80%): `test_endpoints.py` (CRUD), `test_policy.py`, `test_pxgrid.py`. Kode-refaktor: `endpoint_service.py` (958 linjer → sub-moduler), `endpoints.py` API-router split. Tooling: `pytest-cov`, `mypy`. Dokumentation: ARCHITECTURE.md PxGrid/cache. **Berørte lag:** `backend/tests/`, `backend/app/services/`, `backend/app/api/`, `backend/pyproject.toml`, `ARCHITECTURE.md`.
+
 - `[done 5.6.15 b0463] 2026-05-20 — Simulate Auto-mode: test alle policy sets fra rank 0` — Ny "Auto — test alle policy sets (fra rank 0)"-option øverst i policy set-dropdown. I Auto-mode itererer simulatoren alle sets i rank-rækkefølge og returnerer første match. Indlæsning af RADIUS-template skifter automatisk til Auto. Resultatkort viser hvilket policy set der matchede. **Berørte lag:** `frontend/js/views/browse-detail.js`, `frontend/css/styles.css`.
 
 - `[done 5.6.14 b0461] 2026-05-20 — RADIUS template-gemmer` — Gem og genindlæs sæt af RADIUS-parametre som navngivne templates (fx "Wireless SSID voldby17") direkte i simulate-formularen. Templates gemmes i `localStorage`. Dropdown med alle gemte templates; Indlæs/Gem/Slet-knapper. Ingen backend-ændringer. **Berørte lag:** `frontend/js/views/browse-detail.js`, `frontend/css/styles.css`.
@@ -137,15 +141,15 @@ Alle nye features registreres her FØR implementering påbegyndes.
 
 - `[planned] — Filter-deling via URL` — Saved Views gemmer filtre per-bruger — tilføj "Kopiér link" der genererer en URL med filtrene encoded i query-string (`#/browse?group=...&filter=...`). Modtageren lander direkte i Browse med filtret aktivt. Nyttigt til at dele et specifikt søgeresultat i supporttråde/mail. **Lag**: frontend (`views/browse.js` +URL-encode/decode af filter-state, `api.js`).
 
-- `[planned] — JSON-eksport fra Browse` — Supplement til CSV-eksport: "Eksport JSON"-knap der downloader det filtrerede/selekterede datasæt som JSON-array (samme felter som `EndpointDetail`). Nyttigt til API-consumption og scripting. **Lag**: frontend (`views/browse.js` +json-eksport, `api.js`).
+- `[done 5.7.0 b0481] 2026-05-22 — JSON-eksport fra Browse` — Supplement til CSV-eksport: "Eksport JSON"-knap der downloader det filtrerede/selekterede datasæt som JSON-array (samme felter som `EndpointDetail`). Nyttigt til API-consumption og scripting. **Lag**: frontend (`views/browse.js` +json-eksport, `api.js`).
 
 ### Prioritet 3 — Vedligehold og teknisk gæld
 
 - `[done 3.29.0] 2026-05-08 — browse.js modularisering` — 2236-linje monolitfil opdelt i 6 selvstændige moduler: `browse-utils.js` (pure utilities + COLUMNS), `browse-filter.js` (filter-toolbar + saved views), `browse-table.js` (render + inline-edit + pagination + save), `browse-detail.js` (detail-modal + ANC + CoA), `browse-bulk.js` (bulk-edit-modal, bulk-delete, bulk-disconnect). Delt mutable state-objekt + `cb`-callbacks-objekt til krydskald. Ingen funktionsændringer. **Lag**: frontend (6 nye filer, `browse.js` er nu ren orchestrator på 465 linjer ned fra 2236).
 
-- `[planned] — Session anomali-detektion` — Regelbaseret alerting på pxGrid-session-stream: flag usædvanlige mønstre som pludselig bulk-disconnect (>N endpoints på <30s), MAC der skifter NAS-IP hurtigere end X/min, eller endpoints der kobler til uden aktiv ISE-session. Alerts vises som banner i Browse og gemmes i audit-log. **Lag**: backend (`pxgrid/anomaly_detector.py` ny, `api/pxgrid.py` +alert-endpoint), frontend (`views/browse.js` +alert-banner).
+- `[done 5.7.0 b0481] 2026-05-22 — Session anomali-detektion` — Regelbaseret alerting på pxGrid-session-stream: flag usædvanlige mønstre som pludselig bulk-disconnect (>N endpoints på <30s), MAC der skifter NAS-IP hurtigere end X/min. Alerts vises som dismissible banner i Browse og tæller i nav-badge. **Lag**: backend (`pxgrid/anomaly_detector.py` ny, `api/pxgrid.py` +alert-endpoint), frontend (`views/browse.js` +alert-banner).
 
-- `[planned] — Access token silent refresh` — Token udløber uden advarsel (24h TTL) og bruger gets logget ud midt i arbejde. Tilføj client-side exp-check: 15 min før udløb POST til `/auth/refresh` med nuværende token og modtag nyt token. Ingen UI-forstyrrelse. **Lag**: backend (`api/auth.py` +refresh-endpoint), frontend (`auth.js` +silent-refresh-timer, `api.js`).
+- `[done 5.7.0 b0481] 2026-05-22 — Access token silent refresh` — Token fornyes præcist 15 min inden udløb via scheduler (setTimeout) + polling-fallback. Ingen UI-forstyrrelse. cancelTokenRefresh() kaldes ved logout. **Lag**: frontend (`auth.js` +scheduleTokenRefresh/cancelTokenRefresh, `app.js` refaktor).
 
 ---
 

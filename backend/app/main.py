@@ -19,7 +19,7 @@ from app.api import custom_attributes as custom_attrs_api
 from app.api import dacls as dacls_api
 from app.api import dashboard as dashboard_api
 from app.api import endpoint_roles as endpoint_roles_api
-from app.api import endpoints, groups, health, logs, me, oui, users
+from app.api import endpoints, endpoints_ops, groups, health, logs, me, oui, users
 from app.api import ise_nodes as ise_nodes_api
 from app.api import lifecycle as lifecycle_api
 from app.api import config_backup as config_backup_api
@@ -53,6 +53,8 @@ async def lifespan(_: FastAPI):
     from app.core import auth as _auth_core
     _auth_core._secret()
     init_audit_db()
+    from app.core.first_seen_store import init_db as init_first_seen_db
+    init_first_seen_db()
     # 3.8.0: backfill System adm-rolle for hver eksisterende bruger så admin
     # kan tagge endpoints med username via rolle-katalogen. Idempotent.
     # Migrate legacy role names: registrar→registrant, registrar_templet→registrant_templet.
@@ -107,6 +109,9 @@ async def lifespan(_: FastAPI):
             await asyncio.sleep(10)
 
     _heartbeat_task = asyncio.create_task(_heartbeat_loop(), name="watchdog-heartbeat")
+
+    from app.pxgrid.anomaly_detector import AnomalyDetector
+    AnomalyDetector(get_session_cache())
 
     get_cache_sync_worker().start()
     get_audit_retention_worker().start()
@@ -240,6 +245,7 @@ app.include_router(health.router, prefix="/api")
 app.include_router(auth_api.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
 app.include_router(endpoints.router, prefix="/api")
+app.include_router(endpoints_ops.router, prefix="/api")
 app.include_router(groups.router, prefix="/api")
 app.include_router(settings_api.router, prefix="/api")
 app.include_router(settings_api.psk_router, prefix="/api")

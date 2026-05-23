@@ -73,10 +73,16 @@ class SessionCache:
         # får sin egen Queue så langsomme klienter ikke holder worker'en op.
         # Queue capper ved 256 events; ved overflow droppes ældste.
         self._subscribers: set[asyncio.Queue] = set()
+        # Sync observers called immediately on every broadcast (anomaly detector etc.)
+        self._observers: list = []
 
     @staticmethod
     def _norm(mac: str) -> str:
         return (mac or "").upper().replace("-", ":").strip()
+
+    def register_observer(self, fn) -> None:
+        """Register a sync callback called on every broadcast event."""
+        self._observers.append(fn)
 
     def subscribe(self, maxsize: int = 256) -> asyncio.Queue:
         q: asyncio.Queue = asyncio.Queue(maxsize=maxsize)
@@ -100,6 +106,11 @@ class SessionCache:
                     dead.append(q)
         for q in dead:
             self._subscribers.discard(q)
+        for fn in self._observers:
+            try:
+                fn(event)
+            except Exception:  # noqa: BLE001
+                pass
 
     async def upsert(self, info: SessionInfo) -> None:
         info.mac = self._norm(info.mac)

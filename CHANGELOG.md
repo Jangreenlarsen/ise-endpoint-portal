@@ -3,6 +3,84 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.7.4.5 build 0495] — 2026-05-23 — fix: first_seen ryddes ved prewarm-scan (scenario 3: slettet i ISE, aldrig tilbage)
+
+**Berørte filer:**
+- `backend/app/services/cache_prewarm.py` — _full_scan() kalder first_seen_store.delete(mac) for endpoints der forsvinder fra ISE-listen
+
+## [5.7.4.4 build 0494] — 2026-05-23 — fix: first_seen nulstilles når endpoint genskabes i ISE med nyt ID
+
+**Berørte filer:**
+- `backend/app/core/first_seen_store.py` — record() sammenligner endpoint_id; nyt ID → UPDATE (nulstil tidsstempel)
+
+## [5.7.4.3 build 0493] — 2026-05-23 — fix: first_seen slettes ved endpoint-delete via portal
+
+**Berørte filer:**
+- `backend/app/core/first_seen_store.py` — ny delete(mac) funktion
+- `backend/app/services/endpoint_service.py` — delete_endpoint() kalder first_seen_store.delete(mac)
+
+## [5.7.4.2 build 0492] — 2026-05-23 — fix: first_seen manglede td i renderRows — kolonneforskydning rettet
+
+**Berørte filer:**
+- `frontend/js/views/browse-table.js` — cells-objektet manglede first_seen nøgle
+
+## [5.7.2 build 0483] — 2026-05-22 — feat: Første gang set — endpoint-historik database + dato-filter
+
+**Berørte filer:**
+- `backend/app/core/first_seen_store.py` (NY) — SQLite-store, INSERT OR IGNORE immutable timestamps
+- `backend/app/schemas/endpoint.py` — EndpointDetail +first_seen_at: float|None
+- `backend/app/services/endpoint_service.py` — _fetch_endpoint_detail kalder first_seen_store.record()
+- `backend/app/main.py` — init_first_seen_db() ved startup
+- `frontend/js/i18n.js` — col.first_seen, filter.first_seen_from, filter.first_seen_to
+- `frontend/js/views/browse-utils.js` — erstatter age-kolonnen med first_seen
+- `frontend/js/views/browse.js` — dato-filter inputs i HTML
+- `frontend/js/views/browse-filter.js` — dato-range filter, change-listeners, snapshot save/restore
+- `frontend/css/styles.css` — .first-seen-filter-wrap, .first-seen-date + dark/midnight themes
+
+## [5.7.1 build 0482] — 2026-05-22 — feat: Batch-simulering RADIUS-parametre og templates
+
+**Berørte filer:**
+- `backend/app/api/policy.py` — BatchSimRequest +radius_attrs; sim_one sender radius_attrs til match_endpoint
+- `frontend/js/api.js` — batchSimulate(setId, ids, radius_attrs)
+- `frontend/js/views/browse.js` — RADIUS-sektion i batch-sim modal (datalist, rows container, template bar)
+- `frontend/js/views/browse-bulk.js` — addBsimRadiusRow(), readBsimRadiusAttrs(), template load/save/del, sender radius_attrs
+
+---
+
+## [5.7.0 build 0481] — 2026-05-22 — feat: JSON-eksport, session anomali-detektion, silent token refresh
+
+**Berørte filer:**
+- `frontend/js/i18n.js` — nye nøgler: btn_export_json, export_json_done_*, anomaly_banner_dismiss (da+en)
+- `frontend/js/views/browse.js` — #export-json-btn, #anomaly-banner, pollAnomalies(), renderAnomalyBanner()
+- `frontend/js/views/browse-table.js` — JSON-eksport event listener
+- `frontend/js/auth.js` — scheduleTokenRefresh(), cancelTokenRefresh() eksporteret
+- `frontend/js/app.js` — doSilentRefresh() med scheduleTokenRefresh + polling-fallback; cancelTokenRefresh() ved logout
+- `frontend/js/api.js` — getAnomalies()
+- `backend/app/pxgrid/session_cache.py` — register_observer(), _observers[] kaldt i _broadcast()
+- `backend/app/pxgrid/anomaly_detector.py` — ny: AnomalyDetector (bulk_disconnect + nas_ip_churn)
+- `backend/app/api/pxgrid.py` — GET /pxgrid/anomalies
+- `backend/app/main.py` — AnomalyDetector initialiseres ved startup
+
+---
+
+## [5.6.32 build 0480] — 2026-05-22 — feat: P2 kodebase-kvalitet — tests 190/190, service-split, API-split, disabled-regel-fix
+
+**Berørte filer:**
+- `backend/pyproject.toml` — tilføjet `pytest-cov>=5.0.0` og `mypy>=1.10.0`
+- `backend/tests/test_endpoints.py` — ny: 20 unit-tests for EndpointService CRUD
+- `backend/tests/test_policy.py` — ny: 35 unit-tests for policy condition matching og PolicyService
+- `backend/tests/test_pxgrid.py` — ny: 30 unit-tests for PxGrid worker
+- `backend/app/services/_endpoint_helpers.py` — ny: 144 linjer rene hjælpefunktioner udtrukket fra endpoint_service.py
+- `backend/app/services/endpoint_service.py` — inline helpers fjernet (-149 linjer), imports fra _endpoint_helpers
+- `backend/app/api/_endpoint_api_helpers.py` — ny: delte hjælpefunktioner for endpoint-routers
+- `backend/app/api/endpoints_ops.py` — ny: operationelle ruter (CoA, ANC, historik) udtrukket fra endpoints.py
+- `backend/app/api/endpoints.py` — operationelle ruter fjernet (-204 linjer), imports fra _endpoint_api_helpers
+- `backend/app/main.py` — tilføjet endpoints_ops router
+- `backend/app/services/policy_service.py` — bugfix: match_endpoint springer nu disabled-regler over
+- `ARCHITECTURE.md` — tilføjet endpoint-cache, PxGrid, API-split og service-split sektioner
+
+---
+
 ## [5.6.31 build 0479] — 2026-05-22 — fix: P1 UX/kvalitet/tests — esc() i metrics+policy, cleanup-returns, worker-loop fix, tests 89/89
 
 **Berørte filer:**

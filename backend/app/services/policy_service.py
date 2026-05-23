@@ -485,6 +485,8 @@ class PolicyService:
 
         for entry in rules:
             inner = entry.get("rule") or entry
+            if inner.get("state", "enabled") == "disabled":
+                continue
             cond = inner.get("condition")
             matched, details = _eval_condition(cond, ep)
             if not matched:

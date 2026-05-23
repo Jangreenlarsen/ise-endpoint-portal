@@ -4,6 +4,108 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.7.4] — 2026-05-23 — Første gang set: bugfixes og komplet livscyklus-håndtering
+
+### Kolonneforskydning rettet
+
+**Problem:** "Første gang set"-kolonnen manglede en `<td>`-celle i datarækker, hvilket rykkede alle efterfølgende kolonner (NAS, ISE Session m.fl.) én position til venstre.
+**Fix:** `cells`-objektet i `browse-table.js` havde ikke `first_seen`-nøgle — tilføjet.
+
+### Præcist dato+tidspunkt
+
+Kolonnen viser nu `DD-MM-YYYY HH:MM` (f.eks. `23-05-2026 09:15`) i stedet for relativ alder.
+
+### Komplet livscyklus — alle 3 sletnings-scenarier håndteres
+
+Tidsstemplet i portalens `first_seen.db` nulstilles korrekt i alle tilfælde:
+
+| Scenario | Håndtering |
+|---|---|
+| **Slettet via portal** | MAC fjernes fra databasen øjeblikkeligt ved sletning |
+| **Slettet i ISE, genskabt** | ISE tildeler nyt endpoint-ID — portalen opdager ID-skiftet ved næste observation og nulstiller tidsstemplet |
+| **Slettet i ISE, aldrig tilbage** | Prewarm-scan (kører hvert 30. min) opdager at endpointet er forsvundet fra ISE og rydder databaseposten automatisk |
+
+---
+
+## [5.7.2] — 2026-05-22 — Første gang set: endpoint-database med dato-filter
+
+### Ny "Første gang set" kolonne med historik-database
+
+**Baggrund:** Portalen viste ingen information om hvornår et endpoint første gang dukkede op i ISE. Nu gemmer backend tidsstemplet for det første observerede tidspunkt i en SQLite-database — permanent og uforanderlig for hvert endpoint.
+
+**Ændringer:**
+- Ny SQLite-database `backend/cache/first_seen.db` — gemmer `(mac, first_seen_at, endpoint_id)` med `INSERT OR IGNORE` (første observation er immutable).
+- `EndpointDetail.first_seen_at` (Unix-timestamp float) tilgængeligt på alle endpoints via `_fetch_endpoint_detail`.
+- Browse-tabellen erstatter den gamle "Age"-kolonne med **"Første gang set"** — viser dato+tid (DD-MM-YYYY HH:MM).
+- Filterpanelet på kolonnen viser to dato-picker inputs (Fra / Til) i stedet for tekstfilter.
+- Filter understøtter åbne intervaller (kun fra-dato, kun til-dato, eller begge).
+- Dato-filter gemmes/gendannes i saved views og ved sidegenindlæsning.
+- Sortering på kolonnen virker numerisk på timestamp.
+
+---
+
+## [5.7.1] — 2026-05-22 — Batch-simulering: RADIUS-parametre og templates
+
+### RADIUS-attributter i Batch policy-match
+
+**Baggrund:** Batch-simulatoren matchede kun på endpoint-attributter (Owner, Type, Group m.m.) — RADIUS-betingelser (NAS-Port-Type, Called-Station-ID osv.) blev altid skippet. Nu kan man angive de samme RADIUS-parametre som i single-endpoint simulatoren.
+
+**Ændringer:**
+- Ny RADIUS-sektion i Batch-simuleringsmodalen: "+ Tilføj parameter"-knap, nøgle/værdi-felter med datalist-autocomplete.
+- Template-support med load/gem/slet — deler localStorage-nøgle med single-endpoint simulatoren, så gemte templates er tilgængelige begge steder.
+- Alle valgte endpoints simuleres med de samme RADIUS-værdier.
+- Backend `BatchSimRequest` udvides med `radius_attrs: dict` — nul breaking change (default `{}`).
+
+---
+
+## [5.7.0] — 2026-05-22 — JSON-eksport, session anomali-detektion, silent token refresh
+
+### Tre nye features i Browse og sikkerhed
+
+**JSON-eksport fra Browse:**
+- Ny "Eksportér JSON"-knap i Browse-toolbar ved siden af CSV-knappen.
+- Eksporterer valgte, filtrerede eller alle endpoints som et JSON-array (`EndpointDetail`-format).
+- Nyttig til API-consumption og scripting.
+
+**Session anomali-detektion (pxGrid):**
+- Ny `pxgrid/anomaly_detector.py` overvåger session-stream i realtid via observer-hook på `SessionCache`.
+- Detekterer: **bulk-disconnect** (>10 disconnects på <30s) og **NAS-IP churn** (samme MAC skifter NAS-IP >3 gange på <60s).
+- Anomalier vises som dismissible advarselsbannere øverst i Browse, og tæller med i nav-badge.
+- Ny `GET /api/pxgrid/anomalies` returnerer aktive anomali-alerts.
+
+**Access token silent refresh:**
+- Opgraderet fra polling-baseret (`setInterval`) til scheduler-baseret (`scheduleTokenRefresh` i `auth.js`).
+- Token fornyes præcist 15 min inden udløb via `setTimeout` — ingen UI-forstyrrelse.
+- Polling-fallback hvert minut sikrer mod tab-sleep og clock-skew.
+- `cancelTokenRefresh()` kaldes ved logout.
+
+---
+
+## [5.6.32] — 2026-05-22 — Kodebase-kvalitet P2 (tests, refaktor, arkitektur)
+
+### 190 tests, service-split og API-split
+
+**Baggrund:** P2-sprint baseret på kvalitetskontrol-rapport v5.6.31. Fokus på testdækning, kodeorganisering og dokumentation.
+
+**Ny testdækning:**
+- **test_endpoints.py:** 20 unit-tests for EndpointService CRUD (create, get, update, delete) med mock ISE-klient. Dækker PSK-masking, rolle-filtrering, audit-records og cache-invalidering.
+- **test_policy.py:** 35 unit-tests for policy condition matching (`_eval_operator`, `_eval_identity_group`, `_get_ep_value`, AND/OR-blokke, Radius-skip, `match_endpoint` med disabled-regel-skip).
+- **test_pxgrid.py:** 30 unit-tests for PxGrid session worker (`_parse_vlan`, `_extract_sessions`, `_extract_endpoints`, WorkerStatus, lifecycle start/stop).
+- **Samlet: 190/190 tests bestået.**
+
+**Kodeorganisering:**
+- **`services/_endpoint_helpers.py`:** 144 linjer rene hjælpefunktioner udtrukket fra `endpoint_service.py` (PSK encode/mask/validate, custom attrs, rolle-filter, tekst-søgning).
+- **`api/endpoints_ops.py`:** 204 linjer operationelle ruter (CoA, ANC, historik, bulk-CoA) udtrukket fra `api/endpoints.py`.
+- **`api/_endpoint_api_helpers.py`:** Delte hjælpefunktioner til begge endpoint-routers.
+
+**Bugfix:**
+- `match_endpoint` sprang ikke disabled ISE-regler over under simulering — rettet til at matche ISE's faktiske evaluerings-adfærd.
+
+**Tooling:**
+- `pytest-cov` og `mypy` tilføjet til dev-afhængigheder.
+
+---
+
 ## [5.6.31] — 2026-05-22 — Kvalitet og stabilitet (P1 afslutning)
 
 ### Timerlækage og testdækning

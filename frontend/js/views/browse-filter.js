@@ -23,14 +23,18 @@ export function initFilter(container, state, api, cb) {
   const filterClearAllBtn  = container.querySelector("#filter-clear-all-btn");
   const authStatusSelect   = container.querySelector("#auth-status-filter");
   const globalQInput       = container.querySelector("#global-q-input");
+  const firstSeenFrom      = () => container.querySelector("#first-seen-from");
+  const firstSeenTo        = () => container.querySelector("#first-seen-to");
 
   state.fullTextQ = "";
 
   function updateClearBtn() {
+    const fsFrom = firstSeenFrom(); const fsTo = firstSeenTo();
     const anyActive = state.portalOnly
       || Array.from(filterRow.querySelectorAll(".col-filter-input")).some((i) => i.value.trim())
       || (authStatusSelect && authStatusSelect.value !== "all")
-      || state.fullTextQ;
+      || state.fullTextQ
+      || (fsFrom?.value || fsTo?.value);
     filterClearAllBtn.classList.toggle("hidden", !anyActive);
   }
 
@@ -61,11 +65,13 @@ export function initFilter(container, state, api, cb) {
   }
 
   function needsFilterMode() {
+    const fsFrom = firstSeenFrom(); const fsTo = firstSeenTo();
     return state.portalOnly
       || Array.from(filterRow.querySelectorAll(".col-filter-input")).some((i) => i.value.trim())
       || (authStatusSelect && authStatusSelect.value !== "all")
       || state.sortCol !== null
-      || !!state.fullTextQ;
+      || !!state.fullTextQ
+      || !!(fsFrom?.value || fsTo?.value);
   }
 
   function anyFilterActive() {
@@ -86,6 +92,17 @@ export function initFilter(container, state, api, cb) {
         });
       }
     }
+    // First-seen dato-range filter
+    const fsFrom = firstSeenFrom(); const fsTo = firstSeenTo();
+    const fsFromVal = fsFrom?.value; const fsToVal = fsTo?.value;
+    if (fsFromVal || fsToVal) {
+      const fromTs = fsFromVal ? new Date(fsFromVal).getTime() / 1000 : 0;
+      const toTs   = fsToVal   ? (new Date(fsToVal).getTime() / 1000 + 86399) : Infinity;
+      rows = rows.filter((r) => {
+        const ts = r.first_seen_at || 0;
+        return ts >= fromTs && ts <= toTs;
+      });
+    }
     if (state.sortCol) {
       const colDef = getColumns().find((c) => c.key === state.sortCol);
       if (colDef) {
@@ -93,6 +110,11 @@ export function initFilter(container, state, api, cb) {
           if (state.sortCol === "create_time") {
             const ta = new Date(endpointCreateTime(a) || 0).getTime();
             const tb = new Date(endpointCreateTime(b) || 0).getTime();
+            return state.sortDir === "asc" ? ta - tb : tb - ta;
+          }
+          if (state.sortCol === "first_seen") {
+            const ta = (a.first_seen_at || 0) * 1000;
+            const tb = (b.first_seen_at || 0) * 1000;
             return state.sortDir === "asc" ? ta - tb : tb - ta;
           }
           if (state.sortCol === "auth_status") {
@@ -211,12 +233,15 @@ export function initFilter(container, state, api, cb) {
       const q = (input.value || "").trim();
       if (q) cols.push({ col: input.dataset.col, value: q });
     });
+    const fsFrom = firstSeenFrom(); const fsTo = firstSeenTo();
     return {
       portalOnly: state.portalOnly,
       cols,
       authStatus: authStatusSelect ? authStatusSelect.value : "all",
       colVis: { ...state.colVis },
       pageSize: state.currentSize,
+      firstSeenFrom: fsFrom?.value || "",
+      firstSeenTo:   fsTo?.value   || "",
     };
   }
 
@@ -254,6 +279,9 @@ export function initFilter(container, state, api, cb) {
       savePageSize(state.currentSize);
       pageSizeSelect.value = String(state.currentSize);
     }
+    const fsFrom = firstSeenFrom(); const fsTo = firstSeenTo();
+    if (fsFrom) fsFrom.value = s.firstSeenFrom || "";
+    if (fsTo)   fsTo.value   = s.firstSeenTo   || "";
   }
 
   function restoreFilters() { applyFilterSnapshot(loadBrowseFilters()); }
@@ -297,10 +325,23 @@ export function initFilter(container, state, api, cb) {
     });
   }
 
+  // Wire up first-seen date inputs — rendered lazily when first_seen column is visible
+  container.addEventListener("change", async (e) => {
+    if (e.target.id === "first-seen-from" || e.target.id === "first-seen-to") {
+      updateClearBtn();
+      persistFilters();
+      clearActiveView();
+      await onFilterChange();
+    }
+  });
+
   filterClearAllBtn.addEventListener("click", async () => {
     applyFilterSnapshot({ portalOnly: false, cols: [], authStatus: "all" });
     state.fullTextQ = "";
     if (globalQInput) globalQInput.value = "";
+    const fsFrom = firstSeenFrom(); const fsTo = firstSeenTo();
+    if (fsFrom) fsFrom.value = "";
+    if (fsTo) fsTo.value = "";
     state.allRowsCache = null;
     persistFilters();
     clearActiveView();

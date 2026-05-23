@@ -284,6 +284,22 @@ async def probe_mnt_session(mac: str) -> dict:
     return await probe_session_detail(mac)
 
 
+@router.get(
+    "/anomalies",
+    dependencies=[Depends(require_any)],
+    summary="Aktive session-anomali-alerts",
+)
+async def get_anomalies() -> list[dict]:
+    """Returnerer aktive anomali-alerts fra session-stream (bulk-disconnect, NAS-IP churn).
+    Tom liste hvis pxGrid er slukket eller ingen anomalier er detekteret."""
+    from app.core.alert_store import get_alerts
+    return [
+        {"id": a.id, "severity": a.severity, "title": a.title, "body": a.body, "since": a.since}
+        for a in get_alerts()
+        if a.id.startswith("anomaly_")
+    ]
+
+
 @router.post(
     "/worker/restart",
     response_model=PxGridWorkerStatusResponse,

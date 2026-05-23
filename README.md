@@ -4,7 +4,7 @@
 
 Web-baseret administrationssystem til Cisco ISE 3.4 endpoint-management via REST API og pxGrid 2.0.
 
-**Version 5.5.0 build 0394** — [Fuld manual](docs/INDEX.md) — [Changelog](CHANGELOG.md)
+**Version 5.7.4 build 0495** — [Fuld manual](docs/INDEX.md) — [Changelog](CHANGELOG.md) — [Release Notes](RELEASE_NOTES.md)
 
 Copyright (C) 2026 Jan Green Larsen — udgivet under [GNU Affero General Public License v3](LICENSE)
 
@@ -36,8 +36,10 @@ De to protokoller supplerer hinanden: REST til management, pxGrid til observabil
 - Opret endpoint — MAC, Identity Group, beskrivelse og alle custom attributes
 - Import fra CSV — bulk-opret med auto-detektion af ISE-format og simpelt format, preview og succeeded/failed rapport
 - Browse / Edit — tabelvisning med inline-redigering, filter, kolonnevalg og bulk-edit
+- **Første gang set** — portalens egen SQLite-database tracker hvornår hvert endpoint første gang blev observeret; kolonnen viser præcist dato+tid (DD-MM-YYYY HH:MM) med Fra/Til dato-filter og fuld sortering
 - CoA reauth / disconnect — trigger Change of Authorization direkte fra Browse
 - CSV export — ISE-kompatibel eksport med brugerdefineret kolonne-template
+- JSON export — eksportér filtrerede eller alle endpoints som JSON-array
 
 ### Real-time sessioner
 - pxGrid live-push — Browse farves groen (aktiv RADIUS-session) / roed (ingen session) i realtid
@@ -57,6 +59,7 @@ De to protokoller supplerer hinanden: REST til management, pxGrid til observabil
 - Portal viser data oejeblikkeligt ved genstart; raekker med aeldre data markeres med stale-badge
 - Pre-warm worker scanner alle ISE endpoints i baggrunden med konfigurerbar concurrency
 - Request-koalescering — samtidige fetches for samme endpoint deler eet ISE-kald
+- First-seen SQLite-database — tracker portalens første observation per MAC; ryddes automatisk ved sletning (portal, ISE eller prewarm-scan)
 
 ### RADIUS Policy administration
 - **Politikker-dashboard** — overblik over alle ISE policy sets med regelkort (rank-badge, betingelses-chips, autorisationsprofil-chips)

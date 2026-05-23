@@ -213,6 +213,7 @@ export const api = {
   getPxGridSession: (mac) => request(`/pxgrid/sessions/${encodeURIComponent(mac)}`),
   debugPxGridSession: (mac) => request(`/pxgrid/sessions/${encodeURIComponent(mac)}/debug`),
   probeMntSession: (mac) => request(`/pxgrid/probe/mnt/${encodeURIComponent(mac)}`),
+  getAnomalies: () => request("/pxgrid/anomalies"),
   getPxGridWorkerStatus: () => request("/pxgrid/worker/status"),
   restartPxGridWorker: () =>
     request("/pxgrid/worker/restart", { method: "POST" }),
@@ -404,10 +405,10 @@ export const api = {
       method: "POST",
       body: JSON.stringify(epAttrs),
     }),
-  batchSimulate: (policy_set_id, endpoint_ids) =>
+  batchSimulate: (policy_set_id, endpoint_ids, radius_attrs = {}) =>
     request("/policy/batch-simulate", {
       method: "POST",
-      body: JSON.stringify({ policy_set_id, endpoint_ids }),
+      body: JSON.stringify({ policy_set_id, endpoint_ids, radius_attrs }),
     }),
 
   // Endpoint history (5.6.0)
