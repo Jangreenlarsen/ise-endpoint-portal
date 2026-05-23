@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.7.7.2 build 0501] — 2026-05-23 — debug: first-seen tid-input type=text HH:MM (fix AM/PM)
+
+**Berørte filer:**
+- `frontend/js/views/browse.js` — `type="time"` → `type="text" maxlength="5" placeholder="HH:MM"`
+- `frontend/js/views/browse-filter.js` — `_fsDateTimeVal` parser og normaliserer HH:MM tekst; validerings `.invalid`-klasse ved forkert format
+- `frontend/css/styles.css` — `.first-seen-time` text-align:center; `.first-seen-time.invalid` rød kant
+
 ## [5.7.7.1 build 0500] — 2026-05-23 — debug: first-seen filter splitter til date+time inputs (24t clock)
 
 **Berørte filer:**

@@ -106,11 +106,11 @@ export async function renderBrowse(container) {
                       ? `<div class="first-seen-filter-wrap">
                           <div class="first-seen-dt-row">
                             <input type="date" id="first-seen-from-d" class="first-seen-date" title="${t("filter.first_seen_from")}" />
-                            <input type="time" id="first-seen-from-t" class="first-seen-time" title="${t("filter.first_seen_from")}" />
+                            <input type="text" id="first-seen-from-t" class="first-seen-time" maxlength="5" placeholder="HH:MM" title="${t("filter.first_seen_from")}" />
                           </div>
                           <div class="first-seen-dt-row">
                             <input type="date" id="first-seen-to-d"   class="first-seen-date" title="${t("filter.first_seen_to")}" />
-                            <input type="time" id="first-seen-to-t"   class="first-seen-time" title="${t("filter.first_seen_to")}" />
+                            <input type="text" id="first-seen-to-t"   class="first-seen-time" maxlength="5" placeholder="HH:MM" title="${t("filter.first_seen_to")}" />
                           </div>
                         </div>`
                       : `<input type="text" class="col-filter-input" data-col="${c.key}" placeholder="…" />`}

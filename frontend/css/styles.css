@@ -556,6 +556,13 @@ button.small {
   border: 1px solid #d1d5db;
   border-radius: 3px;
   box-sizing: border-box;
+  text-align: center;
+}
+.first-seen-time:not(:placeholder-shown):not(:focus) {
+  /* Rød kant hvis teksten ikke matcher HH:MM mønsteret */
+}
+.first-seen-time.invalid {
+  border-color: #ef4444;
 }
 td.auth-status-col {
   text-align: center;

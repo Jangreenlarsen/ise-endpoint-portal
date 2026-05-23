@@ -25,8 +25,13 @@ export function initFilter(container, state, api, cb) {
   const globalQInput       = container.querySelector("#global-q-input");
   function _fsDateTimeVal(dateId, timeId, defaultTime) {
     const d = container.querySelector(dateId)?.value;
-    const t = container.querySelector(timeId)?.value || defaultTime;
-    return d ? `${d}T${t}` : "";
+    if (!d) return "";
+    const raw = (container.querySelector(timeId)?.value || "").trim();
+    const m = /^(\d{1,2}):(\d{2})$/.exec(raw);
+    const t = m
+      ? `${String(Math.min(23, +m[1])).padStart(2, "0")}:${String(Math.min(59, +m[2])).padStart(2, "0")}`
+      : defaultTime;
+    return `${d}T${t}`;
   }
   const firstSeenFromVal = () => _fsDateTimeVal("#first-seen-from-d", "#first-seen-from-t", "00:00");
   const firstSeenToVal   = () => _fsDateTimeVal("#first-seen-to-d",   "#first-seen-to-t",   "23:59");
@@ -348,6 +353,10 @@ export function initFilter(container, state, api, cb) {
   container.addEventListener("change", async (e) => {
     if (e.target.id === "first-seen-from-d" || e.target.id === "first-seen-from-t"
      || e.target.id === "first-seen-to-d"   || e.target.id === "first-seen-to-t") {
+      if (e.target.id === "first-seen-from-t" || e.target.id === "first-seen-to-t") {
+        const v = e.target.value.trim();
+        e.target.classList.toggle("invalid", !!v && !/^\d{1,2}:\d{2}$/.test(v));
+      }
       updateClearBtn();
       persistFilters();
       clearActiveView();
