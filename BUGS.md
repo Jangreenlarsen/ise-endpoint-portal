@@ -4,6 +4,11 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 5.7.7.4 b0503] 2026-05-23 — Users-liste giver 500 når TACACS shadow-users er i users.json
+- **Symptom:** Admin → Users-modul kastede "Internal Server Error 500" efter v5.7.7.3 introducerede `tacacs_shadow`-records.
+- **Årsag:** `UserType = Literal["user", "operator"]` — `"tacacs_shadow"` ikke med → Pydantic ValidationError ved `_to_public()`.
+- **Fix:** `user.py`: tilføjet `"tacacs_shadow"` til `UserType`. `user_service.py`: `list_users()` filtrerer shadow-records fra.
+
 ## [FIXED 5.7.7.3 b0502] 2026-05-23 — TACACS-brugere fik HTTP 404 ved gem af præferencer/views
 - **Symptom:** TACACS-brugere fik 404-fejl når de forsøgte at gemme præferencer eller gemte views, fordi `users.json` ikke havde en post for dem.
 - **Årsag:** TACACS-login oprettede et syntetisk `User`-objekt med `id=f"tacacs:{username}"` men gemte det aldrig til `users.json`. Alle præference- og view-endpoints slår brugeren op via `find_by_id()` → returnerede `None` → 404.

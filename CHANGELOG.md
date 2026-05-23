@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.7.7.4 build 0503] — 2026-05-23 — debug: fix 500 i users-liste — UserType + shadow-filter
+
+**Berørte filer:**
+- `backend/app/schemas/user.py` — `UserType` udvidet med `"tacacs_shadow"` (var `Literal["user", "operator"]`)
+- `backend/app/services/user_service.py` — `list_users()` filtrerer nu shadow-records fra, så de ikke vises i admin-UI
+
 ## [5.7.7.3 build 0502] — 2026-05-23 — debug: TACACS shadow user — preferences og views virker nu
 
 **Berørte filer:**

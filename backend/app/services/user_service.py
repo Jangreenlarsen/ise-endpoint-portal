@@ -197,7 +197,7 @@ async def set_endpoint_roles(
 
 
 def list_users() -> list[User]:
-    return [_to_public(u) for u in load_users()]
+    return [_to_public(u) for u in load_users() if u.get("user_type") != "tacacs_shadow"]
 
 
 def get_user(user_id: str) -> User:
