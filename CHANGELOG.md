@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.7.8 build 0505] — 2026-05-23 — feat: privat MAC-adresse (LAA) fremhævning i browse-tabel
+
+**Berørte filer:**
+- `frontend/js/views/browse-table.js` — `isLocallyAdministered(mac)` checker bit 1 i første octet; `macDisplayHtml(mac)` wrapper første octet i `<span class="mac-laa">` ved LAA; render- og update-stier bruger `innerHTML` i stedet for `textContent`
+- `frontend/css/styles.css` — `.mac-laa` amber baggrund (#f59e0b) med bold tekst; dark/midnight/slate tema-varianter
+
 ## [5.7.7.5 build 0504] — 2026-05-23 — debug: kritisk fix — TACACS login brudt af shadow-record
 
 **Rodårsag:** `find_by_username` fandt shadow-recorden (username="adm", role="admin") → `is_admin_user=True` → TACACS springes over → lokal auth fejler med tomt password_hash → `bad_credentials`.

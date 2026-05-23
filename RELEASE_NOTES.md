@@ -4,6 +4,16 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.7.8] — 2026-05-23 — Privat MAC-adresse fremhævning
+
+Portalen markerer nu automatisk Locally Administered Addresses (LAA) — private eller randomiserede MAC-adresser. Første octet i MAC-kolonnen fremhæves med amber/gul baggrund og fed skrift, når bit 1 i første byte er sat.
+
+**Eksempel:** `A6:D6:A4:B3:34:16` — `A6` fremhæves (A6 = 10100110₂, bit 1 = 1 → LAA).
+
+Alle temaer understøttes (light, dark, midnight, slate).
+
+---
+
 ## [5.7.7] — 2026-05-23 — TACACS: præferencer og gemte views virker nu
 
 TACACS-brugere kan nu gemme præferencer og gemte views præcis som lokale brugere. Ved hvert vellykket TACACS-login opretter portalen automatisk et shadow-record i den lokale brugerdatabase — rolle og rettigheder synkroniseres fra operatørprofilen ved hvert login.

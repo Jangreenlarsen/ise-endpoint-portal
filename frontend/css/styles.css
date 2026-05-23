@@ -669,6 +669,27 @@ td.mac-cell.cache-stale {
   color: #fbbf24;
 }
 
+/* Locally Administered Address (privat/randomiseret MAC) — fremhæv første octet */
+.mac-laa {
+  background: #f59e0b;
+  color: #1a1a1a;
+  border-radius: 2px;
+  padding: 0 2px;
+  font-weight: 700;
+}
+[data-theme="dark"] .mac-laa {
+  background: #b45309;
+  color: #fef3c7;
+}
+[data-theme="midnight"] .mac-laa {
+  background: #92400e;
+  color: #fde68a;
+}
+[data-theme="slate"] .mac-laa {
+  background: #d97706;
+  color: #1e1b4b;
+}
+
 /* Modal overlay */
 .modal-overlay {
   position: fixed;

@@ -105,6 +105,21 @@ export function initTable(container, state, api, cb) {
     if (!colVisMenu.contains(e.target) && e.target !== colVisBtn) colVisMenu.classList.add("hidden");
   });
 
+  // ── Locally Administered Address (private/randomised MAC) detection ────────
+  function isLocallyAdministered(mac) {
+    if (!mac) return false;
+    const firstOctet = parseInt((mac.split(/[:\-]/)[0] || ""), 16);
+    return !isNaN(firstOctet) && (firstOctet & 0x02) !== 0;
+  }
+
+  function macDisplayHtml(mac) {
+    if (!mac) return "";
+    if (!isLocallyAdministered(mac)) return esc(mac);
+    const sep   = mac.includes(":") ? ":" : "-";
+    const parts = mac.split(sep);
+    return `<span class="mac-laa" title="Privat / Lokalt administreret MAC (LAA)">${esc(parts[0])}</span>${esc(sep + parts.slice(1).join(sep))}`;
+  }
+
   // ── NAS → PlatformType auto-derive ──────────────────────────────────────
   function getNasPlatformType(mac) {
     if (!state.pxgridSessionData) return "";
@@ -210,7 +225,7 @@ export function initTable(container, state, api, cb) {
       const mac   = r.mac || r.name;
       const nasPt = getNasPlatformType(mac);
       const cells = {
-        mac:           `<td data-col="mac" class="mac-cell${r.cache_stale ? " cache-stale" : ""}"><a href="#" class="mac-link" title="${t("browse.mac_link_title")}">${esc(mac)}</a>${r.cache_stale ? `<span class="stale-badge" title="${t("browse.stale_badge_title")}">⏱</span>` : ""}</td>`,
+        mac:           `<td data-col="mac" class="mac-cell${r.cache_stale ? " cache-stale" : ""}"><a href="#" class="mac-link" title="${t("browse.mac_link_title")}">${macDisplayHtml(mac)}</a>${r.cache_stale ? `<span class="stale-badge" title="${t("browse.stale_badge_title")}">⏱</span>` : ""}</td>`,
         auth_status:   `<td data-col="auth_status" class="auth-status-col"></td>`,
         vendor:        `<td data-col="vendor" class="vendor-cell-td">${esc(r.vendor || "")}</td>`,
         group_name:    `<td data-col="group_name"><select class="grp-select">${groupOptionsHtml(r.group_id)}</select></td>`,
@@ -264,7 +279,7 @@ export function initTable(container, state, api, cb) {
       const tr = tbody.querySelector(`tr[data-id="${CSS.escape(id)}"]`);
       if (!tr) continue;
       const macLink = tr.querySelector(".mac-cell .mac-link");
-      if (macLink) macLink.textContent = r.mac || r.name;
+      if (macLink) macLink.innerHTML = macDisplayHtml(r.mac || r.name);
       const vendorCell = tr.querySelector(".vendor-cell-td");
       if (vendorCell) vendorCell.textContent = r.vendor || "";
       const grpSel = tr.querySelector(".grp-select");
