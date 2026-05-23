@@ -17,6 +17,23 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 ---
 
+## [FIXED 5.7.4.5 b0495] 2026-05-23 — first_seen: slettet endpoint i ISE (aldrig tilbage) bevarede stale DB-post
+- **Symptom:** Hvis et endpoint slettes direkte i ISE og aldrig genopdages, forbliver MAC-adressen i `first_seen.db` permanent. Hukommelsesleak.
+- **Fix:** `_full_scan()` i `cache_prewarm.py` henter MAC fra cache inden invalidering og kalder `first_seen_store.delete(mac)` for hvert endpoint der forsvinder fra ISE-listen.
+
+## [FIXED 5.7.4.4 b0494] 2026-05-23 — first_seen: endpoint slettet i ISE og genskabt beholdt gammelt tidsstempel
+- **Symptom:** Endpoint slettet direkte i ISE og re-oprettet arvede det originale "første gang set" tidsstempel fra før sletningen.
+- **Fix:** `first_seen_store.record()` sammenligner nu `endpoint_id` — ISE tildeler nyt ID ved genskabelse. Ændret ID trigger `UPDATE` og nyt tidsstempel.
+
+## [FIXED 5.7.4.3 b0493] 2026-05-23 — first_seen: endpoint slettet via portal beholdt post i DB
+- **Symptom:** Sletning af endpoint via portalen fjernede ikke MAC fra `first_seen.db`. Ved genopdagelse fik endpointet det gamle tidsstempel.
+- **Fix:** `delete_endpoint()` kalder `first_seen_store.delete(mac)` efter ISE-sletningen.
+
+## [FIXED 5.7.4.2 b0492] 2026-05-23 — first_seen kolonne manglede `<td>` i renderRows — alle efterfølgende kolonner rykkede én position
+- **Symptom:** `first_seen`-kolonnen var tom i datarækker; NAS, ISE Session m.fl. vistes én kolonne forskudt.
+- **Årsag:** `cells`-objektet i `renderRows()` manglede `first_seen`-nøgle → `cells[c.key] || ""` returnerede tom streng i stedet for et `<td>`-element.
+- **Fix:** `first_seen`-entry tilføjet i `cells`-objektet i `browse-table.js`.
+
 ## Åbne
 
 - `[fixed 5.6.19 b0467] 2026-05-21 — Save endpoint meget langsom (2× ISE-kald i serie på hot path)` — `update_endpoint` lavede tre ISE-kald i rækkefølge: GET (before-audit, cache-hit → hurtig), PUT (selve opdateringen), GET (after-audit → blokerede HTTP-svaret med et ekstra ISE-kald). Frontend ventede på alle tre før siden responderede. Fix: after-GET + audit-record køres nu som `asyncio.create_task` i baggrunden. HTTP-svaret returneres straks efter PUT+cache-invalidation. Besparelse: ~1 ISE GET-tid (typisk 300-600ms) per save. **Berørt fil:** `backend/app/services/endpoint_service.py`.

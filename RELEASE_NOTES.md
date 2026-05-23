@@ -4,11 +4,26 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
-## [5.7.4] — 2026-05-22 — Første gang set: præcist dato+tidspunkt
+## [5.7.4] — 2026-05-23 — Første gang set: bugfixes og komplet livscyklus-håndtering
 
-### "Første gang set" viser nu eksakt tidspunkt
+### Kolonneforskydning rettet
 
-**Ændring:** Kolonnen viser nu det præcise tidspunkt i formatet `DD-MM-YYYY HH:MM` (f.eks. `22-05-2026 14:35`) i stedet for relativ alder. Tidsstemplet kommer fra portalens egen SQLite-database — ikke fra ISE.
+**Problem:** "Første gang set"-kolonnen manglede en `<td>`-celle i datarækker, hvilket rykkede alle efterfølgende kolonner (NAS, ISE Session m.fl.) én position til venstre.
+**Fix:** `cells`-objektet i `browse-table.js` havde ikke `first_seen`-nøgle — tilføjet.
+
+### Præcist dato+tidspunkt
+
+Kolonnen viser nu `DD-MM-YYYY HH:MM` (f.eks. `23-05-2026 09:15`) i stedet for relativ alder.
+
+### Komplet livscyklus — alle 3 sletnings-scenarier håndteres
+
+Tidsstemplet i portalens `first_seen.db` nulstilles korrekt i alle tilfælde:
+
+| Scenario | Håndtering |
+|---|---|
+| **Slettet via portal** | MAC fjernes fra databasen øjeblikkeligt ved sletning |
+| **Slettet i ISE, genskabt** | ISE tildeler nyt endpoint-ID — portalen opdager ID-skiftet ved næste observation og nulstiller tidsstemplet |
+| **Slettet i ISE, aldrig tilbage** | Prewarm-scan (kører hvert 30. min) opdager at endpointet er forsvundet fra ISE og rydder databaseposten automatisk |
 
 ---
 

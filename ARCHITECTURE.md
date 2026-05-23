@@ -50,6 +50,30 @@ Endpoint-detaljer (full EndpointDetail) caches i `backend/app/core/endpoint_cach
 - **Pre-warm**: `services/cache_prewarm.py` worker gennemgår alle ISE-sider i baggrunden og holder cachen varm. Prioriterings-kø bruges af edit-modal (`POST /endpoints/{id}/prioritize`).
 - **Cache-sync**: `services/cache_sync.py` worker synkroniserer cachen med ISE på periodisk basis som backup til pxGrid.
 
+## First-seen database
+
+`backend/app/core/first_seen_store.py` — SQLite-database (`backend/cache/first_seen.db`) der tracker hvornår portalen første gang observerede et endpoint.
+
+**Principper:**
+- Tidsstemplet sættes én gang og er immutabelt — det repræsenterer portalens første observation, ikke ISE's oprettelsestidspunkt.
+- `record(mac, endpoint_id)` kaldes fra `_fetch_endpoint_detail` ved hvert detail-fetch. Returnerer altid det eksisterende tidsstempel — medmindre `endpoint_id` er ændret (endpoint slettet og genskabt i ISE), i så fald nulstilles tidsstemplet.
+- `delete(mac)` fjerner posten helt — endpoint behandles som nyt ved næste observation.
+
+**Livscyklus og cleanup (alle 3 scenarier):**
+
+| Scenario | Håndtering |
+|---|---|
+| Slettet via portal | `delete_endpoint()` kalder `delete(mac)` øjeblikkeligt |
+| Slettet i ISE, genskabt | `record()` opdager ændret `endpoint_id` → nulstil tidsstempel |
+| Slettet i ISE, aldrig tilbage | `_full_scan()` i prewarm kalder `delete(mac)` når endpoint forsvinder fra ISE-listen |
+
+**Frontend:**
+- Kolonnen "Første gang set" i Browse viser `DD-MM-YYYY HH:MM`.
+- Filterpanelet tilbyder Fra/Til dato-picker i stedet for tekstfilter.
+- Sortering, filter og saved-views-persistens understøttes fuldt.
+
+**Gitignore:** `backend/cache/` er gitignored — databasen er runtime-data og committed aldrig til git.
+
 ## PxGrid (Cisco Platform Exchange Grid)
 
 PxGrid er et Cisco-proprietært pub/sub-system til real-time events. Portalen kan abonnere på session- og endpoint-events.

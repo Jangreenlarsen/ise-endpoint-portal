@@ -3,6 +3,27 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.7.4.5 build 0495] — 2026-05-23 — fix: first_seen ryddes ved prewarm-scan (scenario 3: slettet i ISE, aldrig tilbage)
+
+**Berørte filer:**
+- `backend/app/services/cache_prewarm.py` — _full_scan() kalder first_seen_store.delete(mac) for endpoints der forsvinder fra ISE-listen
+
+## [5.7.4.4 build 0494] — 2026-05-23 — fix: first_seen nulstilles når endpoint genskabes i ISE med nyt ID
+
+**Berørte filer:**
+- `backend/app/core/first_seen_store.py` — record() sammenligner endpoint_id; nyt ID → UPDATE (nulstil tidsstempel)
+
+## [5.7.4.3 build 0493] — 2026-05-23 — fix: first_seen slettes ved endpoint-delete via portal
+
+**Berørte filer:**
+- `backend/app/core/first_seen_store.py` — ny delete(mac) funktion
+- `backend/app/services/endpoint_service.py` — delete_endpoint() kalder first_seen_store.delete(mac)
+
+## [5.7.4.2 build 0492] — 2026-05-23 — fix: first_seen manglede td i renderRows — kolonneforskydning rettet
+
+**Berørte filer:**
+- `frontend/js/views/browse-table.js` — cells-objektet manglede first_seen nøgle
+
 ## [5.7.2 build 0483] — 2026-05-22 — feat: Første gang set — endpoint-historik database + dato-filter
 
 **Berørte filer:**
