@@ -105,6 +105,28 @@ async def list_all_endpoint_details(
         raise _ise_http_error(exc) from exc
 
 
+@router.get("/stats", dependencies=[Depends(require_any)])
+async def endpoint_stats() -> dict:
+    """Returnerer totaltæller for alle endpoints og antal LAA (privat/randomiseret) MACs.
+
+    LAA-detektion: bit 1 i første octet sat (f.eks. A6:xx → 10100110₂ & 00000010 = 1).
+    Tæller fra in-memory cache — afspejler hele databasen uanset aktiv filtreringsvisning.
+    """
+    cache = get_cache()
+    all_entries = list(cache.values())
+    total = len(all_entries)
+    laa_count = 0
+    for entry in all_entries:
+        mac = entry.get("mac") or entry.get("name", "")
+        try:
+            first = int(mac.replace(":", "").replace("-", "")[:2], 16)
+            if first & 0x02:
+                laa_count += 1
+        except (ValueError, IndexError):
+            pass
+    return {"total": total, "laa_count": laa_count}
+
+
 @router.get("/session-macs", response_model=list[str], dependencies=[Depends(require_any)])
 async def list_session_macs(
     service: EndpointService = Depends(get_endpoint_service),

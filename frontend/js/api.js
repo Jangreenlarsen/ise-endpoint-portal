@@ -95,6 +95,7 @@ export const api = {
   deleteEndpoint: (id) =>
     request(`/endpoints/${id}`, { method: "DELETE" }),
   listActiveSessionMacs: () => request("/endpoints/session-macs"),
+  getEndpointStats: () => request("/endpoints/stats"),
   coaReauth: (id) =>
     request(`/endpoints/${encodeURIComponent(id)}/coa-reauth`, { method: "POST" }),
   coaDisconnect: (id) =>

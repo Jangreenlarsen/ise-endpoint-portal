@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.7.10 build 0508] — 2026-05-23 — feat: LAA-tæller fra backend database — altid total uanset filter
+
+**Berørte filer:**
+- `backend/app/api/endpoints.py` — nyt `GET /api/endpoints/stats` endpoint: tæller LAA-MACs direkte fra in-memory cache (bit 1 check), returnerer `{total, laa_count}`
+- `frontend/js/api.js` — `getEndpointStats()` API-kald
+- `frontend/js/views/browse-table.js` — `epStats` tilføjet til `Promise.all` i `load()`; `state.laaTotal` gemmer DB-totalen; `laaTag()` bruger nu `state.laaTotal` i stedet for at tælle fra synlige rows
+
 ## [5.7.9 build 0507] — 2026-05-23 — feat: antal privat/LAA MAC vises i endpoint-tæller
 
 **Berørte filer:**

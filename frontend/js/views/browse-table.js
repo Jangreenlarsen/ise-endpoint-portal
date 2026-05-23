@@ -112,14 +112,10 @@ export function initTable(container, state, api, cb) {
     return !isNaN(firstOctet) && (firstOctet & 0x02) !== 0;
   }
 
-  function countLAA(rows) {
-    return rows.filter(r => isLocallyAdministered(r.mac || r.name)).length;
-  }
-
-  function laaTag(rows) {
-    const n = countLAA(rows);
+  function laaTag() {
+    const n = state.laaTotal ?? 0;
     if (!n) return "";
-    return ` <span class="laa-count" title="Privat / Lokalt administreret MAC (LAA)">${n} privat</span>`;
+    return ` <span class="laa-count" title="Privat / Lokalt administreret MAC (LAA) — total i database">${n} privat</span>`;
   }
 
   function macDisplayHtml(mac) {
@@ -553,10 +549,10 @@ export function initTable(container, state, api, cb) {
         countEl.innerHTML = t("browse.filtered_info")
           .replace("{filtered}", filtered.length)
           .replace("{all}", state.allRows.length)
-          + laaTag(filtered);
+          + laaTag();
       } else {
         countEl.innerHTML = t("browse.all_info").replace("{n}", state.allRows.length)
-          + laaTag(state.allRows);
+          + laaTag();
       }
     } else {
       renderRows(state.allRows);
@@ -564,7 +560,7 @@ export function initTable(container, state, api, cb) {
       countEl.innerHTML = t("browse.server_info")
         .replace("{n}", state.allRows.length)
         .replace("{total}", state.totalEndpoints)
-        + laaTag(state.allRows);
+        + laaTag();
     }
   }
 
@@ -578,7 +574,7 @@ export function initTable(container, state, api, cb) {
     state.filterMode  = false;
     state.allRowsCache = null;
     try {
-      const [caData, grps, result, dacls, mapping, roles, me, pskPolicy] = await Promise.all([
+      const [caData, grps, result, dacls, mapping, roles, me, pskPolicy, epStats] = await Promise.all([
         api.listCustomAttributes(),
         api.listGroups(),
         api.listEndpointDetails(state.currentPage, state.currentSize, "", state.currentFilters),
@@ -587,6 +583,7 @@ export function initTable(container, state, api, cb) {
         api.listEndpointRoles().catch(() => ({ roles: [] })),
         api.authMe().catch(() => null),
         api.getPskPolicy().catch(() => null),
+        api.getEndpointStats().catch(() => null),
       ]);
       state.pskShowKey   = !!(pskPolicy && pskPolicy.show_key_in_table);
       state.groups       = grps;
@@ -607,8 +604,9 @@ export function initTable(container, state, api, cb) {
       state.coaByLocal = new Map(
         (mapping.mappings || []).filter((m) => m.local).map((m) => [m.local, m.coa || "reauth"]),
       );
-      state.allRows       = result.items;
+      state.allRows        = result.items;
       state.totalEndpoints = result.total;
+      state.laaTotal       = epStats ? epStats.laa_count : null;
       if (cb.needsFilterMode()) await cb.enterFilterMode();
       await cb.refreshActiveSessionMacs(force);
       applyFilter();

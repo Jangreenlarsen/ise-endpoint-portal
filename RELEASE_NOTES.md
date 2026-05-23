@@ -4,6 +4,16 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.7.10] — 2026-05-23 — Privat MAC tæller: total fra database
+
+LAA-tælleren viser nu det totale antal private MACs i hele databasen — uanset hvilket filter der er aktivt. Tællingen hentes fra backend ved sideindlæsning og ændres ikke ved filtrering.
+
+`10 / 59 endpoints (filtreret)  [3 privat]`
+
+De 3 private MACs er totalen i databasen — ikke bare dem der er synlige i filteret.
+
+---
+
 ## [5.7.9] — 2026-05-23 — Privat MAC tæller i endpoint-oversigt
 
 Endpoint-tælleren øverst i Browse viser nu antal privat/LAA MAC-adresser som et amber badge:
