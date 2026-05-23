@@ -20,6 +20,7 @@ export function initDetail(container, state, api, cb) {
   const detailOverlay = container.querySelector("#detail-overlay");
   const detailMsg     = container.querySelector("#detail-msg");
   const msg           = container.querySelector("#msg");
+  let _templates = [];
 
   // ── Open / close ─────────────────────────────────────────────────────────
   async function openDetail(id) {
@@ -109,6 +110,17 @@ export function initDetail(container, state, api, cb) {
       if (updateEl) updateEl.textContent = fmtDateTime(d.update_time) || "—";
 
       detailMsg.innerHTML = "";
+
+      // Populate template apply dropdown
+      const tplSelect = container.querySelector("#d-tpl-select");
+      if (tplSelect) {
+        try {
+          const tplResp = await api.listTemplates().catch(() => ({ templates: [] }));
+          _templates = tplResp?.templates || [];
+          tplSelect.innerHTML = `<option value="">${t("detail.tpl_none")}</option>`
+            + _templates.map((tpl) => `<option value="${esc(tpl.id)}">${esc(tpl.name)}${tpl.description ? ` — ${esc(tpl.description)}` : ""}</option>`).join("");
+        } catch { _templates = []; }
+      }
 
       const ancSection = container.querySelector("#d-anc-section");
       const hideAnc = loadFrontendPrefs().hideAnc === true;
@@ -1078,6 +1090,84 @@ export function initDetail(container, state, api, cb) {
         ${profileTable}
       </div>`;
   }
+
+  // ── Template save / apply ─────────────────────────────────────────────────
+  container.querySelector("#d-save-as-tpl").addEventListener("click", async () => {
+    if (!state.detailCurrentId) return;
+    const name = prompt(t("detail.tpl_name_prompt"), "");
+    if (!name?.trim()) return;
+
+    const customAttrs = {};
+    const caMap = {
+      Type: "#d-type", Owner: "#d-owner", Lokation: "#d-lokation",
+      AuthzVlan: "#d-authzvlan", AuthzACL: "#d-authzacl", PlatformType: "#d-platformtype",
+    };
+    for (const [key, sel] of Object.entries(caMap)) {
+      const v = container.querySelector(sel)?.value;
+      if (v) customAttrs[key] = v;
+    }
+    if (state.isPskEditor) {
+      const pskMode = container.querySelector("#d-psk-mode")?.checked;
+      customAttrs.PSK_Mode = pskMode ? "true" : "false";
+    }
+
+    const payload = {
+      name: name.trim(),
+      fields: {
+        group_id: container.querySelector("#d-group")?.value || "",
+        description: container.querySelector("#d-description")?.value || "",
+        static_group_assignment: container.querySelector("#d-static-group")?.checked || null,
+        custom_attributes: customAttrs,
+      },
+    };
+
+    const btn = container.querySelector("#d-save-as-tpl");
+    btn.disabled = true;
+    try {
+      await api.createTemplate(payload);
+      detailMsg.innerHTML = `<div class="alert success">${t("detail.tpl_saved_ok")}</div>`;
+    } catch (err) {
+      detailMsg.innerHTML = `<div class="alert error">${t("detail.tpl_save_err").replace("{msg}", esc(err.message))}</div>`;
+    } finally { btn.disabled = false; }
+  });
+
+  container.querySelector("#d-tpl-apply").addEventListener("click", () => {
+    const tplId = container.querySelector("#d-tpl-select")?.value;
+    if (!tplId) return;
+    const tpl = _templates.find((tp) => tp.id === tplId);
+    if (!tpl) return;
+
+    const fields = tpl.fields || {};
+    const ca = fields.custom_attributes || {};
+
+    if (fields.group_id) container.querySelector("#d-group").value = fields.group_id;
+    if (fields.description !== undefined) container.querySelector("#d-description").value = fields.description;
+    if (fields.static_group_assignment != null) {
+      container.querySelector("#d-static-group").checked = !!fields.static_group_assignment;
+    }
+    const caMap = {
+      Type: "#d-type", Owner: "#d-owner", Lokation: "#d-lokation",
+      AuthzVlan: "#d-authzvlan", AuthzACL: "#d-authzacl", PlatformType: "#d-platformtype",
+    };
+    for (const [key, sel] of Object.entries(caMap)) {
+      if (ca[key]) container.querySelector(sel).value = ca[key];
+    }
+
+    if (state.isPskEditor && ca.PSK_Mode !== undefined) {
+      const pskModeEl  = container.querySelector("#d-psk-mode");
+      const pskKeyLbl  = container.querySelector("#d-psk-key-label");
+      const pskKeyWrap = container.querySelector("#d-psk-key-wrap");
+      pskModeEl.checked = ca.PSK_Mode === "true";
+      if (pskModeEl.checked) {
+        pskKeyLbl.classList.remove("hidden");
+        pskKeyWrap.classList.remove("hidden");
+        const pskVal = prompt(t("detail.tpl_psk_prompt"), "");
+        if (pskVal !== null) container.querySelector("#d-psk-key").value = pskVal;
+      }
+    }
+
+    detailMsg.innerHTML = `<div class="alert success">${t("detail.tpl_applied")}</div>`;
+  });
 
   return { openDetail, closeDetail };
 }

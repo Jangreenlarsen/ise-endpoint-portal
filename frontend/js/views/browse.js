@@ -215,6 +215,13 @@ export async function renderBrowse(container) {
             <div id="d-session-debug-content"><span class="hint">Klik på fanen for at se session-data.</span></div>
           </div>
         </div>
+        <div class="detail-tpl-bar">
+          <select id="d-tpl-select" class="detail-tpl-select">
+            <option value="">${t("detail.tpl_none")}</option>
+          </select>
+          <button type="button" id="d-tpl-apply" class="secondary small">${t("detail.btn_apply_tpl")}</button>
+          <button type="button" id="d-save-as-tpl" class="secondary small">${t("detail.btn_save_as_tpl")}</button>
+        </div>
         <div class="modal-actions">
           <button id="d-save">${t("detail.btn_save")}</button>
           <button id="d-disconnect" class="danger"

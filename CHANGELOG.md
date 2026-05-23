@@ -3,6 +3,17 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.7.5 build 0497] — 2026-05-23 — feat: skabelon gem/anvend i Browse-Edit og Registrering
+
+**Berørte filer:**
+- `frontend/js/views/browse.js` — tilføjet `detail-tpl-bar` med skabelon-dropdown og knapper over `modal-actions`
+- `frontend/js/views/browse-detail.js` — `_templates`-closure, load skabeloner i `openDetail`, handlers for `#d-save-as-tpl` og `#d-tpl-apply`
+- `frontend/js/views/register.js` — `applyTemplate` håndterer PSK_Mode; "Gem som skabelon"-knap for editor/admin; skabelon-liste genindlæses efter gem
+- `frontend/js/i18n.js` — ny nøgler: `detail.btn_save_as_tpl`, `detail.btn_apply_tpl`, `detail.tpl_*` (da + en)
+- `frontend/css/styles.css` — `.detail-tpl-bar` og `.detail-tpl-select`
+- `version.json` — 5.7.5 build 0497
+- `FEATURES.md`, `RELEASE_NOTES.md` — opdateret
+
 ## [5.7.4.5 build 0495] — 2026-05-23 — fix: first_seen ryddes ved prewarm-scan (scenario 3: slettet i ISE, aldrig tilbage)
 
 **Berørte filer:**

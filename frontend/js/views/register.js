@@ -63,6 +63,9 @@ export async function renderRegister(container) {
             <option value="">${t("reg.template_none")}</option>
           </select>
         </div>
+        <div id="r-save-tpl-row" class="register-template-row" hidden>
+          <button type="button" id="r-save-as-tpl" class="register-tiny-btn">${t("detail.btn_save_as_tpl")}</button>
+        </div>
 
         <label for="r-mac" class="register-label">${t("reg.label_mac")}</label>
         <div class="register-mac-row">
@@ -232,9 +235,66 @@ export async function renderRegister(container) {
         if (sel) sel.value = ca[name];
       }
     }
+    if (isPskEditor && ca.PSK_Mode !== undefined) {
+      const pskModeEl = container.querySelector("#r-psk-mode");
+      if (pskModeEl) {
+        pskModeEl.checked = ca.PSK_Mode === "true";
+        if (pskModeEl.checked) {
+          const pskVal = prompt(t("detail.tpl_psk_prompt"), "");
+          if (pskVal !== null) {
+            const pskKeyEl = container.querySelector("#r-psk-key");
+            if (pskKeyEl) pskKeyEl.value = pskVal;
+          }
+        }
+      }
+    }
   }
 
   templateSel.addEventListener("change", () => applyTemplate(templateSel.value));
+
+  // "Gem som skabelon" — tilgængelig for editor og derover
+  if (canPickRoles || isPskEditor) {
+    container.querySelector("#r-save-tpl-row").hidden = false;
+    container.querySelector("#r-save-as-tpl").addEventListener("click", async () => {
+      const name = prompt(t("detail.tpl_name_prompt"), "");
+      if (!name?.trim()) return;
+
+      const customAttrs = {};
+      for (const attrName of Object.keys(attrLabels)) {
+        const sel = container.querySelector(`#r-ca-${attrName}`);
+        const v = sel ? sel.value : "";
+        if (v) customAttrs[attrName] = v;
+      }
+      if (isPskEditor) {
+        const pskMode = container.querySelector("#r-psk-mode")?.checked;
+        if (pskMode !== undefined) customAttrs.PSK_Mode = pskMode ? "true" : "false";
+      }
+
+      const payload = {
+        name: name.trim(),
+        fields: {
+          group_id: groupSel.value || "",
+          description: container.querySelector("#r-desc").value.trim(),
+          custom_attributes: customAttrs,
+        },
+      };
+
+      const btn = container.querySelector("#r-save-as-tpl");
+      btn.disabled = true;
+      try {
+        await api.createTemplate(payload);
+        showOk(t("detail.tpl_saved_ok"));
+        const tplResp = await api.listTemplates().catch(() => ({ templates: [] }));
+        templates = (tplResp && tplResp.templates) ? tplResp.templates : [];
+        const noneLabel = isRegistrant ? t("reg.template_select") : t("reg.template_none");
+        templateSel.innerHTML = `<option value="">${noneLabel}</option>`
+          + templates.map((tpl) => `<option value="${esc(tpl.id)}">${esc(tpl.name)}${tpl.description ? ` — ${esc(tpl.description)}` : ""}</option>`).join("");
+        if (templates.length) container.querySelector("#r-template-row").hidden = false;
+      } catch (err) {
+        showError(t("detail.tpl_save_err").replace("{msg}", esc(err.message)));
+      } finally { btn.disabled = false; }
+    });
+  }
 
   // PSK-sektion: kun for admin og editor-psk
   if (isPskEditor) {

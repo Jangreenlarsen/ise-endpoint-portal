@@ -216,6 +216,14 @@ const TRANSLATIONS = {
     "detail.btn_show":       "Vis",
     "detail.btn_hide":       "Skjul",
     "detail.btn_generate":   "Generer",
+    "detail.btn_save_as_tpl":  "Gem som skabelon",
+    "detail.btn_apply_tpl":    "Anvend skabelon",
+    "detail.tpl_none":         "— Vælg skabelon —",
+    "detail.tpl_name_prompt":  "Navn på skabelon:",
+    "detail.tpl_saved_ok":     "Skabelon gemt.",
+    "detail.tpl_save_err":     "Kunne ikke gemme skabelon: {msg}",
+    "detail.tpl_applied":      "Skabelon anvendt.",
+    "detail.tpl_psk_prompt":   "PSK-nøgle (gemmes ikke i skabelon):",
 
     // Browse — detail modal — RADIUS policy & wizard
     "detail.policy_show":         "▶ Vis",
@@ -1261,6 +1269,14 @@ const TRANSLATIONS = {
     "detail.btn_show":       "Show",
     "detail.btn_hide":       "Hide",
     "detail.btn_generate":   "Generate",
+    "detail.btn_save_as_tpl":  "Save as template",
+    "detail.btn_apply_tpl":    "Apply template",
+    "detail.tpl_none":         "— Select template —",
+    "detail.tpl_name_prompt":  "Template name:",
+    "detail.tpl_saved_ok":     "Template saved.",
+    "detail.tpl_save_err":     "Could not save template: {msg}",
+    "detail.tpl_applied":      "Template applied.",
+    "detail.tpl_psk_prompt":   "PSK Key (not stored in template):",
 
     // Browse — detail modal — RADIUS policy & wizard
     "detail.policy_show":         "▶ Show",

@@ -4,6 +4,27 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.7.5] — 2026-05-23 — Skabelon gem/anvend i Browse-Edit og Registrering
+
+### Gem endpoint som skabelon (Browse-Edit)
+
+I detail-modalen er der nu en skabelon-bar under endpoint-fanens indhold — et dropdown til at vælge eksisterende skabeloner og to knapper: **Anvend skabelon** og **Gem som skabelon**.
+
+**Gem som skabelon** indsamler de aktuelle formfelter (gruppe, beskrivelse, statisk tildeling, type, owner, lokation, VLAN, ACL, platform) og gemmer dem som en ny skabelon via den eksisterende skabelon-API. PSK_Mode-flaget kan indgå i skabelonen — **PSK-nøglen gemmes aldrig**.
+
+### Anvend skabelon (Browse-Edit)
+
+**Anvend skabelon**-dropdown lister alle tilgængelige skabeloner. Når en vælges og knappen klikkes, udfyldes formfelterne fra skabelonens data. Hvis skabelonen har `PSK_Mode = true`, promptes brugeren for PSK-nøglen — den indgår kun i den aktuelle formular-session og gemmes ikke.
+
+### Registreringssiden: samme flow
+
+Registreringssiden understøtter nu også:
+- **Anvend skabelon**: eksisterende dropdown synlig for alle roller når skabeloner findes
+- **Gem som skabelon**: ny knap synlig for editor/admin/editor-psk — gemmer den aktuelle formtilstand som skabelon og genindlæser skabelon-listen
+- PSK_Mode fra skabelon: sætter PSK-tilstanden og prompter for nøgle (kun for PSK-editors)
+
+---
+
 ## [5.7.4] — 2026-05-23 — Første gang set: bugfixes og komplet livscyklus-håndtering
 
 ### Kolonneforskydning rettet
