@@ -3,6 +3,16 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.7.7.5 build 0504] — 2026-05-23 — debug: kritisk fix — TACACS login brudt af shadow-record
+
+**Rodårsag:** `find_by_username` fandt shadow-recorden (username="adm", role="admin") → `is_admin_user=True` → TACACS springes over → lokal auth fejler med tomt password_hash → `bad_credentials`.
+
+**Berørte filer:**
+- `backend/app/services/user_service.py`:
+  - `is_admin_user` tjekker nu `user_type == "user"` i stedet for `!= "operator"` — shadow-records ekskluderes eksplicit
+  - `profile_record` lookup bruger nu inline-generator der filtrerer `tacacs_shadow` fra — shadow-record kan ikke misopfattes som operatørprofil
+  - Lokal auth-blok blokerer nu også `tacacs_shadow` brugere (ikke kun `operator`)
+
 ## [5.7.7.4 build 0503] — 2026-05-23 — debug: fix 500 i users-liste — UserType + shadow-filter
 
 **Berørte filer:**

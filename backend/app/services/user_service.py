@@ -417,14 +417,14 @@ def login(payload: LoginRequest) -> LoginResponse:
     users = load_users()
     record = find_by_username(users, payload.username)
 
-    # Ægte lokale admin-brugere (user_type != "operator") valideres ALTID lokalt,
+    # Ægte lokale admin-brugere (user_type="user") valideres ALTID lokalt,
     # uanset TACACS+-konfiguration — de må aldrig låses ude af en TACACS-fejl.
-    # Operator-profiler med admin-rolle (user_type="operator") er TACACS-brugere
-    # og skal bruge TACACS-stien selv om rollen er "admin".
+    # Operator-profiler (user_type="operator") og shadow-records (user_type="tacacs_shadow")
+    # med admin-rolle skal ALTID igennem TACACS-stien.
     is_admin_user = bool(
         record
         and record.get("role") == "admin"
-        and record.get("user_type", "user") != "operator"
+        and record.get("user_type", "user") == "user"
     )
 
     auth_cfg = load_auth_config()
@@ -452,7 +452,10 @@ def login(payload: LoginRequest) -> LoginResponse:
             # Slå operator-profil op i users.json (brugernavn = profilnavn).
             # TACACS+ klarer auth — portal-profilen bestemmer rolle + endpoint-roller.
             profile_name = result.operator_profile_name or payload.username
-            profile_record = find_by_username(users, profile_name)
+            profile_record = next(
+                (u for u in users if u.get("username") == profile_name and u.get("user_type") != "tacacs_shadow"),
+                None,
+            )
 
             # Tjek om der overhovedet er oprettet operatørprofiler i portalen.
             # Hvis ingen profiler findes → bootstrap-tilstand: giv TACACS-brugeren
@@ -558,11 +561,11 @@ def login(payload: LoginRequest) -> LoginResponse:
     # Lokal auth (altid for admin, fallback for øvrige hvis TACACS+ fejler)
     # Operatørprofiler (user_type=operator) kan ikke logge ind lokalt — kun via TACACS+.
     # Admin-rollen er undtaget: en fejlkonfigureret admin-konto må aldrig låses ude.
-    if record and record.get("user_type") == "operator" and record.get("role") != "admin":
-        logger.warning("local login blocked for operator-type user=%s", payload.username)
+    if record and record.get("user_type") in ("operator", "tacacs_shadow"):
+        logger.warning("local login blocked for %s user=%s", record.get("user_type"), payload.username)
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED,
-            "Denne konto er konfigureret som Profil (TACACS+-operatørprofil) og kan ikke bruges til lokal login.",
+            "Denne konto autentificeres via TACACS+ og kan ikke bruges til lokal login.",
         )
     if not record or not auth_core.verify_password(
         payload.password, record.get("password_hash", "")
