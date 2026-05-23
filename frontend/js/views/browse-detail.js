@@ -1141,7 +1141,7 @@ export function initDetail(container, state, api, cb) {
     const ca = fields.custom_attributes || {};
 
     if (fields.group_id) container.querySelector("#d-group").value = fields.group_id;
-    if (fields.description !== undefined) container.querySelector("#d-description").value = fields.description;
+    container.querySelector("#d-description").value = `Templet ${tpl.name}`;
     if (fields.static_group_assignment != null) {
       container.querySelector("#d-static-group").checked = !!fields.static_group_assignment;
     }

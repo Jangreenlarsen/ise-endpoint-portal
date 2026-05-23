@@ -227,7 +227,7 @@ export async function renderRegister(container) {
     const fields = tpl.fields || {};
     if (groupSel && fields.group_id) groupSel.value = fields.group_id;
     const descInput = container.querySelector("#r-desc");
-    if (fields.description) descInput.value = fields.description;
+    descInput.value = `Templet ${tpl.name}`;
     const ca = fields.custom_attributes || {};
     for (const name of Object.keys(attrLabels)) {
       if (ca[name]) {

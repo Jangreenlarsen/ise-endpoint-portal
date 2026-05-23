@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.7.12 build 0512] — 2026-05-23 — feat: apply skabelon sætter description til "Templet [navn]"
+
+**Berørte filer:**
+- `frontend/js/views/browse-detail.js` — `#d-tpl-apply` handler sætter altid `#d-description` til `Templet ${tpl.name}`
+- `frontend/js/views/register.js` — `applyTemplate()` sætter altid `#r-desc` til `Templet ${tpl.name}`
+
 ## [5.7.11 build 0511] — 2026-05-23 — fix: 502 ved "Show 500" — ISE ERS max 100/side
 
 **Rodårsag:** Admin-stien i `list_endpoint_details` kaldte `endpoints.list_page(size=500)` direkte til ISE, men ISE ERS accepterer max 100 per side → HTTP 400 → portal-502.
