@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.7.7.1 build 0500] — 2026-05-23 — debug: first-seen filter splitter til date+time inputs (24t clock)
+
+**Berørte filer:**
+- `frontend/js/views/browse.js` — `datetime-local` → to par af `date`+`time` inputs med nye IDs (`first-seen-from-d/t`, `first-seen-to-d/t`)
+- `frontend/js/views/browse-filter.js` — nye hjælpere `_fsDateTimeVal`, `firstSeenFromVal/ToVal`, `firstSeenAnySet`, `firstSeenClearAll`, `firstSeenRestore`; alle 7 gamle `firstSeenFrom()/To()` referencer erstattet; event-delegation opdateret
+- `frontend/css/styles.css` — `.first-seen-dt-row` flex-row; `.first-seen-time` 52px; dark/midnight tema
+
 ## [5.7.7 build 0499] — 2026-05-23 — feat: first-seen filter bruger datetime-local (dato + tid)
 
 **Berørte filer:**

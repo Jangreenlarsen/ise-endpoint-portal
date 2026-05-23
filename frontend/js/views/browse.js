@@ -104,8 +104,14 @@ export async function renderBrowse(container) {
                       </select>`
                     : c.key === "first_seen"
                       ? `<div class="first-seen-filter-wrap">
-                          <input type="datetime-local" id="first-seen-from" class="first-seen-date" title="${t("filter.first_seen_from")}" />
-                          <input type="datetime-local" id="first-seen-to"   class="first-seen-date" title="${t("filter.first_seen_to")}" />
+                          <div class="first-seen-dt-row">
+                            <input type="date" id="first-seen-from-d" class="first-seen-date" title="${t("filter.first_seen_from")}" />
+                            <input type="time" id="first-seen-from-t" class="first-seen-time" title="${t("filter.first_seen_from")}" />
+                          </div>
+                          <div class="first-seen-dt-row">
+                            <input type="date" id="first-seen-to-d"   class="first-seen-date" title="${t("filter.first_seen_to")}" />
+                            <input type="time" id="first-seen-to-t"   class="first-seen-time" title="${t("filter.first_seen_to")}" />
+                          </div>
                         </div>`
                       : `<input type="text" class="col-filter-input" data-col="${c.key}" placeholder="…" />`}
                 </th>`).join("")}
