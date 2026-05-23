@@ -4,6 +4,11 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 5.7.11 b0511] 2026-05-23 — 502 ved "Show 500" — ISE ERS max 100/side
+- **Symptom:** Valg af 500 i "Show"-dropdown gav `502: ISE returnerede en uventet fejl (HTTP 400)`.
+- **Årsag:** Admin-stien i `list_endpoint_details` sendte `size=500` direkte til ISE ERS API der kun accepterer max 100 per side.
+- **Fix:** Når cache er varm, bruger admin-stien nu `_list_all_from_cache()` der paginerer i Python uden ISE-kald. Kold-cache-fallback caps `size` til 100.
+
 ## [FIXED 5.7.8.1 b0506] 2026-05-23 — Browser cacher JS/CSS — nye features indlæses ikke uden hard refresh
 - **Symptom:** Nye frontend-ændringer (f.eks. LAA MAC-fremhævning) vises ikke i browseren selv efter genstart af backend.
 - **Årsag:** FastAPI `StaticFiles` sender ingen `Cache-Control` headers → browseren cacher `.js` og `.css` på ubestemt tid.

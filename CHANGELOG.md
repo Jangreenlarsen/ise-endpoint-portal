@@ -3,6 +3,17 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.7.11 build 0511] — 2026-05-23 — fix: 502 ved "Show 500" — ISE ERS max 100/side
+
+**Rodårsag:** Admin-stien i `list_endpoint_details` kaldte `endpoints.list_page(size=500)` direkte til ISE, men ISE ERS accepterer max 100 per side → HTTP 400 → portal-502.
+
+**Fix:**
+- `endpoint_service.py` — når cache er varm, server admin-brugere via ny `_list_all_from_cache()` der henter alle IDs fra cache og paginerer i Python (samme mønster som `_list_from_roles_index`)
+- ISE-fallback (kold cache): `size` cappes til 100 inden ISE-kald
+
+**Berørte filer:**
+- `backend/app/services/endpoint_service.py`
+
 ## [5.7.10.2 build 0510] — 2026-05-23 — debug: fix /endpoints/stats — value er EndpointDetail Pydantic, ikke dict
 
 **Rodårsag:** `ep.get("mac")` fejler på Pydantic-objekt — `EndpointDetail` har ikke `.get()`. Cachet value er `EndpointDetail` (fra `_fetch_endpoint_detail`), ikke et dict.
