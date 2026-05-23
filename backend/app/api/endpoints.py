@@ -113,11 +113,14 @@ async def endpoint_stats() -> dict:
     Tæller fra in-memory cache — afspejler hele databasen uanset aktiv filtreringsvisning.
     """
     cache = get_cache()
-    all_entries = list(cache.values())
-    total = len(all_entries)
+    details = cache._details  # dict[str, CachedEntry] — value er endpoint-dict
+    total = len(details)
     laa_count = 0
-    for entry in all_entries:
-        mac = entry.get("mac") or entry.get("name", "")
+    for cached_entry in details.values():
+        ep = cached_entry.value
+        if not ep:
+            continue
+        mac = ep.get("mac") or ep.get("name", "")
         try:
             first = int(mac.replace(":", "").replace("-", "")[:2], 16)
             if first & 0x02:

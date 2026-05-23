@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.7.10.1 build 0509] — 2026-05-23 — debug: fix /endpoints/stats — cache._details.value korrekt tilgang
+
+**Rodårsag:** `get_cache().values()` — `EndpointCache` er ikke et dict; har ingen `.values()`. Endpoint kastede `AttributeError` → frontend-catch returnerede null → badge forsvandt.
+**Fix:** `cache._details` er `dict[str, CachedEntry]`; itererer nu `.values()` og læser `entry.value` (endpoint-dict) for MAC-feltet.
+
+**Berørte filer:**
+- `backend/app/api/endpoints.py` — `/stats` bruger nu `cache._details.values()` og `cached_entry.value`
+
 ## [5.7.10 build 0508] — 2026-05-23 — feat: LAA-tæller fra backend database — altid total uanset filter
 
 **Berørte filer:**
