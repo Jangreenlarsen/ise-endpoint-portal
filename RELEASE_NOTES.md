@@ -4,6 +4,18 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.7.12] — 2026-05-23 — Skabelon: description sættes automatisk ved anvendelse
+
+Når du anvender en skabelon i Browse/Edit-modal eller på Registreringssiden, sættes description-feltet automatisk til `Templet [skabelonnavn]`. Dette gør det nemt at se hvilken skabelon der er brugt på et endpoint.
+
+---
+
+## [5.7.11] — 2026-05-23 — Fix: "Show 500" gav 502-fejl
+
+Valg af 500 i "Show"-dropdown fejlede med `502: ISE returnerede en uventet fejl (HTTP 400)`. ISE ERS API accepterer max 100 endpoints per side. Portalen bruger nu intern cache-paginering når cache er varm — ingen ISE-kald ved visning af mange endpoints på én side.
+
+---
+
 ## [5.7.10] — 2026-05-23 — Privat MAC tæller: total fra database
 
 LAA-tælleren viser nu det totale antal private MACs i hele databasen — uanset hvilket filter der er aktivt. Tællingen hentes fra backend ved sideindlæsning og ændres ikke ved filtrering.
