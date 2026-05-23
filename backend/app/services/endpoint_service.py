@@ -542,6 +542,11 @@ class EndpointService:
                            endpoint_id, exc)
         await self.endpoints.delete(endpoint_id)
         get_cache().invalidate_detail(endpoint_id)
+        if before:
+            mac = before.get("mac") or before.get("name") or ""
+            if mac:
+                from app.core import first_seen_store
+                first_seen_store.delete(mac)
         await audit_store.record(
             "deleted",
             "endpoint",

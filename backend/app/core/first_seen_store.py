@@ -73,6 +73,23 @@ def get(mac: str) -> float | None:
         con.close()
 
 
+def delete(mac: str) -> None:
+    """Fjern MAC fra databasen så den behandles som ny ved næste observation.
+
+    Kaldes når et endpoint slettes fra ISE, så et genopstået endpoint
+    ikke arver det gamle første-gang-set tidsstempel.
+    """
+    mac = (mac or "").upper().strip()
+    if not mac:
+        return
+    con = sqlite3.connect(DB_PATH)
+    try:
+        con.execute("DELETE FROM first_seen WHERE mac = ?", (mac,))
+        con.commit()
+    finally:
+        con.close()
+
+
 def get_many(macs: list[str]) -> dict[str, float]:
     """Batch-lookup: returnerer {mac_upper: first_seen_at} for kendte MACs."""
     if not macs:
