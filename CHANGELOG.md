@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.7.6 build 0498] — 2026-05-23 — fix: update-check viser altid release notes (3-parts semver fallback + à-jour-visning)
+
+**Berørte filer:**
+- `backend/app/services/update_service.py` — `_extract_release_sections_since`: ny `_split_release_sections` hjælper; fallback matcher på 3-parts semver så debug-builds (5.7.4.5 → `## [5.7.4]`) virker; à-jour-tilstand viser altid aktuel versions noter
+- `frontend/js/views/settings/section-update.js` — range-label bruger 3-parts base-version (ikke debug-suffix); logik uændret
+
 ## [5.7.5 build 0497] — 2026-05-23 — feat: skabelon gem/anvend i Browse-Edit og Registrering
 
 **Berørte filer:**

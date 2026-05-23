@@ -223,48 +223,49 @@ def _parse_semver(v: str) -> tuple[int, int, int]:
     return (int(m.group(1)), int(m.group(2)), int(m.group(3)))
 
 
-def _extract_release_section(md_text: str, version: str) -> str:
-    """Udtræk release notes-sektion for en specifik version fra RELEASE_NOTES.md."""
+def _split_release_sections(md_text: str) -> list[tuple[tuple[int, int, int], str]]:
+    """Opdel RELEASE_NOTES.md i (semver-tuple, tekst)-par for alle ## [X.Y.Z]-sektioner."""
     import re
-    pattern = rf'## \[{re.escape(version)}\].*?(?=\n## \[|\Z)'
-    m = re.search(pattern, md_text, re.DOTALL)
-    return m.group(0).strip() if m else ""
+    section_re = re.compile(r'(## \[\d+\.\d+\.\d+\][^\n]*(?:\n(?!## \[).*)*)', re.MULTILINE)
+    result = []
+    for section in section_re.findall(md_text):
+        m = re.match(r'## \[(\d+\.\d+\.\d+)\]', section)
+        if m:
+            result.append((_parse_semver(m.group(1)), section.strip()))
+    return result
 
 
 def _extract_release_sections_since(
     md_text: str, current_version: str, latest_version: str
 ) -> str:
-    """Udtræk alle release notes-sektioner nyere end current_version og op til latest_version.
+    """Udtræk alle release notes-sektioner der er relevante for en opdatering.
 
-    Returnerer dem stacked med --- separator, ældste øverst — klar til at vise
-    som en sammenhængende upgrade-log fra nuværende til nyeste version.
-    Fallback til kun latest_version-sektionen hvis ingen sektioner er i intervallet.
+    Når en opdatering er tilgængelig: alle sektioner nyere end current_version
+    og op til (og med) latest_version, ældste øverst.
+
+    Når portalen er à jour (current == latest): vis sektionen for den aktuelle
+    version (matcher på 3-parts semver — håndterer debug-builds som 5.7.4.5
+    der matcher ## [5.7.4]).
     """
-    import re
-
     current = _parse_semver(current_version)
     latest  = _parse_semver(latest_version)
 
-    # Split på ## [ for at finde alle sektioner
-    # Regex: hver sektion starter ved ## [ og løber til næste ## [ eller EOF
-    section_re = re.compile(r'(## \[\d+\.\d+\.\d+\][^\n]*(?:\n(?!## \[).*)*)', re.MULTILINE)
-    all_sections = section_re.findall(md_text)
+    all_sections = _split_release_sections(md_text)
 
-    relevant: list[tuple[tuple[int, int, int], str]] = []
-    for section in all_sections:
-        m = re.match(r'## \[(\d+\.\d+\.\d+)\]', section)
-        if not m:
-            continue
-        v = _parse_semver(m.group(1))
-        if current < v <= latest:
-            relevant.append((v, section.strip()))
+    # Sektioner der er nyere end current og op til latest (eksklusiv current, inklusiv latest)
+    relevant = [(v, s) for v, s in all_sections if current < v <= latest]
 
-    if not relevant:
-        return _extract_release_section(md_text, latest_version)
+    if relevant:
+        relevant.sort(key=lambda x: x[0])
+        return "\n\n---\n\n".join(s for _, s in relevant)
 
-    # Sorter ældste øverst
-    relevant.sort(key=lambda x: x[0])
-    return "\n\n---\n\n".join(s for _, s in relevant)
+    # Fallback — vis sektionen for den version vi er på (3-parts semver-match,
+    # håndterer debug-builds: 5.7.4.5 → finder ## [5.7.4])
+    target = latest if latest != (0, 0, 0) else current
+    for v, section in all_sections:
+        if v == target:
+            return section
+    return ""
 
 
 def _github_branch() -> str:

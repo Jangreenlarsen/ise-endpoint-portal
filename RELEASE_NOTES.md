@@ -4,6 +4,20 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.7.6] — 2026-05-23 — Update-check: release notes vises altid
+
+### Release notes vises også når portalen er à jour
+
+Tidligere viste update-check ingen release notes, hvis portalen allerede kørte den nyeste version — og fejlede stille for debug-builds (f.eks. `5.7.4.5` fandt ikke `## [5.7.4]`).
+
+**Rettelser:**
+- Backend (`update_service.py`): fallback matcher nu på 3-parts semver. En debug-build som `5.7.4.5` finder korrekt sektionen `## [5.7.4]` i RELEASE_NOTES.md.
+- Når portalen **er à jour**: vises release notes for den installerede version (hvad er nyt her).
+- Når en **opdatering er tilgængelig**: alle sektioner fra installeret version op til den nye version vises — ældstet til nyest.
+- Frontend: range-label bruger base-version (`5.7.4`, ikke `5.7.4.5`) for korrekt `vX.Y.Z → vA.B.C`-visning.
+
+---
+
 ## [5.7.5] — 2026-05-23 — Skabelon gem/anvend i Browse-Edit og Registrering
 
 ### Gem endpoint som skabelon (Browse-Edit)
