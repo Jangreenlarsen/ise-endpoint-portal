@@ -4,6 +4,16 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.7.9] — 2026-05-23 — Privat MAC tæller i endpoint-oversigt
+
+Endpoint-tælleren øverst i Browse viser nu antal privat/LAA MAC-adresser som et amber badge:
+
+`59 / 59 endpoints  [3 privat]`
+
+Tællingen følger det aktive filter — viser kun LAA-count for de endpoints der aktuelt er i view. Vises ikke hvis der ingen private MACs er.
+
+---
+
 ## [5.7.8] — 2026-05-23 — Privat MAC-adresse fremhævning
 
 Portalen markerer nu automatisk Locally Administered Addresses (LAA) — private eller randomiserede MAC-adresser. Første octet i MAC-kolonnen fremhæves med amber/gul baggrund og fed skrift, når bit 1 i første byte er sat.

@@ -112,6 +112,16 @@ export function initTable(container, state, api, cb) {
     return !isNaN(firstOctet) && (firstOctet & 0x02) !== 0;
   }
 
+  function countLAA(rows) {
+    return rows.filter(r => isLocallyAdministered(r.mac || r.name)).length;
+  }
+
+  function laaTag(rows) {
+    const n = countLAA(rows);
+    if (!n) return "";
+    return ` <span class="laa-count" title="Privat / Lokalt administreret MAC (LAA)">${n} privat</span>`;
+  }
+
   function macDisplayHtml(mac) {
     if (!mac) return "";
     if (!isLocallyAdministered(mac)) return esc(mac);
@@ -540,18 +550,21 @@ export function initTable(container, state, api, cb) {
       renderRows(pageRows);
       updatePaginationUI();
       if (cb.hasActiveFilterText() || state.portalOnly) {
-        countEl.textContent = t("browse.filtered_info")
+        countEl.innerHTML = t("browse.filtered_info")
           .replace("{filtered}", filtered.length)
-          .replace("{all}", state.allRows.length);
+          .replace("{all}", state.allRows.length)
+          + laaTag(filtered);
       } else {
-        countEl.textContent = t("browse.all_info").replace("{n}", state.allRows.length);
+        countEl.innerHTML = t("browse.all_info").replace("{n}", state.allRows.length)
+          + laaTag(state.allRows);
       }
     } else {
       renderRows(state.allRows);
       updatePaginationUI();
-      countEl.textContent = t("browse.server_info")
+      countEl.innerHTML = t("browse.server_info")
         .replace("{n}", state.allRows.length)
-        .replace("{total}", state.totalEndpoints);
+        .replace("{total}", state.totalEndpoints)
+        + laaTag(state.allRows);
     }
   }
 

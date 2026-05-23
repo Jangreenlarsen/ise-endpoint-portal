@@ -669,6 +669,22 @@ td.mac-cell.cache-stale {
   color: #fbbf24;
 }
 
+/* LAA-tæller i endpoint-count-linjen */
+.laa-count {
+  display: inline-block;
+  background: #f59e0b;
+  color: #1a1a1a;
+  border-radius: 10px;
+  padding: 0 7px;
+  font-size: 0.78em;
+  font-weight: 700;
+  vertical-align: middle;
+  margin-left: 6px;
+}
+[data-theme="dark"] .laa-count    { background: #b45309; color: #fef3c7; }
+[data-theme="midnight"] .laa-count { background: #92400e; color: #fde68a; }
+[data-theme="slate"] .laa-count   { background: #d97706; color: #1e1b4b; }
+
 /* Locally Administered Address (privat/randomiseret MAC) — fremhæv første octet */
 .mac-laa {
   background: #f59e0b;

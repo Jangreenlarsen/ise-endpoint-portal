@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.7.9 build 0507] — 2026-05-23 — feat: antal privat/LAA MAC vises i endpoint-tæller
+
+**Berørte filer:**
+- `frontend/js/views/browse-table.js` — `countLAA(rows)` og `laaTag(rows)` helpers; alle tre `countEl`-paths bruger nu `innerHTML` og tilføjer amber badge med antal LAA-MACs
+- `frontend/css/styles.css` — `.laa-count` pill-badge (amber, alle temaer)
+
 ## [5.7.8.1 build 0506] — 2026-05-23 — debug: Cache-Control no-store på JS/CSS — tvinger browser til altid indlæse ny kode
 
 **Berørte filer:**
