@@ -9,7 +9,15 @@ Alle nye features registreres her FØR implementering påbegyndes.
 
 ## Planlagt / Under implementering
 
+- `[done 5.7.12 b0512] 2026-05-23 — Skabelon apply sætter description til "Templet [navn]"` — Når en skabelon anvendes i Browse/Edit-modal eller Registrering, overskrives description-feltet automatisk med `Templet <skabelonnavn>`. Gør det let at se hvilken skabelon der er brugt på et endpoint. **Berørte lag:** `frontend/js/views/browse-detail.js`, `frontend/js/views/register.js`.
+
+- `[done 5.7.9 b0507] 2026-05-23 — Privat/LAA MAC tæller i endpoint-oversigt` — Endpoint-tælleren viser amber pill-badge med totalt antal private/LAA MAC-adresser i databasen. Tællingen hentes fra `GET /api/endpoints/stats` ved sideindlæsning og er konstant uanset aktivt filter. **Berørte lag:** `backend/app/api/endpoints.py`, `frontend/js/api.js`, `frontend/js/views/browse-table.js`, `frontend/css/styles.css`.
+
 - `[done 5.7.8 b0505] 2026-05-23 — Privat/LAA MAC-adresse detektion og fremhævning` — Browser-tabel detekterer Locally Administered Address (bit 1 i første octet sat). Første octet fremhæves med amber/gul baggrund (`<span class="mac-laa">`) direkte i MAC-celle. Alle temaer understøttet (light/dark/midnight/slate). **Berørte lag:** `frontend/js/views/browse-table.js`, `frontend/css/styles.css`.
+
+- `[done 5.7.7 b0499] 2026-05-23 — Første gang set: dato + 24-timers tidsfilter` — Filterpanelet for "Første gang set" understøtter nu præcist klokkeslæt (HH:MM) ud over dato. Separate `date`- og `text`-inputfelter sikrer 24-timers format uanset Windows-sprogindstilling. Til-grænsen inkluderer hele det valgte minut (+ 59 sek). **Berørte lag:** `frontend/js/views/browse.js`, `frontend/js/views/browse-filter.js`, `frontend/css/styles.css`.
+
+- `[done 5.7.7.3 b0502] 2026-05-23 — TACACS shadow user: præferencer og gemte views` — Ved vellykket TACACS-login oprettes/opdateres automatisk et `tacacs_shadow`-record i `users.json`. Rolle og rettigheder synkroniseres fra operatørprofilen ved hvert login. Shadow-records er ikke synlige i admin-UI. Sikrer at TACACS-brugere kan gemme præferencer og views på samme måde som lokale brugere. **Berørte lag:** `backend/app/services/user_service.py`, `backend/app/schemas/user.py`.
 
 - `[done 5.7.5 b0497] 2026-05-23 — Skabelon gem/anvend i Browse-Edit og Registrering` — Browse-Edit detail modal: "Gem som skabelon"-knap samler formfelter (gruppe, beskrivelse, type, owner, lokation, VLAN, ACL, platform, PSK_Mode — ALDRIG PSK_Key) og kalder `POST /api/templates`. "Anvend skabelon"-dropdown henter alle skabeloner og udfylder formularen; hvis PSK_Mode er aktivt i skabelon, promptes brugeren for PSK-nøgle. Registreringssiden: editor/admin kan også gemme som skabelon og alle roller med skabelon-adgang kan anvende den. **Berørte lag:** `frontend/js/views/browse.js`, `frontend/js/views/browse-detail.js`, `frontend/js/views/register.js`, `frontend/js/i18n.js`, `frontend/css/styles.css`.
 

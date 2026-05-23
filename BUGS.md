@@ -9,6 +9,16 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 - **Årsag:** Admin-stien i `list_endpoint_details` sendte `size=500` direkte til ISE ERS API der kun accepterer max 100 per side.
 - **Fix:** Når cache er varm, bruger admin-stien nu `_list_all_from_cache()` der paginerer i Python uden ISE-kald. Kold-cache-fallback caps `size` til 100.
 
+## [FIXED 5.7.10.2 b0510] 2026-05-23 — /endpoints/stats returnerede 0 — Pydantic-objekt har ikke .get()
+- **Symptom:** LAA-badge viste intet.
+- **Årsag:** `cached_entry.value` er `EndpointDetail` (Pydantic) — `ep.get("mac")` kaster `AttributeError`. Frontend slugte fejlen stille → `state.laaTotal = null`.
+- **Fix:** `isinstance(ep, dict)` afgør om `.get()` eller `getattr()` bruges.
+
+## [FIXED 5.7.10.1 b0509] 2026-05-23 — /endpoints/stats fejlede — EndpointCache har ingen .values()
+- **Symptom:** LAA-badge forsvandt.
+- **Årsag:** `get_cache().values()` — `EndpointCache` er ikke et dict og har ingen `.values()`-metode → `AttributeError`.
+- **Fix:** Rettes til `cache._details.values()` (intern `dict[str, CachedEntry]`).
+
 ## [FIXED 5.7.8.1 b0506] 2026-05-23 — Browser cacher JS/CSS — nye features indlæses ikke uden hard refresh
 - **Symptom:** Nye frontend-ændringer (f.eks. LAA MAC-fremhævning) vises ikke i browseren selv efter genstart af backend.
 - **Årsag:** FastAPI `StaticFiles` sender ingen `Cache-Control` headers → browseren cacher `.js` og `.css` på ubestemt tid.
@@ -38,7 +48,6 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 - **Symptom:** Alle endpoints returnerede fejl ved batch-simulering.
 - **Årsag:** `batch_simulate` i `policy.py` brugte `result.matched_rule` og `result.matched_profile` — de korrekte feltnavne er `matched_rule_name` og `profiles` (liste).
 - **Fix:** `backend/app/api/policy.py` — rettet til `result.matched_rule_name` og `", ".join(result.profiles)`. `matched`-check opdateret tilsvarende. Løst i v5.6.25.
-**Status**: `open` · `investigating` · `fixed`
 
 ---
 
