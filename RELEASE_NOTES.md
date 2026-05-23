@@ -4,6 +4,17 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.7.7] — 2026-05-23 — Første gang set: filtrér på præcist tidspunkt
+
+Filterpanelet under "Første gang set"-kolonnen bruger nu `datetime-local`-input. Du kan angive **dato OG klokkeslæt** (timer/minutter) for både fra- og til-grænsen.
+
+- Fra: eksakt starttidspunkt (f.eks. `20-05-2026 06:00`)
+- Til: inklusive til og med slut-minuttet (+ 59 sek) — vælger du `23-05-2026 17:30` inkluderes endpoints set frem til `17:30:59`
+
+Browseren åbner en native dato+tid-dialog med separate felter for dag, måned, år, time og minut.
+
+---
+
 ## [5.7.6] — 2026-05-23 — Update-check: release notes vises altid
 
 ### Release notes vises også når portalen er à jour

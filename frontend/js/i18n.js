@@ -179,8 +179,8 @@ const TRANSLATIONS = {
     "col.roles":        "System adm",
     "col.create_time":  "Alder",
     "col.first_seen":   "Første gang set",
-    "filter.first_seen_from": "Fra dato",
-    "filter.first_seen_to":   "Til dato",
+    "filter.first_seen_from": "Fra dato/tid",
+    "filter.first_seen_to":   "Til dato/tid",
     "col.nas":          "NAS",
     "col.ise_session":  "ISE Session Auth",
 
@@ -1232,8 +1232,8 @@ const TRANSLATIONS = {
     "col.roles":        "System adm",
     "col.create_time":  "Age",
     "col.first_seen":   "First seen",
-    "filter.first_seen_from": "From date",
-    "filter.first_seen_to":   "To date",
+    "filter.first_seen_from": "From date/time",
+    "filter.first_seen_to":   "To date/time",
     "col.nas":          "NAS",
     "col.ise_session":  "ISE Session Auth",
 

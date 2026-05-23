@@ -97,7 +97,7 @@ export function initFilter(container, state, api, cb) {
     const fsFromVal = fsFrom?.value; const fsToVal = fsTo?.value;
     if (fsFromVal || fsToVal) {
       const fromTs = fsFromVal ? new Date(fsFromVal).getTime() / 1000 : 0;
-      const toTs   = fsToVal   ? (new Date(fsToVal).getTime() / 1000 + 86399) : Infinity;
+      const toTs   = fsToVal   ? (new Date(fsToVal).getTime() / 1000 + 59) : Infinity;
       rows = rows.filter((r) => {
         const ts = r.first_seen_at || 0;
         return ts >= fromTs && ts <= toTs;

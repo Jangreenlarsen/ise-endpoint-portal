@@ -538,6 +538,7 @@ button.small {
 }
 .first-seen-date {
   width: 100%;
+  min-width: 130px;
   padding: 0.2rem 0.25rem;
   font-size: 0.72rem;
   border: 1px solid #d1d5db;

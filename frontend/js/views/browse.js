@@ -104,8 +104,8 @@ export async function renderBrowse(container) {
                       </select>`
                     : c.key === "first_seen"
                       ? `<div class="first-seen-filter-wrap">
-                          <input type="date" id="first-seen-from" class="first-seen-date" title="${t("filter.first_seen_from")}" />
-                          <input type="date" id="first-seen-to" class="first-seen-date" title="${t("filter.first_seen_to")}" />
+                          <input type="datetime-local" id="first-seen-from" class="first-seen-date" title="${t("filter.first_seen_from")}" />
+                          <input type="datetime-local" id="first-seen-to"   class="first-seen-date" title="${t("filter.first_seen_to")}" />
                         </div>`
                       : `<input type="text" class="col-filter-input" data-col="${c.key}" placeholder="…" />`}
                 </th>`).join("")}

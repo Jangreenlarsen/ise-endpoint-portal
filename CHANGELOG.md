@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.7.7 build 0499] — 2026-05-23 — feat: first-seen filter bruger datetime-local (dato + tid)
+
+**Berørte filer:**
+- `frontend/js/views/browse.js` — `type="date"` → `type="datetime-local"` for begge first-seen filter inputs
+- `frontend/js/views/browse-filter.js` — end-timestamp: `+ 86399` → `+ 59` (afrund til slutning af valgt minut)
+- `frontend/css/styles.css` — `.first-seen-date` min-width 130px for datetime-local
+- `frontend/js/i18n.js` — tooltip: "Fra dato" → "Fra dato/tid" (da + en)
+
 ## [5.7.6 build 0498] — 2026-05-23 — fix: update-check viser altid release notes (3-parts semver fallback + à-jour-visning)
 
 **Berørte filer:**
