@@ -240,15 +240,21 @@ class PrewarmWorker:
             cache = get_cache()
 
             # Invalider endpoints slettet fra ISE siden sidst scan
+            from app.core import first_seen_store
             ise_ids_set = set(all_ids)
             cached_ids_set = set(cache.detail_ids())
             deleted_ids = cached_ids_set - ise_ids_set
             for ep_id in deleted_ids:
+                entry = cache._details.get(ep_id)
+                if entry and entry.value:
+                    mac = getattr(entry.value, "mac", None) or getattr(entry.value, "name", None)
+                    if mac:
+                        first_seen_store.delete(mac)
                 cache.invalidate_detail(ep_id)
             self.status.deleted = len(deleted_ids)
             if deleted_ids:
                 logger.info(
-                    "prewarm: %d endpoints slettet fra ISE — invalideret i cache",
+                    "prewarm: %d endpoints slettet fra ISE — invalideret i cache og first_seen ryddet",
                     len(deleted_ids),
                 )
 
