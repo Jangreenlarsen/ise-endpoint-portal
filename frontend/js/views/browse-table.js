@@ -228,6 +228,7 @@ export function initTable(container, state, api, cb) {
         authz_acl:     `<td data-col="authz_acl" class="authz-col"><select class="ca-authzacl">${optionsHtml(state.caValues.AuthzACL, r.authz_acl)}</select></td>`,
         roles:         `<td data-col="roles" class="roles-cell">${rolesChipsHtml(r.roles)}</td>`,
         create_time:   `<td data-col="create_time" class="age-cell" title="${esc(fmtDateTime(endpointCreateTime(r)))}">${esc(fmtRelativeAge(endpointCreateTime(r)))}</td>`,
+        first_seen:    `<td data-col="first_seen" class="age-cell">${esc(r.first_seen_at ? fmtDateTime(new Date(r.first_seen_at * 1000).toISOString()) : "—")}</td>`,
         nas:           `<td data-col="nas" class="nas-info-col">${nasInfoCellHtml(mac)}</td>`,
         ise_session:   `<td data-col="ise_session" class="ise-session-col">${iseSessionCellHtml(mac)}</td>`,
       };
