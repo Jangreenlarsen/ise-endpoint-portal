@@ -4,7 +4,21 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
-## [5.7.7] — 2026-05-23 — Første gang set: filtrér på præcist tidspunkt
+## [5.7.7] — 2026-05-23 — TACACS: præferencer og gemte views virker nu
+
+TACACS-brugere kan nu gemme præferencer og gemte views præcis som lokale brugere. Ved hvert vellykket TACACS-login opretter portalen automatisk et shadow-record i den lokale brugerdatabase — rolle og rettigheder synkroniseres fra operatørprofilen ved hvert login.
+
+- Ingen manuel konfiguration påkrævet
+- Shadow-records er ikke synlige i admin-bruger-oversigten
+- Hvis operatørprofilens rolle ændres i ISE, slår det igennem ved næste login
+
+### Første gang set: 24-timers klokkeslæt uden AM/PM
+
+Dato+tid-inputfelterne i "Første gang set"-filteret bruger nu `type="text"` med `HH:MM`-format frem for browserens native `datetime-local`. Det sikrer 24-timers visning uanset Windows-sprogindstilling.
+
+---
+
+## [5.7.6] — 2026-05-23 — Update-check: release notes vises altid
 
 Filterpanelet under "Første gang set"-kolonnen bruger nu `datetime-local`-input. Du kan angive **dato OG klokkeslæt** (timer/minutter) for både fra- og til-grænsen.
 

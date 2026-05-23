@@ -3,6 +3,11 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.7.7.3 build 0502] — 2026-05-23 — debug: TACACS shadow user — preferences og views virker nu
+
+**Berørte filer:**
+- `backend/app/services/user_service.py` — upsert af `user_type="tacacs_shadow"` record i `users.json` ved hvert vellykket TACACS-login; synkroniserer rolle, endpoint-roller og skabeloner fra operatørprofil
+
 ## [5.7.7.2 build 0501] — 2026-05-23 — debug: first-seen tid-input type=text HH:MM (fix AM/PM)
 
 **Berørte filer:**

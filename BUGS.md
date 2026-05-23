@@ -4,6 +4,11 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 5.7.7.3 b0502] 2026-05-23 — TACACS-brugere fik HTTP 404 ved gem af præferencer/views
+- **Symptom:** TACACS-brugere fik 404-fejl når de forsøgte at gemme præferencer eller gemte views, fordi `users.json` ikke havde en post for dem.
+- **Årsag:** TACACS-login oprettede et syntetisk `User`-objekt med `id=f"tacacs:{username}"` men gemte det aldrig til `users.json`. Alle præference- og view-endpoints slår brugeren op via `find_by_id()` → returnerede `None` → 404.
+- **Fix:** `user_service.py` `login()` upsert'er nu et shadow-record med `user_type="tacacs_shadow"` i `users.json` ved hvert vellykket TACACS-login. Rolle, endpoint-roller og skabeloner synkroniseres fra operatørprofilen ved hvert login.
+
 ## [FIXED] 2026-05-21 — selektion af endpoints nulstilles ved automatisk portal-opdatering
 - **Symptom:** Valgte endpoints (checkbokse) blev fravalgt efter kort tid, selv uden bruger-interaktion.
 - **Årsag:** pxGrid `endpoint_changed`-events trigerede `scheduleEndpointReload()` → `cb.load()` → `renderRows()` som sætter `tbody.innerHTML` og dermed erstatter alle DOM-elementer inkl. checkbokse. Selektion var ikke gemt nogen steder og gik tabt.

@@ -509,6 +509,33 @@ def login(payload: LoginRequest) -> LoginResponse:
                 assigned_endpoint_roles=endpoint_roles,
                 assigned_templates=assigned_templates,
             )
+            # Upsert shadow record so preferences/views/saved-searches work for TACACS users
+            shadow_id = f"tacacs:{payload.username}"
+            shadow = find_by_id(users, shadow_id)
+            if shadow is None:
+                shadow = {
+                    "id": shadow_id,
+                    "username": payload.username,
+                    "password_hash": "",
+                    "user_type": "tacacs_shadow",
+                    "role": effective_role,
+                    "created_at": _now_iso(),
+                    "last_login": _now_iso(),
+                    "assigned_endpoint_roles": endpoint_roles,
+                    "assigned_templates": assigned_templates,
+                    "saved_views": [],
+                    "prefs": {},
+                }
+                users.append(shadow)
+                logger.info("tacacs shadow user created: %s role=%s", shadow_id, effective_role)
+            else:
+                shadow["role"] = effective_role
+                shadow["assigned_endpoint_roles"] = endpoint_roles
+                shadow["assigned_templates"] = assigned_templates
+                shadow["last_login"] = _now_iso()
+                logger.info("tacacs shadow user updated: %s role=%s", shadow_id, effective_role)
+            save_users(users)
+
             logger.info(
                 "tacacs login: user=%s profile=%s role=%s",
                 payload.username,
