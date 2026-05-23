@@ -4,6 +4,11 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 5.7.8.1 b0506] 2026-05-23 — Browser cacher JS/CSS — nye features indlæses ikke uden hard refresh
+- **Symptom:** Nye frontend-ændringer (f.eks. LAA MAC-fremhævning) vises ikke i browseren selv efter genstart af backend.
+- **Årsag:** FastAPI `StaticFiles` sender ingen `Cache-Control` headers → browseren cacher `.js` og `.css` på ubestemt tid.
+- **Fix:** `SecurityHeadersMiddleware` i `main.py` sætter nu `Cache-Control: no-store` på alle `.js`- og `.css`-svar.
+
 ## [FIXED 5.7.7.5 b0504] 2026-05-23 — TACACS login brudt efter shadow-user introduceret (is_admin_user fejlklassificering)
 - **Symptom:** TACACS-brugere med admin-rolle (f.eks. "adm") fik `login_failed bad_credentials` — ISE modtog aldrig TACACS-auth-forespørgslen.
 - **Årsag:** Shadow-record (`username="adm"`, `role="admin"`, `user_type="tacacs_shadow"`) matchede `find_by_username`. Gammel check `user_type != "operator"` klassificerede shadow som lokal admin → `is_admin_user=True` → TACACS springes over → lokal auth fejler med `password_hash=""`.

@@ -3,6 +3,11 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.7.8.1 build 0506] — 2026-05-23 — debug: Cache-Control no-store på JS/CSS — tvinger browser til altid indlæse ny kode
+
+**Berørte filer:**
+- `backend/app/main.py` — `SecurityHeadersMiddleware` sætter nu `Cache-Control: no-store` på alle `.js`- og `.css`-svar, så browseren aldrig cacher statiske filer
+
 ## [5.7.8 build 0505] — 2026-05-23 — feat: privat MAC-adresse (LAA) fremhævning i browse-tabel
 
 **Berørte filer:**

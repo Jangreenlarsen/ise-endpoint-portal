@@ -206,6 +206,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next) -> Response:
         response = await call_next(request)
+        # Ingen browser-caching af JS/CSS — sikrer at nye versioner altid indlæses
+        if request.url.path.endswith((".js", ".css")):
+            response.headers["Cache-Control"] = "no-store"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "same-origin"
