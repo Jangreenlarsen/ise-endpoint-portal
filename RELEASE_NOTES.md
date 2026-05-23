@@ -4,6 +4,18 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.8.0] — 2026-05-23 — Trend Analyse: endpoint bevægelser og private MACs over tid
+
+Nyt **Trend Analyse**-view i sidebaren (under Overvågning). Viser:
+
+- **Endpoint tilgang og fragang** — dagligt linjediagram med tilgang (grøn), fragang (rød) og netto ændring (blå)
+- **Private MAC-adresser (LAA)** — dagligt linjediagram med LAA-tilgang og -fragang
+- **Stat-kort** — snapshot: total endpoints, antal private MACs, LAA-%, periode-summer
+
+Periode-vælger: 7 dage / 30 dage / 90 dage / 1 år. Data hentes fra audit-loggen uden eksterne chart-afhængigheder (ren SVG).
+
+---
+
 ## [5.7.12] — 2026-05-23 — Skabelon: description sættes automatisk ved anvendelse
 
 Når du anvender en skabelon i Browse/Edit-modal eller på Registreringssiden, sættes description-feltet automatisk til `Templet [skabelonnavn]`. Dette gør det nemt at se hvilken skabelon der er brugt på et endpoint.

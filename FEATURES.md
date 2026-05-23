@@ -9,6 +9,8 @@ Alle nye features registreres her FØR implementering påbegyndes.
 
 ## Planlagt / Under implementering
 
+- `[done 5.8.0 b0513] 2026-05-23 — Trend Analyse: tilgang/fragang og private MACs over tid` — Nyt "Trend Analyse"-view i sidebaren viser daglige endpoint-bevægelser (tilgang, fragang, netto) og private MAC (LAA) tilgang/fragang som SVG-linjediagrammer. Periode-vælger: 7d/30d/90d/365d. Stat-kort øverst viser snapshot: total endpoints, nuværende LAA-count og periode-summer. Backend henter data fra audit_events-tabellen. **Berørte lag:** `backend/app/api/trends.py`, `backend/app/main.py`, `frontend/js/api.js`, `frontend/js/views/trends.js`, `frontend/js/app.js`, `frontend/index.html`.
+
 - `[done 5.7.12 b0512] 2026-05-23 — Skabelon apply sætter description til "Templet [navn]"` — Når en skabelon anvendes i Browse/Edit-modal eller Registrering, overskrives description-feltet automatisk med `Templet <skabelonnavn>`. Gør det let at se hvilken skabelon der er brugt på et endpoint. **Berørte lag:** `frontend/js/views/browse-detail.js`, `frontend/js/views/register.js`.
 
 - `[done 5.7.9 b0507] 2026-05-23 — Privat/LAA MAC tæller i endpoint-oversigt` — Endpoint-tælleren viser amber pill-badge med totalt antal private/LAA MAC-adresser i databasen. Tællingen hentes fra `GET /api/endpoints/stats` ved sideindlæsning og er konstant uanset aktivt filter. **Berørte lag:** `backend/app/api/endpoints.py`, `frontend/js/api.js`, `frontend/js/views/browse-table.js`, `frontend/css/styles.css`.

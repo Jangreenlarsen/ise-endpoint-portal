@@ -3,6 +3,30 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.8.0 build 0514] — 2026-05-23 — feat: Trend Analyse — endpoint tilgang/fragang og private MACs
+
+**Nyt view: Trend Analyse** tilgængeligt via sidebar under Overvågning.
+
+**Berørte filer:**
+- `backend/app/api/trends.py` (ny) — `GET /api/trends?period=7d|30d|90d|365d` spørger audit-loggen for endpoint create/delete-events og returnerer daglige tæller inkl. LAA-klassifikation
+- `backend/app/main.py` — registrerer `trends_api.router`
+- `frontend/js/api.js` — tilføjer `api.getTrends(period)`
+- `frontend/js/views/trends.js` (ny) — SVG-linjediagrammer uden eksterne afhængigheder; to charts (endpoint-bevægelse + LAA-bevægelse) + stat-kort
+- `frontend/js/app.js` — tilføjer `trends`-rute (alle roller undtagen registrant)
+- `frontend/index.html` — nav-link "Trend Analyse" under Overvågning
+
+## [5.7.13 build 0513] — 2026-05-23 — sec: Security Patch 3 — XSS, CSP, lockout, input-validering, ACL
+
+**Sikkerheds-patch (7 fixes implementeret fra dyb sikkerhedsanalyse):**
+
+- `frontend/js/app.js` — importerer `esc()` og bruger den på `user.role` i innerHTML (XSS-fix)
+- `backend/app/main.py` — CSP `script-src` fjerner `'unsafe-inline'`; tilføjer SECURITY-advarsler ved opstart for TLS=false og dev-CORS-origins
+- `backend/app/core/settings_store.py` — Windows ACL enforcement via `icacls` (svarende til chmod 600 på Unix)
+- `backend/app/core/lockout_store.py` — **ny fil**: persistent SQLite-baseret account lockout (overlever backend-genstart)
+- `backend/app/services/user_service.py` — bruger `lockout_store` i stedet for in-memory dicts
+- `backend/app/api/endpoints.py` — `search` max_length=500; `page`/`size` valideret med ge/le
+- `backend/app/api/audit.py` — `search`, `actor`, `resource_type`, `resource_id` begrænset med max_length
+
 ## [5.7.12 build 0512] — 2026-05-23 — feat: apply skabelon sætter description til "Templet [navn]"
 
 **Berørte filer:**
