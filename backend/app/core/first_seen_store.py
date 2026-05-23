@@ -39,6 +39,9 @@ def record(mac: str, endpoint_id: str = "") -> float:
 
     Returnerer always first_seen_at — enten den eksisterende record
     eller det netop indsatte tidspunkt.
+
+    Hvis endpoint_id er ændret for samme MAC (slettet og genskabt i ISE),
+    nulstilles tidsstemplet så endpointet behandles som nyt.
     """
     mac = (mac or "").upper().strip()
     if not mac:
@@ -46,15 +49,26 @@ def record(mac: str, endpoint_id: str = "") -> float:
     now = time.time()
     con = sqlite3.connect(DB_PATH)
     try:
-        con.execute(
-            "INSERT OR IGNORE INTO first_seen (mac, first_seen_at, endpoint_id) VALUES (?, ?, ?)",
-            (mac, now, endpoint_id),
-        )
-        con.commit()
         row = con.execute(
-            "SELECT first_seen_at FROM first_seen WHERE mac = ?", (mac,)
+            "SELECT first_seen_at, endpoint_id FROM first_seen WHERE mac = ?", (mac,)
         ).fetchone()
-        return row[0] if row else now
+        if row is None:
+            con.execute(
+                "INSERT INTO first_seen (mac, first_seen_at, endpoint_id) VALUES (?, ?, ?)",
+                (mac, now, endpoint_id),
+            )
+            con.commit()
+            return now
+        existing_ts, existing_id = row
+        if endpoint_id and existing_id and existing_id != endpoint_id:
+            # Samme MAC men nyt ISE endpoint_id → slettet og genskabt i ISE
+            con.execute(
+                "UPDATE first_seen SET first_seen_at = ?, endpoint_id = ? WHERE mac = ?",
+                (now, endpoint_id, mac),
+            )
+            con.commit()
+            return now
+        return existing_ts
     finally:
         con.close()
 
