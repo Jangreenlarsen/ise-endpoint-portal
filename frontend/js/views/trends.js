@@ -143,9 +143,12 @@ export async function renderTrends(container) {
   const refreshBtn = container.querySelector("#trend-refresh");
   const content = container.querySelector("#trend-content");
 
+  let _retryTimer = null;
+
   async function load() {
     const period = periodSel.value;
     content.innerHTML = `<div style="color:#6b7280;padding:2rem 0;">Henter data…</div>`;
+    if (_retryTimer) { clearTimeout(_retryTimer); _retryTimer = null; }
     try {
       const d = await api.getTrends(period);
       render(d);
@@ -155,13 +158,22 @@ export async function renderTrends(container) {
   }
 
   function render(d) {
-    const { labels, added, removed, net, laa_added, laa_removed, snapshot } = d;
+    const { labels, added, removed, net, laa_added, laa_removed, snapshot, no_audit_data } = d;
 
     // Sumér periode-totaler
     const totalAdded = added.reduce((s, v) => s + v, 0);
     const totalRemoved = removed.reduce((s, v) => s + v, 0);
     const netChange = totalAdded - totalRemoved;
     const totalLaaAdded = laa_added.reduce((s, v) => s + v, 0);
+
+    // Cache indlæses endnu — vis ventebesked og retry om 10s
+    if (snapshot.cache_loading) {
+      content.innerHTML = `<div class="alert info" style="margin-top:1rem;">
+        Endpoint-cachen indlæses fra ISE. Siden opdateres automatisk når data er klar…
+      </div>`;
+      _retryTimer = setTimeout(load, 10000);
+      return;
+    }
 
     // Stat-kort
     const stats = `<div style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1.25rem;">
@@ -172,6 +184,14 @@ export async function renderTrends(container) {
       ${statCard("LAA tilgang (periode)", "+" + totalLaaAdded, "private MACs oprettet", "#d97706")}
     </div>`;
 
+    // Forklarende note når der er endpoints i systemet men ingen audit-aktivitet i grafen
+    const auditNote = no_audit_data ? `
+      <div class="alert info" style="margin-bottom:1rem;font-size:.85rem;">
+        Graferne viser kun endpoints oprettet eller slettet <strong>via portalen</strong>.
+        Endpoints der eksisterede i ISE da portalen blev installeret, tæller ikke som "tilgang" i grafen.
+        Data opbygges løbende fra denne dato.
+      </div>` : "";
+
     // Chart 1: Endpoint bevægelse
     const chart1 = chartCard(
       "Endpoint tilgang og fragang",
@@ -180,7 +200,7 @@ export async function renderTrends(container) {
         { name: "Fragang",  color: "#dc2626", data: removed, fill: true },
         { name: "Netto",    color: "#2563eb", data: net },
       ]),
-      "Antal endpoints oprettet og slettet per dag i perioden."
+      "Antal endpoints oprettet og slettet per dag i perioden — via portalen."
     );
 
     // Chart 2: Private MAC bevægelse
@@ -193,7 +213,7 @@ export async function renderTrends(container) {
       "Locally Administered Address: bit 1 i første octet sat (f.eks. A2:xx, 06:xx). Indikerer randomiseret/privat MAC."
     );
 
-    content.innerHTML = stats + chart1 + chart2;
+    content.innerHTML = stats + auditNote + chart1 + chart2;
   }
 
   periodSel.addEventListener("change", load);

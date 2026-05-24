@@ -56,6 +56,7 @@ class PrewarmStatus:
     last_full_scan_at: float | None = None
     last_disk_save_at: float | None = None
     disk_loaded: int = 0
+    first_scan_done: bool = False
     last_error: str = ""
     hot_queue_size: int = 0
     started_at: float = 0.0
@@ -72,6 +73,11 @@ class PrewarmWorker:
         self._stop = asyncio.Event()
         self._hot: asyncio.Queue[str] = asyncio.Queue()
         self.status = PrewarmStatus()
+
+    @property
+    def cache_ready(self) -> bool:
+        """True når cachen er populeret fra disk eller første scan er færdig."""
+        return self.status.disk_loaded > 0 or self.status.first_scan_done
 
     def preload_disk_cache(self) -> None:
         """Indlæs disk-cachen synkront. Kald FØR start() i lifespan så
@@ -322,6 +328,7 @@ class PrewarmWorker:
 
             elapsed = time.time() - scan_start
             self.status.last_full_scan_at = time.time()
+            self.status.first_scan_done = True
             logger.info(
                 "prewarm: scan #%d færdig — %d fetched, %d skipped, %d slettet på %.1fs",
                 self.status.scan_number,
