@@ -3,6 +3,10 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.8.0.2 build 0521] — 2026-05-24 — debug: rettelse af version til debug-format (5.8.0.2)
+
+- `version.json` — version rettet til `5.8.0.2` (debug-serie), build til 0521
+
 ## [5.8.0 build 0520] — 2026-05-24 — fix: Trend Analyse afspejler nu alle ISE-endpoints, ikke kun portal-audit
 
 **Rodårsag:** Trend Analyse brugte `audit_events`-tabellen som datakilde — den registrerer kun portal-initierede handlinger. Endpoints oprettet direkte i ISE (uden om portalen) var usynlige og påvirkede aldrig graferne.
