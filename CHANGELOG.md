@@ -3,6 +3,11 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.8.0 build 0518] — 2026-05-24 — fix: git pull rettighedsfejl — bedre fejlbesked + dokumentation
+
+- `backend/app/services/update_service.py` — detekterer `insufficient permission`-fejl fra git fetch og returnerer klar fejlbesked med de to fix-kommandoer direkte i portal-UI'et
+- `UPDATE_PROCEDURE.md` — ny sektion: `.git/objects` rettighedsfejl med symptom og løsning
+
 ## [5.8.0 build 0517] — 2026-05-24 — feat: update-check viser RELEASE_{version}.md for main; udvidet markdown-renderer
 
 - `backend/app/services/update_service.py` — `check_github_version` henter nu `RELEASE_{version}.md` fra `main`-branch (standalone release note); fallback til RELEASE_NOTES.md-sektion; `dev`-branch uændret

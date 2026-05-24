@@ -171,6 +171,32 @@ systemctl restart hypervision
 
 ---
 
+### `git pull` fejler: `insufficient permission for adding an object to repository database`
+
+**Årsag:** Filrettigheder på `.git/objects`-mappen er forkerte — typisk opstår det hvis git-mappen er oprettet af én bruger men tilgås af en anden, eller efter en manuel kopiering af repo'et.
+
+**Symptom (i portalen eller terminal):**
+```
+error: insufficient permission for adding an object to repository database .git/objects
+fatal: failed to write object
+fatal: unpack-objects failed
+```
+
+**Løsning:**
+```bash
+find /opt/hypervision/.git/objects -type d -exec chmod 755 {} \;
+find /opt/hypervision/.git/objects -type f -exec chmod 644 {} \;
+```
+
+Herefter kan du køre git pull som normalt:
+```bash
+cd /opt/hypervision
+git pull origin main
+systemctl restart hypervision
+```
+
+---
+
 ### `git pull` fejler: `Permission denied`
 
 **Årsag:** Git-credentials er ikke sat op eller SSH-nøgle mangler.
