@@ -9,7 +9,7 @@ Denne guide beskriver hvordan portalen opdateres på produktionsserveren og hvor
 ```bash
 cd /opt/hypervision
 git pull origin main
-sudo systemctl restart hypervision
+systemctl restart hypervision
 ```
 
 Tjek at den starter korrekt:
@@ -40,7 +40,7 @@ cat /opt/hypervision/version.json
 ### 2. Stop service (valgfrit — git pull virker uden)
 
 ```bash
-sudo systemctl stop hypervision
+systemctl stop hypervision
 ```
 
 ### 3. Hent seneste kode
@@ -70,7 +70,7 @@ cd /opt/hypervision/backend
 ### 5. Genstart og tjek
 
 ```bash
-sudo systemctl restart hypervision
+systemctl restart hypervision
 journalctl -u hypervision -f -o short-precise
 ```
 
@@ -83,7 +83,7 @@ Tryk `Ctrl+C` for at stoppe log-visningen når du er tilfreds.
 ### Trin 1 — Tjek service-status
 
 ```bash
-sudo systemctl status hypervision
+systemctl status hypervision
 ```
 
 - `active (running)` → backend kører, fejlen er sandsynligvis i frontend/netværk
@@ -126,7 +126,7 @@ ERROR: Application startup failed. Exiting.
 ```bash
 cd /opt/hypervision
 git pull origin main
-sudo systemctl restart hypervision
+systemctl restart hypervision
 ```
 
 ---
@@ -158,7 +158,7 @@ cd /opt/hypervision
 git stash
 git pull origin main
 git stash pop
-sudo systemctl restart hypervision
+systemctl restart hypervision
 ```
 
 **Løsning — kassér lokale ændringer (pas på!):**
@@ -166,7 +166,7 @@ sudo systemctl restart hypervision
 cd /opt/hypervision
 git checkout -- .
 git pull origin main
-sudo systemctl restart hypervision
+systemctl restart hypervision
 ```
 
 ---
@@ -211,7 +211,7 @@ ImportError: No module named 'some_package'
 ```bash
 cd /opt/hypervision/backend
 /opt/hypervision/venv/bin/pip install -e . --quiet
-sudo systemctl restart hypervision
+systemctl restart hypervision
 ```
 
 ---
@@ -229,14 +229,14 @@ git log --oneline -10
 # Gå tilbage til forrige commit (erstat HASH med commit fra listen)
 git checkout HASH
 
-sudo systemctl restart hypervision
+systemctl restart hypervision
 ```
 
 For at komme frem igen:
 ```bash
 git checkout main
 git pull origin main
-sudo systemctl restart hypervision
+systemctl restart hypervision
 ```
 
 ---
@@ -245,10 +245,10 @@ sudo systemctl restart hypervision
 
 | Kommando | Formål |
 |----------|--------|
-| `sudo systemctl status hypervision` | Service-status |
-| `sudo systemctl restart hypervision` | Genstart |
-| `sudo systemctl stop hypervision` | Stop |
-| `sudo systemctl start hypervision` | Start |
+| `systemctl status hypervision` | Service-status |
+| `systemctl restart hypervision` | Genstart |
+| `systemctl stop hypervision` | Stop |
+| `systemctl start hypervision` | Start |
 | `journalctl -u hypervision -f` | Live log |
 | `journalctl -u hypervision -n 100 --no-pager` | Seneste 100 linjer |
 | `cat /opt/hypervision/version.json` | Nuværende version på server |
@@ -269,4 +269,4 @@ Hvis output er:
 ```
 Your branch is behind 'origin/main' by N commits
 ```
-...skal du køre `git pull origin main` + `sudo systemctl restart hypervision`.
+...skal du køre `git pull origin main` + `systemctl restart hypervision`.
