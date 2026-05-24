@@ -4,29 +4,186 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
-## [5.8.0] — 2026-05-23 — Trend Analyse + Security Patch 3
+## [5.8.0] — 2026-05-24 — Trend Analyse · Security Patch 3 · Stabilitets-fix
 
-### Trend Analyse: endpoint bevægelser og private MACs over tid
+> **Builds:** 0514 · 0515 · 0516 — release til `main` 2026-05-24
 
-Nyt **Trend Analyse**-view i sidebaren (under Overvågning). Viser:
+### Overblik
 
-- **Endpoint tilgang og fragang** — dagligt linjediagram med tilgang (grøn), fragang (rød) og netto ændring (blå)
-- **Private MAC-adresser (LAA)** — dagligt linjediagram med LAA-tilgang og -fragang
-- **Stat-kort** — snapshot: total endpoints, antal private MACs, LAA-%, periode-summer
+v5.8.0 er en feature + sikkerhed + stabilitets-release med tre hoveddele:
 
-Periode-vælger: 7 dage / 30 dage / 90 dage / 1 år. Data hentes fra audit-loggen uden eksterne chart-afhængigheder (ren SVG).
+| Del | Indhold |
+|-----|---------|
+| **Trend Analyse** | Nyt overvågningsview — endpoint bevægelser og private MACs over tid |
+| **Security Patch 3** | 7 sikkerheds-hardening-fixes fra dyb kodeanalyse |
+| **Stabilitets-fix** | Kritisk fix der forhindrer portal-crash ved startup |
 
-### Security Patch 3 (7 sikkerheds-fixes)
+---
 
-| Fix | Komponent | Detalje |
-|-----|-----------|---------|
-| XSS-fix | Frontend `app.js` | `user.role` escaped med `esc()` ved innerHTML-indsætning |
-| CSP hardening | Backend `main.py` | `script-src` fjerner `unsafe-inline` |
-| Opstartsadvarsler | Backend `main.py` | SECURITY WARNING ved TLS=false og dev-CORS-origins i log |
-| Windows ACL | `settings_store.py` | `icacls` begræns `config.json` til aktuel bruger |
-| Persistent lockout | Ny `lockout_store.py` | Account lockout i SQLite — overlever backend-genstart |
-| Input-validering | `endpoints.py` | `search` max 500 tegn; `page`/`size` valideret |
-| Input-validering | `audit.py` | `search`, `actor`, `resource_type`, `resource_id` max_length |
+### Trend Analyse (build 0514)
+
+Nyt **Trend Analyse**-view i sidebaren under *Overvågning* — tilgængeligt for alle roller undtagen registrant.
+
+**Endpoint bevægelsesdiagram**
+Dagligt linjediagram der viser tilgang (grøn), fragang (rød) og netto ændring (blå) over den valgte periode.
+
+**Private MAC-diagram (LAA)**
+Dagligt linjediagram med tilgang og fragang af Locally Administered Addresses — hjælper med at spore omfanget af MAC-randomisering i netværket.
+
+**Stat-kort**
+Snapshot øverst på siden: totalt antal endpoints, antal private MACs, LAA-procent og periode-summer (til/fra).
+
+**Periode-vælger:** 7 dage · 30 dage · 90 dage · 1 år
+
+Data hentes fra audit-loggen. Ingen eksterne chart-afhængigheder — alt er ren SVG.
+
+---
+
+### Security Patch 3 (build 0515)
+
+Dyb sikkerhedsanalyse af kodebasen afslørde 7 fund der er rettet i dette patch.
+
+| # | Kategori | Komponent | Fix |
+|---|----------|-----------|-----|
+| 1 | XSS | Frontend `app.js` | `user.role` escaped med `esc()` ved `innerHTML`-indsætning — forhindrer role-name XSS |
+| 2 | CSP hardening | Backend `main.py` | `script-src 'unsafe-inline'` fjernet — inline script-execution blokeres af browser |
+| 3 | Opstartsadvarsler | Backend `main.py` | `SECURITY WARNING` i log ved `ISE_VERIFY_TLS=false` og ved dev-CORS-origins i produktion |
+| 4 | Windows ACL | `settings_store.py` | `icacls` begrænser `config.json` til aktuel Windows-bruger (svarende til Unix `chmod 600`) |
+| 5 | Persistent lockout | Ny `lockout_store.py` | Account lockout gemmes nu i SQLite — overlever backend-genstart og serverops |
+| 6 | Input-validering | `endpoints.py` | `search` max 500 tegn; `page` og `size` valideret med `ge`/`le`-grænser |
+| 7 | Input-validering | `audit.py` | `search`, `actor`, `resource_type`, `resource_id` begrænset med `max_length` |
+
+---
+
+### Stabilitets-fix: lockout_store startup-crash (build 0516)
+
+**Baggrund:** Security Patch 3 introducerede `lockout_store.py` (persistent lockout i SQLite). En race condition under deployment betød at serveren kørte en version af `main.py` der importerede `lockout_store`, men uden at `lockout_store.py` endnu var hentet — dette crashede portalen i en restart-løkke.
+
+**Rodårsager rettet i b0516:**
+
+- `init_lockout_db()` var ikke i `try-except` — enhver DB-fejl ved startup crashede hele FastAPI-appen
+- `lockout_store` brugte samme `audit.db` som audit-systemet — write-lock-konflikt ved samtidige startup-operationer
+- `sqlite3.connect()` uden timeout — concurrent logins kunne give `"database is locked"`-fejl
+
+**Designændringer:**
+
+- `lockout_store.py` bruger nu dedikeret `lockout.db` (adskilt fra `audit.db`)
+- Alle DB-funktioner er `try-except`-wrapped med sikre standard-returværdier
+- `_available`-flag: hvis DB-initialisering fejler, degrader portalen stille til in-memory lockout (ingen crash)
+- `conn.close()` garanteret i `finally`-blok på alle connections
+- `timeout=10` på alle `sqlite3.connect()`-kald
+- `init_lockout_db()` i `main.py` wrapped i `try-except` med `warning`-log — portalen starter altid uanset lockout DB-fejl
+
+---
+
+### Opgradering
+
+Normal procedure — pull + genstart:
+
+```bash
+cd /opt/hypervision
+git pull origin main
+systemctl restart hypervision
+journalctl -u hypervision -f -o short-precise
+```
+
+Vellykket opstart viser:
+```
+INFO  HyperVision ISE Portal v5.8.0 build 0516 starting
+INFO  lockout_store: initialiseret (/.../lockout.db)
+INFO  Application startup complete.
+```
+
+Nye filer der oprettes automatisk: `backend/lockout.db`
+
+---
+
+### Komplet feature-oversigt — hvad portalen kan pr. v5.8.0
+
+Denne release markerer en moden portal. Her er en samlet oversigt over alt hvad der er bygget siden v5.5.0.
+
+#### Endpoint Browse og redigering
+- Søgbar, filtrerbar og sorterbar tabel med alle ISE-endpoints og live pxGrid-opdatering
+- Inline detail-modal: Endpoint-fane, RADIUS/simulering-fane, Profil & IDs-fane, Historik-fane, ISE Session-fane
+- Bulk-operationer: skift gruppe, custom attributes og ANC på flere endpoints i ét hug
+- Gem som skabelon og anvend skabelon direkte fra Browse-Edit modal
+- Kolonne-synlighed, saved views og gemte filterkombinationer
+- Fremhævning af private/randomiserede MAC-adresser (LAA) med amber badge
+- LAA-tæller i header — total fra database, uafhængig af aktivt filter
+- Progress-indikator ved bulk-gem af flere endpoints
+
+#### Endpoint historik og livscyklus
+- **Første gang set**-database: SQLite med immutable timestamp per MAC, kolonne i Browse med dato+tid-filter
+- Livscyklus-viewer (admin): find endpoints uden aktivitet i 30/60/90/180/365 dage med CSV-eksport
+- Komplet sletnings-håndtering: portal-sletning, ISE-genskabelse (ID-skifte) og prewarm-scan
+
+#### ISE pxGrid — real-time session data
+- Phase 1: certifikat-opsætning (upload PEM eller generer CSR, 5-trins flow med ISE CA)
+- Phase 2b: persistent STOMP-worker — abonnerer på session-events og opdaterer Browse live via SSE
+- ISE Session-kolonne: auth-metode, authz-profiler, identity group, VLAN direkte i tabellen
+- Periodisk MnT-berigelse (hvert 5. min): ISEPolicySetName, authorizationRuleName, VLAN
+- Stale session-reconcile (hvert 10. min): genindlæser endpoints der har misset push-events
+- Session anomali-detektion: bulk-disconnect og NAS-IP churn — advarselsbannere i Browse
+
+#### Policy-administration og simulering
+- Vis og redigér ISE endpoint authorization policy sets og regler
+- 3-panel layout: policy sets (sidebar), regler (midt), detalje/editor (højre)
+- Grafisk AND/OR-betingelses-visualisering med farvekodet nesting — identisk med ISE's editor
+- **Endpoint-simulator**: vælg policy set eller Auto-mode (test alle sets fra rank 0, stopper ved første match)
+- RADIUS-attributter i simulatoren med autocomplete og duplicate-nøgle-validering
+- Gemte RADIUS-templates — deles mellem single- og batch-simulering
+- **Batch-simulering**: simulér policy-match for markerede endpoints direkte fra Browse-toolbar
+
+#### Overvågning og statistik
+- **Trend Analyse**: endpoint tilgang/fragang og private MACs over tid (7d/30d/90d/1år, ren SVG)
+- **Dashboard**: cache-status, pxGrid-status, aktive sessioner, ISE-forbindelsestilstand
+- Systemlog direkte i Dashboard (admin): niveau-filter, fritekst-søgning, auto-refresh
+- Alert-system med konfigurerbare betingelser og dismissible bannere i Browse
+
+#### Audit og eksport
+- Audit-log (admin-only): alle CRUD-operationer, login/logout, ISE circuit-events
+- Audit-log CSV-eksport med aktive filtre (max 10 000 rækker)
+- JSON-eksport fra Browse: valgte, filtrerede eller alle endpoints
+- CSV-eksport fra Browse
+
+#### Skabeloner
+- Opret, rediger og slet endpoint-konfigurationsskabeloner
+- Anvend skabelon i Browse-Edit og på Registreringssiden — sætter description til `Templet [navn]`
+- PSK_Mode i skabeloner: prompter for nøgle ved anvendelse — nøglen gemmes aldrig
+
+#### Registrering og import
+- Registrér nye endpoints enkeltvis med gruppe, custom attributes og skabelon
+- Bulk-import fra CSV med fleksibel kolonne-mapping til ISE-attributter (max 5 000 endpoints)
+
+#### NAS platform management
+- NAS-scan: henter alle network devices fra ISE rå fra NDG — grupperede og ikke-mappede
+- Mapping-editor: tilknyt ISE device-type-paths til platform-labels
+
+#### Autentisering og brugerstyring
+- Lokal brugeradministration med roller: admin, editor, editor-psk, registrant, viewer
+- **TACACS+-autentisering**: rolle og operatørprofil via TACACS+-attributter; shadow-records sikrer preferences og saved views for TACACS+-brugere
+- Operatørprofil-katalog: standard-rolle og endpoint-roller per profil
+- Silent token refresh: fornyes præcist 15 min inden udløb
+- Account lockout: 5 fejllogins → 15 min lockout, persistent i SQLite (overlever genstart)
+- Rate limiting på alle API-endpoints
+
+#### Sikkerhed (akkumuleret over Security Patch 1–3)
+- Komplet HTML-escaping med central `esc()` i alle views
+- CSP: `script-src 'self'` (ingen `unsafe-inline`), `frame-ancestors 'none'`, HSTS
+- TLS-verifikation af ISE-certifikat som standard; advarsel i log ved `ISE_VERIFY_TLS=false`
+- `config.json` og operator-filer: `chmod 600` (Unix) / `icacls` (Windows)
+- ZIP-bomb-beskyttelse ved upload af opdateringspakker (max 500 MB ukomprimeret)
+- Kryptografisk sikker PSK-nøglegenerator (`secrets`-modulet)
+- Input-validering på alle søge- og pagineringsparametre
+
+#### Administration og drift
+- **Config backup/restore** (admin): download og gendan alle konfigurationsfiler som ét JSON-dokument
+- **GitHub-opdatering**: tjek og hent seneste version direkte fra portalen (main eller dev branch)
+- **Tema**: Light, Dark, Midnight, Slate — gemmes per bruger
+- **Lokalisering**: Dansk og Engelsk per bruger — skifter øjeblikkeligt
+- Drip-refresh: alle endpoints opdateres kontinuerligt i baggrunden — ingen kold cache
+- API-kald med 30 sekunders timeout — langsomme ISE-kald blokerer ikke UI
+- Testdækning: 190 automatiserede tests (auth, endpoints, policy, pxGrid)
 
 ---
 
