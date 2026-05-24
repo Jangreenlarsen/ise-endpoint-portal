@@ -20,10 +20,8 @@ function fmtFirstSeen(ts) {
   const date    = d.toISOString().slice(0, 10);
   const ageSec  = Date.now() / 1000 - ts;
   const ageDays = Math.floor(ageSec / 86400);
-  const ageStr  = ageDays >= 1
-    ? `${ageDays}d siden`
-    : `${Math.floor(ageSec / 3600)}t siden`;
-  return `<span style="white-space:nowrap;">${esc(date)}<br><span class="lc-age" style="font-size:.8em;">${ageStr}</span></span>`;
+  const ageStr  = ageDays >= 1 ? `${ageDays}d` : `${Math.floor(ageSec / 3600)}t`;
+  return `<span style="white-space:nowrap;">${esc(date)} <span class="lc-age">(${ageStr})</span></span>`;
 }
 
 export async function renderLifecycle(container) {

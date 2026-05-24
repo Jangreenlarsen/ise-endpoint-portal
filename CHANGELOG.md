@@ -3,6 +3,11 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.8.2 build 0525] — 2026-05-24 — fix: Livscyklus tabel — kompakt enkelt-linje per endpoint
+
+- `lifecycle.js`: `fmtFirstSeen` viser dato + alder på én linje (`2026-01-15 (129d)`)
+- `styles.css`: `.lc-table td` padding reduceret til 3px vertikal + `white-space:nowrap`
+
 ## [5.8.2 build 0524] — 2026-05-24 — feat: Livscyklus — tid-telemetri + klik til Browse/Edit
 
 **Ny kolonne: "Første gang set"** — viser dato (YYYY-MM-DD) og alder i dage siden portalen første gang observerede endpointet (fra `first_seen_store`). Inkluderes i CSV-eksport.
