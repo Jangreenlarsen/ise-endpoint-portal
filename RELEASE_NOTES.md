@@ -4,6 +4,14 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.8.2] — 2026-05-24 — Livscyklus tid-telemetri + klik til Browse/Edit
+
+> **Build:** 0524
+
+Livscyklus-tabellen viser nu **"Første gang set"** (dato + alder) for hvert endpoint, og klik på en række navigerer direkte til Browse / Edit med MAC pre-fyldt i søgefeltet.
+
+---
+
 ## [5.8.1] — 2026-05-24 — Dashboard redesign
 
 > **Build:** 0523

@@ -3,6 +3,18 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.8.2 build 0524] — 2026-05-24 — feat: Livscyklus — tid-telemetri + klik til Browse/Edit
+
+**Ny kolonne: "Første gang set"** — viser dato (YYYY-MM-DD) og alder i dage siden portalen første gang observerede endpointet (fra `first_seen_store`). Inkluderes i CSV-eksport.
+
+**Klik til Browse/Edit** — klik på en hvilken som helst række i Livscyklus-tabellen for at åbne endpointet direkte i Browse/Edit med MAC-søgning pre-fyldt. Implementeret via `sessionStorage` + `hashchange`-routing.
+
+**Berørte filer:**
+- `backend/app/api/lifecycle.py` — importerer `first_seen_store`; batch-opslag tilføjer `first_seen_at` til hver stale-entry
+- `frontend/js/views/lifecycle.js` — `fmtFirstSeen()` helper, ny kolonne, click-handler per række, ↗-ikon i sidst kolonne, CSV-eksport inkluderer dato
+- `frontend/js/views/browse.js` — læser `sessionStorage["browse_open_ep"]` efter `filterAPI.restoreFilters()` og pre-fylder `globalQInput` + `state.fullTextQ`
+- `frontend/css/styles.css` — `cursor:pointer` på lc-table rækker, hover=blåt, `.lc-browse-link` med dark/midnight varianter
+
 ## [5.8.1 build 0523] — 2026-05-24 — feat: dashboard redesign — KPI-kort, mini trend-chart, livscyklus-summary
 
 Komplet redesign af Dashboard-viewet. Visuel hierarki med store KPI-tal, inline sparkline-chart og Livscyklus-summary erstatter den tidligere tabel-baserede layout.

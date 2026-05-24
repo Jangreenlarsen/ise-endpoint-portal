@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, Query
 from app.api.deps import require_admin
 from app.core.audit_store import DB_PATH
 from app.core.endpoint_cache import get_cache
+from app.core import first_seen_store
 from app.services.cache_prewarm import get_worker as get_prewarm_worker
 
 router = APIRouter(prefix="/lifecycle", tags=["lifecycle"])
@@ -79,6 +80,12 @@ async def get_stale_endpoints(
         })
 
     stale.sort(key=lambda x: x["mac"])
+
+    # Tilføj first_seen_at fra first_seen_store (batch-lookup)
+    fs_map = first_seen_store.get_many([ep["mac"] for ep in stale])
+    for ep in stale:
+        ep["first_seen_at"] = fs_map.get(ep["mac"].upper().strip())
+
     return {
         "stale": stale,
         "total_cached": total_cached,

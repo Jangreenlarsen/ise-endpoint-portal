@@ -14,6 +14,18 @@ function fmtAge(s) {
   return `${m}m`;
 }
 
+function fmtFirstSeen(ts) {
+  if (!ts) return `<span class="lc-age">—</span>`;
+  const d       = new Date(ts * 1000);
+  const date    = d.toISOString().slice(0, 10);
+  const ageSec  = Date.now() / 1000 - ts;
+  const ageDays = Math.floor(ageSec / 86400);
+  const ageStr  = ageDays >= 1
+    ? `${ageDays}d siden`
+    : `${Math.floor(ageSec / 3600)}t siden`;
+  return `<span style="white-space:nowrap;">${esc(date)}<br><span class="lc-age" style="font-size:.8em;">${ageStr}</span></span>`;
+}
+
 export async function renderLifecycle(container) {
   const user = auth.getUser();
   if (!user || user.role !== "admin") {
@@ -49,12 +61,14 @@ export async function renderLifecycle(container) {
     }
 
     const rows = data.stale.map((ep) => `
-      <tr>
+      <tr class="lc-ep-row" data-mac="${esc(ep.mac)}" title="Klik for at åbne i Browse / Edit">
         <td><code class="lc-mac">${esc(ep.mac)}</code></td>
         <td>${esc(ep.group_name)}</td>
         <td>${esc(ep.profile)}</td>
         <td>${esc(ep.owner)}</td>
+        <td>${fmtFirstSeen(ep.first_seen_at)}</td>
         <td class="lc-age">${fmtAge(ep.cache_age_s)}</td>
+        <td class="lc-browse-link">↗</td>
       </tr>`).join("");
 
     container.innerHTML = `
@@ -62,7 +76,7 @@ export async function renderLifecycle(container) {
         <h2>Livscyklus — inaktive endpoints</h2>
         <p class="hint" style="margin-bottom:12px;">
           Endpoints der ikke har haft nogen portal-aktivitet (opret / rediger / slet) i det valgte tidsrum.
-          Brug disse data til at rydde op i forældede poster i ISE.
+          Klik på en række for at åbne endpointet direkte i Browse / Edit.
         </p>
         <div class="lc-controls">
           <label>Inaktiv i mere end:
@@ -95,7 +109,9 @@ export async function renderLifecycle(container) {
                      <th>Endpoint-gruppe</th>
                      <th>Profil</th>
                      <th>Ejer</th>
+                     <th>Første gang set</th>
                      <th>Cache-alder</th>
+                     <th style="width:28px;"></th>
                    </tr>
                  </thead>
                  <tbody>${rows}</tbody>
@@ -114,15 +130,25 @@ export async function renderLifecycle(container) {
     if (exportBtn) {
       exportBtn.addEventListener("click", () => exportCsv(data.stale, days));
     }
+
+    // Klik på række → gem MAC i sessionStorage og naviger til Browse/Edit
+    container.querySelectorAll(".lc-ep-row").forEach((row) => {
+      row.addEventListener("click", () => {
+        sessionStorage.setItem("browse_open_ep", row.dataset.mac);
+        location.hash = "#/browse";
+      });
+    });
   }
 
   await load();
 }
 
 function exportCsv(rows, days) {
-  const header = "MAC-adresse,Endpoint-gruppe,Profil,Ejer,Cache-alder (s)";
+  const header = "MAC-adresse,Endpoint-gruppe,Profil,Ejer,Første gang set,Cache-alder (s)";
   const lines = rows.map((ep) =>
-    [ep.mac, ep.group_name, ep.profile, ep.owner, ep.cache_age_s ?? ""].map(csvCell).join(",")
+    [ep.mac, ep.group_name, ep.profile, ep.owner,
+     ep.first_seen_at ? new Date(ep.first_seen_at * 1000).toISOString().slice(0, 10) : "",
+     ep.cache_age_s ?? ""].map(csvCell).join(",")
   );
   const csv = [header, ...lines].join("\r\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
