@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 /**
- * Dashboard view — aggregeret overblik over portal-sundhed.
- * Viser circuit breaker, endpoints, sessioner, cache, prewarm, seneste events og systemlog.
+ * Dashboard — aggregeret portal-overblik med KPI-kort, mini trend-chart,
+ * livscyklus-summary, audit-events og systemlog.
  */
 
 import { api } from "../api.js";
+import { auth } from "../auth.js";
 import { esc } from "./browse-utils.js";
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function fmtAge(s) {
   if (s === null || s === undefined) return "—";
@@ -15,45 +18,97 @@ function fmtAge(s) {
   return (s / 3600).toFixed(1) + "h";
 }
 
-function severityColor(sev) {
-  if (sev === "error")   return "#c0392b";
-  if (sev === "warning") return "#e67e22";
-  return "#2980b9";
-}
-
-function renderAlerts(alerts) {
-  if (!alerts || !alerts.length) return "";
-  return alerts.map((a) => `
-    <div style="background:${severityColor(a.severity)};color:#fff;padding:8px 12px;border-radius:6px;margin-bottom:6px;">
-      <strong>${esc(a.title)}</strong><br>
-      <span style="font-size:.9em;">${esc(a.body)}</span>
-    </div>`).join("");
-}
-
-function cbBadge(state) {
-  const labels = ["CLOSED", "HALF-OPEN", "OPEN"];
-  const colors = ["#27ae60", "#e67e22", "#c0392b"];
-  const i = state ?? 0;
-  const color = colors[i] || "#999";
-  const label = labels[i] || "UNKNOWN";
-  return `<span style="background:${color};color:#fff;padding:3px 10px;border-radius:12px;font-size:.85em;font-weight:600;">${label}</span>`;
-}
-
 function statRow(label, value, sub = "") {
-  return `<div style="display:flex;justify-content:space-between;align-items:baseline;padding:5px 0;border-bottom:1px solid #f3f4f6;">
-    <span style="color:#6b7280;font-size:.9em;">${label}</span>
-    <span style="font-weight:500;">${value}${sub ? `<span style="font-size:.8em;color:#9ca3af;margin-left:4px;">${sub}</span>` : ""}</span>
+  return `<div style="display:flex;justify-content:space-between;align-items:baseline;padding:4px 0;border-bottom:1px solid #f9fafb;">
+    <span style="color:#6b7280;font-size:.85em;">${label}</span>
+    <span style="font-weight:500;font-size:.88em;">${value}${sub ? `<span style="font-size:.8em;color:#9ca3af;margin-left:4px;">${sub}</span>` : ""}</span>
   </div>`;
 }
 
-function card(title, body) {
-  return `<div class="card" style="min-width:220px;flex:1;">
-    <h3 style="margin-top:0;margin-bottom:.75rem;font-size:1rem;">${title}</h3>
-    ${body}
+// ── KPI-kort ──────────────────────────────────────────────────────────────────
+
+function kpiCard(label, value, sub = "", accent = "#2563eb") {
+  return `<div style="background:#fff;border-radius:12px;padding:1.1rem 1.25rem;
+    box-shadow:0 1px 4px rgba(0,0,0,.07);border-top:3px solid ${accent};
+    min-width:140px;flex:1;">
+    <div style="font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;
+      color:#9ca3af;margin-bottom:.45rem;">${label}</div>
+    <div style="font-size:2rem;font-weight:700;color:#111827;line-height:1.1;">${value}</div>
+    ${sub ? `<div style="font-size:.77rem;color:#9ca3af;margin-top:.3rem;">${sub}</div>` : ""}
   </div>`;
 }
 
-// ── Log-niveau farver ────────────────────────────────────────────────────────
+// ── CB-badge ──────────────────────────────────────────────────────────────────
+
+function cbPill(state) {
+  const labels = ["CLOSED", "HALF-OPEN", "OPEN"];
+  const colors = ["#16a34a", "#d97706", "#dc2626"];
+  const i = state ?? 0;
+  return `<span style="background:${colors[i] || "#9ca3af"};color:#fff;
+    padding:3px 14px;border-radius:20px;font-size:.8em;font-weight:700;
+    letter-spacing:.05em;">${labels[i] || "?"}</span>`;
+}
+
+// ── Action-badge (audit events) ───────────────────────────────────────────────
+
+function actionBadge(action) {
+  if (!action) return "—";
+  const a = action.toLowerCase();
+  let bg = "#f1f5f9", fg = "#475569";
+  if (a.includes("delete"))                     { bg = "#fee2e2"; fg = "#b91c1c"; }
+  else if (a.includes("create") || a.includes("import")) { bg = "#dcfce7"; fg = "#15803d"; }
+  else if (a.includes("update") || a.includes("edit"))   { bg = "#fef9c3"; fg = "#854d0e"; }
+  return `<span style="background:${bg};color:${fg};padding:1px 8px;border-radius:10px;
+    font-size:.79em;font-weight:600;white-space:nowrap;">${esc(action)}</span>`;
+}
+
+// ── Mini sparkline (ingen tooltip — Trend Analyse har fuld interaktivitet) ────
+
+function sparkline(labels, series, height = 110) {
+  const W = 640, H = height;
+  const pad = { top: 8, right: 6, bottom: 20, left: 6 };
+  const plotW = W - pad.left - pad.right;
+  const plotH = H - pad.top - pad.bottom;
+
+  const allVals = series.flatMap((s) => s.data);
+  const rawMax = Math.max(...allVals, 1);
+  const rawMin = Math.min(0, ...allVals);
+  const yMin = rawMin < 0 ? rawMin * 1.15 : 0;
+  const yMax = rawMax * 1.15 || 5;
+  const yRange = yMax - yMin || 1;
+  const n = labels.length - 1;
+  const xOf = (i) => pad.left + (i / Math.max(n, 1)) * plotW;
+  const yOf = (v) => pad.top + plotH - ((v - yMin) / yRange) * plotH;
+
+  let svg = "";
+  // Gridlines
+  for (let i = 1; i <= 3; i++) {
+    const y = yOf(yMin + (i / 4) * (yMax - yMin)).toFixed(1);
+    svg += `<line x1="${pad.left}" y1="${y}" x2="${pad.left + plotW}" y2="${y}" stroke="#f3f4f6" stroke-width="1"/>`;
+  }
+  if (yMin < 0) {
+    const y0 = yOf(0).toFixed(1);
+    svg += `<line x1="${pad.left}" y1="${y0}" x2="${pad.left + plotW}" y2="${y0}" stroke="#e5e7eb" stroke-width="1" stroke-dasharray="3,2"/>`;
+  }
+  // Series
+  series.forEach((s) => {
+    const pts = s.data.map((v, i) => `${xOf(i).toFixed(1)},${yOf(v).toFixed(1)}`).join(" ");
+    if (s.fill) {
+      const y0 = yOf(0).toFixed(1);
+      svg += `<polygon points="${xOf(0).toFixed(1)},${y0} ${pts} ${xOf(n).toFixed(1)},${y0}" fill="${s.color}" fill-opacity="0.12"/>`;
+    }
+    svg += `<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+  });
+  // Date-labels
+  if (labels.length) {
+    svg += `<text x="${pad.left + 2}" y="${H - 3}" font-size="9" fill="#9ca3af">${labels[0].slice(5)}</text>`;
+    svg += `<text x="${pad.left + plotW - 2}" y="${H - 3}" font-size="9" fill="#9ca3af" text-anchor="end">${labels[n].slice(5)}</text>`;
+  }
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;">${svg}</svg>`;
+}
+
+// ── Log-tabel ─────────────────────────────────────────────────────────────────
+
 const LOG_COLORS = {
   DEBUG:    { bg: "#f3f4f6", fg: "#6b7280" },
   INFO:     { bg: "#eff6ff", fg: "#2563eb" },
@@ -68,9 +123,8 @@ function logBadge(level) {
 }
 
 function renderLogsTable(entries) {
-  if (!entries || !entries.length) {
+  if (!entries || !entries.length)
     return `<div class="hint" style="padding:.5rem 0;">Ingen log-linjer matcher filteret.</div>`;
-  }
   return `<div style="overflow-x:auto;">
     <table style="width:100%;border-collapse:collapse;font-size:.82em;font-family:monospace;">
       <thead><tr>
@@ -86,7 +140,7 @@ function renderLogsTable(entries) {
           return `<tr style="background:${c.bg};">
             <td style="padding:3px 8px;border-bottom:1px solid #f3f4f6;white-space:nowrap;color:#6b7280;">${esc(e.timestamp)}</td>
             <td style="padding:3px 8px;border-bottom:1px solid #f3f4f6;">${logBadge(e.level)}</td>
-            <td style="padding:3px 8px;border-bottom:1px solid #f3f4f6;white-space:nowrap;color:#374151;max-width:200px;overflow:hidden;text-overflow:ellipsis;" title="${esc(e.logger)}">${esc(logger)}</td>
+            <td style="padding:3px 8px;border-bottom:1px solid #f3f4f6;white-space:nowrap;color:#374151;max-width:180px;overflow:hidden;text-overflow:ellipsis;" title="${esc(e.logger)}">${esc(logger)}</td>
             <td style="padding:3px 8px;border-bottom:1px solid #f3f4f6;color:${c.fg};word-break:break-all;">${esc(e.message)}</td>
           </tr>`;
         }).join("")}
@@ -95,144 +149,238 @@ function renderLogsTable(entries) {
   </div>`;
 }
 
-function renderDashboardData(dash, alerts) {
-  const cb = dash.circuit_breaker || {};
-  const ep = dash.endpoints || {};
-  const sl = ep.staleness || {};
-  const cache = dash.cache || {};
-  const prewarm = dash.prewarm || {};
-  const sess = dash.sessions || {};
-  const events = dash.recent_events || [];
-  const alertList = alerts?.alerts || [];
+// ── Compose dashboard HTML ─────────────────────────────────────────────────────
 
-  const alertsHtml = alertList.length ? `
-    <div style="margin-bottom:1rem;">
-      ${renderAlerts(alertList)}
+function compose(dash, trends, lifecycle, isAdmin) {
+  const cb      = dash.circuit_breaker || {};
+  const ep      = dash.endpoints       || {};
+  const cache   = dash.cache           || {};
+  const prewarm = dash.prewarm         || {};
+  const sess    = dash.sessions        || {};
+  const events  = dash.recent_events   || [];
+  const snap    = trends?.snapshot     || {};
+
+  const cbColors = ["#16a34a", "#d97706", "#dc2626"];
+  const cbAccent = cbColors[cb.state ?? 0] || "#9ca3af";
+
+  // ── KPI-rad ──────────────────────────────────────────────────────────────
+  const totalEp = snap.total ?? ep.total;
+  const hitRate = cache.hit_rate_pct != null ? cache.hit_rate_pct + "%" : "—";
+
+  let kpiRow = `<div style="display:flex;flex-wrap:wrap;gap:.75rem;margin-bottom:1rem;">
+    ${kpiCard("Endpoints i ISE",
+        totalEp != null ? Number(totalEp).toLocaleString("da") : "—",
+        "totalt i cache", "#2563eb")}
+    ${kpiCard("Private MACs (LAA)",
+        snap.laa != null ? snap.laa.toLocaleString("da") : "—",
+        snap.laa_pct != null ? snap.laa_pct + "% af total" : "",
+        "#d97706")}`;
+
+  if (isAdmin && lifecycle && !lifecycle._error) {
+    const staleAccent = (lifecycle.stale_count ?? 0) > 0 ? "#dc2626" : "#16a34a";
+    kpiRow += kpiCard(
+      "Inaktive endpoints",
+      lifecycle.stale_count ?? "—",
+      `>${lifecycle.threshold_days ?? 90} dage uden aktivitet`,
+      staleAccent
+    );
+  }
+
+  kpiRow += `
+    ${kpiCard("Cache hit rate", hitRate,
+        `${cache.hits ?? "—"} hits · ${cache.misses ?? "—"} misses`, "#0891b2")}
+    ${kpiCard("Circuit Breaker",
+        ["CLOSED","HALF-OPEN","OPEN"][cb.state ?? 0] || "?",
+        cb.state_label || "", cbAccent)}
+  </div>`;
+
+  // ── Trend mini-chart ──────────────────────────────────────────────────────
+  let trendCard = "";
+  if (trends && !trends._error) {
+    const { labels, added, removed, net } = trends;
+    const totalAdded   = added.reduce((s, v) => s + v, 0);
+    const totalRemoved = removed.reduce((s, v) => s + v, 0);
+    const netChange    = totalAdded - totalRemoved;
+    const netColor     = netChange >= 0 ? "#2563eb" : "#dc2626";
+
+    if (snap.cache_loading) {
+      trendCard = `<div style="background:#fff;border-radius:12px;padding:1rem 1.25rem;
+        box-shadow:0 1px 4px rgba(0,0,0,.07);display:flex;align-items:center;
+        justify-content:center;min-height:120px;">
+        <span style="color:#9ca3af;font-size:.88rem;">Endpoint-cachen indlæses…</span>
+      </div>`;
+    } else {
+      trendCard = `<div style="background:#fff;border-radius:12px;padding:1rem 1.25rem;
+        box-shadow:0 1px 4px rgba(0,0,0,.07);">
+        <div style="display:flex;align-items:center;justify-content:space-between;
+          margin-bottom:.5rem;flex-wrap:wrap;gap:.4rem;">
+          <h3 style="margin:0;font-size:.92rem;color:#374151;font-weight:600;">
+            Endpoint bevægelse — seneste 30 dage
+          </h3>
+          <a href="#/trends" style="font-size:.8rem;color:#2563eb;text-decoration:none;
+            white-space:nowrap;">Se Trend Analyse →</a>
+        </div>
+        ${sparkline(labels, [
+          { name: "Tilgang", color: "#059669", data: added,   fill: true },
+          { name: "Fragang", color: "#dc2626", data: removed, fill: true },
+          { name: "Netto",   color: "#2563eb", data: net },
+        ])}
+        <div style="display:flex;gap:1.25rem;margin-top:.5rem;flex-wrap:wrap;align-items:center;">
+          <span style="font-size:.82rem;"><span style="color:#059669;font-weight:700;">+${totalAdded}</span> <span style="color:#6b7280;">tilgang</span></span>
+          <span style="font-size:.82rem;"><span style="color:#dc2626;font-weight:700;">−${totalRemoved}</span> <span style="color:#6b7280;">fragang</span></span>
+          <span style="font-size:.82rem;"><span style="color:${netColor};font-weight:700;">${netChange >= 0 ? "+" : ""}${netChange}</span> <span style="color:#6b7280;">netto</span></span>
+          ${snap.laa != null ? `<span style="font-size:.82rem;margin-left:auto;color:#9ca3af;">LAA nu: <strong style="color:#d97706;">${snap.laa.toLocaleString("da")}</strong></span>` : ""}
+        </div>
+      </div>`;
+    }
+  }
+
+  // ── Systemstatus-kort ─────────────────────────────────────────────────────
+  const prewarmRows = prewarm.scan_number ? `
+    <div style="margin-top:.75rem;padding-top:.75rem;border-top:1px solid #f3f4f6;">
+      <div style="font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;
+        color:#9ca3af;margin-bottom:.35rem;">Prewarm</div>
+      ${statRow("Scan #", prewarm.scan_number)}
+      ${statRow("Endpoints", prewarm.total_endpoints ?? "—")}
+      ${statRow("Sidst fuld scan", fmtAge(prewarm.last_full_scan_age_s) + " siden")}
+      <div style="font-size:.77rem;color:#9ca3af;margin-top:.3rem;">${prewarm.scanning ? "🔄 Scanning nu…" : "Idle"}</div>
     </div>` : "";
 
-  const cbCard = card(
-    "Circuit Breaker",
-    `<div style="text-align:center;padding:.5rem 0;">${cbBadge(cb.state)}</div>` +
-    statRow("Status", cb.state_label || "—"),
-  );
+  const sysCard = `<div style="background:#fff;border-radius:12px;padding:1rem 1.25rem;
+    box-shadow:0 1px 4px rgba(0,0,0,.07);">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;">
+      <h3 style="margin:0;font-size:.92rem;color:#374151;font-weight:600;">Systemstatus</h3>
+      ${cbPill(cb.state)}
+    </div>
+    ${statRow("Sessioner (pxGrid)", sess.active ?? "—")}
+    ${statRow("Cache hit rate", hitRate)}
+    ${statRow("Stale serves", cache.stale_serves ?? "—")}
+    ${statRow("Disk loaded ved opstart", cache.disk_loaded_at_startup ?? "0")}
+    ${prewarmRows}
+  </div>`;
 
-  const epCard = card(
-    "Endpoints",
-    statRow("Totalt i cache", ep.total ?? "—") +
-    statRow("Friske", sl.fresh_count ?? "—") +
-    statRow("Stale", sl.stale_count ?? "—", sl.stale_pct != null ? `(${sl.stale_pct}%)` : "") +
-    statRow("Meget stale", sl.very_stale_count ?? "—") +
-    statRow("Ældste entry", fmtAge(sl.oldest_entry_age_s)) +
-    statRow("Gnsn. alder", fmtAge(sl.average_entry_age_s)),
-  );
+  // ── Livscyklus-summary (admin) ────────────────────────────────────────────
+  let lcCard = "";
+  if (isAdmin && lifecycle && !lifecycle._error) {
+    const hasStale   = (lifecycle.stale_count ?? 0) > 0;
+    const staleColor = hasStale ? "#dc2626" : "#16a34a";
+    lcCard = `<div style="background:#fff;border-radius:12px;padding:1rem 1.25rem;
+      box-shadow:0 1px 4px rgba(0,0,0,.07);">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;">
+        <h3 style="margin:0;font-size:.92rem;color:#374151;font-weight:600;">Livscyklus</h3>
+        <a href="#/lifecycle" style="font-size:.8rem;color:#2563eb;text-decoration:none;">Se alle →</a>
+      </div>
+      <div style="text-align:center;padding:.4rem 0 .6rem;">
+        <div style="font-size:2.5rem;font-weight:700;color:${staleColor};line-height:1;">${lifecycle.stale_count ?? "—"}</div>
+        <div style="font-size:.8rem;color:#9ca3af;margin-top:.25rem;">inaktive &gt; ${lifecycle.threshold_days ?? 90} dage</div>
+        <div style="font-size:.77rem;color:#6b7280;margin-top:.2rem;">af ${lifecycle.total_cached ?? "—"} totalt</div>
+      </div>
+      ${hasStale
+        ? `<a href="#/lifecycle" style="display:block;text-align:center;padding:.4rem;
+            background:#fef2f2;color:#dc2626;border-radius:8px;font-size:.82rem;
+            text-decoration:none;font-weight:500;">Gennemgå inaktive →</a>`
+        : `<div style="text-align:center;font-size:.82rem;color:#16a34a;font-weight:500;">✓ Ingen inaktive endpoints</div>`}
+    </div>`;
+  }
 
-  const sessCard = card(
-    "Sessioner (pxGrid)",
-    statRow("Aktive sessioner", sess.active ?? "—"),
-  );
+  // ── Audit events ──────────────────────────────────────────────────────────
+  let eventsCard = "";
+  if (events.length) {
+    eventsCard = `<div style="background:#fff;border-radius:12px;padding:1rem 1.25rem;
+      box-shadow:0 1px 4px rgba(0,0,0,.07);margin-top:.75rem;">
+      <h3 style="margin:0 0 .75rem;font-size:.92rem;color:#374151;font-weight:600;">Seneste audit-hændelser</h3>
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:.85em;">
+          <thead><tr>
+            <th style="text-align:left;padding:4px 8px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-weight:500;white-space:nowrap;">Tidspunkt</th>
+            <th style="text-align:left;padding:4px 8px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-weight:500;">Bruger</th>
+            <th style="text-align:left;padding:4px 8px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-weight:500;">Handling</th>
+            <th style="text-align:left;padding:4px 8px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-weight:500;">Ressource</th>
+          </tr></thead>
+          <tbody>
+            ${events.map((e) => `<tr>
+              <td style="padding:5px 8px;border-bottom:1px solid #f9fafb;color:#9ca3af;font-size:.82em;white-space:nowrap;">${esc((e.ts || "").replace("T", " ").slice(0, 19))}</td>
+              <td style="padding:5px 8px;border-bottom:1px solid #f9fafb;font-weight:500;">${esc(e.actor_username || "—")}</td>
+              <td style="padding:5px 8px;border-bottom:1px solid #f9fafb;">${actionBadge(e.action)}</td>
+              <td style="padding:5px 8px;border-bottom:1px solid #f9fafb;color:#374151;">
+                ${esc(e.resource_type || "")}
+                ${e.resource_id ? `<span style="font-size:.8em;color:#9ca3af;margin-left:4px;">${esc(e.resource_id.slice(0, 12))}…</span>` : ""}
+              </td>
+            </tr>`).join("")}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  }
 
-  const diskLoadedRow = cache.disk_loaded_at_startup > 0
-    ? statRow("Indlæst fra disk ved opstart", cache.disk_loaded_at_startup)
-    : statRow("Indlæst fra disk ved opstart", "0 (ingen disk-cache fundet)");
-  const diskStaleVal = cache.disk_stale > 0
-    ? cache.disk_stale + " (afventer prewarm-refresh)"
-    : "0 ✓ (alle entries er live ISE-data)";
-  const cacheCard = card(
-    "Cache-statistik",
-    statRow("Hit rate", cache.hit_rate_pct != null ? cache.hit_rate_pct + "%" : "—") +
-    statRow("Hits", cache.hits ?? "—") +
-    statRow("Misses", cache.misses ?? "—") +
-    statRow("Stale serves", cache.stale_serves ?? "—") +
-    diskLoadedRow +
-    statRow("Disk stale (nu)", diskStaleVal),
-  );
-
-  const prewarmCard = prewarm.scan_number ? card(
-    "Cache Prewarm",
-    statRow("Scan #", prewarm.scan_number) +
-    statRow("Endpoints", prewarm.total_endpoints ?? "—") +
-    statRow("Sidst fuld scan", fmtAge(prewarm.last_full_scan_age_s) + " siden") +
-    statRow("Drip rotation", fmtAge(prewarm.drip_cycle_s)) +
-    statRow("Refreshet (drip)", prewarm.drip_refreshed_total ?? "—") +
-    `<div style="margin-top:.5rem;font-size:.8em;color:#6b7280;">${prewarm.scanning ? "Scanning nu…" : "Idle"}</div>`,
-  ) : "";
-
-  const eventsHtml = events.length ? `
-    <div class="card" style="grid-column:1/-1;">
-      <h3 style="margin-top:0;margin-bottom:.75rem;font-size:1rem;">Seneste audit-hændelser</h3>
-      <table style="width:100%;border-collapse:collapse;font-size:.85em;">
-        <thead><tr>
-          <th style="text-align:left;padding:4px 8px;border-bottom:1px solid #e5e7eb;color:#6b7280;">Tidspunkt</th>
-          <th style="text-align:left;padding:4px 8px;border-bottom:1px solid #e5e7eb;color:#6b7280;">Bruger</th>
-          <th style="text-align:left;padding:4px 8px;border-bottom:1px solid #e5e7eb;color:#6b7280;">Handling</th>
-          <th style="text-align:left;padding:4px 8px;border-bottom:1px solid #e5e7eb;color:#6b7280;">Ressource</th>
-        </tr></thead>
-        <tbody>
-          ${events.map((e) => `<tr>
-            <td style="padding:4px 8px;white-space:nowrap;border-bottom:1px solid #f3f4f6;">${esc((e.ts || "").replace("T", " ").slice(0, 19))}</td>
-            <td style="padding:4px 8px;border-bottom:1px solid #f3f4f6;">${esc(e.actor_username || "—")}</td>
-            <td style="padding:4px 8px;border-bottom:1px solid #f3f4f6;">${esc(e.action || "")}</td>
-            <td style="padding:4px 8px;border-bottom:1px solid #f3f4f6;">${esc(e.resource_type || "")}${e.resource_id ? ` <span style="font-size:.8em;color:#9ca3af;">${esc(e.resource_id.slice(0, 12))}…</span>` : ""}</td>
-          </tr>`).join("")}
-        </tbody>
-      </table>
-    </div>` : "";
+  // ── Samlet layout ─────────────────────────────────────────────────────────
+  const rightCol = [sysCard, lcCard].filter(Boolean).join('<div style="height:.75rem;"></div>');
 
   return `
-    ${alertsHtml}
-    <div style="display:flex;flex-wrap:wrap;gap:1rem;align-items:flex-start;">
-      ${cbCard}
-      ${epCard}
-      ${sessCard}
-      ${cacheCard}
-      ${prewarmCard}
+    ${kpiRow}
+    <div style="display:flex;gap:.75rem;align-items:flex-start;flex-wrap:wrap;margin-bottom:.75rem;">
+      <div style="flex:1;min-width:300px;">${trendCard}</div>
+      <div style="flex:0 0 250px;min-width:220px;display:flex;flex-direction:column;gap:.75rem;">${rightCol}</div>
     </div>
-    <div style="margin-top:1rem;">
-      ${eventsHtml}
-    </div>
+    ${eventsCard}
   `;
 }
 
+// ── Export ────────────────────────────────────────────────────────────────────
+
 export async function renderDashboard(container) {
   container.innerHTML = `
-    <h2 style="margin-bottom:.5rem;">Dashboard</h2>
-    <p class="hint" style="margin-bottom:1rem;">Aggregeret portal-sundhed — opdateres automatisk hvert 30. sekund.</p>
-    <div class="metrics-toolbar" style="margin-bottom:1rem;">
-      <button id="dash-refresh">Opdatér nu</button>
-      <span id="dash-ts" class="hint" style="margin-left:.75rem;"></span>
-    </div>
-    <div id="dash-body"><div class="alert info">Henter dashboard…</div></div>
-
-    <div id="dash-logs-section" style="margin-top:1.25rem;">
-      <div class="card">
-        <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;flex-wrap:wrap;">
-          <h3 style="margin:0;font-size:1rem;flex:none;">Systemlog</h3>
-          <label style="display:flex;align-items:center;gap:.3rem;font-size:.85em;color:#6b7280;">
-            Niveau
-            <select id="dash-log-level" style="font-size:.9em;padding:2px 6px;border:1px solid #d1d5db;border-radius:4px;">
-              <option value="WARNING">WARNING+</option>
-              <option value="ERROR">ERROR+</option>
-              <option value="INFO">INFO+</option>
-              <option value="DEBUG">DEBUG (alt)</option>
-            </select>
-          </label>
-          <label style="display:flex;align-items:center;gap:.3rem;font-size:.85em;color:#6b7280;">
-            Antal
-            <select id="dash-log-lines" style="font-size:.9em;padding:2px 6px;border:1px solid #d1d5db;border-radius:4px;">
-              <option value="50">50</option>
-              <option value="100">100</option>
-              <option value="200">200</option>
-            </select>
-          </label>
-          <input id="dash-log-search" type="search" placeholder="Søg i log…"
-            style="font-size:.85em;padding:3px 8px;border:1px solid #d1d5db;border-radius:4px;flex:1;min-width:140px;max-width:280px;">
-          <span id="dash-log-ts" class="hint" style="font-size:.8em;margin-left:auto;"></span>
+    <div style="padding:1.25rem;max-width:1100px;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;
+        margin-bottom:1.1rem;flex-wrap:wrap;gap:.5rem;">
+        <div>
+          <h2 style="margin:0;font-size:1.15rem;font-weight:700;">Dashboard</h2>
+          <p style="margin:.15rem 0 0;font-size:.8rem;color:#9ca3af;">
+            Aggregeret portal-overblik — opdateres automatisk hvert 30. sekund</p>
         </div>
-        <div id="dash-logs-body"><div class="hint">Henter logs…</div></div>
+        <div style="display:flex;align-items:center;gap:.75rem;">
+          <span id="dash-ts" style="font-size:.8rem;color:#9ca3af;"></span>
+          <button id="dash-refresh" style="border:1px solid #d1d5db;border-radius:8px;
+            padding:5px 14px;font-size:.88rem;background:#fff;cursor:pointer;color:#374151;">↺ Opdatér</button>
+        </div>
       </div>
-    </div>
-  `;
 
+      <div id="dash-alerts"></div>
+      <div id="dash-body"><div style="color:#9ca3af;padding:2rem 0;">Henter dashboard…</div></div>
+
+      <div id="dash-logs-section" style="margin-top:.75rem;">
+        <div style="background:#fff;border-radius:12px;padding:1rem 1.25rem;
+          box-shadow:0 1px 4px rgba(0,0,0,.07);">
+          <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;flex-wrap:wrap;">
+            <h3 style="margin:0;font-size:.92rem;font-weight:600;color:#374151;flex:none;">Systemlog</h3>
+            <label style="display:flex;align-items:center;gap:.3rem;font-size:.85em;color:#6b7280;">
+              Niveau
+              <select id="dash-log-level" style="font-size:.9em;padding:2px 6px;border:1px solid #d1d5db;border-radius:4px;">
+                <option value="WARNING">WARNING+</option>
+                <option value="ERROR">ERROR+</option>
+                <option value="INFO">INFO+</option>
+                <option value="DEBUG">DEBUG (alt)</option>
+              </select>
+            </label>
+            <label style="display:flex;align-items:center;gap:.3rem;font-size:.85em;color:#6b7280;">
+              Antal
+              <select id="dash-log-lines" style="font-size:.9em;padding:2px 6px;border:1px solid #d1d5db;border-radius:4px;">
+                <option value="50">50</option>
+                <option value="100">100</option>
+                <option value="200">200</option>
+              </select>
+            </label>
+            <input id="dash-log-search" type="search" placeholder="Søg i log…"
+              style="font-size:.85em;padding:3px 8px;border:1px solid #d1d5db;border-radius:4px;
+                flex:1;min-width:140px;max-width:280px;">
+            <span id="dash-log-ts" style="font-size:.8em;color:#9ca3af;margin-left:auto;"></span>
+          </div>
+          <div id="dash-logs-body"><div class="hint">Henter logs…</div></div>
+        </div>
+      </div>
+    </div>`;
+
+  const alertsEl   = container.querySelector("#dash-alerts");
   const body        = container.querySelector("#dash-body");
   const tsEl        = container.querySelector("#dash-ts");
   const refreshBtn  = container.querySelector("#dash-refresh");
@@ -243,11 +391,11 @@ export async function renderDashboard(container) {
   const logTsEl     = container.querySelector("#dash-log-ts");
   const logsSection = container.querySelector("#dash-logs-section");
 
-  // Logs er admin-only — skjul sektionen stille ved 403
+  const user    = auth.getUser();
+  const isAdmin = user?.role === "admin";
+
   let logsAvailable = true;
   let logSearchTimer = null;
-
-  // Niveau-filter: prioritet DEBUG < INFO < WARNING < ERROR < CRITICAL
   const LEVEL_ORDER = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"];
 
   async function loadLogs() {
@@ -255,15 +403,11 @@ export async function renderDashboard(container) {
     const sel    = logLevelSel.value;
     const lines  = parseInt(logLinesSel.value, 10) || 50;
     const search = logSearch.value.trim();
-    // Backend level-param er exact match — vi henter altid uden filter og
-    // post-filtrerer client-side så "WARNING+" inkluderer ERROR og CRITICAL.
     const minIdx = LEVEL_ORDER.indexOf(sel);
     try {
       const res = await api.getLogs(lines * 4, "", search);
       let entries = res.entries || [];
-      if (minIdx >= 0) {
-        entries = entries.filter((e) => LEVEL_ORDER.indexOf(e.level) >= minIdx);
-      }
+      if (minIdx >= 0) entries = entries.filter((e) => LEVEL_ORDER.indexOf(e.level) >= minIdx);
       if (entries.length > lines) entries = entries.slice(0, lines);
       logsBody.innerHTML = renderLogsTable(entries);
       logTsEl.textContent = new Date().toLocaleTimeString();
@@ -279,12 +423,32 @@ export async function renderDashboard(container) {
 
   async function load() {
     try {
-      const [dash, alertsRes] = await Promise.all([
+      const [dash, alertsRes, trendsRes, lifecycleRes] = await Promise.all([
         api.getDashboard(),
         api.getAlerts().catch(() => ({ alerts: [] })),
+        api.getTrends("30d").catch((e) => ({ _error: e.message })),
+        isAdmin
+          ? api.getStaleEndpoints(90).catch((e) => ({ _error: e.message }))
+          : Promise.resolve(null),
       ]);
-      body.innerHTML = renderDashboardData(dash, alertsRes);
-      tsEl.textContent = "Opdateret: " + new Date().toLocaleTimeString();
+
+      // Alerts banner
+      const alertList = alertsRes?.alerts || [];
+      if (alertList.length) {
+        alertsEl.innerHTML = `<div style="margin-bottom:.75rem;">` +
+          alertList.map((a) => `
+            <div style="background:${a.severity === "error" ? "#dc2626" : "#d97706"};
+              color:#fff;padding:8px 14px;border-radius:10px;margin-bottom:6px;">
+              <strong>${esc(a.title)}</strong>
+              <span style="font-size:.9em;margin-left:.5rem;">${esc(a.body)}</span>
+            </div>`).join("") +
+          "</div>";
+      } else {
+        alertsEl.innerHTML = "";
+      }
+
+      body.innerHTML = compose(dash, trendsRes, lifecycleRes, isAdmin);
+      tsEl.textContent = "Opdateret " + new Date().toLocaleTimeString();
     } catch (err) {
       body.innerHTML = `<div class="alert error">Kunne ikke hente dashboard: ${esc(err.message)}</div>`;
     }
@@ -292,7 +456,6 @@ export async function renderDashboard(container) {
   }
 
   refreshBtn.addEventListener("click", load);
-
   logLevelSel.addEventListener("change", loadLogs);
   logLinesSel.addEventListener("change", loadLogs);
   logSearch.addEventListener("input", () => {

@@ -24,11 +24,23 @@ def init_db() -> None:
     try:
         con.execute("""
             CREATE TABLE IF NOT EXISTS first_seen (
-                mac         TEXT PRIMARY KEY,
+                mac           TEXT PRIMARY KEY,
                 first_seen_at REAL NOT NULL,
-                endpoint_id TEXT NOT NULL DEFAULT ''
+                endpoint_id   TEXT NOT NULL DEFAULT '',
+                deleted_at    REAL DEFAULT NULL
             )
         """)
+        # Migration: tilføj deleted_at til eksisterende DB (idempotent)
+        try:
+            con.execute("ALTER TABLE first_seen ADD COLUMN deleted_at REAL DEFAULT NULL")
+        except Exception:  # noqa: BLE001
+            pass  # kolonnen eksisterer allerede
+        con.execute(
+            "CREATE INDEX IF NOT EXISTS idx_fs_added ON first_seen(first_seen_at)"
+        )
+        con.execute(
+            "CREATE INDEX IF NOT EXISTS idx_fs_deleted ON first_seen(deleted_at)"
+        )
         con.commit()
     finally:
         con.close()
@@ -54,7 +66,7 @@ def record(mac: str, endpoint_id: str = "") -> float:
         ).fetchone()
         if row is None:
             con.execute(
-                "INSERT INTO first_seen (mac, first_seen_at, endpoint_id) VALUES (?, ?, ?)",
+                "INSERT INTO first_seen (mac, first_seen_at, endpoint_id, deleted_at) VALUES (?, ?, ?, NULL)",
                 (mac, now, endpoint_id),
             )
             con.commit()
@@ -63,11 +75,17 @@ def record(mac: str, endpoint_id: str = "") -> float:
         if endpoint_id and existing_id and existing_id != endpoint_id:
             # Samme MAC men nyt ISE endpoint_id → slettet og genskabt i ISE
             con.execute(
-                "UPDATE first_seen SET first_seen_at = ?, endpoint_id = ? WHERE mac = ?",
+                "UPDATE first_seen SET first_seen_at = ?, endpoint_id = ?, deleted_at = NULL WHERE mac = ?",
                 (now, endpoint_id, mac),
             )
             con.commit()
             return now
+        # Endpoint er genobservet (var evt. soft-deleted) → nulstil deleted_at
+        con.execute(
+            "UPDATE first_seen SET deleted_at = NULL WHERE mac = ? AND deleted_at IS NOT NULL",
+            (mac,),
+        )
+        con.commit()
         return existing_ts
     finally:
         con.close()
@@ -88,18 +106,47 @@ def get(mac: str) -> float | None:
 
 
 def delete(mac: str) -> None:
-    """Fjern MAC fra databasen så den behandles som ny ved næste observation.
+    """Soft-slet MAC: sæt deleted_at = nu i stedet for at fjerne rækken.
 
-    Kaldes når et endpoint slettes fra ISE, så et genopstået endpoint
-    ikke arver det gamle første-gang-set tidsstempel.
+    Bevarer historikken til Trend Analyse. Hvis endpointet genskabes i ISE
+    nulstiller record() deleted_at og sætter nyt first_seen_at.
     """
     mac = (mac or "").upper().strip()
     if not mac:
         return
     con = sqlite3.connect(DB_PATH)
     try:
-        con.execute("DELETE FROM first_seen WHERE mac = ?", (mac,))
+        con.execute(
+            "UPDATE first_seen SET deleted_at = ? WHERE mac = ? AND deleted_at IS NULL",
+            (time.time(), mac),
+        )
         con.commit()
+    finally:
+        con.close()
+
+
+def get_added_since(since_ts: float) -> list[tuple[str, float]]:
+    """Returnerer [(mac, first_seen_at)] for endpoints portalen første gang så siden since_ts."""
+    con = sqlite3.connect(DB_PATH)
+    try:
+        rows = con.execute(
+            "SELECT mac, first_seen_at FROM first_seen WHERE first_seen_at >= ?",
+            (since_ts,),
+        ).fetchall()
+        return [(row[0], row[1]) for row in rows]
+    finally:
+        con.close()
+
+
+def get_removed_since(since_ts: float) -> list[tuple[str, float]]:
+    """Returnerer [(mac, deleted_at)] for endpoints bekræftet slettet fra ISE siden since_ts."""
+    con = sqlite3.connect(DB_PATH)
+    try:
+        rows = con.execute(
+            "SELECT mac, deleted_at FROM first_seen WHERE deleted_at IS NOT NULL AND deleted_at >= ?",
+            (since_ts,),
+        ).fetchall()
+        return [(row[0], row[1]) for row in rows]
     finally:
         con.close()
 

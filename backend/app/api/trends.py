@@ -7,15 +7,13 @@ en valgbar periode (7d / 30d / 90d / 365d) og returnerer daglige tæller.
 """
 from __future__ import annotations
 
-import json
-import sqlite3
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Query
 
 from app.api.deps import require_any
-from app.core.audit_store import DB_PATH
+from app.core import first_seen_store
 from app.core.endpoint_cache import get_cache
 from app.schemas.user import User
 from app.services.cache_prewarm import get_worker as get_prewarm_worker
@@ -33,15 +31,6 @@ def _is_laa(mac: str) -> bool:
         return False
 
 
-def _mac_from_json(blob: str | None) -> str:
-    if not blob:
-        return ""
-    try:
-        d = json.loads(blob)
-        return d.get("mac") or d.get("name") or d.get("macAddress") or ""
-    except Exception:
-        return ""
-
 
 @router.get("", dependencies=[Depends(require_any)])
 async def get_trends(
@@ -53,52 +42,34 @@ async def get_trends(
 
     now = datetime.now(timezone.utc)
     start = now - timedelta(days=days)
-    start_str = start.isoformat()
 
     # Byg dato-labels (YYYY-MM-DD) for perioden
     labels = [
         (start + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(days + 1)
     ]
 
-    # Forespørg audit-events
+    # Forespørg first_seen_store — afspejler alle ISE-endpoints portalen har set
     added_by_day: dict[str, int] = defaultdict(int)
     removed_by_day: dict[str, int] = defaultdict(int)
     laa_added_by_day: dict[str, int] = defaultdict(int)
     laa_removed_by_day: dict[str, int] = defaultdict(int)
 
-    try:
-        conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
-        try:
-            cur = conn.cursor()
-            cur.execute(
-                """
-                SELECT ts, action, after_json, before_json
-                FROM audit_events
-                WHERE resource_type = 'endpoint'
-                  AND action IN ('create', 'delete')
-                  AND ts >= ?
-                ORDER BY ts
-                """,
-                (start_str,),
-            )
-            rows = cur.fetchall()
-        finally:
-            conn.close()
-    except Exception:
-        rows = []
+    start_ts = start.timestamp()
 
-    for ts, action, after_json, before_json in rows:
-        day = ts[:10]
-        if action == "create":
+    try:
+        for mac, ts in first_seen_store.get_added_since(start_ts):
+            day = datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%d")
             added_by_day[day] += 1
-            mac = _mac_from_json(after_json)
-            if mac and _is_laa(mac):
+            if _is_laa(mac):
                 laa_added_by_day[day] += 1
-        elif action == "delete":
+
+        for mac, ts in first_seen_store.get_removed_since(start_ts):
+            day = datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%d")
             removed_by_day[day] += 1
-            mac = _mac_from_json(before_json)
-            if mac and _is_laa(mac):
+            if _is_laa(mac):
                 laa_removed_by_day[day] += 1
+    except Exception:
+        pass
 
     added = [added_by_day.get(d, 0) for d in labels]
     removed = [removed_by_day.get(d, 0) for d in labels]
@@ -129,7 +100,8 @@ async def get_trends(
                 pass
 
     cache_loading = total == 0 and not get_prewarm_worker().cache_ready
-    no_audit_data = total > 0 and sum(added) == 0 and sum(removed) == 0
+    prewarm_status = get_prewarm_worker().status
+    last_scan_at = prewarm_status.last_full_scan_at
 
     return {
         "period": period,
@@ -145,5 +117,5 @@ async def get_trends(
             "laa_pct": round(laa_now / total * 100, 1) if total else 0.0,
             "cache_loading": cache_loading,
         },
-        "no_audit_data": no_audit_data,
+        "last_scan_at": last_scan_at,
     }

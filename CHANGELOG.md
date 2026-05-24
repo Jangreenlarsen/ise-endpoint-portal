@@ -3,6 +3,82 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.8.2-P4 build 0526] — 2026-05-24 — sec: Security Patch 4 — cache-DoS, dead-code NameError, audit max_length
+
+**Security Patch 4 (3 fixes fra ny sikkerhedsanalyse):**
+
+- `backend/app/api/cache.py` — `/api/cache/invalidate` ændret fra `require_any` til `require_admin` — alle autentiserede brugere (inkl. viewer/registrant) kunne tømme cache og forårsage DoS mod ISE-API
+- `backend/app/api/trends.py` — fjernet `_mac_from_json()` (ubrugt dead-code) der kaldte `json.loads()` uden at `json` var importeret — ville give `NameError` ved fremtidig kald
+- `backend/app/api/audit.py` — `actor`, `resource_type`, `resource_id`, `from_ts`, `to_ts` på list-endpoint manglede `max_length` (fandtes kun på export-endpoint fra Patch 3)
+
+## [5.8.2 build 0525] — 2026-05-24 — fix: Livscyklus tabel — kompakt enkelt-linje per endpoint
+
+- `lifecycle.js`: `fmtFirstSeen` viser dato + alder på én linje (`2026-01-15 (129d)`)
+- `styles.css`: `.lc-table td` padding reduceret til 3px vertikal + `white-space:nowrap`
+
+## [5.8.2 build 0524] — 2026-05-24 — feat: Livscyklus — tid-telemetri + klik til Browse/Edit
+
+**Ny kolonne: "Første gang set"** — viser dato (YYYY-MM-DD) og alder i dage siden portalen første gang observerede endpointet (fra `first_seen_store`). Inkluderes i CSV-eksport.
+
+**Klik til Browse/Edit** — klik på en hvilken som helst række i Livscyklus-tabellen for at åbne endpointet direkte i Browse/Edit med MAC-søgning pre-fyldt. Implementeret via `sessionStorage` + `hashchange`-routing.
+
+**Berørte filer:**
+- `backend/app/api/lifecycle.py` — importerer `first_seen_store`; batch-opslag tilføjer `first_seen_at` til hver stale-entry
+- `frontend/js/views/lifecycle.js` — `fmtFirstSeen()` helper, ny kolonne, click-handler per række, ↗-ikon i sidst kolonne, CSV-eksport inkluderer dato
+- `frontend/js/views/browse.js` — læser `sessionStorage["browse_open_ep"]` efter `filterAPI.restoreFilters()` og pre-fylder `globalQInput` + `state.fullTextQ`
+- `frontend/css/styles.css` — `cursor:pointer` på lc-table rækker, hover=blåt, `.lc-browse-link` med dark/midnight varianter
+
+## [5.8.1 build 0523] — 2026-05-24 — feat: dashboard redesign — KPI-kort, mini trend-chart, livscyklus-summary
+
+Komplet redesign af Dashboard-viewet. Visuel hierarki med store KPI-tal, inline sparkline-chart og Livscyklus-summary erstatter den tidligere tabel-baserede layout.
+
+**Nyt layout (top → bund):**
+1. **KPI-rad** — 5 kort med farvet top-accent: Total endpoints, Private MACs (LAA%), Inaktive endpoints (admin), Cache hit rate, Circuit Breaker status
+2. **2-kolonne midtersektion** — venstre: 30-dages endpoint-bevægelse som mini sparkline (Tilgang/Fragang/Netto) med summering og link til Trend Analyse; højre: Systemstatus-kort (CB, sessioner, cache, prewarm) + Livscyklus-summary-kort (admin)
+3. **Audit-hændelser** — renere tabel med farvekodet action-badge (create=grøn, delete=rød, update=gul)
+4. **Systemlog** — uændret (admin only)
+
+**Teknisk:**
+- 3 parallelle API-kald: `getDashboard()` + `getTrends("30d")` + `getStaleEndpoints(90)` (admin)
+- Livscyklus-sektionen vises kun for admin-rolle
+- Trends-sektionen viser "cache loading" besked hvis ISE-sync endnu ikke er klar
+- `import { auth }` tilføjet til dashboard.js for rolle-check
+
+**Berørte filer:**
+- `frontend/js/views/dashboard.js` — komplet omskrivning
+
+## [5.8.0.3 build 0522] — 2026-05-24 — feat: hover-tooltip på Trend Analyse grafer
+
+Interaktive tooltips på begge SVG-charts i Trend Analyse. Hover over et punkt viser dato og alle serie-værdier for den dag.
+
+**Implementering:**
+- `svgLineChart()` embedder chart-metadata i `data-chart`-attribut (JSON) og tilføjer skjulte hover-elementer: vertikal crosshair-linje + en highlight-dot per serie
+- `attachChartTooltips(container)` attacherer `mousemove`/`mouseleave`-handlers efter DOM-insertion; konverterer musens skærmkoordinater til SVG-koordinater via `getBoundingClientRect()` og viewBox-ratio
+- Floating tooltip-div (`_tip`) oprettet én gang på `document.body`, genbruges på tværs af loads
+
+**Berørte filer:**
+- `frontend/js/views/trends.js`
+
+## [5.8.0.2 build 0521] — 2026-05-24 — debug: rettelse af version til debug-format (5.8.0.2)
+
+- `version.json` — version rettet til `5.8.0.2` (debug-serie), build til 0521
+
+## [5.8.0 build 0520] — 2026-05-24 — fix: Trend Analyse afspejler nu alle ISE-endpoints, ikke kun portal-audit
+
+**Rodårsag:** Trend Analyse brugte `audit_events`-tabellen som datakilde — den registrerer kun portal-initierede handlinger. Endpoints oprettet direkte i ISE (uden om portalen) var usynlige og påvirkede aldrig graferne.
+
+**Løsning:** Datakilden er skiftet til `first_seen_store.py` der populeres af prewarm-scanneren for ALLE ISE-endpoints.
+
+**Ændringer i first_seen_store.py:**
+- Nyt `deleted_at`-felt: soft-delete i stedet for hard DELETE — bevarer slettehistorik til trend-grafer
+- Ny `get_added_since(since_ts)` — returnerer MACs første set siden timestamp
+- Ny `get_removed_since(since_ts)` — returnerer soft-slettede MACs siden timestamp
+
+**Berørte filer:**
+- `backend/app/core/first_seen_store.py` — soft-delete, migration, indexes, nye query-funktioner
+- `backend/app/api/trends.py` — skiftet fra audit_events til first_seen_store; fjernet no_audit_data
+- `frontend/js/views/trends.js` — fjernet auditNote/no_audit_data; opdateret chart-beskrivelse til "portalen har observeret per dag (synkroniseres fra ISE hver 30. minut)"
+
 ## [5.8.0 build 0519] — 2026-05-24 — fix: Livscyklus og Trend Analyse viser 0 ved tom cache
 
 **Rodårsag:** Lifecycle og Trend Analyse læser begge fra endpoint-cachen. Hvis cachen endnu ikke er populeret ved opstart (ingen disk-cache-fil), returnerer begge endpoints 0 — selv om ISE har tusindvis af endpoints. Brugere oplevede 0 resultater indtil de besøgte Browse/Edit som trigger prewarm.

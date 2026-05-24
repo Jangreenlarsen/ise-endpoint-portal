@@ -4,6 +4,21 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 5.8.2-P4 b0526] 2026-05-24 — SEC: Cache-invalidate tilgængeligt for alle brugere (DoS)
+- **Symptom:** `/api/cache/invalidate` brugte `require_any` — enhver autentiseret bruger (viewer, registrant) kunne tømme endpoint-cachen.
+- **Risiko:** Gentagen cache-invalidering tvinger backend til at kalde ISE for hvert request → latens-spike og potentiel ISE-overbelastning (DoS mod eget ISE).
+- **Fix:** Endpoint kræver nu `require_admin`. `require_any`-import fjernet fra `cache.py`.
+
+## [FIXED 5.8.2-P4 b0526] 2026-05-24 — SEC: trends.py — _mac_from_json() brugte json uden import (NameError)
+- **Symptom:** Ubrugt funktion `_mac_from_json()` i `trends.py` kaldte `json.loads()` men `json` var ikke importeret i filen.
+- **Risiko:** Kald til funktionen ville give `NameError: name 'json' is not defined` → 500-fejl.
+- **Fix:** Funktionen er fjernet (dead-code — aldrig kaldt).
+
+## [FIXED 5.8.2-P4 b0526] 2026-05-24 — SEC: audit list-endpoint manglede max_length på filterparametre
+- **Symptom:** `GET /api/audit` — `actor`, `resource_type`, `resource_id`, `from_ts`, `to_ts` havde ingen `max_length`-begrænsning. Export-endpoint var korrekt fra Patch 3.
+- **Risiko:** Ekstremt lange filterværdier kunne forårsage overhead i SQLite-query-parsing.
+- **Fix:** `max_length` tilføjet konsistent på alle fem parametre (200/100/200/50/50 tegn).
+
 ## [FIXED 5.7.13 b0513] 2026-05-23 — XSS: user.role ukrypteret i innerHTML (app.js)
 - **Symptom:** `user.role` fra JWT-payload indsættes direkte i `innerHTML` uden HTML-escaping.
 - **Risiko:** Hvis en angriber kan påvirke rolle-værdien (kompromitteret token), kan vilkårligt HTML/JS injiceres.

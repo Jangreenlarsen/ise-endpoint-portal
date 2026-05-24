@@ -601,6 +601,19 @@ export async function renderBrowse(container) {
 
   // ── Bootstrap ─────────────────────────────────────────────────────────────
   filterAPI.restoreFilters();
+
+  // Pre-fill søgning hvis vi er navigeret hertil fra Livscyklus-viewet
+  const _pendingEp = sessionStorage.getItem("browse_open_ep");
+  if (_pendingEp) {
+    sessionStorage.removeItem("browse_open_ep");
+    const _qIn = container.querySelector("#global-q-input");
+    if (_qIn) {
+      _qIn.value = _pendingEp;
+      state.fullTextQ = _pendingEp;
+      state.allRowsCache = null;
+    }
+  }
+
   tableAPI.applyColVis();
 
   startPxGridStream();
