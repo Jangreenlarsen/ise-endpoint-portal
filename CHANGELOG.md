@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.8.0 build 0517] — 2026-05-24 — feat: update-check viser RELEASE_{version}.md for main; udvidet markdown-renderer
+
+- `backend/app/services/update_service.py` — `check_github_version` henter nu `RELEASE_{version}.md` fra `main`-branch (standalone release note); fallback til RELEASE_NOTES.md-sektion; `dev`-branch uændret
+- `frontend/js/views/settings/section-update.js` — `renderReleaseNotesMd` udvidet: håndterer `#` (titel), `####` (kategori-header), fenced code blocks (` ``` `), tabeller (`| ... |`) og blockquotes (`> `)
+- `frontend/css/styles.css` — nye `.rn-*`-klasser: `.rn-h1`, `.rn-h4`, `.rn-pre`, `.rn-bq`, `.rn-table` med dark/midnight tema-varianter
+
 ## [5.8.0 build 0516] — 2026-05-24 — fix: lockout_store startup-crash og SQLite-locking
 
 **Rodårsag til portal-nedbrud:**

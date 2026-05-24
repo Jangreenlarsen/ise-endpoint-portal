@@ -185,28 +185,89 @@ function renderReleaseNotesMd(md) {
   const lines = md.split("\n");
   const parts = [];
   let inList = false;
+  let inCode = false;
+  let codeLang = "";
+  let codeLines = [];
+  let inTable = false;
+  let tableLines = [];
+
+  function flushList() {
+    if (inList) { parts.push("</ul>"); inList = false; }
+  }
+  function flushTable() {
+    if (!inTable) return;
+    const rows = tableLines.filter(r => !/^\|[-: |]+\|$/.test(r.trim()));
+    if (rows.length) {
+      let html = '<table class="rn-table">';
+      rows.forEach((row, i) => {
+        const cells = row.split("|").slice(1, -1).map(c => c.trim());
+        const tag = i === 0 ? "th" : "td";
+        html += `<tr>${cells.map(c => `<${tag}>${_rnInline(c)}</${tag}>`).join("")}</tr>`;
+      });
+      html += "</table>";
+      parts.push(html);
+    }
+    inTable = false;
+    tableLines = [];
+  }
+
   for (const raw of lines) {
     const l = raw.trimEnd();
-    if (l.startsWith("### ")) {
-      if (inList) { parts.push("</ul>"); inList = false; }
+
+    if (l.startsWith("```")) {
+      if (!inCode) {
+        flushList(); flushTable();
+        inCode = true; codeLang = l.slice(3).trim(); codeLines = [];
+      } else {
+        const langClass = codeLang ? ` class="language-${codeLang}"` : "";
+        const escaped = codeLines.map(c => c.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")).join("\n");
+        parts.push(`<pre class="rn-pre"><code${langClass}>${escaped}</code></pre>`);
+        inCode = false; codeLines = [];
+      }
+      continue;
+    }
+    if (inCode) { codeLines.push(raw); continue; }
+
+    if (l.startsWith("|")) {
+      flushList();
+      inTable = true; tableLines.push(l);
+      continue;
+    }
+    if (inTable) flushTable();
+
+    if (/^# (?!#)/.test(l)) {
+      flushList();
+      parts.push(`<h3 class="rn-h1">${_rnInline(l.slice(2))}</h3>`);
+    } else if (l.startsWith("#### ")) {
+      flushList();
+      parts.push(`<h6 class="rn-h4">${_rnInline(l.slice(5))}</h6>`);
+    } else if (l.startsWith("### ")) {
+      flushList();
       parts.push(`<h5 class="rn-h3">${_rnInline(l.slice(4))}</h5>`);
     } else if (l.startsWith("## ")) {
-      if (inList) { parts.push("</ul>"); inList = false; }
+      flushList();
       parts.push(`<h4 class="rn-h2">${_rnInline(l.slice(3))}</h4>`);
     } else if (l === "---") {
-      if (inList) { parts.push("</ul>"); inList = false; }
+      flushList();
       parts.push('<hr class="rn-hr">');
+    } else if (l.startsWith("> ")) {
+      flushList();
+      parts.push(`<blockquote class="rn-bq">${_rnInline(l.slice(2))}</blockquote>`);
     } else if (l.startsWith("- ")) {
       if (!inList) { parts.push('<ul class="rn-list">'); inList = true; }
       parts.push(`<li>${_rnInline(l.slice(2))}</li>`);
     } else if (l === "") {
-      if (inList) { parts.push("</ul>"); inList = false; }
+      flushList();
     } else {
-      if (inList) { parts.push("</ul>"); inList = false; }
+      flushList();
       parts.push(`<p class="rn-p">${_rnInline(l)}</p>`);
     }
   }
-  if (inList) parts.push("</ul>");
+  flushList(); flushTable();
+  if (inCode && codeLines.length) {
+    const escaped = codeLines.map(c => c.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")).join("\n");
+    parts.push(`<pre class="rn-pre"><code>${escaped}</code></pre>`);
+  }
   return parts.join("");
 }
 
