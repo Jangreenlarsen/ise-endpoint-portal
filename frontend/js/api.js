@@ -95,6 +95,7 @@ export const api = {
   deleteEndpoint: (id) =>
     request(`/endpoints/${id}`, { method: "DELETE" }),
   listActiveSessionMacs: () => request("/endpoints/session-macs"),
+  getEndpointStats: () => request("/endpoints/stats"),
   coaReauth: (id) =>
     request(`/endpoints/${encodeURIComponent(id)}/coa-reauth`, { method: "POST" }),
   coaDisconnect: (id) =>
@@ -433,4 +434,7 @@ export const api = {
 
   // Alerts (5.6.0)
   getAlerts: () => request("/alerts"),
+
+  // Trend-analyse (5.8.0)
+  getTrends: (period = "30d") => request(`/trends?period=${encodeURIComponent(period)}`),
 };

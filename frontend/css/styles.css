@@ -536,13 +536,33 @@ button.small {
   flex-direction: column;
   gap: 2px;
 }
+.first-seen-dt-row {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+}
 .first-seen-date {
-  width: 100%;
+  width: 88px;
   padding: 0.2rem 0.25rem;
   font-size: 0.72rem;
   border: 1px solid #d1d5db;
   border-radius: 3px;
   box-sizing: border-box;
+}
+.first-seen-time {
+  width: 52px;
+  padding: 0.2rem 0.2rem;
+  font-size: 0.72rem;
+  border: 1px solid #d1d5db;
+  border-radius: 3px;
+  box-sizing: border-box;
+  text-align: center;
+}
+.first-seen-time:not(:placeholder-shown):not(:focus) {
+  /* Rød kant hvis teksten ikke matcher HH:MM mønsteret */
+}
+.first-seen-time.invalid {
+  border-color: #ef4444;
 }
 td.auth-status-col {
   text-align: center;
@@ -649,6 +669,43 @@ td.mac-cell.cache-stale {
   color: #fbbf24;
 }
 
+/* LAA-tæller i endpoint-count-linjen */
+.laa-count {
+  display: inline-block;
+  background: #f59e0b;
+  color: #1a1a1a;
+  border-radius: 10px;
+  padding: 0 7px;
+  font-size: 0.78em;
+  font-weight: 700;
+  vertical-align: middle;
+  margin-left: 6px;
+}
+[data-theme="dark"] .laa-count    { background: #b45309; color: #fef3c7; }
+[data-theme="midnight"] .laa-count { background: #92400e; color: #fde68a; }
+[data-theme="slate"] .laa-count   { background: #d97706; color: #1e1b4b; }
+
+/* Locally Administered Address (privat/randomiseret MAC) — fremhæv første octet */
+.mac-laa {
+  background: #f59e0b;
+  color: #1a1a1a;
+  border-radius: 2px;
+  padding: 0 2px;
+  font-weight: 700;
+}
+[data-theme="dark"] .mac-laa {
+  background: #b45309;
+  color: #fef3c7;
+}
+[data-theme="midnight"] .mac-laa {
+  background: #92400e;
+  color: #fde68a;
+}
+[data-theme="slate"] .mac-laa {
+  background: #d97706;
+  color: #1e1b4b;
+}
+
 /* Modal overlay */
 .modal-overlay {
   position: fixed;
@@ -695,6 +752,22 @@ td.mac-cell.cache-stale {
 .modal-body select:disabled {
   background: #f3f4f6;
   color: #9ca3af;
+}
+.detail-tpl-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0 0.3rem;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--border);
+  margin-top: 0.5rem;
+}
+.detail-tpl-select {
+  flex: 1;
+  min-width: 140px;
+  max-width: 280px;
+  font-size: 0.82rem;
+  padding: 3px 6px;
 }
 .modal-actions {
   display: flex;
@@ -1629,7 +1702,8 @@ td.psk-key-cell {
   color: #e0e0e0;
   border-color: #3a3a5c;
 }
-[data-theme="dark"] .first-seen-date {
+[data-theme="dark"] .first-seen-date,
+[data-theme="dark"] .first-seen-time {
   background: #1a1a2e;
   color: #e0e0e0;
   border-color: #3a3a5c;
@@ -1791,7 +1865,8 @@ td.psk-key-cell {
 }
 [data-theme="midnight"] .browse-table-wrap select { border-left-color: #60a5fa; }
 [data-theme="midnight"] .col-filter-input { background: #0d1117; color: #e6edf3; border-color: #30363d; }
-[data-theme="midnight"] .first-seen-date { background: #0d1117; color: #e6edf3; border-color: #30363d; }
+[data-theme="midnight"] .first-seen-date,
+[data-theme="midnight"] .first-seen-time { background: #0d1117; color: #e6edf3; border-color: #30363d; }
 [data-theme="midnight"] .auth-status-select { background: #0d1117; color: #e6edf3; border-color: #30363d; }
 [data-theme="midnight"] .filter-clear-all-btn { background: #b91c1c; }
 [data-theme="midnight"] .filter-row th { background: #010409; }

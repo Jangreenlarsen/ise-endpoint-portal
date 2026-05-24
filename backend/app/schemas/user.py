@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 Role = Literal["admin", "editor", "editor-psk", "viewer", "registrant", "registrant_templet"]
 ROLE_VALUES: tuple[Role, ...] = ("admin", "editor", "editor-psk", "viewer", "registrant", "registrant_templet")
-UserType = Literal["user", "operator"]
+UserType = Literal["user", "operator", "tacacs_shadow"]
 
 
 class User(BaseModel):

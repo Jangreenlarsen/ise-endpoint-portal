@@ -3,6 +3,7 @@
 import { api, setUnauthorizedHandler } from "./api.js";
 import { auth, scheduleTokenRefresh, cancelTokenRefresh } from "./auth.js";
 import { t, resolveLocale, initLocaleFromStorage, registerRerenderCallback } from "./i18n.js";
+import { esc } from "./views/browse-utils.js";
 import { renderImport } from "./views/import.js";
 import { renderBrowse } from "./views/browse.js";
 import { renderAttributes } from "./views/attributes.js";
@@ -18,6 +19,7 @@ import { renderCsvTemplate } from "./views/csv-template.js";
 import { renderPolicy } from "./views/policy.js";
 import { renderDashboard } from "./views/dashboard.js";
 import { renderLifecycle } from "./views/lifecycle.js";
+import { renderTrends } from "./views/trends.js";
 
 const statusDot = document.getElementById("status-dot");
 const container = document.getElementById("view-container");
@@ -41,6 +43,7 @@ const routes = {
   audit:      { render: renderAudit,      roles: ["admin", "editor", "editor-psk", "viewer"] },
   metrics:    { render: renderMetrics,    roles: ["admin"] },
   lifecycle:  { render: renderLifecycle,  roles: ["admin"] },
+  trends:     { render: renderTrends,     roles: ["admin", "editor", "editor-psk", "viewer"] },
   register:   { render: renderRegister,   roles: ["admin", "editor", "editor-psk", "registrant", "registrant_templet"] },
   settings:     { render: renderSettings,     roles: ["admin", "editor-psk"] },
   "user-prefs": { render: renderUserPrefs,    roles: ["admin", "editor", "editor-psk", "viewer", "registrant", "registrant_templet"] },
@@ -166,7 +169,7 @@ async function renderView() {
     a.classList.toggle("active", a.dataset.view === route);
   });
   if (!def.roles.includes(user.role)) {
-    container.innerHTML = `<div class="alert error">${t("app.no_access").replace("{role}", user.role)}</div>`;
+    container.innerHTML = `<div class="alert error">${t("app.no_access").replace("{role}", esc(user.role))}</div>`;
     return;
   }
   try {

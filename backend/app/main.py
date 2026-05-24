@@ -29,6 +29,7 @@ from app.api import authz_profiles as authz_profiles_api
 from app.api import policy as policy_api
 from app.api import settings as settings_api
 from app.api import update as update_api
+from app.api import trends as trends_api
 from app.core.audit_store import init_db as init_audit_db
 from app.core.config import settings
 from app.core.logging import setup_logging
@@ -48,6 +49,26 @@ async def lifespan(_: FastAPI):
     import logging
     logger = logging.getLogger(__name__)
     logger.info("HyperVision ISE Portal %s starting", APP_VERSION)
+
+    # ── Sikkerheds-tjek ved opstart ──────────────────────────────────────────
+    _ca_bundle = getattr(settings, "ise_ca_bundle", None)
+    if not settings.ise_verify_tls and not _ca_bundle:
+        logger.warning(
+            "SECURITY: ISE TLS-verificering er DEAKTIVERET (ISE_VERIFY_TLS=false). "
+            "Man-in-the-Middle-angreb på ISE-kommunikation er mulige. "
+            "Sæt ISE_VERIFY_TLS=true og angiv ISE_CA_BUNDLE i produktion."
+        )
+    _dev_origins = [
+        o for o in settings.backend_cors_origins
+        if "localhost" in o or "127.0.0.1" in o
+    ]
+    if _dev_origins:
+        logger.warning(
+            "SECURITY: CORS indeholder udviklings-origins: %s. "
+            "Fjern disse inden produktionsdrift (BACKEND_CORS_ORIGINS i .env).",
+            _dev_origins,
+        )
+
     # Eager load af auth-secret — filrettigheds-check sker ved startup
     # (ikke mid-request) så en evt. os._exit(1) ikke sprænger ASGI-stacken.
     from app.core import auth as _auth_core
@@ -55,6 +76,11 @@ async def lifespan(_: FastAPI):
     init_audit_db()
     from app.core.first_seen_store import init_db as init_first_seen_db
     init_first_seen_db()
+    try:
+        from app.core.lockout_store import init_db as init_lockout_db
+        init_lockout_db()
+    except Exception as _exc:  # noqa: BLE001
+        logger.warning("lockout_store init fejlede (non-fatal, bruger in-memory fallback): %s", _exc)
     # 3.8.0: backfill System adm-rolle for hver eksisterende bruger så admin
     # kan tagge endpoints med username via rolle-katalogen. Idempotent.
     # Migrate legacy role names: registrar→registrant, registrar_templet→registrant_templet.
@@ -206,6 +232,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next) -> Response:
         response = await call_next(request)
+        # Ingen browser-caching af JS/CSS — sikrer at nye versioner altid indlæses
+        if request.url.path.endswith((".js", ".css")):
+            response.headers["Cache-Control"] = "no-store"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "same-origin"
@@ -216,7 +245,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # nødvendige i den nuværende vanilla-JS arkitektur.
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline'; "
+            "script-src 'self'; "
             "style-src 'self' 'unsafe-inline'; "
             "img-src 'self' data:; "
             "connect-src 'self'; "
@@ -268,6 +297,7 @@ app.include_router(dashboard_api.router, prefix="/api")
 app.include_router(alerts_api.router, prefix="/api")
 app.include_router(lifecycle_api.router, prefix="/api")
 app.include_router(config_backup_api.router, prefix="/api")
+app.include_router(trends_api.router, prefix="/api")
 app.include_router(ise_nodes_api.router, prefix="/api")
 app.include_router(metrics_api.router)
 

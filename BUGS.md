@@ -4,6 +4,66 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 5.7.13 b0513] 2026-05-23 — XSS: user.role ukrypteret i innerHTML (app.js)
+- **Symptom:** `user.role` fra JWT-payload indsættes direkte i `innerHTML` uden HTML-escaping.
+- **Risiko:** Hvis en angriber kan påvirke rolle-værdien (kompromitteret token), kan vilkårligt HTML/JS injiceres.
+- **Fix:** `esc(user.role)` bruges nu i `app.js:171`. `esc()` importeres fra `browse-utils.js`.
+
+## [FIXED 5.7.13 b0513] 2026-05-23 — CSP: script-src tillod unsafe-inline scripts (main.py)
+- **Symptom:** `Content-Security-Policy` indeholdt `script-src 'self' 'unsafe-inline'`.
+- **Risiko:** En XSS-sårbarhed kunne udnyttes til at køre vilkårlige scripts da CSP ikke blokerede inline scripts.
+- **Fix:** `'unsafe-inline'` fjernet fra `script-src`. Alle scripts er `type="module" src="..."` (externe).
+
+## [FIXED 5.7.13 b0513] 2026-05-23 — Account lockout gemtes kun i memory — tabt ved genstart
+- **Symptom:** Backend-genstart nulstillede aktive account lockouts.
+- **Risiko:** En angriber kunne omgå lockout ved at provokere en genstart (f.eks. systemfejl eller deployment).
+- **Fix:** Ny `lockout_store.py` gemmer failures og lockout-state i SQLite (`audit.db`). Overlever genstarter.
+
+## [FIXED 5.7.13 b0513] 2026-05-23 — Ingen input-validering på search-parametre i API
+- **Symptom:** `search`-parameter i `/api/endpoints` og `/api/audit` havde ingen længdebegrænsning.
+- **Risiko:** Ekstremt lange søgestrenge kunne forårsage DoS (CPU/memory) i FTS5-søgningen.
+- **Fix:** `max_length=500` på alle søge-parametre; `page`/`size` valideret med `ge`/`le`.
+
+## [FIXED 5.7.13 b0513] 2026-05-23 — Windows: config.json fik ikke filadgangsbegrænsning
+- **Symptom:** `settings_store.py` satte kun Unix `chmod 0o600`; Windows-blokken var tom.
+- **Risiko:** `config.json` (indeholder ISE-credentials) var læsbar for alle brugere på systemet.
+- **Fix:** `icacls` bruges nu til at fjerne nedarvet adgang og give kun aktuel bruger fuld kontrol.
+
+## [FIXED 5.7.11 b0511] 2026-05-23 — 502 ved "Show 500" — ISE ERS max 100/side
+- **Symptom:** Valg af 500 i "Show"-dropdown gav `502: ISE returnerede en uventet fejl (HTTP 400)`.
+- **Årsag:** Admin-stien i `list_endpoint_details` sendte `size=500` direkte til ISE ERS API der kun accepterer max 100 per side.
+- **Fix:** Når cache er varm, bruger admin-stien nu `_list_all_from_cache()` der paginerer i Python uden ISE-kald. Kold-cache-fallback caps `size` til 100.
+
+## [FIXED 5.7.10.2 b0510] 2026-05-23 — /endpoints/stats returnerede 0 — Pydantic-objekt har ikke .get()
+- **Symptom:** LAA-badge viste intet.
+- **Årsag:** `cached_entry.value` er `EndpointDetail` (Pydantic) — `ep.get("mac")` kaster `AttributeError`. Frontend slugte fejlen stille → `state.laaTotal = null`.
+- **Fix:** `isinstance(ep, dict)` afgør om `.get()` eller `getattr()` bruges.
+
+## [FIXED 5.7.10.1 b0509] 2026-05-23 — /endpoints/stats fejlede — EndpointCache har ingen .values()
+- **Symptom:** LAA-badge forsvandt.
+- **Årsag:** `get_cache().values()` — `EndpointCache` er ikke et dict og har ingen `.values()`-metode → `AttributeError`.
+- **Fix:** Rettes til `cache._details.values()` (intern `dict[str, CachedEntry]`).
+
+## [FIXED 5.7.8.1 b0506] 2026-05-23 — Browser cacher JS/CSS — nye features indlæses ikke uden hard refresh
+- **Symptom:** Nye frontend-ændringer (f.eks. LAA MAC-fremhævning) vises ikke i browseren selv efter genstart af backend.
+- **Årsag:** FastAPI `StaticFiles` sender ingen `Cache-Control` headers → browseren cacher `.js` og `.css` på ubestemt tid.
+- **Fix:** `SecurityHeadersMiddleware` i `main.py` sætter nu `Cache-Control: no-store` på alle `.js`- og `.css`-svar.
+
+## [FIXED 5.7.7.5 b0504] 2026-05-23 — TACACS login brudt efter shadow-user introduceret (is_admin_user fejlklassificering)
+- **Symptom:** TACACS-brugere med admin-rolle (f.eks. "adm") fik `login_failed bad_credentials` — ISE modtog aldrig TACACS-auth-forespørgslen.
+- **Årsag:** Shadow-record (`username="adm"`, `role="admin"`, `user_type="tacacs_shadow"`) matchede `find_by_username`. Gammel check `user_type != "operator"` klassificerede shadow som lokal admin → `is_admin_user=True` → TACACS springes over → lokal auth fejler med `password_hash=""`.
+- **Fix:** `is_admin_user` kræver nu `user_type == "user"`. `profile_record` lookup filtrerer shadow fra. Lokal auth-blok dækker nu også `tacacs_shadow`.
+
+## [FIXED 5.7.7.4 b0503] 2026-05-23 — Users-liste giver 500 når TACACS shadow-users er i users.json
+- **Symptom:** Admin → Users-modul kastede "Internal Server Error 500" efter v5.7.7.3 introducerede `tacacs_shadow`-records.
+- **Årsag:** `UserType = Literal["user", "operator"]` — `"tacacs_shadow"` ikke med → Pydantic ValidationError ved `_to_public()`.
+- **Fix:** `user.py`: tilføjet `"tacacs_shadow"` til `UserType`. `user_service.py`: `list_users()` filtrerer shadow-records fra.
+
+## [FIXED 5.7.7.3 b0502] 2026-05-23 — TACACS-brugere fik HTTP 404 ved gem af præferencer/views
+- **Symptom:** TACACS-brugere fik 404-fejl når de forsøgte at gemme præferencer eller gemte views, fordi `users.json` ikke havde en post for dem.
+- **Årsag:** TACACS-login oprettede et syntetisk `User`-objekt med `id=f"tacacs:{username}"` men gemte det aldrig til `users.json`. Alle præference- og view-endpoints slår brugeren op via `find_by_id()` → returnerede `None` → 404.
+- **Fix:** `user_service.py` `login()` upsert'er nu et shadow-record med `user_type="tacacs_shadow"` i `users.json` ved hvert vellykket TACACS-login. Rolle, endpoint-roller og skabeloner synkroniseres fra operatørprofilen ved hvert login.
+
 ## [FIXED] 2026-05-21 — selektion af endpoints nulstilles ved automatisk portal-opdatering
 - **Symptom:** Valgte endpoints (checkbokse) blev fravalgt efter kort tid, selv uden bruger-interaktion.
 - **Årsag:** pxGrid `endpoint_changed`-events trigerede `scheduleEndpointReload()` → `cb.load()` → `renderRows()` som sætter `tbody.innerHTML` og dermed erstatter alle DOM-elementer inkl. checkbokse. Selektion var ikke gemt nogen steder og gik tabt.
@@ -13,7 +73,6 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 - **Symptom:** Alle endpoints returnerede fejl ved batch-simulering.
 - **Årsag:** `batch_simulate` i `policy.py` brugte `result.matched_rule` og `result.matched_profile` — de korrekte feltnavne er `matched_rule_name` og `profiles` (liste).
 - **Fix:** `backend/app/api/policy.py` — rettet til `result.matched_rule_name` og `", ".join(result.profiles)`. `matched`-check opdateret tilsvarende. Løst i v5.6.25.
-**Status**: `open` · `investigating` · `fixed`
 
 ---
 

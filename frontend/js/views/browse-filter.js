@@ -23,18 +23,47 @@ export function initFilter(container, state, api, cb) {
   const filterClearAllBtn  = container.querySelector("#filter-clear-all-btn");
   const authStatusSelect   = container.querySelector("#auth-status-filter");
   const globalQInput       = container.querySelector("#global-q-input");
-  const firstSeenFrom      = () => container.querySelector("#first-seen-from");
-  const firstSeenTo        = () => container.querySelector("#first-seen-to");
+  function _fsDateTimeVal(dateId, timeId, defaultTime) {
+    const d = container.querySelector(dateId)?.value;
+    if (!d) return "";
+    const raw = (container.querySelector(timeId)?.value || "").trim();
+    const m = /^(\d{1,2}):(\d{2})$/.exec(raw);
+    const t = m
+      ? `${String(Math.min(23, +m[1])).padStart(2, "0")}:${String(Math.min(59, +m[2])).padStart(2, "0")}`
+      : defaultTime;
+    return `${d}T${t}`;
+  }
+  const firstSeenFromVal = () => _fsDateTimeVal("#first-seen-from-d", "#first-seen-from-t", "00:00");
+  const firstSeenToVal   = () => _fsDateTimeVal("#first-seen-to-d",   "#first-seen-to-t",   "23:59");
+  function firstSeenAnySet() {
+    return !!(container.querySelector("#first-seen-from-d")?.value
+           || container.querySelector("#first-seen-to-d")?.value);
+  }
+  function firstSeenClearAll() {
+    ["#first-seen-from-d", "#first-seen-from-t", "#first-seen-to-d", "#first-seen-to-t"]
+      .forEach((id) => { const el = container.querySelector(id); if (el) el.value = ""; });
+  }
+  function firstSeenRestore(fromVal, toVal) {
+    const fp = (fromVal || "").split("T");
+    const tp = (toVal   || "").split("T");
+    const fd = container.querySelector("#first-seen-from-d");
+    const ft = container.querySelector("#first-seen-from-t");
+    const td = container.querySelector("#first-seen-to-d");
+    const tt = container.querySelector("#first-seen-to-t");
+    if (fd) fd.value = fp[0] || "";
+    if (ft) ft.value = fp[1] || "";
+    if (td) td.value = tp[0] || "";
+    if (tt) tt.value = tp[1] || "";
+  }
 
   state.fullTextQ = "";
 
   function updateClearBtn() {
-    const fsFrom = firstSeenFrom(); const fsTo = firstSeenTo();
     const anyActive = state.portalOnly
       || Array.from(filterRow.querySelectorAll(".col-filter-input")).some((i) => i.value.trim())
       || (authStatusSelect && authStatusSelect.value !== "all")
       || state.fullTextQ
-      || (fsFrom?.value || fsTo?.value);
+      || firstSeenAnySet();
     filterClearAllBtn.classList.toggle("hidden", !anyActive);
   }
 
@@ -65,13 +94,12 @@ export function initFilter(container, state, api, cb) {
   }
 
   function needsFilterMode() {
-    const fsFrom = firstSeenFrom(); const fsTo = firstSeenTo();
     return state.portalOnly
       || Array.from(filterRow.querySelectorAll(".col-filter-input")).some((i) => i.value.trim())
       || (authStatusSelect && authStatusSelect.value !== "all")
       || state.sortCol !== null
       || !!state.fullTextQ
-      || !!(fsFrom?.value || fsTo?.value);
+      || firstSeenAnySet();
   }
 
   function anyFilterActive() {
@@ -92,12 +120,11 @@ export function initFilter(container, state, api, cb) {
         });
       }
     }
-    // First-seen dato-range filter
-    const fsFrom = firstSeenFrom(); const fsTo = firstSeenTo();
-    const fsFromVal = fsFrom?.value; const fsToVal = fsTo?.value;
-    if (fsFromVal || fsToVal) {
-      const fromTs = fsFromVal ? new Date(fsFromVal).getTime() / 1000 : 0;
-      const toTs   = fsToVal   ? (new Date(fsToVal).getTime() / 1000 + 86399) : Infinity;
+    // First-seen dato/tid-range filter
+    const fsFromV = firstSeenFromVal(); const fsToV = firstSeenToVal();
+    if (fsFromV || fsToV) {
+      const fromTs = fsFromV ? new Date(fsFromV).getTime() / 1000 : 0;
+      const toTs   = fsToV   ? (new Date(fsToV).getTime() / 1000 + 59) : Infinity;
       rows = rows.filter((r) => {
         const ts = r.first_seen_at || 0;
         return ts >= fromTs && ts <= toTs;
@@ -233,15 +260,14 @@ export function initFilter(container, state, api, cb) {
       const q = (input.value || "").trim();
       if (q) cols.push({ col: input.dataset.col, value: q });
     });
-    const fsFrom = firstSeenFrom(); const fsTo = firstSeenTo();
     return {
       portalOnly: state.portalOnly,
       cols,
       authStatus: authStatusSelect ? authStatusSelect.value : "all",
       colVis: { ...state.colVis },
       pageSize: state.currentSize,
-      firstSeenFrom: fsFrom?.value || "",
-      firstSeenTo:   fsTo?.value   || "",
+      firstSeenFrom: firstSeenFromVal(),
+      firstSeenTo:   firstSeenToVal(),
     };
   }
 
@@ -279,9 +305,7 @@ export function initFilter(container, state, api, cb) {
       savePageSize(state.currentSize);
       pageSizeSelect.value = String(state.currentSize);
     }
-    const fsFrom = firstSeenFrom(); const fsTo = firstSeenTo();
-    if (fsFrom) fsFrom.value = s.firstSeenFrom || "";
-    if (fsTo)   fsTo.value   = s.firstSeenTo   || "";
+    firstSeenRestore(s.firstSeenFrom || "", s.firstSeenTo || "");
   }
 
   function restoreFilters() { applyFilterSnapshot(loadBrowseFilters()); }
@@ -327,7 +351,12 @@ export function initFilter(container, state, api, cb) {
 
   // Wire up first-seen date inputs — rendered lazily when first_seen column is visible
   container.addEventListener("change", async (e) => {
-    if (e.target.id === "first-seen-from" || e.target.id === "first-seen-to") {
+    if (e.target.id === "first-seen-from-d" || e.target.id === "first-seen-from-t"
+     || e.target.id === "first-seen-to-d"   || e.target.id === "first-seen-to-t") {
+      if (e.target.id === "first-seen-from-t" || e.target.id === "first-seen-to-t") {
+        const v = e.target.value.trim();
+        e.target.classList.toggle("invalid", !!v && !/^\d{1,2}:\d{2}$/.test(v));
+      }
       updateClearBtn();
       persistFilters();
       clearActiveView();
@@ -339,9 +368,7 @@ export function initFilter(container, state, api, cb) {
     applyFilterSnapshot({ portalOnly: false, cols: [], authStatus: "all" });
     state.fullTextQ = "";
     if (globalQInput) globalQInput.value = "";
-    const fsFrom = firstSeenFrom(); const fsTo = firstSeenTo();
-    if (fsFrom) fsFrom.value = "";
-    if (fsTo) fsTo.value = "";
+    firstSeenClearAll();
     state.allRowsCache = null;
     persistFilters();
     clearActiveView();

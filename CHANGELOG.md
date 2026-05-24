@@ -3,6 +3,158 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.8.0 build 0516] — 2026-05-24 — fix: lockout_store startup-crash og SQLite-locking
+
+**Rodårsag til portal-nedbrud:**
+- `init_lockout_db()` var ikke i try-except → en SQLite-fejl ved startup crashede hele backend
+- `lockout_store` brugte samme `audit.db` som audit-systemet → write-lock-konflikt ved startup
+- `sqlite3.connect()` uden timeout → concurrent logins kunne give "database is locked"-fejl
+
+**Fix:**
+- `backend/app/core/lockout_store.py` — bruger nu dedikeret `lockout.db`; alle funktioner er try-except wrapped med safe defaults; `conn.close()` eksplicit i finally-blok; `timeout=10` på alle connections; `_available`-flag forhindrer brug af utildannet DB
+- `backend/app/main.py` — `init_lockout_db()` wrapped i try-except med warning-log; app starter altid uanset lockout DB-fejl
+
+## [5.8.0 build 0514] — 2026-05-23 — feat: Trend Analyse — endpoint tilgang/fragang og private MACs
+
+**Nyt view: Trend Analyse** tilgængeligt via sidebar under Overvågning.
+
+**Berørte filer:**
+- `backend/app/api/trends.py` (ny) — `GET /api/trends?period=7d|30d|90d|365d` spørger audit-loggen for endpoint create/delete-events og returnerer daglige tæller inkl. LAA-klassifikation
+- `backend/app/main.py` — registrerer `trends_api.router`
+- `frontend/js/api.js` — tilføjer `api.getTrends(period)`
+- `frontend/js/views/trends.js` (ny) — SVG-linjediagrammer uden eksterne afhængigheder; to charts (endpoint-bevægelse + LAA-bevægelse) + stat-kort
+- `frontend/js/app.js` — tilføjer `trends`-rute (alle roller undtagen registrant)
+- `frontend/index.html` — nav-link "Trend Analyse" under Overvågning
+
+## [5.8.0 build 0515] — 2026-05-23 — sec: Security Patch 3 — input-validering, ACL, persistent lockout
+
+**Sikkerheds-patch (7 fixes implementeret fra dyb sikkerhedsanalyse):**
+
+- `frontend/js/app.js` — importerer `esc()` og bruger den på `user.role` i innerHTML (XSS-fix)
+- `backend/app/main.py` — CSP `script-src` fjerner `'unsafe-inline'`; tilføjer SECURITY-advarsler ved opstart for TLS=false og dev-CORS-origins
+- `backend/app/core/settings_store.py` — Windows ACL enforcement via `icacls` (svarende til chmod 600 på Unix)
+- `backend/app/core/lockout_store.py` — **ny fil**: persistent SQLite-baseret account lockout (overlever backend-genstart)
+- `backend/app/services/user_service.py` — bruger `lockout_store` i stedet for in-memory dicts
+- `backend/app/api/endpoints.py` — `search` max_length=500; `page`/`size` valideret med ge/le
+- `backend/app/api/audit.py` — `search`, `actor`, `resource_type`, `resource_id` begrænset med max_length
+
+## [5.7.12 build 0512] — 2026-05-23 — feat: apply skabelon sætter description til "Templet [navn]"
+
+**Berørte filer:**
+- `frontend/js/views/browse-detail.js` — `#d-tpl-apply` handler sætter altid `#d-description` til `Templet ${tpl.name}`
+- `frontend/js/views/register.js` — `applyTemplate()` sætter altid `#r-desc` til `Templet ${tpl.name}`
+
+## [5.7.11 build 0511] — 2026-05-23 — fix: 502 ved "Show 500" — ISE ERS max 100/side
+
+**Rodårsag:** Admin-stien i `list_endpoint_details` kaldte `endpoints.list_page(size=500)` direkte til ISE, men ISE ERS accepterer max 100 per side → HTTP 400 → portal-502.
+
+**Fix:**
+- `endpoint_service.py` — når cache er varm, server admin-brugere via ny `_list_all_from_cache()` der henter alle IDs fra cache og paginerer i Python (samme mønster som `_list_from_roles_index`)
+- ISE-fallback (kold cache): `size` cappes til 100 inden ISE-kald
+
+**Berørte filer:**
+- `backend/app/services/endpoint_service.py`
+
+## [5.7.10.2 build 0510] — 2026-05-23 — debug: fix /endpoints/stats — value er EndpointDetail Pydantic, ikke dict
+
+**Rodårsag:** `ep.get("mac")` fejler på Pydantic-objekt — `EndpointDetail` har ikke `.get()`. Cachet value er `EndpointDetail` (fra `_fetch_endpoint_detail`), ikke et dict.
+**Fix:** Tjekker `isinstance(ep, dict)` og bruger ellers `getattr(ep, "mac")`.
+
+**Berørte filer:**
+- `backend/app/api/endpoints.py` — `/stats` bruger nu `getattr` for Pydantic-objekter
+
+## [5.7.10.1 build 0509] — 2026-05-23 — debug: fix /endpoints/stats — cache._details.value korrekt tilgang
+
+**Rodårsag:** `get_cache().values()` — `EndpointCache` er ikke et dict; har ingen `.values()`. Endpoint kastede `AttributeError` → frontend-catch returnerede null → badge forsvandt.
+**Fix:** `cache._details` er `dict[str, CachedEntry]`; itererer nu `.values()` og læser `entry.value` (endpoint-dict) for MAC-feltet.
+
+**Berørte filer:**
+- `backend/app/api/endpoints.py` — `/stats` bruger nu `cache._details.values()` og `cached_entry.value`
+
+## [5.7.10 build 0508] — 2026-05-23 — feat: LAA-tæller fra backend database — altid total uanset filter
+
+**Berørte filer:**
+- `backend/app/api/endpoints.py` — nyt `GET /api/endpoints/stats` endpoint: tæller LAA-MACs direkte fra in-memory cache (bit 1 check), returnerer `{total, laa_count}`
+- `frontend/js/api.js` — `getEndpointStats()` API-kald
+- `frontend/js/views/browse-table.js` — `epStats` tilføjet til `Promise.all` i `load()`; `state.laaTotal` gemmer DB-totalen; `laaTag()` bruger nu `state.laaTotal` i stedet for at tælle fra synlige rows
+
+## [5.7.9 build 0507] — 2026-05-23 — feat: antal privat/LAA MAC vises i endpoint-tæller
+
+**Berørte filer:**
+- `frontend/js/views/browse-table.js` — `countLAA(rows)` og `laaTag(rows)` helpers; alle tre `countEl`-paths bruger nu `innerHTML` og tilføjer amber badge med antal LAA-MACs
+- `frontend/css/styles.css` — `.laa-count` pill-badge (amber, alle temaer)
+
+## [5.7.8.1 build 0506] — 2026-05-23 — debug: Cache-Control no-store på JS/CSS — tvinger browser til altid indlæse ny kode
+
+**Berørte filer:**
+- `backend/app/main.py` — `SecurityHeadersMiddleware` sætter nu `Cache-Control: no-store` på alle `.js`- og `.css`-svar, så browseren aldrig cacher statiske filer
+
+## [5.7.8 build 0505] — 2026-05-23 — feat: privat MAC-adresse (LAA) fremhævning i browse-tabel
+
+**Berørte filer:**
+- `frontend/js/views/browse-table.js` — `isLocallyAdministered(mac)` checker bit 1 i første octet; `macDisplayHtml(mac)` wrapper første octet i `<span class="mac-laa">` ved LAA; render- og update-stier bruger `innerHTML` i stedet for `textContent`
+- `frontend/css/styles.css` — `.mac-laa` amber baggrund (#f59e0b) med bold tekst; dark/midnight/slate tema-varianter
+
+## [5.7.7.5 build 0504] — 2026-05-23 — debug: kritisk fix — TACACS login brudt af shadow-record
+
+**Rodårsag:** `find_by_username` fandt shadow-recorden (username="adm", role="admin") → `is_admin_user=True` → TACACS springes over → lokal auth fejler med tomt password_hash → `bad_credentials`.
+
+**Berørte filer:**
+- `backend/app/services/user_service.py`:
+  - `is_admin_user` tjekker nu `user_type == "user"` i stedet for `!= "operator"` — shadow-records ekskluderes eksplicit
+  - `profile_record` lookup bruger nu inline-generator der filtrerer `tacacs_shadow` fra — shadow-record kan ikke misopfattes som operatørprofil
+  - Lokal auth-blok blokerer nu også `tacacs_shadow` brugere (ikke kun `operator`)
+
+## [5.7.7.4 build 0503] — 2026-05-23 — debug: fix 500 i users-liste — UserType + shadow-filter
+
+**Berørte filer:**
+- `backend/app/schemas/user.py` — `UserType` udvidet med `"tacacs_shadow"` (var `Literal["user", "operator"]`)
+- `backend/app/services/user_service.py` — `list_users()` filtrerer nu shadow-records fra, så de ikke vises i admin-UI
+
+## [5.7.7.3 build 0502] — 2026-05-23 — debug: TACACS shadow user — preferences og views virker nu
+
+**Berørte filer:**
+- `backend/app/services/user_service.py` — upsert af `user_type="tacacs_shadow"` record i `users.json` ved hvert vellykket TACACS-login; synkroniserer rolle, endpoint-roller og skabeloner fra operatørprofil
+
+## [5.7.7.2 build 0501] — 2026-05-23 — debug: first-seen tid-input type=text HH:MM (fix AM/PM)
+
+**Berørte filer:**
+- `frontend/js/views/browse.js` — `type="time"` → `type="text" maxlength="5" placeholder="HH:MM"`
+- `frontend/js/views/browse-filter.js` — `_fsDateTimeVal` parser og normaliserer HH:MM tekst; validerings `.invalid`-klasse ved forkert format
+- `frontend/css/styles.css` — `.first-seen-time` text-align:center; `.first-seen-time.invalid` rød kant
+
+## [5.7.7.1 build 0500] — 2026-05-23 — debug: first-seen filter splitter til date+time inputs (24t clock)
+
+**Berørte filer:**
+- `frontend/js/views/browse.js` — `datetime-local` → to par af `date`+`time` inputs med nye IDs (`first-seen-from-d/t`, `first-seen-to-d/t`)
+- `frontend/js/views/browse-filter.js` — nye hjælpere `_fsDateTimeVal`, `firstSeenFromVal/ToVal`, `firstSeenAnySet`, `firstSeenClearAll`, `firstSeenRestore`; alle 7 gamle `firstSeenFrom()/To()` referencer erstattet; event-delegation opdateret
+- `frontend/css/styles.css` — `.first-seen-dt-row` flex-row; `.first-seen-time` 52px; dark/midnight tema
+
+## [5.7.7 build 0499] — 2026-05-23 — feat: first-seen filter bruger datetime-local (dato + tid)
+
+**Berørte filer:**
+- `frontend/js/views/browse.js` — `type="date"` → `type="datetime-local"` for begge first-seen filter inputs
+- `frontend/js/views/browse-filter.js` — end-timestamp: `+ 86399` → `+ 59` (afrund til slutning af valgt minut)
+- `frontend/css/styles.css` — `.first-seen-date` min-width 130px for datetime-local
+- `frontend/js/i18n.js` — tooltip: "Fra dato" → "Fra dato/tid" (da + en)
+
+## [5.7.6 build 0498] — 2026-05-23 — fix: update-check viser altid release notes (3-parts semver fallback + à-jour-visning)
+
+**Berørte filer:**
+- `backend/app/services/update_service.py` — `_extract_release_sections_since`: ny `_split_release_sections` hjælper; fallback matcher på 3-parts semver så debug-builds (5.7.4.5 → `## [5.7.4]`) virker; à-jour-tilstand viser altid aktuel versions noter
+- `frontend/js/views/settings/section-update.js` — range-label bruger 3-parts base-version (ikke debug-suffix); logik uændret
+
+## [5.7.5 build 0497] — 2026-05-23 — feat: skabelon gem/anvend i Browse-Edit og Registrering
+
+**Berørte filer:**
+- `frontend/js/views/browse.js` — tilføjet `detail-tpl-bar` med skabelon-dropdown og knapper over `modal-actions`
+- `frontend/js/views/browse-detail.js` — `_templates`-closure, load skabeloner i `openDetail`, handlers for `#d-save-as-tpl` og `#d-tpl-apply`
+- `frontend/js/views/register.js` — `applyTemplate` håndterer PSK_Mode; "Gem som skabelon"-knap for editor/admin; skabelon-liste genindlæses efter gem
+- `frontend/js/i18n.js` — ny nøgler: `detail.btn_save_as_tpl`, `detail.btn_apply_tpl`, `detail.tpl_*` (da + en)
+- `frontend/css/styles.css` — `.detail-tpl-bar` og `.detail-tpl-select`
+- `version.json` — 5.7.5 build 0497
+- `FEATURES.md`, `RELEASE_NOTES.md` — opdateret
+
 ## [5.7.4.5 build 0495] — 2026-05-23 — fix: first_seen ryddes ved prewarm-scan (scenario 3: slettet i ISE, aldrig tilbage)
 
 **Berørte filer:**

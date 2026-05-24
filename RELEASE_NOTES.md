@@ -4,6 +4,134 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.8.0] — 2026-05-23 — Trend Analyse + Security Patch 3
+
+### Trend Analyse: endpoint bevægelser og private MACs over tid
+
+Nyt **Trend Analyse**-view i sidebaren (under Overvågning). Viser:
+
+- **Endpoint tilgang og fragang** — dagligt linjediagram med tilgang (grøn), fragang (rød) og netto ændring (blå)
+- **Private MAC-adresser (LAA)** — dagligt linjediagram med LAA-tilgang og -fragang
+- **Stat-kort** — snapshot: total endpoints, antal private MACs, LAA-%, periode-summer
+
+Periode-vælger: 7 dage / 30 dage / 90 dage / 1 år. Data hentes fra audit-loggen uden eksterne chart-afhængigheder (ren SVG).
+
+### Security Patch 3 (7 sikkerheds-fixes)
+
+| Fix | Komponent | Detalje |
+|-----|-----------|---------|
+| XSS-fix | Frontend `app.js` | `user.role` escaped med `esc()` ved innerHTML-indsætning |
+| CSP hardening | Backend `main.py` | `script-src` fjerner `unsafe-inline` |
+| Opstartsadvarsler | Backend `main.py` | SECURITY WARNING ved TLS=false og dev-CORS-origins i log |
+| Windows ACL | `settings_store.py` | `icacls` begræns `config.json` til aktuel bruger |
+| Persistent lockout | Ny `lockout_store.py` | Account lockout i SQLite — overlever backend-genstart |
+| Input-validering | `endpoints.py` | `search` max 500 tegn; `page`/`size` valideret |
+| Input-validering | `audit.py` | `search`, `actor`, `resource_type`, `resource_id` max_length |
+
+---
+
+## [5.7.12] — 2026-05-23 — Skabelon: description sættes automatisk ved anvendelse
+
+Når du anvender en skabelon i Browse/Edit-modal eller på Registreringssiden, sættes description-feltet automatisk til `Templet [skabelonnavn]`. Dette gør det nemt at se hvilken skabelon der er brugt på et endpoint.
+
+---
+
+## [5.7.11] — 2026-05-23 — Fix: "Show 500" gav 502-fejl
+
+Valg af 500 i "Show"-dropdown fejlede med `502: ISE returnerede en uventet fejl (HTTP 400)`. ISE ERS API accepterer max 100 endpoints per side. Portalen bruger nu intern cache-paginering når cache er varm — ingen ISE-kald ved visning af mange endpoints på én side.
+
+---
+
+## [5.7.10] — 2026-05-23 — Privat MAC tæller: total fra database
+
+LAA-tælleren viser nu det totale antal private MACs i hele databasen — uanset hvilket filter der er aktivt. Tællingen hentes fra backend ved sideindlæsning og ændres ikke ved filtrering.
+
+`10 / 59 endpoints (filtreret)  [3 privat]`
+
+De 3 private MACs er totalen i databasen — ikke bare dem der er synlige i filteret.
+
+---
+
+## [5.7.9] — 2026-05-23 — Privat MAC tæller i endpoint-oversigt
+
+Endpoint-tælleren øverst i Browse viser nu antal privat/LAA MAC-adresser som et amber badge:
+
+`59 / 59 endpoints  [3 privat]`
+
+Tællingen følger det aktive filter — viser kun LAA-count for de endpoints der aktuelt er i view. Vises ikke hvis der ingen private MACs er.
+
+---
+
+## [5.7.8] — 2026-05-23 — Privat MAC-adresse fremhævning
+
+Portalen markerer nu automatisk Locally Administered Addresses (LAA) — private eller randomiserede MAC-adresser. Første octet i MAC-kolonnen fremhæves med amber/gul baggrund og fed skrift, når bit 1 i første byte er sat.
+
+**Eksempel:** `A6:D6:A4:B3:34:16` — `A6` fremhæves (A6 = 10100110₂, bit 1 = 1 → LAA).
+
+Alle temaer understøttes (light, dark, midnight, slate).
+
+---
+
+## [5.7.7] — 2026-05-23 — TACACS: præferencer og gemte views virker nu
+
+TACACS-brugere kan nu gemme præferencer og gemte views præcis som lokale brugere. Ved hvert vellykket TACACS-login opretter portalen automatisk et shadow-record i den lokale brugerdatabase — rolle og rettigheder synkroniseres fra operatørprofilen ved hvert login.
+
+- Ingen manuel konfiguration påkrævet
+- Shadow-records er ikke synlige i admin-bruger-oversigten
+- Hvis operatørprofilens rolle ændres i ISE, slår det igennem ved næste login
+
+### Første gang set: 24-timers klokkeslæt uden AM/PM
+
+Dato+tid-inputfelterne i "Første gang set"-filteret bruger nu `type="text"` med `HH:MM`-format frem for browserens native `datetime-local`. Det sikrer 24-timers visning uanset Windows-sprogindstilling.
+
+---
+
+## [5.7.6] — 2026-05-23 — Update-check: release notes vises altid
+
+Filterpanelet under "Første gang set"-kolonnen bruger nu `datetime-local`-input. Du kan angive **dato OG klokkeslæt** (timer/minutter) for både fra- og til-grænsen.
+
+- Fra: eksakt starttidspunkt (f.eks. `20-05-2026 06:00`)
+- Til: inklusive til og med slut-minuttet (+ 59 sek) — vælger du `23-05-2026 17:30` inkluderes endpoints set frem til `17:30:59`
+
+Browseren åbner en native dato+tid-dialog med separate felter for dag, måned, år, time og minut.
+
+---
+
+## [5.7.6] — 2026-05-23 — Update-check: release notes vises altid
+
+### Release notes vises også når portalen er à jour
+
+Tidligere viste update-check ingen release notes, hvis portalen allerede kørte den nyeste version — og fejlede stille for debug-builds (f.eks. `5.7.4.5` fandt ikke `## [5.7.4]`).
+
+**Rettelser:**
+- Backend (`update_service.py`): fallback matcher nu på 3-parts semver. En debug-build som `5.7.4.5` finder korrekt sektionen `## [5.7.4]` i RELEASE_NOTES.md.
+- Når portalen **er à jour**: vises release notes for den installerede version (hvad er nyt her).
+- Når en **opdatering er tilgængelig**: alle sektioner fra installeret version op til den nye version vises — ældstet til nyest.
+- Frontend: range-label bruger base-version (`5.7.4`, ikke `5.7.4.5`) for korrekt `vX.Y.Z → vA.B.C`-visning.
+
+---
+
+## [5.7.5] — 2026-05-23 — Skabelon gem/anvend i Browse-Edit og Registrering
+
+### Gem endpoint som skabelon (Browse-Edit)
+
+I detail-modalen er der nu en skabelon-bar under endpoint-fanens indhold — et dropdown til at vælge eksisterende skabeloner og to knapper: **Anvend skabelon** og **Gem som skabelon**.
+
+**Gem som skabelon** indsamler de aktuelle formfelter (gruppe, beskrivelse, statisk tildeling, type, owner, lokation, VLAN, ACL, platform) og gemmer dem som en ny skabelon via den eksisterende skabelon-API. PSK_Mode-flaget kan indgå i skabelonen — **PSK-nøglen gemmes aldrig**.
+
+### Anvend skabelon (Browse-Edit)
+
+**Anvend skabelon**-dropdown lister alle tilgængelige skabeloner. Når en vælges og knappen klikkes, udfyldes formfelterne fra skabelonens data. Hvis skabelonen har `PSK_Mode = true`, promptes brugeren for PSK-nøglen — den indgår kun i den aktuelle formular-session og gemmes ikke.
+
+### Registreringssiden: samme flow
+
+Registreringssiden understøtter nu også:
+- **Anvend skabelon**: eksisterende dropdown synlig for alle roller når skabeloner findes
+- **Gem som skabelon**: ny knap synlig for editor/admin/editor-psk — gemmer den aktuelle formtilstand som skabelon og genindlæser skabelon-listen
+- PSK_Mode fra skabelon: sætter PSK-tilstanden og prompter for nøgle (kun for PSK-editors)
+
+---
+
 ## [5.7.4] — 2026-05-23 — Første gang set: bugfixes og komplet livscyklus-håndtering
 
 ### Kolonneforskydning rettet

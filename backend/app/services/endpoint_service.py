@@ -289,13 +289,19 @@ class EndpointService:
         cache uden at hente alle ISE-endpoints. Kold cache falder tilbage til
         ISE list_page + post-filter (samme som admins sti).
         """
-        if effective_roles is not None and get_cache().detail_count() > 0:
-            return await self._list_from_roles_index(
-                effective_roles, page, size, is_psk_editor, search=search
-            )
+        cache = get_cache()
+        if cache.detail_count() > 0:
+            if effective_roles is not None:
+                return await self._list_from_roles_index(
+                    effective_roles, page, size, is_psk_editor, search=search
+                )
+            # Admin med varm cache: server alle endpoints fra cache — undgår ISE size-begrænsning (max 100)
+            return await self._list_all_from_cache(page, size, is_psk_editor, search=search)
         filters = _combine_filters(search, filters)
+        # ISE ERS accepterer max 100 per side — cap og paginér internt ved større requests
+        ise_size = min(size, 100)
         resources, total = await self.endpoints.list_page(
-            page=page, size=size, filters=filters
+            page=page, size=ise_size, filters=filters
         )
         logger.info(
             "fetching details for %d endpoints concurrently "
@@ -375,6 +381,50 @@ class EndpointService:
         logger.info(
             "roles-index list: %d total visible, page=%d → %d items (effective_roles=%s)",
             total, page, len(page_items), effective_roles,
+        )
+        return PaginatedEndpointDetails(items=page_items, total=total, page=page, size=size)
+
+    async def _list_all_from_cache(
+        self,
+        page: int,
+        size: int,
+        is_psk_editor: bool,
+        search: str | None = None,
+    ) -> PaginatedEndpointDetails:
+        """Admin-sti: server alle endpoints fra varm cache uden ISE-kald.
+
+        Bruges når cache er varm og bruger er admin (ingen role-restriction).
+        Undgår ISE ERS size-begrænsning på 100 per side.
+        """
+        cache = get_cache()
+        all_ids = list(cache._details.keys())
+
+        sem = asyncio.Semaphore(5)
+
+        async def fetch_one(ep_id: str) -> EndpointDetail | None:
+            async with sem:
+                try:
+                    return await self.get_endpoint(ep_id, is_psk_editor=is_psk_editor)
+                except IseApiError:
+                    return None
+
+        results = await asyncio.gather(*(fetch_one(i) for i in all_ids))
+        items: list[EndpointDetail] = [r for r in results if r is not None]
+
+        if search:
+            low = search.strip().lower()
+            items = [
+                d for d in items
+                if low in d.mac.lower() or low in (d.description or "").lower()
+            ]
+
+        items.sort(key=lambda d: d.mac or d.name)
+        total = len(items)
+        start = (page - 1) * size
+        page_items = items[start:start + size]
+        logger.info(
+            "cache-all list (admin): %d total, page=%d → %d items",
+            total, page, len(page_items),
         )
         return PaginatedEndpointDetails(items=page_items, total=total, page=page, size=size)
 

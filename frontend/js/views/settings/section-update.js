@@ -279,12 +279,13 @@ export function initGithubUpdateSection(container) {
     if (notesEl) {
       if (data.release_notes) {
         notesEl.style.display = "";
-        const isRange = data.update_available
-          && data.current_version
-          && data.current_version !== data.latest_version;
+        const curSemver = (data.current_version || "").replace(/\.\d+$/, "").replace(/\.\d+$/, "").replace(/\.\d+$/, "");
+        const curBase   = (data.current_version || "").split(".").slice(0, 3).join(".");
+        const latBase   = (data.latest_version  || "").split(".").slice(0, 3).join(".");
+        const isRange = data.update_available && curBase && latBase && curBase !== latBase;
         const rangeLabel = isRange
-          ? `v${esc(data.current_version)} → v${esc(data.latest_version || "")}`
-          : `v${esc(data.latest_version || "")}`;
+          ? `v${esc(curBase)} → v${esc(latBase)}`
+          : `v${esc(latBase || curBase)}`;
         notesEl.innerHTML = `
           <details class="rn-details" open>
             <summary class="rn-summary">${esc(t("settings.gh_release_notes_hdr"))} — ${rangeLabel}</summary>

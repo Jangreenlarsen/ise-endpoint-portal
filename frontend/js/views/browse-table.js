@@ -105,6 +105,27 @@ export function initTable(container, state, api, cb) {
     if (!colVisMenu.contains(e.target) && e.target !== colVisBtn) colVisMenu.classList.add("hidden");
   });
 
+  // ── Locally Administered Address (private/randomised MAC) detection ────────
+  function isLocallyAdministered(mac) {
+    if (!mac) return false;
+    const firstOctet = parseInt((mac.split(/[:\-]/)[0] || ""), 16);
+    return !isNaN(firstOctet) && (firstOctet & 0x02) !== 0;
+  }
+
+  function laaTag() {
+    const n = state.laaTotal ?? 0;
+    if (!n) return "";
+    return ` <span class="laa-count" title="Privat / Lokalt administreret MAC (LAA) — total i database">${n} privat</span>`;
+  }
+
+  function macDisplayHtml(mac) {
+    if (!mac) return "";
+    if (!isLocallyAdministered(mac)) return esc(mac);
+    const sep   = mac.includes(":") ? ":" : "-";
+    const parts = mac.split(sep);
+    return `<span class="mac-laa" title="Privat / Lokalt administreret MAC (LAA)">${esc(parts[0])}</span>${esc(sep + parts.slice(1).join(sep))}`;
+  }
+
   // ── NAS → PlatformType auto-derive ──────────────────────────────────────
   function getNasPlatformType(mac) {
     if (!state.pxgridSessionData) return "";
@@ -210,7 +231,7 @@ export function initTable(container, state, api, cb) {
       const mac   = r.mac || r.name;
       const nasPt = getNasPlatformType(mac);
       const cells = {
-        mac:           `<td data-col="mac" class="mac-cell${r.cache_stale ? " cache-stale" : ""}"><a href="#" class="mac-link" title="${t("browse.mac_link_title")}">${esc(mac)}</a>${r.cache_stale ? `<span class="stale-badge" title="${t("browse.stale_badge_title")}">⏱</span>` : ""}</td>`,
+        mac:           `<td data-col="mac" class="mac-cell${r.cache_stale ? " cache-stale" : ""}"><a href="#" class="mac-link" title="${t("browse.mac_link_title")}">${macDisplayHtml(mac)}</a>${r.cache_stale ? `<span class="stale-badge" title="${t("browse.stale_badge_title")}">⏱</span>` : ""}</td>`,
         auth_status:   `<td data-col="auth_status" class="auth-status-col"></td>`,
         vendor:        `<td data-col="vendor" class="vendor-cell-td">${esc(r.vendor || "")}</td>`,
         group_name:    `<td data-col="group_name"><select class="grp-select">${groupOptionsHtml(r.group_id)}</select></td>`,
@@ -264,7 +285,7 @@ export function initTable(container, state, api, cb) {
       const tr = tbody.querySelector(`tr[data-id="${CSS.escape(id)}"]`);
       if (!tr) continue;
       const macLink = tr.querySelector(".mac-cell .mac-link");
-      if (macLink) macLink.textContent = r.mac || r.name;
+      if (macLink) macLink.innerHTML = macDisplayHtml(r.mac || r.name);
       const vendorCell = tr.querySelector(".vendor-cell-td");
       if (vendorCell) vendorCell.textContent = r.vendor || "";
       const grpSel = tr.querySelector(".grp-select");
@@ -525,18 +546,21 @@ export function initTable(container, state, api, cb) {
       renderRows(pageRows);
       updatePaginationUI();
       if (cb.hasActiveFilterText() || state.portalOnly) {
-        countEl.textContent = t("browse.filtered_info")
+        countEl.innerHTML = t("browse.filtered_info")
           .replace("{filtered}", filtered.length)
-          .replace("{all}", state.allRows.length);
+          .replace("{all}", state.allRows.length)
+          + laaTag();
       } else {
-        countEl.textContent = t("browse.all_info").replace("{n}", state.allRows.length);
+        countEl.innerHTML = t("browse.all_info").replace("{n}", state.allRows.length)
+          + laaTag();
       }
     } else {
       renderRows(state.allRows);
       updatePaginationUI();
-      countEl.textContent = t("browse.server_info")
+      countEl.innerHTML = t("browse.server_info")
         .replace("{n}", state.allRows.length)
-        .replace("{total}", state.totalEndpoints);
+        .replace("{total}", state.totalEndpoints)
+        + laaTag();
     }
   }
 
@@ -550,7 +574,7 @@ export function initTable(container, state, api, cb) {
     state.filterMode  = false;
     state.allRowsCache = null;
     try {
-      const [caData, grps, result, dacls, mapping, roles, me, pskPolicy] = await Promise.all([
+      const [caData, grps, result, dacls, mapping, roles, me, pskPolicy, epStats] = await Promise.all([
         api.listCustomAttributes(),
         api.listGroups(),
         api.listEndpointDetails(state.currentPage, state.currentSize, "", state.currentFilters),
@@ -559,6 +583,7 @@ export function initTable(container, state, api, cb) {
         api.listEndpointRoles().catch(() => ({ roles: [] })),
         api.authMe().catch(() => null),
         api.getPskPolicy().catch(() => null),
+        api.getEndpointStats().catch(() => null),
       ]);
       state.pskShowKey   = !!(pskPolicy && pskPolicy.show_key_in_table);
       state.groups       = grps;
@@ -579,8 +604,9 @@ export function initTable(container, state, api, cb) {
       state.coaByLocal = new Map(
         (mapping.mappings || []).filter((m) => m.local).map((m) => [m.local, m.coa || "reauth"]),
       );
-      state.allRows       = result.items;
+      state.allRows        = result.items;
       state.totalEndpoints = result.total;
+      state.laaTotal       = epStats ? epStats.laa_count : null;
       if (cb.needsFilterMode()) await cb.enterFilterMode();
       await cb.refreshActiveSessionMacs(force);
       applyFilter();

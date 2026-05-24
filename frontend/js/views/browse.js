@@ -104,8 +104,14 @@ export async function renderBrowse(container) {
                       </select>`
                     : c.key === "first_seen"
                       ? `<div class="first-seen-filter-wrap">
-                          <input type="date" id="first-seen-from" class="first-seen-date" title="${t("filter.first_seen_from")}" />
-                          <input type="date" id="first-seen-to" class="first-seen-date" title="${t("filter.first_seen_to")}" />
+                          <div class="first-seen-dt-row">
+                            <input type="date" id="first-seen-from-d" class="first-seen-date" title="${t("filter.first_seen_from")}" />
+                            <input type="text" id="first-seen-from-t" class="first-seen-time" maxlength="5" placeholder="HH:MM" title="${t("filter.first_seen_from")}" />
+                          </div>
+                          <div class="first-seen-dt-row">
+                            <input type="date" id="first-seen-to-d"   class="first-seen-date" title="${t("filter.first_seen_to")}" />
+                            <input type="text" id="first-seen-to-t"   class="first-seen-time" maxlength="5" placeholder="HH:MM" title="${t("filter.first_seen_to")}" />
+                          </div>
                         </div>`
                       : `<input type="text" class="col-filter-input" data-col="${c.key}" placeholder="…" />`}
                 </th>`).join("")}
@@ -214,6 +220,13 @@ export async function renderBrowse(container) {
           <div id="detail-tab-session" class="detail-tab-panel hidden">
             <div id="d-session-debug-content"><span class="hint">Klik på fanen for at se session-data.</span></div>
           </div>
+        </div>
+        <div class="detail-tpl-bar">
+          <select id="d-tpl-select" class="detail-tpl-select">
+            <option value="">${t("detail.tpl_none")}</option>
+          </select>
+          <button type="button" id="d-tpl-apply" class="secondary small">${t("detail.btn_apply_tpl")}</button>
+          <button type="button" id="d-save-as-tpl" class="secondary small">${t("detail.btn_save_as_tpl")}</button>
         </div>
         <div class="modal-actions">
           <button id="d-save">${t("detail.btn_save")}</button>

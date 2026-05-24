@@ -76,6 +76,7 @@ async def list_events(
     search: str | None = Query(
         None,
         description="Bredsøgning (case-insensitive substring) på alle felter",
+        max_length=500,
     ),
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
@@ -100,12 +101,12 @@ async def list_events(
 
 @router.get("/export", dependencies=[Depends(require_admin)])
 async def export_events(
-    actor: str | None = Query(None),
-    resource_type: str | None = Query(None),
-    resource_id: str | None = Query(None),
+    actor: str | None = Query(None, max_length=200),
+    resource_type: str | None = Query(None, max_length=100),
+    resource_id: str | None = Query(None, max_length=200),
     from_ts: str | None = Query(None),
     to_ts: str | None = Query(None),
-    search: str | None = Query(None),
+    search: str | None = Query(None, max_length=500),
 ) -> StreamingResponse:
     """Eksportér audit-log som CSV (max 10 000 rækker)."""
     rows, _ = await audit_store.query(

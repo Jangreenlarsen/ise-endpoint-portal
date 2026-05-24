@@ -5,14 +5,13 @@ from __future__ import annotations
 import logging
 import time
 import uuid
-from collections import defaultdict
 from datetime import datetime, timezone
-from threading import Lock
 
 from fastapi import HTTPException, status
 
 from app.core import audit_store
 from app.core import auth as auth_core
+from app.core import lockout_store
 from app.core import role_catalog
 from app.core.user_store import (
     find_by_id,
@@ -38,46 +37,40 @@ _LOCKOUT_MAX_ATTEMPTS = 5       # fejl inden lockout
 _LOCKOUT_WINDOW_S     = 600     # 10 min glidende vindue
 _LOCKOUT_DURATION_S   = 900     # 15 min lockout
 
-_failed_attempts: dict[str, list[float]] = defaultdict(list)  # username → [timestamps]
-_lockout_until:   dict[str, float]       = {}                 # username → epoch
-_lockout_lock = Lock()
+# Lockout-state gemmes persistenteret i SQLite via lockout_store
+# så genstart af backend ikke nulstiller aktive lockouts.
 
 
 def _check_and_record_failure(username: str) -> None:
     """Registrér fejlet login-forsøg. Kaster 429 hvis bruger er låst."""
-    with _lockout_lock:
-        now = time.time()
-        # Udløbet lockout ryddes automatisk
-        if username in _lockout_until and now >= _lockout_until[username]:
-            del _lockout_until[username]
-            _failed_attempts[username] = []
+    now = time.time()
 
-        if username in _lockout_until:
-            remaining = int(_lockout_until[username] - now)
+    locked_until = lockout_store.get_lockout_until(username)
+    if locked_until is not None:
+        if now < locked_until:
+            remaining = int(locked_until - now)
             logger.warning("login blocked (lockout) for username=%s remaining=%ds", username, remaining)
             raise HTTPException(
                 status.HTTP_429_TOO_MANY_REQUESTS,
                 f"For mange fejlede loginforsøg. Prøv igen om {remaining // 60 + 1} minut(ter).",
             )
+        # Udløbet lockout — ryd op
+        lockout_store.clear_lockout(username)
 
-        # Tilføj timestamp og ryd gamle poster udenfor vinduet
-        _failed_attempts[username].append(now)
-        _failed_attempts[username] = [t for t in _failed_attempts[username] if now - t < _LOCKOUT_WINDOW_S]
+    lockout_store.add_failure(username, now)
+    failures = lockout_store.get_failures_since(username, now - _LOCKOUT_WINDOW_S)
 
-        if len(_failed_attempts[username]) >= _LOCKOUT_MAX_ATTEMPTS:
-            _lockout_until[username] = now + _LOCKOUT_DURATION_S
-            _failed_attempts[username] = []
-            logger.warning(
-                "account locked for %ds after %d failed attempts: username=%s",
-                _LOCKOUT_DURATION_S, _LOCKOUT_MAX_ATTEMPTS, username,
-            )
+    if len(failures) >= _LOCKOUT_MAX_ATTEMPTS:
+        lockout_store.set_lockout(username, now + _LOCKOUT_DURATION_S)
+        logger.warning(
+            "account locked for %ds after %d failed attempts: username=%s",
+            _LOCKOUT_DURATION_S, _LOCKOUT_MAX_ATTEMPTS, username,
+        )
 
 
 def _clear_failures(username: str) -> None:
     """Ryd fejltæller ved successfuldt login."""
-    with _lockout_lock:
-        _failed_attempts.pop(username, None)
-        _lockout_until.pop(username, None)
+    lockout_store.clear_lockout(username)
 
 
 _PW_MIN_LEN = 10
@@ -197,7 +190,7 @@ async def set_endpoint_roles(
 
 
 def list_users() -> list[User]:
-    return [_to_public(u) for u in load_users()]
+    return [_to_public(u) for u in load_users() if u.get("user_type") != "tacacs_shadow"]
 
 
 def get_user(user_id: str) -> User:
@@ -417,14 +410,14 @@ def login(payload: LoginRequest) -> LoginResponse:
     users = load_users()
     record = find_by_username(users, payload.username)
 
-    # Ægte lokale admin-brugere (user_type != "operator") valideres ALTID lokalt,
+    # Ægte lokale admin-brugere (user_type="user") valideres ALTID lokalt,
     # uanset TACACS+-konfiguration — de må aldrig låses ude af en TACACS-fejl.
-    # Operator-profiler med admin-rolle (user_type="operator") er TACACS-brugere
-    # og skal bruge TACACS-stien selv om rollen er "admin".
+    # Operator-profiler (user_type="operator") og shadow-records (user_type="tacacs_shadow")
+    # med admin-rolle skal ALTID igennem TACACS-stien.
     is_admin_user = bool(
         record
         and record.get("role") == "admin"
-        and record.get("user_type", "user") != "operator"
+        and record.get("user_type", "user") == "user"
     )
 
     auth_cfg = load_auth_config()
@@ -452,7 +445,10 @@ def login(payload: LoginRequest) -> LoginResponse:
             # Slå operator-profil op i users.json (brugernavn = profilnavn).
             # TACACS+ klarer auth — portal-profilen bestemmer rolle + endpoint-roller.
             profile_name = result.operator_profile_name or payload.username
-            profile_record = find_by_username(users, profile_name)
+            profile_record = next(
+                (u for u in users if u.get("username") == profile_name and u.get("user_type") != "tacacs_shadow"),
+                None,
+            )
 
             # Tjek om der overhovedet er oprettet operatørprofiler i portalen.
             # Hvis ingen profiler findes → bootstrap-tilstand: giv TACACS-brugeren
@@ -509,6 +505,33 @@ def login(payload: LoginRequest) -> LoginResponse:
                 assigned_endpoint_roles=endpoint_roles,
                 assigned_templates=assigned_templates,
             )
+            # Upsert shadow record so preferences/views/saved-searches work for TACACS users
+            shadow_id = f"tacacs:{payload.username}"
+            shadow = find_by_id(users, shadow_id)
+            if shadow is None:
+                shadow = {
+                    "id": shadow_id,
+                    "username": payload.username,
+                    "password_hash": "",
+                    "user_type": "tacacs_shadow",
+                    "role": effective_role,
+                    "created_at": _now_iso(),
+                    "last_login": _now_iso(),
+                    "assigned_endpoint_roles": endpoint_roles,
+                    "assigned_templates": assigned_templates,
+                    "saved_views": [],
+                    "prefs": {},
+                }
+                users.append(shadow)
+                logger.info("tacacs shadow user created: %s role=%s", shadow_id, effective_role)
+            else:
+                shadow["role"] = effective_role
+                shadow["assigned_endpoint_roles"] = endpoint_roles
+                shadow["assigned_templates"] = assigned_templates
+                shadow["last_login"] = _now_iso()
+                logger.info("tacacs shadow user updated: %s role=%s", shadow_id, effective_role)
+            save_users(users)
+
             logger.info(
                 "tacacs login: user=%s profile=%s role=%s",
                 payload.username,
@@ -531,11 +554,11 @@ def login(payload: LoginRequest) -> LoginResponse:
     # Lokal auth (altid for admin, fallback for øvrige hvis TACACS+ fejler)
     # Operatørprofiler (user_type=operator) kan ikke logge ind lokalt — kun via TACACS+.
     # Admin-rollen er undtaget: en fejlkonfigureret admin-konto må aldrig låses ude.
-    if record and record.get("user_type") == "operator" and record.get("role") != "admin":
-        logger.warning("local login blocked for operator-type user=%s", payload.username)
+    if record and record.get("user_type") in ("operator", "tacacs_shadow"):
+        logger.warning("local login blocked for %s user=%s", record.get("user_type"), payload.username)
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED,
-            "Denne konto er konfigureret som Profil (TACACS+-operatørprofil) og kan ikke bruges til lokal login.",
+            "Denne konto autentificeres via TACACS+ og kan ikke bruges til lokal login.",
         )
     if not record or not auth_core.verify_password(
         payload.password, record.get("password_hash", "")
