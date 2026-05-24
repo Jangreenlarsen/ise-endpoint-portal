@@ -4,9 +4,17 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.8.1] — 2026-05-24 — Dashboard redesign
+
+> **Build:** 0523
+
+Dashboard redesignet med KPI-kort (total endpoints, LAA%, inaktive, hit rate, CB-status), 30-dages mini sparkline-chart for endpoint-bevægelse og Livscyklus-summary direkte på forsiden. Audit-events vises med farvekodet action-badge.
+
+---
+
 ## [5.8.0] — 2026-05-24 — Trend Analyse · Security Patch 3 · Stabilitets-fix
 
-> **Builds:** 0514 · 0515 · 0516 · 0517 · 0518 · 0519 · 0520 — release til `main` 2026-05-24
+> **Builds:** 0514 · 0515 · 0516 · 0517 · 0518 · 0519 · 0520 · 0521 · 0522 — release til `main` 2026-05-24
 
 ### Overblik
 

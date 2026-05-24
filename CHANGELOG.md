@@ -3,6 +3,25 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.8.1 build 0523] — 2026-05-24 — feat: dashboard redesign — KPI-kort, mini trend-chart, livscyklus-summary
+
+Komplet redesign af Dashboard-viewet. Visuel hierarki med store KPI-tal, inline sparkline-chart og Livscyklus-summary erstatter den tidligere tabel-baserede layout.
+
+**Nyt layout (top → bund):**
+1. **KPI-rad** — 5 kort med farvet top-accent: Total endpoints, Private MACs (LAA%), Inaktive endpoints (admin), Cache hit rate, Circuit Breaker status
+2. **2-kolonne midtersektion** — venstre: 30-dages endpoint-bevægelse som mini sparkline (Tilgang/Fragang/Netto) med summering og link til Trend Analyse; højre: Systemstatus-kort (CB, sessioner, cache, prewarm) + Livscyklus-summary-kort (admin)
+3. **Audit-hændelser** — renere tabel med farvekodet action-badge (create=grøn, delete=rød, update=gul)
+4. **Systemlog** — uændret (admin only)
+
+**Teknisk:**
+- 3 parallelle API-kald: `getDashboard()` + `getTrends("30d")` + `getStaleEndpoints(90)` (admin)
+- Livscyklus-sektionen vises kun for admin-rolle
+- Trends-sektionen viser "cache loading" besked hvis ISE-sync endnu ikke er klar
+- `import { auth }` tilføjet til dashboard.js for rolle-check
+
+**Berørte filer:**
+- `frontend/js/views/dashboard.js` — komplet omskrivning
+
 ## [5.8.0.3 build 0522] — 2026-05-24 — feat: hover-tooltip på Trend Analyse grafer
 
 Interaktive tooltips på begge SVG-charts i Trend Analyse. Hover over et punkt viser dato og alle serie-værdier for den dag.
