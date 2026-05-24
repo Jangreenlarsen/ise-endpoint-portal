@@ -3,6 +3,21 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.8.0 build 0519] — 2026-05-24 — fix: Livscyklus og Trend Analyse viser 0 ved tom cache
+
+**Rodårsag:** Lifecycle og Trend Analyse læser begge fra endpoint-cachen. Hvis cachen endnu ikke er populeret ved opstart (ingen disk-cache-fil), returnerer begge endpoints 0 — selv om ISE har tusindvis af endpoints. Brugere oplevede 0 resultater indtil de besøgte Browse/Edit som trigger prewarm.
+
+**To separate problemer løst:**
+1. **Tom cache ved opstart** — Lifecycle/Trend viser nu "Endpoint-cachen indlæses fra ISE" med auto-retry hvert 10s i stedet for 0-resultater
+2. **Trend-grafer viser permanent 0 for pre-existerende endpoints** — viser nu forklarende note: "Graferne viser kun endpoints oprettet/slettet via portalen. Endpoints der eksisterede i ISE da portalen blev installeret tæller ikke."
+
+**Berørte filer:**
+- `backend/app/services/cache_prewarm.py` — `PrewarmStatus.first_scan_done` flag + `PrewarmWorker.cache_ready` property
+- `backend/app/api/lifecycle.py` — returnerer `cache_loading: true` når cache er tom og prewarm ikke er færdig
+- `backend/app/api/trends.py` — returnerer `snapshot.cache_loading` og `no_audit_data` flag
+- `frontend/js/views/lifecycle.js` — håndterer `cache_loading`: spinner + auto-retry 10s
+- `frontend/js/views/trends.js` — håndterer `cache_loading` + viser `auditNote` når pre-eksisterende endpoints forklarer tomme grafer
+
 ## [5.8.0 build 0518] — 2026-05-24 — fix: git pull rettighedsfejl — bedre fejlbesked + dokumentation
 
 - `backend/app/services/update_service.py` — detekterer `insufficient permission`-fejl fra git fetch og returnerer klar fejlbesked med de to fix-kommandoer direkte i portal-UI'et

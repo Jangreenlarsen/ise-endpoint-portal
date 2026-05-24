@@ -22,15 +22,29 @@ export async function renderLifecycle(container) {
   }
 
   let days = 90;
+  let _retryTimer = null;
 
   async function load() {
     container.innerHTML = `<div class="view-section"><p class="loading-msg">Indlæser livscyklus-data…</p></div>`;
+    if (_retryTimer) { clearTimeout(_retryTimer); _retryTimer = null; }
 
     let data;
     try {
       data = await api.getStaleEndpoints(days);
     } catch (e) {
       container.innerHTML = `<div class="view-section"><p class="error-msg">Fejl ved hentning: ${esc(e.message)}</p></div>`;
+      return;
+    }
+
+    if (data.cache_loading) {
+      container.innerHTML = `
+        <div class="view-section">
+          <h2>Livscyklus — inaktive endpoints</h2>
+          <div class="alert info" style="margin-top:1rem;">
+            Endpoint-cachen indlæses fra ISE. Siden opdateres automatisk når data er klar…
+          </div>
+        </div>`;
+      _retryTimer = setTimeout(load, 10000);
       return;
     }
 

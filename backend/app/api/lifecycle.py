@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, Query
 from app.api.deps import require_admin
 from app.core.audit_store import DB_PATH
 from app.core.endpoint_cache import get_cache
+from app.services.cache_prewarm import get_worker as get_prewarm_worker
 
 router = APIRouter(prefix="/lifecycle", tags=["lifecycle"])
 
@@ -30,7 +31,11 @@ async def get_stale_endpoints(
     total_cached = len(all_ids)
 
     if not all_ids:
-        return {"stale": [], "total_cached": 0, "stale_count": 0, "threshold_days": days}
+        cache_loading = not get_prewarm_worker().cache_ready
+        return {
+            "stale": [], "total_cached": 0, "stale_count": 0,
+            "threshold_days": days, "cache_loading": cache_loading,
+        }
 
     threshold_iso = (datetime.now(timezone.utc) - timedelta(days=days)).strftime(
         "%Y-%m-%dT%H:%M:%S"
@@ -79,4 +84,5 @@ async def get_stale_endpoints(
         "total_cached": total_cached,
         "stale_count": len(stale),
         "threshold_days": days,
+        "cache_loading": False,
     }

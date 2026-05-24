@@ -18,6 +18,7 @@ from app.api.deps import require_any
 from app.core.audit_store import DB_PATH
 from app.core.endpoint_cache import get_cache
 from app.schemas.user import User
+from app.services.cache_prewarm import get_worker as get_prewarm_worker
 
 router = APIRouter(prefix="/trends", tags=["trends"])
 
@@ -127,6 +128,9 @@ async def get_trends(
             except (ValueError, IndexError):
                 pass
 
+    cache_loading = total == 0 and not get_prewarm_worker().cache_ready
+    no_audit_data = total > 0 and sum(added) == 0 and sum(removed) == 0
+
     return {
         "period": period,
         "labels": labels,
@@ -139,5 +143,7 @@ async def get_trends(
             "total": total,
             "laa": laa_now,
             "laa_pct": round(laa_now / total * 100, 1) if total else 0.0,
+            "cache_loading": cache_loading,
         },
+        "no_audit_data": no_audit_data,
     }
