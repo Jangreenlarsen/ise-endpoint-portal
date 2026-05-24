@@ -3,6 +3,18 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.8.0.3 build 0522] — 2026-05-24 — feat: hover-tooltip på Trend Analyse grafer
+
+Interaktive tooltips på begge SVG-charts i Trend Analyse. Hover over et punkt viser dato og alle serie-værdier for den dag.
+
+**Implementering:**
+- `svgLineChart()` embedder chart-metadata i `data-chart`-attribut (JSON) og tilføjer skjulte hover-elementer: vertikal crosshair-linje + en highlight-dot per serie
+- `attachChartTooltips(container)` attacherer `mousemove`/`mouseleave`-handlers efter DOM-insertion; konverterer musens skærmkoordinater til SVG-koordinater via `getBoundingClientRect()` og viewBox-ratio
+- Floating tooltip-div (`_tip`) oprettet én gang på `document.body`, genbruges på tværs af loads
+
+**Berørte filer:**
+- `frontend/js/views/trends.js`
+
 ## [5.8.0.2 build 0521] — 2026-05-24 — debug: rettelse af version til debug-format (5.8.0.2)
 
 - `version.json` — version rettet til `5.8.0.2` (debug-serie), build til 0521
