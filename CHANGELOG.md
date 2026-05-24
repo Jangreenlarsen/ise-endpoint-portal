@@ -3,6 +3,22 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.8.0 build 0520] — 2026-05-24 — fix: Trend Analyse afspejler nu alle ISE-endpoints, ikke kun portal-audit
+
+**Rodårsag:** Trend Analyse brugte `audit_events`-tabellen som datakilde — den registrerer kun portal-initierede handlinger. Endpoints oprettet direkte i ISE (uden om portalen) var usynlige og påvirkede aldrig graferne.
+
+**Løsning:** Datakilden er skiftet til `first_seen_store.py` der populeres af prewarm-scanneren for ALLE ISE-endpoints.
+
+**Ændringer i first_seen_store.py:**
+- Nyt `deleted_at`-felt: soft-delete i stedet for hard DELETE — bevarer slettehistorik til trend-grafer
+- Ny `get_added_since(since_ts)` — returnerer MACs første set siden timestamp
+- Ny `get_removed_since(since_ts)` — returnerer soft-slettede MACs siden timestamp
+
+**Berørte filer:**
+- `backend/app/core/first_seen_store.py` — soft-delete, migration, indexes, nye query-funktioner
+- `backend/app/api/trends.py` — skiftet fra audit_events til first_seen_store; fjernet no_audit_data
+- `frontend/js/views/trends.js` — fjernet auditNote/no_audit_data; opdateret chart-beskrivelse til "portalen har observeret per dag (synkroniseres fra ISE hver 30. minut)"
+
 ## [5.8.0 build 0519] — 2026-05-24 — fix: Livscyklus og Trend Analyse viser 0 ved tom cache
 
 **Rodårsag:** Lifecycle og Trend Analyse læser begge fra endpoint-cachen. Hvis cachen endnu ikke er populeret ved opstart (ingen disk-cache-fil), returnerer begge endpoints 0 — selv om ISE har tusindvis af endpoints. Brugere oplevede 0 resultater indtil de besøgte Browse/Edit som trigger prewarm.

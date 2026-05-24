@@ -6,7 +6,7 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ## [5.8.0] — 2026-05-24 — Trend Analyse · Security Patch 3 · Stabilitets-fix
 
-> **Builds:** 0514 · 0515 · 0516 — release til `main` 2026-05-24
+> **Builds:** 0514 · 0515 · 0516 · 0517 · 0518 · 0519 · 0520 — release til `main` 2026-05-24
 
 ### Overblik
 
@@ -35,7 +35,7 @@ Snapshot øverst på siden: totalt antal endpoints, antal private MACs, LAA-proc
 
 **Periode-vælger:** 7 dage · 30 dage · 90 dage · 1 år
 
-Data hentes fra audit-loggen. Ingen eksterne chart-afhængigheder — alt er ren SVG.
+Data hentes fra `first_seen_store` (populeres af ISE-prewarm-scanner hvert 30. minut) — afspejler **alle** endpoints i ISE, ikke kun portal-oprettede. Ingen eksterne chart-afhængigheder — alt er ren SVG.
 
 ---
 

@@ -158,7 +158,7 @@ export async function renderTrends(container) {
   }
 
   function render(d) {
-    const { labels, added, removed, net, laa_added, laa_removed, snapshot, no_audit_data } = d;
+    const { labels, added, removed, net, laa_added, laa_removed, snapshot } = d;
 
     // Sumér periode-totaler
     const totalAdded = added.reduce((s, v) => s + v, 0);
@@ -184,14 +184,6 @@ export async function renderTrends(container) {
       ${statCard("LAA tilgang (periode)", "+" + totalLaaAdded, "private MACs oprettet", "#d97706")}
     </div>`;
 
-    // Forklarende note når der er endpoints i systemet men ingen audit-aktivitet i grafen
-    const auditNote = no_audit_data ? `
-      <div class="alert info" style="margin-bottom:1rem;font-size:.85rem;">
-        Graferne viser kun endpoints oprettet eller slettet <strong>via portalen</strong>.
-        Endpoints der eksisterede i ISE da portalen blev installeret, tæller ikke som "tilgang" i grafen.
-        Data opbygges løbende fra denne dato.
-      </div>` : "";
-
     // Chart 1: Endpoint bevægelse
     const chart1 = chartCard(
       "Endpoint tilgang og fragang",
@@ -200,7 +192,7 @@ export async function renderTrends(container) {
         { name: "Fragang",  color: "#dc2626", data: removed, fill: true },
         { name: "Netto",    color: "#2563eb", data: net },
       ]),
-      "Antal endpoints oprettet og slettet per dag i perioden — via portalen."
+      "Antal endpoints portalen har observeret per dag (synkroniseres fra ISE hver 30. minut)."
     );
 
     // Chart 2: Private MAC bevægelse
@@ -213,7 +205,7 @@ export async function renderTrends(container) {
       "Locally Administered Address: bit 1 i første octet sat (f.eks. A2:xx, 06:xx). Indikerer randomiseret/privat MAC."
     );
 
-    content.innerHTML = stats + auditNote + chart1 + chart2;
+    content.innerHTML = stats + chart1 + chart2;
   }
 
   periodSel.addEventListener("change", load);
