@@ -3442,26 +3442,49 @@ details[open] .rn-summary::before { transform: rotate(90deg); }
   font-size: 0.875rem;
   line-height: 1.55;
 }
+.rn-body .rn-h1 { font-size: 1.1rem; font-weight: 700; margin: 0 0 0.5rem; color: var(--text, #1e293b); }
 .rn-body .rn-h2 { font-size: 1rem; font-weight: 700; margin: 0.9rem 0 0.3rem; color: var(--text, #1e293b); border-bottom: 1px solid var(--border, #e2e8f0); padding-bottom: 0.2rem; }
 .rn-body .rn-h3 { font-size: 0.9rem; font-weight: 600; margin: 0.7rem 0 0.2rem; color: var(--text, #1e293b); }
-.rn-body .rn-h2:first-child, .rn-body .rn-h3:first-child { margin-top: 0; }
+.rn-body .rn-h4 { font-size: 0.82rem; font-weight: 600; margin: 0.6rem 0 0.15rem; color: var(--text-secondary, #475569); text-transform: uppercase; letter-spacing: 0.03em; }
+.rn-body .rn-h1:first-child, .rn-body .rn-h2:first-child, .rn-body .rn-h3:first-child { margin-top: 0; }
 .rn-body .rn-p { margin: 0.25rem 0 0.4rem; color: var(--text-secondary, #475569); }
 .rn-body .rn-list { margin: 0.25rem 0 0.5rem 1.2rem; padding: 0; }
 .rn-body .rn-list li { margin-bottom: 0.2rem; color: var(--text-secondary, #475569); }
 .rn-body .rn-hr { border: 0; border-top: 1px solid var(--border, #e2e8f0); margin: 0.75rem 0; }
 .rn-body code { background: var(--code-bg, #f1f5f9); padding: 0.1em 0.35em; border-radius: 3px; font-size: 0.85em; }
+.rn-body .rn-pre { background: var(--code-bg, #f1f5f9); border: 1px solid var(--border, #e2e8f0); border-radius: 5px; padding: 0.6rem 0.8rem; overflow-x: auto; font-size: 0.8rem; line-height: 1.5; margin: 0.3rem 0 0.5rem; }
+.rn-body .rn-pre code { background: none; padding: 0; font-size: inherit; }
+.rn-body .rn-bq { border-left: 3px solid var(--primary, #2563eb); padding: 0.25rem 0.75rem; margin: 0.4rem 0; color: var(--text-secondary, #475569); font-size: 0.85rem; }
+.rn-body .rn-table { border-collapse: collapse; width: 100%; font-size: 0.82rem; margin: 0.4rem 0 0.6rem; }
+.rn-body .rn-table th, .rn-body .rn-table td { border: 1px solid var(--border, #e2e8f0); padding: 0.25rem 0.5rem; text-align: left; }
+.rn-body .rn-table th { background: var(--surface-alt, #f8fafc); font-weight: 600; color: var(--text, #1e293b); }
+.rn-body .rn-table td { color: var(--text-secondary, #475569); }
 [data-theme="dark"] .rn-summary { background: #1e293b; }
+[data-theme="dark"] .rn-body .rn-h1 { color: #f1f5f9; }
 [data-theme="dark"] .rn-body .rn-h2,
 [data-theme="dark"] .rn-body .rn-h3 { color: #e2e8f0; border-color: #334155; }
+[data-theme="dark"] .rn-body .rn-h4 { color: #94a3b8; }
 [data-theme="dark"] .rn-body .rn-p,
-[data-theme="dark"] .rn-body .rn-list li { color: #94a3b8; }
+[data-theme="dark"] .rn-body .rn-list li,
+[data-theme="dark"] .rn-body .rn-table td { color: #94a3b8; }
 [data-theme="dark"] .rn-body code { background: #0f172a; }
+[data-theme="dark"] .rn-body .rn-pre { background: #0f172a; border-color: #334155; }
+[data-theme="dark"] .rn-body .rn-bq { border-color: #3b82f6; }
+[data-theme="dark"] .rn-body .rn-table th { background: #1e293b; color: #e2e8f0; border-color: #334155; }
+[data-theme="dark"] .rn-body .rn-table td { border-color: #334155; }
 [data-theme="midnight"] .rn-summary { background: #0d1117; }
+[data-theme="midnight"] .rn-body .rn-h1 { color: #e6edf3; }
 [data-theme="midnight"] .rn-body .rn-h2,
 [data-theme="midnight"] .rn-body .rn-h3 { color: #e6edf3; border-color: #30363d; }
+[data-theme="midnight"] .rn-body .rn-h4 { color: #8b949e; }
 [data-theme="midnight"] .rn-body .rn-p,
-[data-theme="midnight"] .rn-body .rn-list li { color: #8b949e; }
+[data-theme="midnight"] .rn-body .rn-list li,
+[data-theme="midnight"] .rn-body .rn-table td { color: #8b949e; }
 [data-theme="midnight"] .rn-body code { background: #010409; }
+[data-theme="midnight"] .rn-body .rn-pre { background: #010409; border-color: #30363d; }
+[data-theme="midnight"] .rn-body .rn-bq { border-color: #388bfd; }
+[data-theme="midnight"] .rn-body .rn-table th { background: #0d1117; color: #e6edf3; border-color: #30363d; }
+[data-theme="midnight"] .rn-body .rn-table td { border-color: #30363d; }
 
 /* ------------------------------------------------------------------ */
 /* Save progress indikator                                             */
