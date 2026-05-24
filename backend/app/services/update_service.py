@@ -391,6 +391,19 @@ def _git_pull_sync() -> dict[str, Any]:
         if fetch.stdout.strip(): stdout_parts.append(fetch.stdout.strip())
         if fetch.stderr.strip(): stdout_parts.append(fetch.stderr.strip())
         if fetch.returncode != 0:
+            combined = fetch.stdout + fetch.stderr
+            if "insufficient permission" in combined or "failed to write object" in combined:
+                return {
+                    "ok": False,
+                    "stdout": "\n".join(stdout_parts),
+                    "stderr": (
+                        "Git-objektmappen har forkerte filrettigheder.\n"
+                        "Kør følgende på serveren og prøv igen:\n\n"
+                        f"  find {PROJECT_ROOT}/.git/objects -type d -exec chmod 755 {{}} \\;\n"
+                        f"  find {PROJECT_ROOT}/.git/objects -type f -exec chmod 644 {{}} \\;"
+                    ),
+                    "returncode": fetch.returncode,
+                }
             return {"ok": False, "stdout": "\n".join(stdout_parts), "stderr": fetch.stderr.strip(), "returncode": fetch.returncode}
 
         # Trin 2: reset --hard til FETCH_HEAD — mere robust end origin/{branch}
