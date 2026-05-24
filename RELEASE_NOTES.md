@@ -4,6 +4,20 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.8.2-P4] — 2026-05-24 — Security Patch 4
+
+> **Build:** 0526 — Sikkerhedsrettelser fra ny uafhængig kodeanalyse
+
+### 3 sikkerhedsfund rettet
+
+| # | Sværhedsgrad | Komponent | Fund | Fix |
+|---|---|---|---|---|
+| 1 | **Høj** | `cache.py` | `/api/cache/invalidate` tilgængeligt for alle autentiserede brugere — viewer/registrant kunne tømme ISE-endpoint-cachen og provokere DoS mod ISE-API | Endpoint kræver nu `require_admin` |
+| 2 | **Middel** | `trends.py` | Dead-code funktion `_mac_from_json()` kaldte `json.loads()` uden at `json` var importeret — ville give `NameError: name 'json' is not defined` ved kald | Funktion fjernet |
+| 3 | **Middel** | `audit.py` | `GET /api/audit` — filterparametre `actor`, `resource_type`, `resource_id`, `from_ts`, `to_ts` manglede `max_length` (export-endpoint var korrekt fra Patch 3) | `max_length` tilføjet på alle fem parametre |
+
+---
+
 ## [5.8.2] — 2026-05-24 — Livscyklus tid-telemetri + klik til Browse/Edit
 
 > **Build:** 0524

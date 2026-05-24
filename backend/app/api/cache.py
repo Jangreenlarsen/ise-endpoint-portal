@@ -7,7 +7,7 @@ import time
 
 from fastapi import APIRouter, Depends
 
-from app.api.deps import require_admin, require_any
+from app.api.deps import require_admin
 from app.core.endpoint_cache import get_cache
 
 router = APIRouter(prefix="/cache", tags=["cache"])
@@ -48,7 +48,7 @@ async def cache_stats() -> dict:
     return stats
 
 
-@router.post("/invalidate", dependencies=[Depends(require_any)])
+@router.post("/invalidate", dependencies=[Depends(require_admin)])
 async def cache_invalidate() -> dict:
     get_cache().invalidate_all()
     return {"status": "cleared"}

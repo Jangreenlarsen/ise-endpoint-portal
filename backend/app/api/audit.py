@@ -68,11 +68,11 @@ def _to_event(row: dict) -> AuditEvent:
     "", response_model=AuditListResponse, dependencies=[Depends(require_admin)]
 )
 async def list_events(
-    actor: str | None = Query(None),
-    resource_type: str | None = Query(None),
-    resource_id: str | None = Query(None),
-    from_ts: str | None = Query(None, description="ISO-8601 lower bound"),
-    to_ts: str | None = Query(None, description="ISO-8601 upper bound"),
+    actor: str | None = Query(None, max_length=200),
+    resource_type: str | None = Query(None, max_length=100),
+    resource_id: str | None = Query(None, max_length=200),
+    from_ts: str | None = Query(None, description="ISO-8601 lower bound", max_length=50),
+    to_ts: str | None = Query(None, description="ISO-8601 upper bound", max_length=50),
     search: str | None = Query(
         None,
         description="Bredsøgning (case-insensitive substring) på alle felter",

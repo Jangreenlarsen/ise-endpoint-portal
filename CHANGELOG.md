@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.8.2-P4 build 0526] — 2026-05-24 — sec: Security Patch 4 — cache-DoS, dead-code NameError, audit max_length
+
+**Security Patch 4 (3 fixes fra ny sikkerhedsanalyse):**
+
+- `backend/app/api/cache.py` — `/api/cache/invalidate` ændret fra `require_any` til `require_admin` — alle autentiserede brugere (inkl. viewer/registrant) kunne tømme cache og forårsage DoS mod ISE-API
+- `backend/app/api/trends.py` — fjernet `_mac_from_json()` (ubrugt dead-code) der kaldte `json.loads()` uden at `json` var importeret — ville give `NameError` ved fremtidig kald
+- `backend/app/api/audit.py` — `actor`, `resource_type`, `resource_id`, `from_ts`, `to_ts` på list-endpoint manglede `max_length` (fandtes kun på export-endpoint fra Patch 3)
+
 ## [5.8.2 build 0525] — 2026-05-24 — fix: Livscyklus tabel — kompakt enkelt-linje per endpoint
 
 - `lifecycle.js`: `fmtFirstSeen` viser dato + alder på én linje (`2026-01-15 (129d)`)

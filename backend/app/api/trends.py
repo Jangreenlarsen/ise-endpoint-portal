@@ -31,15 +31,6 @@ def _is_laa(mac: str) -> bool:
         return False
 
 
-def _mac_from_json(blob: str | None) -> str:
-    if not blob:
-        return ""
-    try:
-        d = json.loads(blob)
-        return d.get("mac") or d.get("name") or d.get("macAddress") or ""
-    except Exception:
-        return ""
-
 
 @router.get("", dependencies=[Depends(require_any)])
 async def get_trends(
