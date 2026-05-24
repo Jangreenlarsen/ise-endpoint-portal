@@ -3,6 +3,17 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.8.0 build 0516] — 2026-05-24 — fix: lockout_store startup-crash og SQLite-locking
+
+**Rodårsag til portal-nedbrud:**
+- `init_lockout_db()` var ikke i try-except → en SQLite-fejl ved startup crashede hele backend
+- `lockout_store` brugte samme `audit.db` som audit-systemet → write-lock-konflikt ved startup
+- `sqlite3.connect()` uden timeout → concurrent logins kunne give "database is locked"-fejl
+
+**Fix:**
+- `backend/app/core/lockout_store.py` — bruger nu dedikeret `lockout.db`; alle funktioner er try-except wrapped med safe defaults; `conn.close()` eksplicit i finally-blok; `timeout=10` på alle connections; `_available`-flag forhindrer brug af utildannet DB
+- `backend/app/main.py` — `init_lockout_db()` wrapped i try-except med warning-log; app starter altid uanset lockout DB-fejl
+
 ## [5.8.0 build 0514] — 2026-05-23 — feat: Trend Analyse — endpoint tilgang/fragang og private MACs
 
 **Nyt view: Trend Analyse** tilgængeligt via sidebar under Overvågning.

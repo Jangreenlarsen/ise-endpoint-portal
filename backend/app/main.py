@@ -75,9 +75,12 @@ async def lifespan(_: FastAPI):
     _auth_core._secret()
     init_audit_db()
     from app.core.first_seen_store import init_db as init_first_seen_db
-    from app.core.lockout_store import init_db as init_lockout_db
     init_first_seen_db()
-    init_lockout_db()
+    try:
+        from app.core.lockout_store import init_db as init_lockout_db
+        init_lockout_db()
+    except Exception as _exc:  # noqa: BLE001
+        logger.warning("lockout_store init fejlede (non-fatal, bruger in-memory fallback): %s", _exc)
     # 3.8.0: backfill System adm-rolle for hver eksisterende bruger så admin
     # kan tagge endpoints med username via rolle-katalogen. Idempotent.
     # Migrate legacy role names: registrar→registrant, registrar_templet→registrant_templet.
