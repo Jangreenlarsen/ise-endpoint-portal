@@ -7,7 +7,7 @@ import {
   getColumns, getOrderedColumns, esc,
   getPageSize, getCoaReauthOnSave, setCoaReauthOnSave,
   loadColVis, saveColVis,
-  applyBackendColPrefs, setColPrefsSyncFn,
+  applyBackendColPrefs, setColPrefsSyncFn, syncColPrefsNow,
   normalizeMac, fmtAgo, coaSummaryText,
   groupHierarchyOptionsHtml,
 } from "./browse-utils.js";
@@ -19,9 +19,11 @@ import { initBulk   } from "./browse-bulk.js";
 export async function renderBrowse(container) {
   // Hent kolonnepræferencer fra backend inden HTML/state initialiseres,
   // så getOrderedColumns() og loadColVis() returnerer serverens værdier.
+  let _backendHasColPrefs = false;
   try {
     const prefs = await api.getMyPrefs();
     applyBackendColPrefs(prefs.col_order, prefs.col_vis, prefs.col_widths);
+    _backendHasColPrefs = !!(prefs.col_vis || prefs.col_order || prefs.col_widths);
   } catch { /* ignorér — falder tilbage til localStorage */ }
 
   container.innerHTML = `
@@ -405,8 +407,12 @@ export async function renderBrowse(container) {
 
   // ── Kolonnepræferencer: sync til backend ved drag/visibility-ændring ───────
   setColPrefsSyncFn((payload) => {
-    api.updateMyPrefs(payload).catch(() => { /* ignorér — TACACS-brugere får 403 */ });
+    api.updateMyPrefs(payload).catch((e) => {
+      if (!e?.message?.includes("403")) console.warn("[prefs sync]", e?.message);
+    });
   });
+  // Migration: hvis backend mangler kolonnepræferencer, upload localStorage-tilstanden én gang.
+  if (!_backendHasColPrefs) syncColPrefsNow();
 
   // ── Module initialisation ─────────────────────────────────────────────────
   const filterAPI = initFilter(container, state, api, cb);

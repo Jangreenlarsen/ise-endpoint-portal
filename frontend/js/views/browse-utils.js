@@ -89,6 +89,7 @@ export function applyBackendColPrefs(order, vis, widths) {
 // Backend-sync callback — sættes af browse.js ved init.
 let _prefsSyncFn = null;
 export function setColPrefsSyncFn(fn) { _prefsSyncFn = fn; }
+export function syncColPrefsNow() { _syncColPrefs(); }
 
 function _syncColPrefs() {
   if (!_prefsSyncFn) return;

@@ -3,6 +3,11 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.11.1 build 0545] — 2026-05-25 — fix: col_vis synkroniseres ikke til backend ved første load
+
+- `frontend/js/views/browse-utils.js` — ny eksporteret `syncColPrefsNow()` kalder `_syncColPrefs()` direkte, til brug ved init.
+- `frontend/js/views/browse.js` — `_backendHasColPrefs` flag gemt fra `getMyPrefs()`-resultatet. Hvis backend mangler kolonnepræferencer (f.eks. første load efter feature-deploy), kaldes `syncColPrefsNow()` straks efter `setColPrefsSyncFn()` for at uploade eksisterende localStorage-tilstand. `.catch()` i sync-callback logger nu `console.warn` for non-403 fejl i stedet for at sluge dem stille.
+
 ## [5.11.0 build 0544] — 2026-05-25 — feat: kolonnebredder gemmes i backend (col_widths)
 
 - `backend/app/schemas/user.py` — `UserPrefs`: ny `col_widths: dict[str, int] | None` felt.

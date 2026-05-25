@@ -4,6 +4,16 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.11.1] — 2026-05-25 — Fix: Kolonne-synlighed synkroniseres nu korrekt til backend
+
+> **Build:** 0545
+
+Kolonne-synlighed (hvilke kolonner der vises i Browse) blev ikke gemt i backend, selv om funktionen var implementeret. Årsagen: synkronisering skete kun ved aktiv ændring — men brugere der havde sat synlighed FØR backend-sync-funktionen blev tilføjet, fik aldrig uploadet den eksisterende præference.
+
+Rettet: ved første sideload kontrolleres om backend mangler kolonnepræferencer, og i så fald uploades localStorage-tilstanden automatisk én gang. Herefter synkroniseres ændringer som normalt.
+
+---
+
 ## [5.11.0] — 2026-05-25 — Kolonnebredder og alle Browse-præferencer gemmes i backend
 
 > **Build:** 0544
