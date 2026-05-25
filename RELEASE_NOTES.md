@@ -4,6 +4,16 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.11.2] — 2026-05-25 — Fix: Kolonne-synlighed persisterer nu korrekt + gemt-bekræftelse
+
+> **Build:** 0546
+
+Kolonne-synlighed persisterer nu på tværs af navigationer: ved hvert besøg på Browse-siden uploades den aktuelle kolonne-tilstand til din brugerprofil, så den er korrekt næste gang du vender tilbage.
+
+Derudover: når du ændrer en kolonnes synlighed, vises nu et grønt **✓** i "Kolonner"-knappen i 1,8 sekunder som bekræftelse på at ændringen er gemt.
+
+---
+
 ## [5.11.1] — 2026-05-25 — Fix: Kolonne-synlighed synkroniseres nu korrekt til backend
 
 > **Build:** 0545

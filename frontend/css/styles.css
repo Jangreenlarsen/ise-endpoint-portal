@@ -2153,6 +2153,12 @@ th.col-drag-over {
 
 /* Column visibility menu (Browse/Edit) */
 .col-vis-wrap { position: relative; display: inline-block; }
+#col-vis-btn[data-saved]::after {
+  content: " ✓";
+  color: #16a34a;
+  font-weight: 600;
+  font-size: 0.85em;
+}
 .col-vis-menu {
   position: absolute;
   top: calc(100% + 4px);

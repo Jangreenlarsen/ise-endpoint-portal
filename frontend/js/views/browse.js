@@ -19,11 +19,9 @@ import { initBulk   } from "./browse-bulk.js";
 export async function renderBrowse(container) {
   // Hent kolonnepræferencer fra backend inden HTML/state initialiseres,
   // så getOrderedColumns() og loadColVis() returnerer serverens værdier.
-  let _backendHasColPrefs = false;
   try {
     const prefs = await api.getMyPrefs();
     applyBackendColPrefs(prefs.col_order, prefs.col_vis, prefs.col_widths);
-    _backendHasColPrefs = !!(prefs.col_vis || prefs.col_order || prefs.col_widths);
   } catch { /* ignorér — falder tilbage til localStorage */ }
 
   container.innerHTML = `
@@ -411,8 +409,9 @@ export async function renderBrowse(container) {
       if (!e?.message?.includes("403")) console.warn("[prefs sync]", e?.message);
     });
   });
-  // Migration: hvis backend mangler kolonnepræferencer, upload localStorage-tilstanden én gang.
-  if (!_backendHasColPrefs) syncColPrefsNow();
+  // Sync altid localStorage-tilstand til backend ved init — sikrer korrekt tilstand
+  // selv hvis forrige session ikke nåede at gemme, eller brugeren er logget ind på ny.
+  syncColPrefsNow();
 
   // ── Module initialisation ─────────────────────────────────────────────────
   const filterAPI = initFilter(container, state, api, cb);

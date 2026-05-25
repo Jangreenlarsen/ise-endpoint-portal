@@ -71,6 +71,16 @@ export function initTable(container, state, api, cb) {
   }
 
   // ── Column visibility ────────────────────────────────────────────────────
+  let _colVisSavedTimer = null;
+  function _flashColVisSaved() {
+    if (_colVisSavedTimer) clearTimeout(_colVisSavedTimer);
+    colVisBtn.dataset.saved = "1";
+    _colVisSavedTimer = setTimeout(() => {
+      delete colVisBtn.dataset.saved;
+      _colVisSavedTimer = null;
+    }, 1800);
+  }
+
   function applyColVis() {
     const table = container.querySelector(".browse-table-wrap table");
     if (!table) return;
@@ -93,6 +103,7 @@ export function initTable(container, state, api, cb) {
         state.colVis[cb.dataset.col] = cb.checked;
         saveColVis(state.colVis);
         applyColVis();
+        _flashColVisSaved();
       });
     });
   }

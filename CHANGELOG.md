@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.11.2 build 0546] — 2026-05-25 — fix: kolonne-synlighed persisterer nu på tværs af navigationer + gemt-indikator
+
+- `frontend/js/views/browse.js` — `syncColPrefsNow()` kaldes nu ubetinget ved hvert Browse-init (ikke kun første gang). Fjernet `_backendHasColPrefs`-betingelse — garanterer at localStorage-tilstand altid uploades til backend ved sideindlæsning.
+- `frontend/js/views/browse-table.js` — ny `_flashColVisSaved()` viser "✓" i kolonne-knappen i 1,8 s når synlighed ændres, så brugeren har bekræftelse på at ændringen er gemt.
+- `frontend/css/styles.css` — `#col-vis-btn[data-saved]::after` tilføjer grønt ✓-suffiks under flash.
+
 ## [5.11.1 build 0545] — 2026-05-25 — fix: col_vis synkroniseres ikke til backend ved første load
 
 - `frontend/js/views/browse-utils.js` — ny eksporteret `syncColPrefsNow()` kalder `_syncColPrefs()` direkte, til brug ved init.
