@@ -922,6 +922,8 @@ export function initTable(container, state, api, cb) {
       handle.addEventListener("mousedown", (e) => {
         e.stopPropagation();
         e.preventDefault();
+        handle.classList.add("resizing");
+        document.body.style.userSelect = "none";
         const startX = e.clientX;
         const startW = th.getBoundingClientRect().width;
         const onMove = (ev) => {
@@ -932,6 +934,8 @@ export function initTable(container, state, api, cb) {
         const onUp = () => {
           document.removeEventListener("mousemove", onMove);
           document.removeEventListener("mouseup", onUp);
+          handle.classList.remove("resizing");
+          document.body.style.userSelect = "";
           const widths = {};
           for (const h of headerRow.querySelectorAll("th[data-col]")) {
             if (h.style.width) widths[h.dataset.col] = Math.round(h.getBoundingClientRect().width);

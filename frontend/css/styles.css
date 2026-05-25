@@ -596,10 +596,11 @@ td.auth-status-col.auth-failed { background: #f87171; color: #450a0a; }
   z-index: 9;
   background: #f9fafb;
   box-shadow: 0 1px 0 #e5e7eb;
-  overflow: hidden;
   white-space: nowrap;
 }
-/* Resize handle — right edge of each header cell */
+/* Resize handle — right edge of each header cell.
+   position:sticky acts as containing block so absolute child works.
+   overflow:hidden must NOT be on th — it would clip the handle. */
 .th-resize-handle {
   position: absolute;
   right: 0;
@@ -607,10 +608,11 @@ td.auth-status-col.auth-failed { background: #f87171; color: #450a0a; }
   bottom: 0;
   width: 6px;
   cursor: col-resize;
-  z-index: 1;
+  z-index: 10;
   background: transparent;
 }
-.th-resize-handle:hover { background: rgba(99,102,241,0.35); }
+.th-resize-handle:hover,
+.th-resize-handle.resizing { background: rgba(99,102,241,0.35); }
 /* Group path stacked hint under select in detail modal */
 .group-select-wrap { display: flex; flex-direction: column; gap: 2px; }
 .group-path-hint { display: flex; flex-direction: column; gap: 1px; padding: 2px 0 0; }

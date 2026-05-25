@@ -3,6 +3,11 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.10.4 build 0539] — 2026-05-25 — fix: resize-handle virker nu — overflow:hidden fjernet fra th
+
+- `frontend/css/styles.css` — fjernet `overflow: hidden` fra `.browse-table-wrap table thead th` — det clippede den absolut-positionerede `.th-resize-handle` så den var usynlig og uklikbar. Tilføjet `.th-resize-handle.resizing` variant. Dark/midnight hover-farver bevaret.
+- `frontend/js/views/browse-table.js` — `wireColResize()`: tilføjer/fjerner `.resizing`-klasse og sætter `document.body.style.userSelect = "none"` under drag så tekst ikke markeres ved resize.
+
 ## [5.10.3 build 0538] — 2026-05-25 — fix: "table is not defined" i wireColResize
 
 - `frontend/js/views/browse-table.js` — `wireColResize()` brugte `table` fra `initColDrag()`s lokale scope. Rettet til `container.querySelector(".browse-table-wrap table")` direkte i funktionen.
