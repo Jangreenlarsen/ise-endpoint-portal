@@ -905,6 +905,8 @@ export function initTable(container, state, api, cb) {
   initColDrag();
 
   // ── Column resize ────────────────────────────────────────────────────────
+  // Bruger Pointer Events API med setPointerCapture — undgår interferens med
+  // draggable="true" på <th> som ellers blokerer mousemove på document.
   function wireColResize() {
     const tbl = container.querySelector(".browse-table-wrap table");
     if (!tbl) return;
@@ -919,21 +921,28 @@ export function initTable(container, state, api, cb) {
       }
       const handle = th.querySelector(".th-resize-handle");
       if (!handle) continue;
-      handle.addEventListener("mousedown", (e) => {
+
+      // Blokér column-drag når musen er på handle
+      handle.addEventListener("dragstart", (e) => { e.preventDefault(); e.stopPropagation(); });
+
+      handle.addEventListener("pointerdown", (e) => {
         e.stopPropagation();
         e.preventDefault();
+        handle.setPointerCapture(e.pointerId);  // alle pointer-events går til handle
         handle.classList.add("resizing");
         document.body.style.userSelect = "none";
         const startX = e.clientX;
         const startW = th.getBoundingClientRect().width;
-        const onMove = (ev) => {
+
+        function onMove(ev) {
           const w = Math.max(48, startW + ev.clientX - startX);
           th.style.width    = w + "px";
           th.style.minWidth = w + "px";
-        };
-        const onUp = () => {
-          document.removeEventListener("mousemove", onMove);
-          document.removeEventListener("mouseup", onUp);
+        }
+        function onUp() {
+          handle.removeEventListener("pointermove", onMove);
+          handle.removeEventListener("pointerup",   onUp);
+          handle.removeEventListener("pointercancel", onUp);
           handle.classList.remove("resizing");
           document.body.style.userSelect = "";
           const widths = {};
@@ -941,9 +950,10 @@ export function initTable(container, state, api, cb) {
             if (h.style.width) widths[h.dataset.col] = Math.round(h.getBoundingClientRect().width);
           }
           saveColWidths(widths);
-        };
-        document.addEventListener("mousemove", onMove);
-        document.addEventListener("mouseup", onUp);
+        }
+        handle.addEventListener("pointermove",   onMove);
+        handle.addEventListener("pointerup",     onUp, { once: true });
+        handle.addEventListener("pointercancel", onUp, { once: true });
       });
     }
   }

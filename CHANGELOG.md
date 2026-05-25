@@ -3,6 +3,10 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.10.6 build 0541] — 2026-05-25 — fix: resize via Pointer Events API — undgår draggable-interferens
+
+- `frontend/js/views/browse-table.js` — `wireColResize()` omskrevet til Pointer Events API: `pointerdown` + `setPointerCapture(pointerId)` sikrer at alle pointer-events fanges af handle selv når musen bevæger sig hurtigt. `dragstart`-listener på handle forhindrer `draggable="true"` på `<th>` i at stjæle events. `pointermove`/`pointerup`/`pointercancel` erstatter `document.mousemove`/`mouseup`.
+
 ## [5.10.5 build 0540] — 2026-05-25 — docs: RELEASE_NOTES tilføjet for 5.10.2–5.10.4
 
 - `RELEASE_NOTES.md` — sektioner tilføjet for 5.10.4 (resize-handle fix), 5.10.2 (chown fejlbesked).
