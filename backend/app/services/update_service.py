@@ -359,12 +359,18 @@ async def check_github_version(*, force: bool = False) -> dict[str, Any]:
     return result
 
 
+def _git_objects_writable() -> bool:
+    """Returnerer True hvis den kørende proces kan skrive til .git/objects/."""
+    import os
+    obj_dir = PROJECT_ROOT / ".git" / "objects"
+    return obj_dir.is_dir() and os.access(obj_dir, os.W_OK)
+
+
 def _fix_git_object_permissions() -> None:
     """Ret filrettigheder i .git/objects/ så git fetch kan skrive nye objekter.
 
-    Directories: 755, filer: 644.  Kører hurtigt (pure Python, ingen subprocess).
-    Fejl ignoreres stille — hvis vi ikke har adgang, fejler fetch bagefter med
-    en klar besked.
+    Directories: 755, filer: 644.  Kører kun hvis processen ejer filerne
+    (os.chmod kræver ejerskab — root-ejede filer kan ikke rettes herfra).
     """
     import os
     obj_dir = PROJECT_ROOT / ".git" / "objects"
@@ -405,10 +411,26 @@ def _git_pull_sync() -> dict[str, Any]:
     branch = (_cfg.settings.github_branch or "main").strip()
     stdout_parts: list[str] = []
 
-    # Autofikser objektrettigheder FØR fetch — løser "insufficient permission"
-    # fejl der opstår når git-processen skriver objekter med forkerte rettigheder.
+    # Ret permissions hvis processen ejer filerne.
+    # Tjek derefter om vi overhovedet kan skrive — hvis ikke, ejer en anden
+    # bruger (typisk root) .git/objects og vi kan ikke rette det selv.
     _fix_git_object_permissions()
     _ensure_git_shared_repo()
+
+    if not _git_objects_writable():
+        import os as _os
+        portal_user = _os.environ.get("USER") or _os.environ.get("LOGNAME") or "hypervision"
+        return {
+            "ok": False,
+            "stdout": "",
+            "stderr": (
+                f"Portal-processen (bruger '{portal_user}') ejer ikke .git/objects/ og kan ikke skrive til det.\n"
+                f"Løs det med én kommando på serveren (som root):\n\n"
+                f"  chown -R {portal_user}:{portal_user} {PROJECT_ROOT}/.git\n\n"
+                "Herefter virker git pull automatisk uden yderligere indgreb."
+            ),
+            "returncode": -1,
+        }
 
     try:
         # Trin 1: fetch

@@ -3,6 +3,10 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.10.2 build 0537] — 2026-05-25 — fix: git pull viser korrekt chown-fejl ved ejerskabsproblem
+
+- `backend/app/services/update_service.py` — ny `_git_objects_writable()` tjekker om portal-processen kan skrive til `.git/objects/` (os.access). I `_git_pull_sync()` tjekkes dette FØR fetch: hvis ikke skrivbar returneres en klar fejl med præcis `chown -R <user>:<user> <root>/.git`-kommando og brugernavnet hentes fra `$USER`/`$LOGNAME` env. Den gamle misvisende chmod-fejlbesked er fjernet.
+
 ## [5.10.1 build 0536] — 2026-05-25 — fix: git pull fejler aldrig mere på filrettigheder
 
 - `backend/app/services/update_service.py` — ny `_fix_git_object_permissions()`: gennemgår `.git/objects/` med `os.walk` og sætter dirs til 755 og filer til 644 (pure Python, ingen subprocess). Ny `_ensure_git_shared_repo()`: konfigurerer `core.sharedRepository=0644` så fremtidige git-objekter oprettes med korrekte rettigheder. Begge kaldes automatisk FØR `git fetch` i `_git_pull_sync()`. Den gamle "Kør disse chmod-kommandoer manuelt"-fejlbesked er fjernet.
