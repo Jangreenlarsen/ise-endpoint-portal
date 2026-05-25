@@ -10,6 +10,7 @@ import {
   endpointCreateTime, fmtRelativeAge, fmtDateTime,
   normalizeMac, coaSummaryText, optionsHtml,
   loadColVis, saveColVis, savePageSize, saveColOrder,
+  loadColWidths, saveColWidths,
   groupHierarchyOptionsHtml,
 } from "./browse-utils.js";
 import { toIseCsv, downloadCsv } from "../csv.js";
@@ -902,6 +903,46 @@ export function initTable(container, state, api, cb) {
   }
 
   initColDrag();
+
+  // ── Column resize ────────────────────────────────────────────────────────
+  function wireColResize() {
+    const headerRow = table.querySelector("thead tr:first-child");
+    if (!headerRow) return;
+    const saved = loadColWidths() || {};
+    for (const th of headerRow.querySelectorAll("th[data-col]")) {
+      const key = th.dataset.col;
+      if (saved[key]) {
+        th.style.width    = saved[key] + "px";
+        th.style.minWidth = saved[key] + "px";
+      }
+      const handle = th.querySelector(".th-resize-handle");
+      if (!handle) continue;
+      handle.addEventListener("mousedown", (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        const startX = e.clientX;
+        const startW = th.getBoundingClientRect().width;
+        const onMove = (ev) => {
+          const w = Math.max(48, startW + ev.clientX - startX);
+          th.style.width    = w + "px";
+          th.style.minWidth = w + "px";
+        };
+        const onUp = () => {
+          document.removeEventListener("mousemove", onMove);
+          document.removeEventListener("mouseup", onUp);
+          const widths = {};
+          for (const h of headerRow.querySelectorAll("th[data-col]")) {
+            if (h.style.width) widths[h.dataset.col] = Math.round(h.getBoundingClientRect().width);
+          }
+          saveColWidths(widths);
+        };
+        document.addEventListener("mousemove", onMove);
+        document.addEventListener("mouseup", onUp);
+      });
+    }
+  }
+
+  wireColResize();
 
   return {
     renderRows, refreshRows, buildSavePayload,

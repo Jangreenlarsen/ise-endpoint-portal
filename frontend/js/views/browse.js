@@ -101,7 +101,7 @@ export async function renderBrowse(container) {
           <thead>
             <tr>
               <th style="width:36px;"><input type="checkbox" id="select-all" title="${t("browse.select_all_title")}" /></th>
-              ${getOrderedColumns().map((c) => `<th data-col="${c.key}" draggable="true"${c.cls ? ` class="${c.cls}"` : ""}>${c.label}</th>`).join("")}
+              ${getOrderedColumns().map((c) => `<th data-col="${c.key}" draggable="true"${c.cls ? ` class="${c.cls}"` : ""}>${c.label}<span class="th-resize-handle"></span></th>`).join("")}
             </tr>
             <tr class="filter-row">
               <th><button type="button" id="filter-clear-all-btn" class="filter-clear-all-btn hidden" title="Nulstil alle søgefelter">×</button></th>
@@ -158,7 +158,10 @@ export async function renderBrowse(container) {
               <label>Name</label><div class="detail-value" id="d-name"></div>
               <label>ID</label><div class="detail-value mono" id="d-id"></div>
               <label>Identity Group</label>
-              <select id="d-group"></select>
+              <div class="group-select-wrap">
+                <select id="d-group"></select>
+                <div id="d-group-path" class="group-path-hint"></div>
+              </div>
               <label>${t("detail.assignment")}</label>
               <label class="inline-cb"><input type="checkbox" id="d-static-group" /> ${t("detail.static_assign")}</label>
               <label>Description</label>

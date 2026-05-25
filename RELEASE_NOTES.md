@@ -4,6 +4,30 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.10.0] — 2026-05-25 — Identity Group: fuld sti + skalerbare kolonner
+
+> **Build:** 0535
+
+### Fuld hierarkisk sti i gruppe-dropdowns
+
+Alle gruppe-dropdowns (Browse inline, detail-modal, bulk-edit, overgruppe-valg) viser nu den **fulde sti** med " / " separator:
+
+```
+Profiled
+Profiled / ADM-Apple-iPhone
+Profiled / ADM-Apple-iPhone / SubGroup
+Unknown
+Unknown / SomeChild
+```
+
+I detail-modal vises desuden den valgte gruppes sti som stakkede linjer under dropdown-feltet (lille skrift, indrykket pr. niveau) — så man altid kan se hvad der er valgt uden at åbne dropdown.
+
+### Individuel kolonne-skalering i Browse
+
+Kolonner i Browse-tabellen kan nu skaleres individuelt ved at trække i den **grå resize-handle** i højre kant af kolonne-headeren. Bredder gemmes automatisk i browseren og genoprettes ved næste besøg.
+
+---
+
 ## [5.9.4] — 2026-05-25 — Release notes vises altid i update-check
 
 > **Build:** 0534

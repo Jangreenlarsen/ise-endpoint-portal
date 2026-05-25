@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.10.0 build 0535] — 2026-05-25 — feat: Identity Group fuld sti + skalerbare kolonner
+
+- `frontend/js/views/browse-utils.js` — `groupHierarchyOptionsHtml()` omskrevet: viser nu fuld sti med " / "-separator ("Profiled / Apple-Device / SubGroup") i stedet for indrykkede blade-navne. `EIG_PREFIX` eksporteret. Ny `groupPathParts()` hjælpefunktion til at parse en gruppe-navn til segments. Ny `COLWIDTHS_KEY`, `loadColWidths()`, `saveColWidths()`.
+- `frontend/js/views/browse-detail.js` — importerer `groupPathParts`; ny `updateGroupPath(groupId)` der opdaterer `#d-group-path` med stakkede linjer (3 linjer med lille skrift, indrykket); kaldt ved åbning af detail og ved group-select ændring.
+- `frontend/js/views/browse.js` — `<select id="d-group">` pakket i `<div class="group-select-wrap">` med `<div id="d-group-path" class="group-path-hint">` under; resize-handle `<span class="th-resize-handle">` tilføjet i hvert `<th>`.
+- `frontend/js/views/browse-table.js` — importerer `loadColWidths`, `saveColWidths`; ny `wireColResize()`: tilføjer mousedown→mousemove→mouseup resize-logik på `.th-resize-handle` i header-row, gemmer bredder i localStorage; kaldt ved init.
+- `frontend/css/styles.css` — `.th-resize-handle`: absolut positioneret 6px bred cursor:col-resize handle i højre kant af `<th>`; `.group-select-wrap`, `.group-path-hint`, `.grp-path-line`: stakkede gruppe-sti-linjer med 0.72rem font; dark/midnight tema varianter.
+
 ## [5.9.4 build 0534] — 2026-05-25 — fix: Release notes vises altid i update-check
 
 - `backend/app/services/update_service.py` — `_extract_release_sections_since()` tilføjer Fallback 2: når der ikke findes en eksakt `## [X.Y.Z]`-sektion (f.eks. debug-builds som 5.9.3.1 der aldrig fik en RELEASE_NOTES-sektion), vises den seneste tilgængelige sektion med version ≤ target. Løser at "up to date"-visningen altid stod tom.

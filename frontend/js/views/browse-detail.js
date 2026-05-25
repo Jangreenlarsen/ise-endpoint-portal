@@ -5,7 +5,7 @@
 
 import { auth } from "../auth.js";
 import { t } from "../i18n.js";
-import { esc, fmtDateTime, optionsHtml, normalizeMac } from "./browse-utils.js";
+import { esc, fmtDateTime, optionsHtml, normalizeMac, groupPathParts } from "./browse-utils.js";
 
 function loadFrontendPrefs() {
   try { return JSON.parse(localStorage.getItem("ise_portal_prefs") || "{}"); }
@@ -21,6 +21,18 @@ export function initDetail(container, state, api, cb) {
   const detailMsg     = container.querySelector("#detail-msg");
   const msg           = container.querySelector("#msg");
   let _templates = [];
+
+  function updateGroupPath(groupId) {
+    const pathEl = container.querySelector("#d-group-path");
+    if (!pathEl) return;
+    const group = (state.groups || []).find((g) => g.id === groupId);
+    if (!group) { pathEl.innerHTML = ""; return; }
+    const parts = groupPathParts(group.name);
+    if (parts.length <= 1) { pathEl.innerHTML = ""; return; }
+    pathEl.innerHTML = parts.map((p, i) =>
+      `<span class="grp-path-line" style="padding-left:${i * 0.9}em">${i > 0 ? "&#8627; " : ""}${esc(p)}</span>`
+    ).join("");
+  }
 
   // ── Open / close ─────────────────────────────────────────────────────────
   async function openDetail(id) {
@@ -51,7 +63,10 @@ export function initDetail(container, state, api, cb) {
       container.querySelector("#d-vendor").textContent = d.vendor || "—";
       container.querySelector("#d-name").textContent   = d.name || "";
       container.querySelector("#d-id").textContent     = d.id || "";
-      container.querySelector("#d-group").innerHTML    = cb.groupOptionsHtml(d.group_id);
+      const dGroupEl = container.querySelector("#d-group");
+      dGroupEl.innerHTML = cb.groupOptionsHtml(d.group_id);
+      updateGroupPath(d.group_id);
+      dGroupEl.onchange = () => updateGroupPath(dGroupEl.value);
       container.querySelector("#d-static-group").checked  = !!d.static_group;
       container.querySelector("#d-description").value     = d.description || "";
       container.querySelector("#d-type").innerHTML        = optionsHtml(state.caValues.Type, d.endpoint_type);

@@ -61,6 +61,17 @@ export function saveColOrder(order) {
   _syncColPrefs();
 }
 
+export const COLWIDTHS_KEY = "ise_portal_browse_colwidths";
+export function loadColWidths() {
+  try {
+    const raw = localStorage.getItem(COLWIDTHS_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+export function saveColWidths(widths) {
+  try { localStorage.setItem(COLWIDTHS_KEY, JSON.stringify(widths)); } catch { /* ignore */ }
+}
+
 // Skriv backend-præferencer direkte til localStorage uden at trigge backend-sync.
 // Bruges ved indlæsning fra backend ved browse-init.
 export function applyBackendColPrefs(order, vis) {
@@ -147,26 +158,24 @@ export function optionsHtml(values, selected) {
   return opts.join("");
 }
 
-const EIG_PREFIX = "Endpoint Identity Groups:";
+export const EIG_PREFIX = "Endpoint Identity Groups:";
 
 /**
- * Build hierarchical <option> HTML for an ISE endpoint group list.
+ * Build <option> HTML for an ISE endpoint group list showing the full path.
  *
  * groups  — array of { id, name } where name is the full ISE path
  *           e.g. "Endpoint Identity Groups:Profiled:ADM-Apple-iPhone"
  * selId   — currently selected group ID (or "" for none)
  *
- * Renders a single optgroup wrapper with depth-indented options so every
- * group — including parents — is selectable and visually nested:
+ * Each option shows the full path with " / " separators so every level is
+ * visible without guessing where a group sits in the hierarchy:
  *   Profiled
- *      ↳ ADM-Apple-iPhone
- *           ↳ SubGroup
- *      ↳ Android
- *   Unknown
- *      ↳ SomeChild
+ *   Profiled / ADM-Apple-iPhone
+ *   Profiled / ADM-Apple-iPhone / SubGroup
+ *   Profiled / Android
+ *   Unknown / SomeChild
  *
- * Alphabetical sort on the path-after-prefix guarantees parents always
- * appear before their own children ("Profiled" < "Profiled:ADM-Apple-iPhone").
+ * Alphabetical sort guarantees parents appear before their own children.
  */
 export function groupHierarchyOptionsHtml(groups, selId, emptyLabel = null) {
   const sel  = (g) => g.id === selId ? " selected" : "";
@@ -174,23 +183,27 @@ export function groupHierarchyOptionsHtml(groups, selId, emptyLabel = null) {
 
   if (!groups.length) return html;
 
-  const NBSP = " ";
-
   const items = groups.map((g) => {
     const rest  = g.name.startsWith(EIG_PREFIX) ? g.name.slice(EIG_PREFIX.length) : g.name;
     const parts = rest.split(":");
-    return { ...g, _sort: rest.toLowerCase(), _depth: parts.length - 1, _short: parts[parts.length - 1] };
+    return { ...g, _sort: rest.toLowerCase(), _label: parts.join(" / "), _parts: parts };
   }).sort((a, b) => a._sort.localeCompare(b._sort));
 
-  html += `<optgroup label="${esc(EIG_PREFIX.slice(0, -1))}">`;
   for (const g of items) {
-    const indent = NBSP.repeat(g._depth * 3);
-    const arrow  = g._depth > 0 ? `↳${NBSP}` : "";
-    html += `<option value="${esc(g.id)}"${sel(g)}>${indent}${arrow}${esc(g._short)}</option>`;
+    html += `<option value="${esc(g.id)}"${sel(g)}>${esc(g._label)}</option>`;
   }
-  html += `</optgroup>`;
 
   return html;
+}
+
+/**
+ * Render stacked path lines for a group name (used in detail-modal path hint).
+ * Returns array of path segments, e.g. ["Profiled", "Apple-Device", "Leaf"].
+ */
+export function groupPathParts(groupName) {
+  if (!groupName) return [];
+  const rest = groupName.startsWith(EIG_PREFIX) ? groupName.slice(EIG_PREFIX.length) : groupName;
+  return rest.split(":").filter(Boolean);
 }
 
 // getColumns() evalueres ved hvert kald så labels afspejler aktivt sprog.
