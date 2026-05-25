@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.11.5 build 0549] — 2026-05-25 — feat: TACACS-brugere kan nu gemme præferencer og views server-side
+
+TACACS+-brugere har ingen fast record i `users.json` — de er token-baserede. Det betød at `GET /me/prefs` altid returnerede tom UserPrefs og `PUT /me/prefs` returnerede 403. Kolonne-synlighed kunne dermed kun gemmes i localStorage — i incognito / ny browser var der intet at hente.
+
+Fix: Backend opretter nu automatisk en `tacacs_shadow`-record i `users.json` første gang en TACACS-bruger gemmer præferencer eller views. `GET /me/prefs` returnerer shadow-recordens præferencer hvis den findes; ellers tom. `GET /me/views` returnerer tom liste hvis ingen record endnu (i stedet for 404).
+
+- `backend/app/api/me.py` — fjernet `if user.id.startswith("tacacs:")` 403-blok fra `PUT /prefs` og early-return fra `GET /prefs`. Ny `_ensure_shadow_record()` opretter tacacs_shadow-record lazy. `POST /views` bruger også `_ensure_shadow_record`. `GET /views` returnerer tom liste i stedet for 404 for ukendte brugere.
+
 ## [5.11.4 build 0548] — 2026-05-25 — fix: applyBackendColPrefs overskriver ikke eksisterende lokal col_vis
 
 Rodårsag til at incognito-session (og andre tom-localStorage-sessioner) ikke virkede: v5.11.2-kodens `restoreFilters()` uploadede all-true col_vis til backend via `saveColVis()`. Ved næste Browse-besøg overskrev `applyBackendColPrefs` localStorage med den korrupte all-true backend-tilstand — og nulstillede dermed brugerens korrekte lokale præference.

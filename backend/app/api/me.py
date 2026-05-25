@@ -49,7 +49,7 @@ async def list_my_views(user: User = Depends(get_current_user)) -> SavedViewsRes
     users = load_users()
     record = find_by_id(users, user.id)
     if not record:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Bruger ikke fundet")
+        return SavedViewsResponse(views=[], max_views=MAX_VIEWS_PER_USER)
     return SavedViewsResponse(
         views=[SavedView(**v) for v in _get_views(record)],
         max_views=MAX_VIEWS_PER_USER,
@@ -62,7 +62,10 @@ async def create_my_view(
     user: User = Depends(get_current_user),
 ) -> SavedView:
     users = load_users()
-    record = find_by_id(users, user.id)
+    if user.id.startswith("tacacs:"):
+        record = _ensure_shadow_record(users, user)
+    else:
+        record = find_by_id(users, user.id)
     if not record:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Bruger ikke fundet")
     views = _get_views(record)
@@ -181,13 +184,20 @@ def _prefs_response(prefs: dict) -> UserPrefs:
 
 @router.get("/prefs", response_model=UserPrefs)
 async def get_my_prefs(user: User = Depends(get_current_user)) -> UserPrefs:
-    if user.id.startswith("tacacs:"):
-        return UserPrefs()
     users = load_users()
     record = find_by_id(users, user.id)
     if not record:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Bruger ikke fundet")
+        return UserPrefs()
     return _prefs_response(record.get("prefs") or {})
+
+
+def _ensure_shadow_record(users: list, user: User) -> dict:
+    """Find eller opret en tacacs_shadow-record i users.json for TACACS-bruger."""
+    record = find_by_id(users, user.id)
+    if record is None:
+        record = {"id": user.id, "user_type": "tacacs_shadow", "prefs": {}}
+        users.append(record)
+    return record
 
 
 @router.put("/prefs", response_model=UserPrefs)
@@ -195,13 +205,11 @@ async def update_my_prefs(
     payload: UserPrefs,
     user: User = Depends(get_current_user),
 ) -> UserPrefs:
-    if user.id.startswith("tacacs:"):
-        raise HTTPException(
-            status.HTTP_403_FORBIDDEN,
-            "TACACS+-brugere kan ikke gemme præferencer server-side — indstillingen gemmes lokalt i browseren",
-        )
     users = load_users()
-    record = find_by_id(users, user.id)
+    if user.id.startswith("tacacs:"):
+        record = _ensure_shadow_record(users, user)
+    else:
+        record = find_by_id(users, user.id)
     if not record:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Bruger ikke fundet")
     prefs = record.get("prefs") or {}

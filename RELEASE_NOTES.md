@@ -4,6 +4,16 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.11.5] — 2026-05-25 — Fix: Kolonne-synlighed og gemte views virker nu for TACACS-brugere
+
+> **Build:** 0549
+
+TACACS+-brugere kan nu gemme deres Browse-præferencer (kolonne-synlighed, rækkefølge, bredde) og gemte views server-side — præcis som lokale brugere.
+
+Første gang en TACACS-bruger gemmer en præference oprettes automatisk en shadow-record på serveren. Herefter fungerer incognito-sessioner og nye browsere korrekt: præferencerne hentes fra serveren ved login.
+
+---
+
 ## [5.11.4] — 2026-05-25 — Fix: Kolonne-synlighed virker nu korrekt i incognito og på nye enheder
 
 > **Build:** 0548
