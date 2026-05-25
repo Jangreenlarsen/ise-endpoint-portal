@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.11.3 build 0547] — 2026-05-25 — fix: kolonne-synlighed nulstilles ikke længere af filter-restore
+
+Rodårsag: `snapshotFilters()` inkluderede `colVis` i det auto-gemte filter-snapshot (BROWSE_FILTERS_KEY). Når brugeren navigerede tilbage til Browse, kaldte `restoreFilters()` → `applyFilterSnapshot()` → overskrev `state.colVis` med den GAMLE snapshot-tilstand (fra FØR brugeren ændrede synlighed) og kaldte `saveColVis()` — hvilket effektivt nulstillede præferencen.
+
+- `frontend/js/views/browse-filter.js` — `applyFilterSnapshot()` har nu parameter `{ skipColVis = false }`. `restoreFilters()` kalder `applyFilterSnapshot(…, { skipColVis: true })` — kolonne-synlighed gendannes nu udelukkende fra COLVIS_KEY (localStorage/backend), ikke fra filter-snapshot. Gemte views aktiverer fortsat colVis (skipColVis er false for view-aktivering).
+
 ## [5.11.2 build 0546] — 2026-05-25 — fix: kolonne-synlighed persisterer nu på tværs af navigationer + gemt-indikator
 
 - `frontend/js/views/browse.js` — `syncColPrefsNow()` kaldes nu ubetinget ved hvert Browse-init (ikke kun første gang). Fjernet `_backendHasColPrefs`-betingelse — garanterer at localStorage-tilstand altid uploades til backend ved sideindlæsning.

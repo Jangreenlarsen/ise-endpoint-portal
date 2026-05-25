@@ -4,6 +4,16 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.11.3] — 2026-05-25 — Fix: Kolonne-synlighed nulstilles ikke længere ved navigation
+
+> **Build:** 0547
+
+Rodårsagen til at kolonne-synlighed nulstillede ved hvert Browse-besøg er nu fjernet. Problemet lå i `restoreFilters()`: filtergenoprettelse inkluderede den sidst gemte kolonne-synlighed fra filter-snapshotten (BROWSE_FILTERS_KEY), som overskrev brugernes kolonne-præference (COLVIS_KEY) ved hvert sidebesøg.
+
+Rettelse: `restoreFilters()` springer nu kolonne-synlighed over — kolonne-tilstanden læses udelukkende fra COLVIS_KEY og backend-præferencer. Gemte views aktiverer stadig kolonne-synlighed korrekt, da de bruger eksplicit aktivering.
+
+---
+
 ## [5.11.2] — 2026-05-25 — Fix: Kolonne-synlighed persisterer nu korrekt + gemt-bekræftelse
 
 > **Build:** 0546

@@ -273,7 +273,7 @@ export function initFilter(container, state, api, cb) {
 
   function persistFilters() { saveBrowseFilters(snapshotFilters()); }
 
-  function applyFilterSnapshot(s) {
+  function applyFilterSnapshot(s, { skipColVis = false } = {}) {
     if (!s) return;
     state.portalOnly = false;
     portalFilterBtn.classList.remove("active-toggle");
@@ -292,7 +292,7 @@ export function initFilter(container, state, api, cb) {
       }
     }
     updateClearBtn();
-    if (s.colVis && typeof s.colVis === "object") {
+    if (!skipColVis && s.colVis && typeof s.colVis === "object") {
       for (const c of getColumns()) {
         if (c.key in s.colVis) state.colVis[c.key] = s.colVis[c.key] !== false;
       }
@@ -308,7 +308,7 @@ export function initFilter(container, state, api, cb) {
     firstSeenRestore(s.firstSeenFrom || "", s.firstSeenTo || "");
   }
 
-  function restoreFilters() { applyFilterSnapshot(loadBrowseFilters()); }
+  function restoreFilters() { applyFilterSnapshot(loadBrowseFilters(), { skipColVis: true }); }
 
   // ── Event handlers ───────────────────────────────────────────────────────
   let filterDebounce = null;
