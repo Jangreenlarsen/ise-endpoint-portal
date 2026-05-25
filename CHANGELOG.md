@@ -3,6 +3,10 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.10.3 build 0538] — 2026-05-25 — fix: "table is not defined" i wireColResize
+
+- `frontend/js/views/browse-table.js` — `wireColResize()` brugte `table` fra `initColDrag()`s lokale scope. Rettet til `container.querySelector(".browse-table-wrap table")` direkte i funktionen.
+
 ## [5.10.2 build 0537] — 2026-05-25 — fix: git pull viser korrekt chown-fejl ved ejerskabsproblem
 
 - `backend/app/services/update_service.py` — ny `_git_objects_writable()` tjekker om portal-processen kan skrive til `.git/objects/` (os.access). I `_git_pull_sync()` tjekkes dette FØR fetch: hvis ikke skrivbar returneres en klar fejl med præcis `chown -R <user>:<user> <root>/.git`-kommando og brugernavnet hentes fra `$USER`/`$LOGNAME` env. Den gamle misvisende chmod-fejlbesked er fjernet.

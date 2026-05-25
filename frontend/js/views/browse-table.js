@@ -906,7 +906,9 @@ export function initTable(container, state, api, cb) {
 
   // ── Column resize ────────────────────────────────────────────────────────
   function wireColResize() {
-    const headerRow = table.querySelector("thead tr:first-child");
+    const tbl = container.querySelector(".browse-table-wrap table");
+    if (!tbl) return;
+    const headerRow = tbl.querySelector("thead tr:first-child");
     if (!headerRow) return;
     const saved = loadColWidths() || {};
     for (const th of headerRow.querySelectorAll("th[data-col]")) {
