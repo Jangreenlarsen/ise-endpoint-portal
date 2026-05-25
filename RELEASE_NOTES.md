@@ -4,6 +4,16 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.11.0] — 2026-05-25 — Kolonnebredder og alle Browse-præferencer gemmes i backend
+
+> **Build:** 0544
+
+Kolonnebredder (resize) synkroniseres nu til din brugerprofil på serveren — ligesom kolonne-rækkefølge og synlighed allerede gør. Alle tre Browse-præferencer gendannes automatisk på tværs af enheder og browsere ved næste login.
+
+**TACACS+-brugere:** Som tidligere gemmes præferencer stille i browserens localStorage.
+
+---
+
 ## [5.10.4] — 2026-05-25 — Skalerbare kolonner virker nu
 
 > **Build:** 0539

@@ -70,16 +70,19 @@ export function loadColWidths() {
 }
 export function saveColWidths(widths) {
   try { localStorage.setItem(COLWIDTHS_KEY, JSON.stringify(widths)); } catch { /* ignore */ }
+  _syncColPrefs();
 }
 
 // Skriv backend-præferencer direkte til localStorage uden at trigge backend-sync.
 // Bruges ved indlæsning fra backend ved browse-init.
-export function applyBackendColPrefs(order, vis) {
+export function applyBackendColPrefs(order, vis, widths) {
   try {
     if (Array.isArray(order) && order.length)
       localStorage.setItem(COLORDER_KEY, JSON.stringify(order));
     if (vis && typeof vis === "object" && !Array.isArray(vis))
       localStorage.setItem(COLVIS_KEY, JSON.stringify(vis));
+    if (widths && typeof widths === "object" && !Array.isArray(widths))
+      localStorage.setItem(COLWIDTHS_KEY, JSON.stringify(widths));
   } catch { /* ignore */ }
 }
 
@@ -91,10 +94,12 @@ function _syncColPrefs() {
   if (!_prefsSyncFn) return;
   try {
     const payload = {};
-    const order = loadColOrder();
-    const vis = loadColVis();
-    if (order) payload.col_order = order;
-    if (vis) payload.col_vis = vis;
+    const order  = loadColOrder();
+    const vis    = loadColVis();
+    const widths = loadColWidths();
+    if (order)  payload.col_order  = order;
+    if (vis)    payload.col_vis    = vis;
+    if (widths) payload.col_widths = widths;
     if (Object.keys(payload).length) _prefsSyncFn(payload);
   } catch { /* ignore */ }
 }

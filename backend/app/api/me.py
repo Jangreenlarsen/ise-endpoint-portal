@@ -156,6 +156,17 @@ def _safe_col_vis(raw: object) -> dict[str, bool] | None:
     return {k: bool(v) for k, v in list(raw.items())[:30] if isinstance(k, str) and 1 <= len(k) <= 32}
 
 
+def _safe_col_widths(raw: object) -> dict[str, int] | None:
+    if not isinstance(raw, dict):
+        return None
+    result = {
+        k: int(v) for k, v in list(raw.items())[:30]
+        if isinstance(k, str) and 1 <= len(k) <= 32
+        and isinstance(v, int) and 20 <= v <= 2000
+    }
+    return result or None
+
+
 def _prefs_response(prefs: dict) -> UserPrefs:
     lang = prefs.get("language")
     if lang not in _VALID_LANGUAGES:
@@ -164,6 +175,7 @@ def _prefs_response(prefs: dict) -> UserPrefs:
         language=lang,  # type: ignore[arg-type]
         col_order=_safe_col_order(prefs.get("col_order")),
         col_vis=_safe_col_vis(prefs.get("col_vis")),
+        col_widths=_safe_col_widths(prefs.get("col_widths")),
     )
 
 
@@ -216,6 +228,14 @@ async def update_my_prefs(
             valid = _safe_col_vis(payload.col_vis)
             if valid is not None:
                 prefs["col_vis"] = valid
+
+    if "col_widths" in updated:
+        if payload.col_widths is None:
+            prefs.pop("col_widths", None)
+        else:
+            valid = _safe_col_widths(payload.col_widths)
+            if valid is not None:
+                prefs["col_widths"] = valid
 
     record["prefs"] = prefs
     save_users(users)

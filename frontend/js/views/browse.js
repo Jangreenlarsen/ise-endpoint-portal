@@ -21,7 +21,7 @@ export async function renderBrowse(container) {
   // så getOrderedColumns() og loadColVis() returnerer serverens værdier.
   try {
     const prefs = await api.getMyPrefs();
-    applyBackendColPrefs(prefs.col_order, prefs.col_vis);
+    applyBackendColPrefs(prefs.col_order, prefs.col_vis, prefs.col_widths);
   } catch { /* ignorér — falder tilbage til localStorage */ }
 
   container.innerHTML = `

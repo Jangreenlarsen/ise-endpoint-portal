@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.11.0 build 0544] — 2026-05-25 — feat: kolonnebredder gemmes i backend (col_widths)
+
+- `backend/app/schemas/user.py` — `UserPrefs`: ny `col_widths: dict[str, int] | None` felt.
+- `backend/app/api/me.py` — ny `_safe_col_widths()` validator (20–2000 px, max 30 nøgler, max 32 tegn pr. nøgle). `_prefs_response()` inkluderer nu `col_widths`. `PUT /prefs` håndterer `col_widths` på linje med `col_order` og `col_vis`.
+- `frontend/js/views/browse-utils.js` — `saveColWidths()` kalder nu `_syncColPrefs()` så bredder synkroniseres til backend. `_syncColPrefs()` inkluderer `col_widths` i payload. `applyBackendColPrefs(order, vis, widths)` skriver nu også bredder til localStorage fra backend.
+- `frontend/js/views/browse.js` — sender `prefs.col_widths` til `applyBackendColPrefs()` ved browse-init.
+
 ## [5.10.8 build 0543] — 2026-05-25 — fix: resize-handle via th border + proximity-check
 
 - `frontend/js/views/browse.js` — `<span class="th-resize-handle">` fjernet fra th-template; ikke nødvendig længere.

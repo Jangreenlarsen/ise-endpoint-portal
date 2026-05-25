@@ -68,8 +68,9 @@ class LoginResponse(BaseModel):
 
 class UserPrefs(BaseModel):
     language: Literal["da", "en"] | None = None  # None = brug portal/browser default
-    col_order: list[str] | None = None  # rækkefølge af kolonne-nøgler i Browse
-    col_vis: dict[str, bool] | None = None  # {nøgle: synlig} for Browse-kolonner
+    col_order: list[str] | None = None   # rækkefølge af kolonne-nøgler i Browse
+    col_vis: dict[str, bool] | None = None   # {nøgle: synlig} for Browse-kolonner
+    col_widths: dict[str, int] | None = None  # {nøgle: pixel-bredde} for Browse-kolonner
 
 
 class AuthStatus(BaseModel):
