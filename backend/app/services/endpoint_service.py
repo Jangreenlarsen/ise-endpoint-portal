@@ -508,10 +508,10 @@ class EndpointService:
     async def list_groups(self) -> list[EndpointGroupSummary]:
         return await get_cache().get_groups(self._fetch_groups)
 
-    async def create_group(self, name: str, description: str = "") -> str:
-        new_id = await self.groups.create(name, description)
+    async def create_group(self, name: str, description: str = "", parent_id: str = "") -> str:
+        new_id = await self.groups.create(name, description, parent_id)
         get_cache().invalidate_groups()
-        logger.info("created endpoint group name=%s id=%s", name, new_id)
+        logger.info("created endpoint group name=%s parent=%s id=%s", name, parent_id or "root", new_id)
         return new_id
 
     async def _fetch_groups(self) -> list[EndpointGroupSummary]:

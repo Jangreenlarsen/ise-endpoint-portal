@@ -131,6 +131,7 @@ class AncActionResponse(BaseModel):
 class EndpointGroupCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     description: str = Field("", max_length=500)
+    parent_id: str | None = Field(None, max_length=64)
 
 
 class EndpointGroupCreated(BaseModel):

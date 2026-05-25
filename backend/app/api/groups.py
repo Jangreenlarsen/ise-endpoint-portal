@@ -29,7 +29,7 @@ async def create_group(
     service: EndpointService = Depends(get_endpoint_service),
 ) -> EndpointGroupCreated:
     try:
-        new_id = await service.create_group(payload.name, payload.description)
+        new_id = await service.create_group(payload.name, payload.description, payload.parent_id or "")
     except IseApiError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     return EndpointGroupCreated(id=new_id, name=payload.name)

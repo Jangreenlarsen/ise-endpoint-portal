@@ -4,6 +4,14 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.9.2] — 2026-05-25 — Opret endpoint gruppe: vælg overgruppe
+
+> **Build:** 0530
+
+"Ny gruppe"-modalen har nu en **Overgruppe**-dropdown der viser alle eksisterende endpoint identity groups (sorteret alfabetisk med fuld hierarkisk sti). Vælger man ingen overgruppe oprettes gruppen i roden. Valget sendes som `parentId` til ISE via ERS API.
+
+---
+
 ## [5.9.1] — 2026-05-25 — Policy-view: "Authz Policies" label
 
 > **Build:** 0529

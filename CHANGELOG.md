@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.9.2 build 0530] — 2026-05-25 — feat: Opret endpoint gruppe — vælg overgruppe
+
+- `backend/app/schemas/endpoint.py` — `EndpointGroupCreate` tilføjer `parent_id: str | None`
+- `backend/app/ise/endpoints.py` — `create()` sender `parentId` i ERS-payload hvis angivet
+- `backend/app/services/endpoint_service.py` — `create_group()` videresender `parent_id`
+- `backend/app/api/groups.py` — `POST /groups` sender `payload.parent_id` til service
+- `frontend/js/views/browse.js` — "Ny gruppe"-modal: Overgruppe-dropdown populeret fra `state.groups` (sorteret alfabetisk); valgt parent-id sendes med som `parent_id` i `createGroup()`
+
 ## [5.9.1 build 0529] — 2026-05-25 — fix: Policy-view label — "Authz Policies" + "Authz : [navn]"
 
 - `frontend/js/i18n.js` — `pol.title` DA+EN: "Politikker"/"Policies" → "Authz Policies"

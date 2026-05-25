@@ -353,6 +353,12 @@ export async function renderBrowse(container) {
             <input type="text" id="new-group-name" maxlength="100" placeholder="Gruppenavn"
                    style="display:block;width:100%;margin-top:4px;box-sizing:border-box;" />
           </label>
+          <label style="display:block;margin-top:12px;">Overgruppe (valgfri)
+            <select id="new-group-parent"
+                    style="display:block;width:100%;margin-top:4px;box-sizing:border-box;">
+              <option value="">— Rod (ingen overgruppe) —</option>
+            </select>
+          </label>
           <label style="display:block;margin-top:12px;">Beskrivelse
             <input type="text" id="new-group-desc" maxlength="500" placeholder="(valgfri)"
                    style="display:block;width:100%;margin-top:4px;box-sizing:border-box;" />
@@ -612,6 +618,7 @@ export async function renderBrowse(container) {
   const newGroupBtn     = container.querySelector("#new-group-btn");
   const newGroupOverlay = container.querySelector("#new-group-overlay");
   const newGroupName    = container.querySelector("#new-group-name");
+  const newGroupParent  = container.querySelector("#new-group-parent");
   const newGroupDesc    = container.querySelector("#new-group-desc");
   const newGroupMsg     = container.querySelector("#new-group-msg");
 
@@ -619,10 +626,17 @@ export async function renderBrowse(container) {
     newGroupBtn.classList.remove("hidden");
   }
 
+  function _populateParentDropdown(groups) {
+    const sorted = [...groups].sort((a, b) => a.name.localeCompare(b.name));
+    newGroupParent.innerHTML = `<option value="">— Rod (ingen overgruppe) —</option>` +
+      sorted.map((g) => `<option value="${esc(g.id)}">${esc(g.name)}</option>`).join("");
+  }
+
   newGroupBtn.addEventListener("click", () => {
     newGroupName.value = "";
     newGroupDesc.value = "";
     newGroupMsg.innerHTML = "";
+    _populateParentDropdown(state.groups || []);
     newGroupOverlay.classList.remove("hidden");
     newGroupName.focus();
   });
@@ -638,7 +652,8 @@ export async function renderBrowse(container) {
     saveBtn.disabled = true;
     newGroupMsg.innerHTML = `<p class="hint">Opretter gruppe…</p>`;
     try {
-      await api.createGroup({ name, description: newGroupDesc.value.trim() });
+      const parentId = newGroupParent.value || undefined;
+      await api.createGroup({ name, description: newGroupDesc.value.trim(), parent_id: parentId });
       newGroupOverlay.classList.add("hidden");
       // Genindlæs grupper i state og opdater dropdowns
       try {
