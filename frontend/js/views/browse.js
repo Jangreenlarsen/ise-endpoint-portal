@@ -9,6 +9,7 @@ import {
   loadColVis, saveColVis,
   applyBackendColPrefs, setColPrefsSyncFn,
   normalizeMac, fmtAgo, coaSummaryText,
+  groupHierarchyOptionsHtml,
 } from "./browse-utils.js";
 import { initFilter } from "./browse-filter.js";
 import { initTable  } from "./browse-table.js";
@@ -626,27 +627,11 @@ export async function renderBrowse(container) {
     newGroupBtn.classList.remove("hidden");
   }
 
-  function _populateParentDropdown(groups) {
-    const EIG = "Endpoint Identity Groups:";
-    const NBSP = " ";
-    const items = groups.map((g) => {
-      const rest  = g.name.startsWith(EIG) ? g.name.slice(EIG.length) : g.name;
-      const parts = rest.split(":");
-      return { ...g, _sort: rest.toLowerCase(), _depth: parts.length - 1, _short: parts[parts.length - 1] };
-    }).sort((a, b) => a._sort.localeCompare(b._sort));
-    newGroupParent.innerHTML = `<option value="">— Rod (ingen overgruppe) —</option>` +
-      items.map((g) => {
-        const indent = NBSP.repeat(g._depth * 3);
-        const arrow  = g._depth > 0 ? `↳${NBSP}` : "";
-        return `<option value="${esc(g.id)}">${indent}${arrow}${esc(g._short)}</option>`;
-      }).join("");
-  }
-
   newGroupBtn.addEventListener("click", () => {
     newGroupName.value = "";
     newGroupDesc.value = "";
     newGroupMsg.innerHTML = "";
-    _populateParentDropdown(state.groups || []);
+    newGroupParent.innerHTML = groupHierarchyOptionsHtml(state.groups || [], "", "— Rod (ingen overgruppe) —");
     newGroupOverlay.classList.remove("hidden");
     newGroupName.focus();
   });

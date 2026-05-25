@@ -3,6 +3,10 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.9.3.1 build 0533] — 2026-05-25 — debug: Ny gruppe — overgruppe-dropdown viser nu alle niveauer
+
+- `frontend/js/views/browse.js` — `_populateParentDropdown()` slettet; erstattet med direkte `groupHierarchyOptionsHtml(state.groups, "", "...")` kald (samme funktion som Browse-dropdownene). Importerer `groupHierarchyOptionsHtml` fra browse-utils.js.
+
 ## [5.9.3 build 0532] — 2026-05-25 — perf: GitHub update-check paralleliseret
 
 - `backend/app/services/update_service.py` — `check_github_version()`: `version.json` og `RELEASE_NOTES.md` hentes nu parallelt med `asyncio.gather` i stedet for sekventielt. Fjernet meningsløst forsøg på `RELEASE_{version}.md` (404 altid) som gav et ekstra round-trip. Fjernet ubrugt `_GITHUB_STANDALONE_RELEASE_TMPL` konstant.
