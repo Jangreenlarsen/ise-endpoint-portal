@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 import { api } from "../api.js";
+import { auth } from "../auth.js";
 import { t } from "../i18n.js";
 import {
   getColumns, getOrderedColumns, esc,
@@ -38,6 +39,7 @@ export async function renderBrowse(container) {
           <button id="refresh-btn">${t("browse.btn_refresh")}</button>
           <button id="export-btn" class="secondary">${t("browse.btn_export")}</button>
           <button id="export-json-btn" class="secondary">${t("browse.btn_export_json")}</button>
+          <button id="new-group-btn" class="secondary hidden" title="Opret ny endpoint identity group i ISE">+ Ny gruppe</button>
           <div class="col-vis-wrap">
             <button id="col-vis-btn" class="secondary small" type="button"
                     title="${t("browse.tooltip_columns")}">${t("browse.btn_columns")}</button>
@@ -342,6 +344,26 @@ export async function renderBrowse(container) {
         </div>
       </div>
     </div>
+    <div id="new-group-overlay" class="modal-overlay hidden">
+      <div class="modal" style="max-width:420px;">
+        <h3>Opret ny endpoint gruppe</h3>
+        <div id="new-group-msg"></div>
+        <div class="modal-body">
+          <label style="display:block;">Navn
+            <input type="text" id="new-group-name" maxlength="100" placeholder="Gruppenavn"
+                   style="display:block;width:100%;margin-top:4px;box-sizing:border-box;" />
+          </label>
+          <label style="display:block;margin-top:12px;">Beskrivelse
+            <input type="text" id="new-group-desc" maxlength="500" placeholder="(valgfri)"
+                   style="display:block;width:100%;margin-top:4px;box-sizing:border-box;" />
+          </label>
+        </div>
+        <div class="modal-actions">
+          <button id="new-group-save">Opret</button>
+          <button id="new-group-cancel" class="secondary">Annullér</button>
+        </div>
+      </div>
+    </div>
   `;
 
   // ── Shared mutable state ──────────────────────────────────────────────────
@@ -584,6 +606,50 @@ export async function renderBrowse(container) {
     state.coaOnSave = !state.coaOnSave;
     setCoaReauthOnSave(state.coaOnSave);
     renderCoaToggle();
+  });
+
+  // ── Ny gruppe (admin only) ────────────────────────────────────────────────
+  const newGroupBtn     = container.querySelector("#new-group-btn");
+  const newGroupOverlay = container.querySelector("#new-group-overlay");
+  const newGroupName    = container.querySelector("#new-group-name");
+  const newGroupDesc    = container.querySelector("#new-group-desc");
+  const newGroupMsg     = container.querySelector("#new-group-msg");
+
+  if (auth.isAdmin()) {
+    newGroupBtn.classList.remove("hidden");
+  }
+
+  newGroupBtn.addEventListener("click", () => {
+    newGroupName.value = "";
+    newGroupDesc.value = "";
+    newGroupMsg.innerHTML = "";
+    newGroupOverlay.classList.remove("hidden");
+    newGroupName.focus();
+  });
+
+  container.querySelector("#new-group-cancel").addEventListener("click", () => {
+    newGroupOverlay.classList.add("hidden");
+  });
+
+  container.querySelector("#new-group-save").addEventListener("click", async () => {
+    const name = newGroupName.value.trim();
+    if (!name) { newGroupMsg.innerHTML = `<p class="alert error">Navn er påkrævet.</p>`; return; }
+    const saveBtn = container.querySelector("#new-group-save");
+    saveBtn.disabled = true;
+    newGroupMsg.innerHTML = `<p class="hint">Opretter gruppe…</p>`;
+    try {
+      await api.createGroup({ name, description: newGroupDesc.value.trim() });
+      newGroupOverlay.classList.add("hidden");
+      // Genindlæs grupper i state og opdater dropdowns
+      try {
+        state.groups = await api.listGroups();
+        cb.refreshGroupDropdowns?.();
+      } catch { /* non-critical */ }
+    } catch (err) {
+      newGroupMsg.innerHTML = `<p class="alert error">${esc(err.message)}</p>`;
+    } finally {
+      saveBtn.disabled = false;
+    }
   });
 
   // ── Populate cb with all module APIs ──────────────────────────────────────

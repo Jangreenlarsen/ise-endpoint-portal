@@ -126,3 +126,13 @@ class AncActionResponse(BaseModel):
     ok: bool
     mac: str
     message: str = ""
+
+
+class EndpointGroupCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    description: str = Field("", max_length=500)
+
+
+class EndpointGroupCreated(BaseModel):
+    id: str
+    name: str

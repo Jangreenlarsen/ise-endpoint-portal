@@ -3,6 +3,20 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.9.0 build 0528] — 2026-05-25 — feat: opret endpoint gruppe + policy drag-and-drop rank
+
+**Feature 1 — Opret endpoint identity group fra Browse (admin)**
+- `backend/app/schemas/endpoint.py` — ny `EndpointGroupCreate` (name/description med validering) og `EndpointGroupCreated` response-schema
+- `backend/app/ise/endpoints.py` — `IseEndpointGroupRepository.create()`: ERS POST med `return_response=True` for Location-header-parsing, returnerer nyt group-id
+- `backend/app/services/endpoint_service.py` — `create_group()`: kalder `groups.create()` og `invalidate_groups()` på cache
+- `backend/app/api/groups.py` — `POST /groups` (admin-only via `require_admin` override på router-niveau), returnerer `EndpointGroupCreated` med HTTP 201
+- `frontend/js/api.js` — `createGroup(payload)` metode tilføjet
+- `frontend/js/views/browse.js` — importerer `auth`; "+ Ny gruppe"-knap (kun synlig for admin); modal med navn/beskrivelse-input; genindlæser gruppe-dropdown efter oprettelse
+
+**Feature 2 — Policy-regel rank-ændring via drag-and-drop (editor/admin)**
+- `frontend/js/views/policy.js` — `wireRuleCards()` sætter `card.draggable = true` for editorer; dragstart/dragend/dragover/dragleave/drop event listeners; på drop: `api.updatePolicyRule(setId, srcRule.id, {..., rank: dstRule.rank})` + `loadRules(setId)` genindlæser
+- `frontend/css/styles.css` — `.pol-rule-card[draggable]`: grab cursor; `.pol-rule-dragging`: opacity 0.4; `.pol-rule-drag-over`: amber highlight; dark mode variant
+
 ## [5.8.3 build 0527] — 2026-05-24 — feat: flytbare Browse-kolonner med backend-persistens
 
 Kolonne-rækkefølge og synlighed gemmes nu i backend (pr. bruger) og gendannes automatisk på tværs af enheder og browsere. Drag-and-drop af kolonner fandtes allerede — nu synkroniseres ændringer til `PUT /api/me/prefs` i stedet for kun localStorage.

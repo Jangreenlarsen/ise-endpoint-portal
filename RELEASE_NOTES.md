@@ -4,6 +4,22 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.9.0] — 2026-05-25 — Opret endpoint gruppe + Policy drag-and-drop
+
+> **Build:** 0528
+
+To nye features der giver admins og editorer mere direkte kontrol over ISE-konfiguration uden at forlade portalen.
+
+### Ny endpoint identity group fra Browse (admin)
+
+En "+ Ny gruppe"-knap vises nu i Browse-toolbar for admin-brugere. Klik åbner en modal hvor du angiver navn og beskrivelse. Gruppen oprettes direkte i ISE via ERS API, og gruppe-cachen opdateres automatisk — den nye gruppe er tilgængelig i dropdowns med det samme.
+
+### Policy-regel rank-ændring via drag-and-drop (editor/admin)
+
+I Policy-viewet kan editorer og admins nu trække og slippe regler for at ændre deres indbyrdes rækkefølge. Drag-and-drop sætter den valgte regels rank til destinationreglens rank — ISE renummererer de øvrige regler automatisk. Visuel feedback: den trukne regel bliver transparent, mulig destination fremhæves med amber-ramme.
+
+---
+
 ## [5.8.3] — 2026-05-24 — Flytbare Browse-kolonner med backend-persistens
 
 > **Build:** 0527

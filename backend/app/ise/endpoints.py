@@ -262,3 +262,17 @@ class IseEndpointGroupRepository:
     async def get_by_name(self, name: str) -> dict[str, Any] | None:
         data = await self.client.get(f"{ERS_ENDPOINT_GROUPS}/name/{name}")
         return data.get("EndPointGroup") if data else None
+
+    async def create(self, name: str, description: str = "") -> str:
+        """Create an endpoint group. Returns the new group id."""
+        payload = {"EndPointGroup": {"name": name, "description": description}}
+        _, response = await self.client.request(
+            "POST",
+            ERS_ENDPOINT_GROUPS,
+            json=payload,
+            return_response=True,
+        )
+        new_id = _id_from_location(response.headers.get("Location", ""))
+        if not new_id:
+            logger.warning("create endpoint group returned no Location header")
+        return new_id
