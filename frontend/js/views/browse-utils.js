@@ -46,6 +46,7 @@ export function loadColVis() {
 }
 export function saveColVis(snapshot) {
   try { localStorage.setItem(COLVIS_KEY, JSON.stringify(snapshot)); } catch { /* ignore */ }
+  _syncColPrefs();
 }
 
 export const COLORDER_KEY = "ise_portal_browse_colorder";
@@ -57,6 +58,34 @@ export function loadColOrder() {
 }
 export function saveColOrder(order) {
   try { localStorage.setItem(COLORDER_KEY, JSON.stringify(order)); } catch { /* ignore */ }
+  _syncColPrefs();
+}
+
+// Skriv backend-præferencer direkte til localStorage uden at trigge backend-sync.
+// Bruges ved indlæsning fra backend ved browse-init.
+export function applyBackendColPrefs(order, vis) {
+  try {
+    if (Array.isArray(order) && order.length)
+      localStorage.setItem(COLORDER_KEY, JSON.stringify(order));
+    if (vis && typeof vis === "object" && !Array.isArray(vis))
+      localStorage.setItem(COLVIS_KEY, JSON.stringify(vis));
+  } catch { /* ignore */ }
+}
+
+// Backend-sync callback — sættes af browse.js ved init.
+let _prefsSyncFn = null;
+export function setColPrefsSyncFn(fn) { _prefsSyncFn = fn; }
+
+function _syncColPrefs() {
+  if (!_prefsSyncFn) return;
+  try {
+    const payload = {};
+    const order = loadColOrder();
+    const vis = loadColVis();
+    if (order) payload.col_order = order;
+    if (vis) payload.col_vis = vis;
+    if (Object.keys(payload).length) _prefsSyncFn(payload);
+  } catch { /* ignore */ }
 }
 export function getOrderedColumns() {
   const cols = getColumns();

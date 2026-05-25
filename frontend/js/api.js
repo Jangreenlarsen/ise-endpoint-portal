@@ -83,6 +83,8 @@ export const api = {
   getProfilerProfile: (id) => request(`/endpoints/${encodeURIComponent(id)}/profiler-profile`),
   prioritizeEndpoint: (id) => request(`/endpoints/${encodeURIComponent(id)}/prioritize`, { method: "POST" }),
   listGroups: () => request("/groups"),
+  createGroup: (payload) =>
+    request("/groups", { method: "POST", body: JSON.stringify(payload) }),
   createEndpoint: (payload) =>
     request("/endpoints", { method: "POST", body: JSON.stringify(payload) }),
   bulkCreateEndpoints: (items, overwrite = false) =>

@@ -179,6 +179,8 @@ export async function renderPolicy(container) {
   }
 
   function wireRuleCards(list, rules, setId) {
+    let dragSrcId = null;
+
     list.querySelectorAll(".pol-rule-card").forEach((card) => {
       const id   = card.dataset.id;
       const rule = rules.find((r) => r.id === id);
@@ -195,6 +197,54 @@ export async function renderPolicy(container) {
         } else {
           card.classList.add("expanded");
           showRuleDetail(rule, setId);
+        }
+      });
+
+      if (!isEditor) return;
+
+      card.draggable = true;
+
+      card.addEventListener("dragstart", (e) => {
+        dragSrcId = id;
+        card.classList.add("pol-rule-dragging");
+        e.dataTransfer.effectAllowed = "move";
+      });
+
+      card.addEventListener("dragend", () => {
+        card.classList.remove("pol-rule-dragging");
+        list.querySelectorAll(".pol-rule-drag-over").forEach((c) => c.classList.remove("pol-rule-drag-over"));
+      });
+
+      card.addEventListener("dragover", (e) => {
+        if (dragSrcId === id) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        list.querySelectorAll(".pol-rule-drag-over").forEach((c) => c.classList.remove("pol-rule-drag-over"));
+        card.classList.add("pol-rule-drag-over");
+      });
+
+      card.addEventListener("dragleave", () => {
+        card.classList.remove("pol-rule-drag-over");
+      });
+
+      card.addEventListener("drop", async (e) => {
+        e.preventDefault();
+        card.classList.remove("pol-rule-drag-over");
+        if (!dragSrcId || dragSrcId === id) return;
+        const srcRule = rules.find((r) => r.id === dragSrcId);
+        const dstRule = rule;
+        if (!srcRule) return;
+        try {
+          await api.updatePolicyRule(setId, srcRule.id, {
+            name: srcRule.name,
+            rank: dstRule.rank,
+            state: srcRule.state,
+            condition: srcRule.condition,
+            profiles: srcRule.profiles,
+          });
+          await loadRules(setId);
+        } catch (err) {
+          console.error("Regel-flytning fejlede:", err.message);
         }
       });
     });

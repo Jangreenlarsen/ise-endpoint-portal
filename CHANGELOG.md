@@ -3,6 +3,30 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.9.0 build 0528] — 2026-05-25 — feat: opret endpoint gruppe + policy drag-and-drop rank
+
+**Feature 1 — Opret endpoint identity group fra Browse (admin)**
+- `backend/app/schemas/endpoint.py` — ny `EndpointGroupCreate` (name/description med validering) og `EndpointGroupCreated` response-schema
+- `backend/app/ise/endpoints.py` — `IseEndpointGroupRepository.create()`: ERS POST med `return_response=True` for Location-header-parsing, returnerer nyt group-id
+- `backend/app/services/endpoint_service.py` — `create_group()`: kalder `groups.create()` og `invalidate_groups()` på cache
+- `backend/app/api/groups.py` — `POST /groups` (admin-only via `require_admin` override på router-niveau), returnerer `EndpointGroupCreated` med HTTP 201
+- `frontend/js/api.js` — `createGroup(payload)` metode tilføjet
+- `frontend/js/views/browse.js` — importerer `auth`; "+ Ny gruppe"-knap (kun synlig for admin); modal med navn/beskrivelse-input; genindlæser gruppe-dropdown efter oprettelse
+
+**Feature 2 — Policy-regel rank-ændring via drag-and-drop (editor/admin)**
+- `frontend/js/views/policy.js` — `wireRuleCards()` sætter `card.draggable = true` for editorer; dragstart/dragend/dragover/dragleave/drop event listeners; på drop: `api.updatePolicyRule(setId, srcRule.id, {..., rank: dstRule.rank})` + `loadRules(setId)` genindlæser
+- `frontend/css/styles.css` — `.pol-rule-card[draggable]`: grab cursor; `.pol-rule-dragging`: opacity 0.4; `.pol-rule-drag-over`: amber highlight; dark mode variant
+
+## [5.8.3 build 0527] — 2026-05-24 — feat: flytbare Browse-kolonner med backend-persistens
+
+Kolonne-rækkefølge og synlighed gemmes nu i backend (pr. bruger) og gendannes automatisk på tværs af enheder og browsere. Drag-and-drop af kolonner fandtes allerede — nu synkroniseres ændringer til `PUT /api/me/prefs` i stedet for kun localStorage.
+
+**Berørte filer:**
+- `backend/app/schemas/user.py` — `UserPrefs` udvides med `col_order: list[str] | None` og `col_vis: dict[str, bool] | None`
+- `backend/app/api/me.py` — `GET /me/prefs` returnerer nu `col_order`/`col_vis`; `PUT /me/prefs` bruger `model_fields_set` og validerer nye felter (max 30 nøgler, max 32 tegn pr. nøgle); hjælpefunktioner `_safe_col_order`, `_safe_col_vis`, `_prefs_response`
+- `frontend/js/views/browse-utils.js` — `saveColOrder` og `saveColVis` kalder nu `_syncColPrefs()` efter localStorage; ny `applyBackendColPrefs(order, vis)` til loop-fri load fra backend; ny `setColPrefsSyncFn(fn)` til at injicere API-kald
+- `frontend/js/views/browse.js` — importerer `applyBackendColPrefs`, `setColPrefsSyncFn`; henter `GET /api/me/prefs` ved browse-init FØR HTML renderes; sætter fire-and-forget sync-callback efter state init
+
 ## [5.8.2-P4 build 0526] — 2026-05-24 — sec: Security Patch 4 — cache-DoS, dead-code NameError, audit max_length
 
 **Security Patch 4 (3 fixes fra ny sikkerhedsanalyse):**
