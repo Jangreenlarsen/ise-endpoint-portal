@@ -3,6 +3,10 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.9.3 build 0532] — 2026-05-25 — perf: GitHub update-check paralleliseret
+
+- `backend/app/services/update_service.py` — `check_github_version()`: `version.json` og `RELEASE_NOTES.md` hentes nu parallelt med `asyncio.gather` i stedet for sekventielt. Fjernet meningsløst forsøg på `RELEASE_{version}.md` (404 altid) som gav et ekstra round-trip. Fjernet ubrugt `_GITHUB_STANDALONE_RELEASE_TMPL` konstant.
+
 ## [5.9.2.1 build 0531] — 2026-05-25 — debug: gruppe-dropdown hierarki — indrykket træ-visning
 
 - `frontend/js/views/browse-utils.js` — `groupHierarchyOptionsHtml()` omskrevet: én `<optgroup>` wrapper + `<option>` med depth-baseret indrykninig (3 NBSP pr. niveau) og "↳"-pil for børn. Alfabetisk sortering på sti-efter-prefix sikrer forælder altid vises før sine børn. Alle grupper er selekterbare (inkl. forældrgrupper).

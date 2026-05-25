@@ -208,9 +208,6 @@ _GITHUB_RAW_TMPL = (
 _GITHUB_RELEASE_NOTES_TMPL = (
     "https://raw.githubusercontent.com/Jangreenlarsen/ise-endpoint-portal/{branch}/RELEASE_NOTES.md"
 )
-_GITHUB_STANDALONE_RELEASE_TMPL = (
-    "https://raw.githubusercontent.com/Jangreenlarsen/ise-endpoint-portal/{branch}/RELEASE_{version}.md"
-)
 _github_cache: dict[str, Any] = {}
 _github_cache_ts: float = 0.0
 _github_cache_branch: str = ""
@@ -322,46 +319,28 @@ async def check_github_version(*, force: bool = False) -> dict[str, Any]:
         _cb = int(now)  # cache-buster — råt.githubusercontent.com CDN ignorerer headers
         no_cache = {"Cache-Control": "no-cache", "Pragma": "no-cache"}
         async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
-            # Trin 1: hent version.json
+            # Hent version.json og RELEASE_NOTES.md parallelt — sparer et ekstra round-trip
             version_url = f"{_GITHUB_RAW_TMPL.format(branch=branch)}?t={_cb}"
-            version_resp = await client.get(version_url, headers=no_cache)
+            rn_url      = f"{_GITHUB_RELEASE_NOTES_TMPL.format(branch=branch)}?t={_cb}"
+            version_resp, rn_resp = await asyncio.gather(
+                client.get(version_url, headers=no_cache),
+                client.get(rn_url,      headers=no_cache),
+                return_exceptions=False,
+            )
             version_resp.raise_for_status()
             data = version_resp.json()
             result["latest_version"] = data.get("version", "?")
-            result["latest_build"] = data.get("build", "?")
+            result["latest_build"]   = data.get("build", "?")
             try:
                 result["update_available"] = int(data.get("build", "0")) > int(BUILD)
             except ValueError:
                 result["update_available"] = data.get("build") != BUILD
 
-            # Trin 2: hent release notes — afhænger af branch
             notes_text = ""
-            if branch == "main":
-                # Prøv RELEASE_{version}.md (standalone note for denne main-release)
-                standalone_url = (
-                    _GITHUB_STANDALONE_RELEASE_TMPL.format(
-                        branch=branch, version=result["latest_version"]
-                    ) + f"?t={_cb}"
+            if rn_resp.status_code == 200:
+                notes_text = _extract_release_sections_since(
+                    rn_resp.text, VERSION, result["latest_version"]
                 )
-                notes_resp = await client.get(standalone_url, headers=no_cache)
-                if notes_resp.status_code == 200:
-                    notes_text = notes_resp.text
-                else:
-                    # Fallback: parse relevant sektion fra RELEASE_NOTES.md
-                    rn_url = f"{_GITHUB_RELEASE_NOTES_TMPL.format(branch=branch)}?t={_cb}"
-                    rn_resp = await client.get(rn_url, headers=no_cache)
-                    if rn_resp.status_code == 200:
-                        notes_text = _extract_release_sections_since(
-                            rn_resp.text, VERSION, result["latest_version"]
-                        )
-            else:
-                # dev branch: vis relevante sektioner fra RELEASE_NOTES.md
-                rn_url = f"{_GITHUB_RELEASE_NOTES_TMPL.format(branch=branch)}?t={_cb}"
-                rn_resp = await client.get(rn_url, headers=no_cache)
-                if rn_resp.status_code == 200:
-                    notes_text = _extract_release_sections_since(
-                        rn_resp.text, VERSION, result["latest_version"]
-                    )
             result["release_notes"] = notes_text
         _github_cache = result
         _github_cache_ts = now
