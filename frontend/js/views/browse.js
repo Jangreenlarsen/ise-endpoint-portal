@@ -6,6 +6,7 @@ import {
   getColumns, getOrderedColumns, esc,
   getPageSize, getCoaReauthOnSave, setCoaReauthOnSave,
   loadColVis, saveColVis,
+  applyBackendColPrefs, setColPrefsSyncFn,
   normalizeMac, fmtAgo, coaSummaryText,
 } from "./browse-utils.js";
 import { initFilter } from "./browse-filter.js";
@@ -14,6 +15,13 @@ import { initDetail } from "./browse-detail.js";
 import { initBulk   } from "./browse-bulk.js";
 
 export async function renderBrowse(container) {
+  // Hent kolonnepræferencer fra backend inden HTML/state initialiseres,
+  // så getOrderedColumns() og loadColVis() returnerer serverens værdier.
+  try {
+    const prefs = await api.getMyPrefs();
+    applyBackendColPrefs(prefs.col_order, prefs.col_vis);
+  } catch { /* ignorér — falder tilbage til localStorage */ }
+
   container.innerHTML = `
     <div class="page-header">
       <h2 style="margin:0;">${t("browse.title")}</h2>
@@ -362,6 +370,11 @@ export async function renderBrowse(container) {
 
   // ── Cross-module callback object (populated after all inits) ──────────────
   const cb = {};
+
+  // ── Kolonnepræferencer: sync til backend ved drag/visibility-ændring ───────
+  setColPrefsSyncFn((payload) => {
+    api.updateMyPrefs(payload).catch(() => { /* ignorér — TACACS-brugere får 403 */ });
+  });
 
   // ── Module initialisation ─────────────────────────────────────────────────
   const filterAPI = initFilter(container, state, api, cb);

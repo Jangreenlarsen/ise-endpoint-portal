@@ -4,6 +4,22 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.8.3] — 2026-05-24 — Flytbare Browse-kolonner med backend-persistens
+
+> **Build:** 0527
+
+Kolonne-rækkefølge og synlighed i Browse-tabellen gemmes nu i din brugerprofil på serveren — ikke blot i browseren. Opsætningen gendannes automatisk når du logger ind fra en anden enhed eller browser.
+
+**Sådan virker det:**
+- **Flyt kolonner** ved at trække dem i tabelhoveden (drag-and-drop)
+- **Slå kolonner til/fra** via "Kolonner"-knappen i toolbar
+- Begge ændringer gemmes øjeblikkeligt i din brugerprofil via `PUT /api/me/prefs`
+- Ved næste login hentes præferencerne fra backend og genoprettes automatisk — inden tabellen renderes
+
+**TACACS+-brugere:** Backend-gem understøttes ikke (403 Forbidden) — opsætningen gemmes stille i browserens localStorage som hidtil.
+
+---
+
 ## [5.8.2-P4] — 2026-05-24 — Security Patch 4
 
 > **Build:** 0526 — Sikkerhedsrettelser fra ny uafhængig kodeanalyse

@@ -3,6 +3,16 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.8.3 build 0527] — 2026-05-24 — feat: flytbare Browse-kolonner med backend-persistens
+
+Kolonne-rækkefølge og synlighed gemmes nu i backend (pr. bruger) og gendannes automatisk på tværs af enheder og browsere. Drag-and-drop af kolonner fandtes allerede — nu synkroniseres ændringer til `PUT /api/me/prefs` i stedet for kun localStorage.
+
+**Berørte filer:**
+- `backend/app/schemas/user.py` — `UserPrefs` udvides med `col_order: list[str] | None` og `col_vis: dict[str, bool] | None`
+- `backend/app/api/me.py` — `GET /me/prefs` returnerer nu `col_order`/`col_vis`; `PUT /me/prefs` bruger `model_fields_set` og validerer nye felter (max 30 nøgler, max 32 tegn pr. nøgle); hjælpefunktioner `_safe_col_order`, `_safe_col_vis`, `_prefs_response`
+- `frontend/js/views/browse-utils.js` — `saveColOrder` og `saveColVis` kalder nu `_syncColPrefs()` efter localStorage; ny `applyBackendColPrefs(order, vis)` til loop-fri load fra backend; ny `setColPrefsSyncFn(fn)` til at injicere API-kald
+- `frontend/js/views/browse.js` — importerer `applyBackendColPrefs`, `setColPrefsSyncFn`; henter `GET /api/me/prefs` ved browse-init FØR HTML renderes; sætter fire-and-forget sync-callback efter state init
+
 ## [5.8.2-P4 build 0526] — 2026-05-24 — sec: Security Patch 4 — cache-DoS, dead-code NameError, audit max_length
 
 **Security Patch 4 (3 fixes fra ny sikkerhedsanalyse):**

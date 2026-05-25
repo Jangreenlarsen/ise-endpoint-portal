@@ -144,18 +144,38 @@ async def delete_my_view(
 _VALID_LANGUAGES = {"da", "en"}
 
 
+def _safe_col_order(raw: object) -> list[str] | None:
+    if not isinstance(raw, list):
+        return None
+    return [k for k in raw if isinstance(k, str) and 1 <= len(k) <= 32][:30]
+
+
+def _safe_col_vis(raw: object) -> dict[str, bool] | None:
+    if not isinstance(raw, dict):
+        return None
+    return {k: bool(v) for k, v in list(raw.items())[:30] if isinstance(k, str) and 1 <= len(k) <= 32}
+
+
+def _prefs_response(prefs: dict) -> UserPrefs:
+    lang = prefs.get("language")
+    if lang not in _VALID_LANGUAGES:
+        lang = None
+    return UserPrefs(
+        language=lang,  # type: ignore[arg-type]
+        col_order=_safe_col_order(prefs.get("col_order")),
+        col_vis=_safe_col_vis(prefs.get("col_vis")),
+    )
+
+
 @router.get("/prefs", response_model=UserPrefs)
 async def get_my_prefs(user: User = Depends(get_current_user)) -> UserPrefs:
     if user.id.startswith("tacacs:"):
-        return UserPrefs(language=None)
+        return UserPrefs()
     users = load_users()
     record = find_by_id(users, user.id)
     if not record:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Bruger ikke fundet")
-    lang = record.get("prefs", {}).get("language")
-    if lang not in _VALID_LANGUAGES:
-        lang = None
-    return UserPrefs(language=lang)  # type: ignore[arg-type]
+    return _prefs_response(record.get("prefs") or {})
 
 
 @router.put("/prefs", response_model=UserPrefs)
@@ -164,8 +184,7 @@ async def update_my_prefs(
     user: User = Depends(get_current_user),
 ) -> UserPrefs:
     if user.id.startswith("tacacs:"):
-        from fastapi import HTTPException as _HTTPException
-        raise _HTTPException(
+        raise HTTPException(
             status.HTTP_403_FORBIDDEN,
             "TACACS+-brugere kan ikke gemme præferencer server-side — indstillingen gemmes lokalt i browseren",
         )
@@ -174,14 +193,31 @@ async def update_my_prefs(
     if not record:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Bruger ikke fundet")
     prefs = record.get("prefs") or {}
-    if payload.language is None:
-        prefs.pop("language", None)
-    elif payload.language in _VALID_LANGUAGES:
-        prefs["language"] = payload.language
+    updated = payload.model_fields_set
+
+    if "language" in updated:
+        if payload.language is None:
+            prefs.pop("language", None)
+        elif payload.language in _VALID_LANGUAGES:
+            prefs["language"] = payload.language
+
+    if "col_order" in updated:
+        if payload.col_order is None:
+            prefs.pop("col_order", None)
+        else:
+            valid = _safe_col_order(payload.col_order)
+            if valid is not None:
+                prefs["col_order"] = valid
+
+    if "col_vis" in updated:
+        if payload.col_vis is None:
+            prefs.pop("col_vis", None)
+        else:
+            valid = _safe_col_vis(payload.col_vis)
+            if valid is not None:
+                prefs["col_vis"] = valid
+
     record["prefs"] = prefs
     save_users(users)
-    logger.info("user %s updated prefs: %s", user.username, prefs)
-    lang = prefs.get("language")
-    if lang not in _VALID_LANGUAGES:
-        lang = None
-    return UserPrefs(language=lang)  # type: ignore[arg-type]
+    logger.info("user %s updated prefs (fields: %s)", user.username, updated)
+    return _prefs_response(prefs)
