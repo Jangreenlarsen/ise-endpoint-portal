@@ -3,6 +3,10 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.9.4 build 0534] — 2026-05-25 — fix: Release notes vises altid i update-check
+
+- `backend/app/services/update_service.py` — `_extract_release_sections_since()` tilføjer Fallback 2: når der ikke findes en eksakt `## [X.Y.Z]`-sektion (f.eks. debug-builds som 5.9.3.1 der aldrig fik en RELEASE_NOTES-sektion), vises den seneste tilgængelige sektion med version ≤ target. Løser at "up to date"-visningen altid stod tom.
+
 ## [5.9.3.1 build 0533] — 2026-05-25 — debug: Ny gruppe — overgruppe-dropdown viser nu alle niveauer
 
 - `frontend/js/views/browse.js` — `_populateParentDropdown()` slettet; erstattet med direkte `groupHierarchyOptionsHtml(state.groups, "", "...")` kald (samme funktion som Browse-dropdownene). Importerer `groupHierarchyOptionsHtml` fra browse-utils.js.

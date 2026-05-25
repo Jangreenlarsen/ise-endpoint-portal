@@ -259,12 +259,20 @@ def _extract_release_sections_since(
         relevant.sort(key=lambda x: x[0])
         return "\n\n---\n\n".join(s for _, s in relevant)
 
-    # Fallback — vis sektionen for den version vi er på (3-parts semver-match,
-    # håndterer debug-builds: 5.7.4.5 → finder ## [5.7.4])
+    # Fallback 1 — eksakt match på 3-parts semver
+    # (håndterer debug-builds: 5.9.3.1 → søger ## [5.9.3])
     target = latest if latest != (0, 0, 0) else current
     for v, section in all_sections:
         if v == target:
             return section
+
+    # Fallback 2 — ingen eksakt sektion fundet (f.eks. debug-build eller
+    # version der kun er i CHANGELOG). Vis den nyeste tilgængelige sektion
+    # der er <= target, så "up to date"-visningen altid har noget at vise.
+    candidates = [(v, s) for v, s in all_sections if v <= target]
+    if candidates:
+        candidates.sort(key=lambda x: x[0], reverse=True)
+        return candidates[0][1]
     return ""
 
 

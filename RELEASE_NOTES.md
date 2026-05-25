@@ -4,6 +4,22 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.9.4] — 2026-05-25 — Release notes vises altid i update-check
+
+> **Build:** 0534
+
+Update-checken viser nu altid release notes — også når portalen kører en debug-build (f.eks. 5.9.3.1) der ikke har sin egen sektion i RELEASE_NOTES.md. Fallback-logikken finder nu den seneste tilgængelige sektion hvis et eksakt match mangler.
+
+---
+
+## [5.9.3] — 2026-05-25 — Hurtigere update-check
+
+> **Build:** 0532
+
+GitHub-forespørgslerne ved update-check (`version.json` + `RELEASE_NOTES.md`) hentes nu **parallelt** i stedet for sekventielt. Checket er typisk 40–60 % hurtigere.
+
+---
+
 ## [5.9.2] — 2026-05-25 — Opret endpoint gruppe: vælg overgruppe
 
 > **Build:** 0530
