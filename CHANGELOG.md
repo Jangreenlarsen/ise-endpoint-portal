@@ -3,6 +3,10 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.10.5 build 0540] — 2026-05-25 — docs: RELEASE_NOTES tilføjet for 5.10.2–5.10.4
+
+- `RELEASE_NOTES.md` — sektioner tilføjet for 5.10.4 (resize-handle fix), 5.10.2 (chown fejlbesked).
+
 ## [5.10.4 build 0539] — 2026-05-25 — fix: resize-handle virker nu — overflow:hidden fjernet fra th
 
 - `frontend/css/styles.css` — fjernet `overflow: hidden` fra `.browse-table-wrap table thead th` — det clippede den absolut-positionerede `.th-resize-handle` så den var usynlig og uklikbar. Tilføjet `.th-resize-handle.resizing` variant. Dark/midnight hover-farver bevaret.

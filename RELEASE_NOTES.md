@@ -4,6 +4,22 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.10.4] — 2026-05-25 — Skalerbare kolonner virker nu
+
+> **Build:** 0539
+
+Resize-handle i kolonne-headers var usynlig og uklikbar pga. en CSS-fejl (`overflow: hidden` på `<th>` clippede den absolut-positionerede handle). Rettet — du kan nu trække i højre kant af en kolonneheader for at justere bredden.
+
+---
+
+## [5.10.2] — 2026-05-25 — Git pull: klar fejlbesked ved ejerskabsproblem
+
+> **Build:** 0537
+
+Hvis `.git`-mappen ejes af en anden bruger end portal-processen, vises nu en præcis `chown`-kommando med det rigtige brugernavn i stedet for de misvisende `find/chmod`-kommandoer.
+
+---
+
 ## [5.10.1] — 2026-05-25 — Git pull fejler aldrig mere på filrettigheder
 
 > **Build:** 0536
