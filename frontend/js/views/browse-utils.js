@@ -74,14 +74,16 @@ export function saveColWidths(widths) {
 }
 
 // Skriv backend-præferencer direkte til localStorage uden at trigge backend-sync.
-// Bruges ved indlæsning fra backend ved browse-init.
+// Kun brugt ved browse-init — skriv KUN hvis localStorage mangler data (tom session,
+// incognito, ny enhed). Har brugeren allerede lokale præferencer bevares de, og
+// syncColPrefsNow() uploader dem til backend i stedet.
 export function applyBackendColPrefs(order, vis, widths) {
   try {
-    if (Array.isArray(order) && order.length)
+    if (Array.isArray(order) && order.length && !loadColOrder())
       localStorage.setItem(COLORDER_KEY, JSON.stringify(order));
-    if (vis && typeof vis === "object" && !Array.isArray(vis))
+    if (vis && typeof vis === "object" && !Array.isArray(vis) && !loadColVis())
       localStorage.setItem(COLVIS_KEY, JSON.stringify(vis));
-    if (widths && typeof widths === "object" && !Array.isArray(widths))
+    if (widths && typeof widths === "object" && !Array.isArray(widths) && !loadColWidths())
       localStorage.setItem(COLWIDTHS_KEY, JSON.stringify(widths));
   } catch { /* ignore */ }
 }

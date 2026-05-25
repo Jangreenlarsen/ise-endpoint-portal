@@ -4,6 +4,20 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.11.4] — 2026-05-25 — Fix: Kolonne-synlighed virker nu korrekt i incognito og på nye enheder
+
+> **Build:** 0548
+
+Kolonne-synlighed hentes nu korrekt fra backend i incognito-sessioner og nye browsere/enheder.
+
+**Problemet:** En gammel fejl betød at backend-sidan gemte en "alle kolonner synlige"-tilstand. Når du åbnede Browse næste gang, overskrev portalen din lokale præference med denne forkerte backend-tilstand.
+
+**Løsningen:** Backend-præferencer skrives nu kun til din lokale browser-cache, hvis den er tom (incognito, ny enhed, første login). Har du allerede en lokal præference, bevares den — og den uploades automatisk til backend, så fremtidige incognito-sessioner henter den korrekte tilstand.
+
+**Kort sagt:** Sæt dine kolonne-præferencer i din normale browser, og de vil automatisk være aktive næste gang du åbner en ny incognito-session eller logger ind på en ny enhed.
+
+---
+
 ## [5.11.3] — 2026-05-25 — Fix: Kolonne-synlighed nulstilles ikke længere ved navigation
 
 > **Build:** 0547

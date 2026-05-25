@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.11.4 build 0548] — 2026-05-25 — fix: applyBackendColPrefs overskriver ikke eksisterende lokal col_vis
+
+Rodårsag til at incognito-session (og andre tom-localStorage-sessioner) ikke virkede: v5.11.2-kodens `restoreFilters()` uploadede all-true col_vis til backend via `saveColVis()`. Ved næste Browse-besøg overskrev `applyBackendColPrefs` localStorage med den korrupte all-true backend-tilstand — og nulstillede dermed brugerens korrekte lokale præference.
+
+Fix: `applyBackendColPrefs` skriver nu kun backend-data til localStorage hvis localStorage er tom (incognito/ny enhed/ingen tidligere præference). Eksisterende lokal præference bevares — og `syncColPrefsNow()` uploader den korrekte lokale tilstand til backend ved hvert Browse-init, så backend altid har den seneste normale-sessions præference. Incognito-sessioner henter dermed den korrekte tilstand fra backend.
+
+- `frontend/js/views/browse-utils.js` — `applyBackendColPrefs()` tjekker nu om `loadColVis()` er null før den skriver til localStorage (tilsvarende for col_order og col_widths).
+
 ## [5.11.3 build 0547] — 2026-05-25 — fix: kolonne-synlighed nulstilles ikke længere af filter-restore
 
 Rodårsag: `snapshotFilters()` inkluderede `colVis` i det auto-gemte filter-snapshot (BROWSE_FILTERS_KEY). Når brugeren navigerede tilbage til Browse, kaldte `restoreFilters()` → `applyFilterSnapshot()` → overskrev `state.colVis` med den GAMLE snapshot-tilstand (fra FØR brugeren ændrede synlighed) og kaldte `saveColVis()` — hvilket effektivt nulstillede præferencen.
