@@ -598,29 +598,34 @@ td.auth-status-col.auth-failed { background: #f87171; color: #450a0a; }
   box-shadow: 0 1px 0 #e5e7eb;
   white-space: nowrap;
 }
-/* Resize handle — right edge of each header cell.
-   position:sticky acts as containing block so absolute child works.
-   overflow:hidden must NOT be on th — it would clip the handle. */
+/* Resize handle — inline-block i flow, vises efter kolonneheader-tekst.
+   position:absolute i sticky th er upålidelig i table-layout på tværs af
+   browsere, så vi bruger inline-block i stedet. */
 .th-resize-handle {
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  width: 6px;
+  display: inline-block;
+  width: 4px;
+  height: 14px;
+  margin-left: 5px;
+  vertical-align: middle;
   cursor: col-resize;
-  z-index: 10;
-  background: transparent;
+  border-radius: 2px;
+  background: rgba(156,163,175,0.4);
+  flex-shrink: 0;
 }
 .th-resize-handle:hover,
-.th-resize-handle.resizing { background: rgba(99,102,241,0.35); }
+.th-resize-handle.resizing { background: rgba(99,102,241,0.7); }
 /* Group path stacked hint under select in detail modal */
 .group-select-wrap { display: flex; flex-direction: column; gap: 2px; }
 .group-path-hint { display: flex; flex-direction: column; gap: 1px; padding: 2px 0 0; }
 .grp-path-line { font-size: 0.72rem; color: #6b7280; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 [data-theme="dark"] .browse-table-wrap table thead th     { background: #1e1e2e; box-shadow: 0 1px 0 #3a3a5c; }
 [data-theme="midnight"] .browse-table-wrap table thead th { background: #0d1117; box-shadow: 0 1px 0 #30363d; }
-[data-theme="dark"] .th-resize-handle:hover     { background: rgba(139,92,246,0.4); }
-[data-theme="midnight"] .th-resize-handle:hover { background: rgba(96,165,250,0.4); }
+[data-theme="dark"] .th-resize-handle     { background: rgba(100,116,139,0.4); }
+[data-theme="dark"] .th-resize-handle:hover,
+[data-theme="dark"] .th-resize-handle.resizing { background: rgba(139,92,246,0.8); }
+[data-theme="midnight"] .th-resize-handle     { background: rgba(48,54,61,0.6); }
+[data-theme="midnight"] .th-resize-handle:hover,
+[data-theme="midnight"] .th-resize-handle.resizing { background: rgba(96,165,250,0.8); }
 [data-theme="dark"] .grp-path-line     { color: #94a3b8; }
 [data-theme="midnight"] .grp-path-line { color: #8b949e; }
 .browse-table-wrap select {

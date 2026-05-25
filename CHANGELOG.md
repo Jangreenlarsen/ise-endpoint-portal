@@ -3,6 +3,10 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.10.7 build 0542] — 2026-05-25 — fix: resize-handle inline-block — undgår position:absolute i sticky th
+
+- `frontend/css/styles.css` — `.th-resize-handle` omskrevet til `display: inline-block` i flow. `position: absolute` i en `position: sticky` `<th>` er upålidelig i table-layout på tværs af browsere — barnet positioneres i forhold til et ancestor-element uden for `<th>` og er dermed usynligt. Inline-block handle vises synligt efter kolonneheader-teksten med grå baggrund + lilla/blå highlight ved hover og resize.
+
 ## [5.10.6 build 0541] — 2026-05-25 — fix: resize via Pointer Events API — undgår draggable-interferens
 
 - `frontend/js/views/browse-table.js` — `wireColResize()` omskrevet til Pointer Events API: `pointerdown` + `setPointerCapture(pointerId)` sikrer at alle pointer-events fanges af handle selv når musen bevæger sig hurtigt. `dragstart`-listener på handle forhindrer `draggable="true"` på `<th>` i at stjæle events. `pointermove`/`pointerup`/`pointercancel` erstatter `document.mousemove`/`mouseup`.
