@@ -26,7 +26,7 @@ const TRANSLATIONS = {
     "nav.policy":       "ISE Politikker",
 
     // Policy dashboard
-    "pol.title":             "Politikker",
+    "pol.title":             "Authz Policies",
     "pol.refresh":           "↺",
     "pol.sets_loading":      "Henter policy sets…",
     "pol.sets_empty":        "Ingen policy sets fundet i ISE.",
@@ -1079,7 +1079,7 @@ const TRANSLATIONS = {
     "nav.policy":       "ISE Policies",
 
     // Policy dashboard
-    "pol.title":             "Policies",
+    "pol.title":             "Authz Policies",
     "pol.refresh":           "↺",
     "pol.sets_loading":      "Loading policy sets…",
     "pol.sets_empty":        "No policy sets found in ISE.",

@@ -4,6 +4,15 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.9.1] — 2026-05-25 — Policy-view: "Authz Policies" label
+
+> **Build:** 0529
+
+- Sidebar-overskriften er omdøbt fra "Politikker"/"Policies" til **"Authz Policies"**
+- Midter-kolonnens overskrift viser nu **"Authz : [policy-sæt navn]"** i stedet for bare sæt-navnet
+
+---
+
 ## [5.9.0] — 2026-05-25 — Opret endpoint gruppe + Policy drag-and-drop
 
 > **Build:** 0528

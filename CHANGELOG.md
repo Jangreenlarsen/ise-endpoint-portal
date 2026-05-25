@@ -3,6 +3,11 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.9.1 build 0529] — 2026-05-25 — fix: Policy-view label — "Authz Policies" + "Authz : [navn]"
+
+- `frontend/js/i18n.js` — `pol.title` DA+EN: "Politikker"/"Policies" → "Authz Policies"
+- `frontend/js/views/policy.js` — `selectSet()`: `rulesTitle.textContent` ændret fra bare sæt-navn til `"Authz : <sætnavn>"`
+
 ## [5.9.0 build 0528] — 2026-05-25 — feat: opret endpoint gruppe + policy drag-and-drop rank
 
 **Feature 1 — Opret endpoint identity group fra Browse (admin)**
