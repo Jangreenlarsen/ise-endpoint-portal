@@ -101,7 +101,7 @@ export async function renderBrowse(container) {
           <thead>
             <tr>
               <th style="width:36px;"><input type="checkbox" id="select-all" title="${t("browse.select_all_title")}" /></th>
-              ${getOrderedColumns().map((c) => `<th data-col="${c.key}" draggable="true"${c.cls ? ` class="${c.cls}"` : ""}>${c.label}<span class="th-resize-handle"></span></th>`).join("")}
+              ${getOrderedColumns().map((c) => `<th data-col="${c.key}" draggable="true"${c.cls ? ` class="${c.cls}"` : ""}>${c.label}</th>`).join("")}
             </tr>
             <tr class="filter-row">
               <th><button type="button" id="filter-clear-all-btn" class="filter-clear-all-btn hidden" title="Nulstil alle søgefelter">×</button></th>

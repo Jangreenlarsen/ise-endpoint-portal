@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.10.8 build 0543] — 2026-05-25 — fix: resize-handle via th border + proximity-check
+
+- `frontend/js/views/browse.js` — `<span class="th-resize-handle">` fjernet fra th-template; ikke nødvendig længere.
+- `frontend/css/styles.css` — `.th-resize-handle` regler fjernet; erstattet med `border-right` på `th[data-col]` (3px, subtil grå → lilla ved hover/resize via `.col-resizing`). Dark/midnight varianter tilføjet.
+- `frontend/js/views/browse-table.js` — `wireColResize()` omskrevet: `pointerdown` på `th` med proximity-check (`e.clientX < rect.right - 8` → ignorer). `setPointerCapture` på th. `th.draggable = false` under resize for at undgå column-drag interferens, gendannes til `true` ved `pointerup`/`pointercancel`.
+
 ## [5.10.7 build 0542] — 2026-05-25 — fix: resize-handle inline-block — undgår position:absolute i sticky th
 
 - `frontend/css/styles.css` — `.th-resize-handle` omskrevet til `display: inline-block` i flow. `position: absolute` i en `position: sticky` `<th>` er upålidelig i table-layout på tværs af browsere — barnet positioneres i forhold til et ancestor-element uden for `<th>` og er dermed usynligt. Inline-block handle vises synligt efter kolonneheader-teksten med grå baggrund + lilla/blå highlight ved hover og resize.

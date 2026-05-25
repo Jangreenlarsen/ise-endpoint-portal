@@ -905,8 +905,9 @@ export function initTable(container, state, api, cb) {
   initColDrag();
 
   // ── Column resize ────────────────────────────────────────────────────────
-  // Bruger Pointer Events API med setPointerCapture — undgår interferens med
-  // draggable="true" på <th> som ellers blokerer mousemove på document.
+  // Bruger th's højre border som visuel handle — aldrig klippet af table-layout.
+  // pointerdown på th med proximity-check: kun indenfor 8px af højre kant.
+  // setPointerCapture sikrer at alle events fanges under drag.
   function wireColResize() {
     const tbl = container.querySelector(".browse-table-wrap table");
     if (!tbl) return;
@@ -919,20 +920,18 @@ export function initTable(container, state, api, cb) {
         th.style.width    = saved[key] + "px";
         th.style.minWidth = saved[key] + "px";
       }
-      const handle = th.querySelector(".th-resize-handle");
-      if (!handle) continue;
 
-      // Blokér column-drag når musen er på handle
-      handle.addEventListener("dragstart", (e) => { e.preventDefault(); e.stopPropagation(); });
-
-      handle.addEventListener("pointerdown", (e) => {
+      th.addEventListener("pointerdown", (e) => {
+        const rect = th.getBoundingClientRect();
+        if (e.clientX < rect.right - 8) return; // ikke nær højre kant
         e.stopPropagation();
         e.preventDefault();
-        handle.setPointerCapture(e.pointerId);  // alle pointer-events går til handle
-        handle.classList.add("resizing");
+        th.setPointerCapture(e.pointerId);
+        th.draggable = false;           // undgår column-drag under resize
+        th.classList.add("col-resizing");
         document.body.style.userSelect = "none";
         const startX = e.clientX;
-        const startW = th.getBoundingClientRect().width;
+        const startW = rect.width;
 
         function onMove(ev) {
           const w = Math.max(48, startW + ev.clientX - startX);
@@ -940,10 +939,11 @@ export function initTable(container, state, api, cb) {
           th.style.minWidth = w + "px";
         }
         function onUp() {
-          handle.removeEventListener("pointermove", onMove);
-          handle.removeEventListener("pointerup",   onUp);
-          handle.removeEventListener("pointercancel", onUp);
-          handle.classList.remove("resizing");
+          th.removeEventListener("pointermove",   onMove);
+          th.removeEventListener("pointerup",     onUp);
+          th.removeEventListener("pointercancel", onUp);
+          th.classList.remove("col-resizing");
+          th.draggable = true;
           document.body.style.userSelect = "";
           const widths = {};
           for (const h of headerRow.querySelectorAll("th[data-col]")) {
@@ -951,9 +951,9 @@ export function initTable(container, state, api, cb) {
           }
           saveColWidths(widths);
         }
-        handle.addEventListener("pointermove",   onMove);
-        handle.addEventListener("pointerup",     onUp, { once: true });
-        handle.addEventListener("pointercancel", onUp, { once: true });
+        th.addEventListener("pointermove",   onMove);
+        th.addEventListener("pointerup",     onUp, { once: true });
+        th.addEventListener("pointercancel", onUp, { once: true });
       });
     }
   }
