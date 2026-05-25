@@ -3,6 +3,11 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.9.2.1 build 0531] — 2026-05-25 — debug: gruppe-dropdown hierarki — indrykket træ-visning
+
+- `frontend/js/views/browse-utils.js` — `groupHierarchyOptionsHtml()` omskrevet: én `<optgroup>` wrapper + `<option>` med depth-baseret indrykninig (3 NBSP pr. niveau) og "↳"-pil for børn. Alfabetisk sortering på sti-efter-prefix sikrer forælder altid vises før sine børn. Alle grupper er selekterbare (inkl. forældrgrupper).
+- `frontend/js/views/browse.js` — `_populateParentDropdown()` følger samme indrykning-logik
+
 ## [5.9.2 build 0530] — 2026-05-25 — feat: Opret endpoint gruppe — vælg overgruppe
 
 - `backend/app/schemas/endpoint.py` — `EndpointGroupCreate` tilføjer `parent_id: str | None`

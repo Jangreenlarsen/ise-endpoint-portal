@@ -150,62 +150,45 @@ export function optionsHtml(values, selected) {
 const EIG_PREFIX = "Endpoint Identity Groups:";
 
 /**
- * Build hierarchical <optgroup> HTML for an ISE endpoint group list.
+ * Build hierarchical <option> HTML for an ISE endpoint group list.
  *
  * groups  — array of { id, name } where name is the full ISE path
  *           e.g. "Endpoint Identity Groups:Profiled:ADM-Apple-iPhone"
  * selId   — currently selected group ID (or "" for none)
  *
- * Renders:
- *   <optgroup label="Endpoint Identity Groups"> — direct children
- *   <optgroup label="↳ Profiled">               — children of Profiled
- *   … one optgroup per parent that has sub-groups
+ * Renders a single optgroup wrapper with depth-indented options so every
+ * group — including parents — is selectable and visually nested:
+ *   Profiled
+ *      ↳ ADM-Apple-iPhone
+ *           ↳ SubGroup
+ *      ↳ Android
+ *   Unknown
+ *      ↳ SomeChild
+ *
+ * Alphabetical sort on the path-after-prefix guarantees parents always
+ * appear before their own children ("Profiled" < "Profiled:ADM-Apple-iPhone").
  */
 export function groupHierarchyOptionsHtml(groups, selId, emptyLabel = null) {
-  const sorted = [...groups].sort((a, b) => a.name.localeCompare(b.name));
+  const sel  = (g) => g.id === selId ? " selected" : "";
+  let   html = `<option value="">${esc(emptyLabel ?? t("cell.no_group"))}</option>`;
 
-  // Separate by depth after the root prefix
-  const level1   = sorted.filter((g) => {
-    const rest = g.name.startsWith(EIG_PREFIX) ? g.name.slice(EIG_PREFIX.length) : g.name;
-    return !rest.includes(":");
-  });
-  const deeper   = sorted.filter((g) => {
-    const rest = g.name.startsWith(EIG_PREFIX) ? g.name.slice(EIG_PREFIX.length) : g.name;
-    return rest.includes(":");
-  });
+  if (!groups.length) return html;
 
-  // Group deeper items by immediate parent full-path
-  const byParent = new Map();
-  for (const g of deeper) {
-    const parts      = g.name.split(":");
-    const parentName = parts.slice(0, -1).join(":");
-    if (!byParent.has(parentName)) byParent.set(parentName, []);
-    byParent.get(parentName).push(g);
+  const NBSP = " ";
+
+  const items = groups.map((g) => {
+    const rest  = g.name.startsWith(EIG_PREFIX) ? g.name.slice(EIG_PREFIX.length) : g.name;
+    const parts = rest.split(":");
+    return { ...g, _sort: rest.toLowerCase(), _depth: parts.length - 1, _short: parts[parts.length - 1] };
+  }).sort((a, b) => a._sort.localeCompare(b._sort));
+
+  html += `<optgroup label="${esc(EIG_PREFIX.slice(0, -1))}">`;
+  for (const g of items) {
+    const indent = NBSP.repeat(g._depth * 3);
+    const arrow  = g._depth > 0 ? `↳${NBSP}` : "";
+    html += `<option value="${esc(g.id)}"${sel(g)}>${indent}${arrow}${esc(g._short)}</option>`;
   }
-
-  const sel = (g) => g.id === selId ? " selected" : "";
-  const shortName = (g) => g.name.split(":").pop();
-
-  let html = `<option value="">${esc(emptyLabel ?? t("cell.no_group"))}</option>`;
-
-  // Root optgroup — direct children of "Endpoint Identity Groups"
-  if (level1.length || deeper.length) {
-    html += `<optgroup label="${esc(EIG_PREFIX.slice(0, -1))}">`;
-    for (const g of level1) {
-      html += `<option value="${esc(g.id)}"${sel(g)}>${esc(shortName(g))}</option>`;
-    }
-    html += `</optgroup>`;
-  }
-
-  // One optgroup per parent-with-children, sorted by parent path
-  for (const [parentPath, children] of [...byParent.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
-    const parentLabel = "↳ " + (parentPath.startsWith(EIG_PREFIX) ? parentPath.slice(EIG_PREFIX.length) : parentPath);
-    html += `<optgroup label="${esc(parentLabel)}">`;
-    for (const g of children) {
-      html += `<option value="${esc(g.id)}"${sel(g)}>${esc(shortName(g))}</option>`;
-    }
-    html += `</optgroup>`;
-  }
+  html += `</optgroup>`;
 
   return html;
 }
