@@ -359,6 +359,41 @@ async def check_github_version(*, force: bool = False) -> dict[str, Any]:
     return result
 
 
+def _fix_git_object_permissions() -> None:
+    """Ret filrettigheder i .git/objects/ så git fetch kan skrive nye objekter.
+
+    Directories: 755, filer: 644.  Kører hurtigt (pure Python, ingen subprocess).
+    Fejl ignoreres stille — hvis vi ikke har adgang, fejler fetch bagefter med
+    en klar besked.
+    """
+    import os
+    obj_dir = PROJECT_ROOT / ".git" / "objects"
+    if not obj_dir.is_dir():
+        return
+    try:
+        for root, dirs, files in os.walk(obj_dir):
+            for d in dirs:
+                try: os.chmod(os.path.join(root, d), 0o755)
+                except OSError: pass
+            for f in files:
+                try: os.chmod(os.path.join(root, f), 0o644)
+                except OSError: pass
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _ensure_git_shared_repo() -> None:
+    """Sæt core.sharedRepository=0644 så fremtidige git-objekter oprettes med
+    korrekte rettigheder og vi ikke akkumulerer permissions-fejl over tid."""
+    try:
+        subprocess.run(
+            ["git", "-C", str(PROJECT_ROOT), "config", "core.sharedRepository", "0644"],
+            capture_output=True, timeout=5,
+        )
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def _git_pull_sync() -> dict[str, Any]:
     """Hent og anvend seneste kode fra GitHub via fetch + reset --hard.
 
@@ -369,6 +404,12 @@ def _git_pull_sync() -> dict[str, Any]:
     from app.core import config as _cfg
     branch = (_cfg.settings.github_branch or "main").strip()
     stdout_parts: list[str] = []
+
+    # Autofikser objektrettigheder FØR fetch — løser "insufficient permission"
+    # fejl der opstår når git-processen skriver objekter med forkerte rettigheder.
+    _fix_git_object_permissions()
+    _ensure_git_shared_repo()
+
     try:
         # Trin 1: fetch
         fetch = subprocess.run(
@@ -378,19 +419,6 @@ def _git_pull_sync() -> dict[str, Any]:
         if fetch.stdout.strip(): stdout_parts.append(fetch.stdout.strip())
         if fetch.stderr.strip(): stdout_parts.append(fetch.stderr.strip())
         if fetch.returncode != 0:
-            combined = fetch.stdout + fetch.stderr
-            if "insufficient permission" in combined or "failed to write object" in combined:
-                return {
-                    "ok": False,
-                    "stdout": "\n".join(stdout_parts),
-                    "stderr": (
-                        "Git-objektmappen har forkerte filrettigheder.\n"
-                        "Kør følgende på serveren og prøv igen:\n\n"
-                        f"  find {PROJECT_ROOT}/.git/objects -type d -exec chmod 755 {{}} \\;\n"
-                        f"  find {PROJECT_ROOT}/.git/objects -type f -exec chmod 644 {{}} \\;"
-                    ),
-                    "returncode": fetch.returncode,
-                }
             return {"ok": False, "stdout": "\n".join(stdout_parts), "stderr": fetch.stderr.strip(), "returncode": fetch.returncode}
 
         # Trin 2: reset --hard til FETCH_HEAD — mere robust end origin/{branch}

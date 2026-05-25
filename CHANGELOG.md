@@ -3,6 +3,10 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.10.1 build 0536] — 2026-05-25 — fix: git pull fejler aldrig mere på filrettigheder
+
+- `backend/app/services/update_service.py` — ny `_fix_git_object_permissions()`: gennemgår `.git/objects/` med `os.walk` og sætter dirs til 755 og filer til 644 (pure Python, ingen subprocess). Ny `_ensure_git_shared_repo()`: konfigurerer `core.sharedRepository=0644` så fremtidige git-objekter oprettes med korrekte rettigheder. Begge kaldes automatisk FØR `git fetch` i `_git_pull_sync()`. Den gamle "Kør disse chmod-kommandoer manuelt"-fejlbesked er fjernet.
+
 ## [5.10.0 build 0535] — 2026-05-25 — feat: Identity Group fuld sti + skalerbare kolonner
 
 - `frontend/js/views/browse-utils.js` — `groupHierarchyOptionsHtml()` omskrevet: viser nu fuld sti med " / "-separator ("Profiled / Apple-Device / SubGroup") i stedet for indrykkede blade-navne. `EIG_PREFIX` eksporteret. Ny `groupPathParts()` hjælpefunktion til at parse en gruppe-navn til segments. Ny `COLWIDTHS_KEY`, `loadColWidths()`, `saveColWidths()`.

@@ -4,6 +4,14 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.10.1] — 2026-05-25 — Git pull fejler aldrig mere på filrettigheder
+
+> **Build:** 0536
+
+"Git-objektmappen har forkerte filrettigheder"-fejlen er løst permanent. Portalen fikser nu automatisk `.git/objects`-rettigheder (755/644) og sætter `core.sharedRepository` i git-config **inden** hvert git fetch — ingen manuelle chmod-kommandoer på serveren nogensinde igen.
+
+---
+
 ## [5.10.0] — 2026-05-25 — Identity Group: fuld sti + skalerbare kolonner
 
 > **Build:** 0535
