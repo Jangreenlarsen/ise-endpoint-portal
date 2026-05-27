@@ -491,7 +491,7 @@ export async function renderBrowse(container) {
     endpointReloadTimer = setTimeout(() => {
       endpointReloadTimer = null;
       if (state.dirtyIds && state.dirtyIds.size > 0) return;
-      try { cb.load?.(); } catch {}
+      try { cb.load?.(false, { silent: true }); } catch {}
     }, 500);
   }
 

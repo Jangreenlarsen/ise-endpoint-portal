@@ -3,6 +3,15 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.11.6 build 0550] — 2026-05-27 — fix: kolonne-flips og selektion-tab ved pxGrid baggrunds-reload
+
+Rodårsag: MnT beriger pxGrid-sessioner hvert 5. min, hvilket sender `endpoint_changed`-events. `scheduleEndpointReload()` kaldte herefter `cb.load()` (fuld reload) som satte `tbody.innerHTML = <indlæser>` — dette forårsagede kolonne-layout-thrash (flip) og tabte alle checkboks-selektioner fordi `renderRows` læste prevSelected fra den allerede-ryddede tbody.
+
+Fix: `scheduleEndpointReload` kalder nu `cb.load(false, { silent: true })`. I silent-tilstand springer `load()` loading-spinneren over og lader eksisterende rækker stå frem til ny data er hentet. `renderRows` læser dermed korrekt selektion fra de eksisterende rækker og genopretter dem i de nye rækker.
+
+- `frontend/js/views/browse-table.js` — `load()` accepterer nu `{ silent = false }` option; springer `tbody.innerHTML = <loading>` over i silent-tilstand.
+- `frontend/js/views/browse.js` — `scheduleEndpointReload()` kalder `cb.load?.(false, { silent: true })`.
+
 ## [5.11.5 build 0549] — 2026-05-25 — feat: TACACS-brugere kan nu gemme præferencer og views server-side
 
 TACACS+-brugere har ingen fast record i `users.json` — de er token-baserede. Det betød at `GET /me/prefs` altid returnerede tom UserPrefs og `PUT /me/prefs` returnerede 403. Kolonne-synlighed kunne dermed kun gemmes i localStorage — i incognito / ny browser var der intet at hente.

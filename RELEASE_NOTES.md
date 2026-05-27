@@ -4,6 +4,19 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.11.6] — 2026-05-27 — Fix: Kolonne-flip og selektion-tab ved periodisk baggrunds-opdatering
+
+> **Build:** 0550
+
+Hvert 5. minut berigte ISE pxGrid-data med MnT-oplysninger (policy-navn, regel-navn m.m.), hvilket udløste en fuld tabel-genindlæsning. Det gav to synlige fejl:
+
+1. **Kolonner flippede** frem og tilbage i 1-2 sekunder — tabellen viste en "indlæser"-besked og kolonne-bredder nulstillede sig mens ny data blev hentet.
+2. **Selektion gik tabt** — valgte rækker (til bulkredigering) blev fravalgt ved genindlæsningen, så man var tvunget til at redigere én ad gangen.
+
+Begge fejl er nu løst: baggrunds-opdateringer sker stille uden at vise indlæser-tekst eller rydde rækker. Eksisterende rækker forbliver synlige og selekterede mens ny data hentes i baggrunden, og erstattes derefter atomisk.
+
+---
+
 ## [5.11.5] — 2026-05-25 — Fix: Kolonne-synlighed og gemte views virker nu for TACACS-brugere
 
 > **Build:** 0549

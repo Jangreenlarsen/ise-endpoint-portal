@@ -577,9 +577,14 @@ export function initTable(container, state, api, cb) {
   }
 
   // ── Load (full page refresh) ─────────────────────────────────────────────
-  async function load(force = false) {
+  // silent=true: baggrunds-reload (pxGrid endpoint_changed) — vis ikke loading-spinner
+  // og lad eksisterende rækker stå mens data hentes, så selektion bevares og
+  // kolonner ikke flipper.
+  async function load(force = false, { silent = false } = {}) {
     const cols = getColumns().length + 2;
-    tbody.innerHTML = `<tr><td colspan="${cols}" class="empty">${t("browse.fetching_ise")}</td></tr>`;
+    if (!silent) {
+      tbody.innerHTML = `<tr><td colspan="${cols}" class="empty">${t("browse.fetching_ise")}</td></tr>`;
+    }
     msg.innerHTML = "";
     state.dirtyIds.clear();
     updateDirtyUI();
