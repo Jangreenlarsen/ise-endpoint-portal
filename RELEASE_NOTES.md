@@ -4,6 +4,18 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.12.8] — 2026-05-28 — Fix: Markering fjernes nu korrekt ved alle gem-operationer
+
+> **Build:** 0559
+
+📌-markeringen fjernes nu pålideligt fra både Browse og Livscyklus ved gem — uanset om det sker via detail-modal, "Gem alle" eller bulk-gem.
+
+**Hvad var galt:** Inline- og bulk-gem fjernede aldrig markeringer fra localStorage (kun detail-modal havde kode til det, og den var skrøbelig). Desuden manglede `<tr>`-elementerne en `data-mac`-attribut, så MAC-opslag var usikkert.
+
+**Løsning:** Centraliseret `unmarkSaved(id)`-funktion der altid virker: læser MAC fra `<tr data-mac="...">`, opdaterer localStorage og fjerner 📌-badge synkront.
+
+---
+
 ## [5.12.7] — 2026-05-28 — Fix: 📌-markering fjernes direkte fra tabellen ved gem
 
 > **Build:** 0558

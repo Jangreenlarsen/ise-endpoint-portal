@@ -3,6 +3,21 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.12.8 build 0559] — 2026-05-28 — fix: grundlæggende reimplementering af markerings-fjernelse
+
+Rodårsager identificeret og løst:
+1. **Inline/bulk save fjernede ALDRIG markering** — save-handlerne kaldte kun `refreshRows`, ikke nogen unmark-logik.
+2. **Ingen pålidelig MAC-kilde på rækken** — `<tr>` havde ingen `data-mac`-attribut, så MAC-opslag var afhængigt af skrøbelig DOM-textContent eller state-lag der ikke altid er populeret.
+3. **Forspildt kompleksitet** — unmark-kode spredt over detail-modal, refreshRows og inline-save med overlap og race conditions.
+
+Ny implementering:
+- `<tr data-mac="...">` tilføjet i `renderRows` — normaliseret MAC altid tilgængeligt på rækken.
+- Centraliseret `unmarkSaved(id)` i browse-table.js: læser `tr.dataset.mac`, sletter fra localStorage, fjerner `.marked-pin` fra DOM, deaktiverer chip hvis sæt er tomt.
+- `saveAllBtn` og `bulkSaveBtn` kalder `unmarkSaved` for hver vellykket gemt endpoint.
+- browse-detail.js kalder `cb.unmarkSaved(savedId)` — al kompleks pin-logik fjernet herfra.
+
+Berørte filer: `frontend/js/views/browse-table.js`, `frontend/js/views/browse-detail.js`, `version.json`.
+
 ## [5.12.7 build 0558] — 2026-05-28 — fix: 📌-pin fjernes direkte fra DOM ved gem
 
 Tidligere delegerede gem-handleren pin-fjernelsen til `refreshRows` via localStorage-opdatering. Det er en asynkron kæde med for mange led der kan bryde. Fix: straks efter `saveMarkedMacs` fjernes pinnen direkte fra `<tr data-id="..."> .marked-pin` i DOM — dette sker synkront *inden* `closeDetail()` og *inden* `refreshRows`. `refreshRows` beholder sin pin-logik som backup.

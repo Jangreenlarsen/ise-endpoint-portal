@@ -5,7 +5,7 @@
 
 import { auth } from "../auth.js";
 import { t } from "../i18n.js";
-import { esc, fmtDateTime, optionsHtml, normalizeMac, groupPathParts, loadMarkedMacs, saveMarkedMacs } from "./browse-utils.js";
+import { esc, fmtDateTime, optionsHtml, normalizeMac, groupPathParts } from "./browse-utils.js";
 
 function loadFrontendPrefs() {
   try { return JSON.parse(localStorage.getItem("ise_portal_prefs") || "{}"); }
@@ -59,7 +59,6 @@ export function initDetail(container, state, api, cb) {
       }
 
       state.detailOriginalGroupId = d.group_id || "";
-      state.detailCurrentMac      = normalizeMac(d.mac || d.name || "");
       container.querySelector("#d-mac").textContent    = d.mac || d.name || "";
       container.querySelector("#d-vendor").textContent = d.vendor || "—";
       container.querySelector("#d-name").textContent   = d.name || "";
@@ -166,9 +165,8 @@ export function initDetail(container, state, api, cb) {
 
   function closeDetail() {
     detailOverlay.classList.add("hidden");
-    state.detailCurrentId  = null;
-    state.detailCurrentMac = "";
-    detailMsg.innerHTML    = "";
+    state.detailCurrentId = null;
+    detailMsg.innerHTML   = "";
     // Reset to Endpoint tab
     _switchTab("endpoint");
     // Clear dynamic content so next open reloads fresh
@@ -975,20 +973,8 @@ export function initDetail(container, state, api, cb) {
         group_id, static_group_assignment,
         custom_attributes: customAttrs,
       });
-      const savedId    = state.detailCurrentId;
-      const savedMac   = state.detailCurrentMac || "";
-      if (savedMac) {
-        const marked = loadMarkedMacs();
-        if (marked.delete(savedMac)) {
-          saveMarkedMacs(marked);
-          // Fjern pin direkte fra DOM — vent ikke på refreshRows
-          container.querySelector(`tr[data-id="${savedId}"] .marked-pin`)?.remove();
-          if (marked.size === 0 && state.markedOnly) {
-            state.markedOnly = false;
-            container.querySelector('.mac-chip[data-chip="marked"]')?.classList.remove("active");
-          }
-        }
-      }
+      const savedId = state.detailCurrentId;
+      cb.unmarkSaved?.(savedId);
       const platformType = container.querySelector("#d-platformtype").value;
       let coaSummary = "";
       if (state.coaOnSave) {

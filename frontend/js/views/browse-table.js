@@ -12,7 +12,7 @@ import {
   loadColVis, saveColVis, savePageSize, saveColOrder,
   loadColWidths, saveColWidths,
   groupHierarchyOptionsHtml,
-  loadMarkedMacs,
+  loadMarkedMacs, saveMarkedMacs,
 } from "./browse-utils.js";
 import { toIseCsv, downloadCsv } from "../csv.js";
 
@@ -270,7 +270,7 @@ export function initTable(container, state, api, cb) {
         ise_session:   `<td data-col="ise_session" class="ise-session-col">${iseSessionCellHtml(mac)}</td>`,
       };
       return `
-      <tr data-id="${esc(r.id)}"${state.dirtyIds.has(r.id) ? ' class="dirty"' : ''}>
+      <tr data-id="${esc(r.id)}" data-mac="${esc(normalizeMac(mac))}"${state.dirtyIds.has(r.id) ? ' class="dirty"' : ''}>
         <td class="select-cell"><input type="checkbox" class="row-select"${prevSelected.has(r.id) ? " checked" : ""} /></td>
         ${getOrderedColumns().map(c => cells[c.key] || "").join("")}
       </tr>`;
@@ -688,6 +688,22 @@ export function initTable(container, state, api, cb) {
       </div>`;
   }
 
+  // ── Fjern markering fra localStorage + DOM efter vellykket gem ──────────────
+  function unmarkSaved(id) {
+    const tr  = tbody.querySelector(`tr[data-id="${id}"]`);
+    const mac = tr?.dataset.mac
+             || normalizeMac(state.allRows?.find(r => r.id === id)?.mac || "");
+    if (!mac) return;
+    const marked = loadMarkedMacs();
+    if (!marked.delete(mac)) return;
+    saveMarkedMacs(marked);
+    tr?.querySelector(".marked-pin")?.remove();
+    if (marked.size === 0 && state.markedOnly) {
+      state.markedOnly = false;
+      container.querySelector('.mac-chip[data-chip="marked"]')?.classList.remove("active");
+    }
+  }
+
   async function runSaveLoop(ids) {
     let ok = 0, fail = 0;
     const savedEntries = [];
@@ -722,6 +738,7 @@ export function initTable(container, state, api, cb) {
       const coa = await cb.runCoaForIds(savedEntries);
       coaSummary = coaSummaryText(coa);
     }
+    savedEntries.forEach(e => unmarkSaved(e.id));
     await refreshRows(savedEntries.map((s) => s.id));
     const parts = [];
     if (ok)   parts.push(t("browse.saved_n").replace("{n}", ok));
@@ -742,6 +759,7 @@ export function initTable(container, state, api, cb) {
       const coa = await cb.runCoaForIds(savedEntries);
       coaSummary = coaSummaryText(coa);
     }
+    savedEntries.forEach(e => unmarkSaved(e.id));
     await refreshRows(savedEntries.map((s) => s.id));
     const parts = [];
     if (ok)   parts.push(t("browse.saved_n").replace("{n}", ok));
@@ -989,7 +1007,7 @@ export function initTable(container, state, api, cb) {
   wireColResize();
 
   return {
-    renderRows, refreshRows, buildSavePayload,
+    renderRows, refreshRows, buildSavePayload, unmarkSaved,
     getSelectedIds, updateDirtyUI, markDirty, updateSelectionUI,
     applyColVis, renderColVisMenu, applyFilter, load,
     applyAuthStatusColors, rolesChipsHtml, groupOptionsHtml,
