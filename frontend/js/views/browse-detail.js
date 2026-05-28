@@ -981,6 +981,8 @@ export function initDetail(container, state, api, cb) {
         const marked = loadMarkedMacs();
         if (marked.delete(savedMac)) {
           saveMarkedMacs(marked);
+          // Fjern pin direkte fra DOM — vent ikke på refreshRows
+          container.querySelector(`tr[data-id="${savedId}"] .marked-pin`)?.remove();
           if (marked.size === 0 && state.markedOnly) {
             state.markedOnly = false;
             container.querySelector('.mac-chip[data-chip="marked"]')?.classList.remove("active");

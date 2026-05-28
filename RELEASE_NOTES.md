@@ -4,6 +4,14 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.12.7] — 2026-05-28 — Fix: 📌-markering fjernes direkte fra tabellen ved gem
+
+> **Build:** 0558
+
+📌-badgen fjernes nu synkront og direkte fra tabelrækken i det øjeblik gem lykkes — uden at vente på en asynkron `refreshRows`-kæde. Det giver øjeblikkelig og pålidelig feedback.
+
+---
+
 ## [5.12.6] — 2026-05-28 — Fix: 📌-markering fjernes nu korrekt efter gem
 
 > **Build:** 0557

@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.12.7 build 0558] — 2026-05-28 — fix: 📌-pin fjernes direkte fra DOM ved gem
+
+Tidligere delegerede gem-handleren pin-fjernelsen til `refreshRows` via localStorage-opdatering. Det er en asynkron kæde med for mange led der kan bryde. Fix: straks efter `saveMarkedMacs` fjernes pinnen direkte fra `<tr data-id="..."> .marked-pin` i DOM — dette sker synkront *inden* `closeDetail()` og *inden* `refreshRows`. `refreshRows` beholder sin pin-logik som backup.
+
+- `frontend/js/views/browse-detail.js` — tilføjet direkte `container.querySelector('tr[data-id="..."] .marked-pin')?.remove()` efter `saveMarkedMacs`.
+- `version.json` — bump til 5.12.7 build 0558.
+
 ## [5.12.6 build 0557] — 2026-05-28 — fix: markering fjernes nu korrekt efter gem (robust MAC-opslag)
 
 Rodårsag: MAC-adressen til markerings-fjernelsen blev læst fra `#d-mac` DOM-elementets `textContent` på gem-tidspunktet. Afhængigt af browser-timing og evt. andre handlers der modificerer elementet, kunne værdien være tom eller forkert formateret.
