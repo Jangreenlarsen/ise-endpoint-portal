@@ -4,6 +4,14 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.12.6] — 2026-05-28 — Fix: 📌-markering fjernes nu korrekt efter gem
+
+> **Build:** 0557
+
+📌-markeringen forsvinder nu pålideligt fra MAC-cellen i Browse-tabellen efter et endpoint er gemt i redigeringsmodalen. Fejlen skyldtes at MAC-adressen blev aflæst fra DOM-elementet på gem-tidspunktet, hvor den i visse situationer var tom. MAC gemmes nu direkte i state når modalen åbner.
+
+---
+
 ## [5.12.5] — 2026-05-28 — Inaktiv-chip deaktiveres når pxGrid ikke har sessionsdata
 
 > **Build:** 0556

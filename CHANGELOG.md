@@ -3,6 +3,15 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.12.6 build 0557] — 2026-05-28 — fix: markering fjernes nu korrekt efter gem (robust MAC-opslag)
+
+Rodårsag: MAC-adressen til markerings-fjernelsen blev læst fra `#d-mac` DOM-elementets `textContent` på gem-tidspunktet. Afhængigt af browser-timing og evt. andre handlers der modificerer elementet, kunne værdien være tom eller forkert formateret.
+
+Fix: MAC gemmes i `state.detailCurrentMac = normalizeMac(d.mac)` når detail åbner (data er netop hentet fra API), og bruges direkte ved gem. `closeDetail()` nulstiller `state.detailCurrentMac = ""`.
+
+- `frontend/js/views/browse-detail.js` — `openDetail`: sætter `state.detailCurrentMac`; save-handler: bruger `state.detailCurrentMac` i stedet for DOM-læsning; `closeDetail`: nulstiller `state.detailCurrentMac`.
+- `version.json` — bump til 5.12.6 build 0557.
+
 ## [5.12.5 build 0556] — 2026-05-28 — feat: Inaktiv-chip deaktiveres når pxGrid ikke har sessionsdata
 
 "Inaktiv"-chippen er nu visuelt deaktiveret (grå, ikke-klikbar) når pxGrid ikke leverer sessionsdata. Tooltip forklarer årsagen. Hvis pxGrid-forbindelsen falder og chippen var aktiv, deaktiveres filteret automatisk og tabellen opdateres. Chippen re-enables automatisk når sessionsdata er tilgængeligt igen.

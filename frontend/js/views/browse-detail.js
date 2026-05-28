@@ -59,6 +59,7 @@ export function initDetail(container, state, api, cb) {
       }
 
       state.detailOriginalGroupId = d.group_id || "";
+      state.detailCurrentMac      = normalizeMac(d.mac || d.name || "");
       container.querySelector("#d-mac").textContent    = d.mac || d.name || "";
       container.querySelector("#d-vendor").textContent = d.vendor || "—";
       container.querySelector("#d-name").textContent   = d.name || "";
@@ -165,8 +166,9 @@ export function initDetail(container, state, api, cb) {
 
   function closeDetail() {
     detailOverlay.classList.add("hidden");
-    state.detailCurrentId = null;
-    detailMsg.innerHTML   = "";
+    state.detailCurrentId  = null;
+    state.detailCurrentMac = "";
+    detailMsg.innerHTML    = "";
     // Reset to Endpoint tab
     _switchTab("endpoint");
     // Clear dynamic content so next open reloads fresh
@@ -974,7 +976,7 @@ export function initDetail(container, state, api, cb) {
         custom_attributes: customAttrs,
       });
       const savedId    = state.detailCurrentId;
-      const savedMac   = normalizeMac(container.querySelector("#d-mac").textContent || "");
+      const savedMac   = state.detailCurrentMac || "";
       if (savedMac) {
         const marked = loadMarkedMacs();
         if (marked.delete(savedMac)) {
