@@ -4,6 +4,14 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.12.3] — 2026-05-28 — Fix: MAC-chips opdaterer nu tabellen automatisk
+
+> **Build:** 0554
+
+Klik på **Privat**, **Inaktiv** eller **📌 Markeret** under MAC-kolonnen opdaterer nu straks tabellen — også når intet filter var aktivt i forvejen. Browseren indlæser automatisk alle endpoints og filtrerer dem efter den valgte chip.
+
+---
+
 ## [5.12.2] — 2026-05-28 — Gem i Browse fjerner automatisk markering
 
 > **Build:** 0553

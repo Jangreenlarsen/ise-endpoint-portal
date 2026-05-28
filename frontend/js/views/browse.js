@@ -438,7 +438,7 @@ export async function renderBrowse(container) {
       chip.classList.toggle("active", state[key]);
       state.currentPage = 1;
       filterAPI.persistFilters?.();
-      cb.applyFilter?.();
+      cb.onFilterChange?.();
     });
   });
 
