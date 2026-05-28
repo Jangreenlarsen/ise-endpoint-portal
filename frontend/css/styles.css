@@ -3585,3 +3585,36 @@ details[open] .rn-summary::before { transform: rotate(90deg); }
 [data-theme="midnight"] .lc-table tbody tr:hover { background: #0d2137; }
 [data-theme="midnight"] .lc-browse-link { color: #30363d; }
 [data-theme="midnight"] .lc-table tbody tr:hover .lc-browse-link { color: #58a6ff; }
+
+/* Lifecycle — marked rows + selection controls */
+.lc-table tbody tr.lc-marked { background: #fef9c3; }
+.lc-table tbody tr.lc-marked:hover { background: #fef08a; }
+.lc-select-cell { width: 32px; text-align: center; padding: 0 6px; }
+.lc-pin { font-size: 0.8em; margin-left: 4px; }
+.lc-mark-btn { background: #2563eb; color: #fff; border-color: #2563eb; }
+.lc-mark-btn:hover:not(:disabled) { background: #1d4ed8; }
+.lc-mark-btn:disabled { opacity: 0.45; cursor: default; }
+.lc-clear-marks { border-color: #f59e0b; color: #92400e; }
+[data-theme="dark"] .lc-table tbody tr.lc-marked { background: #422006; }
+[data-theme="dark"] .lc-table tbody tr.lc-marked:hover { background: #4d2d07; }
+[data-theme="dark"] .lc-clear-marks { border-color: #d97706; color: #fcd34d; }
+[data-theme="midnight"] .lc-table tbody tr.lc-marked { background: #2d1a00; }
+[data-theme="midnight"] .lc-table tbody tr.lc-marked:hover { background: #3d2300; }
+
+/* Browse — MAC type filter chips */
+.mac-type-chips { display: flex; gap: 4px; margin-top: 3px; }
+.mac-chip { font-size: 0.7rem; padding: 1px 6px; border-radius: 10px; cursor: pointer; border: 1px solid #d1d5db; background: #f9fafb; color: #374151; line-height: 1.4; transition: background .12s, color .12s, border-color .12s; white-space: nowrap; }
+.mac-chip:hover { background: #e5e7eb; border-color: #9ca3af; }
+.mac-chip.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+[data-theme="dark"] .mac-chip { background: #374151; color: #e5e7eb; border-color: #4b5563; }
+[data-theme="dark"] .mac-chip:hover { background: #4b5563; }
+[data-theme="dark"] .mac-chip.active { background: #3b82f6; color: #fff; border-color: #3b82f6; }
+[data-theme="midnight"] .mac-chip { background: #21262d; color: #c9d1d9; border-color: #30363d; }
+[data-theme="midnight"] .mac-chip:hover { background: #30363d; }
+[data-theme="midnight"] .mac-chip.active { background: #1f6feb; color: #fff; border-color: #1f6feb; }
+
+/* Browse — marked-pin badge + marked-filter toolbar button */
+.marked-pin { font-size: 0.75em; margin-left: 4px; vertical-align: middle; cursor: default; }
+#marked-filter-btn.active-toggle { background: #fef9c3; border-color: #f59e0b; color: #92400e; }
+[data-theme="dark"] #marked-filter-btn.active-toggle { background: #422006; border-color: #d97706; color: #fcd34d; }
+[data-theme="midnight"] #marked-filter-btn.active-toggle { background: #2d1a00; border-color: #d97706; color: #fcd34d; }

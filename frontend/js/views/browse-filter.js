@@ -11,6 +11,7 @@ import {
   loadBrowseFilters, saveBrowseFilters,
   loadColVis, saveColVis,
   savePageSize,
+  loadMarkedMacs,
 } from "./browse-utils.js";
 
 export function initFilter(container, state, api, cb) {
@@ -99,7 +100,8 @@ export function initFilter(container, state, api, cb) {
       || (authStatusSelect && authStatusSelect.value !== "all")
       || state.sortCol !== null
       || !!state.fullTextQ
-      || firstSeenAnySet();
+      || firstSeenAnySet()
+      || state.macPrivate || state.macInactive || state.markedOnly;
   }
 
   function anyFilterActive() {
@@ -129,6 +131,25 @@ export function initFilter(container, state, api, cb) {
         const ts = r.first_seen_at || 0;
         return ts >= fromTs && ts <= toTs;
       });
+    }
+    // MAC-type chips: Privat (lokalt administreret) og Inaktiv (ingen RADIUS-session)
+    if (state.macPrivate) {
+      rows = rows.filter((r) => {
+        const first = parseInt((normalizeMac(r.mac || r.name || "").split(":")[0] || ""), 16);
+        return !isNaN(first) && (first & 0x02) !== 0;
+      });
+    }
+    if (state.macInactive) {
+      const macs = state.activeSessionMacs || (state.pxgridLive && state.pxgridSessionMacs) || null;
+      rows = rows.filter((r) => {
+        const mac = normalizeMac(r.mac || r.name || "");
+        return !macs || !macs.has(mac);
+      });
+    }
+    // Kun markerede (fra Livscyklus)
+    if (state.markedOnly) {
+      const marked = loadMarkedMacs();
+      rows = rows.filter((r) => marked.has(normalizeMac(r.mac || r.name || "")));
     }
     if (state.sortCol) {
       const colDef = getColumns().find((c) => c.key === state.sortCol);

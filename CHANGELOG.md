@@ -3,6 +3,20 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.12.0 build 0551] — 2026-05-28 — feat: livscyklus-markering og MAC-filter-chips i Browse
+
+Ny workflow: fra Livscyklus-visningen kan admin afkrydse enkelt- eller alle stale endpoints og klikke "Marker valgte →". MAC-adresserne gemmes i `localStorage` (`ise_portal_marked_macs`) og Browse åbnes automatisk med "Vis kun markerede"-filter aktivt. Allerede-markerede endpoints viser 📌-ikon i Livscyklus og i Browse-tabellens MAC-celle.
+
+Browse-filterrækken (MAC-kolonne) har fået to toggle-chips: "Privat" (LAA-detektion via bit 1 i første octet) og "Inaktiv" (endpoint ikke set i aktiv pxGrid-session). Begge chips er en del af den eksisterende filterpipeline og aktiveres i `needsFilterMode()`.
+
+- `frontend/js/views/browse-utils.js` — tilføjet `MARKED_MACS_KEY`, `loadMarkedMacs`, `saveMarkedMacs`, `addMarkedMacs`, `clearMarkedMacs`.
+- `frontend/js/views/lifecycle.js` — komplet omskrivning: checkboxkolonne, "Vælg alle"-header-checkbox, 📌-ikon på allerede-markerede rækker, gul highlight (`lc-marked`), "Marker valgte (N) →"-knap, "Ryd markeringer"-knap, klik på række/↗-knap åbner Browse.
+- `frontend/js/views/browse.js` — tilføjet `macPrivate`, `macInactive`, `markedOnly` til state; MAC-type-chips i filter-th; `#marked-filter-btn`-toolbar-knap; auto-aktivering af markedOnly-filter via `sessionStorage.browse_marked_filter`.
+- `frontend/js/views/browse-table.js` — `_markedMacs`-cache opdateres ved hver `renderRows`; 📌-badge i MAC-celle; `load()` understøtter `{ silent }` option (ingen loading-spinner).
+- `frontend/js/views/browse-filter.js` — `needsFilterMode()` inkluderer `macPrivate`, `macInactive`, `markedOnly`; tre nye filter-blokke i `applyFiltersToRows`.
+- `frontend/css/styles.css` — tilføjet styles for `.lc-marked`, `.lc-select-cell`, `.lc-pin`, `.lc-mark-btn`, `.lc-clear-marks`, `.mac-type-chips`, `.mac-chip` (inkl. dark/midnight), `.marked-pin`, `#marked-filter-btn.active-toggle`.
+- `version.json` — bump til 5.12.0 build 0551.
+
 ## [5.11.6 build 0550] — 2026-05-27 — fix: kolonne-flips og selektion-tab ved pxGrid baggrunds-reload
 
 Rodårsag: MnT beriger pxGrid-sessioner hvert 5. min, hvilket sender `endpoint_changed`-events. `scheduleEndpointReload()` kaldte herefter `cb.load()` (fuld reload) som satte `tbody.innerHTML = <indlæser>` — dette forårsagede kolonne-layout-thrash (flip) og tabte alle checkboks-selektioner fordi `renderRows` læste prevSelected fra den allerede-ryddede tbody.

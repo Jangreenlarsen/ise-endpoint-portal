@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 import { api } from "../api.js";
 import { auth } from "../auth.js";
-import { esc } from "./browse-utils.js";
+import { esc, normalizeMac, addMarkedMacs, loadMarkedMacs, clearMarkedMacs } from "./browse-utils.js";
 
 function fmtAge(s) {
   if (s === null || s === undefined) return "—";
@@ -58,23 +58,33 @@ export async function renderLifecycle(container) {
       return;
     }
 
-    const rows = data.stale.map((ep) => `
-      <tr class="lc-ep-row" data-mac="${esc(ep.mac)}" title="Klik for at åbne i Browse / Edit">
-        <td><code class="lc-mac">${esc(ep.mac)}</code></td>
+    const currentMarked = loadMarkedMacs();
+    const hasMarked     = currentMarked.size > 0;
+
+    const rows = data.stale.map((ep) => {
+      const normMac  = normalizeMac(ep.mac);
+      const isMarked = currentMarked.has(normMac);
+      return `
+      <tr class="lc-ep-row${isMarked ? " lc-marked" : ""}" data-mac="${esc(ep.mac)}" data-norm-mac="${esc(normMac)}">
+        <td class="lc-select-cell" title="Marker til behandling i Browse">
+          <input type="checkbox" class="lc-cb"${isMarked ? " checked" : ""} />
+        </td>
+        <td><code class="lc-mac">${esc(ep.mac)}${isMarked ? ' <span class="lc-pin" title="Markeret til behandling">📌</span>' : ""}</code></td>
         <td>${esc(ep.group_name)}</td>
         <td>${esc(ep.profile)}</td>
         <td>${esc(ep.owner)}</td>
         <td>${fmtFirstSeen(ep.first_seen_at)}</td>
         <td class="lc-age">${fmtAge(ep.cache_age_s)}</td>
-        <td class="lc-browse-link">↗</td>
-      </tr>`).join("");
+        <td class="lc-browse-link lc-open-btn" title="Åbn i Browse / Edit">↗</td>
+      </tr>`;
+    }).join("");
 
     container.innerHTML = `
       <div class="view-section">
         <h2>Livscyklus — inaktive endpoints</h2>
         <p class="hint" style="margin-bottom:12px;">
           Endpoints der ikke har haft nogen portal-aktivitet (opret / rediger / slet) i det valgte tidsrum.
-          Klik på en række for at åbne endpointet direkte i Browse / Edit.
+          Afkryds rækker og klik <strong>Marker →</strong> for at fremhæve dem i Browse/Edit til videre behandling.
         </p>
         <div class="lc-controls">
           <label>Inaktiv i mere end:
@@ -90,6 +100,10 @@ export async function renderLifecycle(container) {
           ${data.stale_count > 0
             ? `<button id="lc-export" class="btn-secondary">Eksportér CSV</button>`
             : ""}
+          <button id="lc-mark-btn" class="btn-primary lc-mark-btn" disabled>📌 Marker valgte (0) →</button>
+          ${hasMarked
+            ? `<button id="lc-clear-marks" class="btn-secondary lc-clear-marks" title="${currentMarked.size} endpoint(s) markeret i Browse">Ryd markeringer (${currentMarked.size})</button>`
+            : ""}
         </div>
 
         <p class="lc-summary">
@@ -103,6 +117,9 @@ export async function renderLifecycle(container) {
                <table class="lc-table">
                  <thead>
                    <tr>
+                     <th class="lc-select-cell">
+                       <input type="checkbox" id="lc-select-all" title="Vælg alle" />
+                     </th>
                      <th>MAC-adresse</th>
                      <th>Endpoint-gruppe</th>
                      <th>Profil</th>
@@ -118,6 +135,57 @@ export async function renderLifecycle(container) {
         }
       </div>`;
 
+    // Helpers
+    function getCheckedMacs() {
+      return Array.from(container.querySelectorAll(".lc-cb:checked"))
+        .map((cb) => cb.closest("tr")?.dataset.normMac)
+        .filter(Boolean);
+    }
+    function updateMarkBtn() {
+      const n   = getCheckedMacs().length;
+      const btn = document.getElementById("lc-mark-btn");
+      if (btn) {
+        btn.disabled     = n === 0;
+        btn.textContent  = `📌 Marker valgte (${n}) →`;
+      }
+    }
+
+    // Vælg alle
+    const selectAllCb = document.getElementById("lc-select-all");
+    if (selectAllCb) {
+      selectAllCb.addEventListener("change", () => {
+        container.querySelectorAll(".lc-cb").forEach((cb) => { cb.checked = selectAllCb.checked; });
+        updateMarkBtn();
+      });
+    }
+
+    container.querySelectorAll(".lc-cb").forEach((cb) => {
+      cb.addEventListener("change", () => {
+        updateMarkBtn();
+        if (selectAllCb) {
+          const all   = container.querySelectorAll(".lc-cb");
+          const checked = container.querySelectorAll(".lc-cb:checked");
+          selectAllCb.indeterminate = checked.length > 0 && checked.length < all.length;
+          selectAllCb.checked       = checked.length === all.length;
+        }
+      });
+    });
+
+    // Marker valgte → gem i localStorage og gå til Browse med markeret filter aktivt
+    document.getElementById("lc-mark-btn")?.addEventListener("click", () => {
+      const macs = getCheckedMacs();
+      if (!macs.length) return;
+      addMarkedMacs(macs);
+      sessionStorage.setItem("browse_marked_filter", "1");
+      location.hash = "#/browse";
+    });
+
+    // Ryd markeringer
+    document.getElementById("lc-clear-marks")?.addEventListener("click", () => {
+      clearMarkedMacs();
+      load();
+    });
+
     document.getElementById("lc-days").addEventListener("change", (e) => {
       days = parseInt(e.target.value, 10);
       load();
@@ -129,9 +197,22 @@ export async function renderLifecycle(container) {
       exportBtn.addEventListener("click", () => exportCsv(data.stale, days));
     }
 
-    // Klik på række → gem MAC i sessionStorage og naviger til Browse/Edit
+    // Klik på ↗ knap → åbn i Browse
+    container.querySelectorAll(".lc-open-btn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const row = btn.closest("tr");
+        if (row) {
+          sessionStorage.setItem("browse_open_ep", row.dataset.mac);
+          location.hash = "#/browse";
+        }
+      });
+    });
+
+    // Klik på rækken (ikke checkbox/knap) → åbn i Browse
     container.querySelectorAll(".lc-ep-row").forEach((row) => {
-      row.addEventListener("click", () => {
+      row.addEventListener("click", (e) => {
+        if (e.target.closest(".lc-cb, .lc-open-btn, input")) return;
         sessionStorage.setItem("browse_open_ep", row.dataset.mac);
         location.hash = "#/browse";
       });
@@ -159,9 +240,7 @@ function exportCsv(rows, days) {
 }
 
 function csvCell(v) {
-  const s = (v ?? "").toString();
-  if (s.includes(",") || s.includes('"') || s.includes("\n")) {
-    return `"${s.replace(/"/g, '""')}"`;
-  }
-  return s;
+  const s = String(v ?? "");
+  return s.includes(",") || s.includes('"') || s.includes("\n")
+    ? `"${s.replace(/"/g, '""')}"` : s;
 }

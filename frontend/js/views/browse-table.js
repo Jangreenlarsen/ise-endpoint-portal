@@ -12,10 +12,13 @@ import {
   loadColVis, saveColVis, savePageSize, saveColOrder,
   loadColWidths, saveColWidths,
   groupHierarchyOptionsHtml,
+  loadMarkedMacs,
 } from "./browse-utils.js";
 import { toIseCsv, downloadCsv } from "../csv.js";
 
 export function initTable(container, state, api, cb) {
+  let _markedMacs = loadMarkedMacs();
+
   const tbody          = container.querySelector("#tbody");
   const msg            = container.querySelector("#msg");
   const countEl        = container.querySelector("#count");
@@ -225,6 +228,7 @@ export function initTable(container, state, api, cb) {
 
   // ── Row rendering ────────────────────────────────────────────────────────
   function renderRows(rows) {
+    _markedMacs = loadMarkedMacs();
     // Bevar selektion på tværs af genrender (pxGrid auto-refresh, manuel refresh, osv.)
     const prevSelected = new Set(
       Array.from(tbody.querySelectorAll(".row-select:checked"))
@@ -243,7 +247,7 @@ export function initTable(container, state, api, cb) {
       const mac   = r.mac || r.name;
       const nasPt = getNasPlatformType(mac);
       const cells = {
-        mac:           `<td data-col="mac" class="mac-cell${r.cache_stale ? " cache-stale" : ""}"><a href="#" class="mac-link" title="${t("browse.mac_link_title")}">${macDisplayHtml(mac)}</a>${r.cache_stale ? `<span class="stale-badge" title="${t("browse.stale_badge_title")}">⏱</span>` : ""}</td>`,
+        mac:           `<td data-col="mac" class="mac-cell${r.cache_stale ? " cache-stale" : ""}"><a href="#" class="mac-link" title="${t("browse.mac_link_title")}">${macDisplayHtml(mac)}</a>${r.cache_stale ? `<span class="stale-badge" title="${t("browse.stale_badge_title")}">⏱</span>` : ""}${_markedMacs.has(normalizeMac(mac)) ? `<span class="marked-pin" title="Markeret fra Livscyklus">📌</span>` : ""}</td>`,
         auth_status:   `<td data-col="auth_status" class="auth-status-col"></td>`,
         vendor:        `<td data-col="vendor" class="vendor-cell-td">${esc(r.vendor || "")}</td>`,
         group_name:    `<td data-col="group_name"><select class="grp-select">${groupOptionsHtml(r.group_id)}</select></td>`,

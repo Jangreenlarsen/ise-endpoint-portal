@@ -61,6 +61,26 @@ export function saveColOrder(order) {
   _syncColPrefs();
 }
 
+export const MARKED_MACS_KEY = "ise_portal_marked_macs";
+export function loadMarkedMacs() {
+  try {
+    const raw = localStorage.getItem(MARKED_MACS_KEY);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch { return new Set(); }
+}
+export function saveMarkedMacs(set) {
+  try { localStorage.setItem(MARKED_MACS_KEY, JSON.stringify([...set])); } catch { /* ignore */ }
+}
+export function addMarkedMacs(macs) {
+  const set = loadMarkedMacs();
+  for (const m of macs) set.add(m);
+  saveMarkedMacs(set);
+  return set;
+}
+export function clearMarkedMacs() {
+  try { localStorage.removeItem(MARKED_MACS_KEY); } catch { /* ignore */ }
+}
+
 export const COLWIDTHS_KEY = "ise_portal_browse_colwidths";
 export function loadColWidths() {
   try {

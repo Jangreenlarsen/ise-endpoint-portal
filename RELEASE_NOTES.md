@@ -4,6 +4,32 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.12.0] — 2026-05-28 — Livscyklus-markering og MAC-filter-chips i Browse
+
+> **Build:** 0551
+
+### Livscyklus → Browse markerings-workflow
+
+Livscyklus-visningen (Monitoring → Livscyklus) viser endpoints der ikke har haft portal-aktivitet i det valgte tidsrum. Det er nu muligt at:
+
+1. **Afkrydse individuelle endpoints** — eller bruge "Vælg alle"-checkboksen i kolonneheaderen.
+2. Klikke **"📌 Marker valgte (N) →"** — MAC-adresserne gemmes i browseren og Browse åbnes automatisk.
+3. I Browse aktiveres **"Vis kun markerede"**-filtret automatisk — kun de markerede endpoints vises.
+4. Redigér dem én for én via ↗-linket eller klik direkte på rækken.
+
+Allerede-markerede endpoints viser et 📌-ikon i Livscyklus og i Browse-tabellens MAC-celle, så det er tydeligt hvad der er i kø. Knappen "Ryd markeringer" nulstiller listen.
+
+### MAC-filter-chips i Browse (MAC-kolonne)
+
+Under søgefeltet i MAC-kolonnen er der tilføjet to toggle-chips:
+
+- **Privat** — viser kun Private/LAA MAC-adresser (Locally Administered Address, bit 1 sat i første octet). Nyttigt til at identificere iOS/Android-enheder med tilfældig MAC.
+- **Inaktiv** — viser kun endpoints der **ikke** ses i den aktive pxGrid-session (ikke tilkoblet netværket lige nu).
+
+Begge chips virker i kombination med øvrige filtre (tekst-søgning, gruppe-filter osv.).
+
+---
+
 ## [5.11.6] — 2026-05-27 — Fix: Kolonne-flip og selektion-tab ved periodisk baggrunds-opdatering
 
 > **Build:** 0550

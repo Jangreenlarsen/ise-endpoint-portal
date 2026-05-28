@@ -10,6 +10,7 @@ import {
   applyBackendColPrefs, setColPrefsSyncFn, syncColPrefsNow,
   normalizeMac, fmtAgo, coaSummaryText,
   groupHierarchyOptionsHtml,
+  loadMarkedMacs, clearMarkedMacs,
 } from "./browse-utils.js";
 import { initFilter } from "./browse-filter.js";
 import { initTable  } from "./browse-table.js";
@@ -46,6 +47,8 @@ export async function renderBrowse(container) {
                     title="${t("browse.tooltip_columns")}">${t("browse.btn_columns")}</button>
             <div id="col-vis-menu" class="col-vis-menu hidden"></div>
           </div>
+          <button id="marked-filter-btn" class="secondary small hidden" type="button"
+                  title="Vis kun endpoints markeret fra Livscyklus">📌 Markerede</button>
         </div>
         <span class="toolbar-divider"></span>
         <div class="toolbar-group" title="${t("browse.tooltip_filters")}">
@@ -124,6 +127,12 @@ export async function renderBrowse(container) {
                             <input type="text" id="first-seen-to-t"   class="first-seen-time" maxlength="5" placeholder="HH:MM" title="${t("filter.first_seen_to")}" />
                           </div>
                         </div>`
+                    : c.key === "mac"
+                      ? `<input type="text" class="col-filter-input" data-col="mac" placeholder="…" />
+                         <div class="mac-type-chips">
+                           <button type="button" class="mac-chip" data-chip="private" title="Vis kun privat/lokalt administreret MAC (LAA)">Privat</button>
+                           <button type="button" class="mac-chip" data-chip="inactive" title="Vis kun endpoints uden aktiv RADIUS-session">Inaktiv</button>
+                         </div>`
                       : `<input type="text" class="col-filter-input" data-col="${c.key}" placeholder="…" />`}
                 </th>`).join("")}
             </tr>
@@ -396,6 +405,7 @@ export async function renderBrowse(container) {
     detailCurrentId: null, detailOriginalGroupId: "",
     savedViews: [], activeViewId: null,
     colVis,
+    macPrivate: false, macInactive: false, markedOnly: false,
     pxgridLive: false, pxgridSessionMacs: null, pxgridSessionData: null,
     pxgridLastEventTs: 0, pxgridEndpointEventCount: 0, pxgridLastEndpointEventTs: 0,
   };
@@ -418,6 +428,53 @@ export async function renderBrowse(container) {
   const tableAPI  = initTable(container, state, api, cb);
   const detailAPI = initDetail(container, state, api, cb);
   initBulk(container, state, api, cb);
+
+  // ── MAC-type filter chips (Privat / Inaktiv) ──────────────────────────────
+  container.querySelectorAll(".mac-chip").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      const key = chip.dataset.chip === "private" ? "macPrivate" : "macInactive";
+      state[key] = !state[key];
+      chip.classList.toggle("active", state[key]);
+      state.currentPage = 1;
+      filterAPI.persistFilters?.();
+      cb.applyFilter?.();
+    });
+  });
+
+  // ── Markerede endpoints toolbar-knap ─────────────────────────────────────
+  function updateMarkedBtn() {
+    const btn = container.querySelector("#marked-filter-btn");
+    if (!btn) return;
+    const n = loadMarkedMacs().size;
+    if (n === 0) {
+      state.markedOnly = false;
+      btn.classList.add("hidden");
+      btn.classList.remove("active-toggle");
+    } else {
+      btn.classList.remove("hidden");
+      btn.textContent = `📌 Markerede (${n})`;
+      btn.classList.toggle("active-toggle", state.markedOnly);
+    }
+  }
+  cb.updateMarkedBtn = updateMarkedBtn;
+
+  container.querySelector("#marked-filter-btn")?.addEventListener("click", () => {
+    const n = loadMarkedMacs().size;
+    if (n === 0) return;
+    state.markedOnly = !state.markedOnly;
+    updateMarkedBtn();
+    state.currentPage = 1;
+    cb.applyFilter?.();
+  });
+
+  // Aktivér markeret-filter automatisk hvis vi kom fra Livscyklus
+  if (sessionStorage.getItem("browse_marked_filter")) {
+    sessionStorage.removeItem("browse_marked_filter");
+    if (loadMarkedMacs().size > 0) {
+      state.markedOnly = true;
+    }
+  }
+  updateMarkedBtn();
 
   // ── CoA helpers (needed by table + detail) ────────────────────────────────
   async function runCoaForIds(entries) {
