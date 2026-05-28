@@ -5,7 +5,7 @@
 
 import { auth } from "../auth.js";
 import { t } from "../i18n.js";
-import { esc, fmtDateTime, optionsHtml, normalizeMac, groupPathParts } from "./browse-utils.js";
+import { esc, fmtDateTime, optionsHtml, normalizeMac, groupPathParts, loadMarkedMacs, saveMarkedMacs } from "./browse-utils.js";
 
 function loadFrontendPrefs() {
   try { return JSON.parse(localStorage.getItem("ise_portal_prefs") || "{}"); }
@@ -974,6 +974,17 @@ export function initDetail(container, state, api, cb) {
         custom_attributes: customAttrs,
       });
       const savedId    = state.detailCurrentId;
+      const savedMac   = normalizeMac(container.querySelector("#d-mac").textContent || "");
+      if (savedMac) {
+        const marked = loadMarkedMacs();
+        if (marked.delete(savedMac)) {
+          saveMarkedMacs(marked);
+          if (marked.size === 0 && state.markedOnly) {
+            state.markedOnly = false;
+            container.querySelector('.mac-chip[data-chip="marked"]')?.classList.remove("active");
+          }
+        }
+      }
       const platformType = container.querySelector("#d-platformtype").value;
       let coaSummary = "";
       if (state.coaOnSave) {

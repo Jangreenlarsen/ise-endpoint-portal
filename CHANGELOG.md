@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.12.2 build 0553] — 2026-05-28 — feat: gem i Browse fjerner automatisk markering
+
+Efter vellykket gem i Browse/Edit-modal fjernes endpointets MAC fra den markerede sæt i localStorage. Hvis sættet herefter er tomt og "📌 Markeret"-chippen er aktiv, deaktiveres den automatisk (så tabellen ikke viser tomme resultater).
+
+- `frontend/js/views/browse-detail.js` — tilføjet `loadMarkedMacs`, `saveMarkedMacs` til import; efter `api.updateEndpoint` success: fjern savedMac fra marked-sæt, nulstil chip + state.markedOnly hvis sæt bliver tomt.
+- `version.json` — bump til 5.12.2 build 0553.
+
 ## [5.12.1 build 0552] — 2026-05-28 — fix: flyt markeret-filter fra toolbar til MAC-chip
 
 Toolbar-knappen "📌 Markerede" er fjernet. I stedet er der tilføjet en tredje chip "📌 Markeret" direkte under MAC-kolonnen i filterpanelet — på linje med "Privat" og "Inaktiv". Chip-handleren er udvidet til at håndtere alle tre chips. CSS-regler for `#marked-filter-btn.active-toggle` er fjernet.

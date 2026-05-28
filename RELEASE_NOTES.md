@@ -4,6 +4,14 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.12.2] — 2026-05-28 — Gem i Browse fjerner automatisk markering
+
+> **Build:** 0553
+
+Når et markeret endpoint gemmes i Browse/Edit-modalen, fjernes 📌-markeringen automatisk. Hvis der ikke er flere markerede endpoints, slukkes "📌 Markeret"-chippen også automatisk, så tabellen ikke viser tomme resultater.
+
+---
+
 ## [5.12.1] — 2026-05-28 — Fix: Markeret-filter flyttet til MAC-chip
 
 > **Build:** 0552
