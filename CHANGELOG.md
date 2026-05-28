@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.12.1 build 0552] — 2026-05-28 — fix: flyt markeret-filter fra toolbar til MAC-chip
+
+Toolbar-knappen "📌 Markerede" er fjernet. I stedet er der tilføjet en tredje chip "📌 Markeret" direkte under MAC-kolonnen i filterpanelet — på linje med "Privat" og "Inaktiv". Chip-handleren er udvidet til at håndtere alle tre chips. CSS-regler for `#marked-filter-btn.active-toggle` er fjernet.
+
+- `frontend/js/views/browse.js` — fjernet `#marked-filter-btn`-toolbar-HTML og `updateMarkedBtn()`; tilføjet "📌 Markeret"-chip; chip-handler dækker nu `private`/`inactive`/`marked`; auto-aktivering fra sessionStorage sætter chippen aktiv.
+- `frontend/css/styles.css` — fjernet `#marked-filter-btn.active-toggle`-regler.
+- `version.json` — bump til 5.12.1 build 0552.
+
 ## [5.12.0 build 0551] — 2026-05-28 — feat: livscyklus-markering og MAC-filter-chips i Browse
 
 Ny workflow: fra Livscyklus-visningen kan admin afkrydse enkelt- eller alle stale endpoints og klikke "Marker valgte →". MAC-adresserne gemmes i `localStorage` (`ise_portal_marked_macs`) og Browse åbnes automatisk med "Vis kun markerede"-filter aktivt. Allerede-markerede endpoints viser 📌-ikon i Livscyklus og i Browse-tabellens MAC-celle.

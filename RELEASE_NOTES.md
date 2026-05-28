@@ -4,6 +4,14 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.12.1] — 2026-05-28 — Fix: Markeret-filter flyttet til MAC-chip
+
+> **Build:** 0552
+
+"Vis kun markerede"-knappen er fjernet fra den øverste toolbar. I stedet er der nu tre chips under MAC-kolonnen i filterpanelet: **Privat**, **Inaktiv** og **📌 Markeret** — alle fungerer ens og kan kombineres frit.
+
+---
+
 ## [5.12.0] — 2026-05-28 — Livscyklus-markering og MAC-filter-chips i Browse
 
 > **Build:** 0551

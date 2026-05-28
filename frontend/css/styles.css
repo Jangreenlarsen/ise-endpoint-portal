@@ -3613,8 +3613,5 @@ details[open] .rn-summary::before { transform: rotate(90deg); }
 [data-theme="midnight"] .mac-chip:hover { background: #30363d; }
 [data-theme="midnight"] .mac-chip.active { background: #1f6feb; color: #fff; border-color: #1f6feb; }
 
-/* Browse — marked-pin badge + marked-filter toolbar button */
+/* Browse — marked-pin badge */
 .marked-pin { font-size: 0.75em; margin-left: 4px; vertical-align: middle; cursor: default; }
-#marked-filter-btn.active-toggle { background: #fef9c3; border-color: #f59e0b; color: #92400e; }
-[data-theme="dark"] #marked-filter-btn.active-toggle { background: #422006; border-color: #d97706; color: #fcd34d; }
-[data-theme="midnight"] #marked-filter-btn.active-toggle { background: #2d1a00; border-color: #d97706; color: #fcd34d; }
