@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.12.5 build 0556] — 2026-05-28 — feat: Inaktiv-chip deaktiveres når pxGrid ikke har sessionsdata
+
+"Inaktiv"-chippen er nu visuelt deaktiveret (grå, ikke-klikbar) når pxGrid ikke leverer sessionsdata. Tooltip forklarer årsagen. Hvis pxGrid-forbindelsen falder og chippen var aktiv, deaktiveres filteret automatisk og tabellen opdateres. Chippen re-enables automatisk når sessionsdata er tilgængeligt igen.
+
+- `frontend/js/views/browse.js` — tilføjet `updateInactiveChip()` der sætter `chip.disabled` og tooltip ud fra `pxgridLive`/`activeSessionMacs`; kaldt fra `updatePxGridSourceBadge()`.
+- `frontend/css/styles.css` — tilføjet `.mac-chip:disabled` og `:disabled:hover` styles for light/dark/midnight.
+- `version.json` — bump til 5.12.5 build 0556.
+
 ## [5.12.4 build 0555] — 2026-05-28 — fix: 📌-badge forsvinder nu fra rækken efter gem
 
 `refreshRows` opdaterede MAC-cellen delvist (kun `.mac-link`-indholdet) men fjernede ikke `.marked-pin`-`<span>`-badgen som sidder udenfor linket. Fix: `refreshRows` genindlæser nu marked-sættet fra localStorage og fjerner/tilføjer `.marked-pin` korrekt for den opdaterede række.

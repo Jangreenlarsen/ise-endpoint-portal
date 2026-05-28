@@ -4,6 +4,14 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.12.5] — 2026-05-28 — Inaktiv-chip deaktiveres når pxGrid ikke har sessionsdata
+
+> **Build:** 0556
+
+**Inaktiv**-chippen er nu grå og ikke-klikbar når pxGrid ikke er forbundet eller endnu ikke har leveret sessionsdata. Et forklarende tooltip vises. Hvis pxGrid-forbindelsen falder mens chippen er aktiv, deaktiveres filteret automatisk og tabellen opdateres. Chippen genaktiveres automatisk når sessionsdata er tilgængeligt igen.
+
+---
+
 ## [5.12.4] — 2026-05-28 — Fix: 📌-markering forsvinder nu fra rækken efter gem
 
 > **Build:** 0555

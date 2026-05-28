@@ -469,6 +469,22 @@ export async function renderBrowse(container) {
     return { ok, fail, failures, disconnects, reauths };
   }
 
+  // ── Inaktiv-chip: disables når pxGrid ikke leverer sessionsdata ──────────
+  function updateInactiveChip() {
+    const chip = container.querySelector('.mac-chip[data-chip="inactive"]');
+    if (!chip) return;
+    const hasData = !!(state.pxgridLive && state.pxgridSessionMacs) || !!state.activeSessionMacs;
+    chip.disabled = !hasData;
+    chip.title = hasData
+      ? "Vis kun endpoints uden aktiv RADIUS-session"
+      : "Ikke tilgængelig — ingen sessionsdata fra pxGrid";
+    if (!hasData && state.macInactive) {
+      state.macInactive = false;
+      chip.classList.remove("active");
+      cb.onFilterChange?.();
+    }
+  }
+
   // ── pxGrid / session-status ───────────────────────────────────────────────
   function updatePxGridSourceBadge() {
     const el = container.querySelector("#pxgrid-source-badge");
@@ -497,6 +513,7 @@ export async function renderBrowse(container) {
       el.innerHTML  = t("browse.pxgrid_inactive").replace("{ep}", epPart);
       el.style.background = "#e5e7eb"; el.style.color = "#374151";
     }
+    updateInactiveChip();
   }
 
   async function refreshActiveSessionMacs(force = false) {
