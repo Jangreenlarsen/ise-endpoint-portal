@@ -4,6 +4,14 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.12.9] — 2026-05-28 — Fjernet Inaktiv-chip fra MAC-kolonne
+
+> **Build:** 0560
+
+"Inaktiv"-filteret er fjernet fra MAC-kolonnen — session-status vises allerede i Auth-Status-kolonnen. MAC-kolonnen har nu to chips: **Privat** og **📌 Markeret**.
+
+---
+
 ## [5.12.8] — 2026-05-28 — Fix: Markering fjernes nu korrekt ved alle gem-operationer
 
 > **Build:** 0559

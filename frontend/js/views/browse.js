@@ -129,7 +129,6 @@ export async function renderBrowse(container) {
                       ? `<input type="text" class="col-filter-input" data-col="mac" placeholder="…" />
                          <div class="mac-type-chips">
                            <button type="button" class="mac-chip" data-chip="private" title="Vis kun privat/lokalt administreret MAC (LAA)">Privat</button>
-                           <button type="button" class="mac-chip" data-chip="inactive" title="Vis kun endpoints uden aktiv RADIUS-session">Inaktiv</button>
                            <button type="button" class="mac-chip" data-chip="marked" title="Vis kun endpoints markeret fra Livscyklus">📌 Markeret</button>
                          </div>`
                       : `<input type="text" class="col-filter-input" data-col="${c.key}" placeholder="…" />`}
@@ -404,7 +403,7 @@ export async function renderBrowse(container) {
     detailCurrentId: null, detailOriginalGroupId: "",
     savedViews: [], activeViewId: null,
     colVis,
-    macPrivate: false, macInactive: false, markedOnly: false,
+    macPrivate: false, markedOnly: false,
     pxgridLive: false, pxgridSessionMacs: null, pxgridSessionData: null,
     pxgridLastEventTs: 0, pxgridEndpointEventCount: 0, pxgridLastEndpointEventTs: 0,
   };
@@ -431,9 +430,7 @@ export async function renderBrowse(container) {
   // ── MAC-type filter chips (Privat / Inaktiv / Markeret) ──────────────────
   container.querySelectorAll(".mac-chip").forEach((chip) => {
     chip.addEventListener("click", () => {
-      const key = chip.dataset.chip === "private" ? "macPrivate"
-                : chip.dataset.chip === "inactive" ? "macInactive"
-                : "markedOnly";
+      const key = chip.dataset.chip === "private" ? "macPrivate" : "markedOnly";
       state[key] = !state[key];
       chip.classList.toggle("active", state[key]);
       state.currentPage = 1;
@@ -469,22 +466,6 @@ export async function renderBrowse(container) {
     return { ok, fail, failures, disconnects, reauths };
   }
 
-  // ── Inaktiv-chip: disables når pxGrid ikke leverer sessionsdata ──────────
-  function updateInactiveChip() {
-    const chip = container.querySelector('.mac-chip[data-chip="inactive"]');
-    if (!chip) return;
-    const hasData = !!(state.pxgridLive && state.pxgridSessionMacs) || !!state.activeSessionMacs;
-    chip.disabled = !hasData;
-    chip.title = hasData
-      ? "Vis kun endpoints uden aktiv RADIUS-session"
-      : "Ikke tilgængelig — ingen sessionsdata fra pxGrid";
-    if (!hasData && state.macInactive) {
-      state.macInactive = false;
-      chip.classList.remove("active");
-      cb.onFilterChange?.();
-    }
-  }
-
   // ── pxGrid / session-status ───────────────────────────────────────────────
   function updatePxGridSourceBadge() {
     const el = container.querySelector("#pxgrid-source-badge");
@@ -513,7 +494,6 @@ export async function renderBrowse(container) {
       el.innerHTML  = t("browse.pxgrid_inactive").replace("{ep}", epPart);
       el.style.background = "#e5e7eb"; el.style.color = "#374151";
     }
-    updateInactiveChip();
   }
 
   async function refreshActiveSessionMacs(force = false) {

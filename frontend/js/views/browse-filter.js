@@ -101,7 +101,7 @@ export function initFilter(container, state, api, cb) {
       || state.sortCol !== null
       || !!state.fullTextQ
       || firstSeenAnySet()
-      || state.macPrivate || state.macInactive || state.markedOnly;
+      || state.macPrivate || state.markedOnly;
   }
 
   function anyFilterActive() {
@@ -137,13 +137,6 @@ export function initFilter(container, state, api, cb) {
       rows = rows.filter((r) => {
         const first = parseInt((normalizeMac(r.mac || r.name || "").split(":")[0] || ""), 16);
         return !isNaN(first) && (first & 0x02) !== 0;
-      });
-    }
-    if (state.macInactive) {
-      const macs = state.activeSessionMacs || (state.pxgridLive && state.pxgridSessionMacs) || null;
-      rows = rows.filter((r) => {
-        const mac = normalizeMac(r.mac || r.name || "");
-        return !macs || !macs.has(mac);
       });
     }
     // Kun markerede (fra Livscyklus)

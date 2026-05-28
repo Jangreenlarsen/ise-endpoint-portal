@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.12.9 build 0560] — 2026-05-28 — feat: fjernet Inaktiv-chip fra MAC-kolonne
+
+"Inaktiv"-filterfunktionen er fjernet fra MAC-kolonnen da auth-status-kolonnen allerede viser session-tilstand. Fjernet: chip-HTML, `state.macInactive`, chip-handler-gren, `macInactive`-filterblok i `applyFiltersToRows`, `needsFilterMode`-reference, `updateInactiveChip`-funktion og `:disabled` CSS-regler.
+
+- `frontend/js/views/browse.js`, `browse-filter.js`, `frontend/css/styles.css`.
+- `version.json` — bump til 5.12.9 build 0560.
+
 ## [5.12.8 build 0559] — 2026-05-28 — fix: grundlæggende reimplementering af markerings-fjernelse
 
 Rodårsager identificeret og løst:
