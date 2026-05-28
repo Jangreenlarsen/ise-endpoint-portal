@@ -302,6 +302,14 @@ export function initTable(container, state, api, cb) {
       if (!tr) continue;
       const macLink = tr.querySelector(".mac-cell .mac-link");
       if (macLink) macLink.innerHTML = macDisplayHtml(r.mac || r.name);
+      const macCellTd = tr.querySelector(".mac-cell");
+      if (macCellTd) {
+        const freshMarked = loadMarkedMacs();
+        const pin = macCellTd.querySelector(".marked-pin");
+        const nowMarked = freshMarked.has(normalizeMac(r.mac || r.name || ""));
+        if (pin && !nowMarked) pin.remove();
+        else if (!pin && nowMarked) macCellTd.insertAdjacentHTML("beforeend", `<span class="marked-pin" title="Markeret fra Livscyklus">📌</span>`);
+      }
       const vendorCell = tr.querySelector(".vendor-cell-td");
       if (vendorCell) vendorCell.textContent = r.vendor || "";
       const grpSel = tr.querySelector(".grp-select");

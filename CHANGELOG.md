@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.12.4 build 0555] — 2026-05-28 — fix: 📌-badge forsvinder nu fra rækken efter gem
+
+`refreshRows` opdaterede MAC-cellen delvist (kun `.mac-link`-indholdet) men fjernede ikke `.marked-pin`-`<span>`-badgen som sidder udenfor linket. Fix: `refreshRows` genindlæser nu marked-sættet fra localStorage og fjerner/tilføjer `.marked-pin` korrekt for den opdaterede række.
+
+- `frontend/js/views/browse-table.js` — `refreshRows`: tilføjet pin-opdatering via `loadMarkedMacs()` + DOM-manipulation af `.marked-pin`.
+- `version.json` — bump til 5.12.4 build 0555.
+
 ## [5.12.3 build 0554] — 2026-05-28 — fix: MAC-chips opdaterer nu tabellen automatisk
 
 MAC-filter-chipsene (Privat / Inaktiv / Markeret) kaldte `applyFilter()` direkte, men det virker kun hvis filter-tilstand allerede er aktiv. Tabellen opdaterede sig derfor ikke når man klikkede en chip som den første filterhandling. Fix: chip-handleren kalder nu `onFilterChange()` som korrekt starter filter-tilstand (indlæser alle endpoints) hvis nødvendigt, opdaterer session-MACs og anvender filteret.

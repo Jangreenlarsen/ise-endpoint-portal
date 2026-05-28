@@ -4,6 +4,14 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.12.4] — 2026-05-28 — Fix: 📌-markering forsvinder nu fra rækken efter gem
+
+> **Build:** 0555
+
+Efter et endpoint gemmes i Browse/Edit forsvinder 📌-badgen nu korrekt fra MAC-cellen i tabellen — uden at siden skal genindlæses.
+
+---
+
 ## [5.12.3] — 2026-05-28 — Fix: MAC-chips opdaterer nu tabellen automatisk
 
 > **Build:** 0554
