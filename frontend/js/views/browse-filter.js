@@ -105,7 +105,7 @@ export function initFilter(container, state, api, cb) {
       || state.sortCol !== null
       || !!state.fullTextQ
       || firstSeenAnySet()
-      || state.macPrivate || state.markedOnly;
+      || state.macPrivate || state.markedOnly || state.decommOnly;
   }
 
   function anyFilterActive() {
@@ -114,7 +114,8 @@ export function initFilter(container, state, api, cb) {
 
   function applyFiltersToRows(rows) {
     if (state.portalOnly) rows = rows.filter((r) => r.hypervision === "true");
-    if (state.hideDecommissioned) rows = rows.filter((r) => r.status !== "Decommissioned");
+    if (state.decommOnly) rows = rows.filter((r) => r.status === "Decommissioned");
+    else if (state.hideDecommissioned) rows = rows.filter((r) => r.status !== "Decommissioned");
     const filters = getColumnFilters();
     if (filters.length) rows = rows.filter((r) => filters.every((f) => f.re.test(f.field(r) || "")));
     const authFilter = authStatusSelect ? authStatusSelect.value : "all";
@@ -391,6 +392,7 @@ export function initFilter(container, state, api, cb) {
     applyFilterSnapshot({ portalOnly: false, cols: [], authStatus: "all" });
     state.fullTextQ = "";
     state.hideDecommissioned = true;
+    state.decommOnly = false;
     if (globalQInput) globalQInput.value = "";
     container.querySelector('.mac-chip[data-chip="decomm"]')?.classList.remove("active");
     firstSeenClearAll();

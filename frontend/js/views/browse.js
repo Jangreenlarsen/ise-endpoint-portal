@@ -431,7 +431,7 @@ export async function renderBrowse(container) {
     detailCurrentId: null, detailOriginalGroupId: "",
     savedViews: [], activeViewId: null,
     colVis,
-    macPrivate: false, markedOnly: false,
+    macPrivate: false, markedOnly: false, decommOnly: false,
     pxgridLive: false, pxgridSessionMacs: null, pxgridSessionData: null,
     pxgridLastEventTs: 0, pxgridEndpointEventCount: 0, pxgridLastEndpointEventTs: 0,
   };
@@ -455,17 +455,14 @@ export async function renderBrowse(container) {
   const detailAPI = initDetail(container, state, api, cb);
   initBulk(container, state, api, cb);
 
-  // ── MAC-type filter chips (Privat / Markeret / Dekommissioneret) ──────────
+  // ── MAC-type filter chips (Privat / Markeret / Decomm) ───────────────────
   container.querySelectorAll(".mac-chip").forEach((chip) => {
     chip.addEventListener("click", () => {
-      if (chip.dataset.chip === "decomm") {
-        state.hideDecommissioned = !state.hideDecommissioned;
-        chip.classList.toggle("active", !state.hideDecommissioned);
-      } else {
-        const key = chip.dataset.chip === "private" ? "macPrivate" : "markedOnly";
-        state[key] = !state[key];
-        chip.classList.toggle("active", state[key]);
-      }
+      const key = chip.dataset.chip === "private" ? "macPrivate"
+                : chip.dataset.chip === "marked"  ? "markedOnly"
+                : "decommOnly";
+      state[key] = !state[key];
+      chip.classList.toggle("active", state[key]);
       state.currentPage = 1;
       filterAPI.persistFilters?.();
       cb.onFilterChange?.();
