@@ -4,6 +4,18 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.17.3] — 2026-05-29 — Bugfix: dekommissioneret badge manglede visuel indikator
+
+> **Build:** 0569
+
+Dekommissionerede endpoints havde ingen synlig markering i tabellen, og badge i detail-modalen brugte inline styles der brød dark mode.
+
+- Tabellens rækker er nu dimmede (opacity 55%) med strikethrough på MAC-linket
+- ⚰-ikon i MAC-cellen med tooltip
+- Badge i detail-modalen bruger korrekte CSS-klasser med light + dark mode-varianter
+
+---
+
 ## [5.17.2] — 2026-05-29 — Bugfix: XSS/crash i CSV-import
 
 > **Build:** 0568

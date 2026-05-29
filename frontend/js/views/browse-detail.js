@@ -126,7 +126,7 @@ export function initDetail(container, state, api, cb) {
       const statusEl = container.querySelector("#d-status");
       if (statusEl) {
         statusEl.innerHTML = d.status === "Decommissioned"
-          ? `<span class="anc-badge" style="background:#fca5a5;color:#7f1d1d;">${esc(d.status)}</span>`
+          ? `<span class="anc-badge decomm-status-badge">${esc(d.status)}</span>`
           : `<span class="hint">—</span>`;
       }
       const decommBtn = container.querySelector("#d-decommission");

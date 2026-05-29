@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.17.3 build 0569] — 2026-05-29 — fix: dekommissioneret badge manglede visuel indikator
+
+- `frontend/css/styles.css` — `.decomm-status-badge` (rød pill, light + dark mode), `.decomm-row-badge` (⚰ ikon i MAC-celle), `tr.row-decomm` (dimmet + strikethrough på MAC-link)
+- `frontend/js/views/browse-detail.js` — statusbadge bruger nu `.decomm-status-badge` CSS-klasse i stedet for inline styles (dark mode-kompatibelt)
+- `frontend/js/views/browse-table.js` — `<tr>` får `row-decomm` klasse; MAC-cellen viser ⚰-badge med tooltip
+- `frontend/js/i18n.js` — nøgle `browse.decomm_badge_title` tilføjet (DA + EN)
+
 ## [5.17.2 build 0568] — 2026-05-29 — fix: XSS/crash i import.js — escapeHtml → esc
 
 - `frontend/js/views/import.js` — `escapeHtml()` (udefineret funktion) erstattet med `esc()` alle 12 steder. Undlod at rå brugerinput fra CSV (MAC, beskrivelse, custom attributes) blev indsat uden HTML-escaping i preview-tabel og import-resultat.

@@ -853,6 +853,29 @@ td.mac-cell.cache-stale {
   background: #7f1d1d;
   color: #fca5a5;
 }
+/* Decommissioned badge — detail modal */
+.decomm-status-badge {
+  background: #fee2e2;
+  color: #991b1b;
+}
+[data-theme="dark"] .decomm-status-badge {
+  background: #7f1d1d;
+  color: #fca5a5;
+}
+/* Decommissioned indicator — table MAC cell */
+.decomm-row-badge {
+  font-size: 0.8rem;
+  margin-left: 0.25rem;
+  opacity: 0.85;
+  cursor: default;
+}
+/* Decommissioned table row — dimmed */
+tr.row-decomm {
+  opacity: 0.55;
+}
+tr.row-decomm .mac-link {
+  text-decoration: line-through;
+}
 .modal.detail-modal {
   width: 800px;
   max-width: 96vw;

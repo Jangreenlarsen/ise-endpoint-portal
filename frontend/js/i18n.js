@@ -1367,6 +1367,7 @@ const TRANSLATIONS = {
     "browse.btn_bulk_tpl":            "Anvend skabelon",
 
     // Feature 6 — Decommission-flow
+    "browse.decomm_badge_title":      "Dekommissioneret endpoint",
     "browse.decomm_filter_title":     "Vis eller skjul dekommissionerede endpoints",
     "browse.btn_decomm_filter":       "Vis dekommissionerede",
     "browse.decomm_btn_title":        "Dekommissionér valgte (sætter HypervisionStatus=Decommissioned)",
@@ -2748,6 +2749,7 @@ const TRANSLATIONS = {
     "browse.btn_bulk_tpl":            "Apply template",
 
     // Feature 6 — Decommission flow
+    "browse.decomm_badge_title":      "Decommissioned endpoint",
     "browse.decomm_filter_title":     "Show or hide decommissioned endpoints",
     "browse.btn_decomm_filter":       "Show decommissioned",
     "browse.decomm_btn_title":        "Decommission selected (sets HypervisionStatus=Decommissioned)",
