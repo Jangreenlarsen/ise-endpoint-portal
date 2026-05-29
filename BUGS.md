@@ -4,6 +4,46 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 5.13.1 b0562] 2026-05-29 — UI: Hvid tekst på "Ryd markeringer"-knap i Livscyklus
+- **Symptom:** `.lc-clear-marks`-knappen viste amber farve (`#92400e` / `#fcd34d`) på teksten i stedet for standard hvid, i modsætning til alle andre knapper i portalen.
+- **Fix:** Fjernet `color`-override fra `.lc-clear-marks` og dark-tema-varianten. Knappen bruger nu standard hvid tekst.
+- **Berørte filer:** `frontend/css/styles.css`.
+
+## [FIXED 5.12.9 b0560] 2026-05-28 — UI: Inaktiv-chip var redundant med auth-status-kolonnen
+- **Symptom:** "Inaktiv"-filterfunktionen i MAC-kolonnen duplikerede den information der allerede vises i auth-status-kolonnen, og skabte forvirring.
+- **Fix:** Inaktiv-chip og al tilhørende tilstandsstyring (`state.macInactive`, `updateInactiveChip`, `macInactive`-filterblok, `:disabled` CSS) fjernet.
+- **Berørte filer:** `frontend/js/views/browse.js`, `frontend/js/views/browse-filter.js`, `frontend/css/styles.css`.
+
+## [FIXED 5.12.8 b0559] 2026-05-28 — UI: Markerings-fjernelse fejlede ved gem — grundlæggende reimplementering
+- **Symptom:** Tre rodårsager: (1) inline/bulk save fjernede ALDRIG markering — save-handlere kaldte kun `refreshRows`. (2) `<tr>` manglede `data-mac`-attribut så MAC-opslag var skrøbeligt. (3) unmark-kode spredt over detail-modal, refreshRows og inline-save med overlap og race conditions.
+- **Fix:** `<tr data-mac="...">` tilføjet i `renderRows`. Centraliseret `unmarkSaved(id)` i browse-table.js. `saveAllBtn` og `bulkSaveBtn` kalder `unmarkSaved` for hver vellykket gemt endpoint. browse-detail.js kalder `cb.unmarkSaved(savedId)`.
+- **Berørte filer:** `frontend/js/views/browse-table.js`, `frontend/js/views/browse-detail.js`.
+
+## [FIXED 5.12.7 b0558] 2026-05-28 — UI: 📌-pin fjernedes ikke direkte fra DOM ved gem
+- **Symptom:** Gem-handleren delegerede pin-fjernelse til `refreshRows` via localStorage-opdatering — en asynkron kæde med for mange led der brød.
+- **Fix:** Straks efter `saveMarkedMacs` fjernes pinnen direkte fra `<tr data-id="..."> .marked-pin` i DOM synkront inden `closeDetail()`.
+- **Berørte filer:** `frontend/js/views/browse-detail.js`.
+
+## [FIXED 5.12.6 b0557] 2026-05-28 — UI: Markering fjernedes ikke korrekt efter gem — forkert MAC-opslag
+- **Symptom:** MAC-adressen til markerings-fjernelsen læstes fra `#d-mac` DOM-elementets `textContent` ved gem-tidspunktet. Browser-timing kunne give tom eller forkert formateret værdi.
+- **Fix:** MAC gemmes i `state.detailCurrentMac = normalizeMac(d.mac)` når detail åbner (data netop hentet fra API). `closeDetail()` nulstiller `state.detailCurrentMac`.
+- **Berørte filer:** `frontend/js/views/browse-detail.js`.
+
+## [FIXED 5.12.4 b0555] 2026-05-28 — UI: 📌-badge forsvandt ikke fra rækken efter gem
+- **Symptom:** `refreshRows` opdaterede MAC-cellen delvist (kun `.mac-link`-indholdet) men fjernede ikke `.marked-pin`-badgen udenfor linket.
+- **Fix:** `refreshRows` genindlæser nu marked-sæt fra localStorage og fjerner/tilføjer `.marked-pin` korrekt for den opdaterede række.
+- **Berørte filer:** `frontend/js/views/browse-table.js`.
+
+## [FIXED 5.12.3 b0554] 2026-05-28 — UI: MAC-chips opdaterede ikke tabellen automatisk
+- **Symptom:** MAC-filter-chips (Privat / Inaktiv / Markeret) kaldte `applyFilter()` direkte, men det virkede kun hvis filter-tilstand allerede var aktiv. Tabellen opdaterede sig ikke ved første chip-klik.
+- **Fix:** Chip-handleren kalder nu `onFilterChange()` som korrekt starter filter-tilstand ved behov.
+- **Berørte filer:** `frontend/js/views/browse.js`.
+
+## [FIXED 5.12.1 b0552] 2026-05-28 — UX: Markeret-filter lå i toolbar — passet dårligt med MAC-chips
+- **Symptom:** "📌 Markerede"-toolbar-knappen var inkonsistent med "Privat"/"Inaktiv"-chips der sidder direkte under MAC-kolonnen i filterpanelet.
+- **Fix:** Toolbar-knappen er fjernet. I stedet er "📌 Markeret"-chip tilføjet direkte under MAC-kolonnen på linje med Privat/Inaktiv.
+- **Berørte filer:** `frontend/js/views/browse.js`, `frontend/css/styles.css`.
+
 ## [FIXED 5.8.2-P4 b0526] 2026-05-24 — SEC: Cache-invalidate tilgængeligt for alle brugere (DoS)
 - **Symptom:** `/api/cache/invalidate` brugte `require_any` — enhver autentiseret bruger (viewer, registrant) kunne tømme endpoint-cachen.
 - **Risiko:** Gentagen cache-invalidering tvinger backend til at kalde ISE for hvert request → latens-spike og potentiel ISE-overbelastning (DoS mod eget ISE).

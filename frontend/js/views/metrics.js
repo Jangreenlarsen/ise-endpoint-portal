@@ -180,13 +180,13 @@ function renderData(parsed) {
         { label: t("metrics.cache_disk_stale"),value: fmt(diskStale) },
       ])}
 
-      ${dripActive ? buildStatCard("Cache vedligehold", [
-        { label: "Drip-interval",       value: fmtAge(dripSleepS),  sub: dripCycleS ? "Fuld rotation: " + fmtAge(dripCycleS) + capacityBadge(dripCycleS, 1800) : "" },
-        { label: "Refreshet (drip)",    value: dripRefreshed !== null ? fmt(dripRefreshed) : "–" },
-        { label: "Sprunget over",       value: dripSkipped !== null ? fmt(dripSkipped) : "–",  sub: "entries var friske" },
-        { label: "Ældste entry",        value: fmtAge(oldestAgeS) },
-        { label: "Gennemsnitlig alder", value: fmtAge(avgAgeS) },
-        { label: "Stale entries",       value: staleCount !== null ? fmt(staleCount) : "–",    sub: stalePct !== null ? fmt(stalePct, 1) + "%" : "" },
+      ${dripActive ? buildStatCard(t("metrics.card_drip"), [
+        { label: t("metrics.drip_interval"),    value: fmtAge(dripSleepS),  sub: dripCycleS ? t("metrics.drip_full_rotation") + fmtAge(dripCycleS) + capacityBadge(dripCycleS, 1800) : "" },
+        { label: t("metrics.drip_refreshed"),   value: dripRefreshed !== null ? fmt(dripRefreshed) : "–" },
+        { label: t("metrics.drip_skipped"),     value: dripSkipped !== null ? fmt(dripSkipped) : "–",  sub: t("metrics.drip_skipped_sub") },
+        { label: t("metrics.drip_oldest"),      value: fmtAge(oldestAgeS) },
+        { label: t("metrics.drip_avg_age"),     value: fmtAge(avgAgeS) },
+        { label: t("metrics.drip_stale"),       value: staleCount !== null ? fmt(staleCount) : "–",    sub: stalePct !== null ? fmt(stalePct, 1) + "%" : "" },
       ]) : ""}
 
       ${buildStatCard(t("metrics.card_rate"), [
@@ -234,7 +234,7 @@ export async function renderMetrics(container) {
         ${n.version ? `<span class="metric-stat-sub">v${esc(n.version)}</span>` : ""}
       </div>`;
     }).join("");
-    return `<div class="card metrics-card"><h3>ISE PSN noder</h3><div class="metric-stats">${rows}</div></div>`;
+    return `<div class="card metrics-card"><h3>${t("metrics.psn_nodes")}</h3><div class="metric-stats">${rows}</div></div>`;
   }
 
   async function load() {

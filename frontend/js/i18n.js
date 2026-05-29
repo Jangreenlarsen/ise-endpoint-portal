@@ -470,6 +470,17 @@ const TRANSLATIONS = {
     "import.result_skipped":    "skipped (fandtes allerede)",
     "import.result_failed":     "fejlet",
     "import.none":              "(ingen)",
+    "import.hint_formats":      "Understøtter to formater:",
+    "import.hint_ise_desc":     "CSV eksporteret fra ISE Context Visibility",
+    "import.hint_cols":         "kolonner",
+    "import.hint_header_optional": "header valgfri",
+    "import.hint_auto_detect":  "Format detekteres automatisk. Hvis <code>group</code> mangler bruges fallback-gruppen.",
+    "import.preview_detected":  "Detekteret format: {fmt}",
+    "import.preview_stats":     "{total} rækker, {valid} gyldige, {invalid} ugyldige",
+    "import.list_succeeded":    "Oprettet",
+    "import.list_overwritten":  "Overskrevet",
+    "import.list_skipped":      "Sprunget over",
+    "import.list_failed":       "Fejlet",
 
     // ── Attributes ────────────────────────────────────────────────────────────
     "attr.title":              "Custom attributter",
@@ -591,6 +602,9 @@ const TRANSLATIONS = {
     "audit.btn_export":               "Eksportér CSV",
     "audit.btn_exporting":            "Eksporterer…",
     "audit.export_title":             "Eksportér filtreret audit-log som CSV (maks. 10 000 rækker)",
+    "audit.meta":                     "{shown} af {total} events",
+    "audit.drawer_title":             "#{id} — {action} {type}{rid}",
+    "audit.export_error":             "Eksport fejlede: {msg}",
 
     // ── Logs ──────────────────────────────────────────────────────────────────
     "logs.title":             "Log",
@@ -645,6 +659,16 @@ const TRANSLATIONS = {
     "metrics.capacity_ok":     "✓ følger med",
     "metrics.capacity_warn":   "⚠ grænse",
     "metrics.capacity_behind": "✗ bagud",
+    "metrics.card_drip":       "Cache vedligehold",
+    "metrics.drip_interval":   "Drip-interval",
+    "metrics.drip_full_rotation": "Fuld rotation: ",
+    "metrics.drip_refreshed":  "Refreshet (drip)",
+    "metrics.drip_skipped":    "Sprunget over",
+    "metrics.drip_skipped_sub":"entries var friske",
+    "metrics.drip_oldest":     "Ældste entry",
+    "metrics.drip_avg_age":    "Gennemsnitlig alder",
+    "metrics.drip_stale":      "Stale entries",
+    "metrics.psn_nodes":       "ISE PSN noder",
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
     "lc.title":            "Livscyklus — inaktive endpoints",
@@ -1309,6 +1333,18 @@ const TRANSLATIONS = {
     "settings.cache_capacity_warn":   "⚠ grænsetilfælde ({cycle})",
     "settings.cache_capacity_behind": "✗ kan ikke følge med ({cycle})",
     "settings.ago":                   " siden",
+
+    // ── Settings — Backup/Restore ─────────────────────────────────────────────
+    "settings.backup_btn":            "Download backup",
+    "settings.backup_btn_loading":    "Henter…",
+    "settings.backup_success":        "Backup downloadet — opbevar filen sikkert (indeholder credentials).",
+    "settings.backup_error":          "Backup fejlede: {msg}",
+    "settings.restore_btn":           "Gendan backup",
+    "settings.restore_btn_loading":   "Gendanner…",
+    "settings.restore_confirm":       "Advarsel: Denne handling overskriver portalens konfigurationsfiler.\n\nBekræft kun hvis du har et gyldigt backup fra denne portal.\n\nForsæt?",
+    "settings.restore_invalid_json":  "Filen er ikke gyldig JSON",
+    "settings.restore_success":       "Konfiguration gendannet.",
+    "settings.restore_error":         "Gendannelse fejlede: {msg}",
   },
 
   en: {
@@ -1772,6 +1808,17 @@ const TRANSLATIONS = {
     "import.result_skipped":    "skipped (already existed)",
     "import.result_failed":     "failed",
     "import.none":              "(none)",
+    "import.hint_formats":      "Supports two formats:",
+    "import.hint_ise_desc":     "CSV exported from ISE Context Visibility",
+    "import.hint_cols":         "columns",
+    "import.hint_header_optional": "header optional",
+    "import.hint_auto_detect":  "Format is detected automatically. If <code>group</code> is missing, the fallback group is used.",
+    "import.preview_detected":  "Detected format: {fmt}",
+    "import.preview_stats":     "{total} rows, {valid} valid, {invalid} invalid",
+    "import.list_succeeded":    "Succeeded",
+    "import.list_overwritten":  "Overwritten",
+    "import.list_skipped":      "Skipped",
+    "import.list_failed":       "Failed",
 
     // ── Attributes ────────────────────────────────────────────────────────────
     "attr.title":              "Custom attributes",
@@ -1893,6 +1940,9 @@ const TRANSLATIONS = {
     "audit.btn_export":              "Export CSV",
     "audit.btn_exporting":           "Exporting…",
     "audit.export_title":            "Export filtered audit log as CSV (max 10,000 rows)",
+    "audit.meta":                    "{shown} of {total} events",
+    "audit.drawer_title":            "#{id} — {action} {type}{rid}",
+    "audit.export_error":            "Export failed: {msg}",
 
     // ── Logs ──────────────────────────────────────────────────────────────────
     "logs.title":             "Log",
@@ -1947,6 +1997,16 @@ const TRANSLATIONS = {
     "metrics.capacity_ok":     "✓ keeping up",
     "metrics.capacity_warn":   "⚠ threshold",
     "metrics.capacity_behind": "✗ behind",
+    "metrics.card_drip":       "Cache maintenance",
+    "metrics.drip_interval":   "Drip interval",
+    "metrics.drip_full_rotation": "Full rotation: ",
+    "metrics.drip_refreshed":  "Refreshed (drip)",
+    "metrics.drip_skipped":    "Skipped",
+    "metrics.drip_skipped_sub":"entries were fresh",
+    "metrics.drip_oldest":     "Oldest entry",
+    "metrics.drip_avg_age":    "Average age",
+    "metrics.drip_stale":      "Stale entries",
+    "metrics.psn_nodes":       "ISE PSN nodes",
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
     "lc.title":            "Lifecycle — inactive endpoints",
@@ -2611,6 +2671,18 @@ const TRANSLATIONS = {
     "settings.cache_capacity_warn":   "⚠ borderline ({cycle})",
     "settings.cache_capacity_behind": "✗ cannot keep up ({cycle})",
     "settings.ago":                   " ago",
+
+    // ── Settings — Backup/Restore ─────────────────────────────────────────────
+    "settings.backup_btn":            "Download backup",
+    "settings.backup_btn_loading":    "Fetching…",
+    "settings.backup_success":        "Backup downloaded — store the file securely (contains credentials).",
+    "settings.backup_error":          "Backup failed: {msg}",
+    "settings.restore_btn":           "Restore backup",
+    "settings.restore_btn_loading":   "Restoring…",
+    "settings.restore_confirm":       "Warning: This action overwrites the portal's configuration files.\n\nOnly confirm if you have a valid backup from this portal.\n\nContinue?",
+    "settings.restore_invalid_json":  "The file is not valid JSON",
+    "settings.restore_success":       "Configuration restored.",
+    "settings.restore_error":         "Restore failed: {msg}",
   },
 };
 

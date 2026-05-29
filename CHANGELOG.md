@@ -3,6 +3,19 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.16.0 build 0565] — 2026-05-29 — feat: i18n runde 3 — audit, metrics, import, settings backup + docs og gitignore
+
+Fjerde og afsluttende runde af i18n-konvertering. Alle brugersyn­lige strenge i resterende views er nu lokaliserede. Dokumentation og gitignore bringes ajour.
+
+- `frontend/js/views/audit.js` — meta-tæller, drawer-titel og export-fejlbesked via t()
+- `frontend/js/views/metrics.js` — "Cache vedligehold"-kort og ISE PSN-noder-overskrift via t()
+- `frontend/js/views/import.js` — hint-afsnit, preview-feedback og resultat-headers via t()
+- `frontend/js/views/settings/section-backup.js` — fuldt lokaliseret; tilføjet import af t()
+- `frontend/js/i18n.js` — ~45 nye nøgler (da + en): audit.meta/drawer_title/export_error, metrics.card_drip/drip_*/psn_nodes, import.hint_*/preview_*/list_*, settings.backup_*/restore_*
+- `FEATURES.md` — tilføjet entries for v5.13.0 (i18n nav), v5.14.0 (i18n views runde 1), v5.15.0 (i18n browse runde 2)
+- `BUGS.md` — tilføjet entries for v5.12.1–v5.13.1 (UI-fixes: markerings-flow, chips, knap-farve)
+- `.gitignore` — tilføjet: cache/, logs/, temp/, backend/templates.json, backend/=*, IP-mapper
+
 ## [5.15.0 build 0564] — 2026-05-29 — feat: i18n runde 2 — browse-filter, browse-table, browse-bulk, browse-detail og browse
 
 ~110 nye i18n-nøgler (da + en) dækker LAA-tooltip, fortryd/gem-progress, filter-loading, views-menu (alle tekster), CoA-beskeder, PSK-fejl, RADIUS-placeholder, simulerings-UI, ANC-karantæne, historik-tab og session-tab. Alle berørte views er opdateret til at bruge t(). Ingen hardkodede danske strenge tilbage i browse-modulerne.

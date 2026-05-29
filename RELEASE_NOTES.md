@@ -4,6 +4,21 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.16.0] — 2026-05-29 — i18n runde 3: audit, metrics, import, settings backup
+
+> **Build:** 0565
+
+Fjerde og afsluttende runde af i18n-konvertering. Alle brugersyn­lige strenge i de resterende views er nu lokaliserede.
+
+**Ændringer:**
+
+- **audit.js**: meta-tæller ("N af X events"), drawer-titel og export-fejlbesked bruger nu `t()`
+- **metrics.js**: "Cache vedligehold"-kortet (drip-interval, rotationstid, refreshed, skipped, ældste entry, gennemsnitlig alder, stale entries) og ISE PSN-noder-overskrift er lokaliserede
+- **import.js**: hint-afsnittet (formater, kolonner, auto-detect) og preview-feedback ("Detekteret format", rækker/gyldige/ugyldige) samt resultat-sektionsoverskrifter (Succeeded/Overwritten/Skipped/Failed) bruger nu `t()`
+- **section-backup.js**: backup og restore-flow er fuldt lokaliseret inkl. confirm-dialog, knap-tilstande og fejlbeskeder. Fil importerer nu `t()` fra i18n.js.
+- **i18n.js**: ~45 nye nøgler i DA og EN for audit, metrics, import og settings backup/restore
+- **Dokumentation**: FEATURES.md opdateret med entries for v5.13.0–v5.15.0 (i18n-features). BUGS.md opdateret med entries for v5.12.1–v5.13.1 (bug fixes). .gitignore udvidet med runtime-artefakter (cache/, logs/, temp/, backend/templates.json, backend/=*, IP-mapper)
+
 ## [5.15.0] — 2026-05-29 — i18n runde 2: browse-modulerne fuldt lokaliseret
 
 > **Build:** 0564

@@ -10,13 +10,13 @@ export async function renderImport(container) {
     <h2>${t("import.title")}</h2>
     <div class="card">
       <p class="hint">
-        Understøtter to formater:<br>
-        <strong>${t("import.format_ise")}</strong> — CSV eksporteret fra ISE Context Visibility
-        (kolonner: <code>MACAddress</code>, <code>IdentityGroup</code>, <code>Description</code>,
+        ${t("import.hint_formats")}<br>
+        <strong>${t("import.format_ise")}</strong> — ${t("import.hint_ise_desc")}
+        (${t("import.hint_cols")}: <code>MACAddress</code>, <code>IdentityGroup</code>, <code>Description</code>,
         <code>CUSTOM.Owner</code>, <code>CUSTOM.Lokation</code>, <code>CUSTOM.AuthzVlan</code>).<br>
         <strong>${t("import.format_simple")}</strong> — <code>mac,group,description,type,owner,lokation,authz_vlan</code>
-        (header valgfri).<br>
-        Format detekteres automatisk. Hvis <code>group</code> mangler bruges fallback-gruppen.
+        (${t("import.hint_header_optional")}).<br>
+        ${t("import.hint_auto_detect")}
       </p>
       <div class="field">
         <label for="csv-file">${t("import.label_file")}</label>
@@ -90,8 +90,8 @@ AA:BB:CC:DD:EE:02,Profiled,printer,Camera,Facilities,,VLAN200"></textarea>
     const fmtLabel = format === "ise" ? t("import.format_ise") : t("import.format_simple");
     preview.innerHTML = `
       <div class="alert info">
-        Detekteret format: <strong>${fmtLabel}</strong> —
-        ${parsed.length} rækker, <strong>${valid}</strong> gyldige, <strong>${invalid}</strong> ugyldige.
+        ${t("import.preview_detected").replace("{fmt}", `<strong>${fmtLabel}</strong>`)} —
+        ${t("import.preview_stats").replace("{total}", parsed.length).replace("{valid}", `<strong>${valid}</strong>`).replace("{invalid}", `<strong>${invalid}</strong>`)}
       </div>
       <div class="preview-table">
         <table>
@@ -176,19 +176,19 @@ AA:BB:CC:DD:EE:02,Profiled,printer,Camera,Facilities,,VLAN200"></textarea>
         </div>
         <div class="result-list">
           <div>
-            <h4 class="succeeded">Succeeded (${res.succeeded.length})</h4>
+            <h4 class="succeeded">${t("import.list_succeeded")} (${res.succeeded.length})</h4>
             <ul>${res.succeeded.map((m) => `<li>${escapeHtml(m)}</li>`).join("") || `<li>${none}</li>`}</ul>
           </div>
           <div>
-            <h4 class="overwritten">Overwritten (${overwritten.length})</h4>
+            <h4 class="overwritten">${t("import.list_overwritten")} (${overwritten.length})</h4>
             <ul>${overwritten.map((m) => `<li>${escapeHtml(m)}</li>`).join("") || `<li>${none}</li>`}</ul>
           </div>
           <div>
-            <h4 class="skipped">Skipped (${skipped.length})</h4>
+            <h4 class="skipped">${t("import.list_skipped")} (${skipped.length})</h4>
             <ul>${skipped.map((m) => `<li>${escapeHtml(m)}</li>`).join("") || `<li>${none}</li>`}</ul>
           </div>
           <div>
-            <h4 class="failed">Failed (${res.failed.length})</h4>
+            <h4 class="failed">${t("import.list_failed")} (${res.failed.length})</h4>
             <ul>${res.failed.map((f) => `<li>${escapeHtml(f.mac)}: ${escapeHtml(f.error)}</li>`).join("") || `<li>${none}</li>`}</ul>
           </div>
         </div>
