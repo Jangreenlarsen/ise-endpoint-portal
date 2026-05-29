@@ -583,10 +583,13 @@ export function initTable(container, state, api, cb) {
           + laaTag();
       }
     } else {
-      renderRows(state.allRows);
+      const rows = state.hideDecommissioned
+        ? state.allRows.filter((r) => r.status !== "Decommissioned")
+        : state.allRows;
+      renderRows(rows);
       updatePaginationUI();
       countEl.innerHTML = t("browse.server_info")
-        .replace("{n}", state.allRows.length)
+        .replace("{n}", rows.length)
         .replace("{total}", state.totalEndpoints)
         + laaTag();
     }

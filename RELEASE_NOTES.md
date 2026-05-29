@@ -4,6 +4,18 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.17.1] — 2026-05-29 — Bugfix: decommission-filter og clipboard
+
+> **Build:** 0567
+
+To fejl i v5.17.0 rettet.
+
+**Decommission-filter** virkede ikke: "Vis dekommissionerede"-knappen ændrede intet i tabellen — begge tilstande viste det samme. Fejlen var en inverteret betingelse i `needsFilterMode()` kombineret med at filtreringen kun kørte ét sted. Rettet ved at anvende dekommissionsfiltering konsekvent i begge rendering-stier.
+
+**Del filter / clipboard** fejlede på HTTP-origins: `navigator.clipboard` er `undefined` uden HTTPS, og det kastede en synkron TypeError. Rettet med try/catch og optional chaining; fallback viser URL'en i et `prompt()`-dialog.
+
+---
+
 ## [5.17.0] — 2026-05-29 — Metrics-historik, bulk template-apply, decommission-flow og URL filter-deling
 
 > **Build:** 0566

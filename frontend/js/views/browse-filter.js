@@ -101,7 +101,6 @@ export function initFilter(container, state, api, cb) {
 
   function needsFilterMode() {
     return state.portalOnly
-      || !state.hideDecommissioned
       || Array.from(filterRow.querySelectorAll(".col-filter-input")).some((i) => i.value.trim())
       || (authStatusSelect && authStatusSelect.value !== "all")
       || state.sortCol !== null
@@ -472,13 +471,20 @@ export function initFilter(container, state, api, cb) {
   if (shareFilterBtn) {
     shareFilterBtn.addEventListener("click", () => {
       const url = encodeFilterToUrl();
-      navigator.clipboard.writeText(url).then(() => {
+      const showCopied = () => {
         const orig = shareFilterBtn.textContent;
         shareFilterBtn.textContent = t("browse.share_filter_copied");
         setTimeout(() => { shareFilterBtn.textContent = orig; }, 2000);
-      }).catch(() => {
-        msg.innerHTML = `<div class="alert error">${t("browse.share_filter_err")}</div>`;
-      });
+      };
+      try {
+        if (navigator.clipboard?.writeText) {
+          navigator.clipboard.writeText(url).then(showCopied).catch(() => prompt(t("browse.share_filter_title"), url));
+        } else {
+          prompt(t("browse.share_filter_title"), url);
+        }
+      } catch {
+        prompt(t("browse.share_filter_title"), url);
+      }
     });
   }
 

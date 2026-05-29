@@ -3,6 +3,15 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.17.1 build 0567] — 2026-05-29 — fix: decommission-filter virkede ikke + clipboard-fejl på HTTP
+
+**Bug fix — decommission-filter**
+- `frontend/js/views/browse-filter.js` — fjernet `!state.hideDecommissioned` fra `needsFilterMode()` (var inverteret; begge states viste samme resultat)
+- `frontend/js/views/browse-table.js` — `applyFilter()` ikke-filter-mode-sti filtrerer nu også dekommissionerede rækker klient-side
+
+**Bug fix — share filter clipboard**
+- `frontend/js/views/browse-filter.js` — `navigator.clipboard.writeText()` erstattet med try/catch + optional-chaining; fallback til `prompt(url)` på HTTP/non-secure-origin
+
 ## [5.17.0 build 0566] — 2026-05-29 — feat: Metrics-historik, bulk template-apply, decommission-flow og URL filter-deling
 
 Fire nye features implementeret fuldt ud (backend + frontend + i18n):

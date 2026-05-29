@@ -4,6 +4,18 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 5.17.1 b0567] 2026-05-29 — Browse: "Vis dekommissionerede"-filter havde ingen effekt
+- **Symptom:** Toggling af decommission-filter ændrede intet i tabellen — begge tilstande viste de samme rækker.
+- **Root cause:** `needsFilterMode()` brugte `!state.hideDecommissioned` (inverteret), så filter-tilstand aldrig indtrådtes for denne betingelse alene, og `applyFiltersToRows()` kørte ikke i paginated-tilstand.
+- **Fix:** Fjernet `!state.hideDecommissioned` fra `needsFilterMode()`; `applyFilter()` i `browse-table.js` filtrerer nu dekommissionerede rækker i begge rendering-stier.
+- **Berørte filer:** `frontend/js/views/browse-filter.js`, `frontend/js/views/browse-table.js`.
+
+## [FIXED 5.17.1 b0567] 2026-05-29 — Browse: "Del filter"-knap kopierede ikke URL til udklipsholder
+- **Symptom:** Knappen reagerede ikke på HTTP-origins — ingen kopi, ingen fejlbesked.
+- **Root cause:** `navigator.clipboard` er `undefined` på ikke-HTTPS origins; `.writeText()` kastede en synkron TypeError inden `.catch()` nåede at registrere sig.
+- **Fix:** Erstattet med try/catch + optional chaining (`navigator.clipboard?.writeText`); fallback til `prompt(url)` ved manglende clipboard-API.
+- **Berørte filer:** `frontend/js/views/browse-filter.js`.
+
 ## [FIXED 5.13.1 b0562] 2026-05-29 — UI: Hvid tekst på "Ryd markeringer"-knap i Livscyklus
 - **Symptom:** `.lc-clear-marks`-knappen viste amber farve (`#92400e` / `#fcd34d`) på teksten i stedet for standard hvid, i modsætning til alle andre knapper i portalen.
 - **Fix:** Fjernet `color`-override fra `.lc-clear-marks` og dark-tema-varianten. Knappen bruger nu standard hvid tekst.
