@@ -5,7 +5,7 @@
 
 import { auth } from "../auth.js";
 import { t } from "../i18n.js";
-import { esc, fmtDateTime, optionsHtml, normalizeMac } from "./browse-utils.js";
+import { esc, fmtDateTime, optionsHtml, normalizeMac, groupPathParts } from "./browse-utils.js";
 
 function loadFrontendPrefs() {
   try { return JSON.parse(localStorage.getItem("ise_portal_prefs") || "{}"); }
@@ -21,6 +21,18 @@ export function initDetail(container, state, api, cb) {
   const detailMsg     = container.querySelector("#detail-msg");
   const msg           = container.querySelector("#msg");
   let _templates = [];
+
+  function updateGroupPath(groupId) {
+    const pathEl = container.querySelector("#d-group-path");
+    if (!pathEl) return;
+    const group = (state.groups || []).find((g) => g.id === groupId);
+    if (!group) { pathEl.innerHTML = ""; return; }
+    const parts = groupPathParts(group.name);
+    if (parts.length <= 1) { pathEl.innerHTML = ""; return; }
+    pathEl.innerHTML = parts.map((p, i) =>
+      `<span class="grp-path-line" style="padding-left:${i * 0.9}em">${i > 0 ? "&#8627; " : ""}${esc(p)}</span>`
+    ).join("");
+  }
 
   // ── Open / close ─────────────────────────────────────────────────────────
   async function openDetail(id) {
@@ -51,7 +63,10 @@ export function initDetail(container, state, api, cb) {
       container.querySelector("#d-vendor").textContent = d.vendor || "—";
       container.querySelector("#d-name").textContent   = d.name || "";
       container.querySelector("#d-id").textContent     = d.id || "";
-      container.querySelector("#d-group").innerHTML    = cb.groupOptionsHtml(d.group_id);
+      const dGroupEl = container.querySelector("#d-group");
+      dGroupEl.innerHTML = cb.groupOptionsHtml(d.group_id);
+      updateGroupPath(d.group_id);
+      dGroupEl.onchange = () => updateGroupPath(dGroupEl.value);
       container.querySelector("#d-static-group").checked  = !!d.static_group;
       container.querySelector("#d-description").value     = d.description || "";
       container.querySelector("#d-type").innerHTML        = optionsHtml(state.caValues.Type, d.endpoint_type);
@@ -100,7 +115,7 @@ export function initDetail(container, state, api, cb) {
       container.querySelector("#d-profile-id").textContent   = d.profile_id || "—";
       const profilerEl = container.querySelector("#d-profiler-name");
       if (profilerEl) profilerEl.textContent = d.profiler_name || "—";
-      container.querySelector("#d-static-profile").textContent = d.static_profile ? "Ja" : "Nej";
+      container.querySelector("#d-static-profile").textContent = d.static_profile ? t("cell.yes") : t("btn.no");
       container.querySelector("#d-portal-user").textContent    = d.portal_user || "—";
       const store = [d.identity_store, d.identity_store_id].filter(Boolean).join(" / ");
       container.querySelector("#d-identity-store").textContent = store || "—";
@@ -108,6 +123,17 @@ export function initDetail(container, state, api, cb) {
       if (createEl) createEl.textContent = fmtDateTime(d.create_time) || "—";
       const updateEl = container.querySelector("#d-update-time");
       if (updateEl) updateEl.textContent = fmtDateTime(d.update_time) || "—";
+      const statusEl = container.querySelector("#d-status");
+      if (statusEl) {
+        statusEl.innerHTML = d.status === "Decommissioned"
+          ? `<span class="anc-badge" style="background:#fca5a5;color:#7f1d1d;">${esc(d.status)}</span>`
+          : `<span class="hint">—</span>`;
+      }
+      const decommBtn = container.querySelector("#d-decommission");
+      if (decommBtn) {
+        const isDecomm = d.status === "Decommissioned";
+        decommBtn.style.display = auth.isEditor() && !isDecomm ? "" : "none";
+      }
 
       detailMsg.innerHTML = "";
 
@@ -136,14 +162,14 @@ export function initDetail(container, state, api, cb) {
       if (httpStatus === 503) {
         detailMsg.innerHTML = `
           <div class="alert warning">
-            ISE er midlertidigt utilgængelig — data kan ikke hentes lige nu.<br>
-            <button type="button" class="secondary" style="margin-top:.5rem" id="detail-retry-btn">Prøv igen</button>
+            ${t("browse.ise_unavailable")}<br>
+            <button type="button" class="secondary" style="margin-top:.5rem" id="detail-retry-btn">${t("browse.detail_retry")}</button>
           </div>`;
         detailMsg.querySelector("#detail-retry-btn")?.addEventListener("click", () => openDetail(id), { once: true });
       } else if (httpStatus === 404) {
-        detailMsg.innerHTML = `<div class="alert error">Endpoint ikke fundet i ISE.</div>`;
+        detailMsg.innerHTML = `<div class="alert error">${t("browse.detail_not_found")}</div>`;
       } else {
-        detailMsg.innerHTML = `<div class="alert error">Fejl ved hentning af endpoint-detaljer — prøv igen eller kontakt administrator.</div>`;
+        detailMsg.innerHTML = `<div class="alert error">${t("browse.detail_fetch_err")}</div>`;
       }
     }
   }
@@ -164,9 +190,9 @@ export function initDetail(container, state, api, cb) {
     if (wa) wa.innerHTML = "";
     if (pc) pc.innerHTML = "";
     if (ic) ic.innerHTML = "";
-    if (hc) hc.innerHTML = `<span class="hint">Klik på fanen for at indlæse historik.</span>`;
+    if (hc) hc.innerHTML = `<span class="hint">${t("browse.hist_hint")}</span>`;
     const sc = detailOverlay.querySelector("#d-session-debug-content");
-    if (sc) sc.innerHTML = `<span class="hint">Klik på fanen for at se session-data.</span>`;
+    if (sc) sc.innerHTML = `<span class="hint">${t("browse.session_hint")}</span>`;
   }
 
   // ── ANC ──────────────────────────────────────────────────────────────────
@@ -199,7 +225,7 @@ export function initDetail(container, state, api, cb) {
     badge.classList.remove("hidden");
 
     if (statusRes?.quarantined) {
-      badge.textContent = `Karantæne: ${statusRes.policy}`;
+      badge.textContent = t("browse.anc_quarantined").replace("{policy}", statusRes.policy);
       badge.className   = "anc-badge anc-quarantined";
       quarantineRow.classList.add("hidden");
       clearRow.classList.remove("hidden");
@@ -217,42 +243,42 @@ export function initDetail(container, state, api, cb) {
   container.querySelector("#d-anc-apply").addEventListener("click", async () => {
     if (!state.detailCurrentId) return;
     const policyName = container.querySelector("#d-anc-policy").value;
-    if (!policyName) { detailMsg.innerHTML = `<div class="alert error">Vælg en ANC policy først.</div>`; return; }
+    if (!policyName) { detailMsg.innerHTML = `<div class="alert error">${t("browse.anc_no_policy")}</div>`; return; }
     const mac = container.querySelector("#d-mac").textContent || "";
-    if (!confirm(`Sæt ${mac} i karantæne med ANC policy '${policyName}'?\n\nISE vil sende CoA til klienten.`)) return;
+    if (!confirm(t("browse.anc_quarantine_confirm").replace("{mac}", mac).replace("{policy}", policyName))) return;
     const btn = container.querySelector("#d-anc-apply");
     btn.disabled = true;
-    detailMsg.innerHTML = `<div class="alert info">Sætter i karantæne…</div>`;
+    detailMsg.innerHTML = `<div class="alert info">${t("browse.anc_quarantine_progress")}</div>`;
     try {
       const res = await api.ancQuarantine(state.detailCurrentId, policyName);
       if (res?.ok) {
-        detailMsg.innerHTML = `<div class="alert success">ANC karantæne sat: ${esc(res.message || "OK")}</div>`;
+        detailMsg.innerHTML = `<div class="alert success">${t("browse.anc_quarantine_ok").replace("{msg}", esc(res.message || "OK"))}</div>`;
         await loadAncStatus(state.detailCurrentId);
       } else {
-        detailMsg.innerHTML = `<div class="alert error">Karantæne fejlede: ${esc(res?.message || "ukendt fejl")}</div>`;
+        detailMsg.innerHTML = `<div class="alert error">${t("browse.anc_quarantine_fail").replace("{msg}", esc(res?.message || "—"))}</div>`;
       }
     } catch (err) {
-      detailMsg.innerHTML = `<div class="alert error">Karantæne fejlede: ${esc(err.message)}</div>`;
+      detailMsg.innerHTML = `<div class="alert error">${t("browse.anc_quarantine_fail").replace("{msg}", esc(err.message))}</div>`;
     } finally { btn.disabled = false; }
   });
 
   container.querySelector("#d-anc-clear").addEventListener("click", async () => {
     if (!state.detailCurrentId) return;
     const mac = container.querySelector("#d-mac").textContent || "";
-    if (!confirm(`Fjern ANC karantæne fra ${mac}?`)) return;
+    if (!confirm(t("browse.anc_clear_confirm").replace("{mac}", mac))) return;
     const btn = container.querySelector("#d-anc-clear");
     btn.disabled = true;
-    detailMsg.innerHTML = `<div class="alert info">Fjerner karantæne…</div>`;
+    detailMsg.innerHTML = `<div class="alert info">${t("browse.anc_clear_progress")}</div>`;
     try {
       const res = await api.ancClear(state.detailCurrentId);
       if (res?.ok) {
-        detailMsg.innerHTML = `<div class="alert success">ANC karantæne fjernet: ${esc(res.message || "OK")}</div>`;
+        detailMsg.innerHTML = `<div class="alert success">${t("browse.anc_clear_ok").replace("{msg}", esc(res.message || "OK"))}</div>`;
         await loadAncStatus(state.detailCurrentId);
       } else {
-        detailMsg.innerHTML = `<div class="alert error">Fjern karantæne fejlede: ${esc(res?.message || "ukendt fejl")}</div>`;
+        detailMsg.innerHTML = `<div class="alert error">${t("browse.anc_clear_fail").replace("{msg}", esc(res?.message || "—"))}</div>`;
       }
     } catch (err) {
-      detailMsg.innerHTML = `<div class="alert error">Fjern karantæne fejlede: ${esc(err.message)}</div>`;
+      detailMsg.innerHTML = `<div class="alert error">${t("browse.anc_clear_fail").replace("{msg}", esc(err.message))}</div>`;
     } finally { btn.disabled = false; }
   });
 
@@ -304,20 +330,20 @@ export function initDetail(container, state, api, cb) {
     const panel = container.querySelector("#d-historik-content");
     const id = state.detailCurrentId || container.querySelector("#d-id")?.textContent?.trim();
     if (!panel || !id) return;
-    panel.innerHTML = `<div class="alert info">Henter historik…</div>`;
+    panel.innerHTML = `<div class="alert info">${t("browse.hist_loading")}</div>`;
     try {
       const res = await api.getEndpointHistory(id, 50);
       const events = res?.events || [];
       if (!events.length) {
-        panel.innerHTML = `<div class="hint">Ingen audit-hændelser registreret for dette endpoint.</div>`;
+        panel.innerHTML = `<div class="hint">${t("browse.hist_none")}</div>`;
         return;
       }
       panel.innerHTML = `
         <table style="width:100%;border-collapse:collapse;font-size:.85em;">
           <thead><tr>
-            <th style="text-align:left;padding:4px 6px;border-bottom:1px solid #e5e7eb;">Tidspunkt</th>
-            <th style="text-align:left;padding:4px 6px;border-bottom:1px solid #e5e7eb;">Bruger</th>
-            <th style="text-align:left;padding:4px 6px;border-bottom:1px solid #e5e7eb;">Handling</th>
+            <th style="text-align:left;padding:4px 6px;border-bottom:1px solid #e5e7eb;">${t("browse.hist_time")}</th>
+            <th style="text-align:left;padding:4px 6px;border-bottom:1px solid #e5e7eb;">${t("browse.hist_user")}</th>
+            <th style="text-align:left;padding:4px 6px;border-bottom:1px solid #e5e7eb;">${t("browse.hist_action")}</th>
           </tr></thead>
           <tbody>
             ${events.map((e) => `
@@ -328,10 +354,10 @@ export function initDetail(container, state, api, cb) {
               </tr>`).join("")}
           </tbody>
         </table>
-        <p class="hint" style="margin-top:.5rem;">Viser de seneste ${events.length} hændelser.</p>
+        <p class="hint" style="margin-top:.5rem;">${t("browse.hist_showing").replace("{n}", events.length)}</p>
       `;
     } catch (err) {
-      panel.innerHTML = `<div class="alert error">Kunne ikke hente historik: ${esc(err.message)}</div>`;
+      panel.innerHTML = `<div class="alert error">${t("browse.hist_err").replace("{msg}", esc(err.message))}</div>`;
     }
   }
 
@@ -341,10 +367,10 @@ export function initDetail(container, state, api, cb) {
     const mac = container.querySelector("#d-mac")?.textContent?.trim();
     if (!panel) return;
     if (!mac || mac === "—") {
-      panel.innerHTML = `<span class="hint">Ingen MAC tilgængelig.</span>`;
+      panel.innerHTML = `<span class="hint">${t("browse.session_no_mac")}</span>`;
       return;
     }
-    panel.innerHTML = `<div class="alert info">Henter session-data…</div>`;
+    panel.innerHTML = `<div class="alert info">${t("browse.session_loading")}</div>`;
 
     function _row(label, value, highlight) {
       const style = highlight ? " style=\"color:#e67e22;font-weight:600;\"" : "";
@@ -362,9 +388,9 @@ export function initDetail(container, state, api, cb) {
     let html = "";
 
     if (!cached) {
-      html += `<div class="alert warning">Ingen aktiv session i cache for ${esc(mac)}.</div>`;
+      html += `<div class="alert warning">${t("browse.session_no_cache").replace("{mac}", esc(mac))}</div>`;
     } else {
-      html += `<h4 style="margin:.5rem 0 .25rem;font-size:.9em;color:#374151;">Cache (hvad frontend ser)</h4>
+      html += `<h4 style="margin:.5rem 0 .25rem;font-size:.9em;color:#374151;">${t("browse.session_cache_title")}</h4>
         <table ${tableStyle}><tbody>
           ${_row("MAC", cached.mac)}
           ${_row("State", cached.state)}
@@ -390,7 +416,7 @@ export function initDetail(container, state, api, cb) {
 
     panel.querySelector("#d-session-probe-btn")?.addEventListener("click", async () => {
       const resEl = panel.querySelector("#d-session-probe-result");
-      resEl.innerHTML = `<div class="alert info">Kalder MnT…</div>`;
+      resEl.innerHTML = `<div class="alert info">${t("browse.session_probe_loading")}</div>`;
       try {
         const dbg = await api.debugPxGridSession(mac);
         const mnt = dbg.mnt_enrichment_result || {};
@@ -405,7 +431,7 @@ export function initDetail(container, state, api, cb) {
         const vlanMismatch = vlanCached && vlanMnt && vlanCached !== vlanMnt;
 
         resEl.innerHTML = `
-          <h4 style="margin:.5rem 0 .25rem;font-size:.9em;color:#374151;">MnT enrichment (hvad backend henter)</h4>
+          <h4 style="margin:.5rem 0 .25rem;font-size:.9em;color:#374151;">${t("browse.session_mnt_title")}</h4>
           <p style="font-size:.8em;color:#6b7280;margin:0 0 .4rem;">
             pxGrid real-time data (cache) er autoritativ. MnT kan ligge minutter bagud efter re-auth.
           </p>
@@ -586,8 +612,8 @@ export function initDetail(container, state, api, cb) {
         const sel = matchArea.querySelector("#d-pol-radius-tpl-sel");
         if (!sel) return;
         const cur = sel.value;
-        const tpls = loadTemplates().sort((a, b) => a.name.localeCompare(b.name, "da"));
-        sel.innerHTML = `<option value="">— Vælg template —</option>`
+        const tpls = loadTemplates().sort((a, b) => a.name.localeCompare(b.name));
+        sel.innerHTML = `<option value="">${t("browse.sim_tpl_none")}</option>`
           + tpls.map((tp) => `<option value="${esc(tp.id)}"${tp.id === cur ? " selected" : ""}>${esc(tp.name)}</option>`).join("");
       }
 
@@ -605,10 +631,10 @@ export function initDetail(container, state, api, cb) {
       matchArea.querySelector("#d-pol-radius-tpl-save").addEventListener("click", () => {
         const attrs = readRadiusAttrs();
         if (!Object.keys(attrs).length) {
-          alert("Tilføj mindst ét RADIUS-parameter inden du gemmer som template.");
+          alert(t("browse.radius_tpl_empty_alert"));
           return;
         }
-        const name = prompt("Navn på template (fx 'Wireless SSID voldby17'):", "");
+        const name = prompt(t("browse.radius_tpl_name_prompt"));
         if (!name?.trim()) return;
         const tpls = loadTemplates();
         const newTpl = { id: `tpl_${Date.now()}`, name: name.trim(), attrs };
@@ -887,6 +913,36 @@ export function initDetail(container, state, api, cb) {
     } finally { btn.disabled = false; }
   });
 
+  container.querySelector("#d-decommission")?.addEventListener("click", async () => {
+    if (!state.detailCurrentId) return;
+    const mac = container.querySelector("#d-mac").textContent || "";
+    if (!confirm(t("detail.confirm_decomm").replace("{mac}", mac))) return;
+    const btn = container.querySelector("#d-decommission");
+    btn.disabled = true;
+    detailMsg.innerHTML = `<div class="alert info">${t("detail.decomm_progress")}</div>`;
+    try {
+      await api.decommissionEndpoint(state.detailCurrentId);
+      detailMsg.innerHTML = `<div class="alert success">${t("detail.decomm_done")}</div>`;
+      btn.style.display = "none";
+      const statusEl = container.querySelector("#d-status");
+      if (statusEl) statusEl.innerHTML = `<span class="anc-badge" style="background:#fca5a5;color:#7f1d1d;">Decommissioned</span>`;
+      // Opdatér allRows og re-filtrer
+      if (state.allRows) {
+        state.allRows = state.allRows.map((r) =>
+          r.id === state.detailCurrentId ? { ...r, status: "Decommissioned" } : r,
+        );
+        if (state.allRowsCache) {
+          state.allRowsCache = state.allRowsCache.map((r) =>
+            r.id === state.detailCurrentId ? { ...r, status: "Decommissioned" } : r,
+          );
+        }
+        cb.applyFilter?.();
+      }
+    } catch (err) {
+      detailMsg.innerHTML = `<div class="alert error">${t("detail.decomm_err").replace("{msg}", esc(err.message))}</div>`;
+    } finally { btn.disabled = false; }
+  });
+
   container.querySelector("#d-disconnect").addEventListener("click", async () => {
     if (!state.detailCurrentId) return;
     const mac = container.querySelector("#d-mac").textContent || "";
@@ -958,7 +1014,8 @@ export function initDetail(container, state, api, cb) {
         group_id, static_group_assignment,
         custom_attributes: customAttrs,
       });
-      const savedId    = state.detailCurrentId;
+      const savedId = state.detailCurrentId;
+      cb.unmarkSaved?.(savedId);
       const platformType = container.querySelector("#d-platformtype").value;
       let coaSummary = "";
       if (state.coaOnSave) {
@@ -1065,7 +1122,7 @@ export function initDetail(container, state, api, cb) {
       .map((k) => {
         shown.add(k);
         const val = profile[k];
-        const valStr = typeof val === "boolean" ? (val ? "Ja" : "Nej") : String(val ?? "—");
+        const valStr = typeof val === "boolean" ? (val ? t("cell.yes") : t("btn.no")) : String(val ?? "—");
         return `<tr><td class="profiling-attr-key">${esc(LABEL_MAP[k] || k)}</td>
                     <td class="profiling-attr-val">${esc(valStr)}</td></tr>`;
       }).join("");

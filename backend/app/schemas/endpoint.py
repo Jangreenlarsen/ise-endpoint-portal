@@ -43,6 +43,8 @@ class EndpointDetail(BaseModel):
     # Unix-timestamp (float) — første gang portalen observerede dette endpoint.
     # Sættes af first_seen_store ved cache-prewarm og create. None = endnu ikke set.
     first_seen_at: float | None = None
+    # Dekommissionerings-status fra HypervisionStatus CA. "" = aktivt.
+    status: str = ""
 
 
 class EndpointGroupSummary(BaseModel):
@@ -59,6 +61,7 @@ class CustomAttrs(BaseModel):
     AuthzACL: str = ""
     PlatformType: str = ""
     HypervisionRoles: str = ""
+    HypervisionStatus: str | None = None
     PSK_Mode: str | None = None
     PSK_Key: str | None = None
 
@@ -128,9 +131,19 @@ class AncActionResponse(BaseModel):
     message: str = ""
 
 
+class BulkApplyTemplateRequest(BaseModel):
+    endpoint_ids: list[str] = Field(..., max_length=200)
+    template_id: str
+
+
+class BulkDecommissionRequest(BaseModel):
+    endpoint_ids: list[str] = Field(..., max_length=200)
+
+
 class EndpointGroupCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     description: str = Field("", max_length=500)
+    parent_id: str | None = Field(None, max_length=64)
 
 
 class EndpointGroupCreated(BaseModel):

@@ -122,7 +122,7 @@ export async function renderPolicy(container) {
     setsList.querySelectorAll(".pol-set-item").forEach((el) =>
       el.classList.toggle("active", el.dataset.id === id)
     );
-    rulesTitle.textContent = name;
+    rulesTitle.textContent = `Authz : ${name}`;
     newRuleBtn?.classList.remove("hidden");
     clearDetail();
     await loadRules(id);

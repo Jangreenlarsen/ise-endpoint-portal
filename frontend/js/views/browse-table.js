@@ -10,11 +10,15 @@ import {
   endpointCreateTime, fmtRelativeAge, fmtDateTime,
   normalizeMac, coaSummaryText, optionsHtml,
   loadColVis, saveColVis, savePageSize, saveColOrder,
+  loadColWidths, saveColWidths,
   groupHierarchyOptionsHtml,
+  loadMarkedMacs, saveMarkedMacs,
 } from "./browse-utils.js";
 import { toIseCsv, downloadCsv } from "../csv.js";
 
 export function initTable(container, state, api, cb) {
+  let _markedMacs = loadMarkedMacs();
+
   const tbody          = container.querySelector("#tbody");
   const msg            = container.querySelector("#msg");
   const countEl        = container.querySelector("#count");
@@ -70,6 +74,16 @@ export function initTable(container, state, api, cb) {
   }
 
   // ── Column visibility ────────────────────────────────────────────────────
+  let _colVisSavedTimer = null;
+  function _flashColVisSaved() {
+    if (_colVisSavedTimer) clearTimeout(_colVisSavedTimer);
+    colVisBtn.dataset.saved = "1";
+    _colVisSavedTimer = setTimeout(() => {
+      delete colVisBtn.dataset.saved;
+      _colVisSavedTimer = null;
+    }, 1800);
+  }
+
   function applyColVis() {
     const table = container.querySelector(".browse-table-wrap table");
     if (!table) return;
@@ -92,6 +106,7 @@ export function initTable(container, state, api, cb) {
         state.colVis[cb.dataset.col] = cb.checked;
         saveColVis(state.colVis);
         applyColVis();
+        _flashColVisSaved();
       });
     });
   }
@@ -115,7 +130,7 @@ export function initTable(container, state, api, cb) {
   function laaTag() {
     const n = state.laaTotal ?? 0;
     if (!n) return "";
-    return ` <span class="laa-count" title="Privat / Lokalt administreret MAC (LAA) — total i database">${n} privat</span>`;
+    return ` <span class="laa-count" title="${t("browse.laa_total_title")}">${t("browse.laa_n_private").replace("{n}", n)}</span>`;
   }
 
   function macDisplayHtml(mac) {
@@ -123,7 +138,7 @@ export function initTable(container, state, api, cb) {
     if (!isLocallyAdministered(mac)) return esc(mac);
     const sep   = mac.includes(":") ? ":" : "-";
     const parts = mac.split(sep);
-    return `<span class="mac-laa" title="Privat / Lokalt administreret MAC (LAA)">${esc(parts[0])}</span>${esc(sep + parts.slice(1).join(sep))}`;
+    return `<span class="mac-laa" title="${t("browse.laa_title")}">${esc(parts[0])}</span>${esc(sep + parts.slice(1).join(sep))}`;
   }
 
   // ── NAS → PlatformType auto-derive ──────────────────────────────────────
@@ -213,6 +228,7 @@ export function initTable(container, state, api, cb) {
 
   // ── Row rendering ────────────────────────────────────────────────────────
   function renderRows(rows) {
+    _markedMacs = loadMarkedMacs();
     // Bevar selektion på tværs af genrender (pxGrid auto-refresh, manuel refresh, osv.)
     const prevSelected = new Set(
       Array.from(tbody.querySelectorAll(".row-select:checked"))
@@ -231,7 +247,7 @@ export function initTable(container, state, api, cb) {
       const mac   = r.mac || r.name;
       const nasPt = getNasPlatformType(mac);
       const cells = {
-        mac:           `<td data-col="mac" class="mac-cell${r.cache_stale ? " cache-stale" : ""}"><a href="#" class="mac-link" title="${t("browse.mac_link_title")}">${macDisplayHtml(mac)}</a>${r.cache_stale ? `<span class="stale-badge" title="${t("browse.stale_badge_title")}">⏱</span>` : ""}</td>`,
+        mac:           `<td data-col="mac" class="mac-cell${r.cache_stale ? " cache-stale" : ""}"><a href="#" class="mac-link" title="${t("browse.mac_link_title")}">${macDisplayHtml(mac)}</a>${r.cache_stale ? `<span class="stale-badge" title="${t("browse.stale_badge_title")}">⏱</span>` : ""}${_markedMacs.has(normalizeMac(mac)) ? `<span class="marked-pin" title="${t("browse.marked_pin_title")}">📌</span>` : ""}</td>`,
         auth_status:   `<td data-col="auth_status" class="auth-status-col"></td>`,
         vendor:        `<td data-col="vendor" class="vendor-cell-td">${esc(r.vendor || "")}</td>`,
         group_name:    `<td data-col="group_name"><select class="grp-select">${groupOptionsHtml(r.group_id)}</select></td>`,
@@ -254,7 +270,7 @@ export function initTable(container, state, api, cb) {
         ise_session:   `<td data-col="ise_session" class="ise-session-col">${iseSessionCellHtml(mac)}</td>`,
       };
       return `
-      <tr data-id="${esc(r.id)}"${state.dirtyIds.has(r.id) ? ' class="dirty"' : ''}>
+      <tr data-id="${esc(r.id)}" data-mac="${esc(normalizeMac(mac))}"${state.dirtyIds.has(r.id) ? ' class="dirty"' : ''}>
         <td class="select-cell"><input type="checkbox" class="row-select"${prevSelected.has(r.id) ? " checked" : ""} /></td>
         ${getOrderedColumns().map(c => cells[c.key] || "").join("")}
       </tr>`;
@@ -286,6 +302,14 @@ export function initTable(container, state, api, cb) {
       if (!tr) continue;
       const macLink = tr.querySelector(".mac-cell .mac-link");
       if (macLink) macLink.innerHTML = macDisplayHtml(r.mac || r.name);
+      const macCellTd = tr.querySelector(".mac-cell");
+      if (macCellTd) {
+        const freshMarked = loadMarkedMacs();
+        const pin = macCellTd.querySelector(".marked-pin");
+        const nowMarked = freshMarked.has(normalizeMac(r.mac || r.name || ""));
+        if (pin && !nowMarked) pin.remove();
+        else if (!pin && nowMarked) macCellTd.insertAdjacentHTML("beforeend", `<span class="marked-pin" title="Markeret fra Livscyklus">📌</span>`);
+      }
       const vendorCell = tr.querySelector(".vendor-cell-td");
       if (vendorCell) vendorCell.textContent = r.vendor || "";
       const grpSel = tr.querySelector(".grp-select");
@@ -460,6 +484,10 @@ export function initTable(container, state, api, cb) {
     bulkEditBtn.disabled    = !hasSelection;
     if (bulkCoaBtn)  bulkCoaBtn.disabled  = !hasSelection;
     if (bulkSimBtn)  bulkSimBtn.disabled  = !hasSelection;
+    const bulkTplBtn    = container.querySelector("#bulk-tpl-btn");
+    const bulkDecommBtn = container.querySelector("#bulk-decomm-btn");
+    if (bulkTplBtn)    bulkTplBtn.disabled    = !hasSelection;
+    if (bulkDecommBtn) bulkDecommBtn.disabled = !hasSelection;
     selectionCount.textContent = hasSelection ? t("browse.selection_n").replace("{n}", selected.length) : "";
     selectAllCb.indeterminate  = selected.length > 0 && selected.length < tbody.querySelectorAll(".row-select").length;
   }
@@ -555,19 +583,27 @@ export function initTable(container, state, api, cb) {
           + laaTag();
       }
     } else {
-      renderRows(state.allRows);
+      const rows = state.hideDecommissioned
+        ? state.allRows.filter((r) => r.status !== "Decommissioned")
+        : state.allRows;
+      renderRows(rows);
       updatePaginationUI();
       countEl.innerHTML = t("browse.server_info")
-        .replace("{n}", state.allRows.length)
+        .replace("{n}", rows.length)
         .replace("{total}", state.totalEndpoints)
         + laaTag();
     }
   }
 
   // ── Load (full page refresh) ─────────────────────────────────────────────
-  async function load(force = false) {
+  // silent=true: baggrunds-reload (pxGrid endpoint_changed) — vis ikke loading-spinner
+  // og lad eksisterende rækker stå mens data hentes, så selektion bevares og
+  // kolonner ikke flipper.
+  async function load(force = false, { silent = false } = {}) {
     const cols = getColumns().length + 2;
-    tbody.innerHTML = `<tr><td colspan="${cols}" class="empty">${t("browse.fetching_ise")}</td></tr>`;
+    if (!silent) {
+      tbody.innerHTML = `<tr><td colspan="${cols}" class="empty">${t("browse.fetching_ise")}</td></tr>`;
+    }
     msg.innerHTML = "";
     state.dirtyIds.clear();
     updateDirtyUI();
@@ -643,9 +679,9 @@ export function initTable(container, state, api, cb) {
 
   undoBtn.addEventListener("click", () => {
     if (!state.dirtyIds.size) return;
-    if (!confirm(`Fortryd ${state.dirtyIds.size} ikke-gemte ændring(er)?`)) return;
+    if (!confirm(t("browse.undo_confirm").replace("{n}", state.dirtyIds.size))) return;
     revertDirtyRows();
-    msg.innerHTML = `<div class="alert info">Ændringer fortrudt.</div>`;
+    msg.innerHTML = `<div class="alert info">${t("browse.undo_ok")}</div>`;
   });
 
   // ── Fælles save-loop med progress-indikator ──────────────────────────────
@@ -654,9 +690,25 @@ export function initTable(container, state, api, cb) {
     const macHint = mac ? ` <span class="save-progress-mac">${esc(mac)}</span>` : "";
     msg.innerHTML = `
       <div class="alert info save-progress-wrap">
-        <span class="save-progress-label">Gemmer ${done} / ${total}…${macHint}</span>
+        <span class="save-progress-label">${t("browse.save_progress").replace("{done}", done).replace("{total}", total)}${macHint}</span>
         <div class="save-progress-bar"><div class="save-progress-fill" style="width:${pct}%"></div></div>
       </div>`;
+  }
+
+  // ── Fjern markering fra localStorage + DOM efter vellykket gem ──────────────
+  function unmarkSaved(id) {
+    const tr  = tbody.querySelector(`tr[data-id="${id}"]`);
+    const mac = tr?.dataset.mac
+             || normalizeMac(state.allRows?.find(r => r.id === id)?.mac || "");
+    if (!mac) return;
+    const marked = loadMarkedMacs();
+    if (!marked.delete(mac)) return;
+    saveMarkedMacs(marked);
+    tr?.querySelector(".marked-pin")?.remove();
+    if (marked.size === 0 && state.markedOnly) {
+      state.markedOnly = false;
+      container.querySelector('.mac-chip[data-chip="marked"]')?.classList.remove("active");
+    }
   }
 
   async function runSaveLoop(ids) {
@@ -693,6 +745,7 @@ export function initTable(container, state, api, cb) {
       const coa = await cb.runCoaForIds(savedEntries);
       coaSummary = coaSummaryText(coa);
     }
+    savedEntries.forEach(e => unmarkSaved(e.id));
     await refreshRows(savedEntries.map((s) => s.id));
     const parts = [];
     if (ok)   parts.push(t("browse.saved_n").replace("{n}", ok));
@@ -713,6 +766,7 @@ export function initTable(container, state, api, cb) {
       const coa = await cb.runCoaForIds(savedEntries);
       coaSummary = coaSummaryText(coa);
     }
+    savedEntries.forEach(e => unmarkSaved(e.id));
     await refreshRows(savedEntries.map((s) => s.id));
     const parts = [];
     if (ok)   parts.push(t("browse.saved_n").replace("{n}", ok));
@@ -903,8 +957,64 @@ export function initTable(container, state, api, cb) {
 
   initColDrag();
 
+  // ── Column resize ────────────────────────────────────────────────────────
+  // Bruger th's højre border som visuel handle — aldrig klippet af table-layout.
+  // pointerdown på th med proximity-check: kun indenfor 8px af højre kant.
+  // setPointerCapture sikrer at alle events fanges under drag.
+  function wireColResize() {
+    const tbl = container.querySelector(".browse-table-wrap table");
+    if (!tbl) return;
+    const headerRow = tbl.querySelector("thead tr:first-child");
+    if (!headerRow) return;
+    const saved = loadColWidths() || {};
+    for (const th of headerRow.querySelectorAll("th[data-col]")) {
+      const key = th.dataset.col;
+      if (saved[key]) {
+        th.style.width    = saved[key] + "px";
+        th.style.minWidth = saved[key] + "px";
+      }
+
+      th.addEventListener("pointerdown", (e) => {
+        const rect = th.getBoundingClientRect();
+        if (e.clientX < rect.right - 8) return; // ikke nær højre kant
+        e.stopPropagation();
+        e.preventDefault();
+        th.setPointerCapture(e.pointerId);
+        th.draggable = false;           // undgår column-drag under resize
+        th.classList.add("col-resizing");
+        document.body.style.userSelect = "none";
+        const startX = e.clientX;
+        const startW = rect.width;
+
+        function onMove(ev) {
+          const w = Math.max(48, startW + ev.clientX - startX);
+          th.style.width    = w + "px";
+          th.style.minWidth = w + "px";
+        }
+        function onUp() {
+          th.removeEventListener("pointermove",   onMove);
+          th.removeEventListener("pointerup",     onUp);
+          th.removeEventListener("pointercancel", onUp);
+          th.classList.remove("col-resizing");
+          th.draggable = true;
+          document.body.style.userSelect = "";
+          const widths = {};
+          for (const h of headerRow.querySelectorAll("th[data-col]")) {
+            if (h.style.width) widths[h.dataset.col] = Math.round(h.getBoundingClientRect().width);
+          }
+          saveColWidths(widths);
+        }
+        th.addEventListener("pointermove",   onMove);
+        th.addEventListener("pointerup",     onUp, { once: true });
+        th.addEventListener("pointercancel", onUp, { once: true });
+      });
+    }
+  }
+
+  wireColResize();
+
   return {
-    renderRows, refreshRows, buildSavePayload,
+    renderRows, refreshRows, buildSavePayload, unmarkSaved,
     getSelectedIds, updateDirtyUI, markDirty, updateSelectionUI,
     applyColVis, renderColVisMenu, applyFilter, load,
     applyAuthStatusColors, rolesChipsHtml, groupOptionsHtml,

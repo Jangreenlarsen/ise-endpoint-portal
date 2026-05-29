@@ -15,7 +15,7 @@ function fmtTimestamp(unixSeconds) {
   if (!unixSeconds) return "—";
   const d = new Date(unixSeconds * 1000);
   const age = (Date.now() / 1000) - unixSeconds;
-  return `${d.toLocaleTimeString()} (${fmtAge(age)} siden)`;
+  return `${d.toLocaleTimeString()} (${fmtAge(age)}${t("settings.ago")})`;
 }
 
 function renderCacheStats(container, stats) {
@@ -47,11 +47,11 @@ function renderCacheStats(container, stats) {
       const ratio = pw.drip_estimated_full_cycle_s / configInterval;
       const cycleStr = fmtAge(pw.drip_estimated_full_cycle_s);
       if (ratio <= 0.9) {
-        dripCapacityBadge = `<span style="background:#27ae60;color:#fff;border-radius:4px;padding:1px 7px;font-size:.82em;margin-left:6px;">&#10003; følger med (${cycleStr})</span>`;
+        dripCapacityBadge = `<span style="background:#27ae60;color:#fff;border-radius:4px;padding:1px 7px;font-size:.82em;margin-left:6px;">${t("settings.cache_capacity_ok").replace("{cycle}", cycleStr)}</span>`;
       } else if (ratio <= 1.1) {
-        dripCapacityBadge = `<span style="background:#f39c12;color:#fff;border-radius:4px;padding:1px 7px;font-size:.82em;margin-left:6px;">&#9888; grænsetilfælde (${cycleStr})</span>`;
+        dripCapacityBadge = `<span style="background:#f39c12;color:#fff;border-radius:4px;padding:1px 7px;font-size:.82em;margin-left:6px;">${t("settings.cache_capacity_warn").replace("{cycle}", cycleStr)}</span>`;
       } else {
-        dripCapacityBadge = `<span style="background:#c0392b;color:#fff;border-radius:4px;padding:1px 7px;font-size:.82em;margin-left:6px;">&#10007; kan ikke følge med (${cycleStr})</span>`;
+        dripCapacityBadge = `<span style="background:#c0392b;color:#fff;border-radius:4px;padding:1px 7px;font-size:.82em;margin-left:6px;">${t("settings.cache_capacity_behind").replace("{cycle}", cycleStr)}</span>`;
       }
     }
 

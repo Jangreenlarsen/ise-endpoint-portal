@@ -263,13 +263,15 @@ class IseEndpointGroupRepository:
         data = await self.client.get(f"{ERS_ENDPOINT_GROUPS}/name/{name}")
         return data.get("EndPointGroup") if data else None
 
-    async def create(self, name: str, description: str = "") -> str:
+    async def create(self, name: str, description: str = "", parent_id: str = "") -> str:
         """Create an endpoint group. Returns the new group id."""
-        payload = {"EndPointGroup": {"name": name, "description": description}}
+        ers: dict[str, Any] = {"name": name, "description": description}
+        if parent_id:
+            ers["parentId"] = parent_id
         _, response = await self.client.request(
             "POST",
             ERS_ENDPOINT_GROUPS,
-            json=payload,
+            json={"EndPointGroup": ers},
             return_response=True,
         )
         new_id = _id_from_location(response.headers.get("Location", ""))

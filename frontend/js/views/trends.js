@@ -6,6 +6,7 @@
  */
 
 import { api } from "../api.js";
+import { t } from "../i18n.js";
 
 // ── SVG chart-renderer ────────────────────────────────────────────────────────
 
@@ -35,7 +36,6 @@ function svgLineChart(labels, series, { height = 260 } = {}) {
   const xOf = (i) => pad.left + (i / Math.max(labels.length - 1, 1)) * plotW;
   const yOf = (v) => pad.top + plotH - ((v - yMin) / yRange) * plotH;
 
-  // Gridlines
   const steps = 5;
   let grid = "";
   for (let i = 0; i <= steps; i++) {
@@ -46,7 +46,6 @@ function svgLineChart(labels, series, { height = 260 } = {}) {
     grid += `<text x="${pad.left - 6}" y="${Number(y) + 4}" text-anchor="end" font-size="10" fill="#9ca3af">${lbl}</text>`;
   }
 
-  // X-labels — max 12 synlige
   const step = Math.max(1, Math.ceil(labels.length / 12));
   let xLabels = "";
   labels.forEach((l, i) => {
@@ -54,14 +53,12 @@ function svgLineChart(labels, series, { height = 260 } = {}) {
     xLabels += `<text x="${xOf(i).toFixed(1)}" y="${pad.top + plotH + 14}" text-anchor="middle" font-size="10" fill="#9ca3af">${l.slice(5)}</text>`;
   });
 
-  // Nul-linje
   let zeroLine = "";
   if (yMin < 0) {
     const y0 = yOf(0).toFixed(1);
     zeroLine = `<line x1="${pad.left}" y1="${y0}" x2="${pad.left + plotW}" y2="${y0}" stroke="#6b7280" stroke-width="1" stroke-dasharray="4,3"/>`;
   }
 
-  // Serier
   let seriesSvg = "";
   series.forEach((s) => {
     const pts = s.data.map((v, i) => `${xOf(i).toFixed(1)},${yOf(v).toFixed(1)}`).join(" ");
@@ -78,12 +75,10 @@ function svgLineChart(labels, series, { height = 260 } = {}) {
     }
   });
 
-  // Aksekanter
   const axes = `
     <line x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${pad.top + plotH}" stroke="#d1d5db" stroke-width="1"/>
     <line x1="${pad.left}" y1="${pad.top + plotH}" x2="${pad.left + plotW}" y2="${pad.top + plotH}" stroke="#d1d5db" stroke-width="1"/>`;
 
-  // Legende
   const LEGEND_Y = H - 6;
   let legend = "";
   const lW = Math.floor(plotW / series.length);
@@ -93,14 +88,12 @@ function svgLineChart(labels, series, { height = 260 } = {}) {
     legend += `<text x="${x + 22}" y="${LEGEND_Y}" font-size="11" fill="#4b5563">${s.name}</text>`;
   });
 
-  // Hover-elementer: crosshair-linje + en dot per serie
   const crosshair = `<line class="ch-vline" x1="0" y1="${pad.top}" x2="0" y2="${pad.top + plotH}"
     stroke="#6b7280" stroke-width="1" stroke-dasharray="3,3" style="display:none;pointer-events:none"/>`;
   const hoverDots = series.map((s) =>
     `<circle class="ch-dot" cx="0" cy="0" r="5" fill="${s.color}" stroke="#fff" stroke-width="1.5" style="display:none;pointer-events:none"/>`
   ).join("");
 
-  // Chart-metadata til tooltip-handler
   const meta = JSON.stringify({
     labels,
     series: series.map((s) => ({ name: s.name, color: s.color, data: s.data })),
@@ -173,13 +166,12 @@ function attachChartTooltips(container) {
         html += `<div style="display:flex;align-items:center;gap:.35rem;">
           <span style="width:8px;height:8px;border-radius:50%;background:${s.color};flex-shrink:0;display:inline-block;"></span>
           <span style="color:#d1d5db;">${s.name}:</span>
-          <span style="font-weight:600;margin-left:auto;padding-left:.4rem;">${v.toLocaleString("da")}</span>
+          <span style="font-weight:600;margin-left:auto;padding-left:.4rem;">${v.toLocaleString()}</span>
         </div>`;
       });
       tip.innerHTML = html;
       tip.style.display = "block";
 
-      // Positionér tooltip — foretrækker højre for cursor, flipper til venstre ved overflow
       const tw = tip.offsetWidth;
       const th = tip.offsetHeight;
       let tx = e.clientX + 14;
@@ -224,19 +216,19 @@ export async function renderTrends(container) {
   container.innerHTML = `
     <div style="max-width:860px;margin:0 auto;padding:1.25rem;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;">
-        <h2 style="margin:0;font-size:1.2rem;">Trend Analyse</h2>
+        <h2 style="margin:0;font-size:1.2rem;">${t("trend.title")}</h2>
         <div style="display:flex;gap:.5rem;align-items:center;">
-          <label for="trend-period" style="font-size:.88rem;color:#6b7280;">Periode:</label>
+          <label for="trend-period" style="font-size:.88rem;color:#6b7280;">${t("trend.period_label")}</label>
           <select id="trend-period" style="border:1px solid #d1d5db;border-radius:6px;padding:4px 8px;font-size:.9rem;background:#fff;">
-            <option value="7d">7 dage</option>
-            <option value="30d" selected>30 dage</option>
-            <option value="90d">90 dage</option>
-            <option value="365d">1 år</option>
+            <option value="7d">${t("trend.opt_7d")}</option>
+            <option value="30d" selected>${t("trend.opt_30d")}</option>
+            <option value="90d">${t("trend.opt_90d")}</option>
+            <option value="365d">${t("trend.opt_365d")}</option>
           </select>
           <button id="trend-refresh" style="border:1px solid #d1d5db;border-radius:6px;padding:4px 10px;font-size:.9rem;background:#fff;cursor:pointer;">↺</button>
         </div>
       </div>
-      <div id="trend-content"><div style="color:#6b7280;padding:2rem 0;">Henter data…</div></div>
+      <div id="trend-content"><div style="color:#6b7280;padding:2rem 0;">${t("trend.loading")}</div></div>
     </div>`;
 
   const periodSel = container.querySelector("#trend-period");
@@ -247,57 +239,57 @@ export async function renderTrends(container) {
 
   async function load() {
     const period = periodSel.value;
-    content.innerHTML = `<div style="color:#6b7280;padding:2rem 0;">Henter data…</div>`;
+    content.innerHTML = `<div style="color:#6b7280;padding:2rem 0;">${t("trend.loading")}</div>`;
     if (_retryTimer) { clearTimeout(_retryTimer); _retryTimer = null; }
     try {
       const d = await api.getTrends(period);
       render(d);
     } catch (err) {
-      content.innerHTML = `<div style="color:#dc2626;padding:1rem;">Fejl: ${String(err.message || err)}</div>`;
+      content.innerHTML = `<div style="color:#dc2626;padding:1rem;">${t("trend.error").replace("{msg}", String(err.message || err))}</div>`;
     }
   }
 
   function render(d) {
     const { labels, added, removed, net, laa_added, laa_removed, snapshot } = d;
 
-    const totalAdded   = added.reduce((s, v) => s + v, 0);
-    const totalRemoved = removed.reduce((s, v) => s + v, 0);
-    const netChange    = totalAdded - totalRemoved;
+    const totalAdded    = added.reduce((s, v) => s + v, 0);
+    const totalRemoved  = removed.reduce((s, v) => s + v, 0);
+    const netChange     = totalAdded - totalRemoved;
     const totalLaaAdded = laa_added.reduce((s, v) => s + v, 0);
 
     if (snapshot.cache_loading) {
       content.innerHTML = `<div class="alert info" style="margin-top:1rem;">
-        Endpoint-cachen indlæses fra ISE. Siden opdateres automatisk når data er klar…
+        ${t("trend.cache_loading")}
       </div>`;
       _retryTimer = setTimeout(load, 10000);
       return;
     }
 
     const stats = `<div style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1.25rem;">
-      ${statCard("Total endpoints", snapshot.total.toLocaleString("da"))}
-      ${statCard("Private MACs (LAA)", snapshot.laa.toLocaleString("da"), `${snapshot.laa_pct}% af total`, "#d97706")}
-      ${statCard("Tilgang (periode)", "+" + totalAdded, `−${totalRemoved} fjernet`, "#059669")}
-      ${statCard("Netto ændring", (netChange >= 0 ? "+" : "") + netChange, "i perioden", netChange >= 0 ? "#2563eb" : "#dc2626")}
-      ${statCard("LAA tilgang (periode)", "+" + totalLaaAdded, "private MACs oprettet", "#d97706")}
+      ${statCard(t("trend.stat_total"), snapshot.total.toLocaleString())}
+      ${statCard(t("trend.stat_laa"), snapshot.laa.toLocaleString(), snapshot.laa_pct + t("trend.stat_laa_pct"), "#d97706")}
+      ${statCard(t("trend.stat_added"), "+" + totalAdded, t("trend.stat_removed_sub").replace("{n}", totalRemoved), "#059669")}
+      ${statCard(t("trend.stat_net"), (netChange >= 0 ? "+" : "") + netChange, t("trend.stat_net_sub"), netChange >= 0 ? "#2563eb" : "#dc2626")}
+      ${statCard(t("trend.stat_laa_added"), "+" + totalLaaAdded, t("trend.stat_laa_sub"), "#d97706")}
     </div>`;
 
     const chart1 = chartCard(
-      "Endpoint tilgang og fragang",
+      t("trend.chart1_title"),
       svgLineChart(labels, [
-        { name: "Tilgang", color: "#059669", data: added,   fill: true },
-        { name: "Fragang", color: "#dc2626", data: removed, fill: true },
-        { name: "Netto",   color: "#2563eb", data: net },
+        { name: t("trend.series_added"),   color: "#059669", data: added,   fill: true },
+        { name: t("trend.series_removed"), color: "#dc2626", data: removed, fill: true },
+        { name: t("trend.series_net"),     color: "#2563eb", data: net },
       ]),
-      "Antal endpoints portalen har observeret per dag (synkroniseres fra ISE hver 30. minut)."
+      t("trend.chart1_hint")
     );
 
     const chart2 = chartCard(
-      "Private MAC-adresser (LAA) — tilgang og fragang",
+      t("trend.chart2_title"),
       svgLineChart(labels, [
-        { name: "LAA tilgang", color: "#d97706", data: laa_added,   fill: true },
-        { name: "LAA fragang", color: "#f87171", data: laa_removed, fill: true },
+        { name: t("trend.series_laa_added"),   color: "#d97706", data: laa_added,   fill: true },
+        { name: t("trend.series_laa_removed"), color: "#f87171", data: laa_removed, fill: true },
       ], { height: 220 }),
-      "Locally Administered Address: bit 1 i første octet sat (f.eks. A2:xx, 06:xx). Indikerer randomiseret/privat MAC."
+      t("trend.chart2_hint")
     );
 
     content.innerHTML = stats + chart1 + chart2;

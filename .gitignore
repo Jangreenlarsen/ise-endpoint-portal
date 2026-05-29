@@ -29,3 +29,16 @@ backend/audit.db-shm
 backend/cache/
 backend/pxgrid/
 node_modules/
+
+# Runtime artifacts og lokale filer
+cache/
+logs/
+temp/
+backend/templates.json
+requirements.txt
+
+# pip install artifacts (=version i filnavn)
+backend/=*
+
+# Lokale ISE-konfigurationsdumps og IP-mapper
+[0-9]*.[0-9]*.[0-9]*.[0-9]*/

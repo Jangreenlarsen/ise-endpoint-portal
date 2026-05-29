@@ -4,6 +4,7 @@
 // initFilter wires all filter-related DOM events and returns its public API.
 // Cross-module calls go via the `cb` object (populated in browse.js after all inits).
 
+import { t } from "../i18n.js";
 import {
   getColumns, esc,
   endpointCreateTime,
@@ -11,11 +12,14 @@ import {
   loadBrowseFilters, saveBrowseFilters,
   loadColVis, saveColVis,
   savePageSize,
+  loadMarkedMacs,
 } from "./browse-utils.js";
 
 export function initFilter(container, state, api, cb) {
   const filterRow          = container.querySelector(".filter-row");
   const portalFilterBtn    = container.querySelector("#portal-filter-btn");
+  const decommFilterBtn    = container.querySelector("#decomm-filter-btn");
+  const shareFilterBtn     = container.querySelector("#share-filter-btn");
   const pageSizeSelect     = container.querySelector("#page-size-select");
   const viewsBtn           = container.querySelector("#views-btn");
   const viewsMenu          = container.querySelector("#views-menu");
@@ -57,9 +61,11 @@ export function initFilter(container, state, api, cb) {
   }
 
   state.fullTextQ = "";
+  state.hideDecommissioned = true;
 
   function updateClearBtn() {
     const anyActive = state.portalOnly
+      || !state.hideDecommissioned
       || Array.from(filterRow.querySelectorAll(".col-filter-input")).some((i) => i.value.trim())
       || (authStatusSelect && authStatusSelect.value !== "all")
       || state.fullTextQ
@@ -99,7 +105,8 @@ export function initFilter(container, state, api, cb) {
       || (authStatusSelect && authStatusSelect.value !== "all")
       || state.sortCol !== null
       || !!state.fullTextQ
-      || firstSeenAnySet();
+      || firstSeenAnySet()
+      || state.macPrivate || state.markedOnly;
   }
 
   function anyFilterActive() {
@@ -108,6 +115,7 @@ export function initFilter(container, state, api, cb) {
 
   function applyFiltersToRows(rows) {
     if (state.portalOnly) rows = rows.filter((r) => r.hypervision === "true");
+    if (state.hideDecommissioned) rows = rows.filter((r) => r.status !== "Decommissioned");
     const filters = getColumnFilters();
     if (filters.length) rows = rows.filter((r) => filters.every((f) => f.re.test(f.field(r) || "")));
     const authFilter = authStatusSelect ? authStatusSelect.value : "all";
@@ -129,6 +137,18 @@ export function initFilter(container, state, api, cb) {
         const ts = r.first_seen_at || 0;
         return ts >= fromTs && ts <= toTs;
       });
+    }
+    // MAC-type chips: Privat (lokalt administreret) og Inaktiv (ingen RADIUS-session)
+    if (state.macPrivate) {
+      rows = rows.filter((r) => {
+        const first = parseInt((normalizeMac(r.mac || r.name || "").split(":")[0] || ""), 16);
+        return !isNaN(first) && (first & 0x02) !== 0;
+      });
+    }
+    // Kun markerede (fra Livscyklus)
+    if (state.markedOnly) {
+      const marked = loadMarkedMacs();
+      rows = rows.filter((r) => marked.has(normalizeMac(r.mac || r.name || "")));
     }
     if (state.sortCol) {
       const colDef = getColumns().find((c) => c.key === state.sortCol);
@@ -181,8 +201,8 @@ export function initFilter(container, state, api, cb) {
     state.loadingAll = true;
     const cols = getColumns().length + 2;
     container.querySelector("#tbody").innerHTML =
-      `<tr><td colspan="${cols}" class="empty">Henter alle endpoints fra ISE...</td></tr>`;
-    msg.innerHTML = `<div class="alert info">Henter alle endpoints for at kunne filtrere på tværs af sider...</div>`;
+      `<tr><td colspan="${cols}" class="empty">${t("browse.filter_loading_td")}</td></tr>`;
+    msg.innerHTML = `<div class="alert info">${t("browse.filter_loading_msg")}</div>`;
     try {
       const all = await api.listAllEndpointDetails("", state.currentFilters, state.fullTextQ || "");
       state.allRowsCache = all;
@@ -191,7 +211,7 @@ export function initFilter(container, state, api, cb) {
       state.currentPage = 1;
       msg.innerHTML = "";
     } catch (err) {
-      msg.innerHTML = `<div class="alert error">Kunne ikke hente alle endpoints: ${esc(err.message)}</div>`;
+      msg.innerHTML = `<div class="alert error">${t("browse.filter_load_err").replace("{msg}", esc(err.message))}</div>`;
     } finally {
       state.loadingAll = false;
     }
@@ -273,7 +293,7 @@ export function initFilter(container, state, api, cb) {
 
   function persistFilters() { saveBrowseFilters(snapshotFilters()); }
 
-  function applyFilterSnapshot(s) {
+  function applyFilterSnapshot(s, { skipColVis = false } = {}) {
     if (!s) return;
     state.portalOnly = false;
     portalFilterBtn.classList.remove("active-toggle");
@@ -292,7 +312,7 @@ export function initFilter(container, state, api, cb) {
       }
     }
     updateClearBtn();
-    if (s.colVis && typeof s.colVis === "object") {
+    if (!skipColVis && s.colVis && typeof s.colVis === "object") {
       for (const c of getColumns()) {
         if (c.key in s.colVis) state.colVis[c.key] = s.colVis[c.key] !== false;
       }
@@ -308,7 +328,7 @@ export function initFilter(container, state, api, cb) {
     firstSeenRestore(s.firstSeenFrom || "", s.firstSeenTo || "");
   }
 
-  function restoreFilters() { applyFilterSnapshot(loadBrowseFilters()); }
+  function restoreFilters() { applyFilterSnapshot(loadBrowseFilters(), { skipColVis: true }); }
 
   // ── Event handlers ───────────────────────────────────────────────────────
   let filterDebounce = null;
@@ -367,7 +387,9 @@ export function initFilter(container, state, api, cb) {
   filterClearAllBtn.addEventListener("click", async () => {
     applyFilterSnapshot({ portalOnly: false, cols: [], authStatus: "all" });
     state.fullTextQ = "";
+    state.hideDecommissioned = true;
     if (globalQInput) globalQInput.value = "";
+    if (decommFilterBtn) decommFilterBtn.classList.remove("active-toggle");
     firstSeenClearAll();
     state.allRowsCache = null;
     persistFilters();
@@ -383,6 +405,91 @@ export function initFilter(container, state, api, cb) {
     clearActiveView();
     await onFilterChange();
   });
+
+  if (decommFilterBtn) {
+    decommFilterBtn.addEventListener("click", async () => {
+      state.hideDecommissioned = !state.hideDecommissioned;
+      decommFilterBtn.classList.toggle("active-toggle", !state.hideDecommissioned);
+      updateClearBtn();
+      clearActiveView();
+      await onFilterChange();
+    });
+  }
+
+  // ── URL filter sharing (Feature 7) ───────────────────────────────────────
+  function encodeFilterToUrl() {
+    const params = new URLSearchParams();
+    if (state.portalOnly) params.set("p", "1");
+    if (!state.hideDecommissioned) params.set("decomm", "1");
+    if (state.fullTextQ) params.set("q", state.fullTextQ);
+    if (authStatusSelect && authStatusSelect.value !== "all") {
+      params.set("auth", authStatusSelect.value);
+    }
+    filterRow.querySelectorAll(".col-filter-input").forEach((inp) => {
+      if (inp.value.trim()) params.set(`col_${inp.dataset.col}`, inp.value.trim());
+    });
+    const fsFrom = firstSeenFromVal();
+    const fsTo   = firstSeenToVal();
+    if (fsFrom) params.set("fsfrom", fsFrom);
+    if (fsTo)   params.set("fsto",   fsTo);
+    const qs = params.toString();
+    return `${window.location.origin}${window.location.pathname}#browse${qs ? "?" + qs : ""}`;
+  }
+
+  function decodeFilterFromUrl() {
+    const hash = window.location.hash;
+    if (!hash.startsWith("#browse?")) return;
+    const params = new URLSearchParams(hash.slice("#browse?".length));
+    if (params.get("p") === "1") {
+      state.portalOnly = true;
+      portalFilterBtn?.classList.add("active-toggle");
+    }
+    if (params.get("decomm") === "1") {
+      state.hideDecommissioned = false;
+      decommFilterBtn?.classList.add("active-toggle");
+    }
+    const q = params.get("q");
+    if (q) {
+      state.fullTextQ = q;
+      if (globalQInput) globalQInput.value = q;
+    }
+    const auth = params.get("auth");
+    if (auth && authStatusSelect) authStatusSelect.value = auth;
+    params.forEach((value, key) => {
+      if (key.startsWith("col_")) {
+        const col = key.slice(4);
+        const inp = filterRow.querySelector(`.col-filter-input[data-col="${col}"]`);
+        if (inp) inp.value = value;
+      }
+    });
+    const fsFrom = params.get("fsfrom");
+    const fsTo   = params.get("fsto");
+    if (fsFrom || fsTo) firstSeenRestore(fsFrom || "", fsTo || "");
+    updateClearBtn();
+  }
+
+  if (shareFilterBtn) {
+    shareFilterBtn.addEventListener("click", () => {
+      const url = encodeFilterToUrl();
+      const showCopied = () => {
+        const orig = shareFilterBtn.textContent;
+        shareFilterBtn.textContent = t("browse.share_filter_copied");
+        setTimeout(() => { shareFilterBtn.textContent = orig; }, 2000);
+      };
+      try {
+        if (navigator.clipboard?.writeText) {
+          navigator.clipboard.writeText(url).then(showCopied).catch(() => prompt(t("browse.share_filter_title"), url));
+        } else {
+          prompt(t("browse.share_filter_title"), url);
+        }
+      } catch {
+        prompt(t("browse.share_filter_title"), url);
+      }
+    });
+  }
+
+  // Dekodér URL-filter ved init (fx ved delt link)
+  decodeFilterFromUrl();
 
   // ── Saved views ──────────────────────────────────────────────────────────
   function updateViewsBtnLabel() {
@@ -408,26 +515,26 @@ export function initFilter(container, state, api, cb) {
 
   function renderViewsMenu() {
     const items = state.savedViews.length === 0
-      ? `<div class="views-empty">Ingen gemte views endnu</div>`
+      ? `<div class="views-empty">${t("browse.views_empty")}</div>`
       : state.savedViews.map((v) => {
           const isActive = v.id === state.activeViewId;
           return `
             <div class="views-item${isActive ? " views-item-active" : ""}" data-view-id="${esc(v.id)}">
               <button type="button" class="views-apply" data-view-id="${esc(v.id)}"
-                      title="Aktivér dette view">${isActive ? "✓ " : ""}${esc(v.name)}</button>
+                      title="${t("browse.views_apply_title")}">${isActive ? "✓ " : ""}${esc(v.name)}</button>
               <button type="button" class="views-del" data-view-id="${esc(v.id)}"
-                      title="Slet view">×</button>
+                      title="${t("browse.views_del_title")}">×</button>
             </div>`;
         }).join("");
     viewsMenu.innerHTML = `
-      <button type="button" class="views-clear" title="Ryd alle filtre og aktivt view">
-        🚫 Ryd alle filtre (ingen view)
+      <button type="button" class="views-clear" title="${t("browse.views_clear_title")}">
+        ${t("browse.views_clear_btn")}
       </button>
       <div class="views-divider"></div>
       ${items}
       <div class="views-divider"></div>
-      <button type="button" class="views-save" title="Gem nuværende filter-kombination">
-        💾 Gem nuværende filtre som view…
+      <button type="button" class="views-save" title="${t("browse.views_save_title")}">
+        ${t("browse.views_save_btn")}
       </button>`;
   }
 
@@ -456,7 +563,7 @@ export function initFilter(container, state, api, cb) {
       state.activeViewId = null;
       renderViewsMenu();
       updateViewsBtnLabel();
-      msg.innerHTML = `<div class="alert info">Alle filtre nulstillet.</div>`;
+      msg.innerHTML = `<div class="alert info">${t("browse.views_reset_ok")}</div>`;
       viewsMenu.classList.add("hidden");
       await onFilterChange();
       return;
@@ -469,28 +576,25 @@ export function initFilter(container, state, api, cb) {
       state.activeViewId = v.id;
       renderViewsMenu();
       updateViewsBtnLabel();
-      msg.innerHTML = `<div class="alert info">View "${esc(v.name)}" anvendt.</div>`;
+      msg.innerHTML = `<div class="alert info">${t("browse.views_applied").replace("{name}", esc(v.name))}</div>`;
       viewsMenu.classList.add("hidden");
       await onFilterChange();
       return;
     }
     if (tgt.classList.contains("views-del")) {
       const v = state.savedViews.find((x) => x.id === tgt.dataset.viewId);
-      if (!v || !confirm(`Slet view "${v.name}"?`)) return;
+      if (!v || !confirm(t("browse.views_del_confirm").replace("{name}", v.name))) return;
       try {
         await api.deleteMyView(v.id);
         await reloadViews();
-        msg.innerHTML = `<div class="alert success">View "${esc(v.name)}" slettet.</div>`;
+        msg.innerHTML = `<div class="alert success">${t("browse.views_del_ok").replace("{name}", esc(v.name))}</div>`;
       } catch (err) {
-        msg.innerHTML = `<div class="alert error">Kunne ikke slette: ${esc(err.message)}</div>`;
+        msg.innerHTML = `<div class="alert error">${t("browse.views_del_err").replace("{msg}", esc(err.message))}</div>`;
       }
       return;
     }
     if (tgt.classList.contains("views-save")) {
-      const name = prompt(
-        "Navn på view (fx 'Mine printere', 'PLC-HalA aktive')\n" +
-        "Gemmer nuværende filterkombination — Kun portal, server-MAC-filter, kolonnefiltre."
-      );
+      const name = prompt(t("browse.views_save_prompt"));
       if (!name || !name.trim()) return;
       const trimmed = name.trim();
       const snap     = snapshotFilters();
@@ -498,20 +602,20 @@ export function initFilter(container, state, api, cb) {
       try {
         let savedId;
         if (existing) {
-          if (!confirm(`Et view med navnet "${existing.name}" findes allerede.\n\nOverskriv det med nuværende filtre?`)) return;
+          if (!confirm(t("browse.views_overwrite_confirm").replace("{name}", existing.name))) return;
           await api.updateMyView(existing.id, { name: trimmed, query: snap });
           savedId = existing.id;
-          msg.innerHTML = `<div class="alert success">View "${esc(trimmed)}" overskrevet.</div>`;
+          msg.innerHTML = `<div class="alert success">${t("browse.views_overwrite_ok").replace("{name}", esc(trimmed))}</div>`;
         } else {
           const created = await api.createMyView(trimmed, snap);
           savedId = created && created.id;
-          msg.innerHTML = `<div class="alert success">View "${esc(trimmed)}" gemt.</div>`;
+          msg.innerHTML = `<div class="alert success">${t("browse.views_save_ok").replace("{name}", esc(trimmed))}</div>`;
         }
         state.activeViewId = savedId || null;
         await reloadViews();
         viewsMenu.classList.add("hidden");
       } catch (err) {
-        msg.innerHTML = `<div class="alert error">Kunne ikke gemme: ${esc(err.message)}</div>`;
+        msg.innerHTML = `<div class="alert error">${t("browse.views_save_err").replace("{msg}", esc(err.message))}</div>`;
       }
     }
   });

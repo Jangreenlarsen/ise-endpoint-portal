@@ -7,6 +7,7 @@
 
 import { api } from "../api.js";
 import { auth } from "../auth.js";
+import { t } from "../i18n.js";
 import { esc } from "./browse-utils.js";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -81,7 +82,6 @@ function sparkline(labels, series, height = 110) {
   const yOf = (v) => pad.top + plotH - ((v - yMin) / yRange) * plotH;
 
   let svg = "";
-  // Gridlines
   for (let i = 1; i <= 3; i++) {
     const y = yOf(yMin + (i / 4) * (yMax - yMin)).toFixed(1);
     svg += `<line x1="${pad.left}" y1="${y}" x2="${pad.left + plotW}" y2="${y}" stroke="#f3f4f6" stroke-width="1"/>`;
@@ -90,7 +90,6 @@ function sparkline(labels, series, height = 110) {
     const y0 = yOf(0).toFixed(1);
     svg += `<line x1="${pad.left}" y1="${y0}" x2="${pad.left + plotW}" y2="${y0}" stroke="#e5e7eb" stroke-width="1" stroke-dasharray="3,2"/>`;
   }
-  // Series
   series.forEach((s) => {
     const pts = s.data.map((v, i) => `${xOf(i).toFixed(1)},${yOf(v).toFixed(1)}`).join(" ");
     if (s.fill) {
@@ -99,7 +98,6 @@ function sparkline(labels, series, height = 110) {
     }
     svg += `<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
   });
-  // Date-labels
   if (labels.length) {
     svg += `<text x="${pad.left + 2}" y="${H - 3}" font-size="9" fill="#9ca3af">${labels[0].slice(5)}</text>`;
     svg += `<text x="${pad.left + plotW - 2}" y="${H - 3}" font-size="9" fill="#9ca3af" text-anchor="end">${labels[n].slice(5)}</text>`;
@@ -124,14 +122,14 @@ function logBadge(level) {
 
 function renderLogsTable(entries) {
   if (!entries || !entries.length)
-    return `<div class="hint" style="padding:.5rem 0;">Ingen log-linjer matcher filteret.</div>`;
+    return `<div class="hint" style="padding:.5rem 0;">${t("dash.log_no_match")}</div>`;
   return `<div style="overflow-x:auto;">
     <table style="width:100%;border-collapse:collapse;font-size:.82em;font-family:monospace;">
       <thead><tr>
-        <th style="text-align:left;padding:4px 8px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-family:sans-serif;white-space:nowrap;">Tidspunkt</th>
-        <th style="text-align:left;padding:4px 8px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-family:sans-serif;">Niveau</th>
-        <th style="text-align:left;padding:4px 8px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-family:sans-serif;">Logger</th>
-        <th style="text-align:left;padding:4px 8px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-family:sans-serif;">Besked</th>
+        <th style="text-align:left;padding:4px 8px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-family:sans-serif;white-space:nowrap;">${t("dash.log_col_time")}</th>
+        <th style="text-align:left;padding:4px 8px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-family:sans-serif;">${t("dash.log_col_level")}</th>
+        <th style="text-align:left;padding:4px 8px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-family:sans-serif;">${t("dash.log_col_logger")}</th>
+        <th style="text-align:left;padding:4px 8px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-family:sans-serif;">${t("dash.log_col_msg")}</th>
       </tr></thead>
       <tbody>
         ${entries.map((e) => {
@@ -168,26 +166,26 @@ function compose(dash, trends, lifecycle, isAdmin) {
   const hitRate = cache.hit_rate_pct != null ? cache.hit_rate_pct + "%" : "—";
 
   let kpiRow = `<div style="display:flex;flex-wrap:wrap;gap:.75rem;margin-bottom:1rem;">
-    ${kpiCard("Endpoints i ISE",
-        totalEp != null ? Number(totalEp).toLocaleString("da") : "—",
-        "totalt i cache", "#2563eb")}
-    ${kpiCard("Private MACs (LAA)",
-        snap.laa != null ? snap.laa.toLocaleString("da") : "—",
-        snap.laa_pct != null ? snap.laa_pct + "% af total" : "",
+    ${kpiCard(t("dash.kpi_endpoints"),
+        totalEp != null ? Number(totalEp).toLocaleString() : "—",
+        t("dash.kpi_endpoints_sub"), "#2563eb")}
+    ${kpiCard(t("dash.kpi_private_macs") || "Private MACs (LAA)",
+        snap.laa != null ? snap.laa.toLocaleString() : "—",
+        snap.laa_pct != null ? snap.laa_pct + "% " + (t("trend.stat_laa_pct") || "% of total").replace("% ", "") : "",
         "#d97706")}`;
 
   if (isAdmin && lifecycle && !lifecycle._error) {
     const staleAccent = (lifecycle.stale_count ?? 0) > 0 ? "#dc2626" : "#16a34a";
     kpiRow += kpiCard(
-      "Inaktive endpoints",
+      t("dash.kpi_inactive"),
       lifecycle.stale_count ?? "—",
-      `>${lifecycle.threshold_days ?? 90} dage uden aktivitet`,
+      t("dash.kpi_inactive_sub").replace("{days}", lifecycle.threshold_days ?? 90),
       staleAccent
     );
   }
 
   kpiRow += `
-    ${kpiCard("Cache hit rate", hitRate,
+    ${kpiCard(t("dash.sys_hit_rate"), hitRate,
         `${cache.hits ?? "—"} hits · ${cache.misses ?? "—"} misses`, "#0891b2")}
     ${kpiCard("Circuit Breaker",
         ["CLOSED","HALF-OPEN","OPEN"][cb.state ?? 0] || "?",
@@ -207,7 +205,7 @@ function compose(dash, trends, lifecycle, isAdmin) {
       trendCard = `<div style="background:#fff;border-radius:12px;padding:1rem 1.25rem;
         box-shadow:0 1px 4px rgba(0,0,0,.07);display:flex;align-items:center;
         justify-content:center;min-height:120px;">
-        <span style="color:#9ca3af;font-size:.88rem;">Endpoint-cachen indlæses…</span>
+        <span style="color:#9ca3af;font-size:.88rem;">${t("dash.cache_loading")}</span>
       </div>`;
     } else {
       trendCard = `<div style="background:#fff;border-radius:12px;padding:1rem 1.25rem;
@@ -215,21 +213,21 @@ function compose(dash, trends, lifecycle, isAdmin) {
         <div style="display:flex;align-items:center;justify-content:space-between;
           margin-bottom:.5rem;flex-wrap:wrap;gap:.4rem;">
           <h3 style="margin:0;font-size:.92rem;color:#374151;font-weight:600;">
-            Endpoint bevægelse — seneste 30 dage
+            ${t("dash.trend_title")}
           </h3>
           <a href="#/trends" style="font-size:.8rem;color:#2563eb;text-decoration:none;
-            white-space:nowrap;">Se Trend Analyse →</a>
+            white-space:nowrap;">${t("dash.trend_link")}</a>
         </div>
         ${sparkline(labels, [
-          { name: "Tilgang", color: "#059669", data: added,   fill: true },
-          { name: "Fragang", color: "#dc2626", data: removed, fill: true },
-          { name: "Netto",   color: "#2563eb", data: net },
+          { name: t("dash.series_added"),   color: "#059669", data: added,   fill: true },
+          { name: t("dash.series_removed"), color: "#dc2626", data: removed, fill: true },
+          { name: t("dash.series_net"),     color: "#2563eb", data: net },
         ])}
         <div style="display:flex;gap:1.25rem;margin-top:.5rem;flex-wrap:wrap;align-items:center;">
-          <span style="font-size:.82rem;"><span style="color:#059669;font-weight:700;">+${totalAdded}</span> <span style="color:#6b7280;">tilgang</span></span>
-          <span style="font-size:.82rem;"><span style="color:#dc2626;font-weight:700;">−${totalRemoved}</span> <span style="color:#6b7280;">fragang</span></span>
-          <span style="font-size:.82rem;"><span style="color:${netColor};font-weight:700;">${netChange >= 0 ? "+" : ""}${netChange}</span> <span style="color:#6b7280;">netto</span></span>
-          ${snap.laa != null ? `<span style="font-size:.82rem;margin-left:auto;color:#9ca3af;">LAA nu: <strong style="color:#d97706;">${snap.laa.toLocaleString("da")}</strong></span>` : ""}
+          <span style="font-size:.82rem;"><span style="color:#059669;font-weight:700;">+${totalAdded}</span> <span style="color:#6b7280;">${t("dash.lbl_added")}</span></span>
+          <span style="font-size:.82rem;"><span style="color:#dc2626;font-weight:700;">−${totalRemoved}</span> <span style="color:#6b7280;">${t("dash.lbl_removed")}</span></span>
+          <span style="font-size:.82rem;"><span style="color:${netColor};font-weight:700;">${netChange >= 0 ? "+" : ""}${netChange}</span> <span style="color:#6b7280;">${t("dash.lbl_net")}</span></span>
+          ${snap.laa != null ? `<span style="font-size:.82rem;margin-left:auto;color:#9ca3af;">${t("dash.lbl_laa_now")} <strong style="color:#d97706;">${snap.laa.toLocaleString()}</strong></span>` : ""}
         </div>
       </div>`;
     }
@@ -239,23 +237,23 @@ function compose(dash, trends, lifecycle, isAdmin) {
   const prewarmRows = prewarm.scan_number ? `
     <div style="margin-top:.75rem;padding-top:.75rem;border-top:1px solid #f3f4f6;">
       <div style="font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;
-        color:#9ca3af;margin-bottom:.35rem;">Prewarm</div>
+        color:#9ca3af;margin-bottom:.35rem;">${t("dash.prewarm_title")}</div>
       ${statRow("Scan #", prewarm.scan_number)}
       ${statRow("Endpoints", prewarm.total_endpoints ?? "—")}
-      ${statRow("Sidst fuld scan", fmtAge(prewarm.last_full_scan_age_s) + " siden")}
-      <div style="font-size:.77rem;color:#9ca3af;margin-top:.3rem;">${prewarm.scanning ? "🔄 Scanning nu…" : "Idle"}</div>
+      ${statRow(t("dash.prewarm_last_scan"), fmtAge(prewarm.last_full_scan_age_s) + t("dash.prewarm_ago"))}
+      <div style="font-size:.77rem;color:#9ca3af;margin-top:.3rem;">${prewarm.scanning ? t("dash.prewarm_scanning") : "Idle"}</div>
     </div>` : "";
 
   const sysCard = `<div style="background:#fff;border-radius:12px;padding:1rem 1.25rem;
     box-shadow:0 1px 4px rgba(0,0,0,.07);">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;">
-      <h3 style="margin:0;font-size:.92rem;color:#374151;font-weight:600;">Systemstatus</h3>
+      <h3 style="margin:0;font-size:.92rem;color:#374151;font-weight:600;">${t("dash.sys_title")}</h3>
       ${cbPill(cb.state)}
     </div>
-    ${statRow("Sessioner (pxGrid)", sess.active ?? "—")}
-    ${statRow("Cache hit rate", hitRate)}
+    ${statRow(t("dash.sys_sessions"), sess.active ?? "—")}
+    ${statRow(t("dash.sys_hit_rate"), hitRate)}
     ${statRow("Stale serves", cache.stale_serves ?? "—")}
-    ${statRow("Disk loaded ved opstart", cache.disk_loaded_at_startup ?? "0")}
+    ${statRow(t("dash.sys_disk_loaded"), cache.disk_loaded_at_startup ?? "0")}
     ${prewarmRows}
   </div>`;
 
@@ -267,19 +265,19 @@ function compose(dash, trends, lifecycle, isAdmin) {
     lcCard = `<div style="background:#fff;border-radius:12px;padding:1rem 1.25rem;
       box-shadow:0 1px 4px rgba(0,0,0,.07);">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;">
-        <h3 style="margin:0;font-size:.92rem;color:#374151;font-weight:600;">Livscyklus</h3>
-        <a href="#/lifecycle" style="font-size:.8rem;color:#2563eb;text-decoration:none;">Se alle →</a>
+        <h3 style="margin:0;font-size:.92rem;color:#374151;font-weight:600;">${t("dash.lc_title")}</h3>
+        <a href="#/lifecycle" style="font-size:.8rem;color:#2563eb;text-decoration:none;">${t("dash.lc_link")}</a>
       </div>
       <div style="text-align:center;padding:.4rem 0 .6rem;">
         <div style="font-size:2.5rem;font-weight:700;color:${staleColor};line-height:1;">${lifecycle.stale_count ?? "—"}</div>
-        <div style="font-size:.8rem;color:#9ca3af;margin-top:.25rem;">inaktive &gt; ${lifecycle.threshold_days ?? 90} dage</div>
-        <div style="font-size:.77rem;color:#6b7280;margin-top:.2rem;">af ${lifecycle.total_cached ?? "—"} totalt</div>
+        <div style="font-size:.8rem;color:#9ca3af;margin-top:.25rem;">${t("dash.lc_inactive_label").replace("{days}", lifecycle.threshold_days ?? 90)}</div>
+        <div style="font-size:.77rem;color:#6b7280;margin-top:.2rem;">${t("dash.lc_total_label").replace("{total}", lifecycle.total_cached ?? "—")}</div>
       </div>
       ${hasStale
         ? `<a href="#/lifecycle" style="display:block;text-align:center;padding:.4rem;
             background:#fef2f2;color:#dc2626;border-radius:8px;font-size:.82rem;
-            text-decoration:none;font-weight:500;">Gennemgå inaktive →</a>`
-        : `<div style="text-align:center;font-size:.82rem;color:#16a34a;font-weight:500;">✓ Ingen inaktive endpoints</div>`}
+            text-decoration:none;font-weight:500;">${t("dash.lc_review_link")}</a>`
+        : `<div style="text-align:center;font-size:.82rem;color:#16a34a;font-weight:500;">${t("dash.lc_no_inactive")}</div>`}
     </div>`;
   }
 
@@ -288,14 +286,14 @@ function compose(dash, trends, lifecycle, isAdmin) {
   if (events.length) {
     eventsCard = `<div style="background:#fff;border-radius:12px;padding:1rem 1.25rem;
       box-shadow:0 1px 4px rgba(0,0,0,.07);margin-top:.75rem;">
-      <h3 style="margin:0 0 .75rem;font-size:.92rem;color:#374151;font-weight:600;">Seneste audit-hændelser</h3>
+      <h3 style="margin:0 0 .75rem;font-size:.92rem;color:#374151;font-weight:600;">${t("dash.events_title")}</h3>
       <div style="overflow-x:auto;">
         <table style="width:100%;border-collapse:collapse;font-size:.85em;">
           <thead><tr>
-            <th style="text-align:left;padding:4px 8px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-weight:500;white-space:nowrap;">Tidspunkt</th>
-            <th style="text-align:left;padding:4px 8px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-weight:500;">Bruger</th>
-            <th style="text-align:left;padding:4px 8px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-weight:500;">Handling</th>
-            <th style="text-align:left;padding:4px 8px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-weight:500;">Ressource</th>
+            <th style="text-align:left;padding:4px 8px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-weight:500;white-space:nowrap;">${t("dash.col_time")}</th>
+            <th style="text-align:left;padding:4px 8px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-weight:500;">${t("dash.col_user")}</th>
+            <th style="text-align:left;padding:4px 8px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-weight:500;">${t("dash.col_action")}</th>
+            <th style="text-align:left;padding:4px 8px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-weight:500;">${t("dash.col_resource")}</th>
           </tr></thead>
           <tbody>
             ${events.map((e) => `<tr>
@@ -334,27 +332,26 @@ export async function renderDashboard(container) {
       <div style="display:flex;align-items:flex-start;justify-content:space-between;
         margin-bottom:1.1rem;flex-wrap:wrap;gap:.5rem;">
         <div>
-          <h2 style="margin:0;font-size:1.15rem;font-weight:700;">Dashboard</h2>
-          <p style="margin:.15rem 0 0;font-size:.8rem;color:#9ca3af;">
-            Aggregeret portal-overblik — opdateres automatisk hvert 30. sekund</p>
+          <h2 style="margin:0;font-size:1.15rem;font-weight:700;">${t("dash.title")}</h2>
+          <p style="margin:.15rem 0 0;font-size:.8rem;color:#9ca3af;">${t("dash.subtitle")}</p>
         </div>
         <div style="display:flex;align-items:center;gap:.75rem;">
           <span id="dash-ts" style="font-size:.8rem;color:#9ca3af;"></span>
           <button id="dash-refresh" style="border:1px solid #d1d5db;border-radius:8px;
-            padding:5px 14px;font-size:.88rem;background:#fff;cursor:pointer;color:#374151;">↺ Opdatér</button>
+            padding:5px 14px;font-size:.88rem;background:#fff;cursor:pointer;color:#374151;">${t("dash.btn_refresh")}</button>
         </div>
       </div>
 
       <div id="dash-alerts"></div>
-      <div id="dash-body"><div style="color:#9ca3af;padding:2rem 0;">Henter dashboard…</div></div>
+      <div id="dash-body"><div style="color:#9ca3af;padding:2rem 0;">${t("dash.loading")}</div></div>
 
       <div id="dash-logs-section" style="margin-top:.75rem;">
         <div style="background:#fff;border-radius:12px;padding:1rem 1.25rem;
           box-shadow:0 1px 4px rgba(0,0,0,.07);">
           <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;flex-wrap:wrap;">
-            <h3 style="margin:0;font-size:.92rem;font-weight:600;color:#374151;flex:none;">Systemlog</h3>
+            <h3 style="margin:0;font-size:.92rem;font-weight:600;color:#374151;flex:none;">${t("dash.log_title")}</h3>
             <label style="display:flex;align-items:center;gap:.3rem;font-size:.85em;color:#6b7280;">
-              Niveau
+              ${t("dash.log_level_label")}
               <select id="dash-log-level" style="font-size:.9em;padding:2px 6px;border:1px solid #d1d5db;border-radius:4px;">
                 <option value="WARNING">WARNING+</option>
                 <option value="ERROR">ERROR+</option>
@@ -363,19 +360,19 @@ export async function renderDashboard(container) {
               </select>
             </label>
             <label style="display:flex;align-items:center;gap:.3rem;font-size:.85em;color:#6b7280;">
-              Antal
+              ${t("dash.log_count_label")}
               <select id="dash-log-lines" style="font-size:.9em;padding:2px 6px;border:1px solid #d1d5db;border-radius:4px;">
                 <option value="50">50</option>
                 <option value="100">100</option>
                 <option value="200">200</option>
               </select>
             </label>
-            <input id="dash-log-search" type="search" placeholder="Søg i log…"
+            <input id="dash-log-search" type="search" placeholder="${t("dash.log_search_ph")}"
               style="font-size:.85em;padding:3px 8px;border:1px solid #d1d5db;border-radius:4px;
                 flex:1;min-width:140px;max-width:280px;">
             <span id="dash-log-ts" style="font-size:.8em;color:#9ca3af;margin-left:auto;"></span>
           </div>
-          <div id="dash-logs-body"><div class="hint">Henter logs…</div></div>
+          <div id="dash-logs-body"><div class="hint">${t("dash.log_loading")}</div></div>
         </div>
       </div>
     </div>`;
@@ -416,7 +413,7 @@ export async function renderDashboard(container) {
         logsAvailable = false;
         logsSection.style.display = "none";
       } else {
-        logsBody.innerHTML = `<div class="hint">Kunne ikke hente log: ${esc(err.message)}</div>`;
+        logsBody.innerHTML = `<div class="hint">${t("dash.log_error").replace("{msg}", esc(err.message))}</div>`;
       }
     }
   }
@@ -432,7 +429,6 @@ export async function renderDashboard(container) {
           : Promise.resolve(null),
       ]);
 
-      // Alerts banner
       const alertList = alertsRes?.alerts || [];
       if (alertList.length) {
         alertsEl.innerHTML = `<div style="margin-bottom:.75rem;">` +
@@ -448,9 +444,9 @@ export async function renderDashboard(container) {
       }
 
       body.innerHTML = compose(dash, trendsRes, lifecycleRes, isAdmin);
-      tsEl.textContent = "Opdateret " + new Date().toLocaleTimeString();
+      tsEl.textContent = t("dash.updated") + new Date().toLocaleTimeString();
     } catch (err) {
-      body.innerHTML = `<div class="alert error">Kunne ikke hente dashboard: ${esc(err.message)}</div>`;
+      body.innerHTML = `<div class="alert error">${t("dash.error").replace("{msg}", esc(err.message))}</div>`;
     }
     await loadLogs();
   }

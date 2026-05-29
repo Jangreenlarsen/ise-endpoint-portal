@@ -208,9 +208,6 @@ _GITHUB_RAW_TMPL = (
 _GITHUB_RELEASE_NOTES_TMPL = (
     "https://raw.githubusercontent.com/Jangreenlarsen/ise-endpoint-portal/{branch}/RELEASE_NOTES.md"
 )
-_GITHUB_STANDALONE_RELEASE_TMPL = (
-    "https://raw.githubusercontent.com/Jangreenlarsen/ise-endpoint-portal/{branch}/RELEASE_{version}.md"
-)
 _github_cache: dict[str, Any] = {}
 _github_cache_ts: float = 0.0
 _github_cache_branch: str = ""
@@ -262,12 +259,20 @@ def _extract_release_sections_since(
         relevant.sort(key=lambda x: x[0])
         return "\n\n---\n\n".join(s for _, s in relevant)
 
-    # Fallback — vis sektionen for den version vi er på (3-parts semver-match,
-    # håndterer debug-builds: 5.7.4.5 → finder ## [5.7.4])
+    # Fallback 1 — eksakt match på 3-parts semver
+    # (håndterer debug-builds: 5.9.3.1 → søger ## [5.9.3])
     target = latest if latest != (0, 0, 0) else current
     for v, section in all_sections:
         if v == target:
             return section
+
+    # Fallback 2 — ingen eksakt sektion fundet (f.eks. debug-build eller
+    # version der kun er i CHANGELOG). Vis den nyeste tilgængelige sektion
+    # der er <= target, så "up to date"-visningen altid har noget at vise.
+    candidates = [(v, s) for v, s in all_sections if v <= target]
+    if candidates:
+        candidates.sort(key=lambda x: x[0], reverse=True)
+        return candidates[0][1]
     return ""
 
 
@@ -322,46 +327,28 @@ async def check_github_version(*, force: bool = False) -> dict[str, Any]:
         _cb = int(now)  # cache-buster — råt.githubusercontent.com CDN ignorerer headers
         no_cache = {"Cache-Control": "no-cache", "Pragma": "no-cache"}
         async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
-            # Trin 1: hent version.json
+            # Hent version.json og RELEASE_NOTES.md parallelt — sparer et ekstra round-trip
             version_url = f"{_GITHUB_RAW_TMPL.format(branch=branch)}?t={_cb}"
-            version_resp = await client.get(version_url, headers=no_cache)
+            rn_url      = f"{_GITHUB_RELEASE_NOTES_TMPL.format(branch=branch)}?t={_cb}"
+            version_resp, rn_resp = await asyncio.gather(
+                client.get(version_url, headers=no_cache),
+                client.get(rn_url,      headers=no_cache),
+                return_exceptions=False,
+            )
             version_resp.raise_for_status()
             data = version_resp.json()
             result["latest_version"] = data.get("version", "?")
-            result["latest_build"] = data.get("build", "?")
+            result["latest_build"]   = data.get("build", "?")
             try:
                 result["update_available"] = int(data.get("build", "0")) > int(BUILD)
             except ValueError:
                 result["update_available"] = data.get("build") != BUILD
 
-            # Trin 2: hent release notes — afhænger af branch
             notes_text = ""
-            if branch == "main":
-                # Prøv RELEASE_{version}.md (standalone note for denne main-release)
-                standalone_url = (
-                    _GITHUB_STANDALONE_RELEASE_TMPL.format(
-                        branch=branch, version=result["latest_version"]
-                    ) + f"?t={_cb}"
+            if rn_resp.status_code == 200:
+                notes_text = _extract_release_sections_since(
+                    rn_resp.text, VERSION, result["latest_version"]
                 )
-                notes_resp = await client.get(standalone_url, headers=no_cache)
-                if notes_resp.status_code == 200:
-                    notes_text = notes_resp.text
-                else:
-                    # Fallback: parse relevant sektion fra RELEASE_NOTES.md
-                    rn_url = f"{_GITHUB_RELEASE_NOTES_TMPL.format(branch=branch)}?t={_cb}"
-                    rn_resp = await client.get(rn_url, headers=no_cache)
-                    if rn_resp.status_code == 200:
-                        notes_text = _extract_release_sections_since(
-                            rn_resp.text, VERSION, result["latest_version"]
-                        )
-            else:
-                # dev branch: vis relevante sektioner fra RELEASE_NOTES.md
-                rn_url = f"{_GITHUB_RELEASE_NOTES_TMPL.format(branch=branch)}?t={_cb}"
-                rn_resp = await client.get(rn_url, headers=no_cache)
-                if rn_resp.status_code == 200:
-                    notes_text = _extract_release_sections_since(
-                        rn_resp.text, VERSION, result["latest_version"]
-                    )
             result["release_notes"] = notes_text
         _github_cache = result
         _github_cache_ts = now
@@ -370,6 +357,47 @@ async def check_github_version(*, force: bool = False) -> dict[str, Any]:
         result["error"] = str(exc)
         logger.warning("github version check fejlede (branch=%s): %s", branch, exc)
     return result
+
+
+def _git_objects_writable() -> bool:
+    """Returnerer True hvis den kørende proces kan skrive til .git/objects/."""
+    import os
+    obj_dir = PROJECT_ROOT / ".git" / "objects"
+    return obj_dir.is_dir() and os.access(obj_dir, os.W_OK)
+
+
+def _fix_git_object_permissions() -> None:
+    """Ret filrettigheder i .git/objects/ så git fetch kan skrive nye objekter.
+
+    Directories: 755, filer: 644.  Kører kun hvis processen ejer filerne
+    (os.chmod kræver ejerskab — root-ejede filer kan ikke rettes herfra).
+    """
+    import os
+    obj_dir = PROJECT_ROOT / ".git" / "objects"
+    if not obj_dir.is_dir():
+        return
+    try:
+        for root, dirs, files in os.walk(obj_dir):
+            for d in dirs:
+                try: os.chmod(os.path.join(root, d), 0o755)
+                except OSError: pass
+            for f in files:
+                try: os.chmod(os.path.join(root, f), 0o644)
+                except OSError: pass
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _ensure_git_shared_repo() -> None:
+    """Sæt core.sharedRepository=0644 så fremtidige git-objekter oprettes med
+    korrekte rettigheder og vi ikke akkumulerer permissions-fejl over tid."""
+    try:
+        subprocess.run(
+            ["git", "-C", str(PROJECT_ROOT), "config", "core.sharedRepository", "0644"],
+            capture_output=True, timeout=5,
+        )
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def _git_pull_sync() -> dict[str, Any]:
@@ -382,6 +410,28 @@ def _git_pull_sync() -> dict[str, Any]:
     from app.core import config as _cfg
     branch = (_cfg.settings.github_branch or "main").strip()
     stdout_parts: list[str] = []
+
+    # Ret permissions hvis processen ejer filerne.
+    # Tjek derefter om vi overhovedet kan skrive — hvis ikke, ejer en anden
+    # bruger (typisk root) .git/objects og vi kan ikke rette det selv.
+    _fix_git_object_permissions()
+    _ensure_git_shared_repo()
+
+    if not _git_objects_writable():
+        import os as _os
+        portal_user = _os.environ.get("USER") or _os.environ.get("LOGNAME") or "hypervision"
+        return {
+            "ok": False,
+            "stdout": "",
+            "stderr": (
+                f"Portal-processen (bruger '{portal_user}') ejer ikke .git/objects/ og kan ikke skrive til det.\n"
+                f"Løs det med én kommando på serveren (som root):\n\n"
+                f"  chown -R {portal_user}:{portal_user} {PROJECT_ROOT}/.git\n\n"
+                "Herefter virker git pull automatisk uden yderligere indgreb."
+            ),
+            "returncode": -1,
+        }
+
     try:
         # Trin 1: fetch
         fetch = subprocess.run(
@@ -391,19 +441,6 @@ def _git_pull_sync() -> dict[str, Any]:
         if fetch.stdout.strip(): stdout_parts.append(fetch.stdout.strip())
         if fetch.stderr.strip(): stdout_parts.append(fetch.stderr.strip())
         if fetch.returncode != 0:
-            combined = fetch.stdout + fetch.stderr
-            if "insufficient permission" in combined or "failed to write object" in combined:
-                return {
-                    "ok": False,
-                    "stdout": "\n".join(stdout_parts),
-                    "stderr": (
-                        "Git-objektmappen har forkerte filrettigheder.\n"
-                        "Kør følgende på serveren og prøv igen:\n\n"
-                        f"  find {PROJECT_ROOT}/.git/objects -type d -exec chmod 755 {{}} \\;\n"
-                        f"  find {PROJECT_ROOT}/.git/objects -type f -exec chmod 644 {{}} \\;"
-                    ),
-                    "returncode": fetch.returncode,
-                }
             return {"ok": False, "stdout": "\n".join(stdout_parts), "stderr": fetch.stderr.strip(), "returncode": fetch.returncode}
 
         # Trin 2: reset --hard til FETCH_HEAD — mere robust end origin/{branch}

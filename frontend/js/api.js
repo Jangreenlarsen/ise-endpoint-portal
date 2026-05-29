@@ -439,4 +439,27 @@ export const api = {
 
   // Trend-analyse (5.8.0)
   getTrends: (period = "30d") => request(`/trends?period=${encodeURIComponent(period)}`),
+
+  // Decommission (5.17.0)
+  decommissionEndpoint: (id) =>
+    request(`/endpoints/${encodeURIComponent(id)}/decommission`, { method: "POST" }),
+
+  bulkDecommission: (endpoint_ids) =>
+    request("/endpoints/bulk-decommission", {
+      method: "POST",
+      body: JSON.stringify({ endpoint_ids }),
+    }),
+
+  // Bulk template-apply (5.17.0)
+  bulkApplyTemplate: (endpoint_ids, template_id) =>
+    request("/endpoints/bulk-apply-template", {
+      method: "POST",
+      body: JSON.stringify({ endpoint_ids, template_id }),
+    }),
+
+  // Metrics historik (5.17.0)
+  getMetricsHistory: (names = ["cache_entries", "cache_stale_pct", "ise_requests_total", "circuit_state"], limit = 120) => {
+    const qs = names.map((n) => `names=${encodeURIComponent(n)}`).join("&") + `&limit=${limit}`;
+    return request(`/metrics/history?${qs}`);
+  },
 };

@@ -4,6 +4,365 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.17.1] — 2026-05-29 — Bugfix: decommission-filter og clipboard
+
+> **Build:** 0567
+
+To fejl i v5.17.0 rettet.
+
+**Decommission-filter** virkede ikke: "Vis dekommissionerede"-knappen ændrede intet i tabellen — begge tilstande viste det samme. Fejlen var en inverteret betingelse i `needsFilterMode()` kombineret med at filtreringen kun kørte ét sted. Rettet ved at anvende dekommissionsfiltering konsekvent i begge rendering-stier.
+
+**Del filter / clipboard** fejlede på HTTP-origins: `navigator.clipboard` er `undefined` uden HTTPS, og det kastede en synkron TypeError. Rettet med try/catch og optional chaining; fallback viser URL'en i et `prompt()`-dialog.
+
+---
+
+## [5.17.0] — 2026-05-29 — Metrics-historik, bulk template-apply, decommission-flow og URL filter-deling
+
+> **Build:** 0566
+
+Fire planlagte features implementeret fuldt ud.
+
+**Metrics-historik (Feature 4)**
+ISE-portalens Metrics-view viser nu SVG linjediagrammer over de seneste 24 timers data. Prometheus-metrikker scrapes automatisk hvert minut og gemmes i `backend/metrics_history.db` (SQLite) — ingen ekstern Prometheus/Grafana nødvendig.
+Viste serier: cache-entries, stale %, ISE requests total, circuit breaker state.
+
+**Bulk template-apply (Feature 5)**
+I Browse kan du nu vælge N endpoints, klikke **Anvend skabelon** og anvende en eksisterende skabelon på alle valgte på én gang. Alle felter i skabelonen (gruppe, beskrivelse, custom attributes) overskrives parallelt og auditeres.
+
+**Endpoint decommission-flow (Feature 6)**
+Endpoints kan nu "soft-deletes" via **Dekommissionér**-knappen i detail-modalen eller med bulk-dekommissionering af flere valgte. Sætter `HypervisionStatus=Decommissioned` som ISE custom attribute. Browse-visningen skjuler dekommissionerede endpoints som standard; "Vis dekommissionerede"-knappen slår synlighed til. Kan fortryde ved at redigere endpoint manuelt.
+
+**Filter-deling via URL (Feature 7)**
+Knappen **Del filter** i Browse kopierer et komplet URL (inkl. hash-parametre for alle aktive filtre) til udklipsholderen. Åbning af linket i en ny fane eller deling med en kollega gendanner præcis samme filter-tilstand. Understøtter: portal-filter, dekommissionerings-filter, fritekst, kolonne-filtre, auth-status, first-seen datointerval.
+
+## [5.16.0] — 2026-05-29 — i18n runde 3: audit, metrics, import, settings backup
+
+> **Build:** 0565
+
+Fjerde og afsluttende runde af i18n-konvertering. Alle brugersyn­lige strenge i de resterende views er nu lokaliserede.
+
+**Ændringer:**
+
+- **audit.js**: meta-tæller ("N af X events"), drawer-titel og export-fejlbesked bruger nu `t()`
+- **metrics.js**: "Cache vedligehold"-kortet (drip-interval, rotationstid, refreshed, skipped, ældste entry, gennemsnitlig alder, stale entries) og ISE PSN-noder-overskrift er lokaliserede
+- **import.js**: hint-afsnittet (formater, kolonner, auto-detect) og preview-feedback ("Detekteret format", rækker/gyldige/ugyldige) samt resultat-sektionsoverskrifter (Succeeded/Overwritten/Skipped/Failed) bruger nu `t()`
+- **section-backup.js**: backup og restore-flow er fuldt lokaliseret inkl. confirm-dialog, knap-tilstande og fejlbeskeder. Fil importerer nu `t()` fra i18n.js.
+- **i18n.js**: ~45 nye nøgler i DA og EN for audit, metrics, import og settings backup/restore
+- **Dokumentation**: FEATURES.md opdateret med entries for v5.13.0–v5.15.0 (i18n-features). BUGS.md opdateret med entries for v5.12.1–v5.13.1 (bug fixes). .gitignore udvidet med runtime-artefakter (cache/, logs/, temp/, backend/templates.json, backend/=*, IP-mapper)
+
+## [5.15.0] — 2026-05-29 — i18n runde 2: browse-modulerne fuldt lokaliseret
+
+> **Build:** 0564
+
+Alle synlige strenge i browse-modulerne er nu lokaliserede. ~110 nye oversættelsesnøgler (da + en) dækker:
+
+- **Browse tabel**: LAA-tooltip (privat MAC), markeret-pin titel, fortryd-dialog, gem-fremdrift
+- **Browse filter**: filter-loading beskeder, views-menu (alle knapper og bekræftelsesdialoguer)
+- **Browse bulk**: CoA Disconnect/Reauth beskeder, PSK-fejl, RADIUS-placeholder-tekst, simulerings-UI (match/ingen match/delvis, resume, badges)
+- **Browse overlay**: ny-gruppe-dialog, batch-simulerings-overlay (header, policy-label, RADIUS-sektion, templates)
+- **Browse detail**: ANC karantæne/fjern flow, historik-tab (headers, beskeder), session-tab (cache/MnT titler, fejlbeskeder), statisk profil Ja/Nej
+- **Browse.js**: toolbar-tooltips, filter-chip tekster, tab-knapper (Historik → History, ISE Session)
+
+## [5.14.0] — 2026-05-29 — Fuld i18n-oversættelse af lifecycle, dashboard, trends, audit og metrics
+
+> **Build:** 0563
+
+Alle synlige strenge i de centrale views oversættes nu korrekt når bruger-sprog er sat til engelsk. Views som tidligere viste dansk uanset sprogindstilling er nu fuldt lokaliserede.
+
+**Berørte views:**
+- **Lifecycle**: titel, beskrivelse, kolonne-headers, knapper, fejlmeddelelser, CSV-header, tidsenheder (t→h)
+- **Dashboard**: KPI-labels, trend-chart-titler og serie-navne, systemstatus, audit-hændelser, systemlog
+- **Trend Analyse**: titel, periode-vælger, statistik-kort, diagram-titler og hints
+- **Audit**: export-knap og eksporterings-tekst
+- **Metrics**: capacity-badges (følger med / grænse / bagud)
+- **Settings/Cache**: capacity-badges og tidssuffix "siden"
+
+**i18n.js**: ~100 nye nøgler (`lc.*`, `dash.*`, `trend.*`, `audit.btn_export`, `metrics.capacity_*`, `settings.cache_capacity_*`, `settings.ago`) i begge sprogblokke.
+
+---
+
+## [5.13.1] — 2026-05-29 — Hvid tekst på "Ryd markeringer"-knap
+
+> **Build:** 0562
+
+"Ryd markeringer"-knappen i Livscyklus viser nu hvid tekst som alle andre knapper i portalen. Den tilpassede mørk-amber `color`-override er fjernet.
+
+---
+
+## [5.13.0] — 2026-05-29 — Fuld lokaliseringsunderstøttelse for alle menupunkter
+
+> **Build:** 0561
+
+Alle sidebar-menupunkter og labels oversættes nu korrekt når bruger-sprog er sat til engelsk. Tidligere stod "Livscyklus", "Trend Analyse", "Rolle:", "Log ud" og "Præferencer" altid på dansk.
+
+**Ændringer:**
+- Tilføjet `nav.lifecycle`, `nav.trends`, `sidebar.role`, `sidebar.logout` til i18n-oversættelserne for både dansk og engelsk
+- `data-i18n`-attributter tilføjet til "Rolle:", "Log ud" og "Præferencer" i HTML
+- `updateNavLabels()` opdaterer nu `<html lang>` dynamisk ved sprogskcift
+- `<html lang>` ændret fra hardkodet `da` til `en` (matcher default-fallback)
+
+---
+
+## [5.12.9] — 2026-05-28 — Fjernet Inaktiv-chip fra MAC-kolonne
+
+> **Build:** 0560
+
+"Inaktiv"-filteret er fjernet fra MAC-kolonnen — session-status vises allerede i Auth-Status-kolonnen. MAC-kolonnen har nu to chips: **Privat** og **📌 Markeret**.
+
+---
+
+## [5.12.8] — 2026-05-28 — Fix: Markering fjernes nu korrekt ved alle gem-operationer
+
+> **Build:** 0559
+
+📌-markeringen fjernes nu pålideligt fra både Browse og Livscyklus ved gem — uanset om det sker via detail-modal, "Gem alle" eller bulk-gem.
+
+**Hvad var galt:** Inline- og bulk-gem fjernede aldrig markeringer fra localStorage (kun detail-modal havde kode til det, og den var skrøbelig). Desuden manglede `<tr>`-elementerne en `data-mac`-attribut, så MAC-opslag var usikkert.
+
+**Løsning:** Centraliseret `unmarkSaved(id)`-funktion der altid virker: læser MAC fra `<tr data-mac="...">`, opdaterer localStorage og fjerner 📌-badge synkront.
+
+---
+
+## [5.12.7] — 2026-05-28 — Fix: 📌-markering fjernes direkte fra tabellen ved gem
+
+> **Build:** 0558
+
+📌-badgen fjernes nu synkront og direkte fra tabelrækken i det øjeblik gem lykkes — uden at vente på en asynkron `refreshRows`-kæde. Det giver øjeblikkelig og pålidelig feedback.
+
+---
+
+## [5.12.6] — 2026-05-28 — Fix: 📌-markering fjernes nu korrekt efter gem
+
+> **Build:** 0557
+
+📌-markeringen forsvinder nu pålideligt fra MAC-cellen i Browse-tabellen efter et endpoint er gemt i redigeringsmodalen. Fejlen skyldtes at MAC-adressen blev aflæst fra DOM-elementet på gem-tidspunktet, hvor den i visse situationer var tom. MAC gemmes nu direkte i state når modalen åbner.
+
+---
+
+## [5.12.5] — 2026-05-28 — Inaktiv-chip deaktiveres når pxGrid ikke har sessionsdata
+
+> **Build:** 0556
+
+**Inaktiv**-chippen er nu grå og ikke-klikbar når pxGrid ikke er forbundet eller endnu ikke har leveret sessionsdata. Et forklarende tooltip vises. Hvis pxGrid-forbindelsen falder mens chippen er aktiv, deaktiveres filteret automatisk og tabellen opdateres. Chippen genaktiveres automatisk når sessionsdata er tilgængeligt igen.
+
+---
+
+## [5.12.4] — 2026-05-28 — Fix: 📌-markering forsvinder nu fra rækken efter gem
+
+> **Build:** 0555
+
+Efter et endpoint gemmes i Browse/Edit forsvinder 📌-badgen nu korrekt fra MAC-cellen i tabellen — uden at siden skal genindlæses.
+
+---
+
+## [5.12.3] — 2026-05-28 — Fix: MAC-chips opdaterer nu tabellen automatisk
+
+> **Build:** 0554
+
+Klik på **Privat**, **Inaktiv** eller **📌 Markeret** under MAC-kolonnen opdaterer nu straks tabellen — også når intet filter var aktivt i forvejen. Browseren indlæser automatisk alle endpoints og filtrerer dem efter den valgte chip.
+
+---
+
+## [5.12.2] — 2026-05-28 — Gem i Browse fjerner automatisk markering
+
+> **Build:** 0553
+
+Når et markeret endpoint gemmes i Browse/Edit-modalen, fjernes 📌-markeringen automatisk. Hvis der ikke er flere markerede endpoints, slukkes "📌 Markeret"-chippen også automatisk, så tabellen ikke viser tomme resultater.
+
+---
+
+## [5.12.1] — 2026-05-28 — Fix: Markeret-filter flyttet til MAC-chip
+
+> **Build:** 0552
+
+"Vis kun markerede"-knappen er fjernet fra den øverste toolbar. I stedet er der nu tre chips under MAC-kolonnen i filterpanelet: **Privat**, **Inaktiv** og **📌 Markeret** — alle fungerer ens og kan kombineres frit.
+
+---
+
+## [5.12.0] — 2026-05-28 — Livscyklus-markering og MAC-filter-chips i Browse
+
+> **Build:** 0551
+
+### Livscyklus → Browse markerings-workflow
+
+Livscyklus-visningen (Monitoring → Livscyklus) viser endpoints der ikke har haft portal-aktivitet i det valgte tidsrum. Det er nu muligt at:
+
+1. **Afkrydse individuelle endpoints** — eller bruge "Vælg alle"-checkboksen i kolonneheaderen.
+2. Klikke **"📌 Marker valgte (N) →"** — MAC-adresserne gemmes i browseren og Browse åbnes automatisk.
+3. I Browse aktiveres **"Vis kun markerede"**-filtret automatisk — kun de markerede endpoints vises.
+4. Redigér dem én for én via ↗-linket eller klik direkte på rækken.
+
+Allerede-markerede endpoints viser et 📌-ikon i Livscyklus og i Browse-tabellens MAC-celle, så det er tydeligt hvad der er i kø. Knappen "Ryd markeringer" nulstiller listen.
+
+### MAC-filter-chips i Browse (MAC-kolonne)
+
+Under søgefeltet i MAC-kolonnen er der tilføjet to toggle-chips:
+
+- **Privat** — viser kun Private/LAA MAC-adresser (Locally Administered Address, bit 1 sat i første octet). Nyttigt til at identificere iOS/Android-enheder med tilfældig MAC.
+- **Inaktiv** — viser kun endpoints der **ikke** ses i den aktive pxGrid-session (ikke tilkoblet netværket lige nu).
+
+Begge chips virker i kombination med øvrige filtre (tekst-søgning, gruppe-filter osv.).
+
+---
+
+## [5.11.6] — 2026-05-27 — Fix: Kolonne-flip og selektion-tab ved periodisk baggrunds-opdatering
+
+> **Build:** 0550
+
+Hvert 5. minut berigte ISE pxGrid-data med MnT-oplysninger (policy-navn, regel-navn m.m.), hvilket udløste en fuld tabel-genindlæsning. Det gav to synlige fejl:
+
+1. **Kolonner flippede** frem og tilbage i 1-2 sekunder — tabellen viste en "indlæser"-besked og kolonne-bredder nulstillede sig mens ny data blev hentet.
+2. **Selektion gik tabt** — valgte rækker (til bulkredigering) blev fravalgt ved genindlæsningen, så man var tvunget til at redigere én ad gangen.
+
+Begge fejl er nu løst: baggrunds-opdateringer sker stille uden at vise indlæser-tekst eller rydde rækker. Eksisterende rækker forbliver synlige og selekterede mens ny data hentes i baggrunden, og erstattes derefter atomisk.
+
+---
+
+## [5.11.5] — 2026-05-25 — Fix: Kolonne-synlighed og gemte views virker nu for TACACS-brugere
+
+> **Build:** 0549
+
+TACACS+-brugere kan nu gemme deres Browse-præferencer (kolonne-synlighed, rækkefølge, bredde) og gemte views server-side — præcis som lokale brugere.
+
+Første gang en TACACS-bruger gemmer en præference oprettes automatisk en shadow-record på serveren. Herefter fungerer incognito-sessioner og nye browsere korrekt: præferencerne hentes fra serveren ved login.
+
+---
+
+## [5.11.4] — 2026-05-25 — Fix: Kolonne-synlighed virker nu korrekt i incognito og på nye enheder
+
+> **Build:** 0548
+
+Kolonne-synlighed hentes nu korrekt fra backend i incognito-sessioner og nye browsere/enheder.
+
+**Problemet:** En gammel fejl betød at backend-sidan gemte en "alle kolonner synlige"-tilstand. Når du åbnede Browse næste gang, overskrev portalen din lokale præference med denne forkerte backend-tilstand.
+
+**Løsningen:** Backend-præferencer skrives nu kun til din lokale browser-cache, hvis den er tom (incognito, ny enhed, første login). Har du allerede en lokal præference, bevares den — og den uploades automatisk til backend, så fremtidige incognito-sessioner henter den korrekte tilstand.
+
+**Kort sagt:** Sæt dine kolonne-præferencer i din normale browser, og de vil automatisk være aktive næste gang du åbner en ny incognito-session eller logger ind på en ny enhed.
+
+---
+
+## [5.11.3] — 2026-05-25 — Fix: Kolonne-synlighed nulstilles ikke længere ved navigation
+
+> **Build:** 0547
+
+Rodårsagen til at kolonne-synlighed nulstillede ved hvert Browse-besøg er nu fjernet. Problemet lå i `restoreFilters()`: filtergenoprettelse inkluderede den sidst gemte kolonne-synlighed fra filter-snapshotten (BROWSE_FILTERS_KEY), som overskrev brugernes kolonne-præference (COLVIS_KEY) ved hvert sidebesøg.
+
+Rettelse: `restoreFilters()` springer nu kolonne-synlighed over — kolonne-tilstanden læses udelukkende fra COLVIS_KEY og backend-præferencer. Gemte views aktiverer stadig kolonne-synlighed korrekt, da de bruger eksplicit aktivering.
+
+---
+
+## [5.11.2] — 2026-05-25 — Fix: Kolonne-synlighed persisterer nu korrekt + gemt-bekræftelse
+
+> **Build:** 0546
+
+Kolonne-synlighed persisterer nu på tværs af navigationer: ved hvert besøg på Browse-siden uploades den aktuelle kolonne-tilstand til din brugerprofil, så den er korrekt næste gang du vender tilbage.
+
+Derudover: når du ændrer en kolonnes synlighed, vises nu et grønt **✓** i "Kolonner"-knappen i 1,8 sekunder som bekræftelse på at ændringen er gemt.
+
+---
+
+## [5.11.1] — 2026-05-25 — Fix: Kolonne-synlighed synkroniseres nu korrekt til backend
+
+> **Build:** 0545
+
+Kolonne-synlighed (hvilke kolonner der vises i Browse) blev ikke gemt i backend, selv om funktionen var implementeret. Årsagen: synkronisering skete kun ved aktiv ændring — men brugere der havde sat synlighed FØR backend-sync-funktionen blev tilføjet, fik aldrig uploadet den eksisterende præference.
+
+Rettet: ved første sideload kontrolleres om backend mangler kolonnepræferencer, og i så fald uploades localStorage-tilstanden automatisk én gang. Herefter synkroniseres ændringer som normalt.
+
+---
+
+## [5.11.0] — 2026-05-25 — Kolonnebredder og alle Browse-præferencer gemmes i backend
+
+> **Build:** 0544
+
+Kolonnebredder (resize) synkroniseres nu til din brugerprofil på serveren — ligesom kolonne-rækkefølge og synlighed allerede gør. Alle tre Browse-præferencer gendannes automatisk på tværs af enheder og browsere ved næste login.
+
+**TACACS+-brugere:** Som tidligere gemmes præferencer stille i browserens localStorage.
+
+---
+
+## [5.10.4] — 2026-05-25 — Skalerbare kolonner virker nu
+
+> **Build:** 0539
+
+Resize-handle i kolonne-headers var usynlig og uklikbar pga. en CSS-fejl (`overflow: hidden` på `<th>` clippede den absolut-positionerede handle). Rettet — du kan nu trække i højre kant af en kolonneheader for at justere bredden.
+
+---
+
+## [5.10.2] — 2026-05-25 — Git pull: klar fejlbesked ved ejerskabsproblem
+
+> **Build:** 0537
+
+Hvis `.git`-mappen ejes af en anden bruger end portal-processen, vises nu en præcis `chown`-kommando med det rigtige brugernavn i stedet for de misvisende `find/chmod`-kommandoer.
+
+---
+
+## [5.10.1] — 2026-05-25 — Git pull fejler aldrig mere på filrettigheder
+
+> **Build:** 0536
+
+"Git-objektmappen har forkerte filrettigheder"-fejlen er løst permanent. Portalen fikser nu automatisk `.git/objects`-rettigheder (755/644) og sætter `core.sharedRepository` i git-config **inden** hvert git fetch — ingen manuelle chmod-kommandoer på serveren nogensinde igen.
+
+---
+
+## [5.10.0] — 2026-05-25 — Identity Group: fuld sti + skalerbare kolonner
+
+> **Build:** 0535
+
+### Fuld hierarkisk sti i gruppe-dropdowns
+
+Alle gruppe-dropdowns (Browse inline, detail-modal, bulk-edit, overgruppe-valg) viser nu den **fulde sti** med " / " separator:
+
+```
+Profiled
+Profiled / ADM-Apple-iPhone
+Profiled / ADM-Apple-iPhone / SubGroup
+Unknown
+Unknown / SomeChild
+```
+
+I detail-modal vises desuden den valgte gruppes sti som stakkede linjer under dropdown-feltet (lille skrift, indrykket pr. niveau) — så man altid kan se hvad der er valgt uden at åbne dropdown.
+
+### Individuel kolonne-skalering i Browse
+
+Kolonner i Browse-tabellen kan nu skaleres individuelt ved at trække i den **grå resize-handle** i højre kant af kolonne-headeren. Bredder gemmes automatisk i browseren og genoprettes ved næste besøg.
+
+---
+
+## [5.9.4] — 2026-05-25 — Release notes vises altid i update-check
+
+> **Build:** 0534
+
+Update-checken viser nu altid release notes — også når portalen kører en debug-build (f.eks. 5.9.3.1) der ikke har sin egen sektion i RELEASE_NOTES.md. Fallback-logikken finder nu den seneste tilgængelige sektion hvis et eksakt match mangler.
+
+---
+
+## [5.9.3] — 2026-05-25 — Hurtigere update-check
+
+> **Build:** 0532
+
+GitHub-forespørgslerne ved update-check (`version.json` + `RELEASE_NOTES.md`) hentes nu **parallelt** i stedet for sekventielt. Checket er typisk 40–60 % hurtigere.
+
+---
+
+## [5.9.2] — 2026-05-25 — Opret endpoint gruppe: vælg overgruppe
+
+> **Build:** 0530
+
+"Ny gruppe"-modalen har nu en **Overgruppe**-dropdown der viser alle eksisterende endpoint identity groups (sorteret alfabetisk med fuld hierarkisk sti). Vælger man ingen overgruppe oprettes gruppen i roden. Valget sendes som `parentId` til ISE via ERS API.
+
+---
+
+## [5.9.1] — 2026-05-25 — Policy-view: "Authz Policies" label
+
+> **Build:** 0529
+
+- Sidebar-overskriften er omdøbt fra "Politikker"/"Policies" til **"Authz Policies"**
+- Midter-kolonnens overskrift viser nu **"Authz : [policy-sæt navn]"** i stedet for bare sæt-navnet
+
+---
+
 ## [5.9.0] — 2026-05-25 — Opret endpoint gruppe + Policy drag-and-drop
 
 > **Build:** 0528

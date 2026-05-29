@@ -51,8 +51,12 @@ PSK_ATTRS = [PSK_MODE_ATTR, PSK_KEY_ATTR]
 # Format: ISO 8601 UTC, fx "2026-05-08T12:34:56Z".
 REGISTERED_AT_ATTR = "HypervisionRegisteredAt"
 
+# Dekommissionerings-status (5.17.0) — sættes af decommission-flowet.
+# Tilladt værdi: "Decommissioned". Tom streng = aktivt endpoint.
+STATUS_ATTR = "HypervisionStatus"
+
 # Alle skjulte (ikke-UI-dropdown) CAs der skal have ISE-definition.
-HIDDEN_ATTRS = [HIDDEN_ATTR, ROLES_ATTR, REGISTERED_AT_ATTR] + PSK_ATTRS
+HIDDEN_ATTRS = [HIDDEN_ATTR, ROLES_ATTR, REGISTERED_AT_ATTR, STATUS_ATTR] + PSK_ATTRS
 
 # All attributes that need ISE definitions (managed + hidden).
 ALL_ATTRS = MANAGED_ATTRS + HIDDEN_ATTRS

@@ -16,6 +16,9 @@ export function initBulk(container, state, api, cb) {
   const bulkCoaBtn     = container.querySelector("#bulk-coa-btn");
   const bulkSimBtn     = container.querySelector("#bulk-sim-btn");
   const bulkSimOverlay = container.querySelector("#bulk-sim-overlay");
+  const bulkTplBtn     = container.querySelector("#bulk-tpl-btn");
+  const tplPickOverlay = container.querySelector("#tpl-pick-overlay");
+  const bulkDecommBtn  = container.querySelector("#bulk-decomm-btn");
 
   // ── Bulk-edit modal ──────────────────────────────────────────────────────
   bulkEditBtn.addEventListener("click", () => {
@@ -76,7 +79,7 @@ export function initBulk(container, state, api, cb) {
       inp.value = result.key; inp.type = "text";
       container.querySelector("#be-psk-show").textContent = t("bulk.btn_hide");
     } catch (err) {
-      msg.innerHTML = `<div class="alert error">Kunne ikke generere PSK: ${esc(err.message)}</div>`;
+      msg.innerHTML = `<div class="alert error">${t("browse.psk_gen_err").replace("{msg}", esc(err.message))}</div>`;
     }
   });
 
@@ -184,7 +187,7 @@ export function initBulk(container, state, api, cb) {
       t("bulk.confirm_disconnect").replace("{n}", ids.length).replace("{macs}", macs.join("\n")),
     )) return;
     bulkDisconnBtn.disabled = true;
-    msg.innerHTML = `<div class="alert info">CoA Disconnect → ${ids.length}...</div>`;
+    msg.innerHTML = `<div class="alert info">${t("browse.coa_disc_progress").replace("{n}", ids.length)}</div>`;
     let ok = 0, fail = 0;
     const failures = [];
     for (const id of ids) {
@@ -208,17 +211,17 @@ export function initBulk(container, state, api, cb) {
     bulkCoaBtn.addEventListener("click", async () => {
       const ids = cb.getSelectedIds();
       if (!ids.length) return;
-      if (!confirm(`CoA Reauth → ${ids.length} endpoint(s)?\n\nISE sender re-autentificeringskrav til klienterne.`)) return;
+      if (!confirm(t("browse.coa_reauth_confirm").replace("{n}", ids.length))) return;
       bulkCoaBtn.disabled = true;
-      msg.innerHTML = `<div class="alert info">CoA Reauth → ${ids.length} endpoints…</div>`;
+      msg.innerHTML = `<div class="alert info">${t("browse.coa_reauth_progress").replace("{n}", ids.length)}</div>`;
       try {
         const res = await api.bulkCoa(ids, "reauth");
         const ok   = res?.ok_count ?? 0;
         const fail = (res?.results || []).filter((r) => !r.ok).length;
         const cls  = fail ? (ok ? "info" : "error") : "success";
-        msg.innerHTML = `<div class="alert ${cls}">CoA Reauth: ${ok} OK, ${fail} fejlede</div>`;
+        msg.innerHTML = `<div class="alert ${cls}">${t("browse.coa_reauth_result").replace("{ok}", ok).replace("{fail}", fail)}</div>`;
       } catch (err) {
-        msg.innerHTML = `<div class="alert error">Bulk CoA fejlede: ${esc(err.message)}</div>`;
+        msg.innerHTML = `<div class="alert error">${t("browse.coa_reauth_err").replace("{msg}", esc(err.message))}</div>`;
       } finally {
         bulkCoaBtn.disabled = false;
       }
@@ -243,9 +246,9 @@ export function initBulk(container, state, api, cb) {
       row.className = "radius-attr-row";
       row.innerHTML = `
         <input type="text" class="radius-attr-key" list="bsim-radius-attrs-list"
-               placeholder="Attribut (fx NAS-Port-Type)" value="${esc(key)}" />
-        <input type="text" class="radius-attr-val" placeholder="Værdi" value="${esc(val)}" />
-        <button type="button" class="radius-row-remove secondary small" title="Fjern">✕</button>
+               placeholder="${t("browse.radius_attr_placeholder")}" value="${esc(key)}" />
+        <input type="text" class="radius-attr-val" placeholder="${t("browse.radius_val_placeholder")}" value="${esc(val)}" />
+        <button type="button" class="radius-row-remove secondary small" title="${t("browse.radius_remove_title")}">✕</button>
       `;
       row.querySelector(".radius-row-remove").addEventListener("click", () => row.remove());
       radiusRowsEl.appendChild(row);
@@ -274,8 +277,8 @@ export function initBulk(container, state, api, cb) {
       const sel = bulkSimOverlay.querySelector("#bsim-radius-tpl-sel");
       if (!sel) return;
       const cur = sel.value;
-      const tpls = loadTpls().sort((a, b) => a.name.localeCompare(b.name, "da"));
-      sel.innerHTML = `<option value="">— Vælg template —</option>`
+      const tpls = loadTpls().sort((a, b) => a.name.localeCompare(b.name));
+      sel.innerHTML = `<option value="">${t("browse.sim_tpl_none")}</option>`
         + tpls.map((tp) => `<option value="${esc(tp.id)}"${tp.id === cur ? " selected" : ""}>${esc(tp.name)}</option>`).join("");
     }
 
@@ -290,8 +293,8 @@ export function initBulk(container, state, api, cb) {
 
     bulkSimOverlay.querySelector("#bsim-radius-tpl-save").addEventListener("click", () => {
       const attrs = readBsimRadiusAttrs();
-      if (!Object.keys(attrs).length) { alert("Tilføj mindst én RADIUS-attribut før du gemmer."); return; }
-      const name = prompt("Giv templaten et navn:");
+      if (!Object.keys(attrs).length) { alert(t("browse.radius_tpl_empty_alert")); return; }
+      const name = prompt(t("browse.radius_tpl_name_prompt"));
       if (!name?.trim()) return;
       const tpls = loadTpls();
       tpls.push({ id: Date.now().toString(36), name: name.trim(), attrs });
@@ -315,7 +318,7 @@ export function initBulk(container, state, api, cb) {
         const sets = data.policy_sets || data || [];
         policySetSel.innerHTML = sets.length
           ? sets.map((s) => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join("")
-          : `<option value="">Ingen policy-sæt fundet</option>`;
+          : `<option value="">${t("browse.sim_no_policy_sets")}</option>`;
         policySetsLoaded = true;
       } catch (err) {
         policySetSel.innerHTML = `<option value="">Fejl: ${esc(err.message)}</option>`;
@@ -325,12 +328,12 @@ export function initBulk(container, state, api, cb) {
     bulkSimBtn.addEventListener("click", async () => {
       const ids = cb.getSelectedIds();
       if (!ids.length) return;
-      simCount.textContent = `${ids.length} endpoint(s) valgt`;
+      simCount.textContent = t("browse.sim_count").replace("{n}", ids.length);
       resultsDiv.style.display = "none";
       tbody2.innerHTML = "";
       summaryEl.textContent = "";
       runBtn.disabled = false;
-      runBtn.textContent = "Kør simulering";
+      runBtn.textContent = t("browse.sim_run_btn");
       renderBsimTplSelect();
       bulkSimOverlay.classList.remove("hidden");
       await loadPolicySets();
@@ -347,7 +350,7 @@ export function initBulk(container, state, api, cb) {
       if (!ids.length) { bulkSimOverlay.classList.add("hidden"); return; }
 
       runBtn.disabled = true;
-      runBtn.textContent = "Simulerer…";
+      runBtn.textContent = t("browse.sim_running");
       resultsDiv.style.display = "none";
 
       try {
@@ -360,14 +363,14 @@ export function initBulk(container, state, api, cb) {
             return `<tr>
               <td><code class="lc-mac">${esc(r.mac || r.id)}</code></td>
               <td colspan="2" style="color:#dc2626;font-size:0.78rem;">${esc(r.error)}</td>
-              <td><span class="bsim-badge bsim-err">Fejl</span></td>
+              <td><span class="bsim-badge bsim-err">${t("browse.sim_error")}</span></td>
             </tr>`;
           }
           const badge = r.matched
-            ? `<span class="bsim-badge bsim-ok">Match</span>`
-            : `<span class="bsim-badge bsim-fail">Ingen match</span>`;
+            ? `<span class="bsim-badge bsim-ok">${t("browse.sim_match")}</span>`
+            : `<span class="bsim-badge bsim-fail">${t("browse.sim_no_match")}</span>`;
           const partial = r.partial_match
-            ? `<span class="bsim-badge bsim-partial">Delvis</span>` : "";
+            ? `<span class="bsim-badge bsim-partial">${t("browse.sim_partial")}</span>` : "";
           return `<tr>
             <td><code class="lc-mac">${esc(r.mac || r.id)}</code></td>
             <td style="font-size:0.8rem;">${esc(r.matched_rule || "—")}</td>
@@ -376,15 +379,93 @@ export function initBulk(container, state, api, cb) {
           </tr>`;
         }).join("");
 
-        summaryEl.textContent =
-          `Match: ${data.matched_count} / Ingen match: ${data.unmatched_count} / Fejl: ${data.error_count}`;
+        summaryEl.textContent = t("browse.sim_summary")
+          .replace("{matched}", data.matched_count)
+          .replace("{unmatched}", data.unmatched_count)
+          .replace("{errors}", data.error_count);
         resultsDiv.style.display = "";
       } catch (err) {
-        msg.innerHTML = `<div class="alert error">Batch-simulering fejlede: ${esc(err.message)}</div>`;
+        msg.innerHTML = `<div class="alert error">${t("browse.sim_batch_err").replace("{msg}", esc(err.message))}</div>`;
         bulkSimOverlay.classList.add("hidden");
       } finally {
         runBtn.disabled = false;
-        runBtn.textContent = "Kør simulering";
+        runBtn.textContent = t("browse.sim_run_btn");
+      }
+    });
+  }
+
+  // ── Bulk template-apply ───────────────────────────────────────────────────
+  if (bulkTplBtn && tplPickOverlay) {
+    const tplSelect  = tplPickOverlay.querySelector("#tpl-pick-select");
+    const tplApply   = tplPickOverlay.querySelector("#tpl-pick-apply");
+    const tplCancel  = tplPickOverlay.querySelector("#tpl-pick-cancel");
+    const tplCount   = tplPickOverlay.querySelector("#tpl-pick-count");
+
+    bulkTplBtn.addEventListener("click", async () => {
+      const ids = cb.getSelectedIds();
+      if (!ids.length) return;
+      tplCount.textContent = t("bulk.tpl_count").replace("{n}", ids.length);
+      try {
+        const resp = await api.listTemplates();
+        const tpls = resp?.templates || [];
+        tplSelect.innerHTML = `<option value="">${t("bulk.tpl_none")}</option>`
+          + tpls.map((tpl) => `<option value="${esc(tpl.id)}">${esc(tpl.name)}${tpl.description ? ` — ${esc(tpl.description)}` : ""}</option>`).join("");
+      } catch { tplSelect.innerHTML = `<option value="">${t("bulk.tpl_none")}</option>`; }
+      tplPickOverlay.classList.remove("hidden");
+    });
+
+    tplCancel.addEventListener("click", () => tplPickOverlay.classList.add("hidden"));
+
+    tplApply.addEventListener("click", async () => {
+      const templateId = tplSelect.value;
+      if (!templateId) return;
+      const ids = cb.getSelectedIds();
+      if (!ids.length) { tplPickOverlay.classList.add("hidden"); return; }
+      tplApply.disabled = true;
+      msg.innerHTML = `<div class="alert info">${t("bulk.tpl_applying").replace("{n}", ids.length)}</div>`;
+      tplPickOverlay.classList.add("hidden");
+      try {
+        const res = await api.bulkApplyTemplate(ids, templateId);
+        const ok   = res?.ok_count ?? 0;
+        const fail = (res?.results || []).filter((r) => !r.ok).length;
+        const cls  = fail ? (ok ? "info" : "error") : "success";
+        msg.innerHTML = `<div class="alert ${cls}">${t("bulk.tpl_result").replace("{ok}", ok).replace("{fail}", fail)}</div>`;
+        if (ok) cb.load?.();
+      } catch (err) {
+        msg.innerHTML = `<div class="alert error">${t("bulk.tpl_err").replace("{msg}", esc(err.message))}</div>`;
+      } finally {
+        tplApply.disabled = false;
+      }
+    });
+  }
+
+  // ── Bulk decommission ─────────────────────────────────────────────────────
+  if (bulkDecommBtn) {
+    bulkDecommBtn.addEventListener("click", async () => {
+      const ids = cb.getSelectedIds();
+      if (!ids.length) return;
+      if (!confirm(t("bulk.confirm_decomm").replace("{n}", ids.length))) return;
+      bulkDecommBtn.disabled = true;
+      msg.innerHTML = `<div class="alert info">${t("bulk.decomm_progress").replace("{n}", ids.length)}</div>`;
+      try {
+        const res = await api.bulkDecommission(ids);
+        const ok   = res?.ok_count ?? 0;
+        const fail = (res?.results || []).filter((r) => !r.ok).length;
+        const cls  = fail ? (ok ? "info" : "error") : "success";
+        msg.innerHTML = `<div class="alert ${cls}">${t("bulk.decomm_result").replace("{ok}", ok).replace("{fail}", fail)}</div>`;
+        // Fjern dekommissionerede fra allRows så de forsvinder fra browseren
+        const okIds = new Set((res?.results || []).filter((r) => r.ok).map((r) => r.id));
+        if (okIds.size) {
+          state.allRows = state.allRows.map((r) => okIds.has(r.id) ? { ...r, status: "Decommissioned" } : r);
+          if (state.allRowsCache) {
+            state.allRowsCache = state.allRowsCache.map((r) => okIds.has(r.id) ? { ...r, status: "Decommissioned" } : r);
+          }
+          cb.applyFilter?.();
+        }
+      } catch (err) {
+        msg.innerHTML = `<div class="alert error">${t("bulk.decomm_err").replace("{msg}", esc(err.message))}</div>`;
+      } finally {
+        bulkDecommBtn.disabled = false;
       }
     });
   }

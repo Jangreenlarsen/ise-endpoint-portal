@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 import { auth } from "../../auth.js";
 import { esc } from "./shared.js";
+import { t } from "../../i18n.js";
 
 const BASE = window.location.origin.startsWith("file://") ? "http://localhost:8000" : "";
 
@@ -22,7 +23,7 @@ export function initBackupSection(container) {
 
   backupBtn.addEventListener("click", async () => {
     backupBtn.disabled = true;
-    backupBtn.textContent = "Henter…";
+    backupBtn.textContent = t("settings.backup_btn_loading");
     msg.innerHTML = "";
     try {
       const res = await authFetch("/config/backup");
@@ -34,12 +35,12 @@ export function initBackupSection(container) {
       a.download = `ise_portal_config_backup_${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       URL.revokeObjectURL(url);
-      msg.innerHTML = `<div class="alert success">Backup downloadet — opbevar filen sikkert (indeholder credentials).</div>`;
+      msg.innerHTML = `<div class="alert success">${t("settings.backup_success")}</div>`;
     } catch (err) {
-      msg.innerHTML = `<div class="alert error">Backup fejlede: ${esc(err.message)}</div>`;
+      msg.innerHTML = `<div class="alert error">${t("settings.backup_error").replace("{msg}", esc(err.message))}</div>`;
     } finally {
       backupBtn.disabled = false;
-      backupBtn.textContent = "Download backup";
+      backupBtn.textContent = t("settings.backup_btn");
     }
   });
 
@@ -51,14 +52,10 @@ export function initBackupSection(container) {
     const file = restoreInput.files[0];
     if (!file) return;
 
-    if (!confirm(
-      "Advarsel: Denne handling overskriver portalens konfigurationsfiler.\n\n" +
-      "Bekræft kun hvis du har et gyldigt backup fra denne portal.\n\n" +
-      "Fortsæt?"
-    )) return;
+    if (!confirm(t("settings.restore_confirm"))) return;
 
     restoreBtn.disabled = true;
-    restoreBtn.textContent = "Gendanner…";
+    restoreBtn.textContent = t("settings.restore_btn_loading");
     msg.innerHTML = "";
 
     try {
@@ -67,7 +64,7 @@ export function initBackupSection(container) {
       try {
         body = JSON.parse(text);
       } catch {
-        throw new Error("Filen er ikke gyldig JSON");
+        throw new Error(t("settings.restore_invalid_json"));
       }
 
       const res = await authFetch("/config/restore", {
@@ -83,16 +80,16 @@ export function initBackupSection(container) {
       const fileList = (data.restored || []).map((f) => `<li>${esc(f)}</li>`).join("");
       msg.innerHTML = `
         <div class="alert success">
-          <strong>Konfiguration gendannet.</strong><br>${esc(data.message)}
+          <strong>${t("settings.restore_success")}</strong><br>${esc(data.message)}
           ${fileList ? `<ul style="margin:4px 0 0 16px;">${fileList}</ul>` : ""}
         </div>`;
       restoreInput.value = "";
       restoreBtn.disabled = true;
     } catch (err) {
-      msg.innerHTML = `<div class="alert error">Gendannelse fejlede: ${esc(err.message)}</div>`;
+      msg.innerHTML = `<div class="alert error">${t("settings.restore_error").replace("{msg}", esc(err.message))}</div>`;
       restoreBtn.disabled = false;
     } finally {
-      restoreBtn.textContent = "Gendan backup";
+      restoreBtn.textContent = t("settings.restore_btn");
     }
   });
 }

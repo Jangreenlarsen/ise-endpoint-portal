@@ -113,7 +113,7 @@ export async function renderAudit(container) {
           </select>
         </label>
         <button id="audit-refresh">${t("audit.btn_refresh")}</button>
-        <button id="audit-export" class="secondary" title="Eksportér filtreret audit-log som CSV (maks. 10 000 rækker)">Eksportér CSV</button>
+        <button id="audit-export" class="secondary" title="${t("audit.export_title")}">${t("audit.btn_export")}</button>
         <span id="audit-meta" class="hint"></span>
       </div>
       <div id="audit-msg"></div>
@@ -175,7 +175,7 @@ export async function renderAudit(container) {
       events = data.events || [];
       if (!events.length) {
         tbody.innerHTML = `<tr><td colspan="7" class="empty">${t("audit.no_events")}</td></tr>`;
-        meta.textContent = `0 af ${data.total || 0} events`;
+        meta.textContent = t("audit.meta").replace("{shown}", 0).replace("{total}", data.total || 0);
         return;
       }
       tbody.innerHTML = events
@@ -199,7 +199,7 @@ export async function renderAudit(container) {
             </tr>`;
         })
         .join("");
-      meta.textContent = `${events.length} af ${data.total || events.length} events`;
+      meta.textContent = t("audit.meta").replace("{shown}", events.length).replace("{total}", data.total || events.length);
     } catch (err) {
       tbody.innerHTML = "";
       msg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
@@ -228,7 +228,11 @@ export async function renderAudit(container) {
   }
 
   function openDrawer(evt) {
-    drawerTitle.textContent = `#${evt.id} — ${actionLabel(evt.action)} ${evt.resource_type}${evt.resource_id ? " " + evt.resource_id : ""}`;
+    drawerTitle.textContent = t("audit.drawer_title")
+      .replace("{id}", evt.id)
+      .replace("{action}", actionLabel(evt.action))
+      .replace("{type}", evt.resource_type)
+      .replace("{rid}", evt.resource_id ? " " + evt.resource_id : "");
     const rbBtn = isAdmin && canRollback(evt)
       ? `<button id="audit-drawer-rollback" data-id="${evt.id}" class="primary">${t("audit.btn_rollback_confirm")}</button>`
       : "";
@@ -294,7 +298,7 @@ export async function renderAudit(container) {
 
   exportBtn.addEventListener("click", async () => {
     exportBtn.disabled = true;
-    exportBtn.textContent = "Eksporterer…";
+    exportBtn.textContent = t("audit.btn_exporting");
     try {
       const BASE = window.location.origin.startsWith("file://") ? "http://localhost:8000" : "";
       const token = auth.getToken();
@@ -321,10 +325,10 @@ export async function renderAudit(container) {
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      msg.innerHTML = `<div class="alert error">Eksport fejlede: ${esc(err.message)}</div>`;
+      msg.innerHTML = `<div class="alert error">${t("audit.export_error").replace("{msg}", esc(err.message))}</div>`;
     } finally {
       exportBtn.disabled = false;
-      exportBtn.textContent = "Eksportér CSV";
+      exportBtn.textContent = t("audit.btn_export");
     }
   });
   typeSel.addEventListener("change", load);

@@ -3,6 +3,310 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.17.1 build 0567] — 2026-05-29 — fix: decommission-filter virkede ikke + clipboard-fejl på HTTP
+
+**Bug fix — decommission-filter**
+- `frontend/js/views/browse-filter.js` — fjernet `!state.hideDecommissioned` fra `needsFilterMode()` (var inverteret; begge states viste samme resultat)
+- `frontend/js/views/browse-table.js` — `applyFilter()` ikke-filter-mode-sti filtrerer nu også dekommissionerede rækker klient-side
+
+**Bug fix — share filter clipboard**
+- `frontend/js/views/browse-filter.js` — `navigator.clipboard.writeText()` erstattet med try/catch + optional-chaining; fallback til `prompt(url)` på HTTP/non-secure-origin
+
+## [5.17.0 build 0566] — 2026-05-29 — feat: Metrics-historik, bulk template-apply, decommission-flow og URL filter-deling
+
+Fire nye features implementeret fuldt ud (backend + frontend + i18n):
+
+**Feature 4 — Metrics-historik (SQLite time-series)**
+- `backend/app/core/metrics_store.py` — ny SQLite-store: init_db, insert_snapshot, get_history, prune
+- `backend/app/main.py` — init_metrics_db() ved startup + `_metrics_scrape_loop` background task (1 min interval, 6 serier)
+- `backend/app/api/metrics_api.py` — ny GET /api/metrics/history (auth-beskyttet, maks 10 serier × 1440 punkter)
+- `frontend/js/views/metrics.js` — SVG linjediagrammer for 4 metrics (cache-entries, stale %, ISE requests, circuit state)
+
+**Feature 5 — Bulk template-apply**
+- `backend/app/schemas/endpoint.py` — BulkApplyTemplateRequest
+- `backend/app/services/endpoint_service.py` — bulk_apply_template() (Semaphore=3, audit per endpoint)
+- `backend/app/api/endpoints_ops.py` — POST /api/endpoints/bulk-apply-template
+- `frontend/js/views/browse.js` — "Anvend skabelon"-knap i selektion-toolbar + tpl-pick-overlay modal
+- `frontend/js/views/browse-bulk.js` — bulkTplBtn handler: template-picker modal → POST bulk-apply-template
+- `frontend/js/api.js` — bulkApplyTemplate()
+
+**Feature 6 — Endpoint decommission-flow (soft-delete)**
+- `backend/app/core/custom_attr_store.py` — STATUS_ATTR = "HypervisionStatus"; tilføjet til HIDDEN_ATTRS + ALL_ATTRS
+- `backend/app/schemas/endpoint.py` — status: str = "" på EndpointDetail; HypervisionStatus på CustomAttrs; BulkDecommissionRequest
+- `backend/app/services/endpoint_service.py` — decommission_endpoint(), bulk_decommission() (Semaphore=3, audit)
+- `backend/app/api/endpoints_ops.py` — POST /api/endpoints/{id}/decommission + POST /api/endpoints/bulk-decommission
+- `frontend/js/views/browse.js` — "Dekommissionér"-knap i toolbar; "Vis dekommissionerede"-toggle; dekommission-knap i detail-modal
+- `frontend/js/views/browse-bulk.js` — bulkDecommBtn handler
+- `frontend/js/views/browse-detail.js` — status-badge i detail-grid; d-decommission knap-handler
+- `frontend/js/views/browse-filter.js` — state.hideDecommissioned (default=true); applyFiltersToRows-filter; needsFilterMode; decommFilterBtn
+
+**Feature 7 — Filter-deling via URL**
+- `frontend/js/views/browse-filter.js` — encodeFilterToUrl(), decodeFilterFromUrl(); shareFilterBtn handler; auto-decode ved init
+- `frontend/js/views/browse.js` — "Del filter"-knap i filter-toolbar
+
+**Fælles**
+- `frontend/js/i18n.js` — ~44 nye nøgler (da + en) for alle 4 features
+- `frontend/js/api.js` — decommissionEndpoint(), bulkDecommission(), bulkApplyTemplate(), getMetricsHistory()
+
+## [5.16.0 build 0565] — 2026-05-29 — feat: i18n runde 3 — audit, metrics, import, settings backup + docs og gitignore
+
+Fjerde og afsluttende runde af i18n-konvertering. Alle brugersyn­lige strenge i resterende views er nu lokaliserede. Dokumentation og gitignore bringes ajour.
+
+- `frontend/js/views/audit.js` — meta-tæller, drawer-titel og export-fejlbesked via t()
+- `frontend/js/views/metrics.js` — "Cache vedligehold"-kort og ISE PSN-noder-overskrift via t()
+- `frontend/js/views/import.js` — hint-afsnit, preview-feedback og resultat-headers via t()
+- `frontend/js/views/settings/section-backup.js` — fuldt lokaliseret; tilføjet import af t()
+- `frontend/js/i18n.js` — ~45 nye nøgler (da + en): audit.meta/drawer_title/export_error, metrics.card_drip/drip_*/psn_nodes, import.hint_*/preview_*/list_*, settings.backup_*/restore_*
+- `FEATURES.md` — tilføjet entries for v5.13.0 (i18n nav), v5.14.0 (i18n views runde 1), v5.15.0 (i18n browse runde 2)
+- `BUGS.md` — tilføjet entries for v5.12.1–v5.13.1 (UI-fixes: markerings-flow, chips, knap-farve)
+- `.gitignore` — tilføjet: cache/, logs/, temp/, backend/templates.json, backend/=*, IP-mapper
+
+## [5.15.0 build 0564] — 2026-05-29 — feat: i18n runde 2 — browse-filter, browse-table, browse-bulk, browse-detail og browse
+
+~110 nye i18n-nøgler (da + en) dækker LAA-tooltip, fortryd/gem-progress, filter-loading, views-menu (alle tekster), CoA-beskeder, PSK-fejl, RADIUS-placeholder, simulerings-UI, ANC-karantæne, historik-tab og session-tab. Alle berørte views er opdateret til at bruge t(). Ingen hardkodede danske strenge tilbage i browse-modulerne.
+
+- `frontend/js/i18n.js` — ~110 nye nøgler i da og en (browse runde 2)
+- `frontend/js/views/browse-table.js` — LAA-titel/count, markeret-pin, fortryd-dialog, gem-progress
+- `frontend/js/views/browse-filter.js` — import t(), filter-loading, views-menu (al tekst + actions)
+- `frontend/js/views/browse-bulk.js` — PSK-fejl, CoA-disconnect/reauth, RADIUS-placeholder, simulerings-UI
+- `frontend/js/views/browse.js` — toolbar titles, new-group overlay, bulk-sim overlay, tab-knapper, MAC-chips
+- `frontend/js/views/browse-detail.js` — statisk profil Ja/Nej, ISE-fejl, ANC-karantæne, historik, session
+
+## [5.14.0 build 0563] — 2026-05-29 — feat: fuld i18n-oversættelse af lifecycle, dashboard, trends, audit, metrics
+
+Alle synlige strenge i lifecycle-, dashboard-, trends-, audit- og metrics-views oversættes nu korrekt baseret på brugersprog. Tilføjet `lc.*`, `dash.*`, `trend.*`, `settings.cache_capacity_*`, `audit.btn_export/exporting`, `metrics.capacity_*` til i18n.js (da + en). Alle views importerer nu `t()` og bruger det til al tekst. Tildata-afhængige tidsenheder (t/h) er også i18n.
+
+- `frontend/js/i18n.js` — ~100 nye nøgler i da og en
+- `frontend/js/views/lifecycle.js` — komplet rewrite med t()
+- `frontend/js/views/dashboard.js` — komplet rewrite med t()
+- `frontend/js/views/trends.js` — komplet rewrite med t()
+- `frontend/js/views/audit.js` — export-knap + eksporterings-tekst
+- `frontend/js/views/metrics.js` — capacity-badges
+- `frontend/js/views/settings/section-cache.js` — capacity-badges + "siden"
+
+## [5.13.1 build 0562] — 2026-05-29 — fix: hvid tekst på "Ryd markeringer"-knap i Livscyklus
+
+Fjernet `color`-override (`#92400e` / `#fcd34d`) fra `.lc-clear-marks` og dark-tema-varianten så knappen bruger standard hvid tekst som alle andre portals knapper.
+
+- `frontend/css/styles.css`
+
+## [5.13.0 build 0561] — 2026-05-29 — feat: fuld lokaliseringsunderstøttelse for alle menupunkter
+
+Alle menupunkter og sidebar-labels oversættes nu korrekt ved sprogskcift. Tilføjet manglende i18n-nøgler (`nav.lifecycle`, `nav.trends`, `sidebar.role`, `sidebar.logout`) til begge sprogblokke (da/en). HTML-elementer for "Rolle:", "Log ud" og "Præferencer" forsynet med `data-i18n`-attributter. `updateNavLabels()` opdaterer nu `document.documentElement.lang` dynamisk. `<html lang>` skiftet fra hardkodet `da` til `en` (spejler default-fallback).
+
+- `frontend/js/i18n.js`, `frontend/index.html`, `frontend/js/app.js`
+
+## [5.12.9 build 0560] — 2026-05-28 — feat: fjernet Inaktiv-chip fra MAC-kolonne
+
+"Inaktiv"-filterfunktionen er fjernet fra MAC-kolonnen da auth-status-kolonnen allerede viser session-tilstand. Fjernet: chip-HTML, `state.macInactive`, chip-handler-gren, `macInactive`-filterblok i `applyFiltersToRows`, `needsFilterMode`-reference, `updateInactiveChip`-funktion og `:disabled` CSS-regler.
+
+- `frontend/js/views/browse.js`, `browse-filter.js`, `frontend/css/styles.css`.
+- `version.json` — bump til 5.12.9 build 0560.
+
+## [5.12.8 build 0559] — 2026-05-28 — fix: grundlæggende reimplementering af markerings-fjernelse
+
+Rodårsager identificeret og løst:
+1. **Inline/bulk save fjernede ALDRIG markering** — save-handlerne kaldte kun `refreshRows`, ikke nogen unmark-logik.
+2. **Ingen pålidelig MAC-kilde på rækken** — `<tr>` havde ingen `data-mac`-attribut, så MAC-opslag var afhængigt af skrøbelig DOM-textContent eller state-lag der ikke altid er populeret.
+3. **Forspildt kompleksitet** — unmark-kode spredt over detail-modal, refreshRows og inline-save med overlap og race conditions.
+
+Ny implementering:
+- `<tr data-mac="...">` tilføjet i `renderRows` — normaliseret MAC altid tilgængeligt på rækken.
+- Centraliseret `unmarkSaved(id)` i browse-table.js: læser `tr.dataset.mac`, sletter fra localStorage, fjerner `.marked-pin` fra DOM, deaktiverer chip hvis sæt er tomt.
+- `saveAllBtn` og `bulkSaveBtn` kalder `unmarkSaved` for hver vellykket gemt endpoint.
+- browse-detail.js kalder `cb.unmarkSaved(savedId)` — al kompleks pin-logik fjernet herfra.
+
+Berørte filer: `frontend/js/views/browse-table.js`, `frontend/js/views/browse-detail.js`, `version.json`.
+
+## [5.12.7 build 0558] — 2026-05-28 — fix: 📌-pin fjernes direkte fra DOM ved gem
+
+Tidligere delegerede gem-handleren pin-fjernelsen til `refreshRows` via localStorage-opdatering. Det er en asynkron kæde med for mange led der kan bryde. Fix: straks efter `saveMarkedMacs` fjernes pinnen direkte fra `<tr data-id="..."> .marked-pin` i DOM — dette sker synkront *inden* `closeDetail()` og *inden* `refreshRows`. `refreshRows` beholder sin pin-logik som backup.
+
+- `frontend/js/views/browse-detail.js` — tilføjet direkte `container.querySelector('tr[data-id="..."] .marked-pin')?.remove()` efter `saveMarkedMacs`.
+- `version.json` — bump til 5.12.7 build 0558.
+
+## [5.12.6 build 0557] — 2026-05-28 — fix: markering fjernes nu korrekt efter gem (robust MAC-opslag)
+
+Rodårsag: MAC-adressen til markerings-fjernelsen blev læst fra `#d-mac` DOM-elementets `textContent` på gem-tidspunktet. Afhængigt af browser-timing og evt. andre handlers der modificerer elementet, kunne værdien være tom eller forkert formateret.
+
+Fix: MAC gemmes i `state.detailCurrentMac = normalizeMac(d.mac)` når detail åbner (data er netop hentet fra API), og bruges direkte ved gem. `closeDetail()` nulstiller `state.detailCurrentMac = ""`.
+
+- `frontend/js/views/browse-detail.js` — `openDetail`: sætter `state.detailCurrentMac`; save-handler: bruger `state.detailCurrentMac` i stedet for DOM-læsning; `closeDetail`: nulstiller `state.detailCurrentMac`.
+- `version.json` — bump til 5.12.6 build 0557.
+
+## [5.12.5 build 0556] — 2026-05-28 — feat: Inaktiv-chip deaktiveres når pxGrid ikke har sessionsdata
+
+"Inaktiv"-chippen er nu visuelt deaktiveret (grå, ikke-klikbar) når pxGrid ikke leverer sessionsdata. Tooltip forklarer årsagen. Hvis pxGrid-forbindelsen falder og chippen var aktiv, deaktiveres filteret automatisk og tabellen opdateres. Chippen re-enables automatisk når sessionsdata er tilgængeligt igen.
+
+- `frontend/js/views/browse.js` — tilføjet `updateInactiveChip()` der sætter `chip.disabled` og tooltip ud fra `pxgridLive`/`activeSessionMacs`; kaldt fra `updatePxGridSourceBadge()`.
+- `frontend/css/styles.css` — tilføjet `.mac-chip:disabled` og `:disabled:hover` styles for light/dark/midnight.
+- `version.json` — bump til 5.12.5 build 0556.
+
+## [5.12.4 build 0555] — 2026-05-28 — fix: 📌-badge forsvinder nu fra rækken efter gem
+
+`refreshRows` opdaterede MAC-cellen delvist (kun `.mac-link`-indholdet) men fjernede ikke `.marked-pin`-`<span>`-badgen som sidder udenfor linket. Fix: `refreshRows` genindlæser nu marked-sættet fra localStorage og fjerner/tilføjer `.marked-pin` korrekt for den opdaterede række.
+
+- `frontend/js/views/browse-table.js` — `refreshRows`: tilføjet pin-opdatering via `loadMarkedMacs()` + DOM-manipulation af `.marked-pin`.
+- `version.json` — bump til 5.12.4 build 0555.
+
+## [5.12.3 build 0554] — 2026-05-28 — fix: MAC-chips opdaterer nu tabellen automatisk
+
+MAC-filter-chipsene (Privat / Inaktiv / Markeret) kaldte `applyFilter()` direkte, men det virker kun hvis filter-tilstand allerede er aktiv. Tabellen opdaterede sig derfor ikke når man klikkede en chip som den første filterhandling. Fix: chip-handleren kalder nu `onFilterChange()` som korrekt starter filter-tilstand (indlæser alle endpoints) hvis nødvendigt, opdaterer session-MACs og anvender filteret.
+
+- `frontend/js/views/browse.js` — chip-handler: `cb.applyFilter?.()` → `cb.onFilterChange?.()`.
+- `version.json` — bump til 5.12.3 build 0554.
+
+## [5.12.2 build 0553] — 2026-05-28 — feat: gem i Browse fjerner automatisk markering
+
+Efter vellykket gem i Browse/Edit-modal fjernes endpointets MAC fra den markerede sæt i localStorage. Hvis sættet herefter er tomt og "📌 Markeret"-chippen er aktiv, deaktiveres den automatisk (så tabellen ikke viser tomme resultater).
+
+- `frontend/js/views/browse-detail.js` — tilføjet `loadMarkedMacs`, `saveMarkedMacs` til import; efter `api.updateEndpoint` success: fjern savedMac fra marked-sæt, nulstil chip + state.markedOnly hvis sæt bliver tomt.
+- `version.json` — bump til 5.12.2 build 0553.
+
+## [5.12.1 build 0552] — 2026-05-28 — fix: flyt markeret-filter fra toolbar til MAC-chip
+
+Toolbar-knappen "📌 Markerede" er fjernet. I stedet er der tilføjet en tredje chip "📌 Markeret" direkte under MAC-kolonnen i filterpanelet — på linje med "Privat" og "Inaktiv". Chip-handleren er udvidet til at håndtere alle tre chips. CSS-regler for `#marked-filter-btn.active-toggle` er fjernet.
+
+- `frontend/js/views/browse.js` — fjernet `#marked-filter-btn`-toolbar-HTML og `updateMarkedBtn()`; tilføjet "📌 Markeret"-chip; chip-handler dækker nu `private`/`inactive`/`marked`; auto-aktivering fra sessionStorage sætter chippen aktiv.
+- `frontend/css/styles.css` — fjernet `#marked-filter-btn.active-toggle`-regler.
+- `version.json` — bump til 5.12.1 build 0552.
+
+## [5.12.0 build 0551] — 2026-05-28 — feat: livscyklus-markering og MAC-filter-chips i Browse
+
+Ny workflow: fra Livscyklus-visningen kan admin afkrydse enkelt- eller alle stale endpoints og klikke "Marker valgte →". MAC-adresserne gemmes i `localStorage` (`ise_portal_marked_macs`) og Browse åbnes automatisk med "Vis kun markerede"-filter aktivt. Allerede-markerede endpoints viser 📌-ikon i Livscyklus og i Browse-tabellens MAC-celle.
+
+Browse-filterrækken (MAC-kolonne) har fået to toggle-chips: "Privat" (LAA-detektion via bit 1 i første octet) og "Inaktiv" (endpoint ikke set i aktiv pxGrid-session). Begge chips er en del af den eksisterende filterpipeline og aktiveres i `needsFilterMode()`.
+
+- `frontend/js/views/browse-utils.js` — tilføjet `MARKED_MACS_KEY`, `loadMarkedMacs`, `saveMarkedMacs`, `addMarkedMacs`, `clearMarkedMacs`.
+- `frontend/js/views/lifecycle.js` — komplet omskrivning: checkboxkolonne, "Vælg alle"-header-checkbox, 📌-ikon på allerede-markerede rækker, gul highlight (`lc-marked`), "Marker valgte (N) →"-knap, "Ryd markeringer"-knap, klik på række/↗-knap åbner Browse.
+- `frontend/js/views/browse.js` — tilføjet `macPrivate`, `macInactive`, `markedOnly` til state; MAC-type-chips i filter-th; `#marked-filter-btn`-toolbar-knap; auto-aktivering af markedOnly-filter via `sessionStorage.browse_marked_filter`.
+- `frontend/js/views/browse-table.js` — `_markedMacs`-cache opdateres ved hver `renderRows`; 📌-badge i MAC-celle; `load()` understøtter `{ silent }` option (ingen loading-spinner).
+- `frontend/js/views/browse-filter.js` — `needsFilterMode()` inkluderer `macPrivate`, `macInactive`, `markedOnly`; tre nye filter-blokke i `applyFiltersToRows`.
+- `frontend/css/styles.css` — tilføjet styles for `.lc-marked`, `.lc-select-cell`, `.lc-pin`, `.lc-mark-btn`, `.lc-clear-marks`, `.mac-type-chips`, `.mac-chip` (inkl. dark/midnight), `.marked-pin`, `#marked-filter-btn.active-toggle`.
+- `version.json` — bump til 5.12.0 build 0551.
+
+## [5.11.6 build 0550] — 2026-05-27 — fix: kolonne-flips og selektion-tab ved pxGrid baggrunds-reload
+
+Rodårsag: MnT beriger pxGrid-sessioner hvert 5. min, hvilket sender `endpoint_changed`-events. `scheduleEndpointReload()` kaldte herefter `cb.load()` (fuld reload) som satte `tbody.innerHTML = <indlæser>` — dette forårsagede kolonne-layout-thrash (flip) og tabte alle checkboks-selektioner fordi `renderRows` læste prevSelected fra den allerede-ryddede tbody.
+
+Fix: `scheduleEndpointReload` kalder nu `cb.load(false, { silent: true })`. I silent-tilstand springer `load()` loading-spinneren over og lader eksisterende rækker stå frem til ny data er hentet. `renderRows` læser dermed korrekt selektion fra de eksisterende rækker og genopretter dem i de nye rækker.
+
+- `frontend/js/views/browse-table.js` — `load()` accepterer nu `{ silent = false }` option; springer `tbody.innerHTML = <loading>` over i silent-tilstand.
+- `frontend/js/views/browse.js` — `scheduleEndpointReload()` kalder `cb.load?.(false, { silent: true })`.
+
+## [5.11.5 build 0549] — 2026-05-25 — feat: TACACS-brugere kan nu gemme præferencer og views server-side
+
+TACACS+-brugere har ingen fast record i `users.json` — de er token-baserede. Det betød at `GET /me/prefs` altid returnerede tom UserPrefs og `PUT /me/prefs` returnerede 403. Kolonne-synlighed kunne dermed kun gemmes i localStorage — i incognito / ny browser var der intet at hente.
+
+Fix: Backend opretter nu automatisk en `tacacs_shadow`-record i `users.json` første gang en TACACS-bruger gemmer præferencer eller views. `GET /me/prefs` returnerer shadow-recordens præferencer hvis den findes; ellers tom. `GET /me/views` returnerer tom liste hvis ingen record endnu (i stedet for 404).
+
+- `backend/app/api/me.py` — fjernet `if user.id.startswith("tacacs:")` 403-blok fra `PUT /prefs` og early-return fra `GET /prefs`. Ny `_ensure_shadow_record()` opretter tacacs_shadow-record lazy. `POST /views` bruger også `_ensure_shadow_record`. `GET /views` returnerer tom liste i stedet for 404 for ukendte brugere.
+
+## [5.11.4 build 0548] — 2026-05-25 — fix: applyBackendColPrefs overskriver ikke eksisterende lokal col_vis
+
+Rodårsag til at incognito-session (og andre tom-localStorage-sessioner) ikke virkede: v5.11.2-kodens `restoreFilters()` uploadede all-true col_vis til backend via `saveColVis()`. Ved næste Browse-besøg overskrev `applyBackendColPrefs` localStorage med den korrupte all-true backend-tilstand — og nulstillede dermed brugerens korrekte lokale præference.
+
+Fix: `applyBackendColPrefs` skriver nu kun backend-data til localStorage hvis localStorage er tom (incognito/ny enhed/ingen tidligere præference). Eksisterende lokal præference bevares — og `syncColPrefsNow()` uploader den korrekte lokale tilstand til backend ved hvert Browse-init, så backend altid har den seneste normale-sessions præference. Incognito-sessioner henter dermed den korrekte tilstand fra backend.
+
+- `frontend/js/views/browse-utils.js` — `applyBackendColPrefs()` tjekker nu om `loadColVis()` er null før den skriver til localStorage (tilsvarende for col_order og col_widths).
+
+## [5.11.3 build 0547] — 2026-05-25 — fix: kolonne-synlighed nulstilles ikke længere af filter-restore
+
+Rodårsag: `snapshotFilters()` inkluderede `colVis` i det auto-gemte filter-snapshot (BROWSE_FILTERS_KEY). Når brugeren navigerede tilbage til Browse, kaldte `restoreFilters()` → `applyFilterSnapshot()` → overskrev `state.colVis` med den GAMLE snapshot-tilstand (fra FØR brugeren ændrede synlighed) og kaldte `saveColVis()` — hvilket effektivt nulstillede præferencen.
+
+- `frontend/js/views/browse-filter.js` — `applyFilterSnapshot()` har nu parameter `{ skipColVis = false }`. `restoreFilters()` kalder `applyFilterSnapshot(…, { skipColVis: true })` — kolonne-synlighed gendannes nu udelukkende fra COLVIS_KEY (localStorage/backend), ikke fra filter-snapshot. Gemte views aktiverer fortsat colVis (skipColVis er false for view-aktivering).
+
+## [5.11.2 build 0546] — 2026-05-25 — fix: kolonne-synlighed persisterer nu på tværs af navigationer + gemt-indikator
+
+- `frontend/js/views/browse.js` — `syncColPrefsNow()` kaldes nu ubetinget ved hvert Browse-init (ikke kun første gang). Fjernet `_backendHasColPrefs`-betingelse — garanterer at localStorage-tilstand altid uploades til backend ved sideindlæsning.
+- `frontend/js/views/browse-table.js` — ny `_flashColVisSaved()` viser "✓" i kolonne-knappen i 1,8 s når synlighed ændres, så brugeren har bekræftelse på at ændringen er gemt.
+- `frontend/css/styles.css` — `#col-vis-btn[data-saved]::after` tilføjer grønt ✓-suffiks under flash.
+
+## [5.11.1 build 0545] — 2026-05-25 — fix: col_vis synkroniseres ikke til backend ved første load
+
+- `frontend/js/views/browse-utils.js` — ny eksporteret `syncColPrefsNow()` kalder `_syncColPrefs()` direkte, til brug ved init.
+- `frontend/js/views/browse.js` — `_backendHasColPrefs` flag gemt fra `getMyPrefs()`-resultatet. Hvis backend mangler kolonnepræferencer (f.eks. første load efter feature-deploy), kaldes `syncColPrefsNow()` straks efter `setColPrefsSyncFn()` for at uploade eksisterende localStorage-tilstand. `.catch()` i sync-callback logger nu `console.warn` for non-403 fejl i stedet for at sluge dem stille.
+
+## [5.11.0 build 0544] — 2026-05-25 — feat: kolonnebredder gemmes i backend (col_widths)
+
+- `backend/app/schemas/user.py` — `UserPrefs`: ny `col_widths: dict[str, int] | None` felt.
+- `backend/app/api/me.py` — ny `_safe_col_widths()` validator (20–2000 px, max 30 nøgler, max 32 tegn pr. nøgle). `_prefs_response()` inkluderer nu `col_widths`. `PUT /prefs` håndterer `col_widths` på linje med `col_order` og `col_vis`.
+- `frontend/js/views/browse-utils.js` — `saveColWidths()` kalder nu `_syncColPrefs()` så bredder synkroniseres til backend. `_syncColPrefs()` inkluderer `col_widths` i payload. `applyBackendColPrefs(order, vis, widths)` skriver nu også bredder til localStorage fra backend.
+- `frontend/js/views/browse.js` — sender `prefs.col_widths` til `applyBackendColPrefs()` ved browse-init.
+
+## [5.10.8 build 0543] — 2026-05-25 — fix: resize-handle via th border + proximity-check
+
+- `frontend/js/views/browse.js` — `<span class="th-resize-handle">` fjernet fra th-template; ikke nødvendig længere.
+- `frontend/css/styles.css` — `.th-resize-handle` regler fjernet; erstattet med `border-right` på `th[data-col]` (3px, subtil grå → lilla ved hover/resize via `.col-resizing`). Dark/midnight varianter tilføjet.
+- `frontend/js/views/browse-table.js` — `wireColResize()` omskrevet: `pointerdown` på `th` med proximity-check (`e.clientX < rect.right - 8` → ignorer). `setPointerCapture` på th. `th.draggable = false` under resize for at undgå column-drag interferens, gendannes til `true` ved `pointerup`/`pointercancel`.
+
+## [5.10.7 build 0542] — 2026-05-25 — fix: resize-handle inline-block — undgår position:absolute i sticky th
+
+- `frontend/css/styles.css` — `.th-resize-handle` omskrevet til `display: inline-block` i flow. `position: absolute` i en `position: sticky` `<th>` er upålidelig i table-layout på tværs af browsere — barnet positioneres i forhold til et ancestor-element uden for `<th>` og er dermed usynligt. Inline-block handle vises synligt efter kolonneheader-teksten med grå baggrund + lilla/blå highlight ved hover og resize.
+
+## [5.10.6 build 0541] — 2026-05-25 — fix: resize via Pointer Events API — undgår draggable-interferens
+
+- `frontend/js/views/browse-table.js` — `wireColResize()` omskrevet til Pointer Events API: `pointerdown` + `setPointerCapture(pointerId)` sikrer at alle pointer-events fanges af handle selv når musen bevæger sig hurtigt. `dragstart`-listener på handle forhindrer `draggable="true"` på `<th>` i at stjæle events. `pointermove`/`pointerup`/`pointercancel` erstatter `document.mousemove`/`mouseup`.
+
+## [5.10.5 build 0540] — 2026-05-25 — docs: RELEASE_NOTES tilføjet for 5.10.2–5.10.4
+
+- `RELEASE_NOTES.md` — sektioner tilføjet for 5.10.4 (resize-handle fix), 5.10.2 (chown fejlbesked).
+
+## [5.10.4 build 0539] — 2026-05-25 — fix: resize-handle virker nu — overflow:hidden fjernet fra th
+
+- `frontend/css/styles.css` — fjernet `overflow: hidden` fra `.browse-table-wrap table thead th` — det clippede den absolut-positionerede `.th-resize-handle` så den var usynlig og uklikbar. Tilføjet `.th-resize-handle.resizing` variant. Dark/midnight hover-farver bevaret.
+- `frontend/js/views/browse-table.js` — `wireColResize()`: tilføjer/fjerner `.resizing`-klasse og sætter `document.body.style.userSelect = "none"` under drag så tekst ikke markeres ved resize.
+
+## [5.10.3 build 0538] — 2026-05-25 — fix: "table is not defined" i wireColResize
+
+- `frontend/js/views/browse-table.js` — `wireColResize()` brugte `table` fra `initColDrag()`s lokale scope. Rettet til `container.querySelector(".browse-table-wrap table")` direkte i funktionen.
+
+## [5.10.2 build 0537] — 2026-05-25 — fix: git pull viser korrekt chown-fejl ved ejerskabsproblem
+
+- `backend/app/services/update_service.py` — ny `_git_objects_writable()` tjekker om portal-processen kan skrive til `.git/objects/` (os.access). I `_git_pull_sync()` tjekkes dette FØR fetch: hvis ikke skrivbar returneres en klar fejl med præcis `chown -R <user>:<user> <root>/.git`-kommando og brugernavnet hentes fra `$USER`/`$LOGNAME` env. Den gamle misvisende chmod-fejlbesked er fjernet.
+
+## [5.10.1 build 0536] — 2026-05-25 — fix: git pull fejler aldrig mere på filrettigheder
+
+- `backend/app/services/update_service.py` — ny `_fix_git_object_permissions()`: gennemgår `.git/objects/` med `os.walk` og sætter dirs til 755 og filer til 644 (pure Python, ingen subprocess). Ny `_ensure_git_shared_repo()`: konfigurerer `core.sharedRepository=0644` så fremtidige git-objekter oprettes med korrekte rettigheder. Begge kaldes automatisk FØR `git fetch` i `_git_pull_sync()`. Den gamle "Kør disse chmod-kommandoer manuelt"-fejlbesked er fjernet.
+
+## [5.10.0 build 0535] — 2026-05-25 — feat: Identity Group fuld sti + skalerbare kolonner
+
+- `frontend/js/views/browse-utils.js` — `groupHierarchyOptionsHtml()` omskrevet: viser nu fuld sti med " / "-separator ("Profiled / Apple-Device / SubGroup") i stedet for indrykkede blade-navne. `EIG_PREFIX` eksporteret. Ny `groupPathParts()` hjælpefunktion til at parse en gruppe-navn til segments. Ny `COLWIDTHS_KEY`, `loadColWidths()`, `saveColWidths()`.
+- `frontend/js/views/browse-detail.js` — importerer `groupPathParts`; ny `updateGroupPath(groupId)` der opdaterer `#d-group-path` med stakkede linjer (3 linjer med lille skrift, indrykket); kaldt ved åbning af detail og ved group-select ændring.
+- `frontend/js/views/browse.js` — `<select id="d-group">` pakket i `<div class="group-select-wrap">` med `<div id="d-group-path" class="group-path-hint">` under; resize-handle `<span class="th-resize-handle">` tilføjet i hvert `<th>`.
+- `frontend/js/views/browse-table.js` — importerer `loadColWidths`, `saveColWidths`; ny `wireColResize()`: tilføjer mousedown→mousemove→mouseup resize-logik på `.th-resize-handle` i header-row, gemmer bredder i localStorage; kaldt ved init.
+- `frontend/css/styles.css` — `.th-resize-handle`: absolut positioneret 6px bred cursor:col-resize handle i højre kant af `<th>`; `.group-select-wrap`, `.group-path-hint`, `.grp-path-line`: stakkede gruppe-sti-linjer med 0.72rem font; dark/midnight tema varianter.
+
+## [5.9.4 build 0534] — 2026-05-25 — fix: Release notes vises altid i update-check
+
+- `backend/app/services/update_service.py` — `_extract_release_sections_since()` tilføjer Fallback 2: når der ikke findes en eksakt `## [X.Y.Z]`-sektion (f.eks. debug-builds som 5.9.3.1 der aldrig fik en RELEASE_NOTES-sektion), vises den seneste tilgængelige sektion med version ≤ target. Løser at "up to date"-visningen altid stod tom.
+
+## [5.9.3.1 build 0533] — 2026-05-25 — debug: Ny gruppe — overgruppe-dropdown viser nu alle niveauer
+
+- `frontend/js/views/browse.js` — `_populateParentDropdown()` slettet; erstattet med direkte `groupHierarchyOptionsHtml(state.groups, "", "...")` kald (samme funktion som Browse-dropdownene). Importerer `groupHierarchyOptionsHtml` fra browse-utils.js.
+
+## [5.9.3 build 0532] — 2026-05-25 — perf: GitHub update-check paralleliseret
+
+- `backend/app/services/update_service.py` — `check_github_version()`: `version.json` og `RELEASE_NOTES.md` hentes nu parallelt med `asyncio.gather` i stedet for sekventielt. Fjernet meningsløst forsøg på `RELEASE_{version}.md` (404 altid) som gav et ekstra round-trip. Fjernet ubrugt `_GITHUB_STANDALONE_RELEASE_TMPL` konstant.
+
+## [5.9.2.1 build 0531] — 2026-05-25 — debug: gruppe-dropdown hierarki — indrykket træ-visning
+
+- `frontend/js/views/browse-utils.js` — `groupHierarchyOptionsHtml()` omskrevet: én `<optgroup>` wrapper + `<option>` med depth-baseret indrykninig (3 NBSP pr. niveau) og "↳"-pil for børn. Alfabetisk sortering på sti-efter-prefix sikrer forælder altid vises før sine børn. Alle grupper er selekterbare (inkl. forældrgrupper).
+- `frontend/js/views/browse.js` — `_populateParentDropdown()` følger samme indrykning-logik
+
+## [5.9.2 build 0530] — 2026-05-25 — feat: Opret endpoint gruppe — vælg overgruppe
+
+- `backend/app/schemas/endpoint.py` — `EndpointGroupCreate` tilføjer `parent_id: str | None`
+- `backend/app/ise/endpoints.py` — `create()` sender `parentId` i ERS-payload hvis angivet
+- `backend/app/services/endpoint_service.py` — `create_group()` videresender `parent_id`
+- `backend/app/api/groups.py` — `POST /groups` sender `payload.parent_id` til service
+- `frontend/js/views/browse.js` — "Ny gruppe"-modal: Overgruppe-dropdown populeret fra `state.groups` (sorteret alfabetisk); valgt parent-id sendes med som `parent_id` i `createGroup()`
+
+## [5.9.1 build 0529] — 2026-05-25 — fix: Policy-view label — "Authz Policies" + "Authz : [navn]"
+
+- `frontend/js/i18n.js` — `pol.title` DA+EN: "Politikker"/"Policies" → "Authz Policies"
+- `frontend/js/views/policy.js` — `selectSet()`: `rulesTitle.textContent` ændret fra bare sæt-navn til `"Authz : <sætnavn>"`
+
 ## [5.9.0 build 0528] — 2026-05-25 — feat: opret endpoint gruppe + policy drag-and-drop rank
 
 **Feature 1 — Opret endpoint identity group fra Browse (admin)**
