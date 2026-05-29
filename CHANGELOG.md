@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.13.1 build 0562] — 2026-05-29 — fix: hvid tekst på "Ryd markeringer"-knap i Livscyklus
+
+Fjernet `color`-override (`#92400e` / `#fcd34d`) fra `.lc-clear-marks` og dark-tema-varianten så knappen bruger standard hvid tekst som alle andre portals knapper.
+
+- `frontend/css/styles.css`
+
 ## [5.13.0 build 0561] — 2026-05-29 — feat: fuld lokaliseringsunderstøttelse for alle menupunkter
 
 Alle menupunkter og sidebar-labels oversættes nu korrekt ved sprogskcift. Tilføjet manglende i18n-nøgler (`nav.lifecycle`, `nav.trends`, `sidebar.role`, `sidebar.logout`) til begge sprogblokke (da/en). HTML-elementer for "Rolle:", "Log ud" og "Præferencer" forsynet med `data-i18n`-attributter. `updateNavLabels()` opdaterer nu `document.documentElement.lang` dynamisk. `<html lang>` skiftet fra hardkodet `da` til `en` (spejler default-fallback).

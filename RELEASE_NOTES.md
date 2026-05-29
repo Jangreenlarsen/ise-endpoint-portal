@@ -4,6 +4,14 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.13.1] — 2026-05-29 — Hvid tekst på "Ryd markeringer"-knap
+
+> **Build:** 0562
+
+"Ryd markeringer"-knappen i Livscyklus viser nu hvid tekst som alle andre knapper i portalen. Den tilpassede mørk-amber `color`-override er fjernet.
+
+---
+
 ## [5.13.0] — 2026-05-29 — Fuld lokaliseringsunderstøttelse for alle menupunkter
 
 > **Build:** 0561
