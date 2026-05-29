@@ -57,8 +57,6 @@ export async function renderBrowse(container) {
           </div>
           <button id="portal-filter-btn" class="secondary"
                   title="${t("browse.portal_filter_title")}">${t("browse.btn_portal_filter")}</button>
-          <button id="decomm-filter-btn" class="secondary"
-                  title="${t("browse.decomm_filter_title")}">${t("browse.btn_decomm_filter")}</button>
           <button id="share-filter-btn" class="secondary small"
                   title="${t("browse.share_filter_title")}">${t("browse.btn_share_filter")}</button>
           <input id="global-q-input" type="search" placeholder="${t("browse.search_placeholder")}"
@@ -138,6 +136,7 @@ export async function renderBrowse(container) {
                          <div class="mac-type-chips">
                            <button type="button" class="mac-chip" data-chip="private" title="${t("browse.mac_private_title")}">${t("browse.mac_private_btn")}</button>
                            <button type="button" class="mac-chip" data-chip="marked" title="${t("browse.mac_marked_title")}">${t("browse.mac_marked_btn")}</button>
+                           <button type="button" class="mac-chip" data-chip="decomm" title="${t("browse.decomm_chip_title")}">${t("browse.decomm_chip_btn")}</button>
                          </div>`
                       : `<input type="text" class="col-filter-input" data-col="${c.key}" placeholder="…" />`}
                 </th>`).join("")}
@@ -456,12 +455,17 @@ export async function renderBrowse(container) {
   const detailAPI = initDetail(container, state, api, cb);
   initBulk(container, state, api, cb);
 
-  // ── MAC-type filter chips (Privat / Inaktiv / Markeret) ──────────────────
+  // ── MAC-type filter chips (Privat / Markeret / Dekommissioneret) ──────────
   container.querySelectorAll(".mac-chip").forEach((chip) => {
     chip.addEventListener("click", () => {
-      const key = chip.dataset.chip === "private" ? "macPrivate" : "markedOnly";
-      state[key] = !state[key];
-      chip.classList.toggle("active", state[key]);
+      if (chip.dataset.chip === "decomm") {
+        state.hideDecommissioned = !state.hideDecommissioned;
+        chip.classList.toggle("active", !state.hideDecommissioned);
+      } else {
+        const key = chip.dataset.chip === "private" ? "macPrivate" : "markedOnly";
+        state[key] = !state[key];
+        chip.classList.toggle("active", state[key]);
+      }
       state.currentPage = 1;
       filterAPI.persistFilters?.();
       cb.onFilterChange?.();

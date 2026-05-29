@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.17.4 build 0570] — 2026-05-29 — feat: Dekommissioneret chip-knap ved Privat/Markeret + fjern 📌
+
+- `frontend/js/views/browse.js` — ny `data-chip="decomm"` chip i `.mac-type-chips` div; fjernet `#decomm-filter-btn` fra toolbar; chip-handler udvidet til at toggle `state.hideDecommissioned` (inverteret logik: chip aktiv = vis dekommissionerede)
+- `frontend/js/views/browse-filter.js` — fjernet `decommFilterBtn` querySelector og click-handler; filterClearAllBtn og decodeFilterFromUrl bruger nu chippen direkte
+- `frontend/js/i18n.js` — `browse.decomm_chip_btn`/`decomm_chip_title` tilføjet (DA + EN); 📌 fjernet fra `mac_marked_btn`
+
 ## [5.17.3 build 0569] — 2026-05-29 — fix: dekommissioneret badge manglede visuel indikator
 
 - `frontend/css/styles.css` — `.decomm-status-badge` (rød pill, light + dark mode), `.decomm-row-badge` (⚰ ikon i MAC-celle), `tr.row-decomm` (dimmet + strikethrough på MAC-link)

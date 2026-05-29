@@ -18,7 +18,6 @@ import {
 export function initFilter(container, state, api, cb) {
   const filterRow          = container.querySelector(".filter-row");
   const portalFilterBtn    = container.querySelector("#portal-filter-btn");
-  const decommFilterBtn    = container.querySelector("#decomm-filter-btn");
   const shareFilterBtn     = container.querySelector("#share-filter-btn");
   const pageSizeSelect     = container.querySelector("#page-size-select");
   const viewsBtn           = container.querySelector("#views-btn");
@@ -389,7 +388,7 @@ export function initFilter(container, state, api, cb) {
     state.fullTextQ = "";
     state.hideDecommissioned = true;
     if (globalQInput) globalQInput.value = "";
-    if (decommFilterBtn) decommFilterBtn.classList.remove("active-toggle");
+    container.querySelector('.mac-chip[data-chip="decomm"]')?.classList.remove("active");
     firstSeenClearAll();
     state.allRowsCache = null;
     persistFilters();
@@ -405,16 +404,6 @@ export function initFilter(container, state, api, cb) {
     clearActiveView();
     await onFilterChange();
   });
-
-  if (decommFilterBtn) {
-    decommFilterBtn.addEventListener("click", async () => {
-      state.hideDecommissioned = !state.hideDecommissioned;
-      decommFilterBtn.classList.toggle("active-toggle", !state.hideDecommissioned);
-      updateClearBtn();
-      clearActiveView();
-      await onFilterChange();
-    });
-  }
 
   // ── URL filter sharing (Feature 7) ───────────────────────────────────────
   function encodeFilterToUrl() {
@@ -446,7 +435,7 @@ export function initFilter(container, state, api, cb) {
     }
     if (params.get("decomm") === "1") {
       state.hideDecommissioned = false;
-      decommFilterBtn?.classList.add("active-toggle");
+      container.querySelector('.mac-chip[data-chip="decomm"]')?.classList.add("active");
     }
     const q = params.get("q");
     if (q) {
