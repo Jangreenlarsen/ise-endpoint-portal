@@ -4,6 +4,12 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 5.17.2 b0568] 2026-05-29 — Import: XSS + runtime crash — escapeHtml udefineret
+- **Symptom:** Import-preview og import-resultat crashede med `ReferenceError: escapeHtml is not defined`; rå brugerinput fra CSV-filer (MAC, beskrivelse, custom attributes) indsattes uescapet i innerHTML.
+- **Root cause:** `escapeHtml()` brugt 12 steder i `import.js` men aldrig defineret eller importeret — det korrekte kald var `esc()` som allerede var importeret fra `browse-utils.js`.
+- **Fix:** Alle 12 `escapeHtml(` → `esc(` (replace_all).
+- **Berørte filer:** `frontend/js/views/import.js`.
+
 ## [FIXED 5.17.1 b0567] 2026-05-29 — Browse: "Vis dekommissionerede"-filter havde ingen effekt
 - **Symptom:** Toggling af decommission-filter ændrede intet i tabellen — begge tilstande viste de samme rækker.
 - **Root cause:** `needsFilterMode()` brugte `!state.hideDecommissioned` (inverteret), så filter-tilstand aldrig indtrådtes for denne betingelse alene, og `applyFiltersToRows()` kørte ikke i paginated-tilstand.

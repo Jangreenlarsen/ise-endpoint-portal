@@ -3,6 +3,10 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.17.2 build 0568] — 2026-05-29 — fix: XSS/crash i import.js — escapeHtml → esc
+
+- `frontend/js/views/import.js` — `escapeHtml()` (udefineret funktion) erstattet med `esc()` alle 12 steder. Undlod at rå brugerinput fra CSV (MAC, beskrivelse, custom attributes) blev indsat uden HTML-escaping i preview-tabel og import-resultat.
+
 ## [5.17.1 build 0567] — 2026-05-29 — fix: decommission-filter virkede ikke + clipboard-fejl på HTTP
 
 **Bug fix — decommission-filter**

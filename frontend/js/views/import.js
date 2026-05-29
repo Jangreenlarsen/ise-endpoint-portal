@@ -106,16 +106,16 @@ AA:BB:CC:DD:EE:02,Profiled,printer,Camera,Facilities,,VLAN200"></textarea>
             ${parsed.map((p, i) => `
               <tr>
                 <td>${i + 1}</td>
-                <td>${escapeHtml(p.mac)}</td>
-                <td>${p.groupName ? escapeHtml(p.groupName) : "<em>fallback</em>"}</td>
-                <td>${escapeHtml(p.description)}</td>
+                <td>${esc(p.mac)}</td>
+                <td>${p.groupName ? esc(p.groupName) : "<em>fallback</em>"}</td>
+                <td>${esc(p.description)}</td>
                 ${hasCA ? `
-                  <td>${escapeHtml(p.endpointType)}</td>
-                  <td>${escapeHtml(p.owner)}</td>
-                  <td>${escapeHtml(p.lokation)}</td>
-                  <td>${escapeHtml(p.authzVlan)}</td>
-                  <td>${escapeHtml(p.authzAcl)}</td>
-                  <td>${escapeHtml(p.platformType)}</td>
+                  <td>${esc(p.endpointType)}</td>
+                  <td>${esc(p.owner)}</td>
+                  <td>${esc(p.lokation)}</td>
+                  <td>${esc(p.authzVlan)}</td>
+                  <td>${esc(p.authzAcl)}</td>
+                  <td>${esc(p.platformType)}</td>
                 ` : ""}
                 <td>${p.valid ? "✓" : `<span class="invalid">${t("import.invalid_mac")}</span>`}</td>
               </tr>`).join("")}
@@ -177,19 +177,19 @@ AA:BB:CC:DD:EE:02,Profiled,printer,Camera,Facilities,,VLAN200"></textarea>
         <div class="result-list">
           <div>
             <h4 class="succeeded">${t("import.list_succeeded")} (${res.succeeded.length})</h4>
-            <ul>${res.succeeded.map((m) => `<li>${escapeHtml(m)}</li>`).join("") || `<li>${none}</li>`}</ul>
+            <ul>${res.succeeded.map((m) => `<li>${esc(m)}</li>`).join("") || `<li>${none}</li>`}</ul>
           </div>
           <div>
             <h4 class="overwritten">${t("import.list_overwritten")} (${overwritten.length})</h4>
-            <ul>${overwritten.map((m) => `<li>${escapeHtml(m)}</li>`).join("") || `<li>${none}</li>`}</ul>
+            <ul>${overwritten.map((m) => `<li>${esc(m)}</li>`).join("") || `<li>${none}</li>`}</ul>
           </div>
           <div>
             <h4 class="skipped">${t("import.list_skipped")} (${skipped.length})</h4>
-            <ul>${skipped.map((m) => `<li>${escapeHtml(m)}</li>`).join("") || `<li>${none}</li>`}</ul>
+            <ul>${skipped.map((m) => `<li>${esc(m)}</li>`).join("") || `<li>${none}</li>`}</ul>
           </div>
           <div>
             <h4 class="failed">${t("import.list_failed")} (${res.failed.length})</h4>
-            <ul>${res.failed.map((f) => `<li>${escapeHtml(f.mac)}: ${escapeHtml(f.error)}</li>`).join("") || `<li>${none}</li>`}</ul>
+            <ul>${res.failed.map((f) => `<li>${esc(f.mac)}: ${esc(f.error)}</li>`).join("") || `<li>${none}</li>`}</ul>
           </div>
         </div>
       `;
