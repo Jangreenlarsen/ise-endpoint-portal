@@ -4,6 +4,20 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.17.5] — 2026-05-29 — Decommission chip + kvalitetsfixes
+
+> **Build:** 0573
+
+Samler ændringer fra 5.17.3–5.17.4:
+
+- **Decommission chip**: "Decomm"-chip placeret ved siden af "Privat" og "Markeret" i MAC-kolonnen — erstatter den separate toolbar-knap. Chip aktiv = vis dekommissionerede endpoints.
+- **Visuel indikator**: Dekommissionerede rækker er dimmede (55% opacity) med strikethrough på MAC-linket og ⚰-ikon i MAC-cellen.
+- **Detail-modal badge**: Rød pill med korrekt light/dark mode-support.
+- **Chip refresh-fix**: Tabellen opdateres nu korrekt ved chip-klik i paginated tilstand.
+- **Kvalitetsfix**: `escapeHtml` → `esc` i import.js (XSS/crash).
+
+---
+
 ## [5.17.3] — 2026-05-29 — Bugfix: dekommissioneret badge manglede visuel indikator
 
 > **Build:** 0569

@@ -3,6 +3,10 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.17.5 build 0573] — 2026-05-29 — chore: version bump 5.17.5
+
+Samler bugfixes fra 5.17.4-serien (b0569–b0572) under 5.17.5.
+
 ## [5.17.4 build 0570] — 2026-05-29 — feat: Dekommissioneret chip-knap ved Privat/Markeret + fjern 📌
 
 - `frontend/js/views/browse.js` — ny `data-chip="decomm"` chip i `.mac-type-chips` div; fjernet `#decomm-filter-btn` fra toolbar; chip-handler udvidet til at toggle `state.hideDecommissioned` (inverteret logik: chip aktiv = vis dekommissionerede)
