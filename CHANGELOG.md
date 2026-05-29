@@ -3,6 +3,17 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.15.0 build 0564] — 2026-05-29 — feat: i18n runde 2 — browse-filter, browse-table, browse-bulk, browse-detail og browse
+
+~110 nye i18n-nøgler (da + en) dækker LAA-tooltip, fortryd/gem-progress, filter-loading, views-menu (alle tekster), CoA-beskeder, PSK-fejl, RADIUS-placeholder, simulerings-UI, ANC-karantæne, historik-tab og session-tab. Alle berørte views er opdateret til at bruge t(). Ingen hardkodede danske strenge tilbage i browse-modulerne.
+
+- `frontend/js/i18n.js` — ~110 nye nøgler i da og en (browse runde 2)
+- `frontend/js/views/browse-table.js` — LAA-titel/count, markeret-pin, fortryd-dialog, gem-progress
+- `frontend/js/views/browse-filter.js` — import t(), filter-loading, views-menu (al tekst + actions)
+- `frontend/js/views/browse-bulk.js` — PSK-fejl, CoA-disconnect/reauth, RADIUS-placeholder, simulerings-UI
+- `frontend/js/views/browse.js` — toolbar titles, new-group overlay, bulk-sim overlay, tab-knapper, MAC-chips
+- `frontend/js/views/browse-detail.js` — statisk profil Ja/Nej, ISE-fejl, ANC-karantæne, historik, session
+
 ## [5.14.0 build 0563] — 2026-05-29 — feat: fuld i18n-oversættelse af lifecycle, dashboard, trends, audit, metrics
 
 Alle synlige strenge i lifecycle-, dashboard-, trends-, audit- og metrics-views oversættes nu korrekt baseret på brugersprog. Tilføjet `lc.*`, `dash.*`, `trend.*`, `settings.cache_capacity_*`, `audit.btn_export/exporting`, `metrics.capacity_*` til i18n.js (da + en). Alle views importerer nu `t()` og bruger det til al tekst. Tildata-afhængige tidsenheder (t/h) er også i18n.

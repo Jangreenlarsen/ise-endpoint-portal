@@ -4,6 +4,19 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.15.0] — 2026-05-29 — i18n runde 2: browse-modulerne fuldt lokaliseret
+
+> **Build:** 0564
+
+Alle synlige strenge i browse-modulerne er nu lokaliserede. ~110 nye oversættelsesnøgler (da + en) dækker:
+
+- **Browse tabel**: LAA-tooltip (privat MAC), markeret-pin titel, fortryd-dialog, gem-fremdrift
+- **Browse filter**: filter-loading beskeder, views-menu (alle knapper og bekræftelsesdialoguer)
+- **Browse bulk**: CoA Disconnect/Reauth beskeder, PSK-fejl, RADIUS-placeholder-tekst, simulerings-UI (match/ingen match/delvis, resume, badges)
+- **Browse overlay**: ny-gruppe-dialog, batch-simulerings-overlay (header, policy-label, RADIUS-sektion, templates)
+- **Browse detail**: ANC karantæne/fjern flow, historik-tab (headers, beskeder), session-tab (cache/MnT titler, fejlbeskeder), statisk profil Ja/Nej
+- **Browse.js**: toolbar-tooltips, filter-chip tekster, tab-knapper (Historik → History, ISE Session)
+
 ## [5.14.0] — 2026-05-29 — Fuld i18n-oversættelse af lifecycle, dashboard, trends, audit og metrics
 
 > **Build:** 0563

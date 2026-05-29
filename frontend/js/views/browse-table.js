@@ -130,7 +130,7 @@ export function initTable(container, state, api, cb) {
   function laaTag() {
     const n = state.laaTotal ?? 0;
     if (!n) return "";
-    return ` <span class="laa-count" title="Privat / Lokalt administreret MAC (LAA) — total i database">${n} privat</span>`;
+    return ` <span class="laa-count" title="${t("browse.laa_total_title")}">${t("browse.laa_n_private").replace("{n}", n)}</span>`;
   }
 
   function macDisplayHtml(mac) {
@@ -138,7 +138,7 @@ export function initTable(container, state, api, cb) {
     if (!isLocallyAdministered(mac)) return esc(mac);
     const sep   = mac.includes(":") ? ":" : "-";
     const parts = mac.split(sep);
-    return `<span class="mac-laa" title="Privat / Lokalt administreret MAC (LAA)">${esc(parts[0])}</span>${esc(sep + parts.slice(1).join(sep))}`;
+    return `<span class="mac-laa" title="${t("browse.laa_title")}">${esc(parts[0])}</span>${esc(sep + parts.slice(1).join(sep))}`;
   }
 
   // ── NAS → PlatformType auto-derive ──────────────────────────────────────
@@ -247,7 +247,7 @@ export function initTable(container, state, api, cb) {
       const mac   = r.mac || r.name;
       const nasPt = getNasPlatformType(mac);
       const cells = {
-        mac:           `<td data-col="mac" class="mac-cell${r.cache_stale ? " cache-stale" : ""}"><a href="#" class="mac-link" title="${t("browse.mac_link_title")}">${macDisplayHtml(mac)}</a>${r.cache_stale ? `<span class="stale-badge" title="${t("browse.stale_badge_title")}">⏱</span>` : ""}${_markedMacs.has(normalizeMac(mac)) ? `<span class="marked-pin" title="Markeret fra Livscyklus">📌</span>` : ""}</td>`,
+        mac:           `<td data-col="mac" class="mac-cell${r.cache_stale ? " cache-stale" : ""}"><a href="#" class="mac-link" title="${t("browse.mac_link_title")}">${macDisplayHtml(mac)}</a>${r.cache_stale ? `<span class="stale-badge" title="${t("browse.stale_badge_title")}">⏱</span>` : ""}${_markedMacs.has(normalizeMac(mac)) ? `<span class="marked-pin" title="${t("browse.marked_pin_title")}">📌</span>` : ""}</td>`,
         auth_status:   `<td data-col="auth_status" class="auth-status-col"></td>`,
         vendor:        `<td data-col="vendor" class="vendor-cell-td">${esc(r.vendor || "")}</td>`,
         group_name:    `<td data-col="group_name"><select class="grp-select">${groupOptionsHtml(r.group_id)}</select></td>`,
@@ -672,9 +672,9 @@ export function initTable(container, state, api, cb) {
 
   undoBtn.addEventListener("click", () => {
     if (!state.dirtyIds.size) return;
-    if (!confirm(`Fortryd ${state.dirtyIds.size} ikke-gemte ændring(er)?`)) return;
+    if (!confirm(t("browse.undo_confirm").replace("{n}", state.dirtyIds.size))) return;
     revertDirtyRows();
-    msg.innerHTML = `<div class="alert info">Ændringer fortrudt.</div>`;
+    msg.innerHTML = `<div class="alert info">${t("browse.undo_ok")}</div>`;
   });
 
   // ── Fælles save-loop med progress-indikator ──────────────────────────────
@@ -683,7 +683,7 @@ export function initTable(container, state, api, cb) {
     const macHint = mac ? ` <span class="save-progress-mac">${esc(mac)}</span>` : "";
     msg.innerHTML = `
       <div class="alert info save-progress-wrap">
-        <span class="save-progress-label">Gemmer ${done} / ${total}…${macHint}</span>
+        <span class="save-progress-label">${t("browse.save_progress").replace("{done}", done).replace("{total}", total)}${macHint}</span>
         <div class="save-progress-bar"><div class="save-progress-fill" style="width:${pct}%"></div></div>
       </div>`;
   }
