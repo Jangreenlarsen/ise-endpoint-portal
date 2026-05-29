@@ -230,7 +230,11 @@ export function initFilter(container, state, api, cb) {
       cb.applyFilter();
     } else {
       state.activeSessionMacs = null;
-      exitFilterMode();
+      if (state.filterMode) {
+        exitFilterMode();
+      } else {
+        cb.applyFilter();
+      }
     }
   }
 
