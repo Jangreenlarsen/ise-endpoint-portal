@@ -919,7 +919,7 @@ const TRANSLATIONS = {
     "browse.mac_marked_title":       "Vis kun endpoints markeret fra Livscyklus",
     "browse.mac_marked_btn":         "Markeret",
     "browse.decomm_chip_title":      "Vis dekommissionerede endpoints",
-    "browse.decomm_chip_btn":        "Dekommissioneret",
+    "browse.decomm_chip_btn":        "Decomm",
     "browse.tab_historik":           "Historik",
     "browse.tab_session":            "ISE Session",
     "browse.sim_title_h3":           "Batch-simulering af policy-match",
