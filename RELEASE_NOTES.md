@@ -4,6 +4,24 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.14.0] — 2026-05-29 — Fuld i18n-oversættelse af lifecycle, dashboard, trends, audit og metrics
+
+> **Build:** 0563
+
+Alle synlige strenge i de centrale views oversættes nu korrekt når bruger-sprog er sat til engelsk. Views som tidligere viste dansk uanset sprogindstilling er nu fuldt lokaliserede.
+
+**Berørte views:**
+- **Lifecycle**: titel, beskrivelse, kolonne-headers, knapper, fejlmeddelelser, CSV-header, tidsenheder (t→h)
+- **Dashboard**: KPI-labels, trend-chart-titler og serie-navne, systemstatus, audit-hændelser, systemlog
+- **Trend Analyse**: titel, periode-vælger, statistik-kort, diagram-titler og hints
+- **Audit**: export-knap og eksporterings-tekst
+- **Metrics**: capacity-badges (følger med / grænse / bagud)
+- **Settings/Cache**: capacity-badges og tidssuffix "siden"
+
+**i18n.js**: ~100 nye nøgler (`lc.*`, `dash.*`, `trend.*`, `audit.btn_export`, `metrics.capacity_*`, `settings.cache_capacity_*`, `settings.ago`) i begge sprogblokke.
+
+---
+
 ## [5.13.1] — 2026-05-29 — Hvid tekst på "Ryd markeringer"-knap
 
 > **Build:** 0562

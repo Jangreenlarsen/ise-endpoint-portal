@@ -3,6 +3,18 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.14.0 build 0563] — 2026-05-29 — feat: fuld i18n-oversættelse af lifecycle, dashboard, trends, audit, metrics
+
+Alle synlige strenge i lifecycle-, dashboard-, trends-, audit- og metrics-views oversættes nu korrekt baseret på brugersprog. Tilføjet `lc.*`, `dash.*`, `trend.*`, `settings.cache_capacity_*`, `audit.btn_export/exporting`, `metrics.capacity_*` til i18n.js (da + en). Alle views importerer nu `t()` og bruger det til al tekst. Tildata-afhængige tidsenheder (t/h) er også i18n.
+
+- `frontend/js/i18n.js` — ~100 nye nøgler i da og en
+- `frontend/js/views/lifecycle.js` — komplet rewrite med t()
+- `frontend/js/views/dashboard.js` — komplet rewrite med t()
+- `frontend/js/views/trends.js` — komplet rewrite med t()
+- `frontend/js/views/audit.js` — export-knap + eksporterings-tekst
+- `frontend/js/views/metrics.js` — capacity-badges
+- `frontend/js/views/settings/section-cache.js` — capacity-badges + "siden"
+
 ## [5.13.1 build 0562] — 2026-05-29 — fix: hvid tekst på "Ryd markeringer"-knap i Livscyklus
 
 Fjernet `color`-override (`#92400e` / `#fcd34d`) fra `.lc-clear-marks` og dark-tema-varianten så knappen bruger standard hvid tekst som alle andre portals knapper.

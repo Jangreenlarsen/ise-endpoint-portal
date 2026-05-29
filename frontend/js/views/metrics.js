@@ -90,9 +90,9 @@ function fmtAge(seconds) {
 function capacityBadge(cycleS, intervalS) {
   if (!cycleS || !intervalS) return "";
   const ratio = cycleS / intervalS;
-  if (ratio <= 0.9) return ` <span style="background:#27ae60;color:#fff;border-radius:4px;padding:1px 6px;font-size:.8em;">&#10003; følger med</span>`;
-  if (ratio <= 1.1) return ` <span style="background:#f39c12;color:#fff;border-radius:4px;padding:1px 6px;font-size:.8em;">&#9888; grænse</span>`;
-  return ` <span style="background:#c0392b;color:#fff;border-radius:4px;padding:1px 6px;font-size:.8em;">&#10007; bagud</span>`;
+  if (ratio <= 0.9) return ` <span style="background:#27ae60;color:#fff;border-radius:4px;padding:1px 6px;font-size:.8em;">${t("metrics.capacity_ok")}</span>`;
+  if (ratio <= 1.1) return ` <span style="background:#f39c12;color:#fff;border-radius:4px;padding:1px 6px;font-size:.8em;">${t("metrics.capacity_warn")}</span>`;
+  return ` <span style="background:#c0392b;color:#fff;border-radius:4px;padding:1px 6px;font-size:.8em;">${t("metrics.capacity_behind")}</span>`;
 }
 
 // ------------------------------------------------------------------ //
