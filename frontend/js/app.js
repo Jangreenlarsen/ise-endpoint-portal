@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 import { api, setUnauthorizedHandler } from "./api.js";
 import { auth, scheduleTokenRefresh, cancelTokenRefresh } from "./auth.js";
-import { t, resolveLocale, initLocaleFromStorage, registerRerenderCallback } from "./i18n.js";
+import { t, getLocale, resolveLocale, initLocaleFromStorage, registerRerenderCallback } from "./i18n.js";
 import { esc } from "./views/browse-utils.js";
 import { renderImport } from "./views/import.js";
 import { renderBrowse } from "./views/browse.js";
@@ -119,6 +119,7 @@ function applyChromeMode() {
 }
 
 function updateNavLabels() {
+  document.documentElement.lang = getLocale();
   document.querySelectorAll(".sidebar nav a[data-view]").forEach((a) => {
     const key = `nav.${a.dataset.view}`;
     const translated = t(key);

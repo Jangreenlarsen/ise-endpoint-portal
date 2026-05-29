@@ -24,6 +24,10 @@ const TRANSLATIONS = {
     "nav.csv-template": "CSV Skabelon",
     "nav.monitoring":   "Portal Overvågning",
     "nav.policy":       "ISE Politikker",
+    "nav.lifecycle":    "Livscyklus",
+    "nav.trends":       "Trend Analyse",
+    "sidebar.role":     "Rolle:",
+    "sidebar.logout":   "Log ud",
 
     // Policy dashboard
     "pol.title":             "Authz Policies",
@@ -1077,6 +1081,10 @@ const TRANSLATIONS = {
     "nav.csv-template": "CSV Template",
     "nav.monitoring":   "Portal Monitoring",
     "nav.policy":       "ISE Policies",
+    "nav.lifecycle":    "Lifecycle",
+    "nav.trends":       "Trend Analysis",
+    "sidebar.role":     "Role:",
+    "sidebar.logout":   "Log out",
 
     // Policy dashboard
     "pol.title":             "Authz Policies",

@@ -3,7 +3,7 @@
   Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 -->
 <!DOCTYPE html>
-<html lang="da">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -43,11 +43,11 @@
           <div id="version-info" class="version-label"></div>
           <div id="user-info" class="user-info" hidden>
             <div class="user-info-line"><span class="user-info-label">User:</span> <span id="user-name"></span></div>
-            <div class="user-info-line"><span class="user-info-label">Rolle:</span> <span id="user-role"></span></div>
+            <div class="user-info-line"><span class="user-info-label" data-i18n="sidebar.role">Role:</span> <span id="user-role"></span></div>
             <div class="user-info-line"><span class="user-info-label">Login auth:</span> <span id="user-auth-type"></span></div>
             <div class="user-info-actions">
-              <button id="logout-btn" class="linkish" type="button">Log ud</button>
-              <a href="#/user-prefs" class="linkish user-prefs-link">Præferencer</a>
+              <button id="logout-btn" class="linkish" type="button" data-i18n="sidebar.logout">Log out</button>
+              <a href="#/user-prefs" class="linkish user-prefs-link" data-i18n="nav.user-prefs">Preferences</a>
             </div>
           </div>
         </div>

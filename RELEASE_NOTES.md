@@ -4,6 +4,20 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.13.0] — 2026-05-29 — Fuld lokaliseringsunderstøttelse for alle menupunkter
+
+> **Build:** 0561
+
+Alle sidebar-menupunkter og labels oversættes nu korrekt når bruger-sprog er sat til engelsk. Tidligere stod "Livscyklus", "Trend Analyse", "Rolle:", "Log ud" og "Præferencer" altid på dansk.
+
+**Ændringer:**
+- Tilføjet `nav.lifecycle`, `nav.trends`, `sidebar.role`, `sidebar.logout` til i18n-oversættelserne for både dansk og engelsk
+- `data-i18n`-attributter tilføjet til "Rolle:", "Log ud" og "Præferencer" i HTML
+- `updateNavLabels()` opdaterer nu `<html lang>` dynamisk ved sprogskcift
+- `<html lang>` ændret fra hardkodet `da` til `en` (matcher default-fallback)
+
+---
+
 ## [5.12.9] — 2026-05-28 — Fjernet Inaktiv-chip fra MAC-kolonne
 
 > **Build:** 0560

@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.13.0 build 0561] — 2026-05-29 — feat: fuld lokaliseringsunderstøttelse for alle menupunkter
+
+Alle menupunkter og sidebar-labels oversættes nu korrekt ved sprogskcift. Tilføjet manglende i18n-nøgler (`nav.lifecycle`, `nav.trends`, `sidebar.role`, `sidebar.logout`) til begge sprogblokke (da/en). HTML-elementer for "Rolle:", "Log ud" og "Præferencer" forsynet med `data-i18n`-attributter. `updateNavLabels()` opdaterer nu `document.documentElement.lang` dynamisk. `<html lang>` skiftet fra hardkodet `da` til `en` (spejler default-fallback).
+
+- `frontend/js/i18n.js`, `frontend/index.html`, `frontend/js/app.js`
+
 ## [5.12.9 build 0560] — 2026-05-28 — feat: fjernet Inaktiv-chip fra MAC-kolonne
 
 "Inaktiv"-filterfunktionen er fjernet fra MAC-kolonnen da auth-status-kolonnen allerede viser session-tilstand. Fjernet: chip-HTML, `state.macInactive`, chip-handler-gren, `macInactive`-filterblok i `applyFiltersToRows`, `needsFilterMode`-reference, `updateInactiveChip`-funktion og `:disabled` CSS-regler.
