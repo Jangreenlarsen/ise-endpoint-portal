@@ -1345,6 +1345,49 @@ const TRANSLATIONS = {
     "settings.restore_invalid_json":  "Filen er ikke gyldig JSON",
     "settings.restore_success":       "Konfiguration gendannet.",
     "settings.restore_error":         "Gendannelse fejlede: {msg}",
+
+    // Feature 4 — Metrics historik
+    "metrics.history_title":          "Metrics historik (24 timer)",
+    "metrics.hist_cache_entries":     "Cache-entries",
+    "metrics.hist_stale_pct":         "Stale %",
+    "metrics.hist_ise_requests":      "ISE requests total",
+    "metrics.hist_circuit_state":     "Circuit state",
+    "metrics.history_no_data":        "Ingen data endnu — scraper ét punkt per minut",
+
+    // Feature 5 — Bulk template-apply
+    "bulk.tpl_title":                 "Anvend skabelon på valgte",
+    "bulk.tpl_select_lbl":            "Vælg skabelon",
+    "bulk.tpl_none":                  "— Vælg skabelon —",
+    "bulk.tpl_count":                 "{n} endpoints valgt",
+    "bulk.tpl_apply_btn":             "Anvend",
+    "bulk.tpl_applying":              "Anvender skabelon på {n} endpoints…",
+    "bulk.tpl_result":                "{ok} opdateret, {fail} fejlede",
+    "bulk.tpl_err":                   "Skabelon-apply fejlede: {msg}",
+    "browse.tpl_btn_title":           "Anvend skabelon på valgte endpoints",
+    "browse.btn_bulk_tpl":            "Anvend skabelon",
+
+    // Feature 6 — Decommission-flow
+    "browse.decomm_filter_title":     "Vis eller skjul dekommissionerede endpoints",
+    "browse.btn_decomm_filter":       "Vis dekommissionerede",
+    "browse.decomm_btn_title":        "Dekommissionér valgte (sætter HypervisionStatus=Decommissioned)",
+    "browse.btn_bulk_decomm":         "Dekommissionér",
+    "detail.status_lbl":              "Status",
+    "detail.btn_decommission":        "Dekommissionér",
+    "detail.decomm_title":            "Soft-delete: sæt HypervisionStatus=Decommissioned",
+    "detail.confirm_decomm":          "Dekommissionér {mac}?\n\nDette sætter HypervisionStatus=Decommissioned.\nKan fortryde ved at redigere endpoint manuelt.",
+    "detail.decomm_progress":         "Dekommissionerer…",
+    "detail.decomm_done":             "Endpoint er dekommissioneret.",
+    "detail.decomm_err":              "Dekommission fejlede: {msg}",
+    "bulk.confirm_decomm":            "Dekommissionér {n} endpoints?\n\nDette sætter HypervisionStatus=Decommissioned.\nKan fortryde ved at redigere endpoints manuelt.",
+    "bulk.decomm_progress":           "Dekommissionerer {n} endpoints…",
+    "bulk.decomm_result":             "{ok} dekommissioneret, {fail} fejlede",
+    "bulk.decomm_err":                "Dekommission fejlede: {msg}",
+
+    // Feature 7 — Filter-deling via URL
+    "browse.share_filter_title":      "Kopiér link med aktive filtre til udklipsholder",
+    "browse.btn_share_filter":        "Del filter",
+    "browse.share_filter_copied":     "Kopieret!",
+    "browse.share_filter_err":        "Kunne ikke kopiere til udklipsholder",
   },
 
   en: {
@@ -2683,6 +2726,49 @@ const TRANSLATIONS = {
     "settings.restore_invalid_json":  "The file is not valid JSON",
     "settings.restore_success":       "Configuration restored.",
     "settings.restore_error":         "Restore failed: {msg}",
+
+    // Feature 4 — Metrics history
+    "metrics.history_title":          "Metrics history (24 h)",
+    "metrics.hist_cache_entries":     "Cache entries",
+    "metrics.hist_stale_pct":         "Stale %",
+    "metrics.hist_ise_requests":      "ISE requests total",
+    "metrics.hist_circuit_state":     "Circuit state",
+    "metrics.history_no_data":        "No data yet — scrapes one point per minute",
+
+    // Feature 5 — Bulk template apply
+    "bulk.tpl_title":                 "Apply template to selected",
+    "bulk.tpl_select_lbl":            "Select template",
+    "bulk.tpl_none":                  "— Select template —",
+    "bulk.tpl_count":                 "{n} endpoints selected",
+    "bulk.tpl_apply_btn":             "Apply",
+    "bulk.tpl_applying":              "Applying template to {n} endpoints…",
+    "bulk.tpl_result":                "{ok} updated, {fail} failed",
+    "bulk.tpl_err":                   "Template apply failed: {msg}",
+    "browse.tpl_btn_title":           "Apply template to selected endpoints",
+    "browse.btn_bulk_tpl":            "Apply template",
+
+    // Feature 6 — Decommission flow
+    "browse.decomm_filter_title":     "Show or hide decommissioned endpoints",
+    "browse.btn_decomm_filter":       "Show decommissioned",
+    "browse.decomm_btn_title":        "Decommission selected (sets HypervisionStatus=Decommissioned)",
+    "browse.btn_bulk_decomm":         "Decommission",
+    "detail.status_lbl":              "Status",
+    "detail.btn_decommission":        "Decommission",
+    "detail.decomm_title":            "Soft-delete: set HypervisionStatus=Decommissioned",
+    "detail.confirm_decomm":          "Decommission {mac}?\n\nThis sets HypervisionStatus=Decommissioned.\nCan be reversed by editing the endpoint manually.",
+    "detail.decomm_progress":         "Decommissioning…",
+    "detail.decomm_done":             "Endpoint has been decommissioned.",
+    "detail.decomm_err":              "Decommission failed: {msg}",
+    "bulk.confirm_decomm":            "Decommission {n} endpoints?\n\nThis sets HypervisionStatus=Decommissioned.\nCan be reversed by editing endpoints manually.",
+    "bulk.decomm_progress":           "Decommissioning {n} endpoints…",
+    "bulk.decomm_result":             "{ok} decommissioned, {fail} failed",
+    "bulk.decomm_err":                "Decommission failed: {msg}",
+
+    // Feature 7 — Filter sharing via URL
+    "browse.share_filter_title":      "Copy link with active filters to clipboard",
+    "browse.btn_share_filter":        "Share filter",
+    "browse.share_filter_copied":     "Copied!",
+    "browse.share_filter_err":        "Could not copy to clipboard",
   },
 };
 

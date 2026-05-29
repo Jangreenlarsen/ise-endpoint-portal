@@ -16,6 +16,9 @@ export function initBulk(container, state, api, cb) {
   const bulkCoaBtn     = container.querySelector("#bulk-coa-btn");
   const bulkSimBtn     = container.querySelector("#bulk-sim-btn");
   const bulkSimOverlay = container.querySelector("#bulk-sim-overlay");
+  const bulkTplBtn     = container.querySelector("#bulk-tpl-btn");
+  const tplPickOverlay = container.querySelector("#tpl-pick-overlay");
+  const bulkDecommBtn  = container.querySelector("#bulk-decomm-btn");
 
   // ── Bulk-edit modal ──────────────────────────────────────────────────────
   bulkEditBtn.addEventListener("click", () => {
@@ -387,6 +390,82 @@ export function initBulk(container, state, api, cb) {
       } finally {
         runBtn.disabled = false;
         runBtn.textContent = t("browse.sim_run_btn");
+      }
+    });
+  }
+
+  // ── Bulk template-apply ───────────────────────────────────────────────────
+  if (bulkTplBtn && tplPickOverlay) {
+    const tplSelect  = tplPickOverlay.querySelector("#tpl-pick-select");
+    const tplApply   = tplPickOverlay.querySelector("#tpl-pick-apply");
+    const tplCancel  = tplPickOverlay.querySelector("#tpl-pick-cancel");
+    const tplCount   = tplPickOverlay.querySelector("#tpl-pick-count");
+
+    bulkTplBtn.addEventListener("click", async () => {
+      const ids = cb.getSelectedIds();
+      if (!ids.length) return;
+      tplCount.textContent = t("bulk.tpl_count").replace("{n}", ids.length);
+      try {
+        const resp = await api.listTemplates();
+        const tpls = resp?.templates || [];
+        tplSelect.innerHTML = `<option value="">${t("bulk.tpl_none")}</option>`
+          + tpls.map((tpl) => `<option value="${esc(tpl.id)}">${esc(tpl.name)}${tpl.description ? ` — ${esc(tpl.description)}` : ""}</option>`).join("");
+      } catch { tplSelect.innerHTML = `<option value="">${t("bulk.tpl_none")}</option>`; }
+      tplPickOverlay.classList.remove("hidden");
+    });
+
+    tplCancel.addEventListener("click", () => tplPickOverlay.classList.add("hidden"));
+
+    tplApply.addEventListener("click", async () => {
+      const templateId = tplSelect.value;
+      if (!templateId) return;
+      const ids = cb.getSelectedIds();
+      if (!ids.length) { tplPickOverlay.classList.add("hidden"); return; }
+      tplApply.disabled = true;
+      msg.innerHTML = `<div class="alert info">${t("bulk.tpl_applying").replace("{n}", ids.length)}</div>`;
+      tplPickOverlay.classList.add("hidden");
+      try {
+        const res = await api.bulkApplyTemplate(ids, templateId);
+        const ok   = res?.ok_count ?? 0;
+        const fail = (res?.results || []).filter((r) => !r.ok).length;
+        const cls  = fail ? (ok ? "info" : "error") : "success";
+        msg.innerHTML = `<div class="alert ${cls}">${t("bulk.tpl_result").replace("{ok}", ok).replace("{fail}", fail)}</div>`;
+        if (ok) cb.load?.();
+      } catch (err) {
+        msg.innerHTML = `<div class="alert error">${t("bulk.tpl_err").replace("{msg}", esc(err.message))}</div>`;
+      } finally {
+        tplApply.disabled = false;
+      }
+    });
+  }
+
+  // ── Bulk decommission ─────────────────────────────────────────────────────
+  if (bulkDecommBtn) {
+    bulkDecommBtn.addEventListener("click", async () => {
+      const ids = cb.getSelectedIds();
+      if (!ids.length) return;
+      if (!confirm(t("bulk.confirm_decomm").replace("{n}", ids.length))) return;
+      bulkDecommBtn.disabled = true;
+      msg.innerHTML = `<div class="alert info">${t("bulk.decomm_progress").replace("{n}", ids.length)}</div>`;
+      try {
+        const res = await api.bulkDecommission(ids);
+        const ok   = res?.ok_count ?? 0;
+        const fail = (res?.results || []).filter((r) => !r.ok).length;
+        const cls  = fail ? (ok ? "info" : "error") : "success";
+        msg.innerHTML = `<div class="alert ${cls}">${t("bulk.decomm_result").replace("{ok}", ok).replace("{fail}", fail)}</div>`;
+        // Fjern dekommissionerede fra allRows så de forsvinder fra browseren
+        const okIds = new Set((res?.results || []).filter((r) => r.ok).map((r) => r.id));
+        if (okIds.size) {
+          state.allRows = state.allRows.map((r) => okIds.has(r.id) ? { ...r, status: "Decommissioned" } : r);
+          if (state.allRowsCache) {
+            state.allRowsCache = state.allRowsCache.map((r) => okIds.has(r.id) ? { ...r, status: "Decommissioned" } : r);
+          }
+          cb.applyFilter?.();
+        }
+      } catch (err) {
+        msg.innerHTML = `<div class="alert error">${t("bulk.decomm_err").replace("{msg}", esc(err.message))}</div>`;
+      } finally {
+        bulkDecommBtn.disabled = false;
       }
     });
   }

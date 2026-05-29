@@ -237,11 +237,78 @@ export async function renderMetrics(container) {
     return `<div class="card metrics-card"><h3>${t("metrics.psn_nodes")}</h3><div class="metric-stats">${rows}</div></div>`;
   }
 
+  // ── SVG Linjediagram ─────────────────────────────────────────────────────
+  function renderLineChart(points, opts = {}) {
+    if (!points || points.length < 2) {
+      return `<span class="hint" style="font-size:.8em;">${t("metrics.history_no_data")}</span>`;
+    }
+    const W = opts.width || 320;
+    const H = opts.height || 80;
+    const pad = { top: 6, right: 8, bottom: 18, left: 36 };
+    const iW = W - pad.left - pad.right;
+    const iH = H - pad.top - pad.bottom;
+
+    const vals = points.map((p) => p.value);
+    const minV = Math.min(...vals);
+    const maxV = Math.max(...vals);
+    const range = maxV - minV || 1;
+
+    const xs = points.map((_, i) => pad.left + (i / (points.length - 1)) * iW);
+    const ys = points.map((p) => pad.top + iH - ((p.value - minV) / range) * iH);
+
+    const polyline = xs.map((x, i) => `${x.toFixed(1)},${ys[i].toFixed(1)}`).join(" ");
+    const fillPath = `M${xs[0].toFixed(1)},${(pad.top + iH).toFixed(1)} `
+      + xs.map((x, i) => `L${x.toFixed(1)},${ys[i].toFixed(1)}`).join(" ")
+      + ` L${xs[xs.length - 1].toFixed(1)},${(pad.top + iH).toFixed(1)} Z`;
+
+    const color = opts.color || "#3b82f6";
+    const fmtV = opts.fmtV || ((v) => Number(v).toFixed(opts.decimals ?? 1));
+
+    const firstTs = points[0].ts.slice(11, 16);
+    const lastTs  = points[points.length - 1].ts.slice(11, 16);
+
+    return `<svg width="${W}" height="${H}" style="overflow:visible;display:block;">
+      <defs>
+        <linearGradient id="grad_${opts.key || "0"}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="${color}" stop-opacity=".25"/>
+          <stop offset="100%" stop-color="${color}" stop-opacity=".02"/>
+        </linearGradient>
+      </defs>
+      <path d="${fillPath}" fill="url(#grad_${opts.key || "0"})" />
+      <polyline points="${polyline}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round"/>
+      <text x="${pad.left}" y="${pad.top + iH + 14}" font-size="10" fill="#94a3b8" text-anchor="start">${firstTs}</text>
+      <text x="${pad.left + iW}" y="${pad.top + iH + 14}" font-size="10" fill="#94a3b8" text-anchor="end">${lastTs}</text>
+      <text x="${(pad.left - 2)}" y="${(pad.top + 4).toFixed(0)}" font-size="9" fill="#94a3b8" text-anchor="end">${fmtV(maxV)}</text>
+      <text x="${(pad.left - 2)}" y="${(pad.top + iH).toFixed(0)}" font-size="9" fill="#94a3b8" text-anchor="end">${fmtV(minV)}</text>
+    </svg>`;
+  }
+
+  function renderHistoryCard(histData) {
+    const series = [
+      { key: "cache_entries",   label: t("metrics.hist_cache_entries"),   color: "#3b82f6", fmtV: (v) => Math.round(v).toString() },
+      { key: "cache_stale_pct", label: t("metrics.hist_stale_pct"),       color: "#f59e0b", fmtV: (v) => Number(v).toFixed(1) + "%" },
+      { key: "ise_requests_total", label: t("metrics.hist_ise_requests"), color: "#10b981", fmtV: (v) => Math.round(v).toString() },
+      { key: "circuit_state",   label: t("metrics.hist_circuit_state"),   color: "#ef4444", fmtV: (v) => v === 0 ? "closed" : v === 1 ? "half" : "open" },
+    ];
+    const charts = series.map(({ key, label, color, fmtV }) => {
+      const pts = histData[key] || [];
+      return `<div style="margin-bottom:14px;">
+        <div style="font-size:.8em;color:#64748b;margin-bottom:4px;">${label}</div>
+        ${renderLineChart(pts, { key, color, fmtV, width: 320, height: 80 })}
+      </div>`;
+    }).join("");
+    return `<div class="card metrics-card">
+      <h3>${t("metrics.history_title")}</h3>
+      <div style="display:flex;flex-wrap:wrap;gap:24px;">${charts}</div>
+    </div>`;
+  }
+
   async function load() {
     try {
-      const [metricsRes, nodesRes] = await Promise.allSettled([
+      const [metricsRes, nodesRes, histRes] = await Promise.allSettled([
         fetch(`${BASE}/metrics`),
         api.getIseNodes().catch(() => null),
+        api.getMetricsHistory(["cache_entries", "cache_stale_pct", "ise_requests_total", "circuit_state"], 120).catch(() => null),
       ]);
       if (metricsRes.status === "rejected" || !metricsRes.value.ok) {
         throw new Error(metricsRes.reason?.message || `HTTP ${metricsRes.value?.status}`);
@@ -249,7 +316,10 @@ export async function renderMetrics(container) {
       const text = await metricsRes.value.text();
       const parsed = parsePrometheus(text);
       const nodes = nodesRes.status === "fulfilled" ? (nodesRes.value?.nodes || null) : null;
-      body.innerHTML = renderData(parsed) + (nodes ? renderNodesCard(nodes) : "");
+      const histData = histRes.status === "fulfilled" ? histRes.value : null;
+      body.innerHTML = renderData(parsed)
+        + (histData ? renderHistoryCard(histData) : "")
+        + (nodes ? renderNodesCard(nodes) : "");
       const locale = getLocale() === "da" ? "da-DK" : "en-GB";
       tsEl.textContent = t("metrics.last_updated") + new Date().toLocaleTimeString(locale);
     } catch (err) {

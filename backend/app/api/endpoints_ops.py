@@ -21,6 +21,8 @@ from app.schemas.endpoint import (
     AncPoliciesResponse,
     AncQuarantineRequest,
     AncStatusResponse,
+    BulkApplyTemplateRequest,
+    BulkDecommissionRequest,
     CoaReauthResponse,
 )
 from app.services.endpoint_service import EndpointService
@@ -188,3 +190,48 @@ async def anc_clear(
     except IseApiError as exc:
         raise _ise_http_error(exc) from exc
     return AncActionResponse(ok=ok, mac=mac, message=msg)
+
+
+# ------------------------------------------------------------------ #
+# Decommission                                                        #
+# ------------------------------------------------------------------ #
+
+@router.post("/{endpoint_id}/decommission", dependencies=[Depends(require_editor)])
+async def decommission_endpoint(
+    endpoint_id: str,
+    service: EndpointService = Depends(get_endpoint_service),
+) -> dict:
+    """Sæt HypervisionStatus='Decommissioned' på et endpoint (soft-delete)."""
+    try:
+        await service.decommission_endpoint(endpoint_id)
+    except IseApiError as exc:
+        raise _ise_http_error(exc) from exc
+    return {"status": "decommissioned", "id": endpoint_id}
+
+
+@router.post("/bulk-decommission", dependencies=[Depends(require_editor)])
+async def bulk_decommission(
+    body: BulkDecommissionRequest,
+    service: EndpointService = Depends(get_endpoint_service),
+) -> dict:
+    """Decommission en liste af endpoints parallelt."""
+    return await service.bulk_decommission(body)
+
+
+# ------------------------------------------------------------------ #
+# Bulk template-apply                                                 #
+# ------------------------------------------------------------------ #
+
+@router.post("/bulk-apply-template", dependencies=[Depends(require_editor)])
+async def bulk_apply_template(
+    body: BulkApplyTemplateRequest,
+    service: EndpointService = Depends(get_endpoint_service),
+) -> dict:
+    """Anvend en skabelon på en liste af endpoints parallelt."""
+    try:
+        return await service.bulk_apply_template(body)
+    except ValueError as exc:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except IseApiError as exc:
+        raise _ise_http_error(exc) from exc

@@ -31,6 +31,7 @@ from app.api import settings as settings_api
 from app.api import update as update_api
 from app.api import trends as trends_api
 from app.core.audit_store import init_db as init_audit_db
+from app.core.metrics_store import init_db as init_metrics_db
 from app.core.config import settings
 from app.core.logging import setup_logging
 from app.core.watchdog import beat as watchdog_beat, start_watchdog
@@ -74,6 +75,7 @@ async def lifespan(_: FastAPI):
     from app.core import auth as _auth_core
     _auth_core._secret()
     init_audit_db()
+    init_metrics_db()
     from app.core.first_seen_store import init_db as init_first_seen_db
     init_first_seen_db()
     try:
@@ -193,6 +195,44 @@ async def lifespan(_: FastAPI):
 
     _alert_task = asyncio.create_task(_alert_check_loop(), name="alert-check")
 
+    # Periodisk Prometheus-skrabe og persistering i metrics_history.db.
+    # Venter 30s ved start så Gauge-værdier er stabiliserede.
+    _tracked_metrics = {
+        "ise_portal_cache_entries": "cache_entries",
+        "ise_portal_cache_stale_pct": "cache_stale_pct",
+        "ise_portal_cache_avg_entry_age_seconds": "cache_avg_age_s",
+        "ise_portal_cache_memory_bytes": "cache_memory_bytes",
+        "ise_portal_circuit_breaker_state": "circuit_state",
+        "ise_portal_ise_requests_total": "ise_requests_total",
+    }
+
+    async def _metrics_scrape_loop() -> None:
+        from app.core import metrics_store as _ms
+        from prometheus_client import REGISTRY
+        await asyncio.sleep(30)
+        prune_tick = 0
+        while True:
+            try:
+                snapshot: dict[str, float] = {}
+                for metric in REGISTRY.collect():
+                    for sample in metric.samples:
+                        alias = _tracked_metrics.get(sample.name)
+                        if alias is not None:
+                            snapshot[alias] = snapshot.get(alias, 0.0) + sample.value
+                if "cache_memory_bytes" in snapshot:
+                    snapshot["cache_memory_mb"] = snapshot.pop("cache_memory_bytes") / 1_048_576
+                if snapshot:
+                    await _ms.insert_snapshot(snapshot)
+                prune_tick += 1
+                if prune_tick >= 60:
+                    await _ms.prune()
+                    prune_tick = 0
+            except Exception as _exc:  # noqa: BLE001
+                logger.warning("metrics scrape loop error: %s", _exc)
+            await asyncio.sleep(60)
+
+    _metrics_scrape_task = asyncio.create_task(_metrics_scrape_loop(), name="metrics-history-scrape")
+
     try:
         yield
     finally:
@@ -201,6 +241,7 @@ async def lifespan(_: FastAPI):
         _mnt_enrich_task.cancel()
         _mnt_stale_task.cancel()
         _alert_task.cancel()
+        _metrics_scrape_task.cancel()
         try:
             await _heartbeat_task
         except (asyncio.CancelledError, Exception):  # noqa: BLE001

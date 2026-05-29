@@ -18,6 +18,8 @@ import {
 export function initFilter(container, state, api, cb) {
   const filterRow          = container.querySelector(".filter-row");
   const portalFilterBtn    = container.querySelector("#portal-filter-btn");
+  const decommFilterBtn    = container.querySelector("#decomm-filter-btn");
+  const shareFilterBtn     = container.querySelector("#share-filter-btn");
   const pageSizeSelect     = container.querySelector("#page-size-select");
   const viewsBtn           = container.querySelector("#views-btn");
   const viewsMenu          = container.querySelector("#views-menu");
@@ -59,9 +61,11 @@ export function initFilter(container, state, api, cb) {
   }
 
   state.fullTextQ = "";
+  state.hideDecommissioned = true;
 
   function updateClearBtn() {
     const anyActive = state.portalOnly
+      || !state.hideDecommissioned
       || Array.from(filterRow.querySelectorAll(".col-filter-input")).some((i) => i.value.trim())
       || (authStatusSelect && authStatusSelect.value !== "all")
       || state.fullTextQ
@@ -97,6 +101,7 @@ export function initFilter(container, state, api, cb) {
 
   function needsFilterMode() {
     return state.portalOnly
+      || !state.hideDecommissioned
       || Array.from(filterRow.querySelectorAll(".col-filter-input")).some((i) => i.value.trim())
       || (authStatusSelect && authStatusSelect.value !== "all")
       || state.sortCol !== null
@@ -111,6 +116,7 @@ export function initFilter(container, state, api, cb) {
 
   function applyFiltersToRows(rows) {
     if (state.portalOnly) rows = rows.filter((r) => r.hypervision === "true");
+    if (state.hideDecommissioned) rows = rows.filter((r) => r.status !== "Decommissioned");
     const filters = getColumnFilters();
     if (filters.length) rows = rows.filter((r) => filters.every((f) => f.re.test(f.field(r) || "")));
     const authFilter = authStatusSelect ? authStatusSelect.value : "all";
@@ -382,7 +388,9 @@ export function initFilter(container, state, api, cb) {
   filterClearAllBtn.addEventListener("click", async () => {
     applyFilterSnapshot({ portalOnly: false, cols: [], authStatus: "all" });
     state.fullTextQ = "";
+    state.hideDecommissioned = true;
     if (globalQInput) globalQInput.value = "";
+    if (decommFilterBtn) decommFilterBtn.classList.remove("active-toggle");
     firstSeenClearAll();
     state.allRowsCache = null;
     persistFilters();
@@ -398,6 +406,84 @@ export function initFilter(container, state, api, cb) {
     clearActiveView();
     await onFilterChange();
   });
+
+  if (decommFilterBtn) {
+    decommFilterBtn.addEventListener("click", async () => {
+      state.hideDecommissioned = !state.hideDecommissioned;
+      decommFilterBtn.classList.toggle("active-toggle", !state.hideDecommissioned);
+      updateClearBtn();
+      clearActiveView();
+      await onFilterChange();
+    });
+  }
+
+  // ── URL filter sharing (Feature 7) ───────────────────────────────────────
+  function encodeFilterToUrl() {
+    const params = new URLSearchParams();
+    if (state.portalOnly) params.set("p", "1");
+    if (!state.hideDecommissioned) params.set("decomm", "1");
+    if (state.fullTextQ) params.set("q", state.fullTextQ);
+    if (authStatusSelect && authStatusSelect.value !== "all") {
+      params.set("auth", authStatusSelect.value);
+    }
+    filterRow.querySelectorAll(".col-filter-input").forEach((inp) => {
+      if (inp.value.trim()) params.set(`col_${inp.dataset.col}`, inp.value.trim());
+    });
+    const fsFrom = firstSeenFromVal();
+    const fsTo   = firstSeenToVal();
+    if (fsFrom) params.set("fsfrom", fsFrom);
+    if (fsTo)   params.set("fsto",   fsTo);
+    const qs = params.toString();
+    return `${window.location.origin}${window.location.pathname}#browse${qs ? "?" + qs : ""}`;
+  }
+
+  function decodeFilterFromUrl() {
+    const hash = window.location.hash;
+    if (!hash.startsWith("#browse?")) return;
+    const params = new URLSearchParams(hash.slice("#browse?".length));
+    if (params.get("p") === "1") {
+      state.portalOnly = true;
+      portalFilterBtn?.classList.add("active-toggle");
+    }
+    if (params.get("decomm") === "1") {
+      state.hideDecommissioned = false;
+      decommFilterBtn?.classList.add("active-toggle");
+    }
+    const q = params.get("q");
+    if (q) {
+      state.fullTextQ = q;
+      if (globalQInput) globalQInput.value = q;
+    }
+    const auth = params.get("auth");
+    if (auth && authStatusSelect) authStatusSelect.value = auth;
+    params.forEach((value, key) => {
+      if (key.startsWith("col_")) {
+        const col = key.slice(4);
+        const inp = filterRow.querySelector(`.col-filter-input[data-col="${col}"]`);
+        if (inp) inp.value = value;
+      }
+    });
+    const fsFrom = params.get("fsfrom");
+    const fsTo   = params.get("fsto");
+    if (fsFrom || fsTo) firstSeenRestore(fsFrom || "", fsTo || "");
+    updateClearBtn();
+  }
+
+  if (shareFilterBtn) {
+    shareFilterBtn.addEventListener("click", () => {
+      const url = encodeFilterToUrl();
+      navigator.clipboard.writeText(url).then(() => {
+        const orig = shareFilterBtn.textContent;
+        shareFilterBtn.textContent = t("browse.share_filter_copied");
+        setTimeout(() => { shareFilterBtn.textContent = orig; }, 2000);
+      }).catch(() => {
+        msg.innerHTML = `<div class="alert error">${t("browse.share_filter_err")}</div>`;
+      });
+    });
+  }
+
+  // Dekodér URL-filter ved init (fx ved delt link)
+  decodeFilterFromUrl();
 
   // ── Saved views ──────────────────────────────────────────────────────────
   function updateViewsBtnLabel() {

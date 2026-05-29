@@ -3,6 +3,42 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.17.0 build 0566] — 2026-05-29 — feat: Metrics-historik, bulk template-apply, decommission-flow og URL filter-deling
+
+Fire nye features implementeret fuldt ud (backend + frontend + i18n):
+
+**Feature 4 — Metrics-historik (SQLite time-series)**
+- `backend/app/core/metrics_store.py` — ny SQLite-store: init_db, insert_snapshot, get_history, prune
+- `backend/app/main.py` — init_metrics_db() ved startup + `_metrics_scrape_loop` background task (1 min interval, 6 serier)
+- `backend/app/api/metrics_api.py` — ny GET /api/metrics/history (auth-beskyttet, maks 10 serier × 1440 punkter)
+- `frontend/js/views/metrics.js` — SVG linjediagrammer for 4 metrics (cache-entries, stale %, ISE requests, circuit state)
+
+**Feature 5 — Bulk template-apply**
+- `backend/app/schemas/endpoint.py` — BulkApplyTemplateRequest
+- `backend/app/services/endpoint_service.py` — bulk_apply_template() (Semaphore=3, audit per endpoint)
+- `backend/app/api/endpoints_ops.py` — POST /api/endpoints/bulk-apply-template
+- `frontend/js/views/browse.js` — "Anvend skabelon"-knap i selektion-toolbar + tpl-pick-overlay modal
+- `frontend/js/views/browse-bulk.js` — bulkTplBtn handler: template-picker modal → POST bulk-apply-template
+- `frontend/js/api.js` — bulkApplyTemplate()
+
+**Feature 6 — Endpoint decommission-flow (soft-delete)**
+- `backend/app/core/custom_attr_store.py` — STATUS_ATTR = "HypervisionStatus"; tilføjet til HIDDEN_ATTRS + ALL_ATTRS
+- `backend/app/schemas/endpoint.py` — status: str = "" på EndpointDetail; HypervisionStatus på CustomAttrs; BulkDecommissionRequest
+- `backend/app/services/endpoint_service.py` — decommission_endpoint(), bulk_decommission() (Semaphore=3, audit)
+- `backend/app/api/endpoints_ops.py` — POST /api/endpoints/{id}/decommission + POST /api/endpoints/bulk-decommission
+- `frontend/js/views/browse.js` — "Dekommissionér"-knap i toolbar; "Vis dekommissionerede"-toggle; dekommission-knap i detail-modal
+- `frontend/js/views/browse-bulk.js` — bulkDecommBtn handler
+- `frontend/js/views/browse-detail.js` — status-badge i detail-grid; d-decommission knap-handler
+- `frontend/js/views/browse-filter.js` — state.hideDecommissioned (default=true); applyFiltersToRows-filter; needsFilterMode; decommFilterBtn
+
+**Feature 7 — Filter-deling via URL**
+- `frontend/js/views/browse-filter.js` — encodeFilterToUrl(), decodeFilterFromUrl(); shareFilterBtn handler; auto-decode ved init
+- `frontend/js/views/browse.js` — "Del filter"-knap i filter-toolbar
+
+**Fælles**
+- `frontend/js/i18n.js` — ~44 nye nøgler (da + en) for alle 4 features
+- `frontend/js/api.js` — decommissionEndpoint(), bulkDecommission(), bulkApplyTemplate(), getMetricsHistory()
+
 ## [5.16.0 build 0565] — 2026-05-29 — feat: i18n runde 3 — audit, metrics, import, settings backup + docs og gitignore
 
 Fjerde og afsluttende runde af i18n-konvertering. Alle brugersyn­lige strenge i resterende views er nu lokaliserede. Dokumentation og gitignore bringes ajour.

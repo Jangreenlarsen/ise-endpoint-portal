@@ -57,6 +57,10 @@ export async function renderBrowse(container) {
           </div>
           <button id="portal-filter-btn" class="secondary"
                   title="${t("browse.portal_filter_title")}">${t("browse.btn_portal_filter")}</button>
+          <button id="decomm-filter-btn" class="secondary"
+                  title="${t("browse.decomm_filter_title")}">${t("browse.btn_decomm_filter")}</button>
+          <button id="share-filter-btn" class="secondary small"
+                  title="${t("browse.share_filter_title")}">${t("browse.btn_share_filter")}</button>
           <input id="global-q-input" type="search" placeholder="${t("browse.search_placeholder")}"
                  title="${t("browse.search_title")}"
                  style="width:160px;padding:3px 6px;font-size:.85em;" />
@@ -77,7 +81,11 @@ export async function renderBrowse(container) {
                   title="${t("browse.coa_reauth_btn_title")}">CoA Reauth</button>
           <button id="bulk-disconnect-btn" class="danger small" disabled
                   title="${t("browse.disconnect_title")}">${t("browse.btn_bulk_disconnect")}</button>
+          <button id="bulk-tpl-btn" class="secondary small" disabled
+                  title="${t("browse.tpl_btn_title")}">${t("browse.btn_bulk_tpl")}</button>
           <button id="bulk-del-btn" class="danger small" disabled>${t("browse.btn_bulk_delete")}</button>
+          <button id="bulk-decomm-btn" class="danger small" disabled
+                  title="${t("browse.decomm_btn_title")}">${t("browse.btn_bulk_decomm")}</button>
           <button id="bulk-sim-btn" class="secondary small" disabled
                   title="${t("browse.sim_btn_title")}">${t("browse.sim_btn")}</button>
         </div>
@@ -211,6 +219,8 @@ export async function renderBrowse(container) {
               <div class="detail-value" id="d-create-time"></div>
               <label>${t("detail.last_updated")}</label>
               <div class="detail-value" id="d-update-time"></div>
+              <label>${t("detail.status_lbl")}</label>
+              <div class="detail-value" id="d-status"></div>
             </div>
             <div id="d-anc-section" class="hidden anc-section">
               <div class="anc-status-row">
@@ -253,6 +263,8 @@ export async function renderBrowse(container) {
           <button id="d-save">${t("detail.btn_save")}</button>
           <button id="d-disconnect" class="danger"
                   title="CoA Disconnect">${t("detail.btn_disconnect")}</button>
+          <button id="d-decommission" class="danger" style="display:none"
+                  title="${t("detail.decomm_title")}">${t("detail.btn_decommission")}</button>
           <button id="d-close" class="secondary">${t("detail.btn_close")}</button>
         </div>
       </div>
@@ -352,6 +364,23 @@ export async function renderBrowse(container) {
         <div class="modal-actions">
           <button id="bsim-run">${t("browse.sim_run_btn")}</button>
           <button id="bsim-cancel" class="secondary">${t("browse.sim_close_btn")}</button>
+        </div>
+      </div>
+    </div>
+    <div id="tpl-pick-overlay" class="modal-overlay hidden">
+      <div class="modal detail-modal" style="max-width:480px;">
+        <h3>${t("bulk.tpl_title")}</h3>
+        <p class="hint" id="tpl-pick-count"></p>
+        <div class="modal-body">
+          <label style="display:block;">${t("bulk.tpl_select_lbl")}
+            <select id="tpl-pick-select" style="display:block;width:100%;margin-top:4px;">
+              <option value="">${t("bulk.tpl_none")}</option>
+            </select>
+          </label>
+        </div>
+        <div class="modal-actions">
+          <button id="tpl-pick-apply">${t("bulk.tpl_apply_btn")}</button>
+          <button id="tpl-pick-cancel" class="secondary">${t("bulk.btn_cancel")}</button>
         </div>
       </div>
     </div>

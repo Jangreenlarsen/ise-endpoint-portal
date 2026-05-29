@@ -16,6 +16,7 @@ from app.core.custom_attr_store import (
     PSK_MODE_ATTR,
     REGISTERED_AT_ATTR,
     ROLES_ATTR,
+    STATUS_ATTR,
     auto_discover_values as _discover_ca_values,
 )
 from app.core.endpoint_cache import get_cache
@@ -33,7 +34,9 @@ from app.ise.openapi_endpoints import (
     OpenApiEndpointRepository,
 )
 from app.schemas.endpoint import (
+    BulkApplyTemplateRequest,
     BulkCreateRequest,
+    BulkDecommissionRequest,
     BulkFailure,
     BulkResult,
     CreateEndpointRequest,
@@ -245,6 +248,7 @@ class EndpointService:
             vendor=profiler_name or oui_lookup(mac_val),
             psk_mode=ca.get(PSK_MODE_ATTR, "").lower() == "true",
             psk_key=_psk_decode(ca.get(PSK_KEY_ATTR, "")),
+            status=ca.get(STATUS_ATTR, ""),
             create_time=create_time,
             update_time=update_time,
             first_seen_at=first_seen_store.record(mac_val, endpoint_id),
@@ -868,4 +872,104 @@ class EndpointService:
             endpoint_id, update, auto_tag_username=auto_tag_username
         )
 
+    # ------------------------------------------------------------------ #
+    # Decommission                                                         #
+    # ------------------------------------------------------------------ #
+
+    async def decommission_endpoint(self, endpoint_id: str) -> None:
+        """Sæt HypervisionStatus='Decommissioned' på et endpoint (soft-delete).
+
+        Kun custom-attribute-feltet opdateres — gruppe, beskrivelse og øvrige
+        felter bevares. Cachen invalideres og handlingen auditeres.
+        """
+        ca: dict[str, Any] = {
+            STATUS_ATTR: "Decommissioned",
+            HIDDEN_ATTR: "true",
+        }
+        await self._ensure_ca_definitions()
+        before: dict[str, Any] | None = None
+        try:
+            before = (await self.get_endpoint(endpoint_id, is_psk_editor=True)).model_dump()
+        except IseApiError as exc:
+            logger.warning("audit: could not snapshot %s before decommission: %s", endpoint_id, exc)
+        await self.endpoints.update(endpoint_id, custom_attributes=ca)
+        get_cache().invalidate_detail(endpoint_id)
+        await audit_store.record(
+            "decommissioned",
+            "endpoint",
+            endpoint_id,
+            before=before,
+            after={"status": "Decommissioned"},
+        )
+        logger.info("decommissioned endpoint id=%s", endpoint_id)
+
+    async def bulk_decommission(self, req: BulkDecommissionRequest) -> dict[str, Any]:
+        """Decommission op til 200 endpoints parallelt (Semaphore=3)."""
+        sem = asyncio.Semaphore(3)
+
+        async def _one(ep_id: str) -> dict[str, Any]:
+            async with sem:
+                try:
+                    await self.decommission_endpoint(ep_id)
+                    return {"id": ep_id, "ok": True}
+                except Exception as exc:  # noqa: BLE001
+                    return {"id": ep_id, "ok": False, "error": str(exc)}
+
+        results = list(await asyncio.gather(*(_one(i) for i in req.endpoint_ids[:200])))
+        return {"results": results, "ok_count": sum(1 for r in results if r["ok"])}
+
+    # ------------------------------------------------------------------ #
+    # Bulk template-apply                                                  #
+    # ------------------------------------------------------------------ #
+
+    async def bulk_apply_template(self, req: BulkApplyTemplateRequest) -> dict[str, Any]:
+        """Anvend en skabelon på op til 200 endpoints parallelt (Semaphore=3).
+
+        Kun felter der er sat i skabelonens ``fields``-blok overskrives;
+        felter med tom streng sættes eksplicit (clearing af CA-værdi).
+        Cachen invalideres per endpoint og handlingen auditeres.
+        """
+        from app.core import template_store as _ts
+
+        template = _ts.get_template(req.template_id)
+        if not template:
+            raise ValueError(f"Skabelon {req.template_id!r} ikke fundet")
+
+        fields = template.get("fields", {})
+        t_group_id = fields.get("group_id") or None
+        t_description = fields.get("description") or None
+        t_static_ga = fields.get("static_group_assignment")
+        t_ca: dict[str, str] = dict(fields.get("custom_attributes") or {})
+        t_ca[HIDDEN_ATTR] = "true"
+
+        await self._ensure_ca_definitions()
+        sem = asyncio.Semaphore(3)
+
+        async def _one(ep_id: str) -> dict[str, Any]:
+            async with sem:
+                try:
+                    await self.endpoints.update(
+                        ep_id,
+                        description=t_description,
+                        group_id=t_group_id,
+                        static_group_assignment=t_static_ga,
+                        custom_attributes=t_ca,
+                    )
+                    get_cache().invalidate_detail(ep_id)
+                    await audit_store.record(
+                        "template_applied",
+                        "endpoint",
+                        ep_id,
+                        after={"template_id": req.template_id, "template_name": template.get("name", "")},
+                    )
+                    return {"id": ep_id, "ok": True}
+                except Exception as exc:  # noqa: BLE001
+                    return {"id": ep_id, "ok": False, "error": str(exc)}
+
+        results = list(await asyncio.gather(*(_one(i) for i in req.endpoint_ids[:200])))
+        logger.info(
+            "bulk_apply_template: template=%s endpoints=%d ok=%d",
+            req.template_id, len(req.endpoint_ids), sum(1 for r in results if r["ok"]),
+        )
+        return {"results": results, "ok_count": sum(1 for r in results if r["ok"])}
 

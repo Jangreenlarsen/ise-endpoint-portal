@@ -4,6 +4,25 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.17.0] — 2026-05-29 — Metrics-historik, bulk template-apply, decommission-flow og URL filter-deling
+
+> **Build:** 0566
+
+Fire planlagte features implementeret fuldt ud.
+
+**Metrics-historik (Feature 4)**
+ISE-portalens Metrics-view viser nu SVG linjediagrammer over de seneste 24 timers data. Prometheus-metrikker scrapes automatisk hvert minut og gemmes i `backend/metrics_history.db` (SQLite) — ingen ekstern Prometheus/Grafana nødvendig.
+Viste serier: cache-entries, stale %, ISE requests total, circuit breaker state.
+
+**Bulk template-apply (Feature 5)**
+I Browse kan du nu vælge N endpoints, klikke **Anvend skabelon** og anvende en eksisterende skabelon på alle valgte på én gang. Alle felter i skabelonen (gruppe, beskrivelse, custom attributes) overskrives parallelt og auditeres.
+
+**Endpoint decommission-flow (Feature 6)**
+Endpoints kan nu "soft-deletes" via **Dekommissionér**-knappen i detail-modalen eller med bulk-dekommissionering af flere valgte. Sætter `HypervisionStatus=Decommissioned` som ISE custom attribute. Browse-visningen skjuler dekommissionerede endpoints som standard; "Vis dekommissionerede"-knappen slår synlighed til. Kan fortryde ved at redigere endpoint manuelt.
+
+**Filter-deling via URL (Feature 7)**
+Knappen **Del filter** i Browse kopierer et komplet URL (inkl. hash-parametre for alle aktive filtre) til udklipsholderen. Åbning af linket i en ny fane eller deling med en kollega gendanner præcis samme filter-tilstand. Understøtter: portal-filter, dekommissionerings-filter, fritekst, kolonne-filtre, auth-status, first-seen datointerval.
+
 ## [5.16.0] — 2026-05-29 — i18n runde 3: audit, metrics, import, settings backup
 
 > **Build:** 0565
