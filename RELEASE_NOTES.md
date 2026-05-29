@@ -4,6 +4,14 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.17.2] — 2026-05-29 — Bugfix: XSS/crash i CSV-import
+
+> **Build:** 0568
+
+`escapeHtml()` var brugt 12 steder i import-viewet men aldrig defineret — rette funktion var `esc()` (allerede importeret). Konsekvensen var en `ReferenceError` der crashede preview og import-resultat, og rå brugerinput fra CSV blev indsat uescapet i innerHTML. Rettet ved at erstatte alle kald.
+
+---
+
 ## [5.17.1] — 2026-05-29 — Bugfix: decommission-filter og clipboard
 
 > **Build:** 0567
