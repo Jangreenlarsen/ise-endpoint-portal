@@ -381,6 +381,7 @@ export const api = {
 
   // Authorization Profile Manager (5.1.0)
   listAuthzProfiles: () => request("/authz-profiles"),
+  getAuthzProfile: (name) => request(`/authz-profiles/${encodeURIComponent(name)}`),
   checkStandardAuthzProfiles: () => request("/authz-profiles/standard/status"),
   ensureStandardAuthzProfiles: () =>
     request("/authz-profiles/standard/ensure", { method: "POST" }),

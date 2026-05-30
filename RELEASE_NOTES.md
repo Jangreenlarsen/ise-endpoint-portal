@@ -4,6 +4,19 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.18.0] — 2026-05-30 — Authz Profile Details i Policy-panel
+
+> **Build:** 0576
+
+I ISE Policies-visningens højre panel vises nu hvad de tilvalgte authz-profiler består af:
+
+- **Detail-view**: Under profiles-sektionen vises et kompakt kort pr. tilknyttet profil med access-type (ACCEPT/REJECT-badge), profil-type, DACL-navn, VLAN og advanced RADIUS-attributter (f.eks. `Radius:Tunnel-Type = 1:13`).
+- **Editor-view**: Tilsvarende sektion nedenfor profile-tagvælgeren — opdateres automatisk når profiler tilføjes/fjernes.
+- **Ny backend endpoint** `GET /authz-profiles/{name}` returnerer parsed profil-detaljer fra ISE ERS.
+- Tilgængelig for alle autentiserede roller (ikke kun admin).
+
+---
+
 ## [5.17.5] — 2026-05-29 — Decommission chip + kvalitetsfixes
 
 > **Build:** 0573

@@ -23,3 +23,15 @@ class StandardProfilesResult(BaseModel):
     created: list[str]
     already_existed: list[str]
     errors: list[str]
+
+
+class AuthzProfileDetail(BaseModel):
+    id: str = ""
+    name: str
+    description: str = ""
+    access_type: str = ""    # ACCESS_ACCEPT / ACCESS_REJECT
+    profile_type: str = ""   # SWITCH etc.
+    dacl_name: str = ""
+    vlan: str = ""
+    radius_profile: str = ""
+    advanced_attrs: list[str] = []

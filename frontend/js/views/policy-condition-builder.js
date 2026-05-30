@@ -560,10 +560,11 @@ export function readProfiles(el) {
   return [...el.querySelectorAll(".profile-tag")].map((t) => t.dataset.p).filter(Boolean);
 }
 
-export function wireProfileEvents(el) {
+export function wireProfileEvents(el, onChange = null) {
   el.addEventListener("click", (e) => {
     if (e.target.classList.contains("profile-tag-del")) {
       e.target.closest(".profile-tag")?.remove();
+      onChange?.();
     }
     if (e.target.classList.contains("profile-add-btn")) {
       const name =
@@ -577,6 +578,7 @@ export function wireProfileEvents(el) {
       );
       const preset = el.querySelector(".profile-preset"); if (preset) preset.value = "";
       const custom = el.querySelector(".profile-custom"); if (custom) custom.value = "";
+      onChange?.();
     }
   });
 }

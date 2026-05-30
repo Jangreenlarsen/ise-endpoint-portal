@@ -16,6 +16,54 @@ function stateLabel(s) {
   return s === "enabled" ? t("pol.state_enabled") : t("pol.state_disabled");
 }
 
+// ── Authz profile detail helpers ──────────────────────────────────────────────
+
+function renderProfileDetailCard(d) {
+  const accessCls = d.access_type === "ACCESS_ACCEPT" ? "pd-accept"
+                  : d.access_type === "ACCESS_REJECT" ? "pd-reject" : "pd-neutral";
+  const accessLabel = d.access_type === "ACCESS_ACCEPT" ? "ACCEPT"
+                    : d.access_type === "ACCESS_REJECT" ? "REJECT"
+                    : d.access_type || "—";
+
+  const rows = [];
+  if (d.dacl_name) rows.push(`<span class="pd-attr">DACL: <em>${esc(d.dacl_name)}</em></span>`);
+  if (d.vlan)      rows.push(`<span class="pd-attr">VLAN: <em>${esc(d.vlan)}</em></span>`);
+  if (d.radius_profile) rows.push(`<span class="pd-attr">RADIUS-profile: <em>${esc(d.radius_profile)}</em></span>`);
+  for (const a of (d.advanced_attrs || [])) {
+    rows.push(`<span class="pd-attr">${esc(a)}</span>`);
+  }
+  if (d.description && !d.dacl_name && !d.vlan && !d.advanced_attrs?.length) {
+    rows.push(`<span class="pd-attr hint">${esc(d.description)}</span>`);
+  }
+
+  return `
+    <div class="pol-pd-card">
+      <div class="pol-pd-card-hd">
+        <span class="pol-authz-icon">→</span>
+        <span class="pol-pd-name">${esc(d.name)}</span>
+        <span class="pol-pd-badge ${accessCls}">${accessLabel}</span>
+        ${d.profile_type ? `<span class="pol-pd-type">${esc(d.profile_type)}</span>` : ""}
+      </div>
+      ${rows.length ? `<div class="pol-pd-attrs">${rows.join("")}</div>` : ""}
+    </div>`;
+}
+
+async function loadAndRenderProfileDetails(container, profiles) {
+  if (!profiles?.length) {
+    container.innerHTML = "";
+    return;
+  }
+  container.innerHTML = `<div class="pol-pd-loading">${t("pol.pd_loading")}</div>`;
+  const results = await Promise.allSettled(profiles.map((p) => api.getAuthzProfile(p)));
+  const cards = results.map((r, i) => {
+    if (r.status === "fulfilled" && r.value) {
+      return renderProfileDetailCard(r.value);
+    }
+    return `<div class="pol-pd-card pol-pd-error"><span class="pol-authz-icon">→</span><span class="pol-pd-name">${esc(profiles[i])}</span><span class="pd-attr hint">${t("pol.pd_unavailable")}</span></div>`;
+  });
+  container.innerHTML = cards.join("");
+}
+
 // ── Main render ───────────────────────────────────────────────────────────────
 
 export async function renderPolicy(container) {
@@ -280,12 +328,22 @@ export async function renderPolicy(container) {
           </div>
         </div>
 
+        <div class="pol-pd-section">
+          <div class="pol-detail-col-label">${t("pol.pd_section_label")}</div>
+          <div id="pol-pd-details"></div>
+        </div>
+
         ${isEditor ? `
         <div class="detail-actions">
           <button id="pol-detail-edit" class="secondary">${t("pol.btn_edit")}</button>
           <button id="pol-detail-del"  class="danger">${t("pol.btn_delete")}</button>
         </div>` : ""}
       </div>`;
+
+    loadAndRenderProfileDetails(
+      detailPanel.querySelector("#pol-pd-details"),
+      rule.profiles || []
+    );
 
     if (isEditor) {
       detailPanel.querySelector("#pol-detail-edit")?.addEventListener("click", () =>
@@ -342,16 +400,25 @@ export async function renderPolicy(container) {
         <div class="editor-section-label">${t("pol.ed_profiles_label")}</div>
         <div id="pol-profiles-wrap">${profilesHtml(existing?.profiles || [])}</div>
 
+        <div class="pol-pd-section">
+          <div class="pol-detail-col-label">${t("pol.pd_section_label")}</div>
+          <div id="pol-pd-details-ed"></div>
+        </div>
+
         <div class="detail-actions">
           <button type="button" id="pol-save-rule-btn">${isNew ? t("pol.ed_save_new") : t("pol.ed_save_edit")}</button>
           <button type="button" id="pol-cancel-rule-btn" class="secondary">${t("pol.ed_cancel")}</button>
         </div>
       </div>`;
 
-    const condEditorEl = detailPanel.querySelector("#pol-cond-editor");
-    const profilesWrap = detailPanel.querySelector("#pol-profiles-wrap");
+    const condEditorEl  = detailPanel.querySelector("#pol-cond-editor");
+    const profilesWrap  = detailPanel.querySelector("#pol-profiles-wrap");
+    const pdDetailsEd   = detailPanel.querySelector("#pol-pd-details-ed");
     wireGroupEditor(condEditorEl, caValues);
-    wireProfileEvents(profilesWrap);
+    wireProfileEvents(profilesWrap, () => {
+      loadAndRenderProfileDetails(pdDetailsEd, readProfiles(profilesWrap));
+    });
+    loadAndRenderProfileDetails(pdDetailsEd, existing?.profiles || []);
 
     detailPanel.querySelector("#pol-save-rule-btn").addEventListener("click", async () => {
       const editorMsg = detailPanel.querySelector("#pol-editor-msg");

@@ -5,9 +5,10 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.api.deps import get_authz_profile_service, require_admin
+from app.api.deps import get_authz_profile_service, require_admin, require_any
 from app.core.exceptions import IseApiError
 from app.schemas.authz_profile import (
+    AuthzProfileDetail,
     AuthzProfileStatus,
     AuthzProfileSummary,
     StandardProfilesResult,
@@ -57,3 +58,21 @@ async def ensure_standard_profiles(
         return await service.ensure_standard_profiles()
     except IseApiError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+@router.get(
+    "/{name}",
+    response_model=AuthzProfileDetail,
+    dependencies=[Depends(require_any)],
+)
+async def get_authz_profile(
+    name: str,
+    service: AuthzProfileService = Depends(get_authz_profile_service),
+) -> AuthzProfileDetail:
+    try:
+        detail = await service.get_detail(name)
+    except IseApiError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    if detail is None:
+        raise HTTPException(status_code=404, detail=f"Profil '{name}' ikke fundet i ISE")
+    return detail

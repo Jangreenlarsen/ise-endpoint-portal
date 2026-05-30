@@ -17,6 +17,7 @@ from typing import Any
 
 from app.ise.authz_profiles import IseAuthzProfileRepository
 from app.schemas.authz_profile import (
+    AuthzProfileDetail,
     AuthzProfileStatus,
     AuthzProfileSummary,
     StandardProfilesResult,
@@ -142,11 +143,46 @@ STANDARD_PROFILE_DETAILS: dict[str, str] = {
 }
 
 
+def _parse_profile_detail(raw: dict[str, Any]) -> AuthzProfileDetail:
+    attrs: list[str] = []
+    for item in raw.get("advancedAttributes") or []:
+        lhs = item.get("leftHandSideDictionaryAttribue") or {}
+        rhs = item.get("rightHandSideAttribueValue") or {}
+        lhs_s = f"{lhs.get('dictionaryName', '')}:{lhs.get('attributeName', '')}"
+        if rhs.get("AdvancedAttributeValueType") == "AdvancedDictionaryAttribute":
+            rhs_s = f"{rhs.get('dictionaryName', '')}:{rhs.get('attributeName', '')}"
+        else:
+            rhs_s = rhs.get("value", "")
+        if lhs_s.strip(":") and rhs_s:
+            attrs.append(f"{lhs_s} = {rhs_s}")
+
+    vlan_obj = raw.get("vlan") or {}
+    vlan_str = vlan_obj.get("nameID") or (str(vlan_obj["tagID"]) if vlan_obj.get("tagID") else "")
+
+    return AuthzProfileDetail(
+        id=raw.get("id", ""),
+        name=raw.get("name", ""),
+        description=raw.get("description", ""),
+        access_type=raw.get("accessType", ""),
+        profile_type=raw.get("authzProfileType", ""),
+        dacl_name=raw.get("daclName", ""),
+        vlan=vlan_str,
+        radius_profile=raw.get("profileName", ""),
+        advanced_attrs=attrs,
+    )
+
+
 # ── Service ──────────────────────────────────────────────────────────────────
 
 class AuthzProfileService:
     def __init__(self, client) -> None:
         self._repo = IseAuthzProfileRepository(client)
+
+    async def get_detail(self, name: str) -> AuthzProfileDetail | None:
+        raw = await self._repo.get_by_name(name)
+        if raw is None:
+            return None
+        return _parse_profile_detail(raw)
 
     async def list_all(self) -> list[AuthzProfileSummary]:
         resources = await self._repo.list_all()

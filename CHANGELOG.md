@@ -3,6 +3,20 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.18.0 build 0576] — 2026-05-30 — feat: Authz Profile Details i Policy-panel
+
+Ny feature: detail-view og editor i ISE Policies højre panel viser nu hvad de tilvalgte authz-profiler består af.
+
+**Berørte filer:**
+- `backend/app/schemas/authz_profile.py` — ny `AuthzProfileDetail`-schema
+- `backend/app/services/authz_profile_service.py` — `_parse_profile_detail()` + `get_detail()`
+- `backend/app/api/authz_profiles.py` — ny `GET /authz-profiles/{name}` endpoint (require_any)
+- `frontend/js/api.js` — `getAuthzProfile(name)`
+- `frontend/js/views/policy-condition-builder.js` — `wireProfileEvents()` udvides med onChange-callback
+- `frontend/js/views/policy.js` — `renderProfileDetailCard()`, `loadAndRenderProfileDetails()`, profil-sektion i detail + editor
+- `frontend/js/i18n.js` — 3 nye nøgler (da + en): `pol.pd_section_label`, `pol.pd_loading`, `pol.pd_unavailable`
+- `frontend/css/styles.css` — styles: `.pol-pd-section`, `.pol-pd-card`, `.pol-pd-badge`, `.pd-attr` m.fl.
+
 ## [5.17.5 build 0573] — 2026-05-29 — chore: version bump 5.17.5
 
 Samler bugfixes fra 5.17.4-serien (b0569–b0572) under 5.17.5.
