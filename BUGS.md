@@ -4,6 +4,13 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 5.19.1 b0579] 2026-05-30 — Audit: Rollback af decommissioned-handling fejlede med 400
+
+- **Symptom:** "Rollback failed: 400: Rollback understøttes ikke for action=decommissioned" i Audit-visningen.
+- **Root cause:** `_rollback_endpoint_action()` i `audit.py` håndterede kun `created`, `updated` og `deleted` — `decommissioned` landede i den generiske 400-fejl.
+- **Fix:** `decommissioned`-gren tilføjet: genopret endpoint fra `before`-snapshot via `_endpoint_update_from_snapshot` + `update_endpoint` — identisk flow som `updated`-rollback.
+- **Berørt fil:** `backend/app/api/audit.py`
+
 ## [FIXED 5.19.0 b0578] 2026-05-30 — Sikkerhedsanalyse: 3 kritiske/høje sårbarheder
 
 **Sårbarhed 1 (KRITISK): `/metrics`-endpoint var uauthentificeret**

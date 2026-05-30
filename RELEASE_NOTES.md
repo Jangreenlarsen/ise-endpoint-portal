@@ -4,6 +4,14 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.19.1] — 2026-05-30 — Bugfix: Audit rollback af dekommissionerede endpoints
+
+> **Build:** 0579
+
+Rollback af en `decommissioned`-handling i Audit-log fejlede med 400. Fixen gendanner endpointets fulde tilstand fra `before`-snapshot — identisk med rollback af en almindelig redigering.
+
+---
+
 ## [5.19.0] — 2026-05-30 — Sikkerhedshærdning: 3 kritiske/høje sårbarheder lukket
 
 > **Build:** 0578

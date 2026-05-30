@@ -3,6 +3,11 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.19.1 build 0579] — 2026-05-30 — fix: Audit rollback af decommissioned-handling
+
+**Berørte filer:**
+- `backend/app/api/audit.py` — `decommissioned`-gren tilføjet i `_rollback_endpoint_action()`; gendanner endpoint fra `before`-snapshot via `update_endpoint`
+
 ## [5.19.0 build 0578] — 2026-05-30 — feat: Sikkerhedsanalyse — 3 kritiske/høje sårbarheder lukket
 
 **Berørte filer:**
