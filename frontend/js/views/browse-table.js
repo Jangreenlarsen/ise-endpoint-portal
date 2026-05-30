@@ -583,9 +583,7 @@ export function initTable(container, state, api, cb) {
           + laaTag();
       }
     } else {
-      const rows = state.decommOnly
-        ? state.allRows.filter((r) => r.status === "Decommissioned")
-        : state.hideDecommissioned
+      const rows = state.hideDecommissioned
         ? state.allRows.filter((r) => r.status !== "Decommissioned")
         : state.allRows;
       renderRows(rows);

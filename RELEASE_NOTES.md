@@ -4,6 +4,23 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.18.1] — 2026-05-30 — Bugfix: 8 fejl fra code-review
+
+> **Build:** 0577
+
+Automatisk code-review fandt og rettede 8 bugs:
+
+- **[Høj]** Decomm-chip URL-deling virkte aldrig — `encodeFilterToUrl` testede forkert state-felt.
+- **[Høj]** Shared URL med `decomm=1` viste alle endpoints — `decodeFilterFromUrl` satte ikke `decommOnly`.
+- **[Medium]** "Ryd filtre"-knap viste sig ikke ved Decomm-chip alene — `updateClearBtn` manglede `decommOnly`.
+- **[Medium]** Decomm-chip-tilstand tabt ved page-reload — `snapshotFilters` gemte ikke `decommOnly`.
+- **[Medium]** Race condition i policy profil-details: skrivning til detached DOM ved hurtig navigation.
+- **[Lav]** Duplikeret Decomm-filterlogik i `browse-table.js` (dead code) fjernet.
+- **[Lav]** VLAN tag 0 undertrykt af falsy-check — rettet med `is not None`-guard.
+- **[Lav]** ISE-fejl i `get_by_name` slugt uden logging — `logger.warning` tilføjet.
+
+---
+
 ## [5.18.0] — 2026-05-30 — Authz Profile Details i Policy-panel
 
 > **Build:** 0576

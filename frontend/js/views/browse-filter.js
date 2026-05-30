@@ -64,6 +64,7 @@ export function initFilter(container, state, api, cb) {
 
   function updateClearBtn() {
     const anyActive = state.portalOnly
+      || state.decommOnly
       || !state.hideDecommissioned
       || Array.from(filterRow.querySelectorAll(".col-filter-input")).some((i) => i.value.trim())
       || (authStatusSelect && authStatusSelect.value !== "all")
@@ -286,6 +287,7 @@ export function initFilter(container, state, api, cb) {
     });
     return {
       portalOnly: state.portalOnly,
+      decommOnly: state.decommOnly,
       cols,
       authStatus: authStatusSelect ? authStatusSelect.value : "all",
       colVis: { ...state.colVis },
@@ -308,6 +310,10 @@ export function initFilter(container, state, api, cb) {
     filterRow.querySelectorAll(".col-filter-input").forEach((input) => { input.value = ""; });
     if (authStatusSelect) authStatusSelect.value = "all";
     if (s.portalOnly) { state.portalOnly = true; portalFilterBtn.classList.add("active-toggle"); }
+    if (s.decommOnly) {
+      state.decommOnly = true;
+      container.querySelector('.mac-chip[data-chip="decomm"]')?.classList.add("active");
+    }
     if (s.authStatus && authStatusSelect) authStatusSelect.value = s.authStatus;
     if (Array.isArray(s.cols)) {
       for (const { col, value } of s.cols) {
@@ -415,7 +421,7 @@ export function initFilter(container, state, api, cb) {
   function encodeFilterToUrl() {
     const params = new URLSearchParams();
     if (state.portalOnly) params.set("p", "1");
-    if (!state.hideDecommissioned) params.set("decomm", "1");
+    if (state.decommOnly) params.set("decomm", "1");
     if (state.fullTextQ) params.set("q", state.fullTextQ);
     if (authStatusSelect && authStatusSelect.value !== "all") {
       params.set("auth", authStatusSelect.value);
@@ -440,7 +446,7 @@ export function initFilter(container, state, api, cb) {
       portalFilterBtn?.classList.add("active-toggle");
     }
     if (params.get("decomm") === "1") {
-      state.hideDecommissioned = false;
+      state.decommOnly = true;
       container.querySelector('.mac-chip[data-chip="decomm"]')?.classList.add("active");
     }
     const q = params.get("q");

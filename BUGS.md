@@ -4,6 +4,17 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 5.18.1 b0577] 2026-05-30 — Code-review: 8 fejl fundet og rettet (Decomm-chip + profil-details)
+- **Bug 1 (høj):** `encodeFilterToUrl` testede `!state.hideDecommissioned` i stedet for `state.decommOnly` — Decomm-chip-tilstand blev aldrig skrevet til delt URL. Fix: `if (state.decommOnly)`.
+- **Bug 2 (høj):** `decodeFilterFromUrl` satte ikke `state.decommOnly = true` ved `decomm=1` — shared URL viste alle endpoints i stedet for kun dekommissionerede. Fix: `state.decommOnly = true` (fjernet forkert `hideDecommissioned = false`).
+- **Bug 3 (medium):** `updateClearBtn` inkluderede ikke `state.decommOnly` — "Ryd filtre"-knap viste sig ikke når Decomm var eneste aktive filter. Fix: `|| state.decommOnly` tilføjet.
+- **Bug 4 (medium):** `snapshotFilters`/`applyFilterSnapshot` gemte ikke `decommOnly` — chip-tilstand tabt ved page-reload. Fix: `decommOnly` tilføjet til snapshot-objekt og gendannes i `applyFilterSnapshot`.
+- **Bug 5 (medium):** `loadAndRenderProfileDetails` i `policy.js` skrev til detached DOM-node ved navigation under API-kald. Fix: `if (!document.contains(container)) return` efter `await`.
+- **Bug 6 (lav):** Decomm-filterlogik duplikeret i `browse-table.js` server-sti (dead code — filter-mode håndterer det). Fix: fjernet duplikeret gren, beholder kun `hideDecommissioned`-logikken.
+- **Bug 7 (lav):** VLAN `tagID: 0` undertrykt af falsy-check i `_parse_profile_detail`. Fix: `is not None`-guard i stedet for sandhedstest.
+- **Bug 8 (lav):** `get_by_name` slugte alle exceptions uden logging — ISE 401/500 uadskillelig fra "ikke fundet". Fix: `logger.warning` tilføjet.
+- **Berørte filer:** `frontend/js/views/browse-filter.js`, `frontend/js/views/browse-table.js`, `frontend/js/views/policy.js`, `backend/app/services/authz_profile_service.py`, `backend/app/ise/authz_profiles.py`.
+
 ## [FIXED 5.17.2 b0568] 2026-05-29 — Import: XSS + runtime crash — escapeHtml udefineret
 - **Symptom:** Import-preview og import-resultat crashede med `ReferenceError: escapeHtml is not defined`; rå brugerinput fra CSV-filer (MAC, beskrivelse, custom attributes) indsattes uescapet i innerHTML.
 - **Root cause:** `escapeHtml()` brugt 12 steder i `import.js` men aldrig defineret eller importeret — det korrekte kald var `esc()` som allerede var importeret fra `browse-utils.js`.

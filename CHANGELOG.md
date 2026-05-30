@@ -3,6 +3,15 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.18.1 build 0577] — 2026-05-30 — fix: 8 bugs fra code-review (Decomm-chip URL + profil-details)
+
+**Berørte filer:**
+- `frontend/js/views/browse-filter.js` — encode: `decommOnly` i stedet for `!hideDecommissioned`; decode: sæt `decommOnly=true`; `updateClearBtn`: tilføj `decommOnly`; `snapshotFilters`/`applyFilterSnapshot`: gem og gendan `decommOnly`
+- `frontend/js/views/browse-table.js` — fjern duplikeret `decommOnly`-filtergren (dead code)
+- `frontend/js/views/policy.js` — `document.contains(container)`-guard mod stale DOM efter async
+- `backend/app/services/authz_profile_service.py` — VLAN `tagID: 0` falsy-zero: `is not None`-guard
+- `backend/app/ise/authz_profiles.py` — `logger.warning` tilføjet i `get_by_name` except-blok
+
 ## [5.18.0 build 0576] — 2026-05-30 — feat: Authz Profile Details i Policy-panel
 
 Ny feature: detail-view og editor i ISE Policies højre panel viser nu hvad de tilvalgte authz-profiler består af.

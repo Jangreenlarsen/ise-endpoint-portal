@@ -55,6 +55,7 @@ async function loadAndRenderProfileDetails(container, profiles) {
   }
   container.innerHTML = `<div class="pol-pd-loading">${t("pol.pd_loading")}</div>`;
   const results = await Promise.allSettled(profiles.map((p) => api.getAuthzProfile(p)));
+  if (!document.contains(container)) return;
   const cards = results.map((r, i) => {
     if (r.status === "fulfilled" && r.value) {
       return renderProfileDetailCard(r.value);

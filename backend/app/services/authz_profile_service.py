@@ -157,7 +157,9 @@ def _parse_profile_detail(raw: dict[str, Any]) -> AuthzProfileDetail:
             attrs.append(f"{lhs_s} = {rhs_s}")
 
     vlan_obj = raw.get("vlan") or {}
-    vlan_str = vlan_obj.get("nameID") or (str(vlan_obj["tagID"]) if vlan_obj.get("tagID") else "")
+    vlan_str = vlan_obj.get("nameID") or (
+        str(vlan_obj["tagID"]) if vlan_obj.get("tagID") is not None else ""
+    )
 
     return AuthzProfileDetail(
         id=raw.get("id", ""),
