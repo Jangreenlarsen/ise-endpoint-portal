@@ -37,6 +37,11 @@ def get_authz_profile_service() -> AuthzProfileService:
 
 
 def _extract_token(request: Request) -> str | None:
+    # httpOnly cookie er foretrukket — ikke tilgængeligt fra JS (XSS-safe)
+    token = request.cookies.get("hv_token")
+    if token:
+        return token
+    # Bearer-fallback: API-klienter og fil://-udviklingsmiljø
     header = request.headers.get("Authorization", "")
     if header.startswith("Bearer "):
         return header[7:].strip() or None

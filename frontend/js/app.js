@@ -55,7 +55,7 @@ const REGISTRAR_DEFAULT_ROUTE = "register";
 const alertBadgeEl = document.getElementById("alert-badge");
 
 async function refreshAlertBadge() {
-  if (!auth.getToken() || !alertBadgeEl) return;
+  if (auth.isTokenExpired() || !alertBadgeEl) return;
   try {
     const res = await api.getAlerts();
     const count = res?.count || 0;
@@ -244,18 +244,18 @@ async function boot() {
   // Silent token refresh — scheduleret 15 min inden udløb (præcis setTimeout).
   // Polling-fallback (hvert minut) fanger tab-sleep og andre edge-cases.
   async function doSilentRefresh() {
-    if (!auth.getToken() || auth.isTokenExpired()) return;
+    if (auth.isTokenExpired()) return;
     try {
       const res = await api.refreshToken();
-      if (res?.token) {
-        auth.save(res.token, res.user || auth.getUser());
+      if (res?.expires_at) {
+        auth.save({ expires_at: res.expires_at, auth_type: res.auth_type || "local" }, res.user || auth.getUser());
         scheduleTokenRefresh(doSilentRefresh);
       }
     } catch { /* ignore — polling-fallback prøver igen */ }
   }
   scheduleTokenRefresh(doSilentRefresh);
   setInterval(() => {
-    if (!auth.getToken() || auth.isTokenExpired()) return;
+    if (auth.isTokenExpired()) return;
     if (auth.secondsUntilExpiry() < 15 * 60) doSilentRefresh();
   }, 60_000);
 
@@ -275,7 +275,7 @@ async function boot() {
       showLogin();
       return;
     }
-    if (status.user) auth.save(auth.getToken(), status.user);
+    if (status.user) auth.save(null, status.user);
     // Resolve sprog: bruger-præference → portal default → browser → "en"
     await resolveLocale(status.default_language, () => api.getMyPrefs());
     updateUserBadge(status.user || user);

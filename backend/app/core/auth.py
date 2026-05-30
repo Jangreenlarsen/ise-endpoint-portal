@@ -8,6 +8,7 @@ Tokens are self-contained: base64url(payload).hex(hmac_sha256(secret, payload_b6
 from __future__ import annotations
 
 import base64
+import datetime
 import hashlib
 import hmac
 import json
@@ -23,6 +24,7 @@ logger = logging.getLogger(__name__)
 PBKDF2_ITERATIONS = 600_000
 SALT_BYTES = 16
 TOKEN_TTL_SECONDS = 60 * 60  # 1h
+TOKEN_COOKIE_NAME = "hv_token"
 
 SECRET_FILE = Path(__file__).resolve().parents[2] / "auth_secret.key"
 
@@ -143,6 +145,28 @@ def create_tacacs_token(
     payload_b64 = _b64url_encode(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
     sig = hmac.new(_secret(), payload_b64.encode("ascii"), hashlib.sha256).hexdigest()
     return f"{payload_b64}.{sig}"
+
+
+def token_metadata(token: str) -> tuple[str, str]:
+    """Returnér (expires_at_iso, auth_type) fra token uden signatur-check.
+
+    Bruges til at berige LoginResponse med udløbstidspunkt og auth-type så
+    frontend kan foretage lokal udløbskontrol uden at læse den httpOnly cookie.
+    """
+    try:
+        payload_b64 = token.split(".", 1)[0]
+        payload = json.loads(_b64url_decode(payload_b64))
+        exp = int(payload.get("exp", 0))
+        expires_at = datetime.datetime.fromtimestamp(
+            exp, tz=datetime.timezone.utc
+        ).isoformat()
+        auth_type = payload.get("auth_type", "local")
+        return expires_at, auth_type
+    except Exception:  # noqa: BLE001
+        fallback = datetime.datetime.fromtimestamp(
+            time.time() + TOKEN_TTL_SECONDS, tz=datetime.timezone.utc
+        ).isoformat()
+        return fallback, "local"
 
 
 def verify_token(token: str) -> dict | None:

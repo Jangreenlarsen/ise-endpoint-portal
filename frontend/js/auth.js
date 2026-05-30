@@ -1,11 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
-const TOKEN_KEY = "hv_ise_token";
+//
+// Token-strategi: JWT gemmes i httpOnly cookie (sat af backend ved login/refresh).
+// Cookien er utilgængelig fra JavaScript — XSS kan ikke stjæle den.
+// localStorage indeholder kun ikke-sensitive metadata: udløbstidspunkt og auth-type.
+const TOKEN_META_KEY = "hv_ise_token_meta";
 const USER_KEY = "hv_ise_user";
 
 export const auth = {
+  // Token er i httpOnly cookie — ikke tilgængeligt fra JS.
+  // Returnerer null; alle API-kald sender automatisk cookien via credentials: include.
   getToken() {
-    return localStorage.getItem(TOKEN_KEY);
+    return null;
   },
   getUser() {
     const raw = localStorage.getItem(USER_KEY);
@@ -15,12 +21,22 @@ export const auth = {
       return null;
     }
   },
-  save(token, user) {
-    localStorage.setItem(TOKEN_KEY, token);
-    localStorage.setItem(USER_KEY, JSON.stringify(user));
+  _getMeta() {
+    const raw = localStorage.getItem(TOKEN_META_KEY);
+    try { return raw ? JSON.parse(raw) : null; } catch { return null; }
+  },
+  // tokenMeta: { expires_at: ISO-string, auth_type: "local"|"tacacs" }
+  // user: User-objekt fra LoginResponse
+  save(tokenMeta, user) {
+    if (tokenMeta && typeof tokenMeta === "object" && tokenMeta.expires_at) {
+      localStorage.setItem(TOKEN_META_KEY, JSON.stringify(tokenMeta));
+    }
+    if (user) {
+      localStorage.setItem(USER_KEY, JSON.stringify(user));
+    }
   },
   clear() {
-    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(TOKEN_META_KEY);
     localStorage.removeItem(USER_KEY);
   },
   isAdmin() {
@@ -36,49 +52,18 @@ export const auth = {
     return u && roles.includes(u.role);
   },
   isTacacs() {
-    const token = this.getToken();
-    if (!token) return false;
-    try {
-      const [payloadB64] = token.split(".");
-      const padding = "=".repeat((4 - (payloadB64.length % 4)) % 4);
-      const payload = JSON.parse(
-        atob(payloadB64.replace(/-/g, "+").replace(/_/g, "/") + padding),
-      );
-      return payload.auth_type === "tacacs";
-    } catch {
-      return false;
-    }
+    const meta = this._getMeta();
+    return meta?.auth_type === "tacacs";
   },
-  // Decodes the token payload locally (no signature check) and returns true if
-  // the token is missing, malformed, or past its exp claim.
   isTokenExpired() {
-    const token = this.getToken();
-    if (!token) return true;
-    try {
-      const [payloadB64] = token.split(".");
-      const padding = "=".repeat((4 - (payloadB64.length % 4)) % 4);
-      const payload = JSON.parse(
-        atob(payloadB64.replace(/-/g, "+").replace(/_/g, "/") + padding),
-      );
-      return !payload.exp || payload.exp < Math.floor(Date.now() / 1000);
-    } catch {
-      return true;
-    }
+    const meta = this._getMeta();
+    if (!meta?.expires_at) return true;
+    return new Date(meta.expires_at).getTime() < Date.now();
   },
-  // Returns seconds until token expires, or 0 if expired/missing.
   secondsUntilExpiry() {
-    const token = this.getToken();
-    if (!token) return 0;
-    try {
-      const [payloadB64] = token.split(".");
-      const padding = "=".repeat((4 - (payloadB64.length % 4)) % 4);
-      const payload = JSON.parse(
-        atob(payloadB64.replace(/-/g, "+").replace(/_/g, "/") + padding),
-      );
-      return Math.max(0, (payload.exp || 0) - Math.floor(Date.now() / 1000));
-    } catch {
-      return 0;
-    }
+    const meta = this._getMeta();
+    if (!meta?.expires_at) return 0;
+    return Math.max(0, Math.floor((new Date(meta.expires_at).getTime() - Date.now()) / 1000));
   },
 };
 

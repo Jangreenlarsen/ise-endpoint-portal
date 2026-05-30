@@ -66,7 +66,7 @@ export async function renderLogin(onSuccess) {
       const result = isSetup
         ? await api.setupAdmin(username, password)
         : await api.login(username, password);
-      auth.save(result.token, result.user);
+      auth.save({ expires_at: result.expires_at, auth_type: result.auth_type || "local" }, result.user);
       document.body.classList.remove("auth-mode");
       onSuccess(result.user, status.default_language);
     } catch (err) {

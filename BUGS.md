@@ -4,6 +4,23 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 5.19.0 b0578] 2026-05-30 — Sikkerhedsanalyse: 3 kritiske/høje sårbarheder
+
+**Sårbarhed 1 (KRITISK): `/metrics`-endpoint var uauthentificeret**
+- Alle brugere — herunder uautentificerede — kunne hente Prometheus-metrics med cache-størrelse, circuit breaker-state og request-counts.
+- **Fix:** `Depends(require_any)` tilføjet til `GET /metrics`.
+- **Berørt fil:** `backend/app/api/metrics_api.py`
+
+**Sårbarhed 2 (HØJ): Backup-eksport indeholdt plaintext credentials**
+- `GET /config/backup` inkluderede `ise_password`, `pxgrid_password` og `tacacs_secret` fra `config.json`/`auth_config.json` i ren tekst. Backup-fil var sensitiv som et password-dokument.
+- **Fix:** Sensitive felter erstattes af sentinel `"__REDACTED__"` i eksporten. `credentials_redacted: true` markeres i metadata. Restore springer `__REDACTED__`-felter over og bevarer serverens eksisterende credentials.
+- **Berørt fil:** `backend/app/api/config_backup.py`
+
+**Sårbarhed 3 (HØJ): JWT-token gemt i localStorage — sårbar over for XSS**
+- Token lå i localStorage og kunne stjæles af XSS-scripts (f.eks. via kompromitteret 3.-parts library).
+- **Fix:** Backend sætter nu `httpOnly; SameSite=Strict`-cookie ved login/refresh. Cookie er utilgængelig fra JavaScript. Backend-auth læser fra cookie først, falder tilbage på Bearer-header for API-klienter. Frontend gemmer ikke længere token — kun `expires_at` og `auth_type` (ikke-sensitive metadata) i localStorage til lokal udløbskontrol.
+- **Berørte filer:** `backend/app/core/auth.py`, `backend/app/api/auth.py`, `backend/app/api/deps.py`, `backend/app/schemas/user.py`, `backend/app/services/user_service.py`, `frontend/js/auth.js`, `frontend/js/api.js`, `frontend/js/app.js`, `frontend/js/views/login.js`, `frontend/js/views/settings/section-backup.js`, `frontend/js/views/audit.js`
+
 ## [FIXED 5.18.1 b0577] 2026-05-30 — Code-review: 8 fejl fundet og rettet (Decomm-chip + profil-details)
 - **Bug 1 (høj):** `encodeFilterToUrl` testede `!state.hideDecommissioned` i stedet for `state.decommOnly` — Decomm-chip-tilstand blev aldrig skrevet til delt URL. Fix: `if (state.decommOnly)`.
 - **Bug 2 (høj):** `decodeFilterFromUrl` satte ikke `state.decommOnly = true` ved `decomm=1` — shared URL viste alle endpoints i stedet for kun dekommissionerede. Fix: `state.decommOnly = true` (fjernet forkert `hideDecommissioned = false`).

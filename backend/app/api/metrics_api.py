@@ -4,8 +4,8 @@
 
 GET /metrics  — text/plain; version=0.0.4 (standard Prometheus format)
 
-Not protected by authentication — this endpoint is typically scraped from
-an internal Prometheus server and should be firewalled from public access.
+Protected by require_any — Prometheus scraper skal bruge en gyldig session-cookie
+eller sende Authorization: Bearer <token> med en portalbruger-konto.
 """
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ from app.core import metrics_store
 router = APIRouter(tags=["metrics"])
 
 
-@router.get("/metrics", include_in_schema=False)
+@router.get("/metrics", include_in_schema=False, dependencies=[Depends(require_any)])
 async def prometheus_metrics() -> Response:
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 

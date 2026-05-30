@@ -6,15 +6,6 @@ const BASE = window.location.origin.startsWith("file://")
   ? "http://localhost:8000"
   : "";
 
-// Paths that don't require a Bearer token. /auth/status is NOT in this list:
-// it must forward the token so the backend can verify it — otherwise every
-// page reload reports authenticated=false and wipes the user's session.
-const UNAUTH_PATHS = new Set([
-  "/health",
-  "/auth/login",
-  "/auth/setup",
-]);
-
 let onUnauthorized = null;
 export function setUnauthorizedHandler(fn) {
   onUnauthorized = fn;
@@ -26,13 +17,10 @@ async function request(path, options = {}) {
   const headers = _noContentType
     ? { ...(options.headers || {}) }
     : { "Content-Type": "application/json", ...(options.headers || {}) };
-  const token = auth.getToken();
-  if (token && !UNAUTH_PATHS.has(path.split("?")[0])) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
+  // Token sendes som httpOnly cookie — ingen Authorization header nødvendig.
   const timeoutMs = _timeout ?? 30_000;
   const signal = AbortSignal.timeout ? AbortSignal.timeout(timeoutMs) : undefined;
-  const res = await fetch(`${BASE}/api${path}`, { ...fetchOpts, headers, signal });
+  const res = await fetch(`${BASE}/api${path}`, { ...fetchOpts, headers, signal, credentials: "include" });
   if (res.status === 401) {
     auth.clear();
     if (onUnauthorized) onUnauthorized();
@@ -221,10 +209,7 @@ export const api = {
   restartPxGridWorker: () =>
     request("/pxgrid/worker/restart", { method: "POST" }),
   downloadPxGridCsr: async () => {
-    const token = auth.getToken();
-    const headers = {};
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-    const res = await fetch(`${BASE}/api/settings/pxgrid/csr/download`, { headers });
+    const res = await fetch(`${BASE}/api/settings/pxgrid/csr/download`, { credentials: "include" });
     if (!res.ok) {
       let detail = await res.text();
       try { detail = JSON.parse(detail).detail || detail; } catch {}
@@ -245,16 +230,13 @@ export const api = {
     return filename;
   },
   uploadPxGridPfx: async (file, password) => {
-    const token = auth.getToken();
     const fd = new FormData();
     fd.append("file", file);
     fd.append("password", password || "");
-    const headers = {};
-    if (token) headers["Authorization"] = `Bearer ${token}`;
     const res = await fetch(`${BASE}/api/settings/pxgrid/pfx`, {
       method: "POST",
-      headers,
       body: fd,
+      credentials: "include",
     });
     if (!res.ok) {
       let detail = await res.text();
@@ -264,16 +246,13 @@ export const api = {
     return res.json();
   },
   uploadPxGridCert: async (kind, file) => {
-    const token = auth.getToken();
     const fd = new FormData();
     fd.append("kind", kind);
     fd.append("file", file);
-    const headers = {};
-    if (token) headers["Authorization"] = `Bearer ${token}`;
     const res = await fetch(`${BASE}/api/settings/pxgrid/cert`, {
       method: "POST",
-      headers,
       body: fd,
+      credentials: "include",
     });
     if (!res.ok) {
       let detail = await res.text();

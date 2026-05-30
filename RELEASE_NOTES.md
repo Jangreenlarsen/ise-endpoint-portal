@@ -4,6 +4,18 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.19.0] — 2026-05-30 — Sikkerhedshærdning: 3 kritiske/høje sårbarheder lukket
+
+> **Build:** 0578
+
+Baseret på en komplet sikkerhedsanalyse af portalen er tre høj-prioritets sårbarheder rettet:
+
+- **[KRITISK → FIXED] `/metrics` var uauthentificeret** — Prometheus-endpointet eksponerede interne driftsmetrikker til enhver. Kræver nu gyldig session.
+- **[HØJ → FIXED] Backup indeholdt plaintext credentials** — `ise_password`, `pxgrid_password` og `tacacs_secret` var inkluderet i backup-filen. Felterne redigeres nu ud med `__REDACTED__`-sentinel; genopret credentials manuelt i Settings efter restore.
+- **[HØJ → FIXED] JWT-token i localStorage — XSS-sårbar** — Token gemmes nu udelukkende i en `httpOnly; SameSite=Strict`-cookie (sat af backend). JavaScript — herunder eventuelle XSS-scripts — kan ikke tilgå tokenet. Frontend gemmer kun ikke-sensitiv metadata (udløbstidspunkt + auth-type) i localStorage. Bearer-header understøttes fortsat som fallback til API-klienter.
+
+---
+
 ## [5.18.1] — 2026-05-30 — Bugfix: 8 fejl fra code-review
 
 > **Build:** 0577

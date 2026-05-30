@@ -62,8 +62,10 @@ class LoginRequest(BaseModel):
 
 
 class LoginResponse(BaseModel):
-    token: str
+    token: str  # medtages for backward-compat; frontend bør bruge httpOnly cookie
     user: User
+    expires_at: str = ""  # ISO 8601 UTC — frontend bruger dette til udløbstjek
+    auth_type: str = "local"  # "local" eller "tacacs"
 
 
 class UserPrefs(BaseModel):

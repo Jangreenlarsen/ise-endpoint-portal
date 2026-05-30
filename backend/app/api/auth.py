@@ -2,11 +2,12 @@
 # Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Response
 from app.core import audit_store
 
 from app.api.deps import get_current_user
 from app.core import auth as auth_core
+from app.core.auth import TOKEN_COOKIE_NAME, TOKEN_TTL_SECONDS
 from app.schemas.user import (
     AuthStatus,
     ChangePasswordRequest,
@@ -21,14 +22,33 @@ from app.services import settings_service, user_service
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+def _set_auth_cookie(response: Response, token: str, request: Request) -> None:
+    """Sæt httpOnly session-cookie med korrekte sikkerhedsattributter."""
+    secure = request.url.scheme == "https"
+    response.set_cookie(
+        key=TOKEN_COOKIE_NAME,
+        value=token,
+        max_age=TOKEN_TTL_SECONDS,
+        httponly=True,
+        samesite="strict",
+        path="/",
+        secure=secure,
+    )
+
+
+def _delete_auth_cookie(response: Response) -> None:
+    response.delete_cookie(key=TOKEN_COOKIE_NAME, path="/", samesite="strict")
+
+
 @router.get("/status", response_model=AuthStatus)
 async def auth_status(request: Request) -> AuthStatus:
     setup = user_service.setup_required()
     default_lang = settings_service.get_portal_locale().default_language
-    header = request.headers.get("Authorization", "")
-    if setup or not header.startswith("Bearer "):
+    # Læs token fra cookie (foretrukket) eller Bearer header
+    from app.api.deps import _extract_token
+    token = _extract_token(request)
+    if setup or not token:
         return AuthStatus(setup_required=setup, authenticated=False, user=None, default_language=default_lang)
-    token = header[7:].strip()
     payload = auth_core.verify_token(token)
     if not payload:
         return AuthStatus(setup_required=False, authenticated=False, user=None, default_language=default_lang)
@@ -56,26 +76,32 @@ async def auth_status(request: Request) -> AuthStatus:
 
 
 @router.post("/login", response_model=LoginResponse)
-async def login(req: LoginRequest) -> LoginResponse:
-    return user_service.login(req)
+async def login(req: LoginRequest, request: Request, response: Response) -> LoginResponse:
+    result = user_service.login(req)
+    _set_auth_cookie(response, result.token, request)
+    return result
 
 
 @router.post("/logout")
-async def logout(request: Request) -> dict[str, str]:
-    header = request.headers.get("Authorization", "")
-    if header.startswith("Bearer "):
-        payload = auth_core.verify_token(header[7:].strip())
+async def logout(request: Request, response: Response) -> dict[str, str]:
+    from app.api.deps import _extract_token
+    token = _extract_token(request)
+    if token:
+        payload = auth_core.verify_token(token)
         if payload:
             audit_store.record_sync(
                 "logout", "session", payload.get("sub"),
                 after={"username": payload.get("username"), "auth_type": payload.get("auth_type", "local")},
             )
+    _delete_auth_cookie(response)
     return {"status": "ok"}
 
 
 @router.post("/setup", response_model=LoginResponse)
-async def setup(req: SetupRequest) -> LoginResponse:
-    return user_service.setup_first_admin(req)
+async def setup(req: SetupRequest, request: Request, response: Response) -> LoginResponse:
+    result = user_service.setup_first_admin(req)
+    _set_auth_cookie(response, result.token, request)
+    return result
 
 
 @router.get("/me", response_model=UserMe)
@@ -90,11 +116,16 @@ async def me(user: User = Depends(get_current_user)) -> UserMe:
 
 
 @router.post("/refresh", response_model=LoginResponse)
-async def refresh_token(user: User = Depends(get_current_user)) -> LoginResponse:
+async def refresh_token(
+    user: User = Depends(get_current_user),
+    *,
+    request: Request,
+    response: Response,
+) -> LoginResponse:
     """Udsteder et nyt token med fuld TTL til en allerede autentiseret bruger.
 
     Klienten kalder dette endpoint inden token udløber (silent refresh).
-    Returnerer samme format som /login så klienten kan gemme det direkte.
+    Returnerer samme format som /login og sætter en ny httpOnly cookie.
     """
     if user.id.startswith("tacacs:"):
         new_token = auth_core.create_tacacs_token(
@@ -105,7 +136,15 @@ async def refresh_token(user: User = Depends(get_current_user)) -> LoginResponse
         )
     else:
         new_token = auth_core.create_token(user.id, user.username, user.role)
-    return LoginResponse(token=new_token, user=user)
+    expires_at, auth_type = auth_core.token_metadata(new_token)
+    result = LoginResponse(
+        token=new_token,
+        user=user,
+        expires_at=expires_at,
+        auth_type=auth_type,
+    )
+    _set_auth_cookie(response, new_token, request)
+    return result
 
 
 @router.post("/change-password")

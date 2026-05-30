@@ -401,7 +401,8 @@ def setup_first_admin(payload: SetupRequest) -> LoginResponse:
         "setup_first_admin", "user", record["id"],
         after={"username": record["username"], "role": "admin"},
     )
-    return LoginResponse(token=token, user=_to_public(record))
+    _expires_at, _auth_type = auth_core.token_metadata(token)
+    return LoginResponse(token=token, user=_to_public(record), expires_at=_expires_at, auth_type=_auth_type)
 
 
 def login(payload: LoginRequest) -> LoginResponse:
@@ -539,7 +540,8 @@ def login(payload: LoginRequest) -> LoginResponse:
                 effective_role,
             )
             audit_store.record_sync("login_success", "session", f"tacacs:{payload.username}", {"auth": "tacacs", "role": effective_role})
-            return LoginResponse(token=token, user=tacacs_user)
+            _expires_at, _auth_type = auth_core.token_metadata(token)
+            return LoginResponse(token=token, user=tacacs_user, expires_at=_expires_at, auth_type=_auth_type)
 
         # TACACS+ auth fejlede
         fallback = auth_cfg.get("tacacs_fallback_to_local", True)
@@ -576,4 +578,5 @@ def login(payload: LoginRequest) -> LoginResponse:
     token = auth_core.create_token(record["id"], record["username"], record["role"])
     logger.info("local login: %s role=%s", record["username"], record["role"])
     audit_store.record_sync("login_success", "session", record["id"], {"username": record["username"], "role": record["role"]})
-    return LoginResponse(token=token, user=_to_public(record))
+    _expires_at, _auth_type = auth_core.token_metadata(token)
+    return LoginResponse(token=token, user=_to_public(record), expires_at=_expires_at, auth_type=_auth_type)

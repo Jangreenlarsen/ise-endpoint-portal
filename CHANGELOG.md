@@ -3,6 +3,23 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.19.0 build 0578] — 2026-05-30 — feat: Sikkerhedsanalyse — 3 kritiske/høje sårbarheder lukket
+
+**Berørte filer:**
+- `backend/app/api/metrics_api.py` — `GET /metrics` kræver nu `require_any` (var uauthentificeret)
+- `backend/app/api/config_backup.py` — backup redigerer `ise_password`, `pxgrid_password`, `tacacs_secret` ud (`__REDACTED__`); restore bevarer eksisterende credentials for redigerede felter; `credentials_redacted: true` i metadata
+- `backend/app/core/auth.py` — `TOKEN_COOKIE_NAME`, `token_metadata()` hjælpefunktion, `import datetime`
+- `backend/app/schemas/user.py` — `LoginResponse` udvides med `expires_at: str` og `auth_type: str`
+- `backend/app/api/auth.py` — login/setup/refresh sætter httpOnly `SameSite=Strict`-cookie; logout sletter cookie; `auth_status` læser fra cookie eller Bearer; `_set_auth_cookie`/`_delete_auth_cookie` hjælpere
+- `backend/app/api/deps.py` — `_extract_token()` læser cookie først, derefter Bearer-header
+- `backend/app/services/user_service.py` — alle 3 `LoginResponse`-kald beregner og inkluderer `expires_at` + `auth_type`
+- `frontend/js/auth.js` — token fjernet fra localStorage; gemmer kun `{expires_at, auth_type}`-metadata; `getToken()` returnerer null; `isTacacs/isTokenExpired/secondsUntilExpiry` læser fra metadata
+- `frontend/js/api.js` — `Authorization`-header fjernet; `credentials: "include"` på alle fetch-kald inkl. pxGrid-upload/download; `UNAUTH_PATHS` fjernet (unødvendig)
+- `frontend/js/app.js` — `getToken()`-check → `isTokenExpired()`; `save(token, user)` → `save(meta, user)`; alertBadge-guard opdateret
+- `frontend/js/views/login.js` — `save(result.token, ...)` → `save({expires_at, auth_type}, ...)`
+- `frontend/js/views/settings/section-backup.js` — `auth`-import fjernet; `authFetch` bruger `credentials: "include"`
+- `frontend/js/views/audit.js` — token-header fjernet fra export-fetch; `credentials: "include"` tilføjet
+
 ## [5.18.1 build 0577] — 2026-05-30 — fix: 8 bugs fra code-review (Decomm-chip URL + profil-details)
 
 **Berørte filer:**
