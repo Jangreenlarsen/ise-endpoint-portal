@@ -19,7 +19,7 @@ function normalizeIdentityGroupValue(dict, attr, val) {
 // ── Static metadata ───────────────────────────────────────────────────────────
 
 export const DICTIONARIES = [
-  { name: "EndPoints",     attrs: ["Owner", "Type", "Lokation", "AuthzVlan", "AuthzACL", "PlatformType", "PSK_Mode", "Description"] },
+  { name: "EndPoints",     attrs: ["Owner", "Type", "Lokation", "AuthzVlan", "AuthzACL", "PlatformType", "PSK_Mode", "Description", "HypervisionActive", "HypervisionStatus"] },
   { name: "IdentityGroup", attrs: ["Name"] },
   { name: "Radius",        attrs: ["Called-Station-ID", "NAS-Port-Type", "NAS-Identifier", "User-Name", "Framed-IP-Address"] },
 ];

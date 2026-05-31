@@ -4,6 +4,19 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.20.1] — 2026-05-31 — Fix: HypervisionActive/Status i policy-editor
+
+> **Build:** 0590
+
+`HypervisionActive` og `HypervisionStatus` er nu tilgængelige som betingelse i ISE Policy-editoren under **EndPoints**-dictionaryet:
+
+- **`HypervisionActive`** — vælg `Aktiv` eller `Inaktiv` fra dropdown
+- **`HypervisionStatus`** — vælg `Decommissioned` fra dropdown
+
+Brug dem til at lave policy-regler der kun matcher aktive endpoints, udelukker dekommissionerede, osv.
+
+---
+
 ## [5.20.0] — 2026-05-31 — Feature: Konfigurerbar decommission AuthzVlan/ACL
 
 > **Build:** 0589
