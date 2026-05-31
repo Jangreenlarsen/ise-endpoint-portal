@@ -1329,6 +1329,14 @@ const TRANSLATIONS = {
     "settings.adv_debug_pxgrid_lbl":        "Debug pxGrid session-logging",
     "settings.adv_debug_pxgrid_hint":       "Slår detaljeret DEBUG-logging til for session-worker. Skrives til app.log — slå fra igen efter diagnose.",
     "settings.adv_debug_pxgrid_saved":      "Gemt — logger opdateret øjeblikkeligt.",
+    "settings.adv_decomm_h4":               "Standard dekommissioneringsværdier",
+    "settings.adv_decomm_hint":             "Disse værdier sættes som custom-attributter på et endpoint når det dekommissioneres.",
+    "settings.adv_decomm_vlan_lbl":         "AuthzVlan (VLAN-ID)",
+    "settings.adv_decomm_vlan_hint":        "VLAN-ID der assignes ved dekommissionering (default: 999).",
+    "settings.adv_decomm_acl_lbl":          "AuthzACL (DACL-navn)",
+    "settings.adv_decomm_acl_hint":         "Navn på downloadable ACL i ISE der assignes ved dekommissionering (default: deny_all_ipv4_traffic).",
+    "settings.adv_decomm_save_btn":         "Gem decommission-standarder",
+    "settings.adv_decomm_saved":            "Decommission-standarder gemt.",
 
     // ── Settings — Purge Config ──────────────────────────────────────────────
     "settings.purge_card":            "Anbefalet ISE purge-config",
@@ -2742,6 +2750,14 @@ const TRANSLATIONS = {
     "settings.adv_debug_pxgrid_lbl":        "Debug pxGrid session logging",
     "settings.adv_debug_pxgrid_hint":       "Enables detailed DEBUG logging for the session worker. Written to app.log — disable again after diagnosis.",
     "settings.adv_debug_pxgrid_saved":      "Saved — logger updated immediately.",
+    "settings.adv_decomm_h4":               "Default decommission values",
+    "settings.adv_decomm_hint":             "These values are set as custom attributes on an endpoint when it is decommissioned.",
+    "settings.adv_decomm_vlan_lbl":         "AuthzVlan (VLAN ID)",
+    "settings.adv_decomm_vlan_hint":        "VLAN ID assigned at decommission (default: 999).",
+    "settings.adv_decomm_acl_lbl":          "AuthzACL (DACL name)",
+    "settings.adv_decomm_acl_hint":         "Name of the downloadable ACL in ISE assigned at decommission (default: deny_all_ipv4_traffic).",
+    "settings.adv_decomm_save_btn":         "Save decommission defaults",
+    "settings.adv_decomm_saved":            "Decommission defaults saved.",
 
     // ── Settings — Purge Config ──────────────────────────────────────────────
     "settings.purge_card":            "Recommended ISE purge config",

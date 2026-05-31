@@ -3,6 +3,17 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.20.0 build 0588] — 2026-05-31 — feat: Konfigurerbar decommission AuthzVlan/ACL
+
+**Berørte filer:**
+- `backend/app/core/config.py` — nye felter `decomm_authz_vlan` (default "999") og `decomm_authz_acl` (default "deny_all_ipv4_traffic")
+- `backend/app/schemas/settings.py` — felterne tilføjet i `BackendSettingsUpdate` og `BackendSettingsResponse`
+- `backend/app/services/settings_service.py` — `get_backend_settings()` og `update_backend_settings()` håndterer nye felter
+- `backend/app/services/endpoint_service.py` — `decommission_endpoint()` læser fra `config.settings` i stedet for hardkodede værdier
+- `frontend/js/views/settings.js` — nyt form-sektion i `pc-advanced` kort med VLAN + ACL felter
+- `frontend/js/views/settings/section-update.js` — `initAdvancedSection()` udvidet med load + save af decommission-standarder
+- `frontend/js/i18n.js` — 11 nye nøgler (da + en) for adv_decomm_*
+
 ## [5.19.9 build 0587] — 2026-05-31 — feat: Single toggle-chip + auto-sæt HypervisionActive ved save
 
 **Berørte filer:**

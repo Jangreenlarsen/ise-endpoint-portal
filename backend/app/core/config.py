@@ -368,6 +368,8 @@ class Settings(BaseSettings):
     log_file: str = "logs/app.log"
     debug_pxgrid_sessions: bool = False
     github_branch: str = Field(default="main", description="GitHub-branch til opdateringscheck og git pull. 'main' = stabil release, 'dev' = udviklingsversion.")
+    decomm_authz_vlan: str = Field(default="999", description="AuthzVlan der sættes på et endpoint ved dekommissionering.")
+    decomm_authz_acl: str = Field(default="deny_all_ipv4_traffic", description="AuthzACL (DACL) der sættes på et endpoint ved dekommissionering.")
 
 
 def _load() -> Settings:

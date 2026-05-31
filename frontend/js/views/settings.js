@@ -846,6 +846,25 @@ export async function renderSettings(container) {
         </span>
       </label>
       <div id="debug-pxgrid-sessions-result" style="margin-top:0.5rem;"></div>
+      <hr style="margin:1rem 0;border:none;border-top:1px solid var(--border);">
+      <h4 id="adv-decomm-h4" style="margin:0 0 0.25rem;"></h4>
+      <p class="hint" id="adv-decomm-hint"></p>
+      <form id="adv-decomm-form" onsubmit="return false;">
+        <div class="field">
+          <label for="adv-decomm-vlan" id="adv-decomm-vlan-lbl"></label>
+          <input type="text" id="adv-decomm-vlan" placeholder="999" style="max-width:14rem;" />
+          <div class="hint" id="adv-decomm-vlan-hint"></div>
+        </div>
+        <div class="field">
+          <label for="adv-decomm-acl" id="adv-decomm-acl-lbl"></label>
+          <input type="text" id="adv-decomm-acl" placeholder="deny_all_ipv4_traffic" style="max-width:28rem;" />
+          <div class="hint" id="adv-decomm-acl-hint"></div>
+        </div>
+        <div class="actions">
+          <button type="submit" id="adv-decomm-save-btn"></button>
+        </div>
+      </form>
+      <div id="adv-decomm-msg" style="margin-top:0.5rem;"></div>
     </div>
     ` : ""}
 
