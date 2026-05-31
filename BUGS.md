@@ -4,6 +4,14 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 5.19.4 b0582] 2026-05-31 — Audit: Rollback af Decommissioned nulstiller ikke HypervisionStatus
+
+- **Symptom:** Rollback af `decommissioned`-event slettede ikke `status: "Decommissioned"` — endpoint forblev dekommissioneret i ISE efter rollback.
+- **Root cause 1:** `_endpoint_update_from_snapshot()` i `audit.py` byggede `CustomAttrs` uden `HypervisionStatus` — feltet droppedes stille.
+- **Root cause 2:** `update_endpoint()` bruger `model_dump(exclude_none=True)` — `None`-værdier filtreres fra og ISE-feltet renses aldrig. Tom streng `""` overlever filteret.
+- **Fix:** Send `HypervisionStatus=snap.get("status") or ""` i `_endpoint_update_from_snapshot()` — tom streng er ikke `None` og ISE modtager eksplicit clearing af CA-feltet.
+- **Berørt fil:** `backend/app/api/audit.py`
+
 ## [FIXED 5.19.3 b0581] 2026-05-31 — Browse: pxGrid SSE-stream startede aldrig efter cookie-migrering
 
 - **Symptom:** Browse-view viste "⚪ inactive (no filter + pxGrid offline)" selv om pxGrid-worker var forbundet med 27 sessioner.

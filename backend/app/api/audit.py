@@ -301,6 +301,9 @@ def _endpoint_update_from_snapshot(snap: dict) -> EndpointUpdate:
             AuthzVlan=snap.get("authz_vlan") or "",
             AuthzACL=snap.get("authz_acl") or "",
             PlatformType=snap.get("platform_type") or "",
+            # Explicit empty string (not None) so exclude_none=True in
+            # update_endpoint() keeps the key and ISE clears HypervisionStatus.
+            HypervisionStatus=snap.get("status") or "",
         ),
     )
 

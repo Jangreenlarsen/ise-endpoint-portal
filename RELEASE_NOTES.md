@@ -4,6 +4,14 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.19.4] — 2026-05-31 — Bugfix: Audit rollback nulstillede ikke HypervisionStatus
+
+> **Build:** 0582
+
+Rollback af et `decommissioned`-event efterlod endpointet med `status: "Decommissioned"` i ISE — CA-feltet `HypervisionStatus` blev aldrig clearet. Årsag: `_endpoint_update_from_snapshot()` inkluderede ikke `HypervisionStatus` i `CustomAttrs`-bygningen. Fix: sender nu `HypervisionStatus=""` (tom streng, ikke `None`) eksplicit — ISE modtager et clearing af feltet.
+
+---
+
 ## [5.19.3] — 2026-05-31 — Bugfix: pxGrid SSE-stream offline efter cookie-migrering
 
 > **Build:** 0581

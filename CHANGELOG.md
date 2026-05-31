@@ -3,6 +3,11 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.19.4 build 0582] — 2026-05-31 — fix: Audit rollback nulstillede ikke HypervisionStatus ved decommissioned-rollback
+
+**Berørte filer:**
+- `backend/app/api/audit.py` — `_endpoint_update_from_snapshot()`: tilføjet `HypervisionStatus=snap.get("status") or ""` til `CustomAttrs`-bygningen — tom streng overlever `exclude_none=True` og ISE modtager eksplicit clearing af feltet
+
 ## [5.19.3 build 0581] — 2026-05-31 — fix: pxGrid SSE-stream brugte localStorage-token (ramt af cookie-migrering)
 
 **Berørte filer:**
