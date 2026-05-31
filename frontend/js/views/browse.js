@@ -560,12 +560,12 @@ export async function renderBrowse(container) {
 
   function startPxGridStream() {
     if (pxgridEventSource) return;
-    const token = (window.localStorage && localStorage.getItem("hv_ise_token")) || "";
-    if (!token) return;
     const base = window.location.origin.startsWith("file://") ? "http://localhost:8000" : "";
     try {
+      // withCredentials sender httpOnly cookie automatisk (same-origin + cross-origin)
       pxgridEventSource = new EventSource(
-        `${base}/api/pxgrid/sessions/stream?token=${encodeURIComponent(token)}`
+        `${base}/api/pxgrid/sessions/stream`,
+        { withCredentials: true },
       );
     } catch (err) { console.warn("EventSource opsætning fejlede:", err); return; }
 

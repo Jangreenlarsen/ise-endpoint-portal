@@ -4,6 +4,14 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.19.3] — 2026-05-31 — Bugfix: pxGrid SSE-stream offline efter cookie-migrering
+
+> **Build:** 0581
+
+Browse-view viste "⚪ inactive (pxGrid offline)" selv om worker var forbundet. Årsag: `startPxGridStream()` tjekkede `localStorage` for token — som ikke længere gemmes der efter v5.19.0. EventSource bruger nu `withCredentials: true` og sender cookie automatisk.
+
+---
+
 ## [5.19.2] — 2026-05-31 — Sikkerhed: Token-revokation + log-sanitering
 
 > **Build:** 0580

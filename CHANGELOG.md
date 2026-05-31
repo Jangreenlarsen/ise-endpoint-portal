@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.19.3 build 0581] — 2026-05-31 — fix: pxGrid SSE-stream brugte localStorage-token (ramt af cookie-migrering)
+
+**Berørte filer:**
+- `frontend/js/views/browse.js` — `startPxGridStream()`: fjernet `localStorage.getItem("hv_ise_token")`-check; EventSource bruger `{ withCredentials: true }` (cookie sendes automatisk)
+- `backend/app/api/pxgrid.py` — `sessions/stream`: cookie-auth FØRST (`request.cookies.get("hv_token")`), `?token=` query-param som fallback; token_gen-tjek tilføjet
+
 ## [5.19.2 build 0580] — 2026-05-31 — fix: Token-revokation (token_gen) + log-sanitering
 
 **Berørte filer:**

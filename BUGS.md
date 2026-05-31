@@ -4,6 +4,14 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 5.19.3 b0581] 2026-05-31 — Browse: pxGrid SSE-stream startede aldrig efter cookie-migrering
+
+- **Symptom:** Browse-view viste "⚪ inactive (no filter + pxGrid offline)" selv om pxGrid-worker var forbundet med 27 sessioner.
+- **Root cause:** `startPxGridStream()` i `browse.js` læste token fra `localStorage.getItem("hv_ise_token")`. Efter cookie-migreringen i v5.19.0 gemmes token ikke længere i localStorage → `token` var tom string → `if (!token) return` afbrød funktionen før EventSource-oprettelsen.
+- **Fix (frontend):** Token-check fjernet; EventSource bruger nu `{ withCredentials: true }` som sender httpOnly cookie automatisk for same-origin og cross-origin (file://).
+- **Fix (backend):** `sessions/stream`-endpointet læser `hv_token`-cookie FØRST, `?token=` query-param som fallback; token_gen-tjek tilføjet i tråd med `get_current_user()`.
+- **Berørte filer:** `frontend/js/views/browse.js`, `backend/app/api/pxgrid.py`
+
 ## [FIXED 5.19.2 b0580] 2026-05-31 — Sikkerhed: Token-revokation og log-sanitering manglede
 
 **Sårbarhed 1 (HØJ): Ingen token-revokation**

@@ -75,16 +75,16 @@ async def list_sessions() -> PxGridSessionsResponse:
 @router.get("/sessions/stream")
 async def sessions_stream(
     request: Request,
-    token: str = Query("", description="Bearer-token (EventSource kan ikke sætte Auth-header)"),
+    token: str = Query("", description="Bearer-token fallback — httpOnly cookie foretrukket"),
 ):
     """SSE-stream af session-cache deltas.
 
     **VIGTIGT:** denne route SKAL stå før ``/sessions/{mac}`` så FastAPI
     ikke matcher ``/sessions/stream`` som ``mac="stream"`` og returnerer 404.
 
-    Browser's ``EventSource`` API understøtter ikke custom headers, så vi
-    accepterer JWT'en som query-param i stedet for ``Authorization``-header.
-    Validerer manuelt mod samme JWT-codepath som require_any.
+    EventSource API kan ikke sætte custom headers — autentificering via:
+    1. httpOnly ``hv_token``-cookie (same-origin, sendes automatisk med withCredentials)
+    2. ``?token=`` query-param fallback (file://-udviklingsmiljø)
 
     Event-types:
       - ``snapshot``: initial fuld liste ved connect
@@ -93,7 +93,8 @@ async def sessions_stream(
       - ``clear``: cache wiped (worker-reset)
       - ``ping``: keepalive (hver 15s)
     """
-    payload = auth_core.verify_token(token) if token else None
+    effective_token = request.cookies.get("hv_token") or token
+    payload = auth_core.verify_token(effective_token) if effective_token else None
     if not payload or not isinstance(payload.get("sub"), str):
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED, "Manglende eller ugyldigt token"
@@ -107,6 +108,8 @@ async def sessions_stream(
         record = find_by_id(load_users(), payload["sub"])
         if not record or record["role"] != payload.get("role"):
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Bruger ikke fundet")
+        if payload.get("gen", 0) != record.get("token_gen", 0):
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Token er tilbagekaldt — log ind igen")
 
     cache = get_cache()
     queue = cache.subscribe()
