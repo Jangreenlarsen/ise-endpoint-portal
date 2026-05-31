@@ -55,8 +55,12 @@ REGISTERED_AT_ATTR = "HypervisionRegisteredAt"
 # Tilladt værdi: "Decommissioned". Tom streng = aktivt endpoint.
 STATUS_ATTR = "HypervisionStatus"
 
+# Aktivitetsstatus (5.19.6) — sættes ved genaktivering fra dekommissionering.
+# Tilladt værdi: "Aktiv" / "Inaktiv". Tom streng = ukendt.
+ACTIVE_ATTR = "HypervisionActive"
+
 # Alle skjulte (ikke-UI-dropdown) CAs der skal have ISE-definition.
-HIDDEN_ATTRS = [HIDDEN_ATTR, ROLES_ATTR, REGISTERED_AT_ATTR, STATUS_ATTR] + PSK_ATTRS
+HIDDEN_ATTRS = [HIDDEN_ATTR, ROLES_ATTR, REGISTERED_AT_ATTR, STATUS_ATTR, ACTIVE_ATTR] + PSK_ATTRS
 
 # All attributes that need ISE definitions (managed + hidden).
 ALL_ATTRS = MANAGED_ATTRS + HIDDEN_ATTRS

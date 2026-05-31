@@ -10,6 +10,7 @@ from typing import Any
 from app.core import audit_store, config, first_seen_store
 from app.core.metrics import BULK_ITEMS
 from app.core.custom_attr_store import (
+    ACTIVE_ATTR,
     ALL_ATTRS,
     HIDDEN_ATTR,
     PSK_KEY_ATTR,
@@ -249,6 +250,7 @@ class EndpointService:
             psk_mode=ca.get(PSK_MODE_ATTR, "").lower() == "true",
             psk_key=_psk_decode(ca.get(PSK_KEY_ATTR, "")),
             status=ca.get(STATUS_ATTR, ""),
+            active_status=ca.get(ACTIVE_ATTR, ""),
             create_time=create_time,
             update_time=update_time,
             first_seen_at=first_seen_store.record(mac_val, endpoint_id),
@@ -728,6 +730,10 @@ class EndpointService:
                 "audit: could not snapshot endpoint %s before update: %s",
                 endpoint_id, exc,
             )
+        # Auto-sæt HypervisionActive=Aktiv hvis endpointet er portal-managed
+        # og active_status ikke allerede er sat (Aktiv eller Inaktiv).
+        if ACTIVE_ATTR not in ca and before and not before.get("active_status"):
+            ca[ACTIVE_ATTR] = "Aktiv"
         await self.endpoints.update(
             endpoint_id,
             description=update.description,
@@ -882,9 +888,14 @@ class EndpointService:
         Kun custom-attribute-feltet opdateres — gruppe, beskrivelse og øvrige
         felter bevares. Cachen invalideres og handlingen auditeres.
         """
+        authz_vlan = config.settings.decomm_authz_vlan
+        authz_acl = config.settings.decomm_authz_acl
         ca: dict[str, Any] = {
             STATUS_ATTR: "Decommissioned",
+            ACTIVE_ATTR: "Inaktiv",
             HIDDEN_ATTR: "true",
+            "AuthzVlan": authz_vlan,
+            "AuthzACL": authz_acl,
         }
         await self._ensure_ca_definitions()
         before: dict[str, Any] | None = None
@@ -899,7 +910,7 @@ class EndpointService:
             "endpoint",
             endpoint_id,
             before=before,
-            after={"status": "Decommissioned"},
+            after={"status": "Decommissioned", "active_status": "Inaktiv", "authz_vlan": authz_vlan, "authz_acl": authz_acl},
         )
         logger.info("decommissioned endpoint id=%s", endpoint_id)
 
@@ -917,6 +928,78 @@ class EndpointService:
 
         results = list(await asyncio.gather(*(_one(i) for i in req.endpoint_ids[:200])))
         return {"results": results, "ok_count": sum(1 for r in results if r["ok"])}
+
+    async def undecommission_endpoint(self, endpoint_id: str) -> None:
+        """Ryd HypervisionStatus på et dekommissioneret endpoint (genaktivering).
+
+        Sætter STATUS_ATTR til tom streng (ISE modtager eksplicit clearing).
+        HIDDEN_ATTR beholdes 'true' — endpointet er stadig portal-managed.
+        Cachen invalideres og handlingen auditeres.
+        """
+        ca: dict[str, Any] = {
+            STATUS_ATTR: "",
+            ACTIVE_ATTR: "Aktiv",
+            HIDDEN_ATTR: "true",
+        }
+        await self._ensure_ca_definitions()
+        before: dict[str, Any] | None = None
+        try:
+            before = (await self.get_endpoint(endpoint_id, is_psk_editor=True)).model_dump()
+        except IseApiError as exc:
+            logger.warning("audit: could not snapshot %s before undecommission: %s", endpoint_id, exc)
+        await self.endpoints.update(endpoint_id, custom_attributes=ca)
+        get_cache().invalidate_detail(endpoint_id)
+        await audit_store.record(
+            "undecommissioned",
+            "endpoint",
+            endpoint_id,
+            before=before,
+            after={"status": "", "active_status": "Aktiv"},
+        )
+        logger.info("undecommissioned endpoint id=%s", endpoint_id)
+
+    async def bulk_undecommission(self, req: BulkDecommissionRequest) -> dict[str, Any]:
+        """Genaktiver op til 200 endpoints parallelt (Semaphore=3)."""
+        sem = asyncio.Semaphore(3)
+
+        async def _one(ep_id: str) -> dict[str, Any]:
+            async with sem:
+                try:
+                    await self.undecommission_endpoint(ep_id)
+                    return {"id": ep_id, "ok": True}
+                except Exception as exc:  # noqa: BLE001
+                    return {"id": ep_id, "ok": False, "error": str(exc)}
+
+        results = list(await asyncio.gather(*(_one(i) for i in req.endpoint_ids[:200])))
+        return {"results": results, "ok_count": sum(1 for r in results if r["ok"])}
+
+    async def set_active_status(self, endpoint_id: str, active_status: str) -> None:
+        """Sæt HypervisionActive på et endpoint manuelt ("Aktiv" eller "Inaktiv").
+
+        Kun ACTIVE_ATTR opdateres — alle øvrige CA-felter bevares uændret.
+        """
+        if active_status not in ("Aktiv", "Inaktiv"):
+            raise ValueError(f"Ugyldig active_status: {active_status!r}")
+        ca: dict[str, Any] = {
+            ACTIVE_ATTR: active_status,
+            HIDDEN_ATTR: "true",
+        }
+        await self._ensure_ca_definitions()
+        before: dict[str, Any] | None = None
+        try:
+            before = (await self.get_endpoint(endpoint_id, is_psk_editor=True)).model_dump()
+        except IseApiError as exc:
+            logger.warning("audit: could not snapshot %s before set_active_status: %s", endpoint_id, exc)
+        await self.endpoints.update(endpoint_id, custom_attributes=ca)
+        get_cache().invalidate_detail(endpoint_id)
+        await audit_store.record(
+            "updated",
+            "endpoint",
+            endpoint_id,
+            before=before,
+            after={"active_status": active_status},
+        )
+        logger.info("set active_status=%s on endpoint id=%s", active_status, endpoint_id)
 
     # ------------------------------------------------------------------ #
     # Bulk template-apply                                                  #

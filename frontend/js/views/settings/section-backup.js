@@ -1,16 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
-import { auth } from "../../auth.js";
 import { esc } from "./shared.js";
 import { t } from "../../i18n.js";
 
 const BASE = window.location.origin.startsWith("file://") ? "http://localhost:8000" : "";
 
 async function authFetch(path, opts = {}) {
-  const token = auth.getToken();
   const headers = { "Content-Type": "application/json", ...(opts.headers || {}) };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  return fetch(`${BASE}/api${path}`, { ...opts, headers });
+  return fetch(`${BASE}/api${path}`, { ...opts, headers, credentials: "include" });
 }
 
 export function initBackupSection(container) {

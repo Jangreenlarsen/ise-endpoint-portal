@@ -301,7 +301,6 @@ export async function renderAudit(container) {
     exportBtn.textContent = t("audit.btn_exporting");
     try {
       const BASE = window.location.origin.startsWith("file://") ? "http://localhost:8000" : "";
-      const token = auth.getToken();
       const params = {
         resource_type: typeSel.value || undefined,
         search: searchInput.value.trim() || undefined,
@@ -313,9 +312,7 @@ export async function renderAudit(container) {
         }
       }
       const qs = parts.length ? `?${parts.join("&")}` : "";
-      const res = await fetch(`${BASE}/api/audit/export${qs}`, {
-        headers: { "Authorization": `Bearer ${token}` },
-      });
+      const res = await fetch(`${BASE}/api/audit/export${qs}`, { credentials: "include" });
       if (!res.ok) throw new Error(`${res.status}`);
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);

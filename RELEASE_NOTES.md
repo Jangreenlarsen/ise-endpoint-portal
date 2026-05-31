@@ -4,6 +4,210 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.20.0] — 2026-05-31 — Feature: Konfigurerbar decommission AuthzVlan/ACL
+
+> **Build:** 0589
+
+I stedet for hardkodede værdier (VLAN 999 / DACL `deny_all_ipv4_traffic`) kan admin nu sætte de standarder der bruges når et endpoint dekommissioneres.
+
+**Settings → Portal Config → Advanced → "Standard dekommissioneringsværdier":**
+- **AuthzVlan** — dropdown med VLAN-ID'er allerede i systemet (fra endpoint custom-attributter)
+- **AuthzACL** — dropdown med DACL-navne direkte fra ISE
+
+Den gemte værdi er altid pre-valgt — også hvis den ikke længere findes i listens data. Ændringer træder i kraft øjeblikkeligt ved næste dekommissionering.
+
+---
+
+## [5.19.9] — 2026-05-31 — Feature: Single toggle-chip + auto-sæt HypervisionActive
+
+> **Build:** 0587
+
+**Toggle-chip:** De to separate "Aktiv"/"Inaktiv"-chips er erstattet af én chip under MAC-kolonnen der cycler ved klik: ingen filter → **Aktiv** (grøn) → **Inaktiv** (amber) → ingen. Chip-teksten skifter med tilstanden.
+
+**Auto-sæt ved save:** Når et portal-managed endpoint gemmes og `HypervisionActive` ikke er sat i forvejen, sættes den automatisk til `Aktiv`. Endpoints der allerede har `Aktiv` eller `Inaktiv` berøres ikke.
+
+---
+
+## [5.19.8] — 2026-05-31 — Feature: Aktiv/Inaktiv filter-chips + DeComm rename
+
+> **Build:** 0586
+
+To nye filter-chips under MAC-kolonnen i Browse: **Aktiv** (grøn når aktiv) og **Inaktiv** (amber når aktiv) — filtrerer på `HypervisionActive`-attributten. Begge chips kan kombineres med de eksisterende filter-chips og gemmes/gendannes i saved views og delte URL-links.
+
+Alle steder "Decommissioned" eller "Decomm" vises som badge/chip-tekst er omdøbt til **"DeComm"** for konsistens.
+
+---
+
+## [5.19.7] — 2026-05-31 — Feature: Sæt Aktiv/Inaktiv direkte fra edit-modal
+
+> **Build:** 0585
+
+To nye knapper i edit-modal på linje med Dekommissionér/Genaktivér: **"Sæt Aktiv"** (grøn) og **"Sæt Inaktiv"** (amber). Kun den relevante knap vises — se logik nedenfor. Kald til `POST /endpoints/{id}/active-status` opdaterer kun `HypervisionActive` — alle andre CA-felter bevares.
+
+### Endpoint-livscyklus: CA-adfærd
+
+Følgende tabel viser hvilke ISE custom attributes der sættes ved hver handling i portalen. `uændret` betyder at attributten ikke indgår i kaldet og bevares som den er i ISE.
+
+| Handling | `HypervisionStatus` | `HypervisionActive` | `AuthzVlan` | `AuthzACL` |
+|---|---|---|---|---|
+| **Gem (portal save)** | uændret | `Aktiv` ¹ | uændret | uændret |
+| **Dekommissionér** | `Decommissioned` | `Inaktiv` | `999` | `deny_all_ipv4_traffic` |
+| **Genaktivér** | *(cleared)* | `Aktiv` | uændret | uændret |
+| **Sæt Aktiv** *(knap)* | uændret | `Aktiv` | uændret | uændret |
+| **Sæt Inaktiv** *(knap)* | uændret | `Inaktiv` | uændret | uændret |
+
+¹ *Kun hvis `HypervisionActive` ikke allerede er sat til `Aktiv` eller `Inaktiv`. Eksisterendeværdi bevares.*
+
+**Forklaring:**
+
+- **Gem (portal save):** Når et portal-managed endpoint gemmes via edit-modal, sættes `HypervisionActive="Aktiv"` automatisk første gang — så alle eksisterende endpoints får status sat ved næste redigering. Endpoints med en eksisterende `Aktiv` eller `Inaktiv` status berøres ikke.
+
+- **Dekommissionér** er en samlet netværksnægtelse: `HypervisionStatus=Decommissioned` og `HypervisionActive=Inaktiv` sættes, og RADIUS-attributterne `AuthzVlan=999` og `AuthzACL=deny_all_ipv4_traffic` sikrer at endpointet øjeblikkeligt placeres i et isoleret VLAN og nægtes al IPv4-trafik — uden at kræve ændringer i ISE policy.
+
+- **Genaktivér** ophæver dekommissioneringen: `HypervisionStatus` ryddes og `HypervisionActive` sættes til `Aktiv`. `AuthzVlan`/`AuthzACL` berøres bevidst ikke — admin styrer selv om RADIUS-restriktionerne skal fjernes manuelt via edit-modal.
+
+- **Sæt Aktiv / Sæt Inaktiv** er manuelle statusknapper til løbende vedligehold uafhængigt af dekommissionsflowet. Kun `HypervisionActive` opdateres; alle andre CA-felter bevares uændret.
+
+### Knap-synlighed i edit-modal (editor-rolle kræves)
+
+| Endpointets tilstand | Synlige knapper |
+|---|---|
+| Aktivt endpoint (`HypervisionActive` = `Aktiv` eller tom) | Dekommissionér · Sæt Inaktiv |
+| Inaktivt endpoint (`HypervisionActive` = `Inaktiv`) | Dekommissionér · Sæt Aktiv |
+| Dekommissioneret (`HypervisionStatus` = `Decommissioned`) | Genaktivér |
+
+### Filter-chip i Browse (MAC-kolonne)
+
+Én chip cycler ved klik gennem tre tilstande:
+
+| Chip-tilstand | Farve | Effekt |
+|---|---|---|
+| *(ingen)* | grå | Viser alle endpoints (dekomm skjules stadig medmindre DeComm-chip er aktiv) |
+| **Aktiv** | grøn | Viser kun endpoints med `HypervisionActive=Aktiv` |
+| **Inaktiv** | amber | Viser kun endpoints med `HypervisionActive=Inaktiv` |
+
+---
+
+## [5.19.6] — 2026-05-31 — Feature: AuthzVlan/ACL ved dekommissionering + HypervisionActive-status
+
+> **Build:** 0584
+
+**Dekommissionering sætter nu automatisk** `AuthzVlan=999` og `AuthzACL=deny_all_ipv4_traffic` — endpointet nægtes netværksadgang straks uden manuel ISE-policy.
+
+**Ny `HypervisionActive`-attribut** (CA) viser `Aktiv` / `Inaktiv` på alle endpoints. Badge vises i MAC-cellen (⊘ = Inaktiv, ✓ = Aktiv) og i detail-modal. Audit-rollback gendanner også `active_status` korrekt.
+
+---
+
+## [5.19.5] — 2026-05-31 — Feature: Genaktivér dekommissionerede endpoints
+
+> **Build:** 0583
+
+Nye `POST /endpoints/{id}/undecommission` og `POST /endpoints/bulk-undecommission` API-endpoints rydder `HypervisionStatus` i ISE og markerer endpointet aktivt igen. I Browse-view vises en amber "Genaktivér"-knap i detail-modal (kun når endpointet er dekommissioneret) og en bulk-knap i toolbar. Knapperne er mutex med de røde Decommission-knapper.
+
+---
+
+## [5.19.4] — 2026-05-31 — Bugfix: Audit rollback nulstillede ikke HypervisionStatus
+
+> **Build:** 0582
+
+Rollback af et `decommissioned`-event efterlod endpointet med `status: "Decommissioned"` i ISE — CA-feltet `HypervisionStatus` blev aldrig clearet. Årsag: `_endpoint_update_from_snapshot()` inkluderede ikke `HypervisionStatus` i `CustomAttrs`-bygningen. Fix: sender nu `HypervisionStatus=""` (tom streng, ikke `None`) eksplicit — ISE modtager et clearing af feltet.
+
+---
+
+## [5.19.3] — 2026-05-31 — Bugfix: pxGrid SSE-stream offline efter cookie-migrering
+
+> **Build:** 0581
+
+Browse-view viste "⚪ inactive (pxGrid offline)" selv om worker var forbundet. Årsag: `startPxGridStream()` tjekkede `localStorage` for token — som ikke længere gemmes der efter v5.19.0. EventSource bruger nu `withCredentials: true` og sender cookie automatisk.
+
+---
+
+## [5.19.2] — 2026-05-31 — Sikkerhed: Token-revokation + log-sanitering
+
+> **Build:** 0580
+
+**Token-revokation (token_gen):** Tokens var gyldige hele TTL-perioden (1 time) selv efter logout, passwordskift eller rolleændring. Nu incrementeres en `token_gen`-counter i `users.json` ved disse events — alle eksisterende tokens for brugeren invalideres øjeblikkeligt. TACACS+-tokens er upåvirkede (ingen lokal brugerpost).
+
+**Log-sanitering:** Ny `_SensitiveDataFilter` på root-loggeren redakterer automatisk kendte sensitive felter (`password`, `secret`, `token`, `psk`, `api_key` o.l.) i alle log-beskeder og erstatter værdien med `***`.
+
+---
+
+## [5.19.1] — 2026-05-30 — Bugfix: Audit rollback af dekommissionerede endpoints
+
+> **Build:** 0579
+
+Rollback af en `decommissioned`-handling i Audit-log fejlede med 400. Fixen gendanner endpointets fulde tilstand fra `before`-snapshot — identisk med rollback af en almindelig redigering.
+
+---
+
+## [5.19.0] — 2026-05-30 — Sikkerhedshærdning: 3 kritiske/høje sårbarheder lukket
+
+> **Build:** 0578
+
+Baseret på en komplet sikkerhedsanalyse af portalen er tre høj-prioritets sårbarheder rettet:
+
+- **[KRITISK → FIXED] `/metrics` var uauthentificeret** — Prometheus-endpointet eksponerede interne driftsmetrikker til enhver. Kræver nu gyldig session.
+- **[HØJ → FIXED] Backup indeholdt plaintext credentials** — `ise_password`, `pxgrid_password` og `tacacs_secret` var inkluderet i backup-filen. Felterne redigeres nu ud med `__REDACTED__`-sentinel; genopret credentials manuelt i Settings efter restore.
+- **[HØJ → FIXED] JWT-token i localStorage — XSS-sårbar** — Token gemmes nu udelukkende i en `httpOnly; SameSite=Strict`-cookie (sat af backend). JavaScript — herunder eventuelle XSS-scripts — kan ikke tilgå tokenet. Frontend gemmer kun ikke-sensitiv metadata (udløbstidspunkt + auth-type) i localStorage. Bearer-header understøttes fortsat som fallback til API-klienter.
+
+---
+
+## [5.18.1] — 2026-05-30 — Bugfix: 8 fejl fra code-review
+
+> **Build:** 0577
+
+Automatisk code-review fandt og rettede 8 bugs:
+
+- **[Høj]** Decomm-chip URL-deling virkte aldrig — `encodeFilterToUrl` testede forkert state-felt.
+- **[Høj]** Shared URL med `decomm=1` viste alle endpoints — `decodeFilterFromUrl` satte ikke `decommOnly`.
+- **[Medium]** "Ryd filtre"-knap viste sig ikke ved Decomm-chip alene — `updateClearBtn` manglede `decommOnly`.
+- **[Medium]** Decomm-chip-tilstand tabt ved page-reload — `snapshotFilters` gemte ikke `decommOnly`.
+- **[Medium]** Race condition i policy profil-details: skrivning til detached DOM ved hurtig navigation.
+- **[Lav]** Duplikeret Decomm-filterlogik i `browse-table.js` (dead code) fjernet.
+- **[Lav]** VLAN tag 0 undertrykt af falsy-check — rettet med `is not None`-guard.
+- **[Lav]** ISE-fejl i `get_by_name` slugt uden logging — `logger.warning` tilføjet.
+
+---
+
+## [5.18.0] — 2026-05-30 — Authz Profile Details i Policy-panel
+
+> **Build:** 0576
+
+I ISE Policies-visningens højre panel vises nu hvad de tilvalgte authz-profiler består af:
+
+- **Detail-view**: Under profiles-sektionen vises et kompakt kort pr. tilknyttet profil med access-type (ACCEPT/REJECT-badge), profil-type, DACL-navn, VLAN og advanced RADIUS-attributter (f.eks. `Radius:Tunnel-Type = 1:13`).
+- **Editor-view**: Tilsvarende sektion nedenfor profile-tagvælgeren — opdateres automatisk når profiler tilføjes/fjernes.
+- **Ny backend endpoint** `GET /authz-profiles/{name}` returnerer parsed profil-detaljer fra ISE ERS.
+- Tilgængelig for alle autentiserede roller (ikke kun admin).
+
+---
+
+## [5.17.5] — 2026-05-29 — Decommission chip + kvalitetsfixes
+
+> **Build:** 0573
+
+Samler ændringer fra 5.17.3–5.17.4:
+
+- **Decommission chip**: "Decomm"-chip placeret ved siden af "Privat" og "Markeret" i MAC-kolonnen — erstatter den separate toolbar-knap. Chip aktiv = vis dekommissionerede endpoints.
+- **Visuel indikator**: Dekommissionerede rækker er dimmede (55% opacity) med strikethrough på MAC-linket og ⚰-ikon i MAC-cellen.
+- **Detail-modal badge**: Rød pill med korrekt light/dark mode-support.
+- **Chip refresh-fix**: Tabellen opdateres nu korrekt ved chip-klik i paginated tilstand.
+- **Kvalitetsfix**: `escapeHtml` → `esc` i import.js (XSS/crash).
+
+---
+
+## [5.17.3] — 2026-05-29 — Bugfix: dekommissioneret badge manglede visuel indikator
+
+> **Build:** 0569
+
+Dekommissionerede endpoints havde ingen synlig markering i tabellen, og badge i detail-modalen brugte inline styles der brød dark mode.
+
+- Tabellens rækker er nu dimmede (opacity 55%) med strikethrough på MAC-linket
+- ⚰-ikon i MAC-cellen med tooltip
+- Badge i detail-modalen bruger korrekte CSS-klasser med light + dark mode-varianter
+
+---
+
 ## [5.17.2] — 2026-05-29 — Bugfix: XSS/crash i CSV-import
 
 > **Build:** 0568

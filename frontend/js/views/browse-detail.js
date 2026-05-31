@@ -126,13 +126,30 @@ export function initDetail(container, state, api, cb) {
       const statusEl = container.querySelector("#d-status");
       if (statusEl) {
         statusEl.innerHTML = d.status === "Decommissioned"
-          ? `<span class="anc-badge" style="background:#fca5a5;color:#7f1d1d;">${esc(d.status)}</span>`
+          ? `<span class="anc-badge decomm-status-badge">${t("detail.status_decomm")}</span>`
           : `<span class="hint">—</span>`;
       }
-      const decommBtn = container.querySelector("#d-decommission");
-      if (decommBtn) {
-        const isDecomm = d.status === "Decommissioned";
-        decommBtn.style.display = auth.isEditor() && !isDecomm ? "" : "none";
+      const activeStatusEl = container.querySelector("#d-active-status");
+      if (activeStatusEl) {
+        if (d.active_status === "Inaktiv") {
+          activeStatusEl.innerHTML = `<span class="anc-badge active-status-inaktiv">${t("detail.active_status_inaktiv")}</span>`;
+        } else if (d.active_status === "Aktiv") {
+          activeStatusEl.innerHTML = `<span class="anc-badge active-status-aktiv">${t("detail.active_status_aktiv")}</span>`;
+        } else {
+          activeStatusEl.innerHTML = `<span class="hint">—</span>`;
+        }
+      }
+      const decommBtn    = container.querySelector("#d-decommission");
+      const undecommBtn  = container.querySelector("#d-undecommission");
+      const setAktivBtn  = container.querySelector("#d-set-aktiv");
+      const setInaktivBtn = container.querySelector("#d-set-inaktiv");
+      if (decommBtn || undecommBtn || setAktivBtn || setInaktivBtn) {
+        const isDecomm   = d.status === "Decommissioned";
+        const isInaktiv  = d.active_status === "Inaktiv";
+        if (decommBtn)    decommBtn.style.display    = auth.isEditor() && !isDecomm ? "" : "none";
+        if (undecommBtn)  undecommBtn.style.display  = auth.isEditor() && isDecomm ? "" : "none";
+        if (setAktivBtn)  setAktivBtn.style.display  = auth.isEditor() && !isDecomm && isInaktiv ? "" : "none";
+        if (setInaktivBtn) setInaktivBtn.style.display = auth.isEditor() && !isDecomm && !isInaktiv ? "" : "none";
       }
 
       detailMsg.innerHTML = "";
@@ -924,22 +941,102 @@ export function initDetail(container, state, api, cb) {
       await api.decommissionEndpoint(state.detailCurrentId);
       detailMsg.innerHTML = `<div class="alert success">${t("detail.decomm_done")}</div>`;
       btn.style.display = "none";
+      const undecommBtnD = container.querySelector("#d-undecommission");
+      if (undecommBtnD) undecommBtnD.style.display = auth.isEditor() ? "" : "none";
       const statusEl = container.querySelector("#d-status");
-      if (statusEl) statusEl.innerHTML = `<span class="anc-badge" style="background:#fca5a5;color:#7f1d1d;">Decommissioned</span>`;
-      // Opdatér allRows og re-filtrer
+      if (statusEl) statusEl.innerHTML = `<span class="anc-badge decomm-status-badge">${t("detail.status_decomm")}</span>`;
+      const activeStatusElD = container.querySelector("#d-active-status");
+      if (activeStatusElD) activeStatusElD.innerHTML = `<span class="anc-badge active-status-inaktiv">${t("detail.active_status_inaktiv")}</span>`;
+      const setAktivBtnD   = container.querySelector("#d-set-aktiv");
+      const setInaktivBtnD = container.querySelector("#d-set-inaktiv");
+      if (setAktivBtnD)   setAktivBtnD.style.display   = "none";
+      if (setInaktivBtnD) setInaktivBtnD.style.display = "none";
       if (state.allRows) {
         state.allRows = state.allRows.map((r) =>
-          r.id === state.detailCurrentId ? { ...r, status: "Decommissioned" } : r,
+          r.id === state.detailCurrentId ? { ...r, status: "Decommissioned", active_status: "Inaktiv" } : r,
         );
         if (state.allRowsCache) {
           state.allRowsCache = state.allRowsCache.map((r) =>
-            r.id === state.detailCurrentId ? { ...r, status: "Decommissioned" } : r,
+            r.id === state.detailCurrentId ? { ...r, status: "Decommissioned", active_status: "Inaktiv" } : r,
           );
         }
         cb.applyFilter?.();
       }
     } catch (err) {
       detailMsg.innerHTML = `<div class="alert error">${t("detail.decomm_err").replace("{msg}", esc(err.message))}</div>`;
+    } finally { btn.disabled = false; }
+  });
+
+  async function _handleSetActive(targetStatus) {
+    if (!state.detailCurrentId) return;
+    const btn = container.querySelector(targetStatus === "Aktiv" ? "#d-set-aktiv" : "#d-set-inaktiv");
+    if (btn) btn.disabled = true;
+    detailMsg.innerHTML = `<div class="alert info">${t("detail.set_active_progress")}</div>`;
+    try {
+      await api.setActiveStatus(state.detailCurrentId, targetStatus);
+      detailMsg.innerHTML = "";
+      const activeStatusEl = container.querySelector("#d-active-status");
+      if (activeStatusEl) {
+        activeStatusEl.innerHTML = targetStatus === "Aktiv"
+          ? `<span class="anc-badge active-status-aktiv">${t("detail.active_status_aktiv")}</span>`
+          : `<span class="anc-badge active-status-inaktiv">${t("detail.active_status_inaktiv")}</span>`;
+      }
+      const setAktivBtn_   = container.querySelector("#d-set-aktiv");
+      const setInaktivBtn_ = container.querySelector("#d-set-inaktiv");
+      if (setAktivBtn_)   setAktivBtn_.style.display   = targetStatus === "Inaktiv" && auth.isEditor() ? "" : "none";
+      if (setInaktivBtn_) setInaktivBtn_.style.display = targetStatus === "Aktiv"   && auth.isEditor() ? "" : "none";
+      if (state.allRows) {
+        state.allRows = state.allRows.map((r) =>
+          r.id === state.detailCurrentId ? { ...r, active_status: targetStatus } : r,
+        );
+        if (state.allRowsCache) {
+          state.allRowsCache = state.allRowsCache.map((r) =>
+            r.id === state.detailCurrentId ? { ...r, active_status: targetStatus } : r,
+          );
+        }
+      }
+    } catch (err) {
+      detailMsg.innerHTML = `<div class="alert error">${t("detail.set_active_err").replace("{msg}", esc(err.message))}</div>`;
+    } finally { if (btn) btn.disabled = false; }
+  }
+
+  container.querySelector("#d-set-aktiv")?.addEventListener("click", () => _handleSetActive("Aktiv"));
+  container.querySelector("#d-set-inaktiv")?.addEventListener("click", () => _handleSetActive("Inaktiv"));
+
+  container.querySelector("#d-undecommission")?.addEventListener("click", async () => {
+    if (!state.detailCurrentId) return;
+    const mac = container.querySelector("#d-mac").textContent || "";
+    if (!confirm(t("detail.confirm_undecomm").replace("{mac}", mac))) return;
+    const btn = container.querySelector("#d-undecommission");
+    btn.disabled = true;
+    detailMsg.innerHTML = `<div class="alert info">${t("detail.undecomm_progress")}</div>`;
+    try {
+      await api.undecommissionEndpoint(state.detailCurrentId);
+      detailMsg.innerHTML = `<div class="alert success">${t("detail.undecomm_done")}</div>`;
+      btn.style.display = "none";
+      const decommBtn = container.querySelector("#d-decommission");
+      if (decommBtn) decommBtn.style.display = "";
+      const statusEl = container.querySelector("#d-status");
+      if (statusEl) statusEl.innerHTML = `<span class="hint">—</span>`;
+      const activeStatusEl = container.querySelector("#d-active-status");
+      if (activeStatusEl) activeStatusEl.innerHTML = `<span class="anc-badge active-status-aktiv">${t("detail.active_status_aktiv")}</span>`;
+      const setAktivBtnU  = container.querySelector("#d-set-aktiv");
+      const setInaktivBtnU = container.querySelector("#d-set-inaktiv");
+      if (setAktivBtnU)  setAktivBtnU.style.display  = "none";
+      if (setInaktivBtnU) setInaktivBtnU.style.display = auth.isEditor() ? "" : "none";
+      if (state.allRows) {
+        state.allRows = state.allRows.map((r) =>
+          r.id === state.detailCurrentId ? { ...r, status: "", active_status: "Aktiv" } : r,
+        );
+        if (state.allRowsCache) {
+          state.allRowsCache = state.allRowsCache.map((r) =>
+            r.id === state.detailCurrentId ? { ...r, status: "", active_status: "Aktiv" } : r,
+          );
+        }
+        cb.applyFilter?.();
+      }
+    } catch (err) {
+      detailMsg.innerHTML = `<div class="alert error">${t("detail.undecomm_err").replace("{msg}", esc(err.message))}</div>`;
     } finally { btn.disabled = false; }
   });
 

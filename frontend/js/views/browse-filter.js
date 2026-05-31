@@ -18,7 +18,6 @@ import {
 export function initFilter(container, state, api, cb) {
   const filterRow          = container.querySelector(".filter-row");
   const portalFilterBtn    = container.querySelector("#portal-filter-btn");
-  const decommFilterBtn    = container.querySelector("#decomm-filter-btn");
   const shareFilterBtn     = container.querySelector("#share-filter-btn");
   const pageSizeSelect     = container.querySelector("#page-size-select");
   const viewsBtn           = container.querySelector("#views-btn");
@@ -65,6 +64,8 @@ export function initFilter(container, state, api, cb) {
 
   function updateClearBtn() {
     const anyActive = state.portalOnly
+      || state.decommOnly
+      || !!state.activeStatusFilter
       || !state.hideDecommissioned
       || Array.from(filterRow.querySelectorAll(".col-filter-input")).some((i) => i.value.trim())
       || (authStatusSelect && authStatusSelect.value !== "all")
@@ -106,7 +107,8 @@ export function initFilter(container, state, api, cb) {
       || state.sortCol !== null
       || !!state.fullTextQ
       || firstSeenAnySet()
-      || state.macPrivate || state.markedOnly;
+      || state.macPrivate || state.markedOnly || state.decommOnly
+      || !!state.activeStatusFilter;
   }
 
   function anyFilterActive() {
@@ -115,7 +117,9 @@ export function initFilter(container, state, api, cb) {
 
   function applyFiltersToRows(rows) {
     if (state.portalOnly) rows = rows.filter((r) => r.hypervision === "true");
-    if (state.hideDecommissioned) rows = rows.filter((r) => r.status !== "Decommissioned");
+    if (state.decommOnly) rows = rows.filter((r) => r.status === "Decommissioned");
+    else if (state.hideDecommissioned) rows = rows.filter((r) => r.status !== "Decommissioned");
+    if (state.activeStatusFilter) rows = rows.filter((r) => r.active_status === state.activeStatusFilter);
     const filters = getColumnFilters();
     if (filters.length) rows = rows.filter((r) => filters.every((f) => f.re.test(f.field(r) || "")));
     const authFilter = authStatusSelect ? authStatusSelect.value : "all";
@@ -231,7 +235,11 @@ export function initFilter(container, state, api, cb) {
       cb.applyFilter();
     } else {
       state.activeSessionMacs = null;
-      exitFilterMode();
+      if (state.filterMode) {
+        exitFilterMode();
+      } else {
+        cb.applyFilter();
+      }
     }
   }
 
@@ -282,6 +290,8 @@ export function initFilter(container, state, api, cb) {
     });
     return {
       portalOnly: state.portalOnly,
+      decommOnly: state.decommOnly,
+      activeStatusFilter: state.activeStatusFilter,
       cols,
       authStatus: authStatusSelect ? authStatusSelect.value : "all",
       colVis: { ...state.colVis },
@@ -304,6 +314,23 @@ export function initFilter(container, state, api, cb) {
     filterRow.querySelectorAll(".col-filter-input").forEach((input) => { input.value = ""; });
     if (authStatusSelect) authStatusSelect.value = "all";
     if (s.portalOnly) { state.portalOnly = true; portalFilterBtn.classList.add("active-toggle"); }
+    if (s.decommOnly) {
+      state.decommOnly = true;
+      container.querySelector('.mac-chip[data-chip="decomm"]')?.classList.add("active");
+    }
+    if (s.activeStatusFilter) {
+      state.activeStatusFilter = s.activeStatusFilter;
+      const chip = container.querySelector('.mac-chip[data-chip="active-status"]');
+      if (chip) {
+        chip.classList.add("active");
+        chip.classList.toggle("chip-aktiv",  s.activeStatusFilter === "Aktiv");
+        chip.classList.toggle("chip-inaktiv", s.activeStatusFilter === "Inaktiv");
+        chip.textContent =
+          s.activeStatusFilter === "Aktiv"   ? t("browse.aktiv_chip_btn")   :
+          s.activeStatusFilter === "Inaktiv" ? t("browse.inaktiv_chip_btn") :
+          t("browse.active_status_chip_default");
+      }
+    }
     if (s.authStatus && authStatusSelect) authStatusSelect.value = s.authStatus;
     if (Array.isArray(s.cols)) {
       for (const { col, value } of s.cols) {
@@ -388,8 +415,15 @@ export function initFilter(container, state, api, cb) {
     applyFilterSnapshot({ portalOnly: false, cols: [], authStatus: "all" });
     state.fullTextQ = "";
     state.hideDecommissioned = true;
+    state.decommOnly = false;
+    state.activeStatusFilter = "";
     if (globalQInput) globalQInput.value = "";
-    if (decommFilterBtn) decommFilterBtn.classList.remove("active-toggle");
+    container.querySelector('.mac-chip[data-chip="decomm"]')?.classList.remove("active");
+    const asChip = container.querySelector('.mac-chip[data-chip="active-status"]');
+    if (asChip) {
+      asChip.classList.remove("active", "chip-aktiv", "chip-inaktiv");
+      asChip.textContent = t("browse.active_status_chip_default");
+    }
     firstSeenClearAll();
     state.allRowsCache = null;
     persistFilters();
@@ -406,21 +440,12 @@ export function initFilter(container, state, api, cb) {
     await onFilterChange();
   });
 
-  if (decommFilterBtn) {
-    decommFilterBtn.addEventListener("click", async () => {
-      state.hideDecommissioned = !state.hideDecommissioned;
-      decommFilterBtn.classList.toggle("active-toggle", !state.hideDecommissioned);
-      updateClearBtn();
-      clearActiveView();
-      await onFilterChange();
-    });
-  }
-
   // ── URL filter sharing (Feature 7) ───────────────────────────────────────
   function encodeFilterToUrl() {
     const params = new URLSearchParams();
-    if (state.portalOnly) params.set("p", "1");
-    if (!state.hideDecommissioned) params.set("decomm", "1");
+    if (state.portalOnly)        params.set("p", "1");
+    if (state.decommOnly)        params.set("decomm", "1");
+    if (state.activeStatusFilter) params.set("active_status", state.activeStatusFilter);
     if (state.fullTextQ) params.set("q", state.fullTextQ);
     if (authStatusSelect && authStatusSelect.value !== "all") {
       params.set("auth", authStatusSelect.value);
@@ -445,8 +470,19 @@ export function initFilter(container, state, api, cb) {
       portalFilterBtn?.classList.add("active-toggle");
     }
     if (params.get("decomm") === "1") {
-      state.hideDecommissioned = false;
-      decommFilterBtn?.classList.add("active-toggle");
+      state.decommOnly = true;
+      container.querySelector('.mac-chip[data-chip="decomm"]')?.classList.add("active");
+    }
+    const asParam = params.get("active_status");
+    if (asParam === "Aktiv" || asParam === "Inaktiv") {
+      state.activeStatusFilter = asParam;
+      const chip = container.querySelector('.mac-chip[data-chip="active-status"]');
+      if (chip) {
+        chip.classList.add("active");
+        chip.classList.toggle("chip-aktiv",  asParam === "Aktiv");
+        chip.classList.toggle("chip-inaktiv", asParam === "Inaktiv");
+        chip.textContent = asParam === "Aktiv" ? t("browse.aktiv_chip_btn") : t("browse.inaktiv_chip_btn");
+      }
     }
     const q = params.get("q");
     if (q) {

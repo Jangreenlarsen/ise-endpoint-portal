@@ -3,6 +3,159 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.20.0 build 0589] — 2026-05-31 — feat: Decommission AuthzVlan/ACL som dropdowns
+
+**Berørte filer:**
+- `frontend/js/views/settings.js` — `<input type="text">` skiftet til `<select>` for begge decommission-felter
+- `frontend/js/views/settings/section-update.js` — `initAdvancedSection()` henter `api.listCustomAttributes()` (AuthzVlan-værdier) og `api.listDacls()` (DACL-navne) parallelt og populerer dropdowns; den gemte værdi pre-selectes (tilføjes listen hvis den ikke allerede er der)
+
+## [5.20.0 build 0588] — 2026-05-31 — feat: Konfigurerbar decommission AuthzVlan/ACL
+
+**Berørte filer:**
+- `backend/app/core/config.py` — nye felter `decomm_authz_vlan` (default "999") og `decomm_authz_acl` (default "deny_all_ipv4_traffic")
+- `backend/app/schemas/settings.py` — felterne tilføjet i `BackendSettingsUpdate` og `BackendSettingsResponse`
+- `backend/app/services/settings_service.py` — `get_backend_settings()` og `update_backend_settings()` håndterer nye felter
+- `backend/app/services/endpoint_service.py` — `decommission_endpoint()` læser fra `config.settings` i stedet for hardkodede værdier
+- `frontend/js/views/settings.js` — nyt form-sektion i `pc-advanced` kort med VLAN + ACL felter
+- `frontend/js/views/settings/section-update.js` — `initAdvancedSection()` udvidet med load + save af decommission-standarder
+- `frontend/js/i18n.js` — 11 nye nøgler (da + en) for adv_decomm_*
+
+## [5.19.9 build 0587] — 2026-05-31 — feat: Single toggle-chip + auto-sæt HypervisionActive ved save
+
+**Berørte filer:**
+- `backend/app/services/endpoint_service.py` — `update_endpoint()`: sætter `ACTIVE_ATTR="Aktiv"` automatisk hvis before-snapshot har tomt `active_status` og `ACTIVE_ATTR` ikke eksplicit sættes i dette kald
+- `frontend/js/views/browse.js` — to chips → én `data-chip="active-status"` der cycler: ingen filter → Aktiv (grøn) → Inaktiv (amber) → ingen; state `activeStatusFilter: ""`
+- `frontend/js/views/browse-filter.js` — `activeOnly`/`inaktivOnly` erstattet med `activeStatusFilter` overalt (filter, persist, snapshot, clear, URL encode/decode)
+- `frontend/js/i18n.js` — ny default-label nøgle; titler opdateret
+
+## [5.19.8 build 0586] — 2026-05-31 — feat: Aktiv/Inaktiv filter-chips i Browse + DeComm rename
+
+**Berørte filer:**
+- `frontend/js/i18n.js` — `detail.status_decomm` og `browse.decomm_chip_btn` omdøbt til "DeComm"; 6 nye nøgler for Aktiv/Inaktiv chips
+- `frontend/js/views/browse.js` — 2 nye chip-knapper (`data-chip="aktiv"`, `data-chip="inaktiv"`); state init `activeOnly/inaktivOnly`; chip-handler udvidet
+- `frontend/js/views/browse-filter.js` — `applyFiltersToRows()`, `updateClearBtn()`, `needsFilterMode()`, `snapshotFilters()`, `applyFilterSnapshot()`, clear-all og URL encode/decode — alle udvidet med `activeOnly`/`inaktivOnly`
+- `frontend/css/styles.css` — `chip-aktiv.active` grøn; `chip-inaktiv.active` amber
+
+## [5.19.7 build 0585] — 2026-05-31 — feat: Sæt Aktiv/Inaktiv-knapper i edit-modal + decommission sætter Inaktiv
+
+**Berørte filer:**
+- `backend/app/services/endpoint_service.py` — `decommission_endpoint()` sætter `ACTIVE_ATTR="Inaktiv"`; `undecommission_endpoint()` sætter `ACTIVE_ATTR="Aktiv"`; ny `set_active_status()` opdaterer kun `HypervisionActive`
+- `backend/app/api/endpoints_ops.py` — `POST /{id}/active-status`; `SetActiveStatusRequest` schema; import af `HTTPException`, `status`
+- `frontend/js/api.js` — `setActiveStatus(id, active_status)`
+- `frontend/js/views/browse.js` — `#d-set-aktiv` (grøn) + `#d-set-inaktiv` (amber) knapper i modal-actions
+- `frontend/js/views/browse-detail.js` — synlighedslogik for alle 4 action-knapper; `_handleSetActive()`; decommission-handler opdaterer active_status-badge og skjuler Aktiv/Inaktiv-knapper; undecommission-handler sætter Aktiv
+- `frontend/js/i18n.js` — 10 nye nøgler (da + en) for Sæt Aktiv/Inaktiv-flow
+- `frontend/css/styles.css` — `button.success` grøn stil
+
+## [5.19.6 build 0584] — 2026-05-31 — feat: AuthzVlan/ACL ved dekommissionering + HypervisionActive-status
+
+**Berørte filer:**
+- `backend/app/core/custom_attr_store.py` — `ACTIVE_ATTR = "HypervisionActive"` tilføjet til `HIDDEN_ATTRS`
+- `backend/app/schemas/endpoint.py` — `active_status: str = ""` i `EndpointDetail`; `HypervisionActive: str | None = None` i `CustomAttrs`
+- `backend/app/services/endpoint_service.py` — import `ACTIVE_ATTR`; builder mapper `active_status`; `decommission_endpoint()` sætter `AuthzVlan=999` + `AuthzACL=deny_all_ipv4_traffic`; `undecommission_endpoint()` sætter `ACTIVE_ATTR="Inaktiv"`
+- `backend/app/api/audit.py` — `_endpoint_update_from_snapshot()` gendanner `HypervisionActive` fra `active_status`
+- `frontend/js/views/browse.js` — `#d-active-status` element tilføjet i detail-modal
+- `frontend/js/views/browse-detail.js` — viser `active_status` badge; undecommission-handler opdaterer `active_status`
+- `frontend/js/views/browse-table.js` — ⊘/✓ badge i MAC-celle for `active_status`
+- `frontend/js/i18n.js` — 6 nye i18n-nøgler (da + en)
+- `frontend/css/styles.css` — `active-status-inaktiv/aktiv` badge-stile + `active-status-row-badge`
+
+## [5.19.5 build 0583] — 2026-05-31 — feat: Undecommission endpoint (enkelt + bulk)
+
+**Berørte filer:**
+- `backend/app/services/endpoint_service.py` — `undecommission_endpoint()` + `bulk_undecommission()`: sætter `HypervisionStatus=""`, auditerer som `"undecommissioned"`
+- `backend/app/api/endpoints_ops.py` — `POST /{id}/undecommission` + `POST /bulk-undecommission`
+- `frontend/js/api.js` — `undecommissionEndpoint()` + `bulkUndecommission()`
+- `frontend/js/views/browse.js` — `#d-undecommission`-knap i detail-modal; `#bulk-undecomm-btn` i toolbar
+- `frontend/js/views/browse-detail.js` — synlighedsstyring (mutex med decomm-knap); click-handler
+- `frontend/js/views/browse-bulk.js` — bulk undecommission click-handler; opdaterer `state.allRows`
+- `frontend/js/views/browse-table.js` — `#bulk-undecomm-btn` disabled/enabled ved selektion
+- `frontend/js/i18n.js` — 12 nye i18n-nøgler (da + en) for undecommission-flow
+- `frontend/css/styles.css` — `button.warning` amber-stil
+
+## [5.19.4 build 0582] — 2026-05-31 — fix: Audit rollback nulstillede ikke HypervisionStatus ved decommissioned-rollback
+
+**Berørte filer:**
+- `backend/app/api/audit.py` — `_endpoint_update_from_snapshot()`: tilføjet `HypervisionStatus=snap.get("status") or ""` til `CustomAttrs`-bygningen — tom streng overlever `exclude_none=True` og ISE modtager eksplicit clearing af feltet
+
+## [5.19.3 build 0581] — 2026-05-31 — fix: pxGrid SSE-stream brugte localStorage-token (ramt af cookie-migrering)
+
+**Berørte filer:**
+- `frontend/js/views/browse.js` — `startPxGridStream()`: fjernet `localStorage.getItem("hv_ise_token")`-check; EventSource bruger `{ withCredentials: true }` (cookie sendes automatisk)
+- `backend/app/api/pxgrid.py` — `sessions/stream`: cookie-auth FØRST (`request.cookies.get("hv_token")`), `?token=` query-param som fallback; token_gen-tjek tilføjet
+
+## [5.19.2 build 0580] — 2026-05-31 — fix: Token-revokation (token_gen) + log-sanitering
+
+**Berørte filer:**
+- `backend/app/core/user_store.py` — `increment_token_gen(users, user_id)` tilføjet
+- `backend/app/core/auth.py` — `gen: int = 0` parameter tilføjet til `create_token()`; `gen`-claim inkluderet i payload
+- `backend/app/api/deps.py` — `get_current_user()` afviser token hvis `gen != record.token_gen`; import af `increment_token_gen`
+- `backend/app/api/auth.py` — logout incrementerer `token_gen`; refresh henter current gen fra user record; import af user_store helpers
+- `backend/app/services/user_service.py` — login/setup_first_admin passerer `gen`; change_password og update_user (ved rolle-/passwordændring) incrementerer `token_gen`; import af `increment_token_gen`
+- `backend/app/core/logging.py` — `_SensitiveDataFilter` tilføjet med regex-redaktion af password/secret/token/psk/api_key i log-beskeder
+
+## [5.19.1 build 0579] — 2026-05-30 — fix: Audit rollback af decommissioned-handling
+
+**Berørte filer:**
+- `backend/app/api/audit.py` — `decommissioned`-gren tilføjet i `_rollback_endpoint_action()`; gendanner endpoint fra `before`-snapshot via `update_endpoint`
+
+## [5.19.0 build 0578] — 2026-05-30 — feat: Sikkerhedsanalyse — 3 kritiske/høje sårbarheder lukket
+
+**Berørte filer:**
+- `backend/app/api/metrics_api.py` — `GET /metrics` kræver nu `require_any` (var uauthentificeret)
+- `backend/app/api/config_backup.py` — backup redigerer `ise_password`, `pxgrid_password`, `tacacs_secret` ud (`__REDACTED__`); restore bevarer eksisterende credentials for redigerede felter; `credentials_redacted: true` i metadata
+- `backend/app/core/auth.py` — `TOKEN_COOKIE_NAME`, `token_metadata()` hjælpefunktion, `import datetime`
+- `backend/app/schemas/user.py` — `LoginResponse` udvides med `expires_at: str` og `auth_type: str`
+- `backend/app/api/auth.py` — login/setup/refresh sætter httpOnly `SameSite=Strict`-cookie; logout sletter cookie; `auth_status` læser fra cookie eller Bearer; `_set_auth_cookie`/`_delete_auth_cookie` hjælpere
+- `backend/app/api/deps.py` — `_extract_token()` læser cookie først, derefter Bearer-header
+- `backend/app/services/user_service.py` — alle 3 `LoginResponse`-kald beregner og inkluderer `expires_at` + `auth_type`
+- `frontend/js/auth.js` — token fjernet fra localStorage; gemmer kun `{expires_at, auth_type}`-metadata; `getToken()` returnerer null; `isTacacs/isTokenExpired/secondsUntilExpiry` læser fra metadata
+- `frontend/js/api.js` — `Authorization`-header fjernet; `credentials: "include"` på alle fetch-kald inkl. pxGrid-upload/download; `UNAUTH_PATHS` fjernet (unødvendig)
+- `frontend/js/app.js` — `getToken()`-check → `isTokenExpired()`; `save(token, user)` → `save(meta, user)`; alertBadge-guard opdateret
+- `frontend/js/views/login.js` — `save(result.token, ...)` → `save({expires_at, auth_type}, ...)`
+- `frontend/js/views/settings/section-backup.js` — `auth`-import fjernet; `authFetch` bruger `credentials: "include"`
+- `frontend/js/views/audit.js` — token-header fjernet fra export-fetch; `credentials: "include"` tilføjet
+
+## [5.18.1 build 0577] — 2026-05-30 — fix: 8 bugs fra code-review (Decomm-chip URL + profil-details)
+
+**Berørte filer:**
+- `frontend/js/views/browse-filter.js` — encode: `decommOnly` i stedet for `!hideDecommissioned`; decode: sæt `decommOnly=true`; `updateClearBtn`: tilføj `decommOnly`; `snapshotFilters`/`applyFilterSnapshot`: gem og gendan `decommOnly`
+- `frontend/js/views/browse-table.js` — fjern duplikeret `decommOnly`-filtergren (dead code)
+- `frontend/js/views/policy.js` — `document.contains(container)`-guard mod stale DOM efter async
+- `backend/app/services/authz_profile_service.py` — VLAN `tagID: 0` falsy-zero: `is not None`-guard
+- `backend/app/ise/authz_profiles.py` — `logger.warning` tilføjet i `get_by_name` except-blok
+
+## [5.18.0 build 0576] — 2026-05-30 — feat: Authz Profile Details i Policy-panel
+
+Ny feature: detail-view og editor i ISE Policies højre panel viser nu hvad de tilvalgte authz-profiler består af.
+
+**Berørte filer:**
+- `backend/app/schemas/authz_profile.py` — ny `AuthzProfileDetail`-schema
+- `backend/app/services/authz_profile_service.py` — `_parse_profile_detail()` + `get_detail()`
+- `backend/app/api/authz_profiles.py` — ny `GET /authz-profiles/{name}` endpoint (require_any)
+- `frontend/js/api.js` — `getAuthzProfile(name)`
+- `frontend/js/views/policy-condition-builder.js` — `wireProfileEvents()` udvides med onChange-callback
+- `frontend/js/views/policy.js` — `renderProfileDetailCard()`, `loadAndRenderProfileDetails()`, profil-sektion i detail + editor
+- `frontend/js/i18n.js` — 3 nye nøgler (da + en): `pol.pd_section_label`, `pol.pd_loading`, `pol.pd_unavailable`
+- `frontend/css/styles.css` — styles: `.pol-pd-section`, `.pol-pd-card`, `.pol-pd-badge`, `.pd-attr` m.fl.
+
+## [5.17.5 build 0573] — 2026-05-29 — chore: version bump 5.17.5
+
+Samler bugfixes fra 5.17.4-serien (b0569–b0572) under 5.17.5.
+
+## [5.17.4 build 0570] — 2026-05-29 — feat: Dekommissioneret chip-knap ved Privat/Markeret + fjern 📌
+
+- `frontend/js/views/browse.js` — ny `data-chip="decomm"` chip i `.mac-type-chips` div; fjernet `#decomm-filter-btn` fra toolbar; chip-handler udvidet til at toggle `state.hideDecommissioned` (inverteret logik: chip aktiv = vis dekommissionerede)
+- `frontend/js/views/browse-filter.js` — fjernet `decommFilterBtn` querySelector og click-handler; filterClearAllBtn og decodeFilterFromUrl bruger nu chippen direkte
+- `frontend/js/i18n.js` — `browse.decomm_chip_btn`/`decomm_chip_title` tilføjet (DA + EN); 📌 fjernet fra `mac_marked_btn`
+
+## [5.17.3 build 0569] — 2026-05-29 — fix: dekommissioneret badge manglede visuel indikator
+
+- `frontend/css/styles.css` — `.decomm-status-badge` (rød pill, light + dark mode), `.decomm-row-badge` (⚰ ikon i MAC-celle), `tr.row-decomm` (dimmet + strikethrough på MAC-link)
+- `frontend/js/views/browse-detail.js` — statusbadge bruger nu `.decomm-status-badge` CSS-klasse i stedet for inline styles (dark mode-kompatibelt)
+- `frontend/js/views/browse-table.js` — `<tr>` får `row-decomm` klasse; MAC-cellen viser ⚰-badge med tooltip
+- `frontend/js/i18n.js` — nøgle `browse.decomm_badge_title` tilføjet (DA + EN)
+
 ## [5.17.2 build 0568] — 2026-05-29 — fix: XSS/crash i import.js — escapeHtml → esc
 
 - `frontend/js/views/import.js` — `escapeHtml()` (udefineret funktion) erstattet med `esc()` alle 12 steder. Undlod at rå brugerinput fra CSV (MAC, beskrivelse, custom attributes) blev indsat uden HTML-escaping i preview-tabel og import-resultat.

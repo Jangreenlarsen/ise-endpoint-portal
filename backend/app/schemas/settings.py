@@ -31,6 +31,8 @@ class BackendSettingsUpdate(BaseModel):
     cache_prewarm_interval_s: float = 1800.0
     debug_pxgrid_sessions: bool = False
     github_branch: str = "main"
+    decomm_authz_vlan: str = "999"
+    decomm_authz_acl: str = "deny_all_ipv4_traffic"
 
 
 class BackendSettingsResponse(BaseModel):
@@ -54,6 +56,8 @@ class BackendSettingsResponse(BaseModel):
     cache_prewarm_interval_s: float = 1800.0
     debug_pxgrid_sessions: bool = False
     github_branch: str = "main"
+    decomm_authz_vlan: str = "999"
+    decomm_authz_acl: str = "deny_all_ipv4_traffic"
 
 
 class TestConnectionRequest(BaseModel):

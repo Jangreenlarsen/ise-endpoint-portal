@@ -228,6 +228,10 @@ button.secondary { background: #e5e7eb; color: #1a2330; }
 button.secondary:hover:not(:disabled) { background: #d1d5db; }
 button.danger { background: #b91c1c; }
 button.danger:hover:not(:disabled) { background: #991b1b; }
+button.warning { background: #b45309; }
+button.warning:hover:not(:disabled) { background: #92400e; }
+button.success { background: #059669; }
+button.success:hover:not(:disabled) { background: #047857; }
 
 /* Tables */
 table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
@@ -852,6 +856,55 @@ td.mac-cell.cache-stale {
 [data-theme="dark"] .anc-quarantined {
   background: #7f1d1d;
   color: #fca5a5;
+}
+/* Decommissioned badge — detail modal */
+.decomm-status-badge {
+  background: #fee2e2;
+  color: #991b1b;
+}
+[data-theme="dark"] .decomm-status-badge {
+  background: #7f1d1d;
+  color: #fca5a5;
+}
+/* Decommissioned indicator — table MAC cell */
+.decomm-row-badge {
+  font-size: 0.8rem;
+  margin-left: 0.25rem;
+  opacity: 0.85;
+  cursor: default;
+}
+/* HypervisionActive badges — detail modal */
+.active-status-inaktiv {
+  background: #fef3c7;
+  color: #92400e;
+}
+.active-status-aktiv {
+  background: #d1fae5;
+  color: #065f46;
+}
+[data-theme="dark"] .active-status-inaktiv {
+  background: #78350f;
+  color: #fde68a;
+}
+[data-theme="dark"] .active-status-aktiv {
+  background: #064e3b;
+  color: #6ee7b7;
+}
+/* HypervisionActive indicator — table MAC cell */
+.active-status-row-badge {
+  font-size: 0.8rem;
+  margin-left: 0.25rem;
+  opacity: 0.85;
+  cursor: default;
+}
+.active-status-row-badge.inaktiv { color: #b45309; }
+.active-status-row-badge.aktiv   { color: #059669; }
+/* Decommissioned table row — dimmed */
+tr.row-decomm {
+  opacity: 0.55;
+}
+tr.row-decomm .mac-link {
+  text-decoration: line-through;
 }
 .modal.detail-modal {
   width: 800px;
@@ -2950,6 +3003,67 @@ body.register-route .login-card {
 .pol-authz-icon { color: #3b82f6; font-size: 0.9rem; }
 .pol-detail-empty { color: var(--text-muted, #9ca3af); font-style: italic; font-size: 0.82rem; }
 
+/* Authz profile detail section (below conditions/profiles split) */
+.pol-pd-section {
+  margin-top: 0.75rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--border);
+}
+.pol-pd-loading {
+  font-size: 0.78rem;
+  color: var(--text-muted, #9ca3af);
+  font-style: italic;
+  padding: 0.2rem 0;
+}
+.pol-pd-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 7px;
+  padding: 0.45rem 0.65rem;
+  margin-bottom: 0.4rem;
+}
+.pol-pd-card.pol-pd-error { background: #fef9f9; border-color: #fecaca; }
+.pol-pd-card-hd {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.25rem;
+}
+.pol-pd-name { font-weight: 600; font-size: 0.83rem; color: #1e3a5f; }
+.pol-pd-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+.pol-pd-badge.pd-accept { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+.pol-pd-badge.pd-reject { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+.pol-pd-badge.pd-neutral { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+.pol-pd-type {
+  font-size: 0.68rem;
+  color: #64748b;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  padding: 0.1rem 0.3rem;
+}
+.pol-pd-attrs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding-left: 1.1rem;
+}
+.pd-attr {
+  font-size: 0.75rem;
+  color: #374151;
+  font-family: monospace;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.pd-attr.hint { font-family: inherit; color: var(--text-muted, #9ca3af); font-style: italic; }
+
 /* Rule cards */
 .pol-rule-card {
   display: flex;
@@ -3612,6 +3726,9 @@ details[open] .rn-summary::before { transform: rotate(90deg); }
 [data-theme="midnight"] .mac-chip { background: #21262d; color: #c9d1d9; border-color: #30363d; }
 [data-theme="midnight"] .mac-chip:hover { background: #30363d; }
 [data-theme="midnight"] .mac-chip.active { background: #1f6feb; color: #fff; border-color: #1f6feb; }
+/* Aktiv/Inaktiv chips — farvet aktiv-tilstand */
+.mac-chip.chip-aktiv.active   { background: #059669; border-color: #059669; }
+.mac-chip.chip-inaktiv.active { background: #b45309; border-color: #b45309; }
 
 /* Browse — marked-pin badge */
 .marked-pin { font-size: 0.75em; margin-left: 4px; vertical-align: middle; cursor: default; }

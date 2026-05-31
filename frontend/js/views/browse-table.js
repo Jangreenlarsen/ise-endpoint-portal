@@ -247,7 +247,7 @@ export function initTable(container, state, api, cb) {
       const mac   = r.mac || r.name;
       const nasPt = getNasPlatformType(mac);
       const cells = {
-        mac:           `<td data-col="mac" class="mac-cell${r.cache_stale ? " cache-stale" : ""}"><a href="#" class="mac-link" title="${t("browse.mac_link_title")}">${macDisplayHtml(mac)}</a>${r.cache_stale ? `<span class="stale-badge" title="${t("browse.stale_badge_title")}">⏱</span>` : ""}${_markedMacs.has(normalizeMac(mac)) ? `<span class="marked-pin" title="${t("browse.marked_pin_title")}">📌</span>` : ""}</td>`,
+        mac:           `<td data-col="mac" class="mac-cell${r.cache_stale ? " cache-stale" : ""}"><a href="#" class="mac-link" title="${t("browse.mac_link_title")}">${macDisplayHtml(mac)}</a>${r.cache_stale ? `<span class="stale-badge" title="${t("browse.stale_badge_title")}">⏱</span>` : ""}${_markedMacs.has(normalizeMac(mac)) ? `<span class="marked-pin" title="${t("browse.marked_pin_title")}">📌</span>` : ""}${r.status === "Decommissioned" ? `<span class="decomm-row-badge" title="${t("browse.decomm_badge_title")}">⚰</span>` : ""}${r.active_status === "Inaktiv" ? `<span class="active-status-row-badge inaktiv" title="${t("detail.active_status_inaktiv")}">⊘</span>` : r.active_status === "Aktiv" ? `<span class="active-status-row-badge aktiv" title="${t("detail.active_status_aktiv")}">✓</span>` : ""}</td>`,
         auth_status:   `<td data-col="auth_status" class="auth-status-col"></td>`,
         vendor:        `<td data-col="vendor" class="vendor-cell-td">${esc(r.vendor || "")}</td>`,
         group_name:    `<td data-col="group_name"><select class="grp-select">${groupOptionsHtml(r.group_id)}</select></td>`,
@@ -270,7 +270,7 @@ export function initTable(container, state, api, cb) {
         ise_session:   `<td data-col="ise_session" class="ise-session-col">${iseSessionCellHtml(mac)}</td>`,
       };
       return `
-      <tr data-id="${esc(r.id)}" data-mac="${esc(normalizeMac(mac))}"${state.dirtyIds.has(r.id) ? ' class="dirty"' : ''}>
+      <tr data-id="${esc(r.id)}" data-mac="${esc(normalizeMac(mac))}"${(() => { const c = [state.dirtyIds.has(r.id) && "dirty", r.status === "Decommissioned" && "row-decomm"].filter(Boolean).join(" "); return c ? ` class="${c}"` : ""; })()}>
         <td class="select-cell"><input type="checkbox" class="row-select"${prevSelected.has(r.id) ? " checked" : ""} /></td>
         ${getOrderedColumns().map(c => cells[c.key] || "").join("")}
       </tr>`;
@@ -484,10 +484,12 @@ export function initTable(container, state, api, cb) {
     bulkEditBtn.disabled    = !hasSelection;
     if (bulkCoaBtn)  bulkCoaBtn.disabled  = !hasSelection;
     if (bulkSimBtn)  bulkSimBtn.disabled  = !hasSelection;
-    const bulkTplBtn    = container.querySelector("#bulk-tpl-btn");
-    const bulkDecommBtn = container.querySelector("#bulk-decomm-btn");
-    if (bulkTplBtn)    bulkTplBtn.disabled    = !hasSelection;
-    if (bulkDecommBtn) bulkDecommBtn.disabled = !hasSelection;
+    const bulkTplBtn      = container.querySelector("#bulk-tpl-btn");
+    const bulkDecommBtn   = container.querySelector("#bulk-decomm-btn");
+    const bulkUndecommBtn = container.querySelector("#bulk-undecomm-btn");
+    if (bulkTplBtn)      bulkTplBtn.disabled      = !hasSelection;
+    if (bulkDecommBtn)   bulkDecommBtn.disabled   = !hasSelection;
+    if (bulkUndecommBtn) bulkUndecommBtn.disabled = !hasSelection;
     selectionCount.textContent = hasSelection ? t("browse.selection_n").replace("{n}", selected.length) : "";
     selectAllCb.indeterminate  = selected.length > 0 && selected.length < tbody.querySelectorAll(".row-select").length;
   }

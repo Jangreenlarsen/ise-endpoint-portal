@@ -79,7 +79,8 @@ class IseAuthzProfileRepository:
     async def get_by_name(self, name: str) -> dict[str, Any] | None:
         try:
             data = await self.client.get(f"{ERS_PATH}/name/{name}")
-        except Exception:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("authz-profile get_by_name('%s') failed: %s", name, exc)
             return None
         return data.get("AuthorizationProfile") if data else None
 

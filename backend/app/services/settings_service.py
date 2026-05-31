@@ -60,6 +60,8 @@ def get_backend_settings() -> BackendSettingsResponse:
         cache_prewarm_interval_s=s.cache_prewarm_interval_s,
         debug_pxgrid_sessions=s.debug_pxgrid_sessions,
         github_branch=s.github_branch,
+        decomm_authz_vlan=s.decomm_authz_vlan,
+        decomm_authz_acl=s.decomm_authz_acl,
     )
 
 
@@ -87,6 +89,8 @@ async def update_backend_settings(
             "cache_prewarm_interval_s": new.cache_prewarm_interval_s,
             "debug_pxgrid_sessions": new.debug_pxgrid_sessions,
             "github_branch": new.github_branch,
+            "decomm_authz_vlan": new.decomm_authz_vlan,
+            "decomm_authz_acl": new.decomm_authz_acl,
         }
     )
     if new.ise_password:

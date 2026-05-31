@@ -4,6 +4,69 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 5.19.4 b0582] 2026-05-31 — Audit: Rollback af Decommissioned nulstiller ikke HypervisionStatus
+
+- **Symptom:** Rollback af `decommissioned`-event slettede ikke `status: "Decommissioned"` — endpoint forblev dekommissioneret i ISE efter rollback.
+- **Root cause 1:** `_endpoint_update_from_snapshot()` i `audit.py` byggede `CustomAttrs` uden `HypervisionStatus` — feltet droppedes stille.
+- **Root cause 2:** `update_endpoint()` bruger `model_dump(exclude_none=True)` — `None`-værdier filtreres fra og ISE-feltet renses aldrig. Tom streng `""` overlever filteret.
+- **Fix:** Send `HypervisionStatus=snap.get("status") or ""` i `_endpoint_update_from_snapshot()` — tom streng er ikke `None` og ISE modtager eksplicit clearing af CA-feltet.
+- **Berørt fil:** `backend/app/api/audit.py`
+
+## [FIXED 5.19.3 b0581] 2026-05-31 — Browse: pxGrid SSE-stream startede aldrig efter cookie-migrering
+
+- **Symptom:** Browse-view viste "⚪ inactive (no filter + pxGrid offline)" selv om pxGrid-worker var forbundet med 27 sessioner.
+- **Root cause:** `startPxGridStream()` i `browse.js` læste token fra `localStorage.getItem("hv_ise_token")`. Efter cookie-migreringen i v5.19.0 gemmes token ikke længere i localStorage → `token` var tom string → `if (!token) return` afbrød funktionen før EventSource-oprettelsen.
+- **Fix (frontend):** Token-check fjernet; EventSource bruger nu `{ withCredentials: true }` som sender httpOnly cookie automatisk for same-origin og cross-origin (file://).
+- **Fix (backend):** `sessions/stream`-endpointet læser `hv_token`-cookie FØRST, `?token=` query-param som fallback; token_gen-tjek tilføjet i tråd med `get_current_user()`.
+- **Berørte filer:** `frontend/js/views/browse.js`, `backend/app/api/pxgrid.py`
+
+## [FIXED 5.19.2 b0580] 2026-05-31 — Sikkerhed: Token-revokation og log-sanitering manglede
+
+**Sårbarhed 1 (HØJ): Ingen token-revokation**
+- Tokens var gyldige i op til 1 time efter logout, passwordskift eller rolleændring — en stjålet Bearer-token kunne genbruges hele TTL-perioden.
+- **Fix:** `token_gen`-counter tilføjet per bruger i `users.json`. Alle tokens inkluderer nu `gen`-claim. `get_current_user()` afviser tokens med forældet `gen`. Logout, passwordskift og rolleændring (inkl. admin-ændring) incrementerer counteren og invaliderer alle eksisterende tokens for brugeren.
+- **Berørte filer:** `backend/app/core/user_store.py`, `backend/app/core/auth.py`, `backend/app/api/deps.py`, `backend/app/api/auth.py`, `backend/app/services/user_service.py`
+
+**Sårbarhed 2 (LAV): Ingen log-sanitering (defense-in-depth)**
+- Logformatter var uden redaktion — fremtidige programmeringsfejl kunne lække credentials til logfiler.
+- **Fix:** `_SensitiveDataFilter` tilføjet — matcher `password`, `secret`, `token`, `psk`, `api_key` o.l. i key=value- og JSON-format og erstatter værdien med `***`.
+- **Berørt fil:** `backend/app/core/logging.py`
+
+## [FIXED 5.19.1 b0579] 2026-05-30 — Audit: Rollback af decommissioned-handling fejlede med 400
+
+- **Symptom:** "Rollback failed: 400: Rollback understøttes ikke for action=decommissioned" i Audit-visningen.
+- **Root cause:** `_rollback_endpoint_action()` i `audit.py` håndterede kun `created`, `updated` og `deleted` — `decommissioned` landede i den generiske 400-fejl.
+- **Fix:** `decommissioned`-gren tilføjet: genopret endpoint fra `before`-snapshot via `_endpoint_update_from_snapshot` + `update_endpoint` — identisk flow som `updated`-rollback.
+- **Berørt fil:** `backend/app/api/audit.py`
+
+## [FIXED 5.19.0 b0578] 2026-05-30 — Sikkerhedsanalyse: 3 kritiske/høje sårbarheder
+
+**Sårbarhed 1 (KRITISK): `/metrics`-endpoint var uauthentificeret**
+- Alle brugere — herunder uautentificerede — kunne hente Prometheus-metrics med cache-størrelse, circuit breaker-state og request-counts.
+- **Fix:** `Depends(require_any)` tilføjet til `GET /metrics`.
+- **Berørt fil:** `backend/app/api/metrics_api.py`
+
+**Sårbarhed 2 (HØJ): Backup-eksport indeholdt plaintext credentials**
+- `GET /config/backup` inkluderede `ise_password`, `pxgrid_password` og `tacacs_secret` fra `config.json`/`auth_config.json` i ren tekst. Backup-fil var sensitiv som et password-dokument.
+- **Fix:** Sensitive felter erstattes af sentinel `"__REDACTED__"` i eksporten. `credentials_redacted: true` markeres i metadata. Restore springer `__REDACTED__`-felter over og bevarer serverens eksisterende credentials.
+- **Berørt fil:** `backend/app/api/config_backup.py`
+
+**Sårbarhed 3 (HØJ): JWT-token gemt i localStorage — sårbar over for XSS**
+- Token lå i localStorage og kunne stjæles af XSS-scripts (f.eks. via kompromitteret 3.-parts library).
+- **Fix:** Backend sætter nu `httpOnly; SameSite=Strict`-cookie ved login/refresh. Cookie er utilgængelig fra JavaScript. Backend-auth læser fra cookie først, falder tilbage på Bearer-header for API-klienter. Frontend gemmer ikke længere token — kun `expires_at` og `auth_type` (ikke-sensitive metadata) i localStorage til lokal udløbskontrol.
+- **Berørte filer:** `backend/app/core/auth.py`, `backend/app/api/auth.py`, `backend/app/api/deps.py`, `backend/app/schemas/user.py`, `backend/app/services/user_service.py`, `frontend/js/auth.js`, `frontend/js/api.js`, `frontend/js/app.js`, `frontend/js/views/login.js`, `frontend/js/views/settings/section-backup.js`, `frontend/js/views/audit.js`
+
+## [FIXED 5.18.1 b0577] 2026-05-30 — Code-review: 8 fejl fundet og rettet (Decomm-chip + profil-details)
+- **Bug 1 (høj):** `encodeFilterToUrl` testede `!state.hideDecommissioned` i stedet for `state.decommOnly` — Decomm-chip-tilstand blev aldrig skrevet til delt URL. Fix: `if (state.decommOnly)`.
+- **Bug 2 (høj):** `decodeFilterFromUrl` satte ikke `state.decommOnly = true` ved `decomm=1` — shared URL viste alle endpoints i stedet for kun dekommissionerede. Fix: `state.decommOnly = true` (fjernet forkert `hideDecommissioned = false`).
+- **Bug 3 (medium):** `updateClearBtn` inkluderede ikke `state.decommOnly` — "Ryd filtre"-knap viste sig ikke når Decomm var eneste aktive filter. Fix: `|| state.decommOnly` tilføjet.
+- **Bug 4 (medium):** `snapshotFilters`/`applyFilterSnapshot` gemte ikke `decommOnly` — chip-tilstand tabt ved page-reload. Fix: `decommOnly` tilføjet til snapshot-objekt og gendannes i `applyFilterSnapshot`.
+- **Bug 5 (medium):** `loadAndRenderProfileDetails` i `policy.js` skrev til detached DOM-node ved navigation under API-kald. Fix: `if (!document.contains(container)) return` efter `await`.
+- **Bug 6 (lav):** Decomm-filterlogik duplikeret i `browse-table.js` server-sti (dead code — filter-mode håndterer det). Fix: fjernet duplikeret gren, beholder kun `hideDecommissioned`-logikken.
+- **Bug 7 (lav):** VLAN `tagID: 0` undertrykt af falsy-check i `_parse_profile_detail`. Fix: `is not None`-guard i stedet for sandhedstest.
+- **Bug 8 (lav):** `get_by_name` slugte alle exceptions uden logging — ISE 401/500 uadskillelig fra "ikke fundet". Fix: `logger.warning` tilføjet.
+- **Berørte filer:** `frontend/js/views/browse-filter.js`, `frontend/js/views/browse-table.js`, `frontend/js/views/policy.js`, `backend/app/services/authz_profile_service.py`, `backend/app/ise/authz_profiles.py`.
+
 ## [FIXED 5.17.2 b0568] 2026-05-29 — Import: XSS + runtime crash — escapeHtml udefineret
 - **Symptom:** Import-preview og import-resultat crashede med `ReferenceError: escapeHtml is not defined`; rå brugerinput fra CSV-filer (MAC, beskrivelse, custom attributes) indsattes uescapet i innerHTML.
 - **Root cause:** `escapeHtml()` brugt 12 steder i `import.js` men aldrig defineret eller importeret — det korrekte kald var `esc()` som allerede var importeret fra `browse-utils.js`.

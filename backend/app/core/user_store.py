@@ -38,3 +38,11 @@ def find_by_id(users: list[dict[str, Any]], user_id: str) -> dict[str, Any] | No
 def find_by_username(users: list[dict[str, Any]], username: str) -> dict[str, Any] | None:
     lowered = username.lower()
     return next((u for u in users if u.get("username", "").lower() == lowered), None)
+
+
+def increment_token_gen(users: list[dict[str, Any]], user_id: str) -> None:
+    """Increment token_gen in-place — invaliderer alle eksisterende tokens for brugeren."""
+    for u in users:
+        if u.get("id") == user_id:
+            u["token_gen"] = u.get("token_gen", 0) + 1
+            break
