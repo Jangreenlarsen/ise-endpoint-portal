@@ -118,13 +118,15 @@ export async function renderPolicy(container) {
     if (res?.attributes) {
       for (const a of res.attributes) caValues[a.name] = a.values || [];
     }
-    // Portal-managed status attributes have fixed value sets
+    // Portal-managed attributes have fixed value sets
     caValues["HypervisionActive"] = ["Aktiv", "Inaktiv"];
     caValues["HypervisionStatus"] = ["Decommissioned"];
+    caValues["PSK_Mode"]          = ["true", "false"];
   }).catch((err) => {
     console.warn("[policy] Custom attributes unavailable:", err.message);
     caValues["HypervisionActive"] = ["Aktiv", "Inaktiv"];
     caValues["HypervisionStatus"] = ["Decommissioned"];
+    caValues["PSK_Mode"]          = ["true", "false"];
   });
 
   api.listGroups().then((res) => {

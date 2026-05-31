@@ -3,6 +3,11 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.20.1 build 0591] — 2026-05-31 — fix: PSK_Mode dropdown i policy-editor
+
+**Berørte filer:**
+- `frontend/js/views/policy.js` — `caValues["PSK_Mode"] = ["true", "false"]` injiceret sammen med de øvrige faste værdier
+
 ## [5.20.1 build 0590] — 2026-05-31 — fix: HypervisionActive + HypervisionStatus tilgængelig i policy-editor
 
 **Berørte filer:**
