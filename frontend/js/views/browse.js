@@ -139,8 +139,7 @@ export async function renderBrowse(container) {
                            <button type="button" class="mac-chip" data-chip="private" title="${t("browse.mac_private_title")}">${t("browse.mac_private_btn")}</button>
                            <button type="button" class="mac-chip" data-chip="marked" title="${t("browse.mac_marked_title")}">${t("browse.mac_marked_btn")}</button>
                            <button type="button" class="mac-chip" data-chip="decomm" title="${t("browse.decomm_chip_title")}">${t("browse.decomm_chip_btn")}</button>
-                           <button type="button" class="mac-chip chip-aktiv" data-chip="aktiv" title="${t("browse.aktiv_chip_title")}">${t("browse.aktiv_chip_btn")}</button>
-                           <button type="button" class="mac-chip chip-inaktiv" data-chip="inaktiv" title="${t("browse.inaktiv_chip_title")}">${t("browse.inaktiv_chip_btn")}</button>
+                           <button type="button" class="mac-chip chip-active-status" data-chip="active-status" title="${t("browse.active_status_chip_title")}">${t("browse.active_status_chip_default")}</button>
                          </div>`
                       : `<input type="text" class="col-filter-input" data-col="${c.key}" placeholder="…" />`}
                 </th>`).join("")}
@@ -444,7 +443,7 @@ export async function renderBrowse(container) {
     detailCurrentId: null, detailOriginalGroupId: "",
     savedViews: [], activeViewId: null,
     colVis,
-    macPrivate: false, markedOnly: false, decommOnly: false, activeOnly: false, inaktivOnly: false,
+    macPrivate: false, markedOnly: false, decommOnly: false, activeStatusFilter: "",
     pxgridLive: false, pxgridSessionMacs: null, pxgridSessionData: null,
     pxgridLastEventTs: 0, pxgridEndpointEventCount: 0, pxgridLastEndpointEventTs: 0,
   };
@@ -468,16 +467,27 @@ export async function renderBrowse(container) {
   const detailAPI = initDetail(container, state, api, cb);
   initBulk(container, state, api, cb);
 
-  // ── MAC-type filter chips (Privat / Markeret / DeComm / Aktiv / Inaktiv) ──
+  // ── MAC-type filter chips (Privat / Markeret / DeComm / Aktiv|Inaktiv) ────
   container.querySelectorAll(".mac-chip").forEach((chip) => {
     chip.addEventListener("click", () => {
-      const key = chip.dataset.chip === "private"  ? "macPrivate"
-                : chip.dataset.chip === "marked"   ? "markedOnly"
-                : chip.dataset.chip === "aktiv"    ? "activeOnly"
-                : chip.dataset.chip === "inaktiv"  ? "inaktivOnly"
-                : "decommOnly";
-      state[key] = !state[key];
-      chip.classList.toggle("active", state[key]);
+      if (chip.dataset.chip === "active-status") {
+        state.activeStatusFilter =
+          state.activeStatusFilter === ""       ? "Aktiv"   :
+          state.activeStatusFilter === "Aktiv"  ? "Inaktiv" : "";
+        chip.classList.toggle("active",      state.activeStatusFilter !== "");
+        chip.classList.toggle("chip-aktiv",  state.activeStatusFilter === "Aktiv");
+        chip.classList.toggle("chip-inaktiv", state.activeStatusFilter === "Inaktiv");
+        chip.textContent =
+          state.activeStatusFilter === "Aktiv"   ? t("browse.aktiv_chip_btn")   :
+          state.activeStatusFilter === "Inaktiv" ? t("browse.inaktiv_chip_btn") :
+          t("browse.active_status_chip_default");
+      } else {
+        const key = chip.dataset.chip === "private" ? "macPrivate"
+                  : chip.dataset.chip === "marked"  ? "markedOnly"
+                  : "decommOnly";
+        state[key] = !state[key];
+        chip.classList.toggle("active", state[key]);
+      }
       state.currentPage = 1;
       filterAPI.persistFilters?.();
       cb.onFilterChange?.();

@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.19.9 build 0587] — 2026-05-31 — feat: Single toggle-chip + auto-sæt HypervisionActive ved save
+
+**Berørte filer:**
+- `backend/app/services/endpoint_service.py` — `update_endpoint()`: sætter `ACTIVE_ATTR="Aktiv"` automatisk hvis before-snapshot har tomt `active_status` og `ACTIVE_ATTR` ikke eksplicit sættes i dette kald
+- `frontend/js/views/browse.js` — to chips → én `data-chip="active-status"` der cycler: ingen filter → Aktiv (grøn) → Inaktiv (amber) → ingen; state `activeStatusFilter: ""`
+- `frontend/js/views/browse-filter.js` — `activeOnly`/`inaktivOnly` erstattet med `activeStatusFilter` overalt (filter, persist, snapshot, clear, URL encode/decode)
+- `frontend/js/i18n.js` — ny default-label nøgle; titler opdateret
+
 ## [5.19.8 build 0586] — 2026-05-31 — feat: Aktiv/Inaktiv filter-chips i Browse + DeComm rename
 
 **Berørte filer:**

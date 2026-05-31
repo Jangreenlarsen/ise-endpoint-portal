@@ -4,6 +4,16 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.19.9] — 2026-05-31 — Feature: Single toggle-chip + auto-sæt HypervisionActive
+
+> **Build:** 0587
+
+**Toggle-chip:** De to separate "Aktiv"/"Inaktiv"-chips er erstattet af én chip under MAC-kolonnen der cycler ved klik: ingen filter → **Aktiv** (grøn) → **Inaktiv** (amber) → ingen. Chip-teksten skifter med tilstanden.
+
+**Auto-sæt ved save:** Når et portal-managed endpoint gemmes og `HypervisionActive` ikke er sat i forvejen, sættes den automatisk til `Aktiv`. Endpoints der allerede har `Aktiv` eller `Inaktiv` berøres ikke.
+
+---
+
 ## [5.19.8] — 2026-05-31 — Feature: Aktiv/Inaktiv filter-chips + DeComm rename
 
 > **Build:** 0586

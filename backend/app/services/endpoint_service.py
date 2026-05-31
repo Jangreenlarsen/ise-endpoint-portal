@@ -730,6 +730,10 @@ class EndpointService:
                 "audit: could not snapshot endpoint %s before update: %s",
                 endpoint_id, exc,
             )
+        # Auto-sæt HypervisionActive=Aktiv hvis endpointet er portal-managed
+        # og active_status ikke allerede er sat (Aktiv eller Inaktiv).
+        if ACTIVE_ATTR not in ca and before and not before.get("active_status"):
+            ca[ACTIVE_ATTR] = "Aktiv"
         await self.endpoints.update(
             endpoint_id,
             description=update.description,

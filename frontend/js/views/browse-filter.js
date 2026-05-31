@@ -65,8 +65,7 @@ export function initFilter(container, state, api, cb) {
   function updateClearBtn() {
     const anyActive = state.portalOnly
       || state.decommOnly
-      || state.activeOnly
-      || state.inaktivOnly
+      || !!state.activeStatusFilter
       || !state.hideDecommissioned
       || Array.from(filterRow.querySelectorAll(".col-filter-input")).some((i) => i.value.trim())
       || (authStatusSelect && authStatusSelect.value !== "all")
@@ -109,7 +108,7 @@ export function initFilter(container, state, api, cb) {
       || !!state.fullTextQ
       || firstSeenAnySet()
       || state.macPrivate || state.markedOnly || state.decommOnly
-      || state.activeOnly || state.inaktivOnly;
+      || !!state.activeStatusFilter;
   }
 
   function anyFilterActive() {
@@ -120,8 +119,7 @@ export function initFilter(container, state, api, cb) {
     if (state.portalOnly) rows = rows.filter((r) => r.hypervision === "true");
     if (state.decommOnly) rows = rows.filter((r) => r.status === "Decommissioned");
     else if (state.hideDecommissioned) rows = rows.filter((r) => r.status !== "Decommissioned");
-    if (state.activeOnly)  rows = rows.filter((r) => r.active_status === "Aktiv");
-    if (state.inaktivOnly) rows = rows.filter((r) => r.active_status === "Inaktiv");
+    if (state.activeStatusFilter) rows = rows.filter((r) => r.active_status === state.activeStatusFilter);
     const filters = getColumnFilters();
     if (filters.length) rows = rows.filter((r) => filters.every((f) => f.re.test(f.field(r) || "")));
     const authFilter = authStatusSelect ? authStatusSelect.value : "all";
@@ -293,8 +291,7 @@ export function initFilter(container, state, api, cb) {
     return {
       portalOnly: state.portalOnly,
       decommOnly: state.decommOnly,
-      activeOnly: state.activeOnly,
-      inaktivOnly: state.inaktivOnly,
+      activeStatusFilter: state.activeStatusFilter,
       cols,
       authStatus: authStatusSelect ? authStatusSelect.value : "all",
       colVis: { ...state.colVis },
@@ -321,13 +318,18 @@ export function initFilter(container, state, api, cb) {
       state.decommOnly = true;
       container.querySelector('.mac-chip[data-chip="decomm"]')?.classList.add("active");
     }
-    if (s.activeOnly) {
-      state.activeOnly = true;
-      container.querySelector('.mac-chip[data-chip="aktiv"]')?.classList.add("active");
-    }
-    if (s.inaktivOnly) {
-      state.inaktivOnly = true;
-      container.querySelector('.mac-chip[data-chip="inaktiv"]')?.classList.add("active");
+    if (s.activeStatusFilter) {
+      state.activeStatusFilter = s.activeStatusFilter;
+      const chip = container.querySelector('.mac-chip[data-chip="active-status"]');
+      if (chip) {
+        chip.classList.add("active");
+        chip.classList.toggle("chip-aktiv",  s.activeStatusFilter === "Aktiv");
+        chip.classList.toggle("chip-inaktiv", s.activeStatusFilter === "Inaktiv");
+        chip.textContent =
+          s.activeStatusFilter === "Aktiv"   ? t("browse.aktiv_chip_btn")   :
+          s.activeStatusFilter === "Inaktiv" ? t("browse.inaktiv_chip_btn") :
+          t("browse.active_status_chip_default");
+      }
     }
     if (s.authStatus && authStatusSelect) authStatusSelect.value = s.authStatus;
     if (Array.isArray(s.cols)) {
@@ -414,12 +416,14 @@ export function initFilter(container, state, api, cb) {
     state.fullTextQ = "";
     state.hideDecommissioned = true;
     state.decommOnly = false;
-    state.activeOnly = false;
-    state.inaktivOnly = false;
+    state.activeStatusFilter = "";
     if (globalQInput) globalQInput.value = "";
     container.querySelector('.mac-chip[data-chip="decomm"]')?.classList.remove("active");
-    container.querySelector('.mac-chip[data-chip="aktiv"]')?.classList.remove("active");
-    container.querySelector('.mac-chip[data-chip="inaktiv"]')?.classList.remove("active");
+    const asChip = container.querySelector('.mac-chip[data-chip="active-status"]');
+    if (asChip) {
+      asChip.classList.remove("active", "chip-aktiv", "chip-inaktiv");
+      asChip.textContent = t("browse.active_status_chip_default");
+    }
     firstSeenClearAll();
     state.allRowsCache = null;
     persistFilters();
@@ -439,10 +443,9 @@ export function initFilter(container, state, api, cb) {
   // ── URL filter sharing (Feature 7) ───────────────────────────────────────
   function encodeFilterToUrl() {
     const params = new URLSearchParams();
-    if (state.portalOnly)  params.set("p", "1");
-    if (state.decommOnly)  params.set("decomm", "1");
-    if (state.activeOnly)  params.set("aktiv", "1");
-    if (state.inaktivOnly) params.set("inaktiv", "1");
+    if (state.portalOnly)        params.set("p", "1");
+    if (state.decommOnly)        params.set("decomm", "1");
+    if (state.activeStatusFilter) params.set("active_status", state.activeStatusFilter);
     if (state.fullTextQ) params.set("q", state.fullTextQ);
     if (authStatusSelect && authStatusSelect.value !== "all") {
       params.set("auth", authStatusSelect.value);
@@ -470,13 +473,16 @@ export function initFilter(container, state, api, cb) {
       state.decommOnly = true;
       container.querySelector('.mac-chip[data-chip="decomm"]')?.classList.add("active");
     }
-    if (params.get("aktiv") === "1") {
-      state.activeOnly = true;
-      container.querySelector('.mac-chip[data-chip="aktiv"]')?.classList.add("active");
-    }
-    if (params.get("inaktiv") === "1") {
-      state.inaktivOnly = true;
-      container.querySelector('.mac-chip[data-chip="inaktiv"]')?.classList.add("active");
+    const asParam = params.get("active_status");
+    if (asParam === "Aktiv" || asParam === "Inaktiv") {
+      state.activeStatusFilter = asParam;
+      const chip = container.querySelector('.mac-chip[data-chip="active-status"]');
+      if (chip) {
+        chip.classList.add("active");
+        chip.classList.toggle("chip-aktiv",  asParam === "Aktiv");
+        chip.classList.toggle("chip-inaktiv", asParam === "Inaktiv");
+        chip.textContent = asParam === "Aktiv" ? t("browse.aktiv_chip_btn") : t("browse.inaktiv_chip_btn");
+      }
     }
     const q = params.get("q");
     if (q) {
