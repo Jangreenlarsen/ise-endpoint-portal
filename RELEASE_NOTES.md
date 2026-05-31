@@ -32,30 +32,45 @@ To nye knapper i edit-modal på linje med Dekommissionér/Genaktivér: **"Sæt A
 
 ### Endpoint-livscyklus: CA-adfærd
 
-Følgende tabel viser hvilke ISE custom attributes der sættes ved hver handling i portalen:
+Følgende tabel viser hvilke ISE custom attributes der sættes ved hver handling i portalen. `uændret` betyder at attributten ikke indgår i kaldet og bevares som den er i ISE.
 
 | Handling | `HypervisionStatus` | `HypervisionActive` | `AuthzVlan` | `AuthzACL` |
 |---|---|---|---|---|
+| **Gem (portal save)** | uændret | `Aktiv` ¹ | uændret | uændret |
 | **Dekommissionér** | `Decommissioned` | `Inaktiv` | `999` | `deny_all_ipv4_traffic` |
 | **Genaktivér** | *(cleared)* | `Aktiv` | uændret | uændret |
 | **Sæt Aktiv** *(knap)* | uændret | `Aktiv` | uændret | uændret |
 | **Sæt Inaktiv** *(knap)* | uændret | `Inaktiv` | uændret | uændret |
 
+¹ *Kun hvis `HypervisionActive` ikke allerede er sat til `Aktiv` eller `Inaktiv`. Eksisterendeværdi bevares.*
+
 **Forklaring:**
 
-- **Dekommissionér** er en samlet netværksnægtelse: status sættes til `Decommissioned`, aktivitetsstatus til `Inaktiv`, og RADIUS-attributterne `AuthzVlan=999` og `AuthzACL=deny_all_ipv4_traffic` sikrer at endpointet øjeblikkeligt placeres i et isoleret VLAN og nægtes al IPv4-trafik — uden at kræve ændringer i ISE policy.
+- **Gem (portal save):** Når et portal-managed endpoint gemmes via edit-modal, sættes `HypervisionActive="Aktiv"` automatisk første gang — så alle eksisterende endpoints får status sat ved næste redigering. Endpoints med en eksisterende `Aktiv` eller `Inaktiv` status berøres ikke.
 
-- **Genaktivér** ophæver dekommissioneringen: `HypervisionStatus` ryddes og `HypervisionActive` sættes til `Aktiv`. `AuthzVlan`/`AuthzACL` berøres bevidst ikke — admins styrer selv om RADIUS-restriktionerne skal fjernes manuelt via edit-modal.
+- **Dekommissionér** er en samlet netværksnægtelse: `HypervisionStatus=Decommissioned` og `HypervisionActive=Inaktiv` sættes, og RADIUS-attributterne `AuthzVlan=999` og `AuthzACL=deny_all_ipv4_traffic` sikrer at endpointet øjeblikkeligt placeres i et isoleret VLAN og nægtes al IPv4-trafik — uden at kræve ændringer i ISE policy.
 
-- **Sæt Aktiv / Sæt Inaktiv** er manuelle statusknapper til løbende vedligehold uafhængigt af dekommissionsflowet. `HypervisionActive` opdateres alene; alle andre CA-felter bevares uændret.
+- **Genaktivér** ophæver dekommissioneringen: `HypervisionStatus` ryddes og `HypervisionActive` sættes til `Aktiv`. `AuthzVlan`/`AuthzACL` berøres bevidst ikke — admin styrer selv om RADIUS-restriktionerne skal fjernes manuelt via edit-modal.
+
+- **Sæt Aktiv / Sæt Inaktiv** er manuelle statusknapper til løbende vedligehold uafhængigt af dekommissionsflowet. Kun `HypervisionActive` opdateres; alle andre CA-felter bevares uændret.
 
 ### Knap-synlighed i edit-modal (editor-rolle kræves)
 
 | Endpointets tilstand | Synlige knapper |
 |---|---|
-| Aktivt endpoint (`HypervisionActive` = Aktiv eller tom) | Dekommissionér · Sæt Inaktiv |
-| Inaktivt endpoint (`HypervisionActive` = Inaktiv) | Dekommissionér · Sæt Aktiv |
-| Dekommissioneret (`HypervisionStatus` = Decommissioned) | Genaktivér |
+| Aktivt endpoint (`HypervisionActive` = `Aktiv` eller tom) | Dekommissionér · Sæt Inaktiv |
+| Inaktivt endpoint (`HypervisionActive` = `Inaktiv`) | Dekommissionér · Sæt Aktiv |
+| Dekommissioneret (`HypervisionStatus` = `Decommissioned`) | Genaktivér |
+
+### Filter-chip i Browse (MAC-kolonne)
+
+Én chip cycler ved klik gennem tre tilstande:
+
+| Chip-tilstand | Farve | Effekt |
+|---|---|---|
+| *(ingen)* | grå | Viser alle endpoints (dekomm skjules stadig medmindre DeComm-chip er aktiv) |
+| **Aktiv** | grøn | Viser kun endpoints med `HypervisionActive=Aktiv` |
+| **Inaktiv** | amber | Viser kun endpoints med `HypervisionActive=Inaktiv` |
 
 ---
 
