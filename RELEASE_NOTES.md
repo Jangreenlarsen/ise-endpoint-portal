@@ -8,9 +8,34 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 > **Build:** 0585
 
-To nye knapper i edit-modal på linje med Dekommissionér/Genaktivér: **"Sæt Aktiv"** (grøn) og **"Sæt Inaktiv"** (amber). Kun den relevante knap vises: hvis endpointet er Inaktiv → "Sæt Aktiv", hvis Aktiv → "Sæt Inaktiv". Dekommissionerede endpoints viser ingen af knapperne. Kald til `POST /endpoints/{id}/active-status` opdaterer kun `HypervisionActive` — alle andre CA-felter bevares.
+To nye knapper i edit-modal på linje med Dekommissionér/Genaktivér: **"Sæt Aktiv"** (grøn) og **"Sæt Inaktiv"** (amber). Kun den relevante knap vises — se logik nedenfor. Kald til `POST /endpoints/{id}/active-status` opdaterer kun `HypervisionActive` — alle andre CA-felter bevares.
 
-**Rettelser til automatik:** Dekommissionering sætter nu automatisk `HypervisionActive="Inaktiv"`. Genaktivering sætter `HypervisionActive="Aktiv"`.
+### Endpoint-livscyklus: CA-adfærd
+
+Følgende tabel viser hvilke ISE custom attributes der sættes ved hver handling i portalen:
+
+| Handling | `HypervisionStatus` | `HypervisionActive` | `AuthzVlan` | `AuthzACL` |
+|---|---|---|---|---|
+| **Dekommissionér** | `Decommissioned` | `Inaktiv` | `999` | `deny_all_ipv4_traffic` |
+| **Genaktivér** | *(cleared)* | `Aktiv` | uændret | uændret |
+| **Sæt Aktiv** *(knap)* | uændret | `Aktiv` | uændret | uændret |
+| **Sæt Inaktiv** *(knap)* | uændret | `Inaktiv` | uændret | uændret |
+
+**Forklaring:**
+
+- **Dekommissionér** er en samlet netværksnægtelse: status sættes til `Decommissioned`, aktivitetsstatus til `Inaktiv`, og RADIUS-attributterne `AuthzVlan=999` og `AuthzACL=deny_all_ipv4_traffic` sikrer at endpointet øjeblikkeligt placeres i et isoleret VLAN og nægtes al IPv4-trafik — uden at kræve ændringer i ISE policy.
+
+- **Genaktivér** ophæver dekommissioneringen: `HypervisionStatus` ryddes og `HypervisionActive` sættes til `Aktiv`. `AuthzVlan`/`AuthzACL` berøres bevidst ikke — admins styrer selv om RADIUS-restriktionerne skal fjernes manuelt via edit-modal.
+
+- **Sæt Aktiv / Sæt Inaktiv** er manuelle statusknapper til løbende vedligehold uafhængigt af dekommissionsflowet. `HypervisionActive` opdateres alene; alle andre CA-felter bevares uændret.
+
+### Knap-synlighed i edit-modal (editor-rolle kræves)
+
+| Endpointets tilstand | Synlige knapper |
+|---|---|
+| Aktivt endpoint (`HypervisionActive` = Aktiv eller tom) | Dekommissionér · Sæt Inaktiv |
+| Inaktivt endpoint (`HypervisionActive` = Inaktiv) | Dekommissionér · Sæt Aktiv |
+| Dekommissioneret (`HypervisionStatus` = Decommissioned) | Genaktivér |
 
 ---
 
@@ -20,7 +45,7 @@ To nye knapper i edit-modal på linje med Dekommissionér/Genaktivér: **"Sæt A
 
 **Dekommissionering sætter nu automatisk** `AuthzVlan=999` og `AuthzACL=deny_all_ipv4_traffic` — endpointet nægtes netværksadgang straks uden manuel ISE-policy.
 
-**Ny `HypervisionActive`-attribut** (CA) viser `Aktiv` / `Inaktiv` på alle endpoints. Ved genaktivering fra dekommissioneret tilstand sættes den til `Inaktiv` — endpointet er genoprettet men har endnu ikke autentificeret. Badge vises i MAC-cellen (⊘ = Inaktiv, ✓ = Aktiv) og i detail-modal. Audit-rollback gendanner også `active_status` korrekt.
+**Ny `HypervisionActive`-attribut** (CA) viser `Aktiv` / `Inaktiv` på alle endpoints. Badge vises i MAC-cellen (⊘ = Inaktiv, ✓ = Aktiv) og i detail-modal. Audit-rollback gendanner også `active_status` korrekt.
 
 ---
 
