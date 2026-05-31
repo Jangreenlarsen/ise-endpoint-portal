@@ -918,6 +918,49 @@ class EndpointService:
         results = list(await asyncio.gather(*(_one(i) for i in req.endpoint_ids[:200])))
         return {"results": results, "ok_count": sum(1 for r in results if r["ok"])}
 
+    async def undecommission_endpoint(self, endpoint_id: str) -> None:
+        """Ryd HypervisionStatus på et dekommissioneret endpoint (genaktivering).
+
+        Sætter STATUS_ATTR til tom streng (ISE modtager eksplicit clearing).
+        HIDDEN_ATTR beholdes 'true' — endpointet er stadig portal-managed.
+        Cachen invalideres og handlingen auditeres.
+        """
+        ca: dict[str, Any] = {
+            STATUS_ATTR: "",
+            HIDDEN_ATTR: "true",
+        }
+        await self._ensure_ca_definitions()
+        before: dict[str, Any] | None = None
+        try:
+            before = (await self.get_endpoint(endpoint_id, is_psk_editor=True)).model_dump()
+        except IseApiError as exc:
+            logger.warning("audit: could not snapshot %s before undecommission: %s", endpoint_id, exc)
+        await self.endpoints.update(endpoint_id, custom_attributes=ca)
+        get_cache().invalidate_detail(endpoint_id)
+        await audit_store.record(
+            "undecommissioned",
+            "endpoint",
+            endpoint_id,
+            before=before,
+            after={"status": ""},
+        )
+        logger.info("undecommissioned endpoint id=%s", endpoint_id)
+
+    async def bulk_undecommission(self, req: BulkDecommissionRequest) -> dict[str, Any]:
+        """Genaktiver op til 200 endpoints parallelt (Semaphore=3)."""
+        sem = asyncio.Semaphore(3)
+
+        async def _one(ep_id: str) -> dict[str, Any]:
+            async with sem:
+                try:
+                    await self.undecommission_endpoint(ep_id)
+                    return {"id": ep_id, "ok": True}
+                except Exception as exc:  # noqa: BLE001
+                    return {"id": ep_id, "ok": False, "error": str(exc)}
+
+        results = list(await asyncio.gather(*(_one(i) for i in req.endpoint_ids[:200])))
+        return {"results": results, "ok_count": sum(1 for r in results if r["ok"])}
+
     # ------------------------------------------------------------------ #
     # Bulk template-apply                                                  #
     # ------------------------------------------------------------------ #

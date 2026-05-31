@@ -218,6 +218,28 @@ async def bulk_decommission(
     return await service.bulk_decommission(body)
 
 
+@router.post("/{endpoint_id}/undecommission", dependencies=[Depends(require_editor)])
+async def undecommission_endpoint(
+    endpoint_id: str,
+    service: EndpointService = Depends(get_endpoint_service),
+) -> dict:
+    """Ryd HypervisionStatus på et dekommissioneret endpoint (genaktivering)."""
+    try:
+        await service.undecommission_endpoint(endpoint_id)
+    except IseApiError as exc:
+        raise _ise_http_error(exc) from exc
+    return {"status": "active", "id": endpoint_id}
+
+
+@router.post("/bulk-undecommission", dependencies=[Depends(require_editor)])
+async def bulk_undecommission(
+    body: BulkDecommissionRequest,
+    service: EndpointService = Depends(get_endpoint_service),
+) -> dict:
+    """Genaktiver en liste af dekommissionerede endpoints parallelt."""
+    return await service.bulk_undecommission(body)
+
+
 # ------------------------------------------------------------------ #
 # Bulk template-apply                                                 #
 # ------------------------------------------------------------------ #

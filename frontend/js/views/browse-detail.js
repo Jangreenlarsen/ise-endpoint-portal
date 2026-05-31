@@ -130,9 +130,11 @@ export function initDetail(container, state, api, cb) {
           : `<span class="hint">—</span>`;
       }
       const decommBtn = container.querySelector("#d-decommission");
-      if (decommBtn) {
+      const undecommBtn = container.querySelector("#d-undecommission");
+      if (decommBtn || undecommBtn) {
         const isDecomm = d.status === "Decommissioned";
-        decommBtn.style.display = auth.isEditor() && !isDecomm ? "" : "none";
+        if (decommBtn) decommBtn.style.display = auth.isEditor() && !isDecomm ? "" : "none";
+        if (undecommBtn) undecommBtn.style.display = auth.isEditor() && isDecomm ? "" : "none";
       }
 
       detailMsg.innerHTML = "";
@@ -940,6 +942,37 @@ export function initDetail(container, state, api, cb) {
       }
     } catch (err) {
       detailMsg.innerHTML = `<div class="alert error">${t("detail.decomm_err").replace("{msg}", esc(err.message))}</div>`;
+    } finally { btn.disabled = false; }
+  });
+
+  container.querySelector("#d-undecommission")?.addEventListener("click", async () => {
+    if (!state.detailCurrentId) return;
+    const mac = container.querySelector("#d-mac").textContent || "";
+    if (!confirm(t("detail.confirm_undecomm").replace("{mac}", mac))) return;
+    const btn = container.querySelector("#d-undecommission");
+    btn.disabled = true;
+    detailMsg.innerHTML = `<div class="alert info">${t("detail.undecomm_progress")}</div>`;
+    try {
+      await api.undecommissionEndpoint(state.detailCurrentId);
+      detailMsg.innerHTML = `<div class="alert success">${t("detail.undecomm_done")}</div>`;
+      btn.style.display = "none";
+      const decommBtn = container.querySelector("#d-decommission");
+      if (decommBtn) decommBtn.style.display = "";
+      const statusEl = container.querySelector("#d-status");
+      if (statusEl) statusEl.innerHTML = `<span class="hint">—</span>`;
+      if (state.allRows) {
+        state.allRows = state.allRows.map((r) =>
+          r.id === state.detailCurrentId ? { ...r, status: "" } : r,
+        );
+        if (state.allRowsCache) {
+          state.allRowsCache = state.allRowsCache.map((r) =>
+            r.id === state.detailCurrentId ? { ...r, status: "" } : r,
+          );
+        }
+        cb.applyFilter?.();
+      }
+    } catch (err) {
+      detailMsg.innerHTML = `<div class="alert error">${t("detail.undecomm_err").replace("{msg}", esc(err.message))}</div>`;
     } finally { btn.disabled = false; }
   });
 

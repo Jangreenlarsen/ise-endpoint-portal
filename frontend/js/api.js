@@ -420,12 +420,21 @@ export const api = {
   // Trend-analyse (5.8.0)
   getTrends: (period = "30d") => request(`/trends?period=${encodeURIComponent(period)}`),
 
-  // Decommission (5.17.0)
+  // Decommission / Undecommission (5.17.0 / 5.19.5)
   decommissionEndpoint: (id) =>
     request(`/endpoints/${encodeURIComponent(id)}/decommission`, { method: "POST" }),
 
   bulkDecommission: (endpoint_ids) =>
     request("/endpoints/bulk-decommission", {
+      method: "POST",
+      body: JSON.stringify({ endpoint_ids }),
+    }),
+
+  undecommissionEndpoint: (id) =>
+    request(`/endpoints/${encodeURIComponent(id)}/undecommission`, { method: "POST" }),
+
+  bulkUndecommission: (endpoint_ids) =>
+    request("/endpoints/bulk-undecommission", {
       method: "POST",
       body: JSON.stringify({ endpoint_ids }),
     }),

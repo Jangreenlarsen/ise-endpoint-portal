@@ -3,6 +3,19 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.19.5 build 0583] — 2026-05-31 — feat: Undecommission endpoint (enkelt + bulk)
+
+**Berørte filer:**
+- `backend/app/services/endpoint_service.py` — `undecommission_endpoint()` + `bulk_undecommission()`: sætter `HypervisionStatus=""`, auditerer som `"undecommissioned"`
+- `backend/app/api/endpoints_ops.py` — `POST /{id}/undecommission` + `POST /bulk-undecommission`
+- `frontend/js/api.js` — `undecommissionEndpoint()` + `bulkUndecommission()`
+- `frontend/js/views/browse.js` — `#d-undecommission`-knap i detail-modal; `#bulk-undecomm-btn` i toolbar
+- `frontend/js/views/browse-detail.js` — synlighedsstyring (mutex med decomm-knap); click-handler
+- `frontend/js/views/browse-bulk.js` — bulk undecommission click-handler; opdaterer `state.allRows`
+- `frontend/js/views/browse-table.js` — `#bulk-undecomm-btn` disabled/enabled ved selektion
+- `frontend/js/i18n.js` — 12 nye i18n-nøgler (da + en) for undecommission-flow
+- `frontend/css/styles.css` — `button.warning` amber-stil
+
 ## [5.19.4 build 0582] — 2026-05-31 — fix: Audit rollback nulstillede ikke HypervisionStatus ved decommissioned-rollback
 
 **Berørte filer:**

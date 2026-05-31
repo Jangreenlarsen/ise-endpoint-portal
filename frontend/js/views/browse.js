@@ -84,6 +84,8 @@ export async function renderBrowse(container) {
           <button id="bulk-del-btn" class="danger small" disabled>${t("browse.btn_bulk_delete")}</button>
           <button id="bulk-decomm-btn" class="danger small" disabled
                   title="${t("browse.decomm_btn_title")}">${t("browse.btn_bulk_decomm")}</button>
+          <button id="bulk-undecomm-btn" class="warning small" disabled
+                  title="${t("browse.undecomm_btn_title")}">${t("browse.btn_bulk_undecomm")}</button>
           <button id="bulk-sim-btn" class="secondary small" disabled
                   title="${t("browse.sim_btn_title")}">${t("browse.sim_btn")}</button>
         </div>
@@ -264,6 +266,8 @@ export async function renderBrowse(container) {
                   title="CoA Disconnect">${t("detail.btn_disconnect")}</button>
           <button id="d-decommission" class="danger" style="display:none"
                   title="${t("detail.decomm_title")}">${t("detail.btn_decommission")}</button>
+          <button id="d-undecommission" class="warning" style="display:none"
+                  title="${t("detail.undecomm_title")}">${t("detail.btn_undecommission")}</button>
           <button id="d-close" class="secondary">${t("detail.btn_close")}</button>
         </div>
       </div>

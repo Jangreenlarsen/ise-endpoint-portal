@@ -228,6 +228,8 @@ button.secondary { background: #e5e7eb; color: #1a2330; }
 button.secondary:hover:not(:disabled) { background: #d1d5db; }
 button.danger { background: #b91c1c; }
 button.danger:hover:not(:disabled) { background: #991b1b; }
+button.warning { background: #b45309; }
+button.warning:hover:not(:disabled) { background: #92400e; }
 
 /* Tables */
 table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }

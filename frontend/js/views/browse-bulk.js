@@ -18,7 +18,8 @@ export function initBulk(container, state, api, cb) {
   const bulkSimOverlay = container.querySelector("#bulk-sim-overlay");
   const bulkTplBtn     = container.querySelector("#bulk-tpl-btn");
   const tplPickOverlay = container.querySelector("#tpl-pick-overlay");
-  const bulkDecommBtn  = container.querySelector("#bulk-decomm-btn");
+  const bulkDecommBtn    = container.querySelector("#bulk-decomm-btn");
+  const bulkUndecommBtn  = container.querySelector("#bulk-undecomm-btn");
 
   // ── Bulk-edit modal ──────────────────────────────────────────────────────
   bulkEditBtn.addEventListener("click", () => {
@@ -453,7 +454,6 @@ export function initBulk(container, state, api, cb) {
         const fail = (res?.results || []).filter((r) => !r.ok).length;
         const cls  = fail ? (ok ? "info" : "error") : "success";
         msg.innerHTML = `<div class="alert ${cls}">${t("bulk.decomm_result").replace("{ok}", ok).replace("{fail}", fail)}</div>`;
-        // Fjern dekommissionerede fra allRows så de forsvinder fra browseren
         const okIds = new Set((res?.results || []).filter((r) => r.ok).map((r) => r.id));
         if (okIds.size) {
           state.allRows = state.allRows.map((r) => okIds.has(r.id) ? { ...r, status: "Decommissioned" } : r);
@@ -466,6 +466,36 @@ export function initBulk(container, state, api, cb) {
         msg.innerHTML = `<div class="alert error">${t("bulk.decomm_err").replace("{msg}", esc(err.message))}</div>`;
       } finally {
         bulkDecommBtn.disabled = false;
+      }
+    });
+  }
+
+  // ── Bulk undecommission ───────────────────────────────────────────────────
+  if (bulkUndecommBtn) {
+    bulkUndecommBtn.addEventListener("click", async () => {
+      const ids = cb.getSelectedIds();
+      if (!ids.length) return;
+      if (!confirm(t("bulk.confirm_undecomm").replace("{n}", ids.length))) return;
+      bulkUndecommBtn.disabled = true;
+      msg.innerHTML = `<div class="alert info">${t("bulk.undecomm_progress").replace("{n}", ids.length)}</div>`;
+      try {
+        const res = await api.bulkUndecommission(ids);
+        const ok   = res?.ok_count ?? 0;
+        const fail = (res?.results || []).filter((r) => !r.ok).length;
+        const cls  = fail ? (ok ? "info" : "error") : "success";
+        msg.innerHTML = `<div class="alert ${cls}">${t("bulk.undecomm_result").replace("{ok}", ok).replace("{fail}", fail)}</div>`;
+        const okIds = new Set((res?.results || []).filter((r) => r.ok).map((r) => r.id));
+        if (okIds.size) {
+          state.allRows = state.allRows.map((r) => okIds.has(r.id) ? { ...r, status: "" } : r);
+          if (state.allRowsCache) {
+            state.allRowsCache = state.allRowsCache.map((r) => okIds.has(r.id) ? { ...r, status: "" } : r);
+          }
+          cb.applyFilter?.();
+        }
+      } catch (err) {
+        msg.innerHTML = `<div class="alert error">${t("bulk.undecomm_err").replace("{msg}", esc(err.message))}</div>`;
+      } finally {
+        bulkUndecommBtn.disabled = false;
       }
     });
   }

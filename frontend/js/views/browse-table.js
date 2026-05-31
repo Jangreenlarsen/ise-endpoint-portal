@@ -484,10 +484,12 @@ export function initTable(container, state, api, cb) {
     bulkEditBtn.disabled    = !hasSelection;
     if (bulkCoaBtn)  bulkCoaBtn.disabled  = !hasSelection;
     if (bulkSimBtn)  bulkSimBtn.disabled  = !hasSelection;
-    const bulkTplBtn    = container.querySelector("#bulk-tpl-btn");
-    const bulkDecommBtn = container.querySelector("#bulk-decomm-btn");
-    if (bulkTplBtn)    bulkTplBtn.disabled    = !hasSelection;
-    if (bulkDecommBtn) bulkDecommBtn.disabled = !hasSelection;
+    const bulkTplBtn      = container.querySelector("#bulk-tpl-btn");
+    const bulkDecommBtn   = container.querySelector("#bulk-decomm-btn");
+    const bulkUndecommBtn = container.querySelector("#bulk-undecomm-btn");
+    if (bulkTplBtn)      bulkTplBtn.disabled      = !hasSelection;
+    if (bulkDecommBtn)   bulkDecommBtn.disabled   = !hasSelection;
+    if (bulkUndecommBtn) bulkUndecommBtn.disabled = !hasSelection;
     selectionCount.textContent = hasSelection ? t("browse.selection_n").replace("{n}", selected.length) : "";
     selectAllCb.indeterminate  = selected.length > 0 && selected.length < tbody.querySelectorAll(".row-select").length;
   }

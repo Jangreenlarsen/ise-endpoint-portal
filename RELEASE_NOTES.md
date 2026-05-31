@@ -4,6 +4,14 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.19.5] — 2026-05-31 — Feature: Genaktivér dekommissionerede endpoints
+
+> **Build:** 0583
+
+Nye `POST /endpoints/{id}/undecommission` og `POST /endpoints/bulk-undecommission` API-endpoints rydder `HypervisionStatus` i ISE og markerer endpointet aktivt igen. I Browse-view vises en amber "Genaktivér"-knap i detail-modal (kun når endpointet er dekommissioneret) og en bulk-knap i toolbar. Knapperne er mutex med de røde Decommission-knapper.
+
+---
+
 ## [5.19.4] — 2026-05-31 — Bugfix: Audit rollback nulstillede ikke HypervisionStatus
 
 > **Build:** 0582
