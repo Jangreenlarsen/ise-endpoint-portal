@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.20.1 build 0590] — 2026-05-31 — fix: HypervisionActive + HypervisionStatus tilgængelig i policy-editor
+
+**Berørte filer:**
+- `frontend/js/views/policy-condition-builder.js` — `HypervisionActive` og `HypervisionStatus` tilføjet til EndPoints-dictionaryet i `DICTIONARIES`
+- `frontend/js/views/policy.js` — faste værdier `["Aktiv","Inaktiv"]` og `["Decommissioned"]` injiceres i `caValues` så value-widgetten viser dropdown i stedet for fritekst
+
 ## [5.20.0 build 0589] — 2026-05-31 — feat: Decommission AuthzVlan/ACL som dropdowns
 
 **Berørte filer:**
