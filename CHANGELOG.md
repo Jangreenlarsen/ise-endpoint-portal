@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.19.8 build 0586] — 2026-05-31 — feat: Aktiv/Inaktiv filter-chips i Browse + DeComm rename
+
+**Berørte filer:**
+- `frontend/js/i18n.js` — `detail.status_decomm` og `browse.decomm_chip_btn` omdøbt til "DeComm"; 6 nye nøgler for Aktiv/Inaktiv chips
+- `frontend/js/views/browse.js` — 2 nye chip-knapper (`data-chip="aktiv"`, `data-chip="inaktiv"`); state init `activeOnly/inaktivOnly`; chip-handler udvidet
+- `frontend/js/views/browse-filter.js` — `applyFiltersToRows()`, `updateClearBtn()`, `needsFilterMode()`, `snapshotFilters()`, `applyFilterSnapshot()`, clear-all og URL encode/decode — alle udvidet med `activeOnly`/`inaktivOnly`
+- `frontend/css/styles.css` — `chip-aktiv.active` grøn; `chip-inaktiv.active` amber
+
 ## [5.19.7 build 0585] — 2026-05-31 — feat: Sæt Aktiv/Inaktiv-knapper i edit-modal + decommission sætter Inaktiv
 
 **Berørte filer:**

@@ -4,6 +4,16 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.19.8] — 2026-05-31 — Feature: Aktiv/Inaktiv filter-chips + DeComm rename
+
+> **Build:** 0586
+
+To nye filter-chips under MAC-kolonnen i Browse: **Aktiv** (grøn når aktiv) og **Inaktiv** (amber når aktiv) — filtrerer på `HypervisionActive`-attributten. Begge chips kan kombineres med de eksisterende filter-chips og gemmes/gendannes i saved views og delte URL-links.
+
+Alle steder "Decommissioned" eller "Decomm" vises som badge/chip-tekst er omdøbt til **"DeComm"** for konsistens.
+
+---
+
 ## [5.19.7] — 2026-05-31 — Feature: Sæt Aktiv/Inaktiv direkte fra edit-modal
 
 > **Build:** 0585

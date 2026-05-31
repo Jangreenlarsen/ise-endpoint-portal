@@ -139,6 +139,8 @@ export async function renderBrowse(container) {
                            <button type="button" class="mac-chip" data-chip="private" title="${t("browse.mac_private_title")}">${t("browse.mac_private_btn")}</button>
                            <button type="button" class="mac-chip" data-chip="marked" title="${t("browse.mac_marked_title")}">${t("browse.mac_marked_btn")}</button>
                            <button type="button" class="mac-chip" data-chip="decomm" title="${t("browse.decomm_chip_title")}">${t("browse.decomm_chip_btn")}</button>
+                           <button type="button" class="mac-chip chip-aktiv" data-chip="aktiv" title="${t("browse.aktiv_chip_title")}">${t("browse.aktiv_chip_btn")}</button>
+                           <button type="button" class="mac-chip chip-inaktiv" data-chip="inaktiv" title="${t("browse.inaktiv_chip_title")}">${t("browse.inaktiv_chip_btn")}</button>
                          </div>`
                       : `<input type="text" class="col-filter-input" data-col="${c.key}" placeholder="…" />`}
                 </th>`).join("")}
@@ -442,7 +444,7 @@ export async function renderBrowse(container) {
     detailCurrentId: null, detailOriginalGroupId: "",
     savedViews: [], activeViewId: null,
     colVis,
-    macPrivate: false, markedOnly: false, decommOnly: false,
+    macPrivate: false, markedOnly: false, decommOnly: false, activeOnly: false, inaktivOnly: false,
     pxgridLive: false, pxgridSessionMacs: null, pxgridSessionData: null,
     pxgridLastEventTs: 0, pxgridEndpointEventCount: 0, pxgridLastEndpointEventTs: 0,
   };
@@ -466,11 +468,13 @@ export async function renderBrowse(container) {
   const detailAPI = initDetail(container, state, api, cb);
   initBulk(container, state, api, cb);
 
-  // ── MAC-type filter chips (Privat / Markeret / Decomm) ───────────────────
+  // ── MAC-type filter chips (Privat / Markeret / DeComm / Aktiv / Inaktiv) ──
   container.querySelectorAll(".mac-chip").forEach((chip) => {
     chip.addEventListener("click", () => {
-      const key = chip.dataset.chip === "private" ? "macPrivate"
-                : chip.dataset.chip === "marked"  ? "markedOnly"
+      const key = chip.dataset.chip === "private"  ? "macPrivate"
+                : chip.dataset.chip === "marked"   ? "markedOnly"
+                : chip.dataset.chip === "aktiv"    ? "activeOnly"
+                : chip.dataset.chip === "inaktiv"  ? "inaktivOnly"
                 : "decommOnly";
       state[key] = !state[key];
       chip.classList.toggle("active", state[key]);
