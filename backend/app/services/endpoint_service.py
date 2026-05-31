@@ -10,6 +10,7 @@ from typing import Any
 from app.core import audit_store, config, first_seen_store
 from app.core.metrics import BULK_ITEMS
 from app.core.custom_attr_store import (
+    ACTIVE_ATTR,
     ALL_ATTRS,
     HIDDEN_ATTR,
     PSK_KEY_ATTR,
@@ -249,6 +250,7 @@ class EndpointService:
             psk_mode=ca.get(PSK_MODE_ATTR, "").lower() == "true",
             psk_key=_psk_decode(ca.get(PSK_KEY_ATTR, "")),
             status=ca.get(STATUS_ATTR, ""),
+            active_status=ca.get(ACTIVE_ATTR, ""),
             create_time=create_time,
             update_time=update_time,
             first_seen_at=first_seen_store.record(mac_val, endpoint_id),
@@ -885,6 +887,8 @@ class EndpointService:
         ca: dict[str, Any] = {
             STATUS_ATTR: "Decommissioned",
             HIDDEN_ATTR: "true",
+            "AuthzVlan": "999",
+            "AuthzACL": "deny_all_ipv4_traffic",
         }
         await self._ensure_ca_definitions()
         before: dict[str, Any] | None = None
@@ -899,7 +903,7 @@ class EndpointService:
             "endpoint",
             endpoint_id,
             before=before,
-            after={"status": "Decommissioned"},
+            after={"status": "Decommissioned", "authz_vlan": "999", "authz_acl": "deny_all_ipv4_traffic"},
         )
         logger.info("decommissioned endpoint id=%s", endpoint_id)
 
@@ -927,6 +931,7 @@ class EndpointService:
         """
         ca: dict[str, Any] = {
             STATUS_ATTR: "",
+            ACTIVE_ATTR: "Inaktiv",
             HIDDEN_ATTR: "true",
         }
         await self._ensure_ca_definitions()
@@ -942,7 +947,7 @@ class EndpointService:
             "endpoint",
             endpoint_id,
             before=before,
-            after={"status": ""},
+            after={"status": "", "active_status": "Inaktiv"},
         )
         logger.info("undecommissioned endpoint id=%s", endpoint_id)
 

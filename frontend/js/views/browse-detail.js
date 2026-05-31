@@ -129,6 +129,16 @@ export function initDetail(container, state, api, cb) {
           ? `<span class="anc-badge decomm-status-badge">${t("detail.status_decomm")}</span>`
           : `<span class="hint">—</span>`;
       }
+      const activeStatusEl = container.querySelector("#d-active-status");
+      if (activeStatusEl) {
+        if (d.active_status === "Inaktiv") {
+          activeStatusEl.innerHTML = `<span class="anc-badge active-status-inaktiv">${t("detail.active_status_inaktiv")}</span>`;
+        } else if (d.active_status === "Aktiv") {
+          activeStatusEl.innerHTML = `<span class="anc-badge active-status-aktiv">${t("detail.active_status_aktiv")}</span>`;
+        } else {
+          activeStatusEl.innerHTML = `<span class="hint">—</span>`;
+        }
+      }
       const decommBtn = container.querySelector("#d-decommission");
       const undecommBtn = container.querySelector("#d-undecommission");
       if (decommBtn || undecommBtn) {
@@ -960,13 +970,15 @@ export function initDetail(container, state, api, cb) {
       if (decommBtn) decommBtn.style.display = "";
       const statusEl = container.querySelector("#d-status");
       if (statusEl) statusEl.innerHTML = `<span class="hint">—</span>`;
+      const activeStatusEl = container.querySelector("#d-active-status");
+      if (activeStatusEl) activeStatusEl.innerHTML = `<span class="anc-badge active-status-inaktiv">${t("detail.active_status_inaktiv")}</span>`;
       if (state.allRows) {
         state.allRows = state.allRows.map((r) =>
-          r.id === state.detailCurrentId ? { ...r, status: "" } : r,
+          r.id === state.detailCurrentId ? { ...r, status: "", active_status: "Inaktiv" } : r,
         );
         if (state.allRowsCache) {
           state.allRowsCache = state.allRowsCache.map((r) =>
-            r.id === state.detailCurrentId ? { ...r, status: "" } : r,
+            r.id === state.detailCurrentId ? { ...r, status: "", active_status: "Inaktiv" } : r,
           );
         }
         cb.applyFilter?.();

@@ -3,6 +3,19 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.19.6 build 0584] — 2026-05-31 — feat: AuthzVlan/ACL ved dekommissionering + HypervisionActive-status
+
+**Berørte filer:**
+- `backend/app/core/custom_attr_store.py` — `ACTIVE_ATTR = "HypervisionActive"` tilføjet til `HIDDEN_ATTRS`
+- `backend/app/schemas/endpoint.py` — `active_status: str = ""` i `EndpointDetail`; `HypervisionActive: str | None = None` i `CustomAttrs`
+- `backend/app/services/endpoint_service.py` — import `ACTIVE_ATTR`; builder mapper `active_status`; `decommission_endpoint()` sætter `AuthzVlan=999` + `AuthzACL=deny_all_ipv4_traffic`; `undecommission_endpoint()` sætter `ACTIVE_ATTR="Inaktiv"`
+- `backend/app/api/audit.py` — `_endpoint_update_from_snapshot()` gendanner `HypervisionActive` fra `active_status`
+- `frontend/js/views/browse.js` — `#d-active-status` element tilføjet i detail-modal
+- `frontend/js/views/browse-detail.js` — viser `active_status` badge; undecommission-handler opdaterer `active_status`
+- `frontend/js/views/browse-table.js` — ⊘/✓ badge i MAC-celle for `active_status`
+- `frontend/js/i18n.js` — 6 nye i18n-nøgler (da + en)
+- `frontend/css/styles.css` — `active-status-inaktiv/aktiv` badge-stile + `active-status-row-badge`
+
 ## [5.19.5 build 0583] — 2026-05-31 — feat: Undecommission endpoint (enkelt + bulk)
 
 **Berørte filer:**

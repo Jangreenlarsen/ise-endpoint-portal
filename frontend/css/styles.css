@@ -871,6 +871,32 @@ td.mac-cell.cache-stale {
   opacity: 0.85;
   cursor: default;
 }
+/* HypervisionActive badges — detail modal */
+.active-status-inaktiv {
+  background: #fef3c7;
+  color: #92400e;
+}
+.active-status-aktiv {
+  background: #d1fae5;
+  color: #065f46;
+}
+[data-theme="dark"] .active-status-inaktiv {
+  background: #78350f;
+  color: #fde68a;
+}
+[data-theme="dark"] .active-status-aktiv {
+  background: #064e3b;
+  color: #6ee7b7;
+}
+/* HypervisionActive indicator — table MAC cell */
+.active-status-row-badge {
+  font-size: 0.8rem;
+  margin-left: 0.25rem;
+  opacity: 0.85;
+  cursor: default;
+}
+.active-status-row-badge.inaktiv { color: #b45309; }
+.active-status-row-badge.aktiv   { color: #059669; }
 /* Decommissioned table row — dimmed */
 tr.row-decomm {
   opacity: 0.55;

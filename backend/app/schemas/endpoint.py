@@ -45,6 +45,8 @@ class EndpointDetail(BaseModel):
     first_seen_at: float | None = None
     # Dekommissionerings-status fra HypervisionStatus CA. "" = aktivt.
     status: str = ""
+    # Aktivitetsstatus fra HypervisionActive CA. "Aktiv" / "Inaktiv" / "" = ukendt.
+    active_status: str = ""
 
 
 class EndpointGroupSummary(BaseModel):
@@ -62,6 +64,7 @@ class CustomAttrs(BaseModel):
     PlatformType: str = ""
     HypervisionRoles: str = ""
     HypervisionStatus: str | None = None
+    HypervisionActive: str | None = None
     PSK_Mode: str | None = None
     PSK_Key: str | None = None
 

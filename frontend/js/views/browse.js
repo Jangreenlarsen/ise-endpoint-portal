@@ -222,6 +222,8 @@ export async function renderBrowse(container) {
               <div class="detail-value" id="d-update-time"></div>
               <label>${t("detail.status_lbl")}</label>
               <div class="detail-value" id="d-status"></div>
+              <label>${t("detail.active_status_lbl")}</label>
+              <div class="detail-value" id="d-active-status"></div>
             </div>
             <div id="d-anc-section" class="hidden anc-section">
               <div class="anc-status-row">

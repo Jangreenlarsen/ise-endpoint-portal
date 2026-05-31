@@ -4,6 +4,16 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.19.6] — 2026-05-31 — Feature: AuthzVlan/ACL ved dekommissionering + HypervisionActive-status
+
+> **Build:** 0584
+
+**Dekommissionering sætter nu automatisk** `AuthzVlan=999` og `AuthzACL=deny_all_ipv4_traffic` — endpointet nægtes netværksadgang straks uden manuel ISE-policy.
+
+**Ny `HypervisionActive`-attribut** (CA) viser `Aktiv` / `Inaktiv` på alle endpoints. Ved genaktivering fra dekommissioneret tilstand sættes den til `Inaktiv` — endpointet er genoprettet men har endnu ikke autentificeret. Badge vises i MAC-cellen (⊘ = Inaktiv, ✓ = Aktiv) og i detail-modal. Audit-rollback gendanner også `active_status` korrekt.
+
+---
+
 ## [5.19.5] — 2026-05-31 — Feature: Genaktivér dekommissionerede endpoints
 
 > **Build:** 0583
