@@ -10,7 +10,7 @@ import asyncio
 import json
 from typing import Literal
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 
 from app.api._endpoint_api_helpers import _ise_http_error
@@ -28,6 +28,10 @@ from app.schemas.endpoint import (
 from app.services.endpoint_service import EndpointService
 
 router = APIRouter(prefix="/endpoints", tags=["endpoints"])
+
+
+class SetActiveStatusRequest(BaseModel):
+    active_status: str
 
 
 # ------------------------------------------------------------------ #
@@ -238,6 +242,22 @@ async def bulk_undecommission(
 ) -> dict:
     """Genaktiver en liste af dekommissionerede endpoints parallelt."""
     return await service.bulk_undecommission(body)
+
+
+@router.post("/{endpoint_id}/active-status", dependencies=[Depends(require_editor)])
+async def set_active_status(
+    endpoint_id: str,
+    body: SetActiveStatusRequest,
+    service: EndpointService = Depends(get_endpoint_service),
+) -> dict:
+    """Sæt HypervisionActive manuelt ("Aktiv" eller "Inaktiv")."""
+    try:
+        await service.set_active_status(endpoint_id, body.active_status)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
+    except IseApiError as exc:
+        raise _ise_http_error(exc) from exc
+    return {"active_status": body.active_status, "id": endpoint_id}
 
 
 # ------------------------------------------------------------------ #

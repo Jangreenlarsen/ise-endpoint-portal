@@ -439,6 +439,12 @@ export const api = {
       body: JSON.stringify({ endpoint_ids }),
     }),
 
+  setActiveStatus: (id, active_status) =>
+    request(`/endpoints/${encodeURIComponent(id)}/active-status`, {
+      method: "POST",
+      body: JSON.stringify({ active_status }),
+    }),
+
   // Bulk template-apply (5.17.0)
   bulkApplyTemplate: (endpoint_ids, template_id) =>
     request("/endpoints/bulk-apply-template", {

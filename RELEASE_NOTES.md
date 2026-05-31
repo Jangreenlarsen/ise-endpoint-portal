@@ -4,6 +4,16 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.19.7] — 2026-05-31 — Feature: Sæt Aktiv/Inaktiv direkte fra edit-modal
+
+> **Build:** 0585
+
+To nye knapper i edit-modal på linje med Dekommissionér/Genaktivér: **"Sæt Aktiv"** (grøn) og **"Sæt Inaktiv"** (amber). Kun den relevante knap vises: hvis endpointet er Inaktiv → "Sæt Aktiv", hvis Aktiv → "Sæt Inaktiv". Dekommissionerede endpoints viser ingen af knapperne. Kald til `POST /endpoints/{id}/active-status` opdaterer kun `HypervisionActive` — alle andre CA-felter bevares.
+
+**Rettelser til automatik:** Dekommissionering sætter nu automatisk `HypervisionActive="Inaktiv"`. Genaktivering sætter `HypervisionActive="Aktiv"`.
+
+---
+
 ## [5.19.6] — 2026-05-31 — Feature: AuthzVlan/ACL ved dekommissionering + HypervisionActive-status
 
 > **Build:** 0584

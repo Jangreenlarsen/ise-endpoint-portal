@@ -230,6 +230,8 @@ button.danger { background: #b91c1c; }
 button.danger:hover:not(:disabled) { background: #991b1b; }
 button.warning { background: #b45309; }
 button.warning:hover:not(:disabled) { background: #92400e; }
+button.success { background: #059669; }
+button.success:hover:not(:disabled) { background: #047857; }
 
 /* Tables */
 table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }

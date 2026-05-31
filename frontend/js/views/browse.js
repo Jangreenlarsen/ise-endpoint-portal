@@ -224,6 +224,7 @@ export async function renderBrowse(container) {
               <div class="detail-value" id="d-status"></div>
               <label>${t("detail.active_status_lbl")}</label>
               <div class="detail-value" id="d-active-status"></div>
+
             </div>
             <div id="d-anc-section" class="hidden anc-section">
               <div class="anc-status-row">
@@ -270,6 +271,10 @@ export async function renderBrowse(container) {
                   title="${t("detail.decomm_title")}">${t("detail.btn_decommission")}</button>
           <button id="d-undecommission" class="warning" style="display:none"
                   title="${t("detail.undecomm_title")}">${t("detail.btn_undecommission")}</button>
+          <button id="d-set-aktiv" class="success" style="display:none"
+                  title="${t("detail.set_aktiv_title")}">${t("detail.btn_set_aktiv")}</button>
+          <button id="d-set-inaktiv" class="warning" style="display:none"
+                  title="${t("detail.set_inaktiv_title")}">${t("detail.btn_set_inaktiv")}</button>
           <button id="d-close" class="secondary">${t("detail.btn_close")}</button>
         </div>
       </div>

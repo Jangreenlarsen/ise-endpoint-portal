@@ -3,6 +3,17 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.19.7 build 0585] — 2026-05-31 — feat: Sæt Aktiv/Inaktiv-knapper i edit-modal + decommission sætter Inaktiv
+
+**Berørte filer:**
+- `backend/app/services/endpoint_service.py` — `decommission_endpoint()` sætter `ACTIVE_ATTR="Inaktiv"`; `undecommission_endpoint()` sætter `ACTIVE_ATTR="Aktiv"`; ny `set_active_status()` opdaterer kun `HypervisionActive`
+- `backend/app/api/endpoints_ops.py` — `POST /{id}/active-status`; `SetActiveStatusRequest` schema; import af `HTTPException`, `status`
+- `frontend/js/api.js` — `setActiveStatus(id, active_status)`
+- `frontend/js/views/browse.js` — `#d-set-aktiv` (grøn) + `#d-set-inaktiv` (amber) knapper i modal-actions
+- `frontend/js/views/browse-detail.js` — synlighedslogik for alle 4 action-knapper; `_handleSetActive()`; decommission-handler opdaterer active_status-badge og skjuler Aktiv/Inaktiv-knapper; undecommission-handler sætter Aktiv
+- `frontend/js/i18n.js` — 10 nye nøgler (da + en) for Sæt Aktiv/Inaktiv-flow
+- `frontend/css/styles.css` — `button.success` grøn stil
+
 ## [5.19.6 build 0584] — 2026-05-31 — feat: AuthzVlan/ACL ved dekommissionering + HypervisionActive-status
 
 **Berørte filer:**

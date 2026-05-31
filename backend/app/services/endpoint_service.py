@@ -886,6 +886,7 @@ class EndpointService:
         """
         ca: dict[str, Any] = {
             STATUS_ATTR: "Decommissioned",
+            ACTIVE_ATTR: "Inaktiv",
             HIDDEN_ATTR: "true",
             "AuthzVlan": "999",
             "AuthzACL": "deny_all_ipv4_traffic",
@@ -903,7 +904,7 @@ class EndpointService:
             "endpoint",
             endpoint_id,
             before=before,
-            after={"status": "Decommissioned", "authz_vlan": "999", "authz_acl": "deny_all_ipv4_traffic"},
+            after={"status": "Decommissioned", "active_status": "Inaktiv", "authz_vlan": "999", "authz_acl": "deny_all_ipv4_traffic"},
         )
         logger.info("decommissioned endpoint id=%s", endpoint_id)
 
@@ -931,7 +932,7 @@ class EndpointService:
         """
         ca: dict[str, Any] = {
             STATUS_ATTR: "",
-            ACTIVE_ATTR: "Inaktiv",
+            ACTIVE_ATTR: "Aktiv",
             HIDDEN_ATTR: "true",
         }
         await self._ensure_ca_definitions()
@@ -947,7 +948,7 @@ class EndpointService:
             "endpoint",
             endpoint_id,
             before=before,
-            after={"status": "", "active_status": "Inaktiv"},
+            after={"status": "", "active_status": "Aktiv"},
         )
         logger.info("undecommissioned endpoint id=%s", endpoint_id)
 
@@ -965,6 +966,34 @@ class EndpointService:
 
         results = list(await asyncio.gather(*(_one(i) for i in req.endpoint_ids[:200])))
         return {"results": results, "ok_count": sum(1 for r in results if r["ok"])}
+
+    async def set_active_status(self, endpoint_id: str, active_status: str) -> None:
+        """Sæt HypervisionActive på et endpoint manuelt ("Aktiv" eller "Inaktiv").
+
+        Kun ACTIVE_ATTR opdateres — alle øvrige CA-felter bevares uændret.
+        """
+        if active_status not in ("Aktiv", "Inaktiv"):
+            raise ValueError(f"Ugyldig active_status: {active_status!r}")
+        ca: dict[str, Any] = {
+            ACTIVE_ATTR: active_status,
+            HIDDEN_ATTR: "true",
+        }
+        await self._ensure_ca_definitions()
+        before: dict[str, Any] | None = None
+        try:
+            before = (await self.get_endpoint(endpoint_id, is_psk_editor=True)).model_dump()
+        except IseApiError as exc:
+            logger.warning("audit: could not snapshot %s before set_active_status: %s", endpoint_id, exc)
+        await self.endpoints.update(endpoint_id, custom_attributes=ca)
+        get_cache().invalidate_detail(endpoint_id)
+        await audit_store.record(
+            "updated",
+            "endpoint",
+            endpoint_id,
+            before=before,
+            after={"active_status": active_status},
+        )
+        logger.info("set active_status=%s on endpoint id=%s", active_status, endpoint_id)
 
     # ------------------------------------------------------------------ #
     # Bulk template-apply                                                  #
