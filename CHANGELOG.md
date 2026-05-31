@@ -3,6 +3,16 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.19.2 build 0580] — 2026-05-31 — fix: Token-revokation (token_gen) + log-sanitering
+
+**Berørte filer:**
+- `backend/app/core/user_store.py` — `increment_token_gen(users, user_id)` tilføjet
+- `backend/app/core/auth.py` — `gen: int = 0` parameter tilføjet til `create_token()`; `gen`-claim inkluderet i payload
+- `backend/app/api/deps.py` — `get_current_user()` afviser token hvis `gen != record.token_gen`; import af `increment_token_gen`
+- `backend/app/api/auth.py` — logout incrementerer `token_gen`; refresh henter current gen fra user record; import af user_store helpers
+- `backend/app/services/user_service.py` — login/setup_first_admin passerer `gen`; change_password og update_user (ved rolle-/passwordændring) incrementerer `token_gen`; import af `increment_token_gen`
+- `backend/app/core/logging.py` — `_SensitiveDataFilter` tilføjet med regex-redaktion af password/secret/token/psk/api_key i log-beskeder
+
 ## [5.19.1 build 0579] — 2026-05-30 — fix: Audit rollback af decommissioned-handling
 
 **Berørte filer:**

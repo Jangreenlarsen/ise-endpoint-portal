@@ -4,6 +4,18 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 5.19.2 b0580] 2026-05-31 — Sikkerhed: Token-revokation og log-sanitering manglede
+
+**Sårbarhed 1 (HØJ): Ingen token-revokation**
+- Tokens var gyldige i op til 1 time efter logout, passwordskift eller rolleændring — en stjålet Bearer-token kunne genbruges hele TTL-perioden.
+- **Fix:** `token_gen`-counter tilføjet per bruger i `users.json`. Alle tokens inkluderer nu `gen`-claim. `get_current_user()` afviser tokens med forældet `gen`. Logout, passwordskift og rolleændring (inkl. admin-ændring) incrementerer counteren og invaliderer alle eksisterende tokens for brugeren.
+- **Berørte filer:** `backend/app/core/user_store.py`, `backend/app/core/auth.py`, `backend/app/api/deps.py`, `backend/app/api/auth.py`, `backend/app/services/user_service.py`
+
+**Sårbarhed 2 (LAV): Ingen log-sanitering (defense-in-depth)**
+- Logformatter var uden redaktion — fremtidige programmeringsfejl kunne lække credentials til logfiler.
+- **Fix:** `_SensitiveDataFilter` tilføjet — matcher `password`, `secret`, `token`, `psk`, `api_key` o.l. i key=value- og JSON-format og erstatter værdien med `***`.
+- **Berørt fil:** `backend/app/core/logging.py`
+
 ## [FIXED 5.19.1 b0579] 2026-05-30 — Audit: Rollback af decommissioned-handling fejlede med 400
 
 - **Symptom:** "Rollback failed: 400: Rollback understøttes ikke for action=decommissioned" i Audit-visningen.

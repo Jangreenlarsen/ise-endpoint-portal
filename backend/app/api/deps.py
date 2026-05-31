@@ -6,7 +6,7 @@ from fastapi import Depends, HTTPException, Request, status
 
 from app.core import auth as auth_core
 from app.core.audit_store import ActorContext, actor_ctx
-from app.core.user_store import find_by_id, load_users
+from app.core.user_store import find_by_id, load_users, increment_token_gen
 from app.ise.client import get_ise_client
 from app.schemas.user import ROLE_VALUES, Role, User
 from app.services.authz_profile_service import AuthzProfileService
@@ -101,6 +101,12 @@ async def get_current_user(request: Request) -> User:
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED,
             "Rolle er ændret — login igen",
+        )
+    if payload.get("gen", 0) != record.get("token_gen", 0):
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            "Token er tilbagekaldt — log ind igen",
+            headers={"WWW-Authenticate": "Bearer"},
         )
     actor_ctx.set(
         ActorContext(

@@ -8,6 +8,7 @@ from app.core import audit_store
 from app.api.deps import get_current_user
 from app.core import auth as auth_core
 from app.core.auth import TOKEN_COOKIE_NAME, TOKEN_TTL_SECONDS
+from app.core.user_store import find_by_id, increment_token_gen, load_users, save_users
 from app.schemas.user import (
     AuthStatus,
     ChangePasswordRequest,
@@ -93,6 +94,13 @@ async def logout(request: Request, response: Response) -> dict[str, str]:
                 "logout", "session", payload.get("sub"),
                 after={"username": payload.get("username"), "auth_type": payload.get("auth_type", "local")},
             )
+            # Revokér token ved at incrementere token_gen — stopper Bearer-genbrug
+            if payload.get("auth_type") != "tacacs":
+                user_id = payload.get("sub")
+                if user_id:
+                    users = load_users()
+                    increment_token_gen(users, user_id)
+                    save_users(users)
     _delete_auth_cookie(response)
     return {"status": "ok"}
 
@@ -135,7 +143,9 @@ async def refresh_token(
             endpoint_roles=list(user.assigned_endpoint_roles or []),
         )
     else:
-        new_token = auth_core.create_token(user.id, user.username, user.role)
+        record = find_by_id(load_users(), user.id)
+        current_gen = record.get("token_gen", 0) if record else 0
+        new_token = auth_core.create_token(user.id, user.username, user.role, gen=current_gen)
     expires_at, auth_type = auth_core.token_metadata(new_token)
     result = LoginResponse(
         token=new_token,

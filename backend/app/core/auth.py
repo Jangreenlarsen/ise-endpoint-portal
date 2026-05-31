@@ -109,12 +109,13 @@ def _b64url_decode(s: str) -> bytes:
     return base64.urlsafe_b64decode(s + padding)
 
 
-def create_token(user_id: str, username: str, role: str, ttl: int = TOKEN_TTL_SECONDS) -> str:
+def create_token(user_id: str, username: str, role: str, ttl: int = TOKEN_TTL_SECONDS, gen: int = 0) -> str:
     now = int(time.time())
     payload = {
         "sub": user_id,
         "username": username,
         "role": role,
+        "gen": gen,
         "iat": now,
         "exp": now + ttl,
     }

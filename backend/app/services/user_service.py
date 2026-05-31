@@ -16,6 +16,7 @@ from app.core import role_catalog
 from app.core.user_store import (
     find_by_id,
     find_by_username,
+    increment_token_gen,
     load_users,
     save_users,
 )
@@ -267,6 +268,7 @@ async def update_user(user_id: str, payload: UserUpdate) -> User:
     if not record:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Bruger ikke fundet")
     before = {"username": record["username"], "role": record["role"], "user_type": record.get("user_type", "user")}
+    role_changed = payload.role is not None and payload.role != record["role"]
     if payload.role is not None:
         record["role"] = payload.role
     if payload.user_type is not None:
@@ -274,6 +276,8 @@ async def update_user(user_id: str, payload: UserUpdate) -> User:
     pw_changed = bool(payload.password)
     if pw_changed:
         record["password_hash"] = auth_core.hash_password(payload.password)
+    if role_changed or pw_changed:
+        increment_token_gen(users, user_id)
     save_users(users)
     logger.info("user updated: %s", record["username"])
     await audit_store.record(
@@ -362,6 +366,7 @@ async def change_password(user_id: str, payload: ChangePasswordRequest) -> None:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Forkert nuværende password")
     _validate_password_strength(payload.new_password)
     record["password_hash"] = auth_core.hash_password(payload.new_password)
+    increment_token_gen(users, user_id)
     save_users(users)
     logger.info("password changed for %s", record["username"])
     await audit_store.record(
@@ -394,7 +399,7 @@ def setup_first_admin(payload: SetupRequest) -> LoginResponse:
     }
     users.append(record)
     save_users(users)
-    token = auth_core.create_token(record["id"], record["username"], record["role"])
+    token = auth_core.create_token(record["id"], record["username"], record["role"], gen=0)
     logger.warning("first-run admin created: %s", record["username"])
     from app.core import audit_store
     audit_store.record_sync(
@@ -575,7 +580,7 @@ def login(payload: LoginRequest) -> LoginResponse:
     _clear_failures(payload.username)
     record["last_login"] = _now_iso()
     save_users(users)
-    token = auth_core.create_token(record["id"], record["username"], record["role"])
+    token = auth_core.create_token(record["id"], record["username"], record["role"], gen=record.get("token_gen", 0))
     logger.info("local login: %s role=%s", record["username"], record["role"])
     audit_store.record_sync("login_success", "session", record["id"], {"username": record["username"], "role": record["role"]})
     _expires_at, _auth_type = auth_core.token_metadata(token)

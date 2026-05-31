@@ -4,6 +4,16 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.19.2] — 2026-05-31 — Sikkerhed: Token-revokation + log-sanitering
+
+> **Build:** 0580
+
+**Token-revokation (token_gen):** Tokens var gyldige hele TTL-perioden (1 time) selv efter logout, passwordskift eller rolleændring. Nu incrementeres en `token_gen`-counter i `users.json` ved disse events — alle eksisterende tokens for brugeren invalideres øjeblikkeligt. TACACS+-tokens er upåvirkede (ingen lokal brugerpost).
+
+**Log-sanitering:** Ny `_SensitiveDataFilter` på root-loggeren redakterer automatisk kendte sensitive felter (`password`, `secret`, `token`, `psk`, `api_key` o.l.) i alle log-beskeder og erstatter værdien med `***`.
+
+---
+
 ## [5.19.1] — 2026-05-30 — Bugfix: Audit rollback af dekommissionerede endpoints
 
 > **Build:** 0579

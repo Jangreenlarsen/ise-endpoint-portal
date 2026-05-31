@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 import logging
+import re
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
@@ -8,6 +9,24 @@ from app.core.config import settings
 
 # Backend-rodmappen (to niveauer op fra denne fil: core/ → app/ → backend/)
 _BACKEND_DIR = Path(__file__).resolve().parents[2]
+
+# Redaktér kendte sensitive felter i log-beskeder (key=value og "key": "value" mønstre)
+_SENSITIVE_PATTERN = re.compile(
+    r'(?i)((?:password|ise_password|pxgrid_password|tacacs_secret|secret|token|auth_token|psk|api_key)\s*[=:]\s*)[^\s,}\]"\']+',
+)
+_SENSITIVE_QUOTED = re.compile(
+    r'(?i)("(?:password|ise_password|pxgrid_password|tacacs_secret|secret|token|auth_token|psk|api_key)"\s*:\s*)"[^"]*"',
+)
+
+
+class _SensitiveDataFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        msg = record.getMessage()
+        msg = _SENSITIVE_PATTERN.sub(r"\1***", msg)
+        msg = _SENSITIVE_QUOTED.sub(r'\1"***"', msg)
+        record.msg = msg
+        record.args = ()
+        return True
 
 
 def setup_logging() -> None:
@@ -26,6 +45,7 @@ def setup_logging() -> None:
 
     root = logging.getLogger()
     root.setLevel(settings.log_level.upper())
+    root.addFilter(_SensitiveDataFilter())
 
     sw_logger = logging.getLogger("app.pxgrid.session_worker")
     if getattr(settings, "debug_pxgrid_sessions", False):
