@@ -450,13 +450,51 @@ export function initAdvancedSection(container) {
   if (decommAclHint)  decommAclHint.textContent   = t("settings.adv_decomm_acl_hint");
   if (decommSaveBtn)  decommSaveBtn.textContent   = t("settings.adv_decomm_save_btn");
 
-  // Load current debug + decommission settings
+  // Populate a <select> with values; pre-select savedValue (add it if missing)
+  function _populateSelect(sel, values, savedValue) {
+    if (!sel) return;
+    sel.innerHTML = "";
+    const all = savedValue && !values.includes(savedValue)
+      ? [savedValue, ...values]
+      : values;
+    all.forEach(v => {
+      const opt = document.createElement("option");
+      opt.value = v;
+      opt.textContent = v;
+      if (v === savedValue) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    if (!all.length) {
+      const opt = document.createElement("option");
+      opt.value = savedValue || "";
+      opt.textContent = savedValue || "—";
+      opt.selected = true;
+      sel.appendChild(opt);
+    }
+  }
+
+  // Load current debug + decommission settings, then populate dropdowns
   (async () => {
     try {
-      const s = await api.getBackendSettings();
-      if (debugCb)    debugCb.checked       = !!s.debug_pxgrid_sessions;
-      if (decommVlanEl) decommVlanEl.value  = s.decomm_authz_vlan  ?? "999";
-      if (decommAclEl)  decommAclEl.value   = s.decomm_authz_acl   ?? "deny_all_ipv4_traffic";
+      const [s, caData, daclList] = await Promise.all([
+        api.getBackendSettings(),
+        api.listCustomAttributes().catch(() => null),
+        api.listDacls().catch(() => null),
+      ]);
+
+      if (debugCb) debugCb.checked = !!s.debug_pxgrid_sessions;
+
+      const savedVlan = s.decomm_authz_vlan ?? "999";
+      const savedAcl  = s.decomm_authz_acl  ?? "deny_all_ipv4_traffic";
+
+      // AuthzVlan values from custom_attr_values.json
+      const vlanAttr = caData?.attributes?.find(a => a.name === "AuthzVlan");
+      const vlanValues = (vlanAttr?.values ?? []).filter(Boolean);
+      _populateSelect(decommVlanEl, vlanValues, savedVlan);
+
+      // AuthzACL names from ISE DACLs
+      const aclValues = (daclList ?? []).map(d => d.name).filter(Boolean);
+      _populateSelect(decommAclEl, aclValues, savedAcl);
     } catch (_) { /* ignore */ }
   })();
 

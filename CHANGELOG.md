@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.20.0 build 0589] — 2026-05-31 — feat: Decommission AuthzVlan/ACL som dropdowns
+
+**Berørte filer:**
+- `frontend/js/views/settings.js` — `<input type="text">` skiftet til `<select>` for begge decommission-felter
+- `frontend/js/views/settings/section-update.js` — `initAdvancedSection()` henter `api.listCustomAttributes()` (AuthzVlan-værdier) og `api.listDacls()` (DACL-navne) parallelt og populerer dropdowns; den gemte værdi pre-selectes (tilføjes listen hvis den ikke allerede er der)
+
 ## [5.20.0 build 0588] — 2026-05-31 — feat: Konfigurerbar decommission AuthzVlan/ACL
 
 **Berørte filer:**

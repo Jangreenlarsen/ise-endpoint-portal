@@ -852,12 +852,16 @@ export async function renderSettings(container) {
       <form id="adv-decomm-form" onsubmit="return false;">
         <div class="field">
           <label for="adv-decomm-vlan" id="adv-decomm-vlan-lbl"></label>
-          <input type="text" id="adv-decomm-vlan" placeholder="999" style="max-width:14rem;" />
+          <select id="adv-decomm-vlan" style="max-width:14rem;">
+            <option value="" id="adv-decomm-vlan-loading">…</option>
+          </select>
           <div class="hint" id="adv-decomm-vlan-hint"></div>
         </div>
         <div class="field">
           <label for="adv-decomm-acl" id="adv-decomm-acl-lbl"></label>
-          <input type="text" id="adv-decomm-acl" placeholder="deny_all_ipv4_traffic" style="max-width:28rem;" />
+          <select id="adv-decomm-acl" style="max-width:28rem;">
+            <option value="" id="adv-decomm-acl-loading">…</option>
+          </select>
           <div class="hint" id="adv-decomm-acl-hint"></div>
         </div>
         <div class="actions">

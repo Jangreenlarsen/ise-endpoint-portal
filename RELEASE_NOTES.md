@@ -6,15 +6,15 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ## [5.20.0] — 2026-05-31 — Feature: Konfigurerbar decommission AuthzVlan/ACL
 
-> **Build:** 0588
+> **Build:** 0589
 
 I stedet for hardkodede værdier (VLAN 999 / DACL `deny_all_ipv4_traffic`) kan admin nu sætte de standarder der bruges når et endpoint dekommissioneres.
 
 **Settings → Portal Config → Advanced → "Standard dekommissioneringsværdier":**
-- **AuthzVlan** — VLAN-ID der sættes på endpointet (default: `999`)
-- **AuthzACL** — Navn på downloadable ACL i ISE (default: `deny_all_ipv4_traffic`)
+- **AuthzVlan** — dropdown med VLAN-ID'er allerede i systemet (fra endpoint custom-attributter)
+- **AuthzACL** — dropdown med DACL-navne direkte fra ISE
 
-Ændringer træder i kraft øjeblikkeligt ved næste dekommissionering — ingen genstart nødvendig.
+Den gemte værdi er altid pre-valgt — også hvis den ikke længere findes i listens data. Ændringer træder i kraft øjeblikkeligt ved næste dekommissionering.
 
 ---
 
