@@ -633,6 +633,7 @@ export async function renderBrowse(container) {
       try {
         const data = JSON.parse(e.data);
         const mac  = normalizeMac(data.mac);
+        if (!mac) return;
         if (state.pxgridSessionMacs) state.pxgridSessionMacs.delete(mac);
         if (state.pxgridSessionData) state.pxgridSessionData.delete(mac);
         state.pxgridLastEventTs = data.ts || Math.floor(Date.now() / 1000);
@@ -665,9 +666,10 @@ export async function renderBrowse(container) {
       }
     });
     pxgridEventSource.addEventListener("clear", () => {
-      if (state.pxgridSessionMacs) state.pxgridSessionMacs.clear();
-      if (state.pxgridSessionData) state.pxgridSessionData.clear();
-      if (state.activeSessionMacs) state.activeSessionMacs.clear();
+      state.pxgridLive         = false;
+      state.pxgridSessionMacs  = null;
+      state.pxgridSessionData  = null;
+      state.activeSessionMacs  = null;
       cb.applyAuthStatusColors?.();
       cb.applyFilter?.();
       updatePxGridSourceBadge();

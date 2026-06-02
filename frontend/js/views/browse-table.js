@@ -216,7 +216,7 @@ export function initTable(container, state, api, cb) {
       macCell.classList.remove("auth-active", "auth-failed");
       if (authStatusCell) { authStatusCell.className = "auth-status-col"; authStatusCell.textContent = ""; }
       if (!macs) return;
-      const mac    = normalizeMac(macCell.textContent);
+      const mac    = tr.dataset.mac;
       const isAuth = mac ? macs.has(mac) : false;
       if (mac) macCell.classList.add(isAuth ? "auth-active" : "auth-failed");
       if (authStatusCell && mac) {

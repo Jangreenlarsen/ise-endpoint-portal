@@ -3,6 +3,38 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.21.0 build 0599] — 2026-06-02 — fix: Aktiv/Inaktiv chip har nu permanent grøn base-farve
+
+`.mac-chip.chip-active-status` får lys grøn baggrund (#f0fdf4) + grøn kant (#86efac) + grøn tekst (#166534)
+i sin neutrale tilstand — synligt adskilt fra Privat/Markeret/DeComm-chips der er grå. Aktiv-filter forbliver
+solid grøn (#059669) og Inaktiv-filter solid amber (#b45309). Dark og midnight varianter tilføjet.
+**Berørte filer:** `frontend/css/styles.css`
+
+## [5.21.0 build 0598] — 2026-06-02 — release: Version 5.21.0
+
+Versionsbump til 5.21.0 — samler alle features og bugfixes fra 5.20.x:
+konfigurerbar decommission AuthzVlan/ACL (dropdowns fra ISE), drag-and-drop
+reordering i policy condition-editor, HypervisionActive/Status + PSK_Mode
+som dropdowns i policy-editor, system quality-check med 6 bugfixes.
+
+## [5.20.3 build 0597] — 2026-06-02 — fix: 6 bugs fundet ved system quality-check
+
+**Fix 1** `section-update.js:518` — decommForm submit-handler manglede `e.preventDefault()` → form-submit genindlæste siden.
+**Fix 2** `browse.js:667` — clear-event nulstillede ikke `pxgridLive` → `refreshActiveSessionMacs` re-fetchede ukorrekt via MnT.
+**Fix 3** `browse.js:636` — remove-event manglede `if (!mac) return`-guard (inkonsistent med upsert-event linje 619).
+**Fix 4** `browse-table.js:219` — fjernede usikker `|| normalizeMac(macCell.textContent)` fallback; `tr.dataset.mac` er altid sat.
+**Fix 5** `policy.js:117` — duplikerede faste caValues-injections i `.then()` og `.catch()` konsolideret til én `.finally()`.
+**Fix 6** `section-update.js:477` — decommSaveBtn disables under dropdown-load-IIFE for at forhindre gem af tom `""` ved hurtigt klik.
+**Berørte filer:** `section-update.js`, `browse.js`, `browse-table.js`, `policy.js`
+
+## [5.20.3 build 0596] — 2026-06-02 — fix: Auth-status farver altid rød (badge-tekst i MAC + clear-event)
+
+**Bug 1 (primær):** `applyAuthStatusColors()` brugte `macCell.textContent` til at udtrække MAC, men cellen indeholder badges (⚰ ⊘ ✓ 📌 ⏱) så `normalizeMac()` returnerede fx `"AB:CD:EF:12:34:56⚰"` som aldrig matchede Set'en → altid auth-failed (rød).
+**Fix:** Brug `tr.dataset.mac` (altid ren normaliseret MAC sat ved row-render).
+**Bug 2:** `clear`-event brugte `.clear()` på Sets der forblev truthy (tom Set ≠ null) → `!macs`-guard virkede ikke og alt blev rød.
+**Fix:** Sæt `state.pxgridSessionMacs/Data/activeSessionMacs = null` i stedet.
+**Berørte filer:** `browse-table.js`, `browse.js`
+
 ## [5.20.2 build 0595] — 2026-06-02 — fix: Gendan drag-and-drop (b0593) + opdateret drag-styling
 
 Gendanner _wireDragDrop() fra b0593 (⠿-handle, e.target-walker). Opdaterer .cond-dragging til solid
