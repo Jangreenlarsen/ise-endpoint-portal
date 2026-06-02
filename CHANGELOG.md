@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.21.0 build 0599] — 2026-06-02 — fix: Aktiv/Inaktiv chip har nu permanent grøn base-farve
+
+`.mac-chip.chip-active-status` får lys grøn baggrund (#f0fdf4) + grøn kant (#86efac) + grøn tekst (#166534)
+i sin neutrale tilstand — synligt adskilt fra Privat/Markeret/DeComm-chips der er grå. Aktiv-filter forbliver
+solid grøn (#059669) og Inaktiv-filter solid amber (#b45309). Dark og midnight varianter tilføjet.
+**Berørte filer:** `frontend/css/styles.css`
+
 ## [5.21.0 build 0598] — 2026-06-02 — release: Version 5.21.0
 
 Versionsbump til 5.21.0 — samler alle features og bugfixes fra 5.20.x:
