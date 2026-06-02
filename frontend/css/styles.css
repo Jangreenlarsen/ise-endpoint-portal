@@ -3240,20 +3240,29 @@ body.register-route .login-card {
   border-top: 1px solid #e2e8f0;
 }
 .cond-add-row, .cond-add-group { font-size: 0.75rem; padding: 0.15rem 0.5rem; }
-/* ── Move up/down reordering ───────────────────────────────────────────────── */
-.cond-move-btns { display: inline-flex; flex-direction: column; gap: 1px; flex-shrink: 0; }
-.cond-move-up, .cond-move-down {
-  font-size: 0.6rem;
-  padding: 0 0.3rem;
-  line-height: 1.3;
-  min-width: 0;
-  background: transparent;
-  border: 1px solid #cbd5e1;
-  border-radius: 3px;
-  color: #64748b;
-  cursor: pointer;
+/* ── Drag-and-drop reordering ──────────────────────────────────────────────── */
+.cond-drag-handle {
+  cursor: grab;
+  color: #94a3b8;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0 3px;
+  user-select: none;
+  flex-shrink: 0;
+  transition: color 0.1s;
 }
-.cond-move-up:hover, .cond-move-down:hover { background: #e2e8f0; color: #1e40af; border-color: #93c5fd; }
+.cond-drag-handle:hover { color: #3b82f6; }
+.cond-drag-handle:active { cursor: grabbing; }
+/* Dragging: solid highlight — same visual weight as surrounding elements */
+.cond-dragging {
+  background: #dbeafe !important;
+  border-color: #93c5fd !important;
+  box-shadow: 0 2px 8px rgba(59,130,246,0.25);
+  outline: none;
+}
+/* Drop position indicators */
+.cond-drop-before { border-top: 2px solid #2563eb !important; padding-top: 2px; }
+.cond-drop-after  { border-bottom: 2px solid #2563eb !important; padding-bottom: 2px; }
 
 /* Profile tags */
 .profile-tag {
@@ -3478,8 +3487,11 @@ body.register-route .login-card {
 [data-theme="dark"] .cond-group-header  { background: rgba(255,255,255,0.03); border-color: #334155; }
 [data-theme="dark"] .cond-group-footer  { border-color: #334155; }
 [data-theme="dark"] .cond-group-type-hint { color: #94a3b8; }
-[data-theme="dark"] .cond-move-up, [data-theme="dark"] .cond-move-down { border-color: #334155; color: #94a3b8; }
-[data-theme="dark"] .cond-move-up:hover, [data-theme="dark"] .cond-move-down:hover { background: #1e2b42; color: #60a5fa; border-color: #1e40af; }
+[data-theme="dark"] .cond-drag-handle { color: #475569; }
+[data-theme="dark"] .cond-drag-handle:hover { color: #60a5fa; }
+[data-theme="dark"] .cond-dragging { background: #1e3a5f !important; border-color: #1e40af !important; box-shadow: 0 2px 8px rgba(96,165,250,0.2); }
+[data-theme="dark"] .cond-drop-before { border-top-color: #60a5fa !important; }
+[data-theme="dark"] .cond-drop-after  { border-bottom-color: #60a5fa !important; }
 [data-theme="dark"] .profile-chip     { background: #1e3a5f; color: #93c5fd; border-color: #1e40af; }
 [data-theme="dark"] .profile-tag      { background: #1e3a5f; border-color: #1e40af; }
 [data-theme="dark"] .match-hit        { background: #052e16; border-color: #166534; }

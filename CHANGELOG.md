@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.20.2 build 0595] — 2026-06-02 — fix: Gendan drag-and-drop (b0593) + opdateret drag-styling
+
+Gendanner _wireDragDrop() fra b0593 (⠿-handle, e.target-walker). Opdaterer .cond-dragging til solid
+blå baggrund (#dbeafe) med border og box-shadow — samme visuelle intensitet som øvrige editor-elementer.
+**Berørte filer:** `policy-condition-builder.js`, `styles.css`, `i18n.js`
+
 ## [5.20.2 build 0594] — 2026-06-02 — fix: Erstat drag-and-drop med ▲/▼ move-knapper i policy condition-editor
 
 HTML5 drag-and-drop erstattet med to små ▲/▼ knapper på hvert condition/gruppe-element.

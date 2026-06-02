@@ -279,11 +279,8 @@ function _groupHtml(cond, caValues, depth) {
   const delBtn = depth > 0
     ? `<button class="cond-group-del danger small" type="button" title="${t("pol.ed_del_group")}">✕</button>`
     : "";
-  const moveButtons = depth > 0
-    ? `<span class="cond-move-btns">` +
-      `<button class="cond-move-up secondary small" type="button" title="${t("pol.move_up")}">▲</button>` +
-      `<button class="cond-move-down secondary small" type="button" title="${t("pol.move_down")}">▼</button>` +
-      `</span>`
+  const dragHandle = depth > 0
+    ? `<span class="cond-drag-handle" draggable="true" title="${t("pol.drag_handle_title")}">⠿</span>`
     : "";
 
   const childrenHtml = children.map((child) => {
@@ -297,7 +294,7 @@ function _groupHtml(cond, caValues, depth) {
   return `
     <div class="cond-group${depth === 0 ? " cond-group-root" : ""}" data-depth="${depth}">
       <div class="cond-group-header">
-        ${moveButtons}
+        ${dragHandle}
         <select class="cond-group-type">
           <option value="AND"${type === "AND" ? " selected" : ""}>AND</option>
           <option value="OR"${type === "OR" ? " selected" : ""}>OR</option>
@@ -323,10 +320,7 @@ function _rowHtml(cond, caValues) {
   const av = cond?.attributeValue || "";
   return `
     <div class="cond-row" data-idx="${idx}">
-      <span class="cond-move-btns">
-        <button class="cond-move-up secondary small" type="button" title="${t("pol.move_up")}">▲</button>
-        <button class="cond-move-down secondary small" type="button" title="${t("pol.move_down")}">▼</button>
-      </span>
+      <span class="cond-drag-handle" draggable="true" title="${t("pol.drag_handle_title")}">⠿</span>
       <select class="cond-dict" data-idx="${idx}">${dictionaryOptions(dn)}</select>
       <select class="cond-attr" data-idx="${idx}">${attrOptions(dn, an)}</select>
       <select class="cond-op"   data-idx="${idx}">${operatorOptions(op)}</select>
@@ -335,28 +329,73 @@ function _rowHtml(cond, caValues) {
     </div>`;
 }
 
-// ── Move up/down reordering ───────────────────────────────────────────────────
+// ── Drag-and-drop reordering ───────────────────────────────────────────────────
 
-function _wireMoveButtons(rootEl) {
-  rootEl.addEventListener("click", (e) => {
-    const isUp   = e.target.classList.contains("cond-move-up");
-    const isDown = e.target.classList.contains("cond-move-down");
-    if (!isUp && !isDown) return;
-    e.stopPropagation();
+function _wireDragDrop(rootEl, caValues) {
+  let dragEl    = null;
+  let dropEl    = null;
+  let dropBefore = false;
 
-    // Find the moveable element: nearest .cond-row or non-root .cond-group
-    const el = e.target.closest(".cond-row, .cond-group:not(.cond-group-root)");
-    if (!el) return;
-    const parent = el.parentElement;
-    if (!parent) return;
-
-    if (isUp) {
-      const prev = el.previousElementSibling;
-      if (prev) parent.insertBefore(el, prev);
-    } else {
-      const next = el.nextElementSibling;
-      if (next) next.after(el);
+  function _dropTarget(el) {
+    let n = el;
+    while (n && n !== rootEl) {
+      if (
+        (n.classList.contains("cond-row") || n.classList.contains("cond-group")) &&
+        n.parentElement?.classList.contains("cond-group-children")
+      ) return n;
+      n = n.parentElement;
     }
+    return null;
+  }
+
+  function _clearIndicators() {
+    rootEl.querySelectorAll(".cond-drop-before, .cond-drop-after").forEach((el) => {
+      el.classList.remove("cond-drop-before", "cond-drop-after");
+    });
+    dropEl = null;
+  }
+
+  rootEl.addEventListener("dragstart", (e) => {
+    if (!e.target.classList.contains("cond-drag-handle")) return;
+    const el = _dropTarget(e.target);
+    if (!el) { e.preventDefault(); return; }
+    dragEl = el;
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", "");
+    requestAnimationFrame(() => dragEl?.classList.add("cond-dragging"));
+  });
+
+  rootEl.addEventListener("dragend", () => {
+    dragEl?.classList.remove("cond-dragging");
+    _clearIndicators();
+    dragEl = null;
+  });
+
+  rootEl.addEventListener("dragover", (e) => {
+    if (!dragEl) return;
+    const target = _dropTarget(e.target);
+    if (!target || target === dragEl || dragEl.contains(target)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    const rect = target.getBoundingClientRect();
+    dropBefore = e.clientY < rect.top + rect.height / 2;
+    if (target !== dropEl || target.classList.contains("cond-drop-before") !== dropBefore) {
+      _clearIndicators();
+      target.classList.add(dropBefore ? "cond-drop-before" : "cond-drop-after");
+      dropEl = target;
+    }
+  });
+
+  rootEl.addEventListener("drop", (e) => {
+    if (!dragEl || !dropEl) return;
+    e.preventDefault();
+    const parent = dropEl.parentElement;
+    if (!parent) return;
+    if (dropBefore) parent.insertBefore(dragEl, dropEl);
+    else dropEl.after(dragEl);
+    _clearIndicators();
+    _bindRowChangeEvents(rootEl, caValues);
+    dragEl = null;
   });
 }
 
@@ -364,7 +403,7 @@ function _wireMoveButtons(rootEl) {
 
 export function wireGroupEditor(rootEl, caValues = {}) {
   _bindRowChangeEvents(rootEl, caValues);
-  _wireMoveButtons(rootEl);
+  _wireDragDrop(rootEl, caValues);
 
   rootEl.addEventListener("click", (e) => {
     // Add condition row to nearest group
