@@ -4,6 +4,24 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.20.2] — 2026-06-02 — Feature: Drag-and-drop reordering i policy condition-editor
+
+> **Build:** 0592
+
+Conditions og grupper i policy-editoren kan nu flyttes rundt med drag-and-drop.
+
+**Sådan bruges det:**
+- Hvert condition-element og hver nested gruppe har et `⠿`-håndtag yderst til venstre
+- Klik og hold på håndtaget og træk elementet til den ønskede position
+- En blå streg viser præcis hvor elementet landes — over eller under naboen
+- Det draggede element vises halvgennemsigtigt mens det flyttes
+- Cross-group flytning understøttes — træk en condition fra én gruppe til en anden
+- En gruppe kan ikke droppes inde i sig selv
+
+Select/input-felter i rækken forstyrres ikke — drag starter kun fra `⠿`.
+
+---
+
 ## [5.20.1] — 2026-05-31 — Fix: HypervisionActive/Status i policy-editor
 
 > **Build:** 0590

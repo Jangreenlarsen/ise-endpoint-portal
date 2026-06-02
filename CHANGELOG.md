@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.20.2 build 0592] — 2026-06-02 — feat: Drag-and-drop reordering af conditions i policy-editor
+
+**Berørte filer:**
+- `frontend/js/views/policy-condition-builder.js` — `⠿`-drag-handle tilføjet til `_rowHtml` og nested `_groupHtml`; `_wireDragDrop()` implementeret og kaldt fra `wireGroupEditor()`; drag kun tilladt fra handle (ikke fra select/input-felter)
+- `frontend/css/styles.css` — `.cond-drag-handle`, `.cond-dragging`, `.cond-drop-before/.after` + dark mode varianter
+- `frontend/js/i18n.js` — `pol.drag_handle_title` (da + en)
+
 ## [5.20.1 build 0591] — 2026-05-31 — fix: PSK_Mode dropdown i policy-editor
 
 **Berørte filer:**
