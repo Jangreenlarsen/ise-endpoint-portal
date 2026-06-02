@@ -473,6 +473,9 @@ export function initAdvancedSection(container) {
     }
   }
 
+  // Disable save until dropdowns are populated to prevent saving "" on fast click
+  if (decommSaveBtn) decommSaveBtn.disabled = true;
+
   // Load current debug + decommission settings, then populate dropdowns
   (async () => {
     try {
@@ -496,6 +499,9 @@ export function initAdvancedSection(container) {
       const aclValues = (daclList ?? []).map(d => d.name).filter(Boolean);
       _populateSelect(decommAclEl, aclValues, savedAcl);
     } catch (_) { /* ignore */ }
+    finally {
+      if (decommSaveBtn) decommSaveBtn.disabled = false;
+    }
   })();
 
   // Save on toggle
@@ -515,7 +521,8 @@ export function initAdvancedSection(container) {
 
   // Save decommission defaults
   if (decommForm) {
-    decommForm.addEventListener("submit", async () => {
+    decommForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
       const vlan = (decommVlanEl?.value ?? "").trim();
       const acl  = (decommAclEl?.value ?? "").trim();
       if (!vlan || !acl) return;

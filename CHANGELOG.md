@@ -3,6 +3,16 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.20.3 build 0597] — 2026-06-02 — fix: 6 bugs fundet ved system quality-check
+
+**Fix 1** `section-update.js:518` — decommForm submit-handler manglede `e.preventDefault()` → form-submit genindlæste siden.
+**Fix 2** `browse.js:667` — clear-event nulstillede ikke `pxgridLive` → `refreshActiveSessionMacs` re-fetchede ukorrekt via MnT.
+**Fix 3** `browse.js:636` — remove-event manglede `if (!mac) return`-guard (inkonsistent med upsert-event linje 619).
+**Fix 4** `browse-table.js:219` — fjernede usikker `|| normalizeMac(macCell.textContent)` fallback; `tr.dataset.mac` er altid sat.
+**Fix 5** `policy.js:117` — duplikerede faste caValues-injections i `.then()` og `.catch()` konsolideret til én `.finally()`.
+**Fix 6** `section-update.js:477` — decommSaveBtn disables under dropdown-load-IIFE for at forhindre gem af tom `""` ved hurtigt klik.
+**Berørte filer:** `section-update.js`, `browse.js`, `browse-table.js`, `policy.js`
+
 ## [5.20.3 build 0596] — 2026-06-02 — fix: Auth-status farver altid rød (badge-tekst i MAC + clear-event)
 
 **Bug 1 (primær):** `applyAuthStatusColors()` brugte `macCell.textContent` til at udtrække MAC, men cellen indeholder badges (⚰ ⊘ ✓ 📌 ⏱) så `normalizeMac()` returnerede fx `"AB:CD:EF:12:34:56⚰"` som aldrig matchede Set'en → altid auth-failed (rød).
