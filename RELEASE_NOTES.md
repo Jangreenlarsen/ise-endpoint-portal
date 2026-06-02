@@ -4,6 +4,34 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.21.0] — 2026-06-02 — Release: Konfigurerbar decommission, policy-editor forbedringer, bugfixes
+
+> **Build:** 0598
+
+### Hvad er nyt
+
+**Konfigurerbar decommission (AuthzVlan/ACL)**
+Standard VLAN og DACL ved dekommissionering kan nu sættes under *Settings → Portal Config → Advanced*. Begge felter er dropdowns populeret fra eksisterende ISE-data — VLAN fra endpoint custom-attributter, DACL direkte fra ISE.
+
+**Policy condition-editor: flyt rundt på conditions**
+Conditions og nested grupper i policy-editoren kan nu omarrangeres med drag-and-drop via ⠿-håndtaget. Elementet markeres med blå baggrund under flytning; en blå streg viser præcis drop-position.
+
+**Policy condition-editor: nye attributter**
+`HypervisionActive` (Aktiv/Inaktiv), `HypervisionStatus` (Decommissioned) og `PSK_Mode` (true/false) er tilføjet som dropdowns i condition-builderens EndPoints-dictionary.
+
+**Auth-status farver — bugfix**
+Auth-status kolonnen viste altid rød fordi MAC-opslag brugte `textContent` der inkluderede badge-tegn. Rettet til `data-mac` attributten.
+
+**System quality-check — 6 bugfixes**
+- Gem-knap på decommission-standarder genindlæste siden (manglende `preventDefault`)
+- pxGrid clear-event nulstillede ikke `pxgridLive`
+- remove-event manglede MAC-guard
+- textContent-fallback i auth-farver fjernet
+- Duplikeret caValues-injection i policy-editor konsolideret
+- Race condition: gem-knap er nu disabled indtil dropdowns er loadet
+
+---
+
 ## [5.20.2] — 2026-06-02 — Feature: Drag-and-drop reordering i policy condition-editor
 
 > **Build:** 0592

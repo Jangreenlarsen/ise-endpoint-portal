@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.21.0 build 0598] — 2026-06-02 — release: Version 5.21.0
+
+Versionsbump til 5.21.0 — samler alle features og bugfixes fra 5.20.x:
+konfigurerbar decommission AuthzVlan/ACL (dropdowns fra ISE), drag-and-drop
+reordering i policy condition-editor, HypervisionActive/Status + PSK_Mode
+som dropdowns i policy-editor, system quality-check med 6 bugfixes.
+
 ## [5.20.3 build 0597] — 2026-06-02 — fix: 6 bugs fundet ved system quality-check
 
 **Fix 1** `section-update.js:518` — decommForm submit-handler manglede `e.preventDefault()` → form-submit genindlæste siden.
