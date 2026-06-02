@@ -280,7 +280,7 @@ function _groupHtml(cond, caValues, depth) {
     ? `<button class="cond-group-del danger small" type="button" title="${t("pol.ed_del_group")}">✕</button>`
     : "";
   const dragHandle = depth > 0
-    ? `<span class="cond-drag-handle" title="${t("pol.drag_handle_title")}">⠿</span>`
+    ? `<span class="cond-drag-handle" draggable="true" title="${t("pol.drag_handle_title")}">⠿</span>`
     : "";
 
   const childrenHtml = children.map((child) => {
@@ -292,7 +292,7 @@ function _groupHtml(cond, caValues, depth) {
   }).join("");
 
   return `
-    <div class="cond-group${depth === 0 ? " cond-group-root" : ""}" data-depth="${depth}"${depth > 0 ? ' draggable="true"' : ''}>
+    <div class="cond-group${depth === 0 ? " cond-group-root" : ""}" data-depth="${depth}">
       <div class="cond-group-header">
         ${dragHandle}
         <select class="cond-group-type">
@@ -319,8 +319,8 @@ function _rowHtml(cond, caValues) {
   const op = cond?.operator       || "equals";
   const av = cond?.attributeValue || "";
   return `
-    <div class="cond-row" data-idx="${idx}" draggable="true">
-      <span class="cond-drag-handle" title="${t("pol.drag_handle_title")}">⠿</span>
+    <div class="cond-row" data-idx="${idx}">
+      <span class="cond-drag-handle" draggable="true" title="${t("pol.drag_handle_title")}">⠿</span>
       <select class="cond-dict" data-idx="${idx}">${dictionaryOptions(dn)}</select>
       <select class="cond-attr" data-idx="${idx}">${attrOptions(dn, an)}</select>
       <select class="cond-op"   data-idx="${idx}">${operatorOptions(op)}</select>
@@ -332,83 +332,72 @@ function _rowHtml(cond, caValues) {
 // ── Drag-and-drop reordering ───────────────────────────────────────────────────
 
 function _wireDragDrop(rootEl, caValues) {
-  let dragEl   = null;   // element being dragged
-  let overEl   = null;   // current hover target
-  let insertPos = "after"; // "before" | "after"
+  let dragEl    = null;  // the .cond-row or .cond-group being moved
+  let dropEl    = null;  // current indicator target
+  let dropBefore = false;
 
-  function _isDraggable(el) {
-    return el.classList.contains("cond-row") ||
-      (el.classList.contains("cond-group") && !el.classList.contains("cond-group-root"));
+  function _dropTarget(el) {
+    // Walk up from el to find a direct child of a .cond-group-children container
+    let n = el;
+    while (n && n !== rootEl) {
+      if (
+        (n.classList.contains("cond-row") || n.classList.contains("cond-group")) &&
+        n.parentElement?.classList.contains("cond-group-children")
+      ) return n;
+      n = n.parentElement;
+    }
+    return null;
   }
 
   function _clearIndicators() {
     rootEl.querySelectorAll(".cond-drop-before, .cond-drop-after").forEach((el) => {
       el.classList.remove("cond-drop-before", "cond-drop-after");
     });
+    dropEl = null;
   }
 
+  // dragstart fires on the handle span (which carries draggable="true")
   rootEl.addEventListener("dragstart", (e) => {
-    // Only allow drag when it originates from the handle
-    const fromHandle = e.composedPath?.().some((n) => n.classList?.contains("cond-drag-handle"));
-    if (!fromHandle) { e.preventDefault(); return; }
-    const el = e.composedPath().find((n) => _isDraggable(n));
+    if (!e.target.classList.contains("cond-drag-handle")) return;
+    const el = _dropTarget(e.target);
     if (!el) { e.preventDefault(); return; }
     dragEl = el;
     e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("text/plain", ""); // required by Firefox
-    // Defer adding class so the drag ghost still looks normal
+    e.dataTransfer.setData("text/plain", "");
     requestAnimationFrame(() => dragEl?.classList.add("cond-dragging"));
   });
 
   rootEl.addEventListener("dragend", () => {
     dragEl?.classList.remove("cond-dragging");
     _clearIndicators();
-    dragEl = null; overEl = null;
+    dragEl = null;
   });
 
   rootEl.addEventListener("dragover", (e) => {
     if (!dragEl) return;
-    // Find a sibling candidate: cond-row or non-root cond-group under any children container
-    const target = e.composedPath?.().find(
-      (n) => _isDraggable(n) && n !== dragEl && !dragEl.contains(n)
-    );
-    if (!target) return;
+    const target = _dropTarget(e.target);
+    if (!target || target === dragEl || dragEl.contains(target)) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
-
     const rect = target.getBoundingClientRect();
-    insertPos = e.clientY < rect.top + rect.height / 2 ? "before" : "after";
-    if (target !== overEl || target.dataset._dropPos !== insertPos) {
+    dropBefore = e.clientY < rect.top + rect.height / 2;
+    if (target !== dropEl || target.classList.contains("cond-drop-before") !== dropBefore) {
       _clearIndicators();
-      target.classList.add(insertPos === "before" ? "cond-drop-before" : "cond-drop-after");
-      overEl = target;
-      target.dataset._dropPos = insertPos;
-    }
-  });
-
-  rootEl.addEventListener("dragleave", (e) => {
-    // Only clear if leaving outside rootEl entirely
-    if (!rootEl.contains(e.relatedTarget)) {
-      _clearIndicators();
-      overEl = null;
+      target.classList.add(dropBefore ? "cond-drop-before" : "cond-drop-after");
+      dropEl = target;
     }
   });
 
   rootEl.addEventListener("drop", (e) => {
-    if (!dragEl || !overEl) return;
-    if (overEl === dragEl || dragEl.contains(overEl)) return;
+    if (!dragEl || !dropEl) return;
     e.preventDefault();
-    const parent = overEl.parentElement;
+    const parent = dropEl.parentElement;
     if (!parent) return;
-    const pos = overEl.dataset._dropPos || "after";
-    if (pos === "before") {
-      parent.insertBefore(dragEl, overEl);
-    } else {
-      overEl.after(dragEl);
-    }
+    if (dropBefore) parent.insertBefore(dragEl, dropEl);
+    else dropEl.after(dragEl);
     _clearIndicators();
     _bindRowChangeEvents(rootEl, caValues);
-    dragEl = null; overEl = null;
+    dragEl = null;
   });
 }
 
