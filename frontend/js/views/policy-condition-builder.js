@@ -279,6 +279,9 @@ function _groupHtml(cond, caValues, depth) {
   const delBtn = depth > 0
     ? `<button class="cond-group-del danger small" type="button" title="${t("pol.ed_del_group")}">✕</button>`
     : "";
+  const dragHandle = depth > 0
+    ? `<span class="cond-drag-handle" title="${t("pol.drag_handle_title")}">⠿</span>`
+    : "";
 
   const childrenHtml = children.map((child) => {
     const cct = child?.conditionType;
@@ -289,8 +292,9 @@ function _groupHtml(cond, caValues, depth) {
   }).join("");
 
   return `
-    <div class="cond-group${depth === 0 ? " cond-group-root" : ""}" data-depth="${depth}">
+    <div class="cond-group${depth === 0 ? " cond-group-root" : ""}" data-depth="${depth}"${depth > 0 ? ' draggable="true"' : ''}>
       <div class="cond-group-header">
+        ${dragHandle}
         <select class="cond-group-type">
           <option value="AND"${type === "AND" ? " selected" : ""}>AND</option>
           <option value="OR"${type === "OR" ? " selected" : ""}>OR</option>
@@ -315,7 +319,8 @@ function _rowHtml(cond, caValues) {
   const op = cond?.operator       || "equals";
   const av = cond?.attributeValue || "";
   return `
-    <div class="cond-row" data-idx="${idx}">
+    <div class="cond-row" data-idx="${idx}" draggable="true">
+      <span class="cond-drag-handle" title="${t("pol.drag_handle_title")}">⠿</span>
       <select class="cond-dict" data-idx="${idx}">${dictionaryOptions(dn)}</select>
       <select class="cond-attr" data-idx="${idx}">${attrOptions(dn, an)}</select>
       <select class="cond-op"   data-idx="${idx}">${operatorOptions(op)}</select>
@@ -324,10 +329,94 @@ function _rowHtml(cond, caValues) {
     </div>`;
 }
 
+// ── Drag-and-drop reordering ───────────────────────────────────────────────────
+
+function _wireDragDrop(rootEl, caValues) {
+  let dragEl   = null;   // element being dragged
+  let overEl   = null;   // current hover target
+  let insertPos = "after"; // "before" | "after"
+
+  function _isDraggable(el) {
+    return el.classList.contains("cond-row") ||
+      (el.classList.contains("cond-group") && !el.classList.contains("cond-group-root"));
+  }
+
+  function _clearIndicators() {
+    rootEl.querySelectorAll(".cond-drop-before, .cond-drop-after").forEach((el) => {
+      el.classList.remove("cond-drop-before", "cond-drop-after");
+    });
+  }
+
+  rootEl.addEventListener("dragstart", (e) => {
+    // Only allow drag when it originates from the handle
+    const fromHandle = e.composedPath?.().some((n) => n.classList?.contains("cond-drag-handle"));
+    if (!fromHandle) { e.preventDefault(); return; }
+    const el = e.composedPath().find((n) => _isDraggable(n));
+    if (!el) { e.preventDefault(); return; }
+    dragEl = el;
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", ""); // required by Firefox
+    // Defer adding class so the drag ghost still looks normal
+    requestAnimationFrame(() => dragEl?.classList.add("cond-dragging"));
+  });
+
+  rootEl.addEventListener("dragend", () => {
+    dragEl?.classList.remove("cond-dragging");
+    _clearIndicators();
+    dragEl = null; overEl = null;
+  });
+
+  rootEl.addEventListener("dragover", (e) => {
+    if (!dragEl) return;
+    // Find a sibling candidate: cond-row or non-root cond-group under any children container
+    const target = e.composedPath?.().find(
+      (n) => _isDraggable(n) && n !== dragEl && !dragEl.contains(n)
+    );
+    if (!target) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+
+    const rect = target.getBoundingClientRect();
+    insertPos = e.clientY < rect.top + rect.height / 2 ? "before" : "after";
+    if (target !== overEl || target.dataset._dropPos !== insertPos) {
+      _clearIndicators();
+      target.classList.add(insertPos === "before" ? "cond-drop-before" : "cond-drop-after");
+      overEl = target;
+      target.dataset._dropPos = insertPos;
+    }
+  });
+
+  rootEl.addEventListener("dragleave", (e) => {
+    // Only clear if leaving outside rootEl entirely
+    if (!rootEl.contains(e.relatedTarget)) {
+      _clearIndicators();
+      overEl = null;
+    }
+  });
+
+  rootEl.addEventListener("drop", (e) => {
+    if (!dragEl || !overEl) return;
+    if (overEl === dragEl || dragEl.contains(overEl)) return;
+    e.preventDefault();
+    const parent = overEl.parentElement;
+    if (!parent) return;
+    const pos = overEl.dataset._dropPos || "after";
+    if (pos === "before") {
+      parent.insertBefore(dragEl, overEl);
+    } else {
+      overEl.after(dragEl);
+    }
+    _clearIndicators();
+    _bindRowChangeEvents(rootEl, caValues);
+    dragEl = null; overEl = null;
+  });
+}
+
 // ── Wire group editor events ───────────────────────────────────────────────────
 
 export function wireGroupEditor(rootEl, caValues = {}) {
   _bindRowChangeEvents(rootEl, caValues);
+  _wireDragDrop(rootEl, caValues);
 
   rootEl.addEventListener("click", (e) => {
     // Add condition row to nearest group
