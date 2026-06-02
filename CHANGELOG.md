@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.21.1 build 0600] — 2026-06-02 — fix: Sæt Aktiv-knap vises nu korrekt når active_status ikke er sat
+
+`setAktivBtn` vistes kun ved status="Inaktiv" — endpoints uden sat status (tom streng) viste fejlagtigt
+kun "Sæt Inaktiv". Fix: brug `isAktiv = active_status === "Aktiv"` som guard, så "Sæt Aktiv" vises
+ved tom status OG "Inaktiv", og "Sæt Inaktiv" kun vises når status eksplicit er "Aktiv".
+**Berørte fil:** `frontend/js/views/browse-detail.js` linje 148-152
+
 ## [5.21.0 build 0599] — 2026-06-02 — fix: Aktiv/Inaktiv chip har nu permanent grøn base-farve
 
 `.mac-chip.chip-active-status` får lys grøn baggrund (#f0fdf4) + grøn kant (#86efac) + grøn tekst (#166534)

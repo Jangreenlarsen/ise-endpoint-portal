@@ -145,11 +145,11 @@ export function initDetail(container, state, api, cb) {
       const setInaktivBtn = container.querySelector("#d-set-inaktiv");
       if (decommBtn || undecommBtn || setAktivBtn || setInaktivBtn) {
         const isDecomm   = d.status === "Decommissioned";
-        const isInaktiv  = d.active_status === "Inaktiv";
+        const isAktiv    = d.active_status === "Aktiv";
         if (decommBtn)    decommBtn.style.display    = auth.isEditor() && !isDecomm ? "" : "none";
         if (undecommBtn)  undecommBtn.style.display  = auth.isEditor() && isDecomm ? "" : "none";
-        if (setAktivBtn)  setAktivBtn.style.display  = auth.isEditor() && !isDecomm && isInaktiv ? "" : "none";
-        if (setInaktivBtn) setInaktivBtn.style.display = auth.isEditor() && !isDecomm && !isInaktiv ? "" : "none";
+        if (setAktivBtn)   setAktivBtn.style.display   = auth.isEditor() && !isDecomm && !isAktiv ? "" : "none";
+        if (setInaktivBtn) setInaktivBtn.style.display = auth.isEditor() && !isDecomm && isAktiv  ? "" : "none";
       }
 
       detailMsg.innerHTML = "";
