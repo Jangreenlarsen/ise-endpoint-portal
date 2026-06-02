@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.20.2 build 0594] — 2026-06-02 — fix: Erstat drag-and-drop med ▲/▼ move-knapper i policy condition-editor
+
+HTML5 drag-and-drop erstattet med to små ▲/▼ knapper på hvert condition/gruppe-element.
+Knapperne flytter elementet ét trin op eller ned inden for sin gruppe.
+**Berørte filer:** `policy-condition-builder.js`, `styles.css`, `i18n.js`
+
 ## [5.20.2 build 0593] — 2026-06-02 — fix: Drag-and-drop virkede ikke — rewrite af _wireDragDrop
 
 **Problem:** `draggable="true"` på hele `.cond-row` konflikter med select/input-felter; `composedPath()` i `dragstart` upålidelig på tværs af browsere.
