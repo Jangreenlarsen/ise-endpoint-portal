@@ -3246,16 +3246,23 @@ body.register-route .login-card {
   color: #94a3b8;
   font-size: 1rem;
   line-height: 1;
-  padding: 0 2px;
+  padding: 0 3px;
   user-select: none;
   flex-shrink: 0;
   transition: color 0.1s;
 }
 .cond-drag-handle:hover { color: #3b82f6; }
 .cond-drag-handle:active { cursor: grabbing; }
-.cond-dragging { opacity: 0.35; outline: 2px dashed #3b82f6; outline-offset: 2px; }
-.cond-drop-before { border-top: 2px solid #3b82f6 !important; margin-top: -1px; }
-.cond-drop-after  { border-bottom: 2px solid #3b82f6 !important; margin-bottom: -1px; }
+/* Dragging: solid highlight — same visual weight as surrounding elements */
+.cond-dragging {
+  background: #dbeafe !important;
+  border-color: #93c5fd !important;
+  box-shadow: 0 2px 8px rgba(59,130,246,0.25);
+  outline: none;
+}
+/* Drop position indicators */
+.cond-drop-before { border-top: 2px solid #2563eb !important; padding-top: 2px; }
+.cond-drop-after  { border-bottom: 2px solid #2563eb !important; padding-bottom: 2px; }
 
 /* Profile tags */
 .profile-tag {
@@ -3482,7 +3489,7 @@ body.register-route .login-card {
 [data-theme="dark"] .cond-group-type-hint { color: #94a3b8; }
 [data-theme="dark"] .cond-drag-handle { color: #475569; }
 [data-theme="dark"] .cond-drag-handle:hover { color: #60a5fa; }
-[data-theme="dark"] .cond-dragging { outline-color: #60a5fa; }
+[data-theme="dark"] .cond-dragging { background: #1e3a5f !important; border-color: #1e40af !important; box-shadow: 0 2px 8px rgba(96,165,250,0.2); }
 [data-theme="dark"] .cond-drop-before { border-top-color: #60a5fa !important; }
 [data-theme="dark"] .cond-drop-after  { border-bottom-color: #60a5fa !important; }
 [data-theme="dark"] .profile-chip     { background: #1e3a5f; color: #93c5fd; border-color: #1e40af; }
