@@ -665,9 +665,9 @@ export async function renderBrowse(container) {
       }
     });
     pxgridEventSource.addEventListener("clear", () => {
-      if (state.pxgridSessionMacs) state.pxgridSessionMacs.clear();
-      if (state.pxgridSessionData) state.pxgridSessionData.clear();
-      if (state.activeSessionMacs) state.activeSessionMacs.clear();
+      state.pxgridSessionMacs = null;
+      state.pxgridSessionData = null;
+      state.activeSessionMacs = null;
       cb.applyAuthStatusColors?.();
       cb.applyFilter?.();
       updatePxGridSourceBadge();

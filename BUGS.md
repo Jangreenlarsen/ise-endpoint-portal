@@ -4,6 +4,14 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 5.20.3 b0596] 2026-06-02 — Auth-status kolonne altid rød
+
+- **Symptom:** Auth-status søjle (og MAC-celle farve) viste rød (auth-failed) på alle endpoints — selv aktive sessioner.
+- **Root cause 1:** `applyAuthStatusColors()` i `browse-table.js` brugte `macCell.textContent` til MAC-opslag. Cellen indeholder ekstra badge-tegn (⚰ ⊘ ✓ 📌 ⏱) → `normalizeMac()` returnerede `"AA:BB:CC:DD:EE:FF⚰"` som aldrig matchede sessionsættet → altid `auth-failed`.
+- **Root cause 2:** pxGrid `clear`-event kaldte `.clear()` på Sets, der forblev truthy (tom Set er ikke `null`) → `if (!macs) return`-guard virkede ikke → alt rød.
+- **Fix:** Brug `tr.dataset.mac` (ren MAC sat ved row-render). Sæt `state.*SessionMacs = null` i `clear`-handler i stedet for `.clear()`.
+- **Filer:** `frontend/js/views/browse-table.js`, `frontend/js/views/browse.js`
+
 ## [FIXED 5.19.4 b0582] 2026-05-31 — Audit: Rollback af Decommissioned nulstiller ikke HypervisionStatus
 
 - **Symptom:** Rollback af `decommissioned`-event slettede ikke `status: "Decommissioned"` — endpoint forblev dekommissioneret i ISE efter rollback.

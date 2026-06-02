@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.20.3 build 0596] — 2026-06-02 — fix: Auth-status farver altid rød (badge-tekst i MAC + clear-event)
+
+**Bug 1 (primær):** `applyAuthStatusColors()` brugte `macCell.textContent` til at udtrække MAC, men cellen indeholder badges (⚰ ⊘ ✓ 📌 ⏱) så `normalizeMac()` returnerede fx `"AB:CD:EF:12:34:56⚰"` som aldrig matchede Set'en → altid auth-failed (rød).
+**Fix:** Brug `tr.dataset.mac` (altid ren normaliseret MAC sat ved row-render).
+**Bug 2:** `clear`-event brugte `.clear()` på Sets der forblev truthy (tom Set ≠ null) → `!macs`-guard virkede ikke og alt blev rød.
+**Fix:** Sæt `state.pxgridSessionMacs/Data/activeSessionMacs = null` i stedet.
+**Berørte filer:** `browse-table.js`, `browse.js`
+
 ## [5.20.2 build 0595] — 2026-06-02 — fix: Gendan drag-and-drop (b0593) + opdateret drag-styling
 
 Gendanner _wireDragDrop() fra b0593 (⠿-handle, e.target-walker). Opdaterer .cond-dragging til solid
