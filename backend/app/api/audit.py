@@ -267,6 +267,21 @@ async def _rollback_endpoint(
             ) from exc
         restored = (await service.get_endpoint(resource_id)).model_dump()
         return restored, f"Endpoint {resource_id} gendannet fra dekommissionering"
+    if action == "template_applied":
+        if not isinstance(before, dict) or not resource_id:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                "Mangler before-snapshot til rollback af template_applied — ældre events har ingen snapshot",
+            )
+        payload = _endpoint_update_from_snapshot(before)
+        try:
+            await service.update_endpoint(resource_id, payload)
+        except IseApiError as exc:
+            raise HTTPException(
+                status.HTTP_502_BAD_GATEWAY, f"ISE afviste update: {exc}"
+            ) from exc
+        restored = (await service.get_endpoint(resource_id)).model_dump()
+        return restored, f"Endpoint {resource_id} rullet tilbage til tilstand før skabelon-anvendelse"
     if action == "deleted":
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,

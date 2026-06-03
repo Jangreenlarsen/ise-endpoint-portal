@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.22.0 build 0604] — 2026-06-03 — fix: Rollback af template_applied fejlede 400
+
+**Root cause 1:** `bulk_apply_template` optog ingen `before`-snapshot → rollback havde intet at gendanne fra.
+**Root cause 2:** `_rollback_endpoint` i `audit.py` manglede `template_applied`-case → kastede altid 400.
+**Fix:** Snapshottet before i `_one()`, tilføjet `template_applied` til rollback-handleren.
+**Berørte filer:** `backend/app/services/endpoint_service.py`, `backend/app/api/audit.py`
+
 ## [5.22.0 build 0602] — 2026-06-03 — feat: Apply template/Delete/Decomm/Reactivate flyttet ind i bulk-edit modal
 
 Fjerner `bulk-tpl-btn`, `bulk-del-btn`, `bulk-decomm-btn`, `bulk-undecomm-btn` fra toolbar.

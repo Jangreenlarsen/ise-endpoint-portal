@@ -1031,6 +1031,11 @@ class EndpointService:
         async def _one(ep_id: str) -> dict[str, Any]:
             async with sem:
                 try:
+                    before: dict[str, Any] | None = None
+                    try:
+                        before = (await self.get_endpoint(ep_id, is_psk_editor=True)).model_dump()
+                    except IseApiError as exc:
+                        logger.warning("audit: could not snapshot %s before template_applied: %s", ep_id, exc)
                     await self.endpoints.update(
                         ep_id,
                         description=t_description,
@@ -1043,6 +1048,7 @@ class EndpointService:
                         "template_applied",
                         "endpoint",
                         ep_id,
+                        before=before,
                         after={"template_id": req.template_id, "template_name": template.get("name", "")},
                     )
                     return {"id": ep_id, "ok": True}
