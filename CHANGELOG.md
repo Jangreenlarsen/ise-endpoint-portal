@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.22.1 build 0605] — 2026-06-03 — feat: Uniform toolbar i Browse
+
+Alle toolbar-knapper er nu `small` (ensartet højde). Logisk gruppering:
+Data | Filtre → [spacer] → Gem/Undo | Selektion | Visning.
+Undo-knap får label "↩ Fortryd". CoA Reauth-knap bruger i18n.
+**Berørte filer:** `browse.js`, `i18n.js`
+
 ## [5.22.0 build 0604] — 2026-06-03 — fix: Rollback af template_applied fejlede 400
 
 **Root cause 1:** `bulk_apply_template` optog ingen `before`-snapshot → rollback havde intet at gendanne fra.

@@ -37,55 +37,64 @@ export async function renderBrowse(container) {
     <div id="anomaly-banner" style="display:none;"></div>
     <div class="card">
       <div class="toolbar">
+
         <div class="toolbar-group" title="${t("browse.tooltip_data")}">
-          <button id="refresh-btn">${t("browse.btn_refresh")}</button>
-          <button id="export-btn" class="secondary">${t("browse.btn_export")}</button>
-          <button id="export-json-btn" class="secondary">${t("browse.btn_export_json")}</button>
-          <button id="new-group-btn" class="secondary hidden" title="${t("browse.new_group_title")}">${t("browse.new_group_btn")}</button>
+          <button id="refresh-btn" class="secondary small">${t("browse.btn_refresh")}</button>
+          <button id="export-btn" class="secondary small">${t("browse.btn_export")}</button>
+          <button id="export-json-btn" class="secondary small">${t("browse.btn_export_json")}</button>
+          <button id="new-group-btn" class="secondary small hidden" title="${t("browse.new_group_title")}">${t("browse.new_group_btn")}</button>
           <div class="col-vis-wrap">
             <button id="col-vis-btn" class="secondary small" type="button"
                     title="${t("browse.tooltip_columns")}">${t("browse.btn_columns")}</button>
             <div id="col-vis-menu" class="col-vis-menu hidden"></div>
           </div>
         </div>
+
         <span class="toolbar-divider"></span>
+
         <div class="toolbar-group" title="${t("browse.tooltip_filters")}">
           <div class="views-wrap">
             <button id="views-btn" class="secondary small" type="button"
                     title="${t("browse.views_btn_title")}">${t("browse.btn_views")}</button>
             <div id="views-menu" class="views-menu hidden"></div>
           </div>
-          <button id="portal-filter-btn" class="secondary"
+          <button id="portal-filter-btn" class="secondary small"
                   title="${t("browse.portal_filter_title")}">${t("browse.btn_portal_filter")}</button>
           <button id="share-filter-btn" class="secondary small"
                   title="${t("browse.share_filter_title")}">${t("browse.btn_share_filter")}</button>
           <input id="global-q-input" type="search" placeholder="${t("browse.search_placeholder")}"
                  title="${t("browse.search_title")}"
-                 style="width:160px;padding:3px 6px;font-size:.85em;" />
+                 style="width:150px;padding:2px 6px;font-size:.82em;" />
         </div>
+
         <div class="spacer"></div>
+
         <div class="toolbar-group" title="${t("browse.tooltip_save")}">
-          <button id="coa-toggle-btn" class="secondary"
+          <button id="coa-toggle-btn" class="secondary small"
                   title="${t("browse.coa_title")}">${t("browse.btn_coa_off")}</button>
-          <button id="undo-btn" class="secondary" disabled title="${t("browse.undo_title")}">↩</button>
-          <button id="save-all-btn" disabled title="${t("browse.save_all_title")}">${t("browse.btn_save_all")}</button>
+          <button id="undo-btn" class="secondary small" disabled title="${t("browse.undo_title")}">↩ ${t("browse.btn_undo")}</button>
+          <button id="save-all-btn" class="small" disabled title="${t("browse.save_all_title")}">${t("browse.btn_save_all")}</button>
         </div>
+
         <span class="toolbar-divider"></span>
+
         <div class="toolbar-group" title="${t("browse.tooltip_selection")}">
-          <span id="selection-count" class="hint"></span>
+          <span id="selection-count" class="hint" style="white-space:nowrap;font-size:0.78rem;"></span>
           <button id="bulk-edit-btn" class="secondary small" disabled>${t("browse.btn_bulk_edit")}</button>
           <button id="bulk-save-btn" class="small" disabled>${t("browse.btn_bulk_save")}</button>
           <button id="bulk-coa-btn" class="secondary small" disabled
-                  title="${t("browse.coa_reauth_btn_title")}">CoA Reauth</button>
+                  title="${t("browse.coa_reauth_btn_title")}">${t("browse.btn_bulk_coa")}</button>
           <button id="bulk-disconnect-btn" class="danger small" disabled
                   title="${t("browse.disconnect_title")}">${t("browse.btn_bulk_disconnect")}</button>
           <button id="bulk-sim-btn" class="secondary small" disabled
                   title="${t("browse.sim_btn_title")}">${t("browse.sim_btn")}</button>
         </div>
+
         <span class="toolbar-divider"></span>
+
         <div class="toolbar-group" title="${t("browse.tooltip_view")}">
-          <label class="hint page-size-label">${t("browse.label_show")}
-            <select id="page-size-select">
+          <label class="hint page-size-label" style="font-size:0.78rem;">${t("browse.label_show")}
+            <select id="page-size-select" style="font-size:0.78rem;padding:1px 4px;">
               <option value="10">10</option>
               <option value="25">25</option>
               <option value="50">50</option>
@@ -94,8 +103,9 @@ export async function renderBrowse(container) {
               <option value="500">500</option>
             </select>
           </label>
-          <span id="count" class="hint"></span>
+          <span id="count" class="hint" style="font-size:0.78rem;"></span>
         </div>
+
       </div>
       <div id="msg"></div>
       <div class="browse-table-wrap">
