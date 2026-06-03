@@ -3,6 +3,27 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.22.0 build 0602] — 2026-06-03 — feat: Apply template/Delete/Decomm/Reactivate flyttet ind i bulk-edit modal
+
+Fjerner `bulk-tpl-btn`, `bulk-del-btn`, `bulk-decomm-btn`, `bulk-undecomm-btn` fra toolbar.
+Tilføjer "Handlinger"-sektion i bunden af "Edit selected endpoints"-modalen med de fire knapper.
+Handlings-knapper lukker modal og ekskverer straks med bekræftelses-dialog.
+**Berørte filer:** `browse.js` (HTML), `browse-bulk.js` (handlers), `browse-table.js` (updateSelectionUI), `styles.css`, `i18n.js`
+
+## [5.21.1 build 0601] — 2026-06-03 — feat: Aktiv/Inaktiv status i bulk-edit "Edit selected endpoints"
+
+Tilføjer `HypervisionActive` som valgfrit felt i bulk-edit dialogen. Sæt afkrydsning og vælg
+"Aktiv" eller "Inaktiv" — alle valgte endpoints markeres dirty og gemmes til ISE ved næste save.
+Badge i MAC-celle opdateres straks. `beActiveStatus` dataset ryddes korrekt ved undo/revert.
+**Berørte filer:** `browse.js` (HTML), `browse-bulk.js` (apply), `browse-table.js` (save+undo), `i18n.js`
+
+## [5.21.1 build 0600] — 2026-06-02 — fix: Sæt Aktiv-knap vises nu korrekt når active_status ikke er sat
+
+`setAktivBtn` vistes kun ved status="Inaktiv" — endpoints uden sat status (tom streng) viste fejlagtigt
+kun "Sæt Inaktiv". Fix: brug `isAktiv = active_status === "Aktiv"` som guard, så "Sæt Aktiv" vises
+ved tom status OG "Inaktiv", og "Sæt Inaktiv" kun vises når status eksplicit er "Aktiv".
+**Berørte fil:** `frontend/js/views/browse-detail.js` linje 148-152
+
 ## [5.21.0 build 0599] — 2026-06-02 — fix: Aktiv/Inaktiv chip har nu permanent grøn base-farve
 
 `.mac-chip.chip-active-status` får lys grøn baggrund (#f0fdf4) + grøn kant (#86efac) + grøn tekst (#166534)

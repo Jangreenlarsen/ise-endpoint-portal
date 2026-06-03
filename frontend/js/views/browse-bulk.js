@@ -11,15 +11,16 @@ export function initBulk(container, state, api, cb) {
   const msg            = container.querySelector("#msg");
   const bulkEditBtn    = container.querySelector("#bulk-edit-btn");
   const bulkEditOverlay = container.querySelector("#bulk-edit-overlay");
-  const bulkDelBtn     = container.querySelector("#bulk-del-btn");
   const bulkDisconnBtn = container.querySelector("#bulk-disconnect-btn");
   const bulkCoaBtn     = container.querySelector("#bulk-coa-btn");
   const bulkSimBtn     = container.querySelector("#bulk-sim-btn");
   const bulkSimOverlay = container.querySelector("#bulk-sim-overlay");
-  const bulkTplBtn     = container.querySelector("#bulk-tpl-btn");
   const tplPickOverlay = container.querySelector("#tpl-pick-overlay");
-  const bulkDecommBtn    = container.querySelector("#bulk-decomm-btn");
-  const bulkUndecommBtn  = container.querySelector("#bulk-undecomm-btn");
+  // Action buttons live in the bulk-edit modal
+  const beTplBtn      = container.querySelector("#be-tpl-btn");
+  const beDelBtn      = container.querySelector("#be-del-btn");
+  const beDecommBtn   = container.querySelector("#be-decomm-btn");
+  const beUndecommBtn = container.querySelector("#be-undecomm-btn");
 
   // ── Bulk-edit modal ──────────────────────────────────────────────────────
   bulkEditBtn.addEventListener("click", () => {
@@ -99,9 +100,10 @@ export function initBulk(container, state, api, cb) {
         fields.roles = Array.from(chips).map((c) => c.dataset.role);
         return;
       }
-      if (field === "static-group") { fields["static-group"] = bulkEditOverlay.querySelector("#be-static-group-cb").checked; return; }
-      if (field === "psk-mode")     { fields["psk-mode"]     = bulkEditOverlay.querySelector("#be-psk-mode-cb").checked;    return; }
-      if (field === "psk-key")      { fields["psk-key"]      = bulkEditOverlay.querySelector("#be-psk-key-inp").value;      return; }
+      if (field === "static-group")  { fields["static-group"]  = bulkEditOverlay.querySelector("#be-static-group-cb").checked; return; }
+      if (field === "psk-mode")      { fields["psk-mode"]      = bulkEditOverlay.querySelector("#be-psk-mode-cb").checked;    return; }
+      if (field === "psk-key")       { fields["psk-key"]       = bulkEditOverlay.querySelector("#be-psk-key-inp").value;      return; }
+      if (field === "active-status") { fields["active-status"] = bulkEditOverlay.querySelector("#be-active-status").value;    return; }
       const ctrl = bulkEditOverlay.querySelector(`#be-${field}`);
       if (ctrl) fields[field] = ctrl.value;
     });
@@ -142,38 +144,24 @@ export function initBulk(container, state, api, cb) {
         const cell = tr.querySelector(".roles-cell");
         if (cell) cell.innerHTML = cb.rolesChipsHtml(newRoles);
       }
+      if ("active-status" in fields) {
+        tr.dataset.beActiveStatus = fields["active-status"];
+        // Update badge in MAC cell
+        const macCell = tr.querySelector(".mac-cell");
+        if (macCell) {
+          macCell.querySelectorAll(".active-status-row-badge").forEach(b => b.remove());
+          const v = fields["active-status"];
+          if (v === "Inaktiv") {
+            macCell.insertAdjacentHTML("beforeend", `<span class="active-status-row-badge inaktiv" title="${t("detail.active_status_inaktiv")}">⊘</span>`);
+          } else if (v === "Aktiv") {
+            macCell.insertAdjacentHTML("beforeend", `<span class="active-status-row-badge aktiv" title="${t("detail.active_status_aktiv")}">✓</span>`);
+          }
+        }
+      }
       cb.markDirty(tr);
     }
     bulkEditOverlay.classList.add("hidden");
     msg.innerHTML = `<div class="alert info">${ids.length} ${t("bulk.updated_local")}</div>`;
-  });
-
-  // ── Bulk delete ───────────────────────────────────────────────────────────
-  bulkDelBtn.addEventListener("click", async () => {
-    const ids = cb.getSelectedIds();
-    if (!ids.length) return;
-    const macs = ids.map((id) => {
-      const tr = tbody.querySelector(`tr[data-id="${id}"]`);
-      return tr ? tr.querySelector(".mac-cell").textContent : id;
-    });
-    if (!confirm(t("bulk.confirm_delete").replace("{n}", ids.length).replace("{macs}", macs.join("\n")))) return;
-    bulkDelBtn.disabled = true;
-    msg.innerHTML = `<div class="alert info">${t("bulk.deleting")} ${ids.length} endpoints...</div>`;
-    let ok = 0, fail = 0;
-    for (const id of ids) {
-      try {
-        await api.deleteEndpoint(id);
-        state.allRows     = state.allRows.filter((r) => r.id !== id);
-        if (state.allRowsCache) state.allRowsCache = state.allRowsCache.filter((r) => r.id !== id);
-        ok++;
-      } catch { fail++; }
-    }
-    cb.applyFilter();
-    const parts = [];
-    if (ok)   parts.push(`${ok} ${t("bulk.deleted")}`);
-    if (fail) parts.push(`${fail} ${t("bulk.failed")}`);
-    msg.innerHTML = `<div class="alert ${fail ? "error" : "success"}">${parts.join(", ")}</div>`;
-    bulkDelBtn.disabled = false;
   });
 
   // ── Bulk disconnect ───────────────────────────────────────────────────────
@@ -396,15 +384,17 @@ export function initBulk(container, state, api, cb) {
   }
 
   // ── Bulk template-apply ───────────────────────────────────────────────────
-  if (bulkTplBtn && tplPickOverlay) {
-    const tplSelect  = tplPickOverlay.querySelector("#tpl-pick-select");
-    const tplApply   = tplPickOverlay.querySelector("#tpl-pick-apply");
-    const tplCancel  = tplPickOverlay.querySelector("#tpl-pick-cancel");
-    const tplCount   = tplPickOverlay.querySelector("#tpl-pick-count");
+  // ── Apply template (modal action button) ─────────────────────────────────
+  if (beTplBtn && tplPickOverlay) {
+    const tplSelect = tplPickOverlay.querySelector("#tpl-pick-select");
+    const tplApply  = tplPickOverlay.querySelector("#tpl-pick-apply");
+    const tplCancel = tplPickOverlay.querySelector("#tpl-pick-cancel");
+    const tplCount  = tplPickOverlay.querySelector("#tpl-pick-count");
 
-    bulkTplBtn.addEventListener("click", async () => {
+    beTplBtn.addEventListener("click", async () => {
       const ids = cb.getSelectedIds();
       if (!ids.length) return;
+      bulkEditOverlay.classList.add("hidden");
       tplCount.textContent = t("bulk.tpl_count").replace("{n}", ids.length);
       try {
         const resp = await api.listTemplates();
@@ -440,13 +430,45 @@ export function initBulk(container, state, api, cb) {
     });
   }
 
-  // ── Bulk decommission ─────────────────────────────────────────────────────
-  if (bulkDecommBtn) {
-    bulkDecommBtn.addEventListener("click", async () => {
+  // ── Delete (modal action button) ─────────────────────────────────────────
+  if (beDelBtn) {
+    beDelBtn.addEventListener("click", async () => {
+      const ids = cb.getSelectedIds();
+      if (!ids.length) return;
+      const macs = ids.map((id) => {
+        const tr = tbody.querySelector(`tr[data-id="${id}"]`);
+        return tr ? tr.dataset.mac || tr.querySelector(".mac-cell")?.textContent : id;
+      });
+      if (!confirm(t("bulk.confirm_delete").replace("{n}", ids.length).replace("{macs}", macs.join("\n")))) return;
+      bulkEditOverlay.classList.add("hidden");
+      beDelBtn.disabled = true;
+      msg.innerHTML = `<div class="alert info">${t("bulk.deleting")} ${ids.length} endpoints...</div>`;
+      let ok = 0, fail = 0;
+      for (const id of ids) {
+        try {
+          await api.deleteEndpoint(id);
+          state.allRows     = state.allRows.filter((r) => r.id !== id);
+          if (state.allRowsCache) state.allRowsCache = state.allRowsCache.filter((r) => r.id !== id);
+          ok++;
+        } catch { fail++; }
+      }
+      cb.applyFilter();
+      const parts = [];
+      if (ok)   parts.push(`${ok} ${t("bulk.deleted")}`);
+      if (fail) parts.push(`${fail} ${t("bulk.failed")}`);
+      msg.innerHTML = `<div class="alert ${fail ? "error" : "success"}">${parts.join(", ")}</div>`;
+      beDelBtn.disabled = false;
+    });
+  }
+
+  // ── Decommission (modal action button) ────────────────────────────────────
+  if (beDecommBtn) {
+    beDecommBtn.addEventListener("click", async () => {
       const ids = cb.getSelectedIds();
       if (!ids.length) return;
       if (!confirm(t("bulk.confirm_decomm").replace("{n}", ids.length))) return;
-      bulkDecommBtn.disabled = true;
+      bulkEditOverlay.classList.add("hidden");
+      beDecommBtn.disabled = true;
       msg.innerHTML = `<div class="alert info">${t("bulk.decomm_progress").replace("{n}", ids.length)}</div>`;
       try {
         const res = await api.bulkDecommission(ids);
@@ -465,18 +487,19 @@ export function initBulk(container, state, api, cb) {
       } catch (err) {
         msg.innerHTML = `<div class="alert error">${t("bulk.decomm_err").replace("{msg}", esc(err.message))}</div>`;
       } finally {
-        bulkDecommBtn.disabled = false;
+        beDecommBtn.disabled = false;
       }
     });
   }
 
-  // ── Bulk undecommission ───────────────────────────────────────────────────
-  if (bulkUndecommBtn) {
-    bulkUndecommBtn.addEventListener("click", async () => {
+  // ── Undecommission / Reactivate (modal action button) ─────────────────────
+  if (beUndecommBtn) {
+    beUndecommBtn.addEventListener("click", async () => {
       const ids = cb.getSelectedIds();
       if (!ids.length) return;
       if (!confirm(t("bulk.confirm_undecomm").replace("{n}", ids.length))) return;
-      bulkUndecommBtn.disabled = true;
+      bulkEditOverlay.classList.add("hidden");
+      beUndecommBtn.disabled = true;
       msg.innerHTML = `<div class="alert info">${t("bulk.undecomm_progress").replace("{n}", ids.length)}</div>`;
       try {
         const res = await api.bulkUndecommission(ids);
@@ -495,7 +518,7 @@ export function initBulk(container, state, api, cb) {
       } catch (err) {
         msg.innerHTML = `<div class="alert error">${t("bulk.undecomm_err").replace("{msg}", esc(err.message))}</div>`;
       } finally {
-        bulkUndecommBtn.disabled = false;
+        beUndecommBtn.disabled = false;
       }
     });
   }

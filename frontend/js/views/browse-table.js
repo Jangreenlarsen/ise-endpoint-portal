@@ -26,7 +26,6 @@ export function initTable(container, state, api, cb) {
   const undoBtn        = container.querySelector("#undo-btn");
   const selectAllCb    = container.querySelector("#select-all");
   const bulkSaveBtn    = container.querySelector("#bulk-save-btn");
-  const bulkDelBtn     = container.querySelector("#bulk-del-btn");
   const bulkDisconnBtn = container.querySelector("#bulk-disconnect-btn");
   const bulkCoaBtn     = container.querySelector("#bulk-coa-btn");
   const bulkEditBtn    = container.querySelector("#bulk-edit-btn");
@@ -364,6 +363,7 @@ export function initTable(container, state, api, cb) {
       if (pskKeyCell) pskKeyCell.textContent = state.pskShowKey ? (r.psk_key || "") : (r.psk_key ? "••••••" : "");
       delete tr.dataset.beStaticGroup;
       delete tr.dataset.bePskKey;
+      delete tr.dataset.beActiveStatus;
       tr.classList.remove("dirty");
       state.dirtyIds.delete(id);
     }
@@ -444,6 +444,7 @@ export function initTable(container, state, api, cb) {
       const pskCb = tr.querySelector(".psk-mode-cb");
       if (pskCb) pskCb.checked = !!r.psk_mode;
       delete tr.dataset.bePskKey;
+      delete tr.dataset.beActiveStatus;
 
       const rolesCell = tr.querySelector(".roles-cell");
       if (rolesCell) rolesCell.innerHTML = rolesChipsHtml(r.roles);
@@ -479,17 +480,10 @@ export function initTable(container, state, api, cb) {
     const selected     = getSelectedIds();
     const hasSelection = selected.length > 0;
     bulkSaveBtn.disabled    = !hasSelection;
-    bulkDelBtn.disabled     = !hasSelection;
     bulkDisconnBtn.disabled = !hasSelection;
     bulkEditBtn.disabled    = !hasSelection;
     if (bulkCoaBtn)  bulkCoaBtn.disabled  = !hasSelection;
     if (bulkSimBtn)  bulkSimBtn.disabled  = !hasSelection;
-    const bulkTplBtn      = container.querySelector("#bulk-tpl-btn");
-    const bulkDecommBtn   = container.querySelector("#bulk-decomm-btn");
-    const bulkUndecommBtn = container.querySelector("#bulk-undecomm-btn");
-    if (bulkTplBtn)      bulkTplBtn.disabled      = !hasSelection;
-    if (bulkDecommBtn)   bulkDecommBtn.disabled   = !hasSelection;
-    if (bulkUndecommBtn) bulkUndecommBtn.disabled = !hasSelection;
     selectionCount.textContent = hasSelection ? t("browse.selection_n").replace("{n}", selected.length) : "";
     selectAllCb.indeterminate  = selected.length > 0 && selected.length < tbody.querySelectorAll(".row-select").length;
   }
@@ -529,7 +523,8 @@ export function initTable(container, state, api, cb) {
     if (tr.dataset.beStaticGroup !== undefined) {
       static_group_assignment = tr.dataset.beStaticGroup === "1";
     }
-    const bePskKey = state.isPskEditor && tr.dataset.bePskKey !== undefined ? tr.dataset.bePskKey : undefined;
+    const bePskKey      = state.isPskEditor && tr.dataset.bePskKey !== undefined ? tr.dataset.bePskKey : undefined;
+    const beActiveStatus = tr.dataset.beActiveStatus;
 
     return {
       id,
@@ -542,6 +537,7 @@ export function initTable(container, state, api, cb) {
           HypervisionRoles: hypervisionRoles,
           ...(state.isPskEditor && pskMode !== null ? { PSK_Mode: pskMode ? "true" : "false" } : {}),
           ...(bePskKey !== undefined && bePskKey !== "****" ? { PSK_Key: bePskKey } : {}),
+          ...(beActiveStatus !== undefined ? { HypervisionActive: beActiveStatus } : {}),
         },
       },
       localUpdate: { description, group_id, static_group_assignment, groupChanged, endpointType, owner, lokation, authzVlan, authzAcl, platformType, pskMode },

@@ -79,13 +79,6 @@ export async function renderBrowse(container) {
                   title="${t("browse.coa_reauth_btn_title")}">CoA Reauth</button>
           <button id="bulk-disconnect-btn" class="danger small" disabled
                   title="${t("browse.disconnect_title")}">${t("browse.btn_bulk_disconnect")}</button>
-          <button id="bulk-tpl-btn" class="secondary small" disabled
-                  title="${t("browse.tpl_btn_title")}">${t("browse.btn_bulk_tpl")}</button>
-          <button id="bulk-del-btn" class="danger small" disabled>${t("browse.btn_bulk_delete")}</button>
-          <button id="bulk-decomm-btn" class="danger small" disabled
-                  title="${t("browse.decomm_btn_title")}">${t("browse.btn_bulk_decomm")}</button>
-          <button id="bulk-undecomm-btn" class="warning small" disabled
-                  title="${t("browse.undecomm_btn_title")}">${t("browse.btn_bulk_undecomm")}</button>
           <button id="bulk-sim-btn" class="secondary small" disabled
                   title="${t("browse.sim_btn_title")}">${t("browse.sim_btn")}</button>
         </div>
@@ -317,10 +310,25 @@ export async function renderBrowse(container) {
           </div>
           <label><input type="checkbox" class="be-cb" data-field="roles" /> ${t("col.roles")}</label>
           <div id="be-roles" class="be-roles-wrap disabled-overlay"></div>
+          <hr style="margin:0.75rem 0;border:0;border-top:1px solid var(--border,#e2e8f0);">
+          <label><input type="checkbox" class="be-cb" data-field="active-status" /> ${t("bulk.active_status_lbl")}</label>
+          <select id="be-active-status" disabled>
+            <option value="Aktiv">${t("detail.active_status_aktiv")}</option>
+            <option value="Inaktiv">${t("detail.active_status_inaktiv")}</option>
+          </select>
         </div>
         <div class="modal-actions">
           <button id="be-apply">${t("bulk.btn_apply")}</button>
           <button id="be-cancel" class="secondary">${t("bulk.btn_cancel")}</button>
+        </div>
+        <div class="be-actions-section">
+          <p class="hint" style="margin:0.5rem 0 0.4rem;font-weight:600;">${t("bulk.actions_title")}</p>
+          <div class="be-actions-row">
+            <button id="be-tpl-btn" type="button" class="secondary small">${t("browse.btn_bulk_tpl")}</button>
+            <button id="be-decomm-btn" type="button" class="danger small">${t("browse.btn_bulk_decomm")}</button>
+            <button id="be-undecomm-btn" type="button" class="warning small">${t("browse.btn_bulk_undecomm")}</button>
+            <button id="be-del-btn" type="button" class="danger small">${t("browse.btn_bulk_delete")}</button>
+          </div>
         </div>
       </div>
     </div>
