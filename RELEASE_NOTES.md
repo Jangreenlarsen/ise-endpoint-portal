@@ -4,6 +4,29 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.22.2] — 2026-06-03 — Release: Bulk-edit konsolideret, toolbar uniformt, bugfixes
+
+> **Build:** 0607
+
+### Hvad er nyt siden 5.21.0
+
+**Bulk-edit modal samler alle handlinger**
+"Edit selected endpoints" indeholder nu også Apply template, Delete, Decommission og Reactivate — de fire toolbar-knapper er fjernet og erstattet af en "Handlinger"-sektion i bunden af modalen.
+
+**Uniform toolbar**
+Alle toolbar-knapper i Browse er nu samme størrelse (`small`). Logisk gruppering: Data · Filtre · Gem/Undo · Selektion · Visning.
+
+**first_seen bruger HypervisionRegisteredAt**
+Hvis SQLite first_seen-databasen nulstilles, genbruges `HypervisionRegisteredAt`-attributten fra ISE som registreringstidspunkt — korrekt dato bevares efter geninstallation.
+
+**Bugfixes**
+- Rollback af `template_applied` audit-events fejlede 400 (manglede before-snapshot og case i rollback-handler)
+- `bulkDelBtn is not defined` JavaScript-fejl ved åbning af Browse
+- `HypervisionActive` status tilgængelig i bulk-edit
+- Sæt Aktiv-knap vises nu korrekt for endpoints uden sat status
+
+---
+
 ## [5.21.0] — 2026-06-02 — Release: Konfigurerbar decommission, policy-editor forbedringer, bugfixes
 
 > **Build:** 0598

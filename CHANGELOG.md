@@ -3,6 +3,8 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.22.2 build 0607] — 2026-06-03 — release: Versionsbump til 5.22.2
+
 ## [5.22.1 build 0606] — 2026-06-03 — fix: first_seen_at bruger HypervisionRegisteredAt som seed
 
 first_seen_store.record() får ny valgfri seed_ts-parameter. Når et endpoint
