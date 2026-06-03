@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.21.1 build 0601] — 2026-06-03 — feat: Aktiv/Inaktiv status i bulk-edit "Edit selected endpoints"
+
+Tilføjer `HypervisionActive` som valgfrit felt i bulk-edit dialogen. Sæt afkrydsning og vælg
+"Aktiv" eller "Inaktiv" — alle valgte endpoints markeres dirty og gemmes til ISE ved næste save.
+Badge i MAC-celle opdateres straks. `beActiveStatus` dataset ryddes korrekt ved undo/revert.
+**Berørte filer:** `browse.js` (HTML), `browse-bulk.js` (apply), `browse-table.js` (save+undo), `i18n.js`
+
 ## [5.21.1 build 0600] — 2026-06-02 — fix: Sæt Aktiv-knap vises nu korrekt når active_status ikke er sat
 
 `setAktivBtn` vistes kun ved status="Inaktiv" — endpoints uden sat status (tom streng) viste fejlagtigt

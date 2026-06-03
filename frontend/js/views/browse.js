@@ -317,6 +317,12 @@ export async function renderBrowse(container) {
           </div>
           <label><input type="checkbox" class="be-cb" data-field="roles" /> ${t("col.roles")}</label>
           <div id="be-roles" class="be-roles-wrap disabled-overlay"></div>
+          <hr style="margin:0.75rem 0;border:0;border-top:1px solid var(--border,#e2e8f0);">
+          <label><input type="checkbox" class="be-cb" data-field="active-status" /> ${t("bulk.active_status_lbl")}</label>
+          <select id="be-active-status" disabled>
+            <option value="Aktiv">${t("detail.active_status_aktiv")}</option>
+            <option value="Inaktiv">${t("detail.active_status_inaktiv")}</option>
+          </select>
         </div>
         <div class="modal-actions">
           <button id="be-apply">${t("bulk.btn_apply")}</button>

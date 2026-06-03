@@ -364,6 +364,7 @@ export function initTable(container, state, api, cb) {
       if (pskKeyCell) pskKeyCell.textContent = state.pskShowKey ? (r.psk_key || "") : (r.psk_key ? "••••••" : "");
       delete tr.dataset.beStaticGroup;
       delete tr.dataset.bePskKey;
+      delete tr.dataset.beActiveStatus;
       tr.classList.remove("dirty");
       state.dirtyIds.delete(id);
     }
@@ -444,6 +445,7 @@ export function initTable(container, state, api, cb) {
       const pskCb = tr.querySelector(".psk-mode-cb");
       if (pskCb) pskCb.checked = !!r.psk_mode;
       delete tr.dataset.bePskKey;
+      delete tr.dataset.beActiveStatus;
 
       const rolesCell = tr.querySelector(".roles-cell");
       if (rolesCell) rolesCell.innerHTML = rolesChipsHtml(r.roles);
@@ -529,7 +531,8 @@ export function initTable(container, state, api, cb) {
     if (tr.dataset.beStaticGroup !== undefined) {
       static_group_assignment = tr.dataset.beStaticGroup === "1";
     }
-    const bePskKey = state.isPskEditor && tr.dataset.bePskKey !== undefined ? tr.dataset.bePskKey : undefined;
+    const bePskKey      = state.isPskEditor && tr.dataset.bePskKey !== undefined ? tr.dataset.bePskKey : undefined;
+    const beActiveStatus = tr.dataset.beActiveStatus;
 
     return {
       id,
@@ -542,6 +545,7 @@ export function initTable(container, state, api, cb) {
           HypervisionRoles: hypervisionRoles,
           ...(state.isPskEditor && pskMode !== null ? { PSK_Mode: pskMode ? "true" : "false" } : {}),
           ...(bePskKey !== undefined && bePskKey !== "****" ? { PSK_Key: bePskKey } : {}),
+          ...(beActiveStatus !== undefined ? { HypervisionActive: beActiveStatus } : {}),
         },
       },
       localUpdate: { description, group_id, static_group_assignment, groupChanged, endpointType, owner, lokation, authzVlan, authzAcl, platformType, pskMode },

@@ -99,9 +99,10 @@ export function initBulk(container, state, api, cb) {
         fields.roles = Array.from(chips).map((c) => c.dataset.role);
         return;
       }
-      if (field === "static-group") { fields["static-group"] = bulkEditOverlay.querySelector("#be-static-group-cb").checked; return; }
-      if (field === "psk-mode")     { fields["psk-mode"]     = bulkEditOverlay.querySelector("#be-psk-mode-cb").checked;    return; }
-      if (field === "psk-key")      { fields["psk-key"]      = bulkEditOverlay.querySelector("#be-psk-key-inp").value;      return; }
+      if (field === "static-group")  { fields["static-group"]  = bulkEditOverlay.querySelector("#be-static-group-cb").checked; return; }
+      if (field === "psk-mode")      { fields["psk-mode"]      = bulkEditOverlay.querySelector("#be-psk-mode-cb").checked;    return; }
+      if (field === "psk-key")       { fields["psk-key"]       = bulkEditOverlay.querySelector("#be-psk-key-inp").value;      return; }
+      if (field === "active-status") { fields["active-status"] = bulkEditOverlay.querySelector("#be-active-status").value;    return; }
       const ctrl = bulkEditOverlay.querySelector(`#be-${field}`);
       if (ctrl) fields[field] = ctrl.value;
     });
@@ -141,6 +142,20 @@ export function initBulk(container, state, api, cb) {
         const newRoles = [...externalRoles, ...fields.roles];
         const cell = tr.querySelector(".roles-cell");
         if (cell) cell.innerHTML = cb.rolesChipsHtml(newRoles);
+      }
+      if ("active-status" in fields) {
+        tr.dataset.beActiveStatus = fields["active-status"];
+        // Update badge in MAC cell
+        const macCell = tr.querySelector(".mac-cell");
+        if (macCell) {
+          macCell.querySelectorAll(".active-status-row-badge").forEach(b => b.remove());
+          const v = fields["active-status"];
+          if (v === "Inaktiv") {
+            macCell.insertAdjacentHTML("beforeend", `<span class="active-status-row-badge inaktiv" title="${t("detail.active_status_inaktiv")}">⊘</span>`);
+          } else if (v === "Aktiv") {
+            macCell.insertAdjacentHTML("beforeend", `<span class="active-status-row-badge aktiv" title="${t("detail.active_status_aktiv")}">✓</span>`);
+          }
+        }
       }
       cb.markDirty(tr);
     }
