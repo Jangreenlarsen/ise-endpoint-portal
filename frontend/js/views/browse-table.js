@@ -26,7 +26,6 @@ export function initTable(container, state, api, cb) {
   const undoBtn        = container.querySelector("#undo-btn");
   const selectAllCb    = container.querySelector("#select-all");
   const bulkSaveBtn    = container.querySelector("#bulk-save-btn");
-  const bulkDelBtn     = container.querySelector("#bulk-del-btn");
   const bulkDisconnBtn = container.querySelector("#bulk-disconnect-btn");
   const bulkCoaBtn     = container.querySelector("#bulk-coa-btn");
   const bulkEditBtn    = container.querySelector("#bulk-edit-btn");
@@ -481,17 +480,10 @@ export function initTable(container, state, api, cb) {
     const selected     = getSelectedIds();
     const hasSelection = selected.length > 0;
     bulkSaveBtn.disabled    = !hasSelection;
-    bulkDelBtn.disabled     = !hasSelection;
     bulkDisconnBtn.disabled = !hasSelection;
     bulkEditBtn.disabled    = !hasSelection;
     if (bulkCoaBtn)  bulkCoaBtn.disabled  = !hasSelection;
     if (bulkSimBtn)  bulkSimBtn.disabled  = !hasSelection;
-    const bulkTplBtn      = container.querySelector("#bulk-tpl-btn");
-    const bulkDecommBtn   = container.querySelector("#bulk-decomm-btn");
-    const bulkUndecommBtn = container.querySelector("#bulk-undecomm-btn");
-    if (bulkTplBtn)      bulkTplBtn.disabled      = !hasSelection;
-    if (bulkDecommBtn)   bulkDecommBtn.disabled   = !hasSelection;
-    if (bulkUndecommBtn) bulkUndecommBtn.disabled = !hasSelection;
     selectionCount.textContent = hasSelection ? t("browse.selection_n").replace("{n}", selected.length) : "";
     selectAllCb.indeterminate  = selected.length > 0 && selected.length < tbody.querySelectorAll(".row-select").length;
   }

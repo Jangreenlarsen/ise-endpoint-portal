@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.22.0 build 0602] — 2026-06-03 — feat: Apply template/Delete/Decomm/Reactivate flyttet ind i bulk-edit modal
+
+Fjerner `bulk-tpl-btn`, `bulk-del-btn`, `bulk-decomm-btn`, `bulk-undecomm-btn` fra toolbar.
+Tilføjer "Handlinger"-sektion i bunden af "Edit selected endpoints"-modalen med de fire knapper.
+Handlings-knapper lukker modal og ekskverer straks med bekræftelses-dialog.
+**Berørte filer:** `browse.js` (HTML), `browse-bulk.js` (handlers), `browse-table.js` (updateSelectionUI), `styles.css`, `i18n.js`
+
 ## [5.21.1 build 0601] — 2026-06-03 — feat: Aktiv/Inaktiv status i bulk-edit "Edit selected endpoints"
 
 Tilføjer `HypervisionActive` som valgfrit felt i bulk-edit dialogen. Sæt afkrydsning og vælg

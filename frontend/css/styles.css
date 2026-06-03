@@ -808,6 +808,8 @@ td.mac-cell.cache-stale {
   border-top: 1px solid var(--border);
   margin-top: 0.25rem;
 }
+.be-actions-section { border-top: 1px solid var(--border); padding-top: 0.6rem; margin-top: 0.1rem; }
+.be-actions-row { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 
 /* ── ANC Quarantine section in detail modal ── */
 .anc-section {
