@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.22.1 build 0606] — 2026-06-03 — fix: first_seen_at bruger HypervisionRegisteredAt som seed
+
+first_seen_store.record() får ny valgfri seed_ts-parameter. Når et endpoint
+mødes for første gang i SQLite-DB'en, bruges HypervisionRegisteredAt fra ISE
+som first_seen_at i stedet for time.time() — det rigtige registreringstidspunkt
+bevares selv efter at SQLite-DB'en nulstilles (geninstallation).
+**Berørte filer:** `backend/app/core/first_seen_store.py`, `backend/app/services/endpoint_service.py`
+
 ## [5.22.1 build 0605] — 2026-06-03 — feat: Uniform toolbar i Browse
 
 Alle toolbar-knapper er nu `small` (ensartet højde). Logisk gruppering:
