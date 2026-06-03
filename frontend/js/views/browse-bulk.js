@@ -164,34 +164,6 @@ export function initBulk(container, state, api, cb) {
     msg.innerHTML = `<div class="alert info">${ids.length} ${t("bulk.updated_local")}</div>`;
   });
 
-  // ── Bulk delete ───────────────────────────────────────────────────────────
-  bulkDelBtn.addEventListener("click", async () => {
-    const ids = cb.getSelectedIds();
-    if (!ids.length) return;
-    const macs = ids.map((id) => {
-      const tr = tbody.querySelector(`tr[data-id="${id}"]`);
-      return tr ? tr.querySelector(".mac-cell").textContent : id;
-    });
-    if (!confirm(t("bulk.confirm_delete").replace("{n}", ids.length).replace("{macs}", macs.join("\n")))) return;
-    bulkDelBtn.disabled = true;
-    msg.innerHTML = `<div class="alert info">${t("bulk.deleting")} ${ids.length} endpoints...</div>`;
-    let ok = 0, fail = 0;
-    for (const id of ids) {
-      try {
-        await api.deleteEndpoint(id);
-        state.allRows     = state.allRows.filter((r) => r.id !== id);
-        if (state.allRowsCache) state.allRowsCache = state.allRowsCache.filter((r) => r.id !== id);
-        ok++;
-      } catch { fail++; }
-    }
-    cb.applyFilter();
-    const parts = [];
-    if (ok)   parts.push(`${ok} ${t("bulk.deleted")}`);
-    if (fail) parts.push(`${fail} ${t("bulk.failed")}`);
-    msg.innerHTML = `<div class="alert ${fail ? "error" : "success"}">${parts.join(", ")}</div>`;
-    bulkDelBtn.disabled = false;
-  });
-
   // ── Bulk disconnect ───────────────────────────────────────────────────────
   bulkDisconnBtn.addEventListener("click", async () => {
     const ids = cb.getSelectedIds();
