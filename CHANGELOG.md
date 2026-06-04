@@ -3,6 +3,8 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.22.3 build 0610] — 2026-06-04 — release: Versionsbump til 5.22.3
+
 ## [5.22.2 build 0609] — 2026-06-04 — fix: HypervisionRegisteredAt stampes ved første portal-edit af pre-existing endpoints
 
 `update_endpoint()` manglede samme check som `create_endpoint()`. Pre-existing ISE-endpoints
