@@ -72,6 +72,8 @@ export function initDetail(container, state, api, cb) {
       container.querySelector("#d-type").innerHTML        = optionsHtml(state.caValues.Type, d.endpoint_type);
       container.querySelector("#d-owner").innerHTML       = optionsHtml(state.caValues.Owner, d.owner);
       container.querySelector("#d-lokation").innerHTML    = optionsHtml(state.caValues.Lokation, d.lokation);
+      const regByEl = container.querySelector("#d-registretby");
+      if (regByEl) regByEl.value = d.registret_by || "";
       container.querySelector("#d-authzvlan").innerHTML   = optionsHtml(state.caValues.AuthzVlan, d.authz_vlan);
       container.querySelector("#d-authzacl").innerHTML    = optionsHtml(state.caValues.AuthzACL, d.authz_acl);
       const detailNasPt = state.pxgridSessionData
@@ -708,6 +710,7 @@ export function initDetail(container, state, api, cb) {
       owner:          container.querySelector("#d-owner")?.value || "",
       endpoint_type:  container.querySelector("#d-type")?.value || "",
       lokation:       container.querySelector("#d-lokation")?.value || "",
+      registret_by:   container.querySelector("#d-registretby")?.value || "",
       authz_vlan:     container.querySelector("#d-authzvlan")?.value || "",
       authz_acl:      container.querySelector("#d-authzacl")?.value || "",
       platform_type:  container.querySelector("#d-platformtype")?.value || "",
@@ -1095,6 +1098,7 @@ export function initDetail(container, state, api, cb) {
       Type: container.querySelector("#d-type").value,
       Owner: container.querySelector("#d-owner").value,
       Lokation: container.querySelector("#d-lokation").value,
+      RegistretBy: container.querySelector("#d-registretby")?.value || "",
       AuthzVlan: container.querySelector("#d-authzvlan").value,
       AuthzACL: container.querySelector("#d-authzacl").value,
       PlatformType: container.querySelector("#d-platformtype").value,

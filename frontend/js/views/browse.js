@@ -192,6 +192,8 @@ export async function renderBrowse(container) {
               <select id="d-owner"></select>
               <label>${t("col.lokation")}</label>
               <select id="d-lokation"></select>
+              <label>${t("col.registret_by")}</label>
+              <input type="text" id="d-registretby" maxlength="128" />
               <label>AuthzVlan</label>
               <select id="d-authzvlan"></select>
               <label>AuthzACL</label>

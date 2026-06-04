@@ -372,6 +372,10 @@ class Settings(BaseSettings):
     github_branch: str = Field(default="main", description="GitHub-branch til opdateringscheck og git pull. 'main' = stabil release, 'dev' = udviklingsversion.")
     decomm_authz_vlan: str = Field(default="999", description="AuthzVlan der sættes på et endpoint ved dekommissionering.")
     decomm_authz_acl: str = Field(default="deny_all_ipv4_traffic", description="AuthzACL (DACL) der sættes på et endpoint ved dekommissionering.")
+    selfregister_enabled: bool = Field(default=True, description="Aktivér public selvregistrerings-side (/selfregister).")
+    selfregister_group_id: str = Field(default="", description="ISE endpoint group ID som selvregistrerede endpoints placeres i. Tom = standard gruppe.")
+    selfregister_redirect_url: str = Field(default="", description="URL brugeren sendes til efter succesfuld registrering (fx https://company.com). Tom = vis success-besked.")
+    selfregister_terms: str = Field(default="Jeg accepterer at min enheds MAC-adresse registreres og at netværksadgang logges.", description="Accepttekst vist på selvregistrerings-siden.")
 
 
 def _load() -> Settings:

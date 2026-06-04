@@ -1,0 +1,116 @@
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+  Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
+  Public self-registration page — no authentication required.
+  Wireless controller redirects clients here with ?mac=AA:BB:CC:DD:EE:FF
+-->
+<!DOCTYPE html>
+<html lang="da">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Netværks-registrering</title>
+    <link rel="icon" href="icons/icon-192.svg" type="image/svg+xml" />
+    <style>
+      *, *::before, *::after { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, sans-serif;
+        background: #f0f4f8;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+      }
+      .card {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+        padding: 2rem 2.5rem;
+        max-width: 480px;
+        width: 100%;
+      }
+      .brand {
+        font-size: 0.8rem;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: .08em;
+        margin-bottom: 0.25rem;
+      }
+      h1 { margin: 0 0 0.5rem; font-size: 1.5rem; color: #0f172a; }
+      .subtitle { color: #64748b; font-size: 0.9rem; margin-bottom: 1.5rem; }
+      .field { margin-bottom: 1.1rem; }
+      label { display: block; font-size: 0.85rem; font-weight: 600; color: #374151; margin-bottom: 0.3rem; }
+      input[type="text"] {
+        width: 100%;
+        padding: 0.55rem 0.75rem;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-size: 0.95rem;
+        transition: border-color .15s;
+        outline: none;
+      }
+      input[type="text"]:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.15); }
+      input[readonly] { background: #f8fafc; color: #64748b; cursor: default; }
+      .agree-row {
+        display: flex;
+        gap: 0.6rem;
+        align-items: flex-start;
+        margin-bottom: 1.5rem;
+        cursor: pointer;
+      }
+      .agree-row input[type="checkbox"] { margin-top: 2px; flex-shrink: 0; width: 16px; height: 16px; cursor: pointer; }
+      .agree-text { font-size: 0.85rem; color: #374151; line-height: 1.5; }
+      button[type="submit"] {
+        width: 100%;
+        padding: 0.7rem;
+        background: #2563eb;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background .15s;
+      }
+      button[type="submit"]:hover:not(:disabled) { background: #1d4ed8; }
+      button[type="submit"]:disabled { background: #93c5fd; cursor: default; }
+      .alert {
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        margin-bottom: 1rem;
+        font-size: 0.9rem;
+      }
+      .alert-error   { background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b; }
+      .alert-success { background: #f0fdf4; border: 1px solid #86efac; color: #166534; }
+      .alert-info    { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+      .disabled-page { text-align: center; color: #64748b; padding: 2rem 0; }
+      .spinner {
+        display: inline-block;
+        width: 18px; height: 18px;
+        border: 2px solid rgba(255,255,255,.4);
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: spin .7s linear infinite;
+        vertical-align: middle;
+        margin-right: 6px;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      .success-icon { font-size: 3rem; margin-bottom: 0.5rem; }
+      .success-block { text-align: center; }
+      .success-block h2 { color: #166534; margin: 0 0 0.5rem; }
+      .success-block p { color: #374151; font-size: 0.9rem; }
+      .countdown { font-size: 0.8rem; color: #64748b; margin-top: 0.5rem; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="brand">HyperVision ISE Portal</div>
+      <div id="page-content">
+        <div class="alert alert-info">Indlæser...</div>
+      </div>
+    </div>
+    <script type="module" src="js/selfregister.js"></script>
+  </body>
+</html>

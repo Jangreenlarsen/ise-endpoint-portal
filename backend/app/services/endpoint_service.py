@@ -249,6 +249,7 @@ class EndpointService:
             authz_vlan=ca.get("AuthzVlan", ""),
             authz_acl=ca.get("AuthzACL", ""),
             platform_type=ca.get("PlatformType", ""),
+            registret_by=ca.get("RegistretBy", ""),
             hypervision=ca.get("HypervisionISEPortal", ""),
             roles=_parse_roles_csv(ca.get(ROLES_ATTR, "")),
             profile_id=profile_id,

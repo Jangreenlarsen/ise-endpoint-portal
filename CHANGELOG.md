@@ -3,6 +3,16 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.30.0 build 0611] — 2026-06-04 — feat: Public selvregistrerings-side + RegistretBy CA
+
+Ny `selfregister.html` standalone side til wireless controller redirect.
+Ny public API: `GET /api/selfregister/config` + `POST /api/selfregister` (ingen auth).
+Ny endpoint CA `RegistretBy` i MANAGED_ATTRS, Browse-kolonne og edit-form.
+Konfigurerbar via `selfregister_*` settings i `config.py`.
+**Berørte filer:** `config.py`, `custom_attr_store.py`, `schemas/endpoint.py`, `endpoint_service.py`,
+`api/selfregister.py`, `main.py`, `frontend/selfregister.html`, `frontend/js/selfregister.js`,
+`browse-utils.js`, `browse-table.js`, `browse-detail.js`, `browse.js`, `i18n.js`
+
 ## [5.22.3 build 0610] — 2026-06-04 — release: Versionsbump til 5.22.3
 
 ## [5.22.2 build 0609] — 2026-06-04 — fix: HypervisionRegisteredAt stampes ved første portal-edit af pre-existing endpoints

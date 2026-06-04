@@ -255,6 +255,7 @@ export function initTable(container, state, api, cb) {
         endpoint_type: `<td data-col="endpoint_type"><select class="ca-type">${optionsHtml(state.caValues.Type, r.endpoint_type)}</select></td>`,
         owner:         `<td data-col="owner"><select class="ca-owner">${optionsHtml(state.caValues.Owner, r.owner)}</select></td>`,
         lokation:      `<td data-col="lokation"><select class="ca-lokation">${optionsHtml(state.caValues.Lokation, r.lokation)}</select></td>`,
+        registret_by:  `<td data-col="registret_by"><input type="text" class="ca-registretby desc-input" value="${esc(r.registret_by || "")}" /></td>`,
         platform_type: nasPt
           ? `<td data-col="platform_type" class="platform-auto-td"><div class="platform-auto-wrap"><select class="ca-platformtype" disabled>${optionsHtml(state.caValues.PlatformType, nasPt)}</select><span class="platform-auto-badge" title="${t("browse.platform_auto_title")}">&#9889;</span></div></td>`
           : `<td data-col="platform_type"><select class="ca-platformtype">${optionsHtml(state.caValues.PlatformType, r.platform_type)}</select></td>`,
@@ -411,6 +412,8 @@ export function initTable(container, state, api, cb) {
       setSel("ca-type",        r.endpoint_type, state.caValues.Type);
       setSel("ca-owner",       r.owner,          state.caValues.Owner);
       setSel("ca-lokation",    r.lokation,       state.caValues.Lokation);
+      const regByInp = tr.querySelector(".ca-registretby");
+      if (regByInp) regByInp.value = r.registret_by || "";
       setSel("ca-authzvlan",   r.authz_vlan,     state.caValues.AuthzVlan);
       setSel("ca-authzacl",    r.authz_acl,      state.caValues.AuthzACL);
       setSel("ca-platformtype",r.platform_type,  state.caValues.PlatformType);
@@ -496,6 +499,7 @@ export function initTable(container, state, api, cb) {
     const endpointType    = tr.querySelector(".ca-type").value;
     const owner           = tr.querySelector(".ca-owner").value;
     const lokation        = tr.querySelector(".ca-lokation").value;
+    const registretBy     = tr.querySelector(".ca-registretby")?.value || "";
     const authzVlan       = tr.querySelector(".ca-authzvlan").value;
     const authzAcl        = tr.querySelector(".ca-authzacl").value;
     const platformType    = tr.querySelector(".ca-platformtype").value;
@@ -534,6 +538,7 @@ export function initTable(container, state, api, cb) {
         custom_attributes: {
           Type: endpointType, Owner: owner, Lokation: lokation,
           AuthzVlan: authzVlan, AuthzACL: authzAcl, PlatformType: platformType,
+          RegistretBy: registretBy,
           HypervisionRoles: hypervisionRoles,
           ...(state.isPskEditor && pskMode !== null ? { PSK_Mode: pskMode ? "true" : "false" } : {}),
           ...(bePskKey !== undefined && bePskKey !== "****" ? { PSK_Key: bePskKey } : {}),

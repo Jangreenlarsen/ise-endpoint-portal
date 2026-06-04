@@ -24,6 +24,7 @@ class EndpointDetail(BaseModel):
     authz_vlan: str = ""
     authz_acl: str = ""
     platform_type: str = ""
+    registret_by: str = ""
     hypervision: str = ""
     roles: list[str] = Field(default_factory=list)
     profile_id: str = ""
@@ -62,6 +63,7 @@ class CustomAttrs(BaseModel):
     AuthzVlan: str = ""
     AuthzACL: str = ""
     PlatformType: str = ""
+    RegistretBy: str = ""
     HypervisionRoles: str = ""
     HypervisionStatus: str | None = None
     HypervisionActive: str | None = None
