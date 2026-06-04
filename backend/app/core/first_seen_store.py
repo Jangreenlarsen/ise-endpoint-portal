@@ -46,11 +46,15 @@ def init_db() -> None:
         con.close()
 
 
-def record(mac: str, endpoint_id: str = "") -> float:
+def record(mac: str, endpoint_id: str = "", seed_ts: float | None = None) -> float:
     """Registrér mac som 'set nu' hvis den ikke kendes i forvejen.
 
     Returnerer always first_seen_at — enten den eksisterende record
     eller det netop indsatte tidspunkt.
+
+    seed_ts: valgfrit Unix-timestamp der bruges som first_seen_at ved NY
+    indsættelse (i stedet for time.time()). Bruges til at bevare
+    HypervisionRegisteredAt fra ISE selv efter at SQLite-DB'en er nulstillet.
 
     Hvis endpoint_id er ændret for samme MAC (slettet og genskabt i ISE),
     nulstilles tidsstemplet så endpointet behandles som nyt.
@@ -59,6 +63,7 @@ def record(mac: str, endpoint_id: str = "") -> float:
     if not mac:
         return time.time()
     now = time.time()
+    insert_ts = seed_ts if (seed_ts and seed_ts <= now) else now
     con = sqlite3.connect(DB_PATH)
     try:
         row = con.execute(
@@ -67,10 +72,10 @@ def record(mac: str, endpoint_id: str = "") -> float:
         if row is None:
             con.execute(
                 "INSERT INTO first_seen (mac, first_seen_at, endpoint_id, deleted_at) VALUES (?, ?, ?, NULL)",
-                (mac, now, endpoint_id),
+                (mac, insert_ts, endpoint_id),
             )
             con.commit()
-            return now
+            return insert_ts
         existing_ts, existing_id = row
         if endpoint_id and existing_id and existing_id != endpoint_id:
             # Samme MAC men nyt ISE endpoint_id → slettet og genskabt i ISE

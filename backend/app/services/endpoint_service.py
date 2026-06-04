@@ -65,6 +65,17 @@ from app.services._endpoint_helpers import (
 
 logger = logging.getLogger(__name__)
 
+
+def _parse_iso_ts(iso: str) -> float | None:
+    """Parse ISO 8601 UTC string to Unix timestamp. Returns None on failure."""
+    if not iso:
+        return None
+    try:
+        return datetime.fromisoformat(iso.replace("Z", "+00:00")).timestamp()
+    except (ValueError, AttributeError):
+        return None
+
+
 # Module-level flag: have we ensured custom attribute definitions in ISE this session?
 _ca_definitions_ensured = False
 
@@ -253,7 +264,10 @@ class EndpointService:
             active_status=ca.get(ACTIVE_ATTR, ""),
             create_time=create_time,
             update_time=update_time,
-            first_seen_at=first_seen_store.record(mac_val, endpoint_id),
+            first_seen_at=first_seen_store.record(
+                mac_val, endpoint_id,
+                seed_ts=_parse_iso_ts(ca.get(REGISTERED_AT_ATTR, "")),
+            ),
         )
 
     async def _resolve_group_name(self, group_id: str) -> str:

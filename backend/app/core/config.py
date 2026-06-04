@@ -105,8 +105,10 @@ class Settings(BaseSettings):
         description="Master switch for in-memory endpoint/group cache.",
     )
     cache_ttl_seconds: float = Field(
-        default=60.0,
-        description="Max age of a fresh cache entry before it needs revalidation.",
+        default=300.0,
+        description="Max age of a fresh cache entry before it needs revalidation. "
+                    "Øget til 300s (5 min) så drip-loopet kan nå at refreshe alle entries "
+                    "inden de anses som stale — reducerer unødvendige ISE-kald og ⏱-badges.",
     )
     cache_stale_while_revalidate: bool = Field(
         default=True,
