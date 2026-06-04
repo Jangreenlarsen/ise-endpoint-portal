@@ -3,6 +3,16 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.22.3 build 0610] — 2026-06-04 — release: Versionsbump til 5.22.3
+
+## [5.22.2 build 0609] — 2026-06-04 — fix: HypervisionRegisteredAt stampes ved første portal-edit af pre-existing endpoints
+
+`update_endpoint()` manglede samme check som `create_endpoint()`. Pre-existing ISE-endpoints
+(oprettet udenfor portalen) fik aldrig `HypervisionRegisteredAt` sat i ISE ved efterfølgende edits.
+Fix: sæt CA ved første portal-touch med bedste tilgængelige timestamp:
+ISE createTime (Open API) → audit-tid → first_seen_store → now.
+**Berørt fil:** `backend/app/services/endpoint_service.py`
+
 ## [5.22.2 build 0608] — 2026-06-04 — fix: Cache-engine 3 forbedringer (auto-restart, TTL, adaptiv drip)
 
 **Fix 1 — Worker auto-restart:** `start()` bruger nu `_run_with_retry()` der fanger uhåndterede

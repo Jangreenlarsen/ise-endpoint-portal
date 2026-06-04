@@ -4,6 +4,21 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.22.3] — 2026-06-04 — Release: Cache-engine forbedringer + HypervisionRegisteredAt fixes
+
+> **Build:** 0610
+
+**Cache-engine (3 forbedringer)**
+- Auto-restart: workeren genstarter automatisk ved crash (60s delay) — cachen kan aldrig forblive permanent kold
+- Standard TTL hævet 60s → 300s: reducerer unødvendige stale-badges under normal drift
+- Adaptiv drip-sleep: sprint-mode når >25% af entries er stale (fx efter server-genstart) — fuld cache-opvarmning på ~7 min i stedet for 30 min
+
+**HypervisionRegisteredAt — to fixes**
+- `first_seen_store` bruger nu `HypervisionRegisteredAt` fra ISE som seed-timestamp ved ny SQLite-record — korrekt registreringsdato bevares selv efter DB-nulstilling
+- `update_endpoint()` stamper nu `HypervisionRegisteredAt` ved første portal-touch af pre-existing ISE-endpoints (oprettet udenfor portalen). Bedste tilgængelige timestamp: ISE createTime → audit-tid → first_seen_store → now
+
+---
+
 ## [5.22.2] — 2026-06-03 — Release: Bulk-edit konsolideret, toolbar uniformt, bugfixes
 
 > **Build:** 0607
