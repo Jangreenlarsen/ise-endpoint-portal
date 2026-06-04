@@ -3,8 +3,8 @@
 """Public self-registration API — bruges af wireless controller redirect.
 
 Endpoints:
-  GET  /api/selfregister/config   → returnerer side-config (terms, enabled)
-  POST /api/selfregister          → registrér MAC i ISE
+  GET  /api/selfregister/config   → returnerer side-config (terms, enabled, ipsk_enabled)
+  POST /api/selfregister          → registrér MAC i ISE + valgfri IPSK + CoA
 """
 import re
 import logging
@@ -35,6 +35,7 @@ class SelfRegisterConfig(BaseModel):
     enabled: bool
     terms: str
     redirect_url: str
+    ipsk_enabled: bool = False
 
 
 class SelfRegisterRequest(BaseModel):
@@ -42,36 +43,43 @@ class SelfRegisterRequest(BaseModel):
     registrant_name: str = Field(..., min_length=2, max_length=128,
                                   description="Navn på registranten")
     agreed: bool = Field(..., description="Registranten har accepteret vilkårene")
+    psk_key: str | None = Field(None, max_length=128,
+                                description="Valgfri IPSK-nøgle sat af brugeren")
 
 
 class SelfRegisterResponse(BaseModel):
     ok: bool
     message: str
     redirect_url: str = ""
+    coa_sent: bool = False
 
 
 @router.get("/config", response_model=SelfRegisterConfig)
 async def get_selfregister_config() -> SelfRegisterConfig:
-    """Returnér side-konfiguration (terms, enabled) til frontend."""
+    """Returnér side-konfiguration til frontend."""
     s = config.settings
     return SelfRegisterConfig(
         enabled=s.selfregister_enabled,
         terms=s.selfregister_terms,
         redirect_url=s.selfregister_redirect_url,
+        ipsk_enabled=s.selfregister_ipsk_enabled,
     )
 
 
 @router.post("", response_model=SelfRegisterResponse)
 async def selfregister(req: SelfRegisterRequest) -> SelfRegisterResponse:
-    """Registrér et endpoint i ISE via public self-registration."""
+    """Registrér et endpoint i ISE via public self-registration.
+
+    1. Opretter/opdaterer endpoint i ISE med GuestRegistration, RegistretBy,
+       AuthzVlan, AuthzACL, HypervisionActive og valgfri IPSK.
+    2. Sender CoA Reauth til NAS så enheden straks re-autentificeres.
+    """
     s = config.settings
     if not s.selfregister_enabled:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE,
                             "Selvregistrering er deaktiveret")
-
     if not req.agreed:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST,
-                            "Vilkårene skal accepteres")
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Vilkårene skal accepteres")
 
     mac = _normalize_mac(req.mac.strip())
     if not _MAC_RE.match(mac):
@@ -79,15 +87,25 @@ async def selfregister(req: SelfRegisterRequest) -> SelfRegisterResponse:
                             f"Ugyldig MAC-adresse: {req.mac!r}")
 
     registrant = req.registrant_name.strip()
+    psk_key = (req.psk_key or "").strip()
 
     service = get_endpoint_service()
+    ca = CustomAttrs(
+        RegistretBy=registrant,
+        GuestRegistration="true",
+        HypervisionActive="Aktiv",
+        AuthzVlan=s.selfregister_authz_vlan or "",
+        AuthzACL=s.selfregister_authz_acl or "",
+    )
+    if psk_key and s.selfregister_ipsk_enabled:
+        ca.PSK_Mode = "true"
+        ca.PSK_Key = psk_key
+
     create_req = CreateEndpointRequest(
         mac=mac,
         group_id=s.selfregister_group_id or "",
         description=f"Selvregistreret af {registrant}",
-        custom_attributes=CustomAttrs(
-            RegistretBy=registrant,
-        ),
+        custom_attributes=ca,
     )
 
     try:
@@ -95,11 +113,21 @@ async def selfregister(req: SelfRegisterRequest) -> SelfRegisterResponse:
         logger.info("selfregister: MAC=%s registreret af %r (id=%s)", mac, registrant, new_id)
     except IseApiError as exc:
         logger.warning("selfregister: ISE fejl MAC=%s: %s", mac, exc)
-        raise HTTPException(status.HTTP_502_BAD_GATEWAY,
-                            f"ISE fejl: {exc}") from exc
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"ISE fejl: {exc}") from exc
+
+    # CoA Reauth — tvinger enheden til re-autentificering mod NAS
+    coa_sent = False
+    if new_id:
+        try:
+            await service.coa_reauth(new_id)
+            coa_sent = True
+            logger.info("selfregister: CoA Reauth sendt for id=%s mac=%s", new_id, mac)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("selfregister: CoA fejlede for id=%s: %s", new_id, exc)
 
     return SelfRegisterResponse(
         ok=True,
         message=f"{mac} er registreret.",
         redirect_url=s.selfregister_redirect_url,
+        coa_sent=coa_sent,
     )

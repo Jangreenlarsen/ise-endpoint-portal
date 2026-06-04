@@ -376,6 +376,9 @@ class Settings(BaseSettings):
     selfregister_group_id: str = Field(default="", description="ISE endpoint group ID som selvregistrerede endpoints placeres i. Tom = standard gruppe.")
     selfregister_redirect_url: str = Field(default="", description="URL brugeren sendes til efter succesfuld registrering (fx https://company.com). Tom = vis success-besked.")
     selfregister_terms: str = Field(default="Jeg accepterer at min enheds MAC-adresse registreres og at netværksadgang logges.", description="Accepttekst vist på selvregistrerings-siden.")
+    selfregister_authz_vlan: str = Field(default="", description="VLAN der assignes til selvregistrerede guest endpoints (AuthzVlan CA).")
+    selfregister_authz_acl: str = Field(default="", description="DACL der assignes til selvregistrerede guest endpoints (AuthzACL CA).")
+    selfregister_ipsk_enabled: bool = Field(default=False, description="Tillad gæster at indtaste en IPSK-nøgle på registreringssiden.")
 
 
 def _load() -> Settings:

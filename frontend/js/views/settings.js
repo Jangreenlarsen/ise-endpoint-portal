@@ -14,7 +14,7 @@ import { initUsersSection } from "./settings/section-users.js";
 import { initTemplatesSection } from "./settings/section-templates.js";
 import { initPskPolicySection } from "./settings/section-psk.js";
 import { initPortalAuthConfigSection, initLocaleSection } from "./settings/section-auth.js";
-import { initSystemUpdateSection, initAdvancedSection, initGithubUpdateSection } from "./settings/section-update.js";
+import { initSystemUpdateSection, initAdvancedSection, initGithubUpdateSection, initGuestRegSection } from "./settings/section-update.js";
 import { initAuthzProfilesSection } from "./settings/section-authz-profiles.js";
 import { initBackupSection } from "./settings/section-backup.js";
 
@@ -873,6 +873,59 @@ export async function renderSettings(container) {
     ` : ""}
 
     ${isAdmin ? `
+    <div class="card" data-tab="portal-config" data-subtab="pc-advanced" id="guest-reg-card">
+      <h3 id="guest-reg-h3"></h3>
+      <p class="hint" id="guest-reg-hint"></p>
+      <form id="guest-reg-form" onsubmit="return false;">
+        <div class="field">
+          <label>
+            <input type="checkbox" id="guest-reg-enabled" />
+            <span id="guest-reg-enabled-lbl" style="font-weight:500;"></span>
+          </label>
+          <div class="hint" id="guest-reg-url-row">
+            ${t("settings.guest_reg_url_prefix")} <code id="guest-reg-url-display"></code>
+          </div>
+        </div>
+        <div class="field">
+          <label for="guest-reg-vlan" id="guest-reg-vlan-lbl"></label>
+          <select id="guest-reg-vlan" style="max-width:14rem;">
+            <option value="">…</option>
+          </select>
+          <div class="hint" id="guest-reg-vlan-hint"></div>
+        </div>
+        <div class="field">
+          <label for="guest-reg-acl" id="guest-reg-acl-lbl"></label>
+          <select id="guest-reg-acl" style="max-width:28rem;">
+            <option value="">…</option>
+          </select>
+          <div class="hint" id="guest-reg-acl-hint"></div>
+        </div>
+        <div class="field">
+          <label>
+            <input type="checkbox" id="guest-reg-ipsk" />
+            <span id="guest-reg-ipsk-lbl" style="font-weight:500;"></span>
+          </label>
+          <div class="hint" id="guest-reg-ipsk-hint"></div>
+        </div>
+        <div class="field">
+          <label for="guest-reg-redirect" id="guest-reg-redirect-lbl"></label>
+          <input type="url" id="guest-reg-redirect" placeholder="https://company.com" style="max-width:28rem;" />
+          <div class="hint" id="guest-reg-redirect-hint"></div>
+        </div>
+        <div class="field">
+          <label for="guest-reg-terms" id="guest-reg-terms-lbl"></label>
+          <input type="text" id="guest-reg-terms" style="width:100%;" />
+          <div class="hint" id="guest-reg-terms-hint"></div>
+        </div>
+        <div class="actions">
+          <button type="submit" id="guest-reg-save-btn" disabled></button>
+        </div>
+      </form>
+      <div id="guest-reg-msg" style="margin-top:0.5rem;"></div>
+    </div>
+    ` : ""}
+
+    ${isAdmin ? `
     <div class="card" data-tab="portal-backup">
       <h3>Backup af portalens konfiguration</h3>
       <p class="hint">
@@ -925,6 +978,7 @@ export async function renderSettings(container) {
     initGithubUpdateSection(container);
     await initAuthzProfilesSection(container);
     initAdvancedSection(container);
+    await initGuestRegSection(container);
     initBackupSection(container);
   }
 }

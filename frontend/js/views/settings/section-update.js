@@ -556,3 +556,114 @@ export function initAdvancedSection(container) {
     }
   });
 }
+
+export async function initGuestRegSection(container) {
+  const card    = container.querySelector("#guest-reg-card");
+  if (!card) return;
+
+  const form        = card.querySelector("#guest-reg-form");
+  const enabledCb   = card.querySelector("#guest-reg-enabled");
+  const ipskCb      = card.querySelector("#guest-reg-ipsk");
+  const vlanSel     = card.querySelector("#guest-reg-vlan");
+  const aclSel      = card.querySelector("#guest-reg-acl");
+  const redirectEl  = card.querySelector("#guest-reg-redirect");
+  const termsEl     = card.querySelector("#guest-reg-terms");
+  const saveBtn     = card.querySelector("#guest-reg-save-btn");
+  const msgEl       = card.querySelector("#guest-reg-msg");
+  const urlDisplay  = card.querySelector("#guest-reg-url-display");
+
+  // Labels
+  const h3 = card.querySelector("#guest-reg-h3");
+  if (h3) h3.textContent = t("settings.guest_reg_title");
+  const hint = card.querySelector("#guest-reg-hint");
+  if (hint) hint.textContent = t("settings.guest_reg_hint");
+  const enabledLbl = card.querySelector("#guest-reg-enabled-lbl");
+  if (enabledLbl) enabledLbl.textContent = t("settings.guest_reg_enabled_lbl");
+  const ipskLbl = card.querySelector("#guest-reg-ipsk-lbl");
+  if (ipskLbl) ipskLbl.textContent = t("settings.guest_reg_ipsk_lbl");
+  const ipskHint = card.querySelector("#guest-reg-ipsk-hint");
+  if (ipskHint) ipskHint.textContent = t("settings.guest_reg_ipsk_hint");
+  const vlanLbl = card.querySelector("#guest-reg-vlan-lbl");
+  if (vlanLbl) vlanLbl.textContent = t("settings.guest_reg_vlan_lbl");
+  const vlanHint = card.querySelector("#guest-reg-vlan-hint");
+  if (vlanHint) vlanHint.textContent = t("settings.guest_reg_vlan_hint");
+  const aclLbl = card.querySelector("#guest-reg-acl-lbl");
+  if (aclLbl) aclLbl.textContent = t("settings.guest_reg_acl_lbl");
+  const aclHint = card.querySelector("#guest-reg-acl-hint");
+  if (aclHint) aclHint.textContent = t("settings.guest_reg_acl_hint");
+  const redirectLbl = card.querySelector("#guest-reg-redirect-lbl");
+  if (redirectLbl) redirectLbl.textContent = t("settings.guest_reg_redirect_lbl");
+  const redirectHint = card.querySelector("#guest-reg-redirect-hint");
+  if (redirectHint) redirectHint.textContent = t("settings.guest_reg_redirect_hint");
+  const termsLbl = card.querySelector("#guest-reg-terms-lbl");
+  if (termsLbl) termsLbl.textContent = t("settings.guest_reg_terms_lbl");
+  const termsHint = card.querySelector("#guest-reg-terms-hint");
+  if (termsHint) termsHint.textContent = t("settings.guest_reg_terms_hint");
+  if (saveBtn) saveBtn.textContent = t("settings.guest_reg_save_btn");
+
+  // Vis URL
+  if (urlDisplay) urlDisplay.textContent = window.location.origin + "/selfregister?mac=...";
+
+  function _populateSelect(sel, values, savedValue) {
+    if (!sel) return;
+    sel.innerHTML = "";
+    const emptyOpt = document.createElement("option");
+    emptyOpt.value = ""; emptyOpt.textContent = `— ${t("settings.guest_reg_none")} —`;
+    sel.appendChild(emptyOpt);
+    const all = savedValue && !values.includes(savedValue) ? [savedValue, ...values] : values;
+    all.forEach(v => {
+      const opt = document.createElement("option");
+      opt.value = v; opt.textContent = v;
+      if (v === savedValue) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    if (!savedValue) sel.value = "";
+  }
+
+  // Load settings + populate dropdowns
+  try {
+    const [s, caData, daclList] = await Promise.all([
+      api.getBackendSettings(),
+      api.listCustomAttributes().catch(() => null),
+      api.listDacls().catch(() => null),
+    ]);
+
+    if (enabledCb) enabledCb.checked = !!s.selfregister_enabled;
+    if (ipskCb) ipskCb.checked = !!s.selfregister_ipsk_enabled;
+    if (redirectEl) redirectEl.value = s.selfregister_redirect_url || "";
+    if (termsEl) termsEl.value = s.selfregister_terms || "";
+
+    const vlanAttr = caData?.attributes?.find(a => a.name === "AuthzVlan");
+    _populateSelect(vlanSel, (vlanAttr?.values ?? []).filter(Boolean), s.selfregister_authz_vlan || "");
+    _populateSelect(aclSel, (daclList ?? []).map(d => d.name).filter(Boolean), s.selfregister_authz_acl || "");
+  } catch (_) { /* ignore */ }
+  finally {
+    if (saveBtn) saveBtn.disabled = false;
+  }
+
+  // Save
+  if (form) {
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (saveBtn) saveBtn.disabled = true;
+      try {
+        const current = await api.getBackendSettings();
+        await api.updateBackendSettings({
+          ...current,
+          selfregister_enabled:      enabledCb?.checked ?? true,
+          selfregister_ipsk_enabled: ipskCb?.checked ?? false,
+          selfregister_authz_vlan:   vlanSel?.value || "",
+          selfregister_authz_acl:    aclSel?.value || "",
+          selfregister_redirect_url: redirectEl?.value?.trim() || "",
+          selfregister_terms:        termsEl?.value?.trim() || current.selfregister_terms,
+        });
+        msgEl.innerHTML = `<span style="color:var(--success,#166534);font-size:0.82em;">${t("settings.guest_reg_saved")}</span>`;
+        setTimeout(() => { msgEl.innerHTML = ""; }, 3000);
+      } catch (err) {
+        msgEl.innerHTML = `<span style="color:var(--danger,#991b1b);font-size:0.82em;">${esc(err.message)}</span>`;
+      } finally {
+        if (saveBtn) saveBtn.disabled = false;
+      }
+    });
+  }
+}

@@ -19,7 +19,7 @@ _cache: dict[str, list[str]] | None = None
 STORE_FILE = Path(__file__).resolve().parents[2] / "custom_attr_values.json"
 
 # Custom attributes this portal manages (user-editable).
-MANAGED_ATTRS = ["Type", "Owner", "Lokation", "AuthzVlan", "AuthzACL", "PlatformType", "RegistretBy"]
+MANAGED_ATTRS = ["Type", "Owner", "Lokation", "AuthzVlan", "AuthzACL", "PlatformType", "RegistretBy", "GuestRegistration"]
 
 # Portal-tag — set automatically to "true" på alle portal-redigerede endpoints.
 HIDDEN_ATTR = "HypervisionISEPortal"

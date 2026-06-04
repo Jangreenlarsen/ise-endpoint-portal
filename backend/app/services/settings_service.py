@@ -62,6 +62,13 @@ def get_backend_settings() -> BackendSettingsResponse:
         github_branch=s.github_branch,
         decomm_authz_vlan=s.decomm_authz_vlan,
         decomm_authz_acl=s.decomm_authz_acl,
+        selfregister_enabled=s.selfregister_enabled,
+        selfregister_group_id=s.selfregister_group_id,
+        selfregister_redirect_url=s.selfregister_redirect_url,
+        selfregister_terms=s.selfregister_terms,
+        selfregister_authz_vlan=s.selfregister_authz_vlan,
+        selfregister_authz_acl=s.selfregister_authz_acl,
+        selfregister_ipsk_enabled=s.selfregister_ipsk_enabled,
     )
 
 
@@ -91,6 +98,13 @@ async def update_backend_settings(
             "github_branch": new.github_branch,
             "decomm_authz_vlan": new.decomm_authz_vlan,
             "decomm_authz_acl": new.decomm_authz_acl,
+            "selfregister_enabled": new.selfregister_enabled,
+            "selfregister_group_id": new.selfregister_group_id,
+            "selfregister_redirect_url": new.selfregister_redirect_url,
+            "selfregister_terms": new.selfregister_terms,
+            "selfregister_authz_vlan": new.selfregister_authz_vlan,
+            "selfregister_authz_acl": new.selfregister_authz_acl,
+            "selfregister_ipsk_enabled": new.selfregister_ipsk_enabled,
         }
     )
     if new.ise_password:

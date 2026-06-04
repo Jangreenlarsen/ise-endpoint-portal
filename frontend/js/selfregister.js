@@ -73,7 +73,7 @@ function renderSuccess(mac, redirectUrl) {
   }
 }
 
-function renderForm(mac, terms) {
+function renderForm(mac, terms, ipskEnabled) {
   const content = document.getElementById("page-content");
   content.innerHTML = `
     <h1>Netværks-registrering</h1>
@@ -90,6 +90,16 @@ function renderForm(mac, terms) {
         <input type="text" id="name-input" placeholder="Fornavn Efternavn"
                maxlength="128" required autocomplete="name" />
       </div>
+      ${ipskEnabled ? `
+      <div class="field">
+        <label for="psk-input">IPSK-nøgle <span style="color:#ef4444;">*</span></label>
+        <input type="text" id="psk-input" placeholder="Din personlige netværksnøgle"
+               maxlength="128" autocomplete="off"
+               style="font-family:monospace;" />
+        <div style="font-size:0.8rem;color:#64748b;margin-top:3px;">
+          Udfyldes kun hvis du har fået en nøgle udleveret.
+        </div>
+      </div>` : ""}
       <label class="agree-row" for="agree-cb">
         <input type="checkbox" id="agree-cb" />
         <span class="agree-text">${esc(terms)}</span>
@@ -118,14 +128,15 @@ function renderForm(mac, terms) {
       msgEl.innerHTML = `<div class="alert alert-error">Du skal acceptere vilkårene.</div>`;
       return;
     }
+    const pskEl = document.getElementById("psk-input");
+    const pskKey = pskEl ? pskEl.value.trim() : "";
+
     btn.disabled = true;
     btn.innerHTML = `<span class="spinner"></span>Registrerer...`;
     try {
-      const res = await apiPost("/selfregister", {
-        mac: mac,
-        registrant_name: name,
-        agreed: true,
-      });
+      const body = { mac, registrant_name: name, agreed: true };
+      if (pskKey) body.psk_key = pskKey;
+      const res = await apiPost("/selfregister", body);
       renderSuccess(mac, res.redirect_url || "");
     } catch (err) {
       msgEl.innerHTML = `<div class="alert alert-error">${esc(err.message)}</div>`;
@@ -156,7 +167,7 @@ async function init() {
       return;
     }
 
-    renderForm(mac, cfg.terms || "Jeg accepterer betingelserne.");
+    renderForm(mac, cfg.terms || "Jeg accepterer betingelserne.", cfg.ipsk_enabled || false);
   } catch (err) {
     document.getElementById("page-content").innerHTML = `
       <div class="alert alert-error">

@@ -250,6 +250,7 @@ class EndpointService:
             authz_acl=ca.get("AuthzACL", ""),
             platform_type=ca.get("PlatformType", ""),
             registret_by=ca.get("RegistretBy", ""),
+            guest_registration=ca.get("GuestRegistration", ""),
             hypervision=ca.get("HypervisionISEPortal", ""),
             roles=_parse_roles_csv(ca.get(ROLES_ATTR, "")),
             profile_id=profile_id,

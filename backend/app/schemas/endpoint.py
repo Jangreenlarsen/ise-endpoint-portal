@@ -25,6 +25,7 @@ class EndpointDetail(BaseModel):
     authz_acl: str = ""
     platform_type: str = ""
     registret_by: str = ""
+    guest_registration: str = ""
     hypervision: str = ""
     roles: list[str] = Field(default_factory=list)
     profile_id: str = ""
@@ -64,6 +65,7 @@ class CustomAttrs(BaseModel):
     AuthzACL: str = ""
     PlatformType: str = ""
     RegistretBy: str = ""
+    GuestRegistration: str = ""
     HypervisionRoles: str = ""
     HypervisionStatus: str | None = None
     HypervisionActive: str | None = None

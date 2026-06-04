@@ -33,6 +33,13 @@ class BackendSettingsUpdate(BaseModel):
     github_branch: str = "main"
     decomm_authz_vlan: str = "999"
     decomm_authz_acl: str = "deny_all_ipv4_traffic"
+    selfregister_enabled: bool = True
+    selfregister_group_id: str = ""
+    selfregister_redirect_url: str = ""
+    selfregister_terms: str = "Jeg accepterer at min enheds MAC-adresse registreres og at netværksadgang logges."
+    selfregister_authz_vlan: str = ""
+    selfregister_authz_acl: str = ""
+    selfregister_ipsk_enabled: bool = False
 
 
 class BackendSettingsResponse(BaseModel):
@@ -58,6 +65,13 @@ class BackendSettingsResponse(BaseModel):
     github_branch: str = "main"
     decomm_authz_vlan: str = "999"
     decomm_authz_acl: str = "deny_all_ipv4_traffic"
+    selfregister_enabled: bool = True
+    selfregister_group_id: str = ""
+    selfregister_redirect_url: str = ""
+    selfregister_terms: str = "Jeg accepterer at min enheds MAC-adresse registreres og at netværksadgang logges."
+    selfregister_authz_vlan: str = ""
+    selfregister_authz_acl: str = ""
+    selfregister_ipsk_enabled: bool = False
 
 
 class TestConnectionRequest(BaseModel):

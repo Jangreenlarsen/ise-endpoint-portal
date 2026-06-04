@@ -4,6 +4,46 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [5.30.1] — 2026-06-04 — Release: Gæste-selvregistrering
+
+> **Build:** 0614
+
+### Selvregistreringsside til wireless controller redirect
+
+Wireless controller kan nu redirecte uregistrerede klienter til:
+`https://portal.example.com/selfregister?mac=AA:BB:CC:DD:EE:FF`
+
+**Siden spørger om:**
+- MAC-adresse (pre-udfyldt, read-only — sat af WLC)
+- Navn på registranten
+- Valgfri IPSK-nøgle (hvis aktiveret i settings)
+- Accept af vilkår
+
+**Hvad der sker ved registrering:**
+- Endpoint oprettes i ISE med `GuestRegistration=true`, `RegistretBy=navn`, `HypervisionActive=Aktiv`
+- VLAN og DACL assignes som custom-attributter (konfigurerbart)
+- IPSK-nøgle gemmes som `PSK_Key` CA (hvis aktiveret)
+- CoA Reauth sendes automatisk til NAS — klienten re-autentificeres straks
+
+### Settings → Portal Config → Advanced → "Gæste-registrering"
+
+Ny konfigurationssektion med:
+- Aktivér/deaktivér toggle
+- VLAN-dropdown (fra eksisterende ISE-værdier)
+- DACL-dropdown (direkte fra ISE)
+- IPSK-toggle
+- Redirect URL efter registrering
+- Accepttekst (vilkår)
+
+### Nye endpoint custom attributes
+
+| Attribut | Beskrivelse |
+|----------|-------------|
+| `RegistretBy` | Navn på registranten (selvregistrering eller manuel) |
+| `GuestRegistration` | `"true"` på selvregistrerede endpoints |
+
+---
+
 ## [5.22.3] — 2026-06-04 — Release: Cache-engine forbedringer + HypervisionRegisteredAt fixes
 
 > **Build:** 0610

@@ -3,6 +3,19 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.30.1 build 0614] — 2026-06-04 — feat: Guest reg config i Settings + IPSK + CoA + GuestRegistration CA
+
+**Ny CA `GuestRegistration`** — sættes til "true" på alle selvregistrerede endpoints.
+**Settings → Portal Config → Advanced → "Gæste-registrering":**
+- Aktivér/deaktivér selvregistrering, VLAN-dropdown (fra ISE CA-værdier), DACL-dropdown (fra ISE),
+  IPSK-toggle, redirect URL og accepttekst.
+**Selvregistrerings-siden:** valgfrit IPSK-felt vises hvis aktiveret i settings.
+**CoA Reauth** sendes automatisk til NAS efter succesfuld registrering.
+**HypervisionActive=Aktiv** sættes automatisk på alle selvregistrerede endpoints.
+**Berørte filer:** `config.py`, `schemas/settings.py`, `services/settings_service.py`,
+`api/selfregister.py`, `settings.js`, `section-update.js`, `selfregister.js`, `i18n.js`,
+`custom_attr_store.py`, `schemas/endpoint.py`, `endpoint_service.py`
+
 ## [5.30.0 build 0611] — 2026-06-04 — feat: Public selvregistrerings-side + RegistretBy CA
 
 Ny `selfregister.html` standalone side til wireless controller redirect.
