@@ -748,6 +748,22 @@ class EndpointService:
         # og active_status ikke allerede er sat (Aktiv eller Inaktiv).
         if ACTIVE_ATTR not in ca and before and not before.get("active_status"):
             ca[ACTIVE_ATTR] = "Aktiv"
+        # Stamp HypervisionRegisteredAt ved første portal-touch af pre-existing endpoints.
+        # create_endpoint() sætter det ved oprettelse; her er fallback for endpoints
+        # der eksisterede i ISE inden portalen og aldrig har fået CA'en sat.
+        # Prioritet: ISE createTime (Open API) > audit-tid > first_seen_store > now.
+        if not ca.get(REGISTERED_AT_ATTR):
+            reg_ts = (before or {}).get("create_time") or ""
+            if not reg_ts:
+                _mac = (before or {}).get("mac", "")
+                _stored = first_seen_store.get(_mac) if _mac else None
+                if _stored:
+                    reg_ts = datetime.fromtimestamp(_stored, tz=timezone.utc).strftime(
+                        "%Y-%m-%dT%H:%M:%SZ"
+                    )
+            if not reg_ts:
+                reg_ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            ca[REGISTERED_AT_ATTR] = reg_ts
         await self.endpoints.update(
             endpoint_id,
             description=update.description,
