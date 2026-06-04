@@ -345,5 +345,18 @@ app.include_router(selfregister_api.router, prefix="/api")  # Public — ingen a
 app.include_router(metrics_api.router)
 
 frontend_dir = Path(__file__).resolve().parents[2] / "frontend"
+
+# Eksplicit route for selvregistrerings-siden så /selfregister virker uden .html-suffix
+from fastapi.responses import FileResponse as _FileResponse
+
+@app.get("/selfregister", include_in_schema=False)
+async def serve_selfregister():
+    """Server standalone selvregistrerings-side til wireless controller redirect."""
+    p = frontend_dir / "selfregister.html"
+    if not p.exists():
+        from fastapi import HTTPException as _HTTPException
+        raise _HTTPException(404, "selfregister.html ikke fundet")
+    return _FileResponse(str(p), media_type="text/html")
+
 if frontend_dir.exists():
     app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
