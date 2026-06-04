@@ -94,8 +94,35 @@ class PrewarmWorker:
             started_at=time.time(),
             disk_loaded=self.status.disk_loaded,  # bevar disk_loaded fra preload
         )
-        self._task = asyncio.create_task(self._run(), name="cache-prewarm-worker")
+        self._task = asyncio.create_task(self._run_with_retry(), name="cache-prewarm-worker")
         logger.info("cache prewarm worker started")
+
+    async def _run_with_retry(self) -> None:
+        """Wrapper der genstarter _run() automatisk ved uhåndteret exception.
+
+        Vent 60s før genstart så ISE/netværk kan restabilisere sig.
+        Stopper kun permanent når self._stop er sat.
+        """
+        _RESTART_DELAY = 60.0
+        while not self._stop.is_set():
+            try:
+                await self._run()
+            except Exception as exc:
+                self.status.last_error = str(exc)
+                logger.error(
+                    "prewarm worker crashed: %s — genstart om %.0fs",
+                    exc, _RESTART_DELAY,
+                )
+            if self._stop.is_set():
+                break
+            try:
+                await asyncio.wait_for(self._stop.wait(), timeout=_RESTART_DELAY)
+            except asyncio.TimeoutError:
+                pass
+            if not self._stop.is_set():
+                logger.info("prewarm worker genstarter")
+                self.status.running = True
+        self.status.running = False
 
     async def stop(self) -> None:
         if not self._task:
@@ -170,8 +197,19 @@ class PrewarmWorker:
                 continue
 
             interval = float(getattr(config.settings, "cache_prewarm_interval_s", 1800.0))
-            ttl = float(getattr(config.settings, "cache_ttl_seconds", 60.0))
-            drip_sleep = max(0.5, interval / total)
+            ttl = float(getattr(config.settings, "cache_ttl_seconds", 300.0))
+            # Adaptiv drip-sleep: ved mange stale entries (fx efter server-genstart)
+            # refreshes hurtigere — mål: alle stale entries inden interval/4.
+            now_ts = time.time()
+            stale_count = sum(
+                1 for e in cache._details.values() if (now_ts - e.fetched_at) > ttl
+            )
+            if stale_count > total // 4:
+                # Mange stale → sprint: refresh alle stale på interval/4
+                drip_sleep = max(0.5, (interval / 4) / stale_count)
+            else:
+                # Normal drift: jævn spredning over intervallet
+                drip_sleep = max(0.5, interval / total)
             self.status.drip_current_sleep_s = drip_sleep
             self.status.drip_estimated_full_cycle_s = drip_sleep * total
             CACHE_DRIP_SLEEP_S.set(drip_sleep)

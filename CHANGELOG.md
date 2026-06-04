@@ -3,6 +3,19 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [5.22.2 build 0608] — 2026-06-04 — fix: Cache-engine 3 forbedringer (auto-restart, TTL, adaptiv drip)
+
+**Fix 1 — Worker auto-restart:** `start()` bruger nu `_run_with_retry()` der fanger uhåndterede
+exceptions, logger fejlen og genstarter workeren efter 60s — cache kan aldrig forblive kold pga.
+et crash.
+**Fix 2 — Standard TTL 60s → 300s:** Reducerer mismatch mellem drip-cyclus (30 min) og TTL.
+Med 1000 endpoints og 1.8s drip-sleep refreshes 100 entries pr. 3 min → 10 min for fuld runde →
+300s TTL dækkes med god margin.
+**Fix 3 — Adaptiv drip-sleep:** Hvis >25% af cache er stale (fx efter server-genstart), switcher
+drip-loopet til "sprint"-mode og refresher alle stale entries på interval/4 (7.5 min) i stedet
+for 30 min.
+**Berørte filer:** `backend/app/services/cache_prewarm.py`, `backend/app/core/config.py`
+
 ## [5.22.2 build 0607] — 2026-06-03 — release: Versionsbump til 5.22.2
 
 ## [5.22.1 build 0606] — 2026-06-03 — fix: first_seen_at bruger HypervisionRegisteredAt som seed
