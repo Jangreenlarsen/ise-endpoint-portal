@@ -3,6 +3,10 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.0.4 build 0625] — 2026-06-06 — release: Versionsbump til 6.0.4
+
+Samler 6.0.4 fix: GuestRegistration + RegistretBy skipped i policy-simulering.
+
 ## [6.0.3 build 0624] — 2026-06-06 — fix: GuestRegistration + RegistretBy skipped i policy-simulering
 
 `_ENDPOINT_ATTR_MAP` manglede entries for `GuestRegistration` og `RegistretBy` → conditions altid skipped.

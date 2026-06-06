@@ -4,6 +4,15 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.0.4] — 2026-06-06 — Fix: GuestRegistration + RegistretBy skipped i policy-simulering
+
+> **Build:** 0625
+
+**Policy-simulering evaluerede aldrig GuestRegistration/RegistretBy**
+`EndPoints.GuestRegistration equals true/false` og `EndPoints.RegistretBy equals …` blev altid markeret som *skipped* i simuleringsresultatet — uanset endpoint-værdier. Root cause: `_ENDPOINT_ATTR_MAP` i backend manglede entries for begge attributter, og `_fetch_ep_from_ise()` sendte heller ikke felterne med. Nu evalueres betingelserne korrekt i både manuel og live-endpoint simulation.
+
+---
+
 ## [6.0.3] — 2026-06-06 — Release: GuestRegistration, authz-profile auto-scan, CWA fixes
 
 > **Build:** 0623
