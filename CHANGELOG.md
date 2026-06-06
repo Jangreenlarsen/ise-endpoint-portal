@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.0.2 build 0621] — 2026-06-06 — feat: Auto-scan ISE authz-profiler ved åbning af profile-dropdown
+
+Første gang brugeren klikker/fokuserer dropdown'en i "Autoriseringsprofiler" i policy-editoren,
+hentes alle ISE authz-profiler automatisk via `api.listAuthzProfiles()` og vises som options.
+Viser "Henter profiler fra ISE…" mens hentning er i gang. `knownProfiles` initialiseres ved load.
+**Berørte filer:** `policy.js`, `i18n.js`
+
 ## [6.0.2 build 0620] — 2026-06-06 — feat: GuestRegistration synlig og redigerbar i Browse + Policies
 
 Browse-kolonne, inline-edit celle (select true/false), detail-panel felt, bulk-edit felt.

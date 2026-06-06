@@ -106,6 +106,14 @@ export async function renderPolicy(container) {
   let selectedSetName = "";
   let selectedRuleId  = null;
   let caValues        = {};
+  let knownProfiles   = [...KNOWN_PROFILES]; // opdateres ved scan fra ISE
+
+  // Hent alle ISE authz-profiler ved load — udfylder profile-dropdown i editoren
+  api.listAuthzProfiles().then((res) => {
+    if (Array.isArray(res) && res.length) {
+      knownProfiles = res.map((p) => p.name).filter(Boolean);
+    }
+  }).catch(() => { /* bevar KNOWN_PROFILES som fallback */ });
 
   const setsList    = container.querySelector("#pol-sets-list");
   const rulesTitle  = container.querySelector("#pol-rules-title");
@@ -405,7 +413,7 @@ export async function renderPolicy(container) {
         <div id="pol-cond-editor">${groupEditorHtml(existing?.condition ?? null, caValues)}</div>
 
         <div class="editor-section-label">${t("pol.ed_profiles_label")}</div>
-        <div id="pol-profiles-wrap">${profilesHtml(existing?.profiles || [])}</div>
+        <div id="pol-profiles-wrap">${profilesHtml(existing?.profiles || [], knownProfiles)}</div>
 
         <div class="pol-pd-section">
           <div class="pol-detail-col-label">${t("pol.pd_section_label")}</div>
@@ -426,6 +434,31 @@ export async function renderPolicy(container) {
       loadAndRenderProfileDetails(pdDetailsEd, readProfiles(profilesWrap));
     });
     loadAndRenderProfileDetails(pdDetailsEd, existing?.profiles || []);
+
+    // Auto-scan: hent ISE authz-profiler første gang dropdown åbnes
+    const profilePreset = profilesWrap.querySelector(".profile-preset");
+    if (profilePreset) {
+      let _scanned = false;
+      const _doScan = async () => {
+        if (_scanned) return;
+        _scanned = true;
+        const loadingOpt = document.createElement("option");
+        loadingOpt.value = ""; loadingOpt.textContent = t("pol.scan_profiles_scanning");
+        profilePreset.prepend(loadingOpt);
+        try {
+          const res = await api.listAuthzProfiles();
+          if (Array.isArray(res) && res.length) {
+            knownProfiles = res.map((p) => p.name).filter(Boolean);
+            const current = profilePreset.value;
+            profilePreset.innerHTML = `<option value="">${t("pol.cb_profile_sel")}</option>`
+              + knownProfiles.map((p) => `<option value="${esc(p)}"${p===current?" selected":""}>${esc(p)}</option>`).join("");
+          }
+        } catch { _scanned = false; /* tillad retry næste gang */ }
+        finally { loadingOpt.remove?.(); }
+      };
+      profilePreset.addEventListener("focus",     _doScan, { once: false });
+      profilePreset.addEventListener("mousedown",  _doScan, { once: false });
+    }
 
     detailPanel.querySelector("#pol-save-rule-btn").addEventListener("click", async () => {
       const editorMsg = detailPanel.querySelector("#pol-editor-msg");
