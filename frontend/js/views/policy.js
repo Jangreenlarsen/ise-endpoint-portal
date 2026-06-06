@@ -122,9 +122,10 @@ export async function renderPolicy(container) {
     console.warn("[policy] Custom attributes unavailable:", err.message);
   }).finally(() => {
     // Portal-managed attributes have fixed value sets — always override
-    caValues["HypervisionActive"] = ["Aktiv", "Inaktiv"];
-    caValues["HypervisionStatus"] = ["Decommissioned"];
-    caValues["PSK_Mode"]          = ["true", "false"];
+    caValues["HypervisionActive"]  = ["Aktiv", "Inaktiv"];
+    caValues["HypervisionStatus"]  = ["Decommissioned"];
+    caValues["PSK_Mode"]           = ["true", "false"];
+    caValues["GuestRegistration"]  = ["true", "false"];
   });
 
   api.listGroups().then((res) => {

@@ -74,6 +74,8 @@ export function initDetail(container, state, api, cb) {
       container.querySelector("#d-lokation").innerHTML    = optionsHtml(state.caValues.Lokation, d.lokation);
       const regByEl = container.querySelector("#d-registretby");
       if (regByEl) regByEl.value = d.registret_by || "";
+      const guestRegEl = container.querySelector("#d-guestreg");
+      if (guestRegEl) guestRegEl.value = d.guest_registration || "";
       container.querySelector("#d-authzvlan").innerHTML   = optionsHtml(state.caValues.AuthzVlan, d.authz_vlan);
       container.querySelector("#d-authzacl").innerHTML    = optionsHtml(state.caValues.AuthzACL, d.authz_acl);
       const detailNasPt = state.pxgridSessionData
@@ -709,8 +711,9 @@ export function initDetail(container, state, api, cb) {
     return {
       owner:          container.querySelector("#d-owner")?.value || "",
       endpoint_type:  container.querySelector("#d-type")?.value || "",
-      lokation:       container.querySelector("#d-lokation")?.value || "",
-      registret_by:   container.querySelector("#d-registretby")?.value || "",
+      lokation:           container.querySelector("#d-lokation")?.value || "",
+      registret_by:       container.querySelector("#d-registretby")?.value || "",
+      guest_registration: container.querySelector("#d-guestreg")?.value || "",
       authz_vlan:     container.querySelector("#d-authzvlan")?.value || "",
       authz_acl:      container.querySelector("#d-authzacl")?.value || "",
       platform_type:  container.querySelector("#d-platformtype")?.value || "",
@@ -1099,6 +1102,7 @@ export function initDetail(container, state, api, cb) {
       Owner: container.querySelector("#d-owner").value,
       Lokation: container.querySelector("#d-lokation").value,
       RegistretBy: container.querySelector("#d-registretby")?.value || "",
+      GuestRegistration: container.querySelector("#d-guestreg")?.value || "",
       AuthzVlan: container.querySelector("#d-authzvlan").value,
       AuthzACL: container.querySelector("#d-authzacl").value,
       PlatformType: container.querySelector("#d-platformtype").value,

@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.0.2 build 0620] — 2026-06-06 — feat: GuestRegistration synlig og redigerbar i Browse + Policies
+
+Browse-kolonne, inline-edit celle (select true/false), detail-panel felt, bulk-edit felt.
+GuestRegistration + RegistretBy tilføjet til policy condition-builder EndPoints-dictionary.
+GuestRegistration ["true","false"] injiceret i caValues (dropdown i conditions).
+**Berørte filer:** `browse-utils.js`, `browse-table.js`, `browse.js`, `browse-detail.js`,
+`browse-bulk.js`, `policy-condition-builder.js`, `policy.js`, `i18n.js`
+
 ## [6.0.1 build 0619] — 2026-06-06 — fix: ActiveList-fallback når ISE MnT Session/IPAddress returnerer 500
 
 ISE 3.4 bug: `GET /Session/IPAddress/{ip}` returnerer HTTP 500 (CPM 34110) for visse sessioner.

@@ -194,6 +194,12 @@ export async function renderBrowse(container) {
               <select id="d-lokation"></select>
               <label>${t("col.registret_by")}</label>
               <input type="text" id="d-registretby" maxlength="128" />
+              <label>${t("col.guest_registration")}</label>
+              <select id="d-guestreg">
+                <option value=""></option>
+                <option value="true">true</option>
+                <option value="false">false</option>
+              </select>
               <label>AuthzVlan</label>
               <select id="d-authzvlan"></select>
               <label>AuthzACL</label>
@@ -310,6 +316,12 @@ export async function renderBrowse(container) {
           <select id="be-authzacl" disabled></select>
           <label><input type="checkbox" class="be-cb" data-field="platformtype" /> Platform</label>
           <select id="be-platformtype" disabled></select>
+          <label><input type="checkbox" class="be-cb" data-field="guestreg" /> ${t("col.guest_registration")}</label>
+          <select id="be-guestreg" disabled>
+            <option value=""></option>
+            <option value="true">true</option>
+            <option value="false">false</option>
+          </select>
           <label id="be-psk-mode-row" class="hidden"><input type="checkbox" class="be-cb" data-field="psk-mode" /> PSK Mode</label>
           <div id="be-psk-mode" class="be-inner-wrap disabled-overlay hidden">
             <label class="inline-cb"><input type="checkbox" id="be-psk-mode-cb" disabled /> ${t("detail.psk_mode_lbl")}</label>

@@ -125,6 +125,7 @@ export function initBulk(container, state, api, cb) {
       if ("authzvlan" in fields)   tr.querySelector(".ca-authzvlan").value = fields.authzvlan;
       if ("authzacl" in fields)    tr.querySelector(".ca-authzacl").value  = fields.authzacl;
       if ("platformtype" in fields) tr.querySelector(".ca-platformtype").value = fields.platformtype;
+      if ("guestreg" in fields) { const s = tr.querySelector(".ca-guestreg"); if (s) s.value = fields.guestreg; }
       if ("psk-mode" in fields) {
         const cbEl = tr.querySelector(".psk-mode-cb");
         if (cbEl) cbEl.checked = !!fields["psk-mode"];
