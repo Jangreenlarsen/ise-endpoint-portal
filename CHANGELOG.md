@@ -3,6 +3,8 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.0.1 build 0617] — 2026-06-06 — release: Versionsbump til 6.0.1
+
 ## [6.0.0 build 0616] — 2026-06-06 — fix: selfregister/session bruger pxGrid-cache som primær kilde
 
 `GET /api/selfregister/session` prøver nu pxGrid session-cache (in-memory) FØR MnT API.

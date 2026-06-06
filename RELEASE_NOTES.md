@@ -4,6 +4,23 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.0.1] — 2026-06-06 — Fix: selfregister MAC-lookup via pxGrid session-cache
+
+> **Build:** 0617
+
+Registreringssiden fandt ikke MAC fordi MnT `Session/IPAddress` API'et fejlede.
+
+**Root cause:** `GET /api/selfregister/session` brugte kun ISE MnT API som kilde.
+MnT kræver MnT Admin-rollen og kan have latency — 5 forsøg × 2s = 10s ventetid.
+
+**Fix:** Sessionsopslag prøver nu **pxGrid session-cache** (in-memory) **først**.
+Portalen har allerede disse sessions fra pxGrid STOMP. `SessionInfo` er udvidet
+med `framed_ip` populeret fra `framedIpAddress`/`ipAddresses[0]` i pxGrid-payload.
+
+Prioritet: **pxGrid cache (øjeblikkelig) → MnT API fallback (3 forsøg)**
+
+---
+
 ## [6.0.0] — 2026-06-06 — Release: Komplet CWA MAC-registrering
 
 > **Build:** 0615
