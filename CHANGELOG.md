@@ -3,6 +3,11 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.0.3 build 0623] — 2026-06-06 — release: Versionsbump til 6.0.3
+
+Samler 6.0.x fixes: GuestRegistration i Browse/Policies, auto-scan authz-profiler,
+ActiveList MnT fallback, CWA session-lookup via pxGrid + MnT, KNOWN_PROFILES import-fix.
+
 ## [6.0.2 build 0622] — 2026-06-06 — fix: KNOWN_PROFILES is not defined i policy.js
 
 Manglende import af KNOWN_PROFILES fra policy-condition-builder.js.

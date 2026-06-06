@@ -4,6 +4,24 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.0.3] — 2026-06-06 — Release: GuestRegistration, authz-profile auto-scan, CWA fixes
+
+> **Build:** 0623
+
+**GuestRegistration attribut fuldt integreret**
+Vises og kan redigeres i Browse inline-edit, endpoint detail-panel, bulk-edit dialog og ISE Policies conditions (dropdown `true`/`false`). `RegistretBy` tilføjet til policy conditions.
+
+**Auto-scan af ISE authz-profiler**
+Første gang man klikker på "Tilføj profil"-dropdown i policy-editoren scannes alle ISE authorization profiles automatisk — ingen manuel knap nødvendig.
+
+**CWA session-lookup — ActiveList fallback**
+ISE 3.4 returnerer HTTP 500 på `Session/IPAddress/{ip}` (kendt bug). Portal falder nu automatisk tilbage til at scanne `ActiveList` og filtrere på `framed_ip`.
+
+**KNOWN_PROFILES import-fix**
+Manglende import forårsagede "KNOWN_PROFILES is not defined" fejl i policy-editor.
+
+---
+
 ## [6.0.1] — 2026-06-06 — Fix: selfregister MAC-lookup via pxGrid session-cache
 
 > **Build:** 0617
