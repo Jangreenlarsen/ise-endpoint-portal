@@ -484,53 +484,103 @@ def _parse_cwa_session(text: str) -> CwaSession | None:
     )
 
 
+def _session_from_active_list_row(row: dict[str, str]) -> CwaSession | None:
+    """Konvertér en ActiveList-dict-row til CwaSession."""
+    def _f(*keys: str) -> str:
+        for k in keys:
+            v = row.get(k, "").strip()
+            if v:
+                return v
+        return ""
+
+    mac_raw = _f("calling_station_id", "callingstationid", "calling-station-id",
+                  "user_name", "username")
+    if not mac_raw:
+        return None
+    mac = _normalize_mac(mac_raw)
+    if len(mac) != 17 or mac.count(":") != 5:
+        return None
+
+    return CwaSession(
+        mac=mac,
+        acs_session_id=_f("acssessionid", "acs_session_id", "audit_session_id", "auditSessionId"),
+        nas_ip=_f("nas_ip_address", "nasipaddress", "nas-ip-address"),
+        nas_port_id=_f("nas_port_id", "nasportid", "nas-port-id"),
+        framed_ip=_f("framed_ip_address", "framedipaddress", "framed-ip-address"),
+    )
+
+
+async def _session_by_ip_from_active_list(ip: str) -> CwaSession | None:
+    """Fallback: scan ActiveList og find session hvor framed_ip == ip.
+
+    Bruges når GET /Session/IPAddress returnerer 500 (ISE 3.4 bug).
+    """
+    try:
+        rows = await fetch_active_sessions()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("session_by_ip ActiveList fallback fejlede: %s", exc)
+        return None
+
+    for row in rows:
+        sess = _session_from_active_list_row(row)
+        if sess and sess.framed_ip == ip:
+            logger.info(
+                "session_by_ip ActiveList-fallback: fundet mac=%s ip=%s",
+                sess.mac, ip,
+            )
+            return sess
+    return None
+
+
 async def session_by_ip(
     client_ip: str,
     *,
-    retries: int = 3,
-    retry_delay: float = 2.0,
+    retries: int = 1,
+    retry_delay: float = 0.0,
 ) -> CwaSession | None:
     """Slå aktiv RADIUS-session op via klientens IP-adresse.
 
-    Kalder GET /admin/API/mnt/Session/IPAddress/{client_ip}.
-    Returnerer CwaSession med MAC, ACSSessionID, NAS-IP o.a., eller None
-    hvis ingen session findes (klient endnu ikke i RADIUS-flow).
+    Primær: GET /admin/API/mnt/Session/IPAddress/{ip}
+    Fallback (ved HTTP 500 — ISE 3.4 bug): scan ActiveList og filtrer på framed_ip.
 
-    Retry-logik: ISE kan have få sekunders forsinkelse fra klient forbinder
-    til session vises i MnT. Default: 3 forsøg med 2 sekunders mellemrum.
+    Frontend poller dette endpoint — retries=1 per kald (frontend styrer interval).
     """
     ip = (client_ip or "").strip()
     if not ip:
         return None
 
     path = f"/admin/API/mnt/Session/IPAddress/{ip}"
-    last_exc: Exception | None = None
+    try:
+        status, text = await _mnt_get_xml(path)
+        logger.debug("session_by_ip: ip=%s status=%d body-preview=%s", ip, status, text[:300])
 
-    for attempt in range(1, retries + 1):
-        try:
-            status, text = await _mnt_get_xml(path)
-            logger.debug("session_by_ip: ip=%s status=%d body-preview=%s", ip, status, text[:300])
-            if status == 404 or not text.strip():
-                logger.debug("session_by_ip: ingen session for ip=%s (attempt %d/%d)", ip, attempt, retries)
-            elif status >= 400:
-                logger.warning("session_by_ip: HTTP %d for ip=%s body=%s", status, ip, text[:300])
-            else:
-                sess = _parse_cwa_session(text)
-                if sess:
-                    logger.info(
-                        "session_by_ip: fundet mac=%s acs=%s nas=%s for ip=%s (attempt %d)",
-                        sess.mac, sess.acs_session_id, sess.nas_ip, ip, attempt,
-                    )
-                    return sess
-                else:
-                    logger.warning("session_by_ip: HTTP %d men parse fejlede for ip=%s — raw: %s", status, ip, text[:500])
-        except IseApiError as exc:
-            last_exc = exc
-            logger.warning("session_by_ip: ISE fejl attempt %d: %s", attempt, exc)
+        if status == 404 or not text.strip():
+            logger.debug("session_by_ip: ingen session for ip=%s (404/tom)", ip)
+            return None
 
-        if attempt < retries:
-            await asyncio.sleep(retry_delay)
+        if status == 500:
+            # Kendt ISE 3.4 bug på Session/IPAddress — fald tilbage til ActiveList-scan
+            logger.warning(
+                "session_by_ip: HTTP 500 fra ISE for ip=%s (ISE bug) — forsøger ActiveList-fallback",
+                ip,
+            )
+            return await _session_by_ip_from_active_list(ip)
 
-    if last_exc:
-        logger.error("session_by_ip: alle %d forsøg fejlede for ip=%s: %s", retries, ip, last_exc)
-    return None
+        if status >= 400:
+            logger.warning("session_by_ip: HTTP %d for ip=%s body=%s", status, ip, text[:300])
+            return None
+
+        sess = _parse_cwa_session(text)
+        if sess:
+            logger.info(
+                "session_by_ip: fundet via IPAddress mac=%s acs=%s nas=%s for ip=%s",
+                sess.mac, sess.acs_session_id, sess.nas_ip, ip,
+            )
+            return sess
+
+        logger.warning("session_by_ip: HTTP %d men parse fejlede for ip=%s — raw: %s", status, ip, text[:500])
+        return None
+
+    except IseApiError as exc:
+        logger.warning("session_by_ip: ISE fejl for ip=%s: %s", ip, exc)
+        return None

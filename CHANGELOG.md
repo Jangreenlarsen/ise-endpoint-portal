@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.0.1 build 0619] — 2026-06-06 — fix: ActiveList-fallback når ISE MnT Session/IPAddress returnerer 500
+
+ISE 3.4 bug: `GET /Session/IPAddress/{ip}` returnerer HTTP 500 (CPM 34110) for visse sessioner.
+Fix: ved HTTP 500 scannes `ActiveList` og filtreres på `framed_ip` — samme data, mere robust endpoint.
+Ny `_session_from_active_list_row()` og `_session_by_ip_from_active_list()` i `mnt_sessions.py`.
+**Berørt fil:** `backend/app/ise/mnt_sessions.py`
+
 ## [6.0.1 build 0618] — 2026-06-06 — fix: selfregister/session bruger kun MnT direkte (ikke cache)
 
 Fjerner pxGrid-cache som kilde til session-lookup. Hvert polling-kald fra frontend
