@@ -15,6 +15,7 @@ missing fields as empty strings.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 from typing import Iterable
@@ -412,3 +413,121 @@ def index_by_mac(sessions: Iterable[dict[str, str]]) -> dict[str, str]:
         if canonical:
             out[mac] = canonical
     return out
+
+
+# ── IP-baseret session-lookup (til CWA selvregistrering) ─────────────────────
+
+
+class CwaSession:
+    """Data returneret fra MnT session-lookup by IP til CWA-flow."""
+    __slots__ = ("mac", "acs_session_id", "nas_ip", "nas_port_id", "framed_ip")
+
+    def __init__(
+        self,
+        mac: str,
+        acs_session_id: str = "",
+        nas_ip: str = "",
+        nas_port_id: str = "",
+        framed_ip: str = "",
+    ) -> None:
+        self.mac = mac
+        self.acs_session_id = acs_session_id
+        self.nas_ip = nas_ip
+        self.nas_port_id = nas_port_id
+        self.framed_ip = framed_ip
+
+
+def _parse_cwa_session(text: str) -> CwaSession | None:
+    """Parse XML fra GET /admin/API/mnt/Session/IPAddress/{ip}.
+
+    Returnerer CwaSession med de relevante felter, eller None hvis ingen session.
+    ISE 3.x returnerer <activeList> med <activeSession> children.
+    """
+    try:
+        root = ET.fromstring(text)
+    except ET.ParseError:
+        return None
+
+    # Find første activeSession element (direkte child eller nested)
+    session_el = root if root.tag in ("activeSession", "authSession") else None
+    if session_el is None:
+        session_el = root.find(".//activeSession") or root.find(".//authSession")
+    if session_el is None:
+        # Prøv direkte felter under root (ISE kan variere)
+        session_el = root
+
+    def _get(*names: str) -> str:
+        for n in names:
+            el = session_el.find(n)
+            if el is not None and el.text and el.text.strip():
+                return el.text.strip()
+        return ""
+
+    # Calling-Station-Id er MAC-adressen
+    mac_raw = _get(
+        "Calling-Station-ID", "calling_station_id", "callingStationId",
+        "Calling-Station-Id",
+    )
+    if not mac_raw:
+        return None
+
+    mac = _normalize_mac(mac_raw)
+    if len(mac) != 17 or mac.count(":") != 5:
+        return None
+
+    return CwaSession(
+        mac=mac,
+        acs_session_id=_get("ACSSessionID", "acs_session_id", "Session-ID"),
+        nas_ip=_get("NAS-IP-Address", "nas_ip_address", "nasIpAddress"),
+        nas_port_id=_get("NAS-Port-Id", "nas_port_id", "nasPortId"),
+        framed_ip=_get("Framed-IP-Address", "framed_ip_address", "framedIpAddress"),
+    )
+
+
+async def session_by_ip(
+    client_ip: str,
+    *,
+    retries: int = 3,
+    retry_delay: float = 2.0,
+) -> CwaSession | None:
+    """Slå aktiv RADIUS-session op via klientens IP-adresse.
+
+    Kalder GET /admin/API/mnt/Session/IPAddress/{client_ip}.
+    Returnerer CwaSession med MAC, ACSSessionID, NAS-IP o.a., eller None
+    hvis ingen session findes (klient endnu ikke i RADIUS-flow).
+
+    Retry-logik: ISE kan have få sekunders forsinkelse fra klient forbinder
+    til session vises i MnT. Default: 3 forsøg med 2 sekunders mellemrum.
+    """
+    ip = (client_ip or "").strip()
+    if not ip:
+        return None
+
+    path = f"/admin/API/mnt/Session/IPAddress/{ip}"
+    last_exc: Exception | None = None
+
+    for attempt in range(1, retries + 1):
+        try:
+            status, text = await _mnt_get_xml(path)
+            if status == 404 or not text.strip():
+                logger.debug("session_by_ip: ingen session for ip=%s (attempt %d/%d)", ip, attempt, retries)
+            elif status >= 400:
+                logger.warning("session_by_ip: HTTP %d for ip=%s", status, ip)
+            else:
+                sess = _parse_cwa_session(text)
+                if sess:
+                    logger.info(
+                        "session_by_ip: fundet mac=%s acs=%s nas=%s for ip=%s (attempt %d)",
+                        sess.mac, sess.acs_session_id, sess.nas_ip, ip, attempt,
+                    )
+                    return sess
+        except IseApiError as exc:
+            last_exc = exc
+            logger.warning("session_by_ip: ISE fejl attempt %d: %s", attempt, exc)
+
+        if attempt < retries:
+            await asyncio.sleep(retry_delay)
+
+    if last_exc:
+        logger.error("session_by_ip: alle %d forsøg fejlede for ip=%s: %s", retries, ip, last_exc)
+    return None

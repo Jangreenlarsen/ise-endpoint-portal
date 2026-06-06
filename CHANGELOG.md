@@ -3,6 +3,26 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.0.0 build 0615] — 2026-06-06 — feat: Komplet CWA-flow — MnT IP-session-lookup + upsert + CoA
+
+**MnT IP-session-lookup** (`mnt_sessions.session_by_ip`):
+Ny funktion der kalder `GET /admin/API/mnt/Session/IPAddress/{ip}` med retry-logik
+(3 forsøg, 2 sek. mellemrum). Returnerer MAC, ACSSessionID, NAS-IP, NAS-Port-Id.
+
+**Ny API-endpoint `GET /api/selfregister/session`:**
+Frontend kalder dette efter sideload — portal bestemmer klientens IP fra
+X-Forwarded-For/remote_addr og slår session op i ISE MnT. Returnerer MAC + session-data.
+
+**Upsert-logik i `POST /api/selfregister`:**
+Tjekker om MAC allerede eksisterer i ISE (ERS get_by_mac). Opdaterer (PUT) hvis ja,
+opretter (POST) hvis nej. Eliminerer duplikat-fejl.
+
+**Refaktoreret `selfregister.js`:**
+Fjerner URL-param `?mac=...`. Kalder session-API i stedet med polling-UI (op til 5 runder,
+3 sek. mellemrum). Viser "finder din enhed"-animation og retry-knap ved timeout.
+
+**Berørte filer:** `ise/mnt_sessions.py`, `api/selfregister.py`, `frontend/js/selfregister.js`
+
 ## [5.30.1 build 0614] — 2026-06-04 — feat: Guest reg config i Settings + IPSK + CoA + GuestRegistration CA
 
 **Ny CA `GuestRegistration`** — sættes til "true" på alle selvregistrerede endpoints.

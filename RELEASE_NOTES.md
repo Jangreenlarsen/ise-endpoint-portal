@@ -4,6 +4,63 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.0.0] — 2026-06-06 — Release: Komplet CWA MAC-registrering
+
+> **Build:** 0615
+
+### CWA-flow (Central Web Authentication)
+
+Wireless controller (AireOS 8.10) redirect flow er nu fuldt implementeret:
+
+```
+Klient → SSID → WLC → ISE MAB
+  ↓ MAC ukendt
+ISE → url-redirect AV-pair → WLC
+  ↓ WLC intercepter HTTP
+Portal /selfregister (ingen MAC i URL)
+  ↓ portal finder klientens IP
+ISE MnT /Session/IPAddress/{ip} → MAC + session-data
+  ↓ bruger udfylder navn + accept
+ISE ERS upsert endpoint (opret ELLER opdater)
+  ↓
+ISE MnT CoA Reauth → WLC re-autentificerer
+  ↓
+Klient får netværksadgang
+```
+
+### Hvad er nyt
+
+**MnT IP-session-lookup med retry**
+Portalen slår selv MAC op via `GET /admin/API/mnt/Session/IPAddress/{ip}`.
+Tre automatiske forsøg med 2 sekunders mellemrum (RADIUS-session kan være forsinket).
+
+**Polling-UI på registreringssiden**
+Siden viser "Finder din enhed..." med animeret spinner og forsøgs-tæller.
+Hvis session ikke findes inden timeout: retry-knap vises.
+
+**Upsert-logik**
+Tjekker automatisk om MAC allerede eksisterer i ISE:
+- Ny MAC → opretter endpoint (POST)
+- Eksisterende MAC → opdaterer attributter (PUT)
+
+**Automatisk CoA Reauth**
+Trigges med det samme efter registrering via ISE MnT — klienten
+re-autentificeres af WLC uden manuel disconnect.
+
+### ISE Authorization Profile opsætning
+
+```
+cisco-av-pair = url-redirect=https://hypervision.ll.lan:8000/selfregister
+cisco-av-pair = url-redirect-acl=REDIRECT_ACL
+```
+
+Konfigurer Settings → Portal Config → Advanced → Gæste-registrering:
+- VLAN og DACL til gæsteendpoints
+- IPSK-toggle (valgfrit nøgle-felt på siden)
+- Accepttekst og redirect URL
+
+---
+
 ## [5.30.1] — 2026-06-04 — Release: Gæste-selvregistrering
 
 > **Build:** 0614
