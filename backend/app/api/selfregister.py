@@ -26,7 +26,6 @@ from app.core import config
 from app.core.exceptions import IseApiError
 from app.ise import mnt_sessions
 from app.ise.coa import reauth as coa_reauth
-from app.pxgrid.session_cache import get_cache as get_session_cache
 from app.schemas.endpoint import CreateEndpointRequest, CustomAttrs, EndpointUpdate
 
 logger = logging.getLogger(__name__)
@@ -113,25 +112,9 @@ async def lookup_session(request: Request, ip: str = "") -> SessionLookupRespons
     if not client_ip:
         return SessionLookupResponse(found=False, message="Kunne ikke bestemme klientens IP-adresse")
 
-    # ── Primær kilde: pxGrid session-cache (in-memory, ingen ISE-kald) ──────
-    pxgrid_sess = await get_session_cache().get_by_ip(client_ip)
-    if pxgrid_sess:
-        logger.info(
-            "selfregister/session: fundet via pxGrid-cache mac=%s ip=%s",
-            pxgrid_sess.mac, client_ip,
-        )
-        return SessionLookupResponse(
-            found=True,
-            mac=pxgrid_sess.mac,
-            nas_ip=pxgrid_sess.nas_ip,
-            acs_session_id=pxgrid_sess.audit_session_id,
-            client_ip=client_ip,
-        )
-
-    # ── Fallback: ISE MnT API (3 forsøg, 2 sek. mellemrum) ──────────────────
-    logger.debug("selfregister/session: pxGrid-miss for ip=%s — forsøger MnT API", client_ip)
+    # Brug ISE MnT API direkte — ét forsøg pr. kald fra frontend (frontend poller)
     try:
-        mnt_sess = await mnt_sessions.session_by_ip(client_ip, retries=3, retry_delay=2.0)
+        mnt_sess = await mnt_sessions.session_by_ip(client_ip, retries=1, retry_delay=0.0)
     except Exception as exc:  # noqa: BLE001
         logger.warning("selfregister session MnT fejl ip=%s: %s", client_ip, exc)
         return SessionLookupResponse(
@@ -141,12 +124,17 @@ async def lookup_session(request: Request, ip: str = "") -> SessionLookupRespons
         )
 
     if not mnt_sess:
+        logger.debug("selfregister/session: ingen MnT-session for ip=%s", client_ip)
         return SessionLookupResponse(
             found=False,
             client_ip=client_ip,
             message="Ingen aktiv RADIUS-session fundet for denne IP. Prøv igen om få sekunder.",
         )
 
+    logger.info(
+        "selfregister/session: fundet via MnT mac=%s ip=%s nas=%s",
+        mnt_sess.mac, client_ip, mnt_sess.nas_ip,
+    )
     return SessionLookupResponse(
         found=True,
         mac=mnt_sess.mac,

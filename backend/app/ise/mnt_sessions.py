@@ -509,10 +509,11 @@ async def session_by_ip(
     for attempt in range(1, retries + 1):
         try:
             status, text = await _mnt_get_xml(path)
+            logger.debug("session_by_ip: ip=%s status=%d body-preview=%s", ip, status, text[:300])
             if status == 404 or not text.strip():
                 logger.debug("session_by_ip: ingen session for ip=%s (attempt %d/%d)", ip, attempt, retries)
             elif status >= 400:
-                logger.warning("session_by_ip: HTTP %d for ip=%s", status, ip)
+                logger.warning("session_by_ip: HTTP %d for ip=%s body=%s", status, ip, text[:300])
             else:
                 sess = _parse_cwa_session(text)
                 if sess:
@@ -521,6 +522,8 @@ async def session_by_ip(
                         sess.mac, sess.acs_session_id, sess.nas_ip, ip, attempt,
                     )
                     return sess
+                else:
+                    logger.warning("session_by_ip: HTTP %d men parse fejlede for ip=%s — raw: %s", status, ip, text[:500])
         except IseApiError as exc:
             last_exc = exc
             logger.warning("session_by_ip: ISE fejl attempt %d: %s", attempt, exc)
