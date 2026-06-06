@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.0.1 build 0618] — 2026-06-06 — fix: selfregister/session bruger kun MnT direkte (ikke cache)
+
+Fjerner pxGrid-cache som kilde til session-lookup. Hvert polling-kald fra frontend
+laver ét direkte MnT-kald. Tilføjet debug-logging så raw XML-svar fra ISE skrives til
+app.log ved fejl — letter diagnosticering af MnT-adgang og parse-problemer.
+**Berørte filer:** `api/selfregister.py`, `ise/mnt_sessions.py`
+
 ## [6.0.1 build 0617] — 2026-06-06 — release: Versionsbump til 6.0.1
 
 ## [6.0.0 build 0616] — 2026-06-06 — fix: selfregister/session bruger pxGrid-cache som primær kilde
