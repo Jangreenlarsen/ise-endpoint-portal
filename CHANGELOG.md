@@ -3,6 +3,11 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.0.2 build 0622] — 2026-06-06 — fix: KNOWN_PROFILES is not defined i policy.js
+
+Manglende import af KNOWN_PROFILES fra policy-condition-builder.js.
+**Berørt fil:** `frontend/js/views/policy.js`
+
 ## [6.0.2 build 0621] — 2026-06-06 — feat: Auto-scan ISE authz-profiler ved åbning af profile-dropdown
 
 Første gang brugeren klikker/fokuserer dropdown'en i "Autoriseringsprofiler" i policy-editoren,

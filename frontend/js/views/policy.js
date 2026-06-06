@@ -7,6 +7,7 @@ import { auth } from "../auth.js";
 import { t } from "../i18n.js";
 import { esc } from "./browse-utils.js";
 import {
+  KNOWN_PROFILES,
   groupEditorHtml, wireGroupEditor, readGroupCondition,
   renderConditionTree, renderConditionChips,
   profilesHtml, readProfiles, wireProfileEvents,
