@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.0.3 build 0624] — 2026-06-06 — fix: GuestRegistration + RegistretBy skipped i policy-simulering
+
+`_ENDPOINT_ATTR_MAP` manglede entries for `GuestRegistration` og `RegistretBy` → conditions altid skipped.
+`_fetch_ep_from_ise()` returnerede heller ikke disse felter for live-endpoint simulation.
+**Berørt fil:** `backend/app/services/policy_service.py`
+
 ## [6.0.3 build 0623] — 2026-06-06 — release: Versionsbump til 6.0.3
 
 Samler 6.0.x fixes: GuestRegistration i Browse/Policies, auto-scan authz-profiler,

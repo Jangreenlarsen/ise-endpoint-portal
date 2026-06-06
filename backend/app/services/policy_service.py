@@ -45,6 +45,8 @@ _ENDPOINT_ATTR_MAP = {
     "PlatformType": "platform_type",
     "PSK_Mode": "psk_mode",
     "Description": "description",
+    "GuestRegistration": "guest_registration",
+    "RegistretBy": "registret_by",
 }
 
 # Dictionaries we CANNOT evaluate without live session data
@@ -409,15 +411,17 @@ class PolicyService:
 
         psk_raw = ca.get(PSK_MODE_ATTR, "").lower()
         return {
-            "owner":         ca.get("Owner", ""),
-            "endpoint_type": ca.get("Type", ""),
-            "lokation":      ca.get("Lokation", ""),
-            "authz_vlan":    ca.get("AuthzVlan", ""),
-            "authz_acl":     ca.get("AuthzACL", ""),
-            "platform_type": ca.get("PlatformType", ""),
-            "psk_mode":      "true" if psk_raw == "true" else "false",
-            "description":   raw.get("description", ""),
-            "group_name":    group_name,
+            "owner":              ca.get("Owner", ""),
+            "endpoint_type":      ca.get("Type", ""),
+            "lokation":           ca.get("Lokation", ""),
+            "authz_vlan":         ca.get("AuthzVlan", ""),
+            "authz_acl":          ca.get("AuthzACL", ""),
+            "platform_type":      ca.get("PlatformType", ""),
+            "psk_mode":           "true" if psk_raw == "true" else "false",
+            "description":        raw.get("description", ""),
+            "group_name":         group_name,
+            "guest_registration": ca.get("GuestRegistration", ""),
+            "registret_by":       ca.get("RegistretBy", ""),
         }
 
     async def match_endpoint(self, policy_set_id: str, ep: dict) -> PolicyMatchResult:

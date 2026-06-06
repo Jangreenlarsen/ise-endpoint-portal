@@ -4,6 +4,14 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 6.0.3 b0624] 2026-06-06 — Simulering: EndPoints.GuestRegistration og RegistretBy altid skipped
+
+- **Symptom:** Policy-simulering evaluerede aldrig `EndPoints.GuestRegistration equals true/false` eller `EndPoints.RegistretBy equals …` — betingelserne blev markeret som "skipped/unevaluable" uanset endpoint-værdier.
+- **Root cause 1:** `_ENDPOINT_ATTR_MAP` i `policy_service.py` manglede entries for `"GuestRegistration"` og `"RegistretBy"` → `_get_ep_value()` returnerede `None` → condition skipped.
+- **Root cause 2:** `_fetch_ep_from_ise()` (live-endpoint simulation) returnererede ikke `guest_registration`/`registret_by` i ep-dict, så custom_attributes-fallback hjalp heller ikke.
+- **Fix:** Tilføjet `"GuestRegistration": "guest_registration"` og `"RegistretBy": "registret_by"` til `_ENDPOINT_ATTR_MAP`, samt tilsvarende felter i `_fetch_ep_from_ise` return-dict.
+- **Berørt fil:** `backend/app/services/policy_service.py`
+
 ## [FIXED 5.20.3 b0596] 2026-06-02 — Auth-status kolonne altid rød
 
 - **Symptom:** Auth-status søjle (og MAC-celle farve) viste rød (auth-failed) på alle endpoints — selv aktive sessioner.
