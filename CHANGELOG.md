@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.0.0 build 0616] — 2026-06-06 — fix: selfregister/session bruger pxGrid-cache som primær kilde
+
+`GET /api/selfregister/session` prøver nu pxGrid session-cache (in-memory) FØR MnT API.
+`SessionInfo` har fået nyt `framed_ip`-felt populeret fra `framedIpAddress`/`ipAddresses[0]`
+i pxGrid-payload. `SessionCache.get_by_ip()` scanner sessioner for matchende `framed_ip`.
+Eliminerer fejlede MnT-opslag når pxGrid er aktiv — svar er øjeblikkeligt fra cache.
+**Berørte filer:** `pxgrid/session_cache.py`, `pxgrid/session_worker.py`, `api/selfregister.py`
+
 ## [6.0.0 build 0615] — 2026-06-06 — feat: Komplet CWA-flow — MnT IP-session-lookup + upsert + CoA
 
 **MnT IP-session-lookup** (`mnt_sessions.session_by_ip`):

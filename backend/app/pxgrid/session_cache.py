@@ -44,6 +44,7 @@ class SessionInfo:
     use_case: str = ""
     nas_name: str = ""
     nas_device_type: str = ""
+    framed_ip: str = ""        # klientens IP-adresse (framedIpAddress / ipAddresses[0])
     last_event_at: float = field(default_factory=time.time)
     # MnT Session/MACAddress enrichment fields (populated asynchronously after reconcile)
     endpoint_policy: str = ""
@@ -174,6 +175,22 @@ class SessionCache:
             if max_age_s > 0:
                 self._evict_expired_locked(max_age_s)
             return self._sessions.get(mac)
+
+    async def get_by_ip(self, ip: str) -> SessionInfo | None:
+        """Find session ud fra klientens IP-adresse (framed_ip reverse-lookup).
+
+        Bruges af CWA selvregistreringsside til at finde MAC uden URL-param.
+        Sammenligner mod `framed_ip`-feltet der populeres fra pxGrid-payloadens
+        framedIpAddress / ipAddresses[0].
+        """
+        ip = (ip or "").strip()
+        if not ip:
+            return None
+        async with self._lock:
+            for sess in self._sessions.values():
+                if sess.framed_ip == ip:
+                    return sess
+        return None
 
     def _evict_expired_locked(self, max_age_s: float) -> None:
         cutoff = time.time() - max_age_s

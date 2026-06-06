@@ -595,6 +595,17 @@ def _build_session_info(d: dict[str, Any]) -> SessionInfo:
         or d.get("sgt", "")
         or ""
     )
+    # Klientens IP (framedIpAddress eller første element i ipAddresses-liste)
+    ip_addrs = d.get("ipAddresses", [])
+    if isinstance(ip_addrs, str):
+        ip_addrs = [ip_addrs]
+    framed_ip = str(
+        d.get("framedIpAddress", "")
+        or d.get("framed_ip_address", "")
+        or (ip_addrs[0] if ip_addrs else "")
+        or ""
+    ).strip()
+
     return SessionInfo(
         mac=str(mac),
         state=str(d.get("state", "") or d.get("sessionEvent", "")),
@@ -611,6 +622,7 @@ def _build_session_info(d: dict[str, Any]) -> SessionInfo:
         dacl=dacl,
         vlan=vlan,
         cts_security_group=cts_security_group,
+        framed_ip=framed_ip,
         raw=d,
     )
 
