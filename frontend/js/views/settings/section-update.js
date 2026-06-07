@@ -548,7 +548,16 @@ export function initAdvancedSection(container) {
     try {
       const res = await api.syncCustomAttributes();
       const newCount = Object.values(res.new_values_found || {}).reduce((s, v) => s + (v?.length || 0), 0);
-      result.innerHTML = `<div class="alert" style="background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:0.6rem 1rem;color:#166534;">${t("settings.adv_done").replace("{n}", res.scanned_endpoints).replace("{new}", newCount)}</div>`;
+      const defs = res.definitions_ensured || {};
+      const total = Object.keys(defs).length;
+      const okCount = Object.values(defs).filter(Boolean).length;
+      const failed = Object.entries(defs).filter(([, ok]) => !ok).map(([k]) => k);
+
+      const defsLine = total === 0 ? "" : failed.length === 0
+        ? `<br><span style="font-size:0.85em;">${t("settings.adv_defs_ok").replace("{ok}", okCount).replace("{total}", total)}</span>`
+        : `<br><span style="font-size:0.85em;color:#991b1b;">${t("settings.adv_defs_fail").replace("{attrs}", failed.join(", "))}</span>`;
+
+      result.innerHTML = `<div class="alert" style="background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:0.6rem 1rem;color:#166534;">${t("settings.adv_done").replace("{n}", res.scanned_endpoints).replace("{new}", newCount)}${defsLine}</div>`;
     } catch (err) {
       result.innerHTML = `<div class="alert" style="background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;padding:0.6rem 1rem;color:#991b1b;">${esc(err.message)}</div>`;
     } finally {

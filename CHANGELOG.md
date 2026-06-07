@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.1.1 build 0627] — 2026-06-07 — fix: Sync-knap viser nu attribut-definitionsstatus fra ISE
+
+Result-visningen efter "Importér custom attributter fra ISE" viser nu:
+- Antal endpoints scannet + nye værdier (som før)
+- Attribut-definitioner i ISE: X/Y ✓ (alle ok)
+- Eller: hvilke attributter der mangler i ISE og skal oprettes manuelt (rød tekst)
+**Berørte filer:** `section-update.js`, `i18n.js`
+
 ## [6.1.0 build 0626] — 2026-06-07 — feat: Gæsteadgang udløb (GuestExperyDate + GuestAccessExpire)
 
 Ny settings-sektion under Gæste-registrering: admin vælger tidsperiode (N dage) eller bestemt dato + klokkeslæt for udløb.

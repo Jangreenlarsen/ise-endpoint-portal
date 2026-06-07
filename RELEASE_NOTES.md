@@ -4,6 +4,16 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.1.1] — 2026-06-07 — Fix: Sync-knap viser attribut-definitionsstatus
+
+> **Build:** 0627
+
+Efter "Importér custom attributter fra ISE" vises nu to linjer:
+- `Scannet N endpoints. X nye værdier importeret.`
+- `Attribut-definitioner i ISE: Y/Z ✓` — eller rød tekst med navne på manglende attributter der skal oprettes manuelt i ISE.
+
+---
+
 ## [6.1.0] — 2026-06-07 — Feat: Gæsteadgang udløb
 
 > **Build:** 0626
