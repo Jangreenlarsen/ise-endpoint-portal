@@ -23,11 +23,30 @@ function _updateGuestExpiryVisibility(container) {
   });
 }
 
+function _populateTimeSelects(container) {
+  const hourSel = container.querySelector("#d-expery-hour-s");
+  const minSel  = container.querySelector("#d-expery-min-s");
+  if (hourSel && !hourSel.options.length) {
+    for (let i = 0; i < 24; i++) {
+      const v = String(i).padStart(2, "0");
+      hourSel.add(new Option(v, v));
+    }
+  }
+  if (minSel && !minSel.options.length) {
+    for (let i = 0; i < 60; i++) {
+      const v = String(i).padStart(2, "0");
+      minSel.add(new Option(v, v));
+    }
+  }
+}
+
 export function initDetail(container, state, api, cb) {
   const detailOverlay = container.querySelector("#detail-overlay");
   const detailMsg     = container.querySelector("#detail-msg");
   const msg           = container.querySelector("#msg");
   let _templates = [];
+
+  _populateTimeSelects(container);
 
   function updateGroupPath(groupId) {
     const pathEl = container.querySelector("#d-group-path");
@@ -94,9 +113,12 @@ export function initDetail(container, state, api, cb) {
       const expiryDatePart = expiryColon > 0 ? rawExpiry.slice(0, expiryColon) : rawExpiry;
       const expiryTimePart = expiryColon > 0 ? rawExpiry.slice(expiryColon + 1) : "";
       const experyDateD = container.querySelector("#d-expery-date-d");
-      const experyTimeT = container.querySelector("#d-expery-time-t");
       if (experyDateD) experyDateD.value = expiryDatePart;
-      if (experyTimeT) experyTimeT.value = expiryTimePart;
+      const [hh, mm] = (expiryTimePart || "23:59").split(":");
+      const hourSel = container.querySelector("#d-expery-hour-s");
+      const minSel  = container.querySelector("#d-expery-min-s");
+      if (hourSel) hourSel.value = hh || "23";
+      if (minSel)  minSel.value  = mm || "59";
       const accessExpireEl = container.querySelector("#d-access-expire");
       if (accessExpireEl) accessExpireEl.value = d.guest_access_expire || "";
       _updateGuestExpiryVisibility(container);
@@ -1129,8 +1151,9 @@ export function initDetail(container, state, api, cb) {
       GuestRegistration: container.querySelector("#d-guestreg")?.value || "",
       GuestExperyDate: (() => {
         const d = container.querySelector("#d-expery-date-d")?.value || "";
-        const t = container.querySelector("#d-expery-time-t")?.value || "23:59";
-        return d ? `${d}:${t}` : "";
+        const h = container.querySelector("#d-expery-hour-s")?.value || "23";
+        const m = container.querySelector("#d-expery-min-s")?.value || "59";
+        return d ? `${d}:${h}:${m}` : "";
       })(),
       GuestAccessExpire: container.querySelector("#d-access-expire")?.value || "",
       AuthzVlan: container.querySelector("#d-authzvlan").value,

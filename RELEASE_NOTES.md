@@ -4,6 +4,16 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.2.2] — 2026-06-07 — Fix: 24-timers ur til Guest Expiry date/time-picker
+
+> **Build:** 0637
+
+Guest Expiry date-pickeren i Endpoint details edit-modal bruger nu to
+dropdown-lister (00–23 for timer, 00–59 for minutter) i stedet for
+`<input type="time">`. Sikrer altid 24-timers format uanset OS-locale.
+
+---
+
 ## [6.1.1] — 2026-06-07 — Fix: Sync-knap viser attribut-definitionsstatus
 
 > **Build:** 0627

@@ -3,6 +3,15 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.2.2 build 0637] — 2026-06-07 — fix: 24-timers ur til Guest Expiry time-picker
+
+Erstattet `<input type="time">` (viser AM/PM på Windows/12h-locale) med to
+`<select>`-elementer: timer 00–23 og minutter 00–59. Altid 24-timers format
+uafhængigt af OS/browser-locale. Populeres via `_populateTimeSelects()` i
+`initDetail`. Gem-handler kombinerer `HH` + `MM` til `YYYY-MM-DD:HH:MM`.
+
+**Berørte filer:** `browse.js`, `browse-detail.js`, `styles.css`
+
 ## [6.2.1 build 0636] — 2026-06-07 — fix: Date+time picker til Guest Expiry date i edit-modal
 
 Erstattet tekst-input med date+time input-par i Endpoint details edit.

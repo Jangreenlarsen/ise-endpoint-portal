@@ -991,7 +991,7 @@ tr.row-decomm .mac-link {
   align-items: center;
 }
 .expiry-dt-wrap input[type="date"],
-.expiry-dt-wrap input[type="time"] {
+.expiry-dt-wrap .expiry-time-sel {
   flex: 1;
   min-width: 0;
   padding: 0.2rem 0.4rem;
@@ -999,13 +999,26 @@ tr.row-decomm .mac-link {
   border: 1px solid #d1d5db;
   border-radius: 4px;
 }
+.expiry-dt-wrap .expiry-time-sel {
+  flex: 0 0 auto;
+  width: 4.5rem;
+}
+.time-sep {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #374151;
+  flex: 0 0 auto;
+}
 [data-theme="dark"] .expiry-dt-wrap input,
-[data-theme="midnight"] .expiry-dt-wrap input {
+[data-theme="dark"] .expiry-dt-wrap select,
+[data-theme="midnight"] .expiry-dt-wrap input,
+[data-theme="midnight"] .expiry-dt-wrap select {
   background: #1a1a2e;
   color: #e0e0e0;
   border-color: #3a3a5c;
 }
-[data-theme="midnight"] .expiry-dt-wrap input {
+[data-theme="midnight"] .expiry-dt-wrap input,
+[data-theme="midnight"] .expiry-dt-wrap select {
   background: #0d1117;
   color: #e6edf3;
   border-color: #30363d;

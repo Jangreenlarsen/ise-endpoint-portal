@@ -203,7 +203,9 @@ export async function renderBrowse(container) {
               <label class="d-guest-expiry-row">${t("col.guest_expery_date")}</label>
               <div class="d-guest-expiry-row expiry-dt-wrap">
                 <input type="date" id="d-expery-date-d" />
-                <input type="time" id="d-expery-time-t" step="60" />
+                <select id="d-expery-hour-s" class="expiry-time-sel"></select>
+                <span class="time-sep">:</span>
+                <select id="d-expery-min-s" class="expiry-time-sel"></select>
               </div>
               <label class="d-guest-expiry-row">${t("col.guest_access_expire")}</label>
               <select id="d-access-expire" class="d-guest-expiry-row">
