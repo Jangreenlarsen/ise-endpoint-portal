@@ -89,8 +89,14 @@ export function initDetail(container, state, api, cb) {
           guestRegEl._expiryListenerAttached = true;
         }
       }
-      const experyDateEl = container.querySelector("#d-expery-date");
-      if (experyDateEl) experyDateEl.value = d.guest_expery_date || "";
+      const rawExpiry = d.guest_expery_date || "";
+      const expiryColon = rawExpiry.indexOf(":");
+      const expiryDatePart = expiryColon > 0 ? rawExpiry.slice(0, expiryColon) : rawExpiry;
+      const expiryTimePart = expiryColon > 0 ? rawExpiry.slice(expiryColon + 1) : "";
+      const experyDateD = container.querySelector("#d-expery-date-d");
+      const experyTimeT = container.querySelector("#d-expery-time-t");
+      if (experyDateD) experyDateD.value = expiryDatePart;
+      if (experyTimeT) experyTimeT.value = expiryTimePart;
       const accessExpireEl = container.querySelector("#d-access-expire");
       if (accessExpireEl) accessExpireEl.value = d.guest_access_expire || "";
       _updateGuestExpiryVisibility(container);
@@ -1121,7 +1127,11 @@ export function initDetail(container, state, api, cb) {
       Lokation: container.querySelector("#d-lokation").value,
       RegistretBy: container.querySelector("#d-registretby")?.value || "",
       GuestRegistration: container.querySelector("#d-guestreg")?.value || "",
-      GuestExperyDate: container.querySelector("#d-expery-date")?.value || "",
+      GuestExperyDate: (() => {
+        const d = container.querySelector("#d-expery-date-d")?.value || "";
+        const t = container.querySelector("#d-expery-time-t")?.value || "23:59";
+        return d ? `${d}:${t}` : "";
+      })(),
       GuestAccessExpire: container.querySelector("#d-access-expire")?.value || "",
       AuthzVlan: container.querySelector("#d-authzvlan").value,
       AuthzACL: container.querySelector("#d-authzacl").value,

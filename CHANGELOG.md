@@ -3,6 +3,16 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.2.1 build 0636] — 2026-06-07 — fix: Date+time picker til Guest Expiry date i edit-modal
+
+Erstattet tekst-input med date+time input-par i Endpoint details edit.
+Dato-del: `<input type="date">`, tid-del: `<input type="time" step="60">`.
+Populate splitter `YYYY-MM-DD:HH:MM` på første kolon. Gem kombinerer de to
+felter — mangler tidsværdi defaulter til `23:59`. CSS .expiry-dt-wrap med
+dark/midnight theme support.
+
+**Berørte filer:** `browse.js`, `browse-detail.js`, `styles.css`
+
 ## [6.2.0 build 0635] — 2026-06-07 — feat: Guest Expiry background worker
 
 Ny periodisk baggrunds-worker der automatisk sætter GuestAccessExpire=true i ISE
