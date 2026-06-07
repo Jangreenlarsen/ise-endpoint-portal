@@ -3,6 +3,11 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.1.4 build 0634] — 2026-06-07 — fix: Ret manglende PATCH-versionsbump fra b0633
+
+b0633 var en fix-commit men PATCH blev ikke bumped (6.1.3 → 6.1.3 fejlagtigt).
+Rettet til 6.1.4.
+
 ## [6.1.3 build 0633] — 2026-06-07 — fix: Omdøb guest expiry felter + skjul dem når GuestRegistration != true
 
 Labels: "Guest Expiry date" og "Guest access expired" (DA+EN). Felterne i
