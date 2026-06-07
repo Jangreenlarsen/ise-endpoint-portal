@@ -30,6 +30,7 @@ from app.schemas.custom_attribute import (
     AddValueRequest,
     AllCustomAttributes,
     CustomAttributeValues,
+    EnsureDefinitionsResult,
     PlatformMapping,
     PlatformMappingRow,
     PlatformSyncResult,
@@ -136,6 +137,19 @@ class CustomAttributeService:
             attributes=all_attrs.attributes,
             scanned_endpoints=scanned,
             cleared_endpoints=cleared,
+        )
+
+    async def ensure_portal_definitions(self) -> EnsureDefinitionsResult:
+        """Check ISE for missing attribute definitions and create them.
+
+        Lightweight alternative to sync_from_ise — no endpoint scanning.
+        """
+        logger.info("ensuring portal custom attribute definitions in ISE")
+        defs = await self.attrs.ensure_definitions(ALL_ATTRS)
+        return EnsureDefinitionsResult(
+            definitions_existing=[k for k, v in defs.items() if v == "existed"],
+            definitions_created=[k for k, v in defs.items() if v == "created"],
+            definitions_failed=[k for k, v in defs.items() if v == "failed"],
         )
 
     async def sync_from_ise(self) -> SyncResult:

@@ -16,6 +16,7 @@ from app.core.exceptions import IseApiError
 from app.schemas.custom_attribute import (
     AddValueRequest,
     AllCustomAttributes,
+    EnsureDefinitionsResult,
     PlatformMapping,
     PlatformSyncResult,
     RemoveValueResult,
@@ -55,6 +56,14 @@ async def remove_value(
         return await service.remove_value(attr_name, value)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/ensure-definitions", response_model=EnsureDefinitionsResult, dependencies=[Depends(require_editor)])
+async def ensure_definitions(
+    service: CustomAttributeService = Depends(get_custom_attribute_service),
+) -> EnsureDefinitionsResult:
+    """Tjek ISE for manglende attribut-definitioner og opret dem. Ingen endpoint-scanning."""
+    return await service.ensure_portal_definitions()
 
 
 @router.post("/sync", response_model=SyncResult, dependencies=[Depends(require_editor)])

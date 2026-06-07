@@ -112,6 +112,8 @@ export const api = {
       `/custom-attributes/${encodeURIComponent(name)}/values/${encodeURIComponent(value)}`,
       { method: "DELETE" },
     ),
+  ensureCustomAttrDefinitions: () =>
+    request("/custom-attributes/ensure-definitions", { method: "POST" }),
   syncCustomAttributes: () =>
     request("/custom-attributes/sync", { method: "POST" }),
   syncPlatformFromMnt: (overwrite = false) =>

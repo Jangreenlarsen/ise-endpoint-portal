@@ -1330,6 +1330,8 @@ const TRANSLATIONS = {
 
     // ── Settings — Advanced/Migration ───────────────────────────────────────
     "settings.adv_card":                    "Synkronisér custom attributter med ISE",
+    "settings.adv_ensure_btn":              "Tjek & opret attributter i ISE",
+    "settings.adv_ensure_loading":          "Henter attribut-definitioner fra ISE...",
     "settings.adv_btn":                     "↕ Synkronisér custom attributter med ISE",
     "settings.adv_confirm":                 "Dette vil:\n• Oprette manglende attribut-definitioner i ISE\n• Scanne ALLE endpoints individuelt for at importere brugte værdier\n\nVed mange endpoints kan scanning tage lang tid og belaste ISE.\n\nFortset?",
     "settings.adv_loading":                 "Synkroniserer — vent venligst...",
@@ -2789,6 +2791,8 @@ const TRANSLATIONS = {
 
     // ── Settings — Advanced/Migration ───────────────────────────────────────
     "settings.adv_card":                    "Synchronize custom attributes with ISE",
+    "settings.adv_ensure_btn":              "Check & create attributes in ISE",
+    "settings.adv_ensure_loading":          "Fetching attribute definitions from ISE...",
     "settings.adv_btn":                     "↕ Synchronize custom attributes with ISE",
     "settings.adv_confirm":                 "This will:\n• Create missing attribute definitions in ISE\n• Scan ALL endpoints individually to import used values\n\nWith many endpoints this may take a long time and put load on ISE.\n\nContinue?",
     "settings.adv_loading":                 "Synchronizing — please wait...",

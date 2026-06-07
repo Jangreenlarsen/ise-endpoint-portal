@@ -3,6 +3,15 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.1.2 build 0630] — 2026-06-07 — feat: Ny let knap "Tjek & opret attributter i ISE"
+
+Ny backend `POST /custom-attributes/ensure-definitions` + ny knap i Settings → Advanced.
+Kalder kun ISE Open API for at liste og oprette manglende attribut-definitioner — ingen
+endpoint-scanning. Tager sekunder. Den tunge sync-knap viser nu også definitions-resultatet
+via fælles `_renderDefsResult`-hjælpefunktion.
+**Berørte filer:** `schemas/custom_attribute.py`, `services/custom_attribute_service.py`,
+`api/custom_attributes.py`, `api.js`, `views/settings.js`, `section-update.js`, `i18n.js`
+
 ## [6.1.2 build 0629] — 2026-06-07 — fix: Sync viser nu oprettede vs. eksisterende attributter separat
 
 `ensure_definitions` returnerer nu "existed"/"created"/"failed" pr. attribut.

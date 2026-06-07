@@ -414,8 +414,10 @@ export function initGithubUpdateSection(container) {
 }
 
 export function initAdvancedSection(container) {
-  const btn    = container.querySelector("#migration-sync-btn");
-  const result = container.querySelector("#migration-sync-result");
+  const btn         = container.querySelector("#migration-sync-btn");
+  const result      = container.querySelector("#migration-sync-result");
+  const ensureBtn   = container.querySelector("#ensure-defs-btn");
+  const ensureResult = container.querySelector("#ensure-defs-result");
   const debugCb     = container.querySelector("#debug-pxgrid-sessions-cb");
   const debugResult = container.querySelector("#debug-pxgrid-sessions-result");
   if (!btn) return;
@@ -423,11 +425,43 @@ export function initAdvancedSection(container) {
   // Set element texts
   const advCardH3 = container.querySelector("#adv-card-h3");
   if (advCardH3) advCardH3.textContent = t("settings.adv_card");
+  if (ensureBtn) ensureBtn.textContent = t("settings.adv_ensure_btn");
   btn.textContent = t("settings.adv_btn");
   const debugLbl = container.querySelector("#debug-pxgrid-sessions-lbl");
   if (debugLbl) debugLbl.textContent = t("settings.adv_debug_pxgrid_lbl");
   const debugHint = container.querySelector("#debug-pxgrid-sessions-hint");
   if (debugHint) debugHint.textContent = t("settings.adv_debug_pxgrid_hint");
+
+  // Ensure definitions — light button (no endpoint scan)
+  function _renderDefsResult(res, el) {
+    const created  = res.definitions_created  || [];
+    const existing = res.definitions_existing || [];
+    const failed   = res.definitions_failed   || [];
+    const total    = created.length + existing.length + failed.length;
+    let html = "";
+    if (created.length > 0)
+      html += `<div style="color:#166534;font-size:0.85em;">${t("settings.adv_defs_created").replace("{attrs}", created.join(", "))}</div>`;
+    if (total > 0)
+      html += `<div style="font-size:0.85em;">${t("settings.adv_defs_ok").replace("{ok}", existing.length + created.length).replace("{total}", total)}</div>`;
+    if (failed.length > 0)
+      html += `<div style="color:#991b1b;font-size:0.85em;">${t("settings.adv_defs_fail").replace("{attrs}", failed.join(", "))}</div>`;
+    if (el) el.innerHTML = `<div class="alert" style="background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:0.6rem 1rem;">${html}</div>`;
+  }
+
+  if (ensureBtn) {
+    ensureBtn.addEventListener("click", async () => {
+      ensureBtn.disabled = true;
+      if (ensureResult) ensureResult.innerHTML = `<div class="alert" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:0.6rem 1rem;color:#1e40af;">${t("settings.adv_ensure_loading")}</div>`;
+      try {
+        const res = await api.ensureCustomAttrDefinitions();
+        _renderDefsResult(res, ensureResult);
+      } catch (err) {
+        if (ensureResult) ensureResult.innerHTML = `<div class="alert" style="background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;padding:0.6rem 1rem;color:#991b1b;">${esc(err.message)}</div>`;
+      } finally {
+        ensureBtn.disabled = false;
+      }
+    });
+  }
 
   // Decommission defaults
   const decommH4   = container.querySelector("#adv-decomm-h4");
@@ -548,23 +582,8 @@ export function initAdvancedSection(container) {
     try {
       const res = await api.syncCustomAttributes();
       const newCount = Object.values(res.new_values_found || {}).reduce((s, v) => s + (v?.length || 0), 0);
-      const created  = res.definitions_created  || [];
-      const existing = res.definitions_existing || [];
-      const failed   = res.definitions_failed   || [];
-      const total    = created.length + existing.length + failed.length;
-
-      let defsLine = "";
-      if (total > 0) {
-        if (created.length > 0) {
-          defsLine += `<br><span style="font-size:0.85em;color:#166534;">${t("settings.adv_defs_created").replace("{attrs}", created.join(", "))}</span>`;
-        }
-        defsLine += `<br><span style="font-size:0.85em;">${t("settings.adv_defs_ok").replace("{ok}", existing.length + created.length).replace("{total}", total)}</span>`;
-        if (failed.length > 0) {
-          defsLine += `<br><span style="font-size:0.85em;color:#991b1b;">${t("settings.adv_defs_fail").replace("{attrs}", failed.join(", "))}</span>`;
-        }
-      }
-
-      result.innerHTML = `<div class="alert" style="background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:0.6rem 1rem;color:#166534;">${t("settings.adv_done").replace("{n}", res.scanned_endpoints).replace("{new}", newCount)}${defsLine}</div>`;
+      result.innerHTML = `<div class="alert" style="background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:0.6rem 1rem;color:#166534;">${t("settings.adv_done").replace("{n}", res.scanned_endpoints).replace("{new}", newCount)}</div>`;
+      _renderDefsResult(res, ensureResult);
     } catch (err) {
       result.innerHTML = `<div class="alert" style="background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;padding:0.6rem 1rem;color:#991b1b;">${esc(err.message)}</div>`;
     } finally {

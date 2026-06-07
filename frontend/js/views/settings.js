@@ -833,6 +833,11 @@ export async function renderSettings(container) {
     ${isAdmin ? `
     <div class="card" data-tab="portal-config" data-subtab="pc-advanced">
       <h3 id="adv-card-h3"></h3>
+      <div id="ensure-defs-result" style="margin-bottom:0.75rem;"></div>
+      <div class="actions" style="margin-bottom:0.5rem;">
+        <button type="button" id="ensure-defs-btn" class="secondary"></button>
+      </div>
+      <hr style="margin:0.75rem 0;border:none;border-top:1px solid var(--border);">
       <div id="migration-sync-result" style="margin-bottom:0.75rem;"></div>
       <div class="actions">
         <button type="button" id="migration-sync-btn" class="secondary"></button>
