@@ -3,6 +3,15 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.1.3 build 0633] — 2026-06-07 — fix: Omdøb guest expiry felter + skjul dem når GuestRegistration != true
+
+Labels: "Guest Expiry date" og "Guest access expired" (DA+EN). Felterne i
+detail-modal skjules automatisk når GuestRegistration er tom/false og vises
+kun når GuestRegistration = true. Change-listener på #d-guestreg håndterer
+live toggle. Tabelkolonnerne (browse) er uberørte da de styres af col-vis.
+
+**Berørte filer:** `i18n.js`, `browse.js`, `browse-detail.js`
+
 ## [6.1.3 build 0632] — 2026-06-07 — feat: GuestExperyDate + GuestAccessExpire i edit-mode + kompakt detail-modal
 
 Tilføjet GuestExperyDate (text input) og GuestAccessExpire (select) til:

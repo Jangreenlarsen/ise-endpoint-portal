@@ -16,6 +16,13 @@ import {
   profilesHtml, readProfiles, wireProfileEvents,
 } from "./policy-condition-builder.js";
 
+function _updateGuestExpiryVisibility(container) {
+  const show = container.querySelector("#d-guestreg")?.value === "true";
+  container.querySelectorAll(".d-guest-expiry-row").forEach((el) => {
+    el.style.display = show ? "" : "none";
+  });
+}
+
 export function initDetail(container, state, api, cb) {
   const detailOverlay = container.querySelector("#detail-overlay");
   const detailMsg     = container.querySelector("#detail-msg");
@@ -75,11 +82,18 @@ export function initDetail(container, state, api, cb) {
       const regByEl = container.querySelector("#d-registretby");
       if (regByEl) regByEl.value = d.registret_by || "";
       const guestRegEl = container.querySelector("#d-guestreg");
-      if (guestRegEl) guestRegEl.value = d.guest_registration || "";
+      if (guestRegEl) {
+        guestRegEl.value = d.guest_registration || "";
+        if (!guestRegEl._expiryListenerAttached) {
+          guestRegEl.addEventListener("change", () => _updateGuestExpiryVisibility(container));
+          guestRegEl._expiryListenerAttached = true;
+        }
+      }
       const experyDateEl = container.querySelector("#d-expery-date");
       if (experyDateEl) experyDateEl.value = d.guest_expery_date || "";
       const accessExpireEl = container.querySelector("#d-access-expire");
       if (accessExpireEl) accessExpireEl.value = d.guest_access_expire || "";
+      _updateGuestExpiryVisibility(container);
       container.querySelector("#d-authzvlan").innerHTML   = optionsHtml(state.caValues.AuthzVlan, d.authz_vlan);
       container.querySelector("#d-authzacl").innerHTML    = optionsHtml(state.caValues.AuthzACL, d.authz_acl);
       const detailNasPt = state.pxgridSessionData
