@@ -4,6 +4,29 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.1.0] — 2026-06-07 — Feat: Gæsteadgang udløb
+
+> **Build:** 0626
+
+**Automatisk udløb af gæsteadgang**
+Under Settings → Portal Config → Advanced → Gæste-registrering er der nu en ny sektion:
+
+- **Aktivér udløb** — checkbox der slår funktionen til/fra
+- **Udløbstype:**
+  - *Tidsperiode* — N dage efter registrering (f.eks. 30 dage)
+  - *Bestemt dato* — én fælles udløbsdato for alle gæster der registrerer sig
+- **Klokkeslæt** — tidspunkt for udløb (f.eks. 23:59)
+
+Ved selvregistrering sættes to nye custom attributes på endpoint:
+- `GuestExperyDate` — udløbsdatotid i format `YYYY-MM-DD:HH:MM`
+- `GuestAccessExpire` — `false` (sættes til `true` af ISE-politik eller ekstern checker)
+
+Begge attributter er tilgængelige i ISE Policies condition-builder (`EndPoints.GuestAccessExpire equals true`).
+
+> **ISE-opsætning:** Opret `GuestExperyDate` (String) og `GuestAccessExpire` (String) som custom endpoint attributes i ISE, og brug `GuestAccessExpire equals true` i en authz-regel til at nægte adgang.
+
+---
+
 ## [6.0.4] — 2026-06-06 — Fix: GuestRegistration + RegistretBy skipped i policy-simulering
 
 > **Build:** 0625

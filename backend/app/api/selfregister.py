@@ -17,6 +17,7 @@ Endpoints (alle public — ingen auth):
 """
 import logging
 import re
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
@@ -57,6 +58,11 @@ class SelfRegisterConfig(BaseModel):
     terms: str
     redirect_url: str
     ipsk_enabled: bool = False
+    expiry_enabled: bool = False
+    expiry_mode: str = "period"
+    expiry_days: int = 30
+    expiry_date: str = ""
+    expiry_time: str = "23:59"
 
 
 class SessionLookupResponse(BaseModel):
@@ -93,6 +99,11 @@ async def get_selfregister_config() -> SelfRegisterConfig:
         terms=s.selfregister_terms,
         redirect_url=s.selfregister_redirect_url,
         ipsk_enabled=s.selfregister_ipsk_enabled,
+        expiry_enabled=s.selfregister_expiry_enabled,
+        expiry_mode=s.selfregister_expiry_mode,
+        expiry_days=s.selfregister_expiry_days,
+        expiry_date=s.selfregister_expiry_date,
+        expiry_time=s.selfregister_expiry_time,
     )
 
 
@@ -178,6 +189,15 @@ async def selfregister(req: SelfRegisterRequest) -> SelfRegisterResponse:
     if psk_key and s.selfregister_ipsk_enabled:
         ca.PSK_Mode = "true"
         ca.PSK_Key = psk_key
+
+    if s.selfregister_expiry_enabled:
+        exp_time = s.selfregister_expiry_time or "23:59"
+        if s.selfregister_expiry_mode == "date" and s.selfregister_expiry_date:
+            exp_date = s.selfregister_expiry_date
+        else:
+            exp_date = (datetime.now() + timedelta(days=s.selfregister_expiry_days or 30)).strftime("%Y-%m-%d")
+        ca.GuestExperyDate = f"{exp_date}:{exp_time}"
+        ca.GuestAccessExpire = "false"
 
     endpoint_id: str | None = None
 

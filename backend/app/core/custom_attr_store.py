@@ -59,8 +59,14 @@ STATUS_ATTR = "HypervisionStatus"
 # Tilladt værdi: "Aktiv" / "Inaktiv". Tom streng = ukendt.
 ACTIVE_ATTR = "HypervisionActive"
 
+# Gæsteudløb (6.1.0) — sættes ved selvregistrering; ikke redigeres via dropdown.
+# Format: "YYYY-MM-DD:HH:MM" / "true"|"false".
+GUEST_EXPERY_DATE_ATTR = "GuestExperyDate"
+GUEST_ACCESS_EXPIRE_ATTR = "GuestAccessExpire"
+GUEST_EXPIRY_ATTRS = [GUEST_EXPERY_DATE_ATTR, GUEST_ACCESS_EXPIRE_ATTR]
+
 # Alle skjulte (ikke-UI-dropdown) CAs der skal have ISE-definition.
-HIDDEN_ATTRS = [HIDDEN_ATTR, ROLES_ATTR, REGISTERED_AT_ATTR, STATUS_ATTR, ACTIVE_ATTR] + PSK_ATTRS
+HIDDEN_ATTRS = [HIDDEN_ATTR, ROLES_ATTR, REGISTERED_AT_ATTR, STATUS_ATTR, ACTIVE_ATTR] + PSK_ATTRS + GUEST_EXPIRY_ATTRS
 
 # All attributes that need ISE definitions (managed + hidden).
 ALL_ATTRS = MANAGED_ATTRS + HIDDEN_ATTRS

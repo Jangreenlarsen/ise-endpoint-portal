@@ -40,6 +40,11 @@ class BackendSettingsUpdate(BaseModel):
     selfregister_authz_vlan: str = ""
     selfregister_authz_acl: str = ""
     selfregister_ipsk_enabled: bool = False
+    selfregister_expiry_enabled: bool = False
+    selfregister_expiry_mode: str = "period"
+    selfregister_expiry_days: int = 30
+    selfregister_expiry_date: str = ""
+    selfregister_expiry_time: str = "23:59"
 
 
 class BackendSettingsResponse(BaseModel):
@@ -72,6 +77,11 @@ class BackendSettingsResponse(BaseModel):
     selfregister_authz_vlan: str = ""
     selfregister_authz_acl: str = ""
     selfregister_ipsk_enabled: bool = False
+    selfregister_expiry_enabled: bool = False
+    selfregister_expiry_mode: str = "period"
+    selfregister_expiry_days: int = 30
+    selfregister_expiry_date: str = ""
+    selfregister_expiry_time: str = "23:59"
 
 
 class TestConnectionRequest(BaseModel):

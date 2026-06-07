@@ -69,6 +69,11 @@ def get_backend_settings() -> BackendSettingsResponse:
         selfregister_authz_vlan=s.selfregister_authz_vlan,
         selfregister_authz_acl=s.selfregister_authz_acl,
         selfregister_ipsk_enabled=s.selfregister_ipsk_enabled,
+        selfregister_expiry_enabled=s.selfregister_expiry_enabled,
+        selfregister_expiry_mode=s.selfregister_expiry_mode,
+        selfregister_expiry_days=s.selfregister_expiry_days,
+        selfregister_expiry_date=s.selfregister_expiry_date,
+        selfregister_expiry_time=s.selfregister_expiry_time,
     )
 
 
@@ -104,7 +109,12 @@ async def update_backend_settings(
             "selfregister_terms": new.selfregister_terms,
             "selfregister_authz_vlan": new.selfregister_authz_vlan,
             "selfregister_authz_acl": new.selfregister_authz_acl,
-            "selfregister_ipsk_enabled": new.selfregister_ipsk_enabled,
+            "selfregister_ipsk_enabled":     new.selfregister_ipsk_enabled,
+            "selfregister_expiry_enabled":    new.selfregister_expiry_enabled,
+            "selfregister_expiry_mode":       new.selfregister_expiry_mode,
+            "selfregister_expiry_days":       new.selfregister_expiry_days,
+            "selfregister_expiry_date":       new.selfregister_expiry_date,
+            "selfregister_expiry_time":       new.selfregister_expiry_time,
         }
     )
     if new.ise_password:

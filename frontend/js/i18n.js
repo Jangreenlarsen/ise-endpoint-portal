@@ -1362,6 +1362,16 @@ const TRANSLATIONS = {
     "settings.guest_reg_save_btn":          "Gem gæste-reg indstillinger",
     "settings.guest_reg_saved":             "Gæste-registrering gemt.",
     "settings.guest_reg_none":              "Ingen",
+    "settings.guest_reg_expiry_enabled_lbl":  "Aktivér udløb af gæsteadgang",
+    "settings.guest_reg_expiry_enabled_hint": "Sætter GuestExperyDate og GuestAccessExpire=false på endpoint ved registrering. ISE-politikker kan tjekke GuestAccessExpire equals true for at nægte adgang.",
+    "settings.guest_reg_expiry_mode_lbl":     "Udløbstype",
+    "settings.guest_reg_expiry_period":       "Tidsperiode (dage efter registrering)",
+    "settings.guest_reg_expiry_date_mode":    "Bestemt dato",
+    "settings.guest_reg_expiry_days_lbl":     "Antal dage",
+    "settings.guest_reg_expiry_days_hint":    "Gæsteadgang udløber dette antal dage efter registrering.",
+    "settings.guest_reg_expiry_date_lbl":     "Udløbsdato",
+    "settings.guest_reg_expiry_date_hint":    "Alle gæster der registrerer sig får denne fælles udløbsdato.",
+    "settings.guest_reg_expiry_time_lbl":     "Klokkeslæt for udløb",
 
     // ── Settings — Purge Config ──────────────────────────────────────────────
     "settings.purge_card":            "Anbefalet ISE purge-config",
@@ -2808,6 +2818,16 @@ const TRANSLATIONS = {
     "settings.guest_reg_save_btn":          "Save guest registration settings",
     "settings.guest_reg_saved":             "Guest registration settings saved.",
     "settings.guest_reg_none":              "None",
+    "settings.guest_reg_expiry_enabled_lbl":  "Enable guest access expiry",
+    "settings.guest_reg_expiry_enabled_hint": "Sets GuestExperyDate and GuestAccessExpire=false on the endpoint at registration. ISE policies can check GuestAccessExpire equals true to deny access.",
+    "settings.guest_reg_expiry_mode_lbl":     "Expiry type",
+    "settings.guest_reg_expiry_period":       "Time period (days after registration)",
+    "settings.guest_reg_expiry_date_mode":    "Specific date",
+    "settings.guest_reg_expiry_days_lbl":     "Number of days",
+    "settings.guest_reg_expiry_days_hint":    "Guest access expires this many days after registration.",
+    "settings.guest_reg_expiry_date_lbl":     "Expiry date",
+    "settings.guest_reg_expiry_date_hint":    "All guests who register will receive this shared expiry date.",
+    "settings.guest_reg_expiry_time_lbl":     "Time of expiry",
 
     // ── Settings — Purge Config ──────────────────────────────────────────────
     "settings.purge_card":            "Recommended ISE purge config",

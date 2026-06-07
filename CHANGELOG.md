@@ -3,6 +3,15 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.1.0 build 0626] — 2026-06-07 — feat: Gæsteadgang udløb (GuestExperyDate + GuestAccessExpire)
+
+Ny settings-sektion under Gæste-registrering: admin vælger tidsperiode (N dage) eller bestemt dato + klokkeslæt for udløb.
+Ved selvregistrering sættes `GuestExperyDate` (YYYY-MM-DD:HH:MM) og `GuestAccessExpire=false` som custom attributes.
+`GuestAccessExpire` tilføjet til policy condition-builder og caValues (true/false dropdown).
+**Berørte filer:** `core/config.py`, `schemas/settings.py`, `schemas/endpoint.py`, `services/settings_service.py`,
+`api/selfregister.py`, `core/custom_attr_store.py`, `services/endpoint_service.py`, `services/policy_service.py`,
+`views/settings.js`, `views/settings/section-update.js`, `i18n.js`, `views/policy-condition-builder.js`, `views/policy.js`
+
 ## [6.0.4 build 0625] — 2026-06-06 — release: Versionsbump til 6.0.4
 
 Samler 6.0.4 fix: GuestRegistration + RegistretBy skipped i policy-simulering.

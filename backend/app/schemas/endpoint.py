@@ -49,6 +49,9 @@ class EndpointDetail(BaseModel):
     status: str = ""
     # Aktivitetsstatus fra HypervisionActive CA. "Aktiv" / "Inaktiv" / "" = ukendt.
     active_status: str = ""
+    # Gæsteudløb — sættes ved selvregistrering.
+    guest_expery_date: str = ""
+    guest_access_expire: str = ""
 
 
 class EndpointGroupSummary(BaseModel):
@@ -71,6 +74,8 @@ class CustomAttrs(BaseModel):
     HypervisionActive: str | None = None
     PSK_Mode: str | None = None
     PSK_Key: str | None = None
+    GuestExperyDate: str | None = None
+    GuestAccessExpire: str | None = None
 
 
 class CreateEndpointRequest(BaseModel):

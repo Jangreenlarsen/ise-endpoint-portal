@@ -561,16 +561,24 @@ export async function initGuestRegSection(container) {
   const card    = container.querySelector("#guest-reg-card");
   if (!card) return;
 
-  const form        = card.querySelector("#guest-reg-form");
-  const enabledCb   = card.querySelector("#guest-reg-enabled");
-  const ipskCb      = card.querySelector("#guest-reg-ipsk");
-  const vlanSel     = card.querySelector("#guest-reg-vlan");
-  const aclSel      = card.querySelector("#guest-reg-acl");
-  const redirectEl  = card.querySelector("#guest-reg-redirect");
-  const termsEl     = card.querySelector("#guest-reg-terms");
-  const saveBtn     = card.querySelector("#guest-reg-save-btn");
-  const msgEl       = card.querySelector("#guest-reg-msg");
-  const urlDisplay  = card.querySelector("#guest-reg-url-display");
+  const form            = card.querySelector("#guest-reg-form");
+  const enabledCb       = card.querySelector("#guest-reg-enabled");
+  const ipskCb          = card.querySelector("#guest-reg-ipsk");
+  const vlanSel         = card.querySelector("#guest-reg-vlan");
+  const aclSel          = card.querySelector("#guest-reg-acl");
+  const redirectEl      = card.querySelector("#guest-reg-redirect");
+  const termsEl         = card.querySelector("#guest-reg-terms");
+  const saveBtn         = card.querySelector("#guest-reg-save-btn");
+  const msgEl           = card.querySelector("#guest-reg-msg");
+  const urlDisplay      = card.querySelector("#guest-reg-url-display");
+  const expiryCb        = card.querySelector("#guest-reg-expiry-enabled");
+  const expiryOptions   = card.querySelector("#guest-reg-expiry-options");
+  const expiryModeSel   = card.querySelector("#guest-reg-expiry-mode");
+  const expiryPeriodRow = card.querySelector("#guest-reg-expiry-period-row");
+  const expiryDateRow   = card.querySelector("#guest-reg-expiry-date-row");
+  const expiryDaysEl    = card.querySelector("#guest-reg-expiry-days");
+  const expiryDateEl    = card.querySelector("#guest-reg-expiry-date");
+  const expiryTimeEl    = card.querySelector("#guest-reg-expiry-time");
 
   // Labels
   const h3 = card.querySelector("#guest-reg-h3");
@@ -601,6 +609,41 @@ export async function initGuestRegSection(container) {
   if (termsHint) termsHint.textContent = t("settings.guest_reg_terms_hint");
   if (saveBtn) saveBtn.textContent = t("settings.guest_reg_save_btn");
 
+  const expiryEnabledLbl = card.querySelector("#guest-reg-expiry-enabled-lbl");
+  if (expiryEnabledLbl) expiryEnabledLbl.textContent = t("settings.guest_reg_expiry_enabled_lbl");
+  const expiryEnabledHint = card.querySelector("#guest-reg-expiry-enabled-hint");
+  if (expiryEnabledHint) expiryEnabledHint.textContent = t("settings.guest_reg_expiry_enabled_hint");
+  const expiryModeLbl = card.querySelector("#guest-reg-expiry-mode-lbl");
+  if (expiryModeLbl) expiryModeLbl.textContent = t("settings.guest_reg_expiry_mode_lbl");
+  const expiryOptPeriod = card.querySelector("#guest-reg-expiry-opt-period");
+  if (expiryOptPeriod) expiryOptPeriod.textContent = t("settings.guest_reg_expiry_period");
+  const expiryOptDate = card.querySelector("#guest-reg-expiry-opt-date");
+  if (expiryOptDate) expiryOptDate.textContent = t("settings.guest_reg_expiry_date_mode");
+  const expiryDaysLbl = card.querySelector("#guest-reg-expiry-days-lbl");
+  if (expiryDaysLbl) expiryDaysLbl.textContent = t("settings.guest_reg_expiry_days_lbl");
+  const expiryDaysHint = card.querySelector("#guest-reg-expiry-days-hint");
+  if (expiryDaysHint) expiryDaysHint.textContent = t("settings.guest_reg_expiry_days_hint");
+  const expiryDateLbl = card.querySelector("#guest-reg-expiry-date-lbl");
+  if (expiryDateLbl) expiryDateLbl.textContent = t("settings.guest_reg_expiry_date_lbl");
+  const expiryDateHint = card.querySelector("#guest-reg-expiry-date-hint");
+  if (expiryDateHint) expiryDateHint.textContent = t("settings.guest_reg_expiry_date_hint");
+  const expiryTimeLbl = card.querySelector("#guest-reg-expiry-time-lbl");
+  if (expiryTimeLbl) expiryTimeLbl.textContent = t("settings.guest_reg_expiry_time_lbl");
+
+  function _updateExpiryVisibility() {
+    if (!expiryOptions) return;
+    const enabled = expiryCb?.checked ?? false;
+    expiryOptions.style.display = enabled ? "" : "none";
+    if (enabled && expiryModeSel) {
+      const mode = expiryModeSel.value;
+      if (expiryPeriodRow) expiryPeriodRow.style.display = mode === "period" ? "" : "none";
+      if (expiryDateRow)   expiryDateRow.style.display   = mode === "date"   ? "" : "none";
+    }
+  }
+
+  if (expiryCb)      expiryCb.addEventListener("change", _updateExpiryVisibility);
+  if (expiryModeSel) expiryModeSel.addEventListener("change", _updateExpiryVisibility);
+
   // Vis URL
   if (urlDisplay) urlDisplay.textContent = window.location.origin + "/selfregister?mac=...";
 
@@ -630,6 +673,12 @@ export async function initGuestRegSection(container) {
 
     if (enabledCb) enabledCb.checked = !!s.selfregister_enabled;
     if (ipskCb) ipskCb.checked = !!s.selfregister_ipsk_enabled;
+    if (expiryCb) expiryCb.checked = !!s.selfregister_expiry_enabled;
+    if (expiryModeSel) expiryModeSel.value = s.selfregister_expiry_mode || "period";
+    if (expiryDaysEl) expiryDaysEl.value = s.selfregister_expiry_days ?? 30;
+    if (expiryDateEl) expiryDateEl.value = s.selfregister_expiry_date || "";
+    if (expiryTimeEl) expiryTimeEl.value = s.selfregister_expiry_time || "23:59";
+    _updateExpiryVisibility();
     if (redirectEl) redirectEl.value = s.selfregister_redirect_url || "";
     if (termsEl) termsEl.value = s.selfregister_terms || "";
 
@@ -650,12 +699,17 @@ export async function initGuestRegSection(container) {
         const current = await api.getBackendSettings();
         await api.updateBackendSettings({
           ...current,
-          selfregister_enabled:      enabledCb?.checked ?? true,
-          selfregister_ipsk_enabled: ipskCb?.checked ?? false,
-          selfregister_authz_vlan:   vlanSel?.value || "",
-          selfregister_authz_acl:    aclSel?.value || "",
-          selfregister_redirect_url: redirectEl?.value?.trim() || "",
-          selfregister_terms:        termsEl?.value?.trim() || current.selfregister_terms,
+          selfregister_enabled:         enabledCb?.checked ?? true,
+          selfregister_ipsk_enabled:    ipskCb?.checked ?? false,
+          selfregister_expiry_enabled:  expiryCb?.checked ?? false,
+          selfregister_expiry_mode:     expiryModeSel?.value || "period",
+          selfregister_expiry_days:     parseInt(expiryDaysEl?.value, 10) || 30,
+          selfregister_expiry_date:     expiryDateEl?.value || "",
+          selfregister_expiry_time:     expiryTimeEl?.value || "23:59",
+          selfregister_authz_vlan:      vlanSel?.value || "",
+          selfregister_authz_acl:       aclSel?.value || "",
+          selfregister_redirect_url:    redirectEl?.value?.trim() || "",
+          selfregister_terms:           termsEl?.value?.trim() || current.selfregister_terms,
         });
         msgEl.innerHTML = `<span style="color:var(--success,#166534);font-size:0.82em;">${t("settings.guest_reg_saved")}</span>`;
         setTimeout(() => { msgEl.innerHTML = ""; }, 3000);

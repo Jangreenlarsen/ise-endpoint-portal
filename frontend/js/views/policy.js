@@ -135,6 +135,7 @@ export async function renderPolicy(container) {
     caValues["HypervisionStatus"]  = ["Decommissioned"];
     caValues["PSK_Mode"]           = ["true", "false"];
     caValues["GuestRegistration"]  = ["true", "false"];
+    caValues["GuestAccessExpire"]  = ["true", "false"];
   });
 
   api.listGroups().then((res) => {

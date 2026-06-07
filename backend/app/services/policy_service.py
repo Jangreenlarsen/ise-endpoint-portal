@@ -47,6 +47,8 @@ _ENDPOINT_ATTR_MAP = {
     "Description": "description",
     "GuestRegistration": "guest_registration",
     "RegistretBy": "registret_by",
+    "GuestExperyDate": "guest_expery_date",
+    "GuestAccessExpire": "guest_access_expire",
 }
 
 # Dictionaries we CANNOT evaluate without live session data
@@ -422,6 +424,8 @@ class PolicyService:
             "group_name":         group_name,
             "guest_registration": ca.get("GuestRegistration", ""),
             "registret_by":       ca.get("RegistretBy", ""),
+            "guest_expery_date":  ca.get("GuestExperyDate", ""),
+            "guest_access_expire": ca.get("GuestAccessExpire", ""),
         }
 
     async def match_endpoint(self, policy_set_id: str, ep: dict) -> PolicyMatchResult:

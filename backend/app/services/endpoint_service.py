@@ -264,6 +264,8 @@ class EndpointService:
             psk_key=_psk_decode(ca.get(PSK_KEY_ATTR, "")),
             status=ca.get(STATUS_ATTR, ""),
             active_status=ca.get(ACTIVE_ATTR, ""),
+            guest_expery_date=ca.get("GuestExperyDate", ""),
+            guest_access_expire=ca.get("GuestAccessExpire", ""),
             create_time=create_time,
             update_time=update_time,
             first_seen_at=first_seen_store.record(

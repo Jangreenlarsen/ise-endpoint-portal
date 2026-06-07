@@ -908,6 +908,36 @@ export async function renderSettings(container) {
           <div class="hint" id="guest-reg-ipsk-hint"></div>
         </div>
         <div class="field">
+          <label>
+            <input type="checkbox" id="guest-reg-expiry-enabled" />
+            <span id="guest-reg-expiry-enabled-lbl" style="font-weight:500;"></span>
+          </label>
+          <div class="hint" id="guest-reg-expiry-enabled-hint"></div>
+        </div>
+        <div id="guest-reg-expiry-options" style="display:none;padding-left:1.2rem;border-left:2px solid var(--border);margin-bottom:0.5rem;">
+          <div class="field">
+            <label for="guest-reg-expiry-mode" id="guest-reg-expiry-mode-lbl"></label>
+            <select id="guest-reg-expiry-mode" style="max-width:16rem;">
+              <option value="period" id="guest-reg-expiry-opt-period"></option>
+              <option value="date" id="guest-reg-expiry-opt-date"></option>
+            </select>
+          </div>
+          <div class="field" id="guest-reg-expiry-period-row">
+            <label for="guest-reg-expiry-days" id="guest-reg-expiry-days-lbl"></label>
+            <input type="number" id="guest-reg-expiry-days" min="1" max="3650" style="max-width:6rem;" />
+            <div class="hint" id="guest-reg-expiry-days-hint"></div>
+          </div>
+          <div class="field" id="guest-reg-expiry-date-row" style="display:none;">
+            <label for="guest-reg-expiry-date" id="guest-reg-expiry-date-lbl"></label>
+            <input type="date" id="guest-reg-expiry-date" style="max-width:14rem;" />
+            <div class="hint" id="guest-reg-expiry-date-hint"></div>
+          </div>
+          <div class="field">
+            <label for="guest-reg-expiry-time" id="guest-reg-expiry-time-lbl"></label>
+            <input type="time" id="guest-reg-expiry-time" style="max-width:10rem;" />
+          </div>
+        </div>
+        <div class="field">
           <label for="guest-reg-redirect" id="guest-reg-redirect-lbl"></label>
           <input type="url" id="guest-reg-redirect" placeholder="https://company.com" style="max-width:28rem;" />
           <div class="hint" id="guest-reg-redirect-hint"></div>

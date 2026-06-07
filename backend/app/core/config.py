@@ -379,6 +379,11 @@ class Settings(BaseSettings):
     selfregister_authz_vlan: str = Field(default="", description="VLAN der assignes til selvregistrerede guest endpoints (AuthzVlan CA).")
     selfregister_authz_acl: str = Field(default="", description="DACL der assignes til selvregistrerede guest endpoints (AuthzACL CA).")
     selfregister_ipsk_enabled: bool = Field(default=False, description="Tillad gæster at indtaste en IPSK-nøgle på registreringssiden.")
+    selfregister_expiry_enabled: bool = Field(default=False, description="Aktivér automatisk udløb af gæsteadgang via GuestExperyDate + GuestAccessExpire CAs.")
+    selfregister_expiry_mode: str = Field(default="period", description="Udløbstype: 'period' (N dage efter registrering) eller 'date' (bestemt dato).")
+    selfregister_expiry_days: int = Field(default=30, description="Antal dage gæsteadgang er gyldig (bruges ved mode='period').")
+    selfregister_expiry_date: str = Field(default="", description="Bestemt udløbsdato YYYY-MM-DD (bruges ved mode='date').")
+    selfregister_expiry_time: str = Field(default="23:59", description="Klokkeslæt for udløb HH:MM.")
 
 
 def _load() -> Settings:
