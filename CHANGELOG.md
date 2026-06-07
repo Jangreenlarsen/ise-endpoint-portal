@@ -3,6 +3,15 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.1.2 build 0631] — 2026-06-07 — feat: Flyt tung sync-knap til Endpoint Attributes-side
+
+Flyttet "↕ Synkronisér custom attributter med ISE" fra Settings → Advanced til toppen af
+Endpoint Attributes-siden (`attributes.js`). Fjernet `#migration-sync-btn` og tilhørende
+handler fra `section-update.js` — `if (!btn) return;` guard der brækkede resten af
+`initAdvancedSection()` er nu også fjernet. Settings → Advanced viser kun "Tjek & opret".
+
+**Berørte filer:** `frontend/js/views/attributes.js`, `frontend/js/views/settings/section-update.js`
+
 ## [6.1.2 build 0630] — 2026-06-07 — feat: Ny let knap "Tjek & opret attributter i ISE"
 
 Ny backend `POST /custom-attributes/ensure-definitions` + ny knap i Settings → Advanced.

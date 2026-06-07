@@ -414,19 +414,15 @@ export function initGithubUpdateSection(container) {
 }
 
 export function initAdvancedSection(container) {
-  const btn         = container.querySelector("#migration-sync-btn");
-  const result      = container.querySelector("#migration-sync-result");
   const ensureBtn   = container.querySelector("#ensure-defs-btn");
   const ensureResult = container.querySelector("#ensure-defs-result");
   const debugCb     = container.querySelector("#debug-pxgrid-sessions-cb");
   const debugResult = container.querySelector("#debug-pxgrid-sessions-result");
-  if (!btn) return;
 
   // Set element texts
   const advCardH3 = container.querySelector("#adv-card-h3");
   if (advCardH3) advCardH3.textContent = t("settings.adv_card");
   if (ensureBtn) ensureBtn.textContent = t("settings.adv_ensure_btn");
-  btn.textContent = t("settings.adv_btn");
   const debugLbl = container.querySelector("#debug-pxgrid-sessions-lbl");
   if (debugLbl) debugLbl.textContent = t("settings.adv_debug_pxgrid_lbl");
   const debugHint = container.querySelector("#debug-pxgrid-sessions-hint");
@@ -574,22 +570,6 @@ export function initAdvancedSection(container) {
     });
   }
 
-  btn.addEventListener("click", async () => {
-    if (!confirm(t("settings.adv_confirm"))) return;
-
-    btn.disabled = true;
-    result.innerHTML = `<div class="alert" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:0.6rem 1rem;color:#1e40af;">${t("settings.adv_loading")}</div>`;
-    try {
-      const res = await api.syncCustomAttributes();
-      const newCount = Object.values(res.new_values_found || {}).reduce((s, v) => s + (v?.length || 0), 0);
-      result.innerHTML = `<div class="alert" style="background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:0.6rem 1rem;color:#166534;">${t("settings.adv_done").replace("{n}", res.scanned_endpoints).replace("{new}", newCount)}</div>`;
-      _renderDefsResult(res, ensureResult);
-    } catch (err) {
-      result.innerHTML = `<div class="alert" style="background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;padding:0.6rem 1rem;color:#991b1b;">${esc(err.message)}</div>`;
-    } finally {
-      btn.disabled = false;
-    }
-  });
 }
 
 export async function initGuestRegSection(container) {
