@@ -255,8 +255,10 @@ export function initTable(container, state, api, cb) {
         endpoint_type: `<td data-col="endpoint_type"><select class="ca-type">${optionsHtml(state.caValues.Type, r.endpoint_type)}</select></td>`,
         owner:         `<td data-col="owner"><select class="ca-owner">${optionsHtml(state.caValues.Owner, r.owner)}</select></td>`,
         lokation:      `<td data-col="lokation"><select class="ca-lokation">${optionsHtml(state.caValues.Lokation, r.lokation)}</select></td>`,
-        registret_by:       `<td data-col="registret_by"><input type="text" class="ca-registretby desc-input" value="${esc(r.registret_by || "")}" /></td>`,
-        guest_registration: `<td data-col="guest_registration"><select class="ca-guestreg">${optionsHtml(["true","false"], r.guest_registration)}</select></td>`,
+        registret_by:        `<td data-col="registret_by"><input type="text" class="ca-registretby desc-input" value="${esc(r.registret_by || "")}" /></td>`,
+        guest_registration:  `<td data-col="guest_registration"><select class="ca-guestreg">${optionsHtml(["true","false"], r.guest_registration)}</select></td>`,
+        guest_expery_date:   `<td data-col="guest_expery_date"><input type="text" class="ca-experydate desc-input" value="${esc(r.guest_expery_date || "")}" placeholder="ÅÅÅÅ-MM-DD:TT:MM" maxlength="16" style="width:130px;" /></td>`,
+        guest_access_expire: `<td data-col="guest_access_expire"><select class="ca-accessexpire">${optionsHtml(["true","false"], r.guest_access_expire)}</select></td>`,
         platform_type: nasPt
           ? `<td data-col="platform_type" class="platform-auto-td"><div class="platform-auto-wrap"><select class="ca-platformtype" disabled>${optionsHtml(state.caValues.PlatformType, nasPt)}</select><span class="platform-auto-badge" title="${t("browse.platform_auto_title")}">&#9889;</span></div></td>`
           : `<td data-col="platform_type"><select class="ca-platformtype">${optionsHtml(state.caValues.PlatformType, r.platform_type)}</select></td>`,
@@ -326,6 +328,12 @@ export function initTable(container, state, api, cb) {
       setSel("ca-type",       r.endpoint_type, state.caValues.Type);
       setSel("ca-owner",      r.owner,          state.caValues.Owner);
       setSel("ca-lokation",   r.lokation,       state.caValues.Lokation);
+      const regByCell = tr.querySelector(".ca-registretby");
+      if (regByCell) regByCell.value = r.registret_by || "";
+      setSel("ca-guestreg",   r.guest_registration, ["true","false"]);
+      const experyCell = tr.querySelector(".ca-experydate");
+      if (experyCell) experyCell.value = r.guest_expery_date || "";
+      setSel("ca-accessexpire", r.guest_access_expire, ["true","false"]);
       setSel("ca-authzvlan",  r.authz_vlan,     state.caValues.AuthzVlan);
       setSel("ca-authzacl",   r.authz_acl,      state.caValues.AuthzACL);
       setSel("ca-platformtype", r.platform_type, state.caValues.PlatformType);
@@ -417,6 +425,10 @@ export function initTable(container, state, api, cb) {
       if (regByInp) regByInp.value = r.registret_by || "";
       const guestRegSel = tr.querySelector(".ca-guestreg");
       if (guestRegSel) guestRegSel.innerHTML = optionsHtml(["true","false"], r.guest_registration || "");
+      const experyInp = tr.querySelector(".ca-experydate");
+      if (experyInp) experyInp.value = r.guest_expery_date || "";
+      const accessExpSel = tr.querySelector(".ca-accessexpire");
+      if (accessExpSel) accessExpSel.innerHTML = optionsHtml(["true","false"], r.guest_access_expire || "");
       setSel("ca-authzvlan",   r.authz_vlan,     state.caValues.AuthzVlan);
       setSel("ca-authzacl",    r.authz_acl,      state.caValues.AuthzACL);
       setSel("ca-platformtype",r.platform_type,  state.caValues.PlatformType);
@@ -504,6 +516,8 @@ export function initTable(container, state, api, cb) {
     const lokation        = tr.querySelector(".ca-lokation").value;
     const registretBy     = tr.querySelector(".ca-registretby")?.value || "";
     const guestReg        = tr.querySelector(".ca-guestreg")?.value || "";
+    const experyDate      = tr.querySelector(".ca-experydate")?.value || "";
+    const accessExpire    = tr.querySelector(".ca-accessexpire")?.value || "";
     const authzVlan       = tr.querySelector(".ca-authzvlan").value;
     const authzAcl        = tr.querySelector(".ca-authzacl").value;
     const platformType    = tr.querySelector(".ca-platformtype").value;
@@ -544,6 +558,8 @@ export function initTable(container, state, api, cb) {
           AuthzVlan: authzVlan, AuthzACL: authzAcl, PlatformType: platformType,
           RegistretBy: registretBy,
           GuestRegistration: guestReg,
+          GuestExperyDate: experyDate,
+          GuestAccessExpire: accessExpire,
           HypervisionRoles: hypervisionRoles,
           ...(state.isPskEditor && pskMode !== null ? { PSK_Mode: pskMode ? "true" : "false" } : {}),
           ...(bePskKey !== undefined && bePskKey !== "****" ? { PSK_Key: bePskKey } : {}),

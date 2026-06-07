@@ -969,20 +969,50 @@ tr.row-decomm .mac-link {
 [data-theme="midnight"] .detail-tab-bar { border-bottom-color: #374151; }
 .detail-grid {
   display: grid;
-  grid-template-columns: 160px 1fr;
-  gap: 0.5rem 0.75rem;
+  grid-template-columns: 130px 1fr;
+  gap: 0.28rem 0.6rem;
   align-items: center;
-  margin: 1rem 0;
+  margin: 0.3rem 0;
 }
 .detail-grid label {
   white-space: nowrap;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   font-weight: 600;
   color: #374151;
 }
 .detail-grid .detail-value {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   color: #1a2330;
+  word-break: break-all;
+}
+.detail-meta-details {
+  border-top: 1px solid var(--border, #e2e8f0);
+  margin-top: 0.4rem;
+  padding-top: 0.2rem;
+}
+.detail-meta-details summary {
+  font-size: 0.8rem;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0.25rem 0;
+  user-select: none;
+}
+.detail-meta-grid {
+  display: grid;
+  grid-template-columns: 130px 1fr 130px 1fr;
+  gap: 0.22rem 0.5rem;
+  align-items: center;
+  margin-top: 0.3rem;
+}
+.detail-meta-grid .dm-lbl {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #6b7280;
+  white-space: nowrap;
+}
+.detail-meta-grid .detail-value {
+  font-size: 0.78rem;
+  color: #374151;
   word-break: break-all;
 }
 .detail-grid .detail-value.mono {
@@ -993,14 +1023,14 @@ tr.row-decomm .mac-link {
 .detail-grid input[type="text"],
 .detail-grid select {
   width: 100%;
-  padding: 0.35rem 0.5rem;
-  font-size: 0.85rem;
+  padding: 0.2rem 0.4rem;
+  font-size: 0.82rem;
   border: 1px solid #d1d5db;
   border-radius: 4px;
 }
 .detail-grid label.inline-cb {
   font-weight: 400;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   display: flex;
   gap: 0.35rem;
   align-items: center;
@@ -1846,6 +1876,9 @@ td.psk-key-cell {
   color: #e0e0e0;
   border-color: #3a3a5c;
 }
+[data-theme="dark"] .detail-meta-details summary { color: #9ca3af; }
+[data-theme="dark"] .detail-meta-grid .dm-lbl { color: #9ca3af; }
+[data-theme="dark"] .detail-meta-grid .detail-value { color: #cbd5e1; }
 [data-theme="dark"] a.mac-link { color: #93c5fd; }
 [data-theme="dark"] .active-toggle {
   background: #1a56db !important;
@@ -1975,6 +2008,9 @@ td.psk-key-cell {
 [data-theme="midnight"] .detail-grid .detail-value.mono { color: #8b949e; }
 [data-theme="midnight"] .detail-grid input[type="text"],
 [data-theme="midnight"] .detail-grid select { background: #0d1117; color: #e6edf3; border-color: #30363d; }
+[data-theme="midnight"] .detail-meta-details summary { color: #8b949e; }
+[data-theme="midnight"] .detail-meta-grid .dm-lbl { color: #8b949e; }
+[data-theme="midnight"] .detail-meta-grid .detail-value { color: #c9d1d9; }
 [data-theme="midnight"] a.mac-link { color: #79c0ff; }
 [data-theme="midnight"] .active-toggle { background: #1f6feb !important; border-color: #1f6feb !important; }
 [data-theme="midnight"] .page-size-label select { background: #0d1117; color: #e6edf3; border-color: #30363d; }

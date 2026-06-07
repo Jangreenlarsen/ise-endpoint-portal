@@ -200,6 +200,14 @@ export async function renderBrowse(container) {
                 <option value="true">true</option>
                 <option value="false">false</option>
               </select>
+              <label>${t("col.guest_expery_date")}</label>
+              <input type="text" id="d-expery-date" placeholder="ÅÅÅÅ-MM-DD:TT:MM" maxlength="16" />
+              <label>${t("col.guest_access_expire")}</label>
+              <select id="d-access-expire">
+                <option value=""></option>
+                <option value="true">true</option>
+                <option value="false">false</option>
+              </select>
               <label>AuthzVlan</label>
               <select id="d-authzvlan"></select>
               <label>AuthzACL</label>
@@ -216,28 +224,22 @@ export async function renderBrowse(container) {
               </div>
               <label>${t("col.roles")}</label>
               <div id="d-roles"></div>
-              <label>HypervisionISEPortal</label>
-              <div class="detail-value mono" id="d-hypervision"></div>
-              <label>Profile ID</label>
-              <div class="detail-value mono" id="d-profile-id"></div>
-              <label>${t("detail.profile_name")}</label>
-              <div class="detail-value" id="d-profiler-name"></div>
-              <label>Static profile</label>
-              <div class="detail-value" id="d-static-profile"></div>
-              <label>Portal user</label>
-              <div class="detail-value" id="d-portal-user"></div>
-              <label>Identity store</label>
-              <div class="detail-value" id="d-identity-store"></div>
-              <label>${t("detail.registered")}</label>
-              <div class="detail-value" id="d-create-time"></div>
-              <label>${t("detail.last_updated")}</label>
-              <div class="detail-value" id="d-update-time"></div>
-              <label>${t("detail.status_lbl")}</label>
-              <div class="detail-value" id="d-status"></div>
-              <label>${t("detail.active_status_lbl")}</label>
-              <div class="detail-value" id="d-active-status"></div>
-
             </div>
+            <details class="detail-meta-details">
+              <summary>ISE Metadata ▾</summary>
+              <div class="detail-meta-grid">
+                <span class="dm-lbl">HypervisionISEPortal</span><div class="detail-value mono" id="d-hypervision"></div>
+                <span class="dm-lbl">Profile ID</span><div class="detail-value mono" id="d-profile-id"></div>
+                <span class="dm-lbl">${t("detail.profile_name")}</span><div class="detail-value" id="d-profiler-name"></div>
+                <span class="dm-lbl">Static profile</span><div class="detail-value" id="d-static-profile"></div>
+                <span class="dm-lbl">Portal user</span><div class="detail-value" id="d-portal-user"></div>
+                <span class="dm-lbl">Identity store</span><div class="detail-value" id="d-identity-store"></div>
+                <span class="dm-lbl">${t("detail.registered")}</span><div class="detail-value" id="d-create-time"></div>
+                <span class="dm-lbl">${t("detail.last_updated")}</span><div class="detail-value" id="d-update-time"></div>
+                <span class="dm-lbl">${t("detail.status_lbl")}</span><div class="detail-value" id="d-status"></div>
+                <span class="dm-lbl">${t("detail.active_status_lbl")}</span><div class="detail-value" id="d-active-status"></div>
+              </div>
+            </details>
             <div id="d-anc-section" class="hidden anc-section">
               <div class="anc-status-row">
                 <span class="anc-label">ANC Quarantine</span>

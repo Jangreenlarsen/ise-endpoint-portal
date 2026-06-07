@@ -248,6 +248,8 @@ export function getColumns() {
     { key: "lokation",      label: t("col.lokation"),     field: (r) => r.lokation },
     { key: "registret_by",      label: t("col.registret_by"),      field: (r) => r.registret_by },
     { key: "guest_registration", label: t("col.guest_registration"), field: (r) => r.guest_registration },
+    { key: "guest_expery_date",  label: t("col.guest_expery_date"),  field: (r) => r.guest_expery_date || "" },
+    { key: "guest_access_expire",label: t("col.guest_access_expire"),field: (r) => r.guest_access_expire || "" },
     { key: "platform_type", label: t("col.platform_type"),field: (r) => r.platform_type },
     { key: "psk_mode",      label: t("col.psk_mode"),     field: (r) => r.psk_mode ? t("cell.yes") : "" },
     { key: "psk_key",       label: t("col.psk_key"),      field: (r) => r.psk_key || "",       cls: "authz-col" },

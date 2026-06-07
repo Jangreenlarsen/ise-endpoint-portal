@@ -3,6 +3,19 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.1.3 build 0632] — 2026-06-07 — feat: GuestExperyDate + GuestAccessExpire i edit-mode + kompakt detail-modal
+
+Tilføjet GuestExperyDate (text input) og GuestAccessExpire (select) til:
+- Detail modal (Endpoint details edit) — HTML + populate openDetail() + gem i #d-save
+- Inline browse-tabel — ny kolonne + inline input/select + buildSavePayload()
+ISE read-only metadata (Hypervision, Profile IDs, timestamps, Status) er flyttet til
+en `<details>` collapsible sektion så edit-felterne fylder et vindue.
+detail-grid er gjort kompakt: gap 0.28rem, margin 0.3rem, label-kolonne 130px,
+font/padding reduceret. Ny .detail-meta-grid CSS (2+2 kolonner).
+
+**Berørte filer:** `browse.js`, `browse-detail.js`, `browse-table.js`, `browse-utils.js`,
+`i18n.js`, `styles.css`
+
 ## [6.1.2 build 0631] — 2026-06-07 — feat: Flyt tung sync-knap til Endpoint Attributes-side
 
 Flyttet "↕ Synkronisér custom attributter med ISE" fra Settings → Advanced til toppen af
