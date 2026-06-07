@@ -74,13 +74,12 @@ class IseCustomAttributeRepository:
             logger.warning("failed to create custom attribute '%s': %s", name, exc)
             return False
 
-    async def ensure_definitions(self, names: list[str]) -> dict[str, bool]:
+    async def ensure_definitions(self, names: list[str]) -> dict[str, str]:
         """Ensure all named attributes exist as definitions in ISE.
 
         First checks which definitions already exist, then creates missing ones.
-        Returns a dict of name -> success.
+        Returns a dict of name -> "existed" | "created" | "failed".
         """
-        # Check what already exists
         existing = set()
         definitions = await self.list_definitions()
         for d in definitions:
@@ -89,11 +88,12 @@ class IseCustomAttributeRepository:
                 existing.add(attr_name)
         logger.info("existing custom attribute definitions in ISE: %s", existing)
 
-        results: dict[str, bool] = {}
+        results: dict[str, str] = {}
         for name in names:
             if name in existing:
                 logger.info("custom attribute '%s' already defined in ISE", name)
-                results[name] = True
+                results[name] = "existed"
             else:
-                results[name] = await self.create_definition(name)
+                ok = await self.create_definition(name)
+                results[name] = "created" if ok else "failed"
         return results

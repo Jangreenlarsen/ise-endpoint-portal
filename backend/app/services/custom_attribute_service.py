@@ -190,7 +190,10 @@ class CustomAttributeService:
         return SyncResult(
             scanned_endpoints=scanned,
             new_values_found=new_vals,
-            definitions_ensured=defs,
+            definitions_ensured={k: (v != "failed") for k, v in defs.items()},
+            definitions_existing=[k for k, v in defs.items() if v == "existed"],
+            definitions_created=[k for k, v in defs.items() if v == "created"],
+            definitions_failed=[k for k, v in defs.items() if v == "failed"],
         )
 
     async def sync_platform_from_mnt(

@@ -103,7 +103,7 @@ class EndpointService:
         logger.info("ensuring custom attribute definitions exist in ISE (via Open API)")
         results = await self.custom_attrs.ensure_definitions(ALL_ATTRS)
         logger.info("custom attribute definitions: %s", results)
-        failed = [name for name, ok in results.items() if not ok]
+        failed = [name for name, status in results.items() if status == "failed"]
         if failed:
             logger.error(
                 "COULD NOT CREATE custom attribute definitions: %s. "

@@ -548,14 +548,21 @@ export function initAdvancedSection(container) {
     try {
       const res = await api.syncCustomAttributes();
       const newCount = Object.values(res.new_values_found || {}).reduce((s, v) => s + (v?.length || 0), 0);
-      const defs = res.definitions_ensured || {};
-      const total = Object.keys(defs).length;
-      const okCount = Object.values(defs).filter(Boolean).length;
-      const failed = Object.entries(defs).filter(([, ok]) => !ok).map(([k]) => k);
+      const created  = res.definitions_created  || [];
+      const existing = res.definitions_existing || [];
+      const failed   = res.definitions_failed   || [];
+      const total    = created.length + existing.length + failed.length;
 
-      const defsLine = total === 0 ? "" : failed.length === 0
-        ? `<br><span style="font-size:0.85em;">${t("settings.adv_defs_ok").replace("{ok}", okCount).replace("{total}", total)}</span>`
-        : `<br><span style="font-size:0.85em;color:#991b1b;">${t("settings.adv_defs_fail").replace("{attrs}", failed.join(", "))}</span>`;
+      let defsLine = "";
+      if (total > 0) {
+        if (created.length > 0) {
+          defsLine += `<br><span style="font-size:0.85em;color:#166534;">${t("settings.adv_defs_created").replace("{attrs}", created.join(", "))}</span>`;
+        }
+        defsLine += `<br><span style="font-size:0.85em;">${t("settings.adv_defs_ok").replace("{ok}", existing.length + created.length).replace("{total}", total)}</span>`;
+        if (failed.length > 0) {
+          defsLine += `<br><span style="font-size:0.85em;color:#991b1b;">${t("settings.adv_defs_fail").replace("{attrs}", failed.join(", "))}</span>`;
+        }
+      }
 
       result.innerHTML = `<div class="alert" style="background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:0.6rem 1rem;color:#166534;">${t("settings.adv_done").replace("{n}", res.scanned_endpoints).replace("{new}", newCount)}${defsLine}</div>`;
     } catch (err) {

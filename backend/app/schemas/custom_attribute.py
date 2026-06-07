@@ -21,7 +21,10 @@ class AddValueRequest(BaseModel):
 class SyncResult(BaseModel):
     scanned_endpoints: int = 0
     new_values_found: dict[str, list[str]] = Field(default_factory=dict)
-    definitions_ensured: dict[str, bool] = Field(default_factory=dict)
+    definitions_ensured: dict[str, bool] = Field(default_factory=dict)  # kept for backwards compat
+    definitions_existing: list[str] = Field(default_factory=list)
+    definitions_created: list[str] = Field(default_factory=list)
+    definitions_failed: list[str] = Field(default_factory=list)
 
 
 class RemoveValueResult(BaseModel):

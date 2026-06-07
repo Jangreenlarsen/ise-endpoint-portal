@@ -3,6 +3,15 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.1.2 build 0629] — 2026-06-07 — fix: Sync viser nu oprettede vs. eksisterende attributter separat
+
+`ensure_definitions` returnerer nu "existed"/"created"/"failed" pr. attribut.
+`SyncResult` har tre nye lister: `definitions_existing`, `definitions_created`, `definitions_failed`.
+Frontend viser grøn linje med navne på nyoprettede attributter, samlet tæller og evt. fejl.
+**Berørte filer:** `ise/custom_attributes.py`, `schemas/custom_attribute.py`,
+`services/custom_attribute_service.py`, `services/endpoint_service.py`,
+`section-update.js`, `i18n.js`
+
 ## [6.1.1 build 0628] — 2026-06-07 — fix: Sync-knap tekst opdateret til bidirektionel synkronisering
 
 Knaptekst, korttitel og confirm-dialog opdateret til at afspejle at synkroniseringen
