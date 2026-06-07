@@ -3,6 +3,20 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.2.0 build 0635] — 2026-06-07 — feat: Guest Expiry background worker
+
+Ny periodisk baggrunds-worker der automatisk sætter GuestAccessExpire=true i ISE
+når GuestExperyDate er passeret. Workflow:
+  1. `guest_expiry_store.py` (SQLite, `backend/cache/guest_expiry.db`) tracker alle
+     endpoints med GuestRegistration=true og en GuestExperyDate.
+  2. `guest_expiry_worker.py` kører hvert 60s (`guest_expiry_check_interval_seconds`),
+     finder udløbne poster og kalder ISE ERS for at sætte GuestAccessExpire=true.
+  3. `endpoint_service._sync_guest_expiry()` opdaterer storen ved create/update/delete.
+  4. Worker startes og stoppes rent i `main.py` lifespan.
+
+**Berørte filer:** `core/guest_expiry_store.py` (ny), `services/guest_expiry_worker.py` (ny),
+`services/endpoint_service.py`, `core/config.py`, `main.py`, `FEATURES.md`
+
 ## [6.1.4 build 0634] — 2026-06-07 — fix: Ret manglende PATCH-versionsbump fra b0633
 
 b0633 var en fix-commit men PATCH blev ikke bumped (6.1.3 → 6.1.3 fejlagtigt).

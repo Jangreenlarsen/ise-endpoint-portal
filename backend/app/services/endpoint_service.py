@@ -7,7 +7,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
-from app.core import audit_store, config, first_seen_store
+from app.core import audit_store, config, first_seen_store, guest_expiry_store
 from app.core.metrics import BULK_ITEMS
 from app.core.custom_attr_store import (
     ACTIVE_ATTR,
@@ -78,6 +78,23 @@ def _parse_iso_ts(iso: str) -> float | None:
 
 # Module-level flag: have we ensured custom attribute definitions in ISE this session?
 _ca_definitions_ensured = False
+
+
+def _sync_guest_expiry(endpoint_id: str, mac: str, ca: dict[str, str]) -> None:
+    """Opdatér guest expiry tracking ud fra de CustomAttributes der netop er gemt.
+
+    Registrerer endpoint hvis GuestRegistration=true og GuestExperyDate er sat.
+    Fjerner det fra tracking hvis gæsteregistrering er slukket eller dato er fjernet.
+    """
+    try:
+        guest_reg   = ca.get("GuestRegistration", "").lower()
+        expiry_str  = ca.get("GuestExperyDate", "").strip()
+        if guest_reg == "true" and expiry_str:
+            guest_expiry_store.upsert(endpoint_id, mac, expiry_str)
+        else:
+            guest_expiry_store.remove(endpoint_id)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("guest expiry sync fejlede for %s: %s", endpoint_id, exc)
 
 
 class EndpointService:
@@ -595,6 +612,8 @@ class EndpointService:
             custom_attributes=ca,
         )
         logger.info("created endpoint mac=%s id=%s", req.mac, new_id)
+        if new_id:
+            _sync_guest_expiry(new_id, req.mac, ca)
         await audit_store.record(
             "created",
             "endpoint",
@@ -622,6 +641,7 @@ class EndpointService:
                            endpoint_id, exc)
         await self.endpoints.delete(endpoint_id)
         get_cache().invalidate_detail(endpoint_id)
+        guest_expiry_store.remove(endpoint_id)
         if before:
             mac = before.get("mac") or before.get("name") or ""
             if mac:
@@ -777,6 +797,9 @@ class EndpointService:
         )
         # Invalidate cache so the next read reflects the new ISE state.
         get_cache().invalidate_detail(endpoint_id)
+
+        # Opdatér guest expiry tracking baseret på de nye CA-værdier.
+        _sync_guest_expiry(endpoint_id, (before or {}).get("mac", ""), ca)
 
         # "after"-snapshot og audit køres i baggrunden så HTTP-svaret
         # returneres straks efter PUT+invalidation (sparer ét ISE-kald på hot path).

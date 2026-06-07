@@ -385,6 +385,11 @@ class Settings(BaseSettings):
     selfregister_expiry_date: str = Field(default="", description="Bestemt udløbsdato YYYY-MM-DD (bruges ved mode='date').")
     selfregister_expiry_time: str = Field(default="23:59", description="Klokkeslæt for udløb HH:MM.")
 
+    guest_expiry_check_interval_seconds: float = Field(
+        default=60.0,
+        description="Interval i sekunder for baggrunds-tjek af GuestExperyDate. 0 = deaktiveret.",
+    )
+
 
 def _load() -> Settings:
     base = Settings()  # type: ignore[call-arg]
