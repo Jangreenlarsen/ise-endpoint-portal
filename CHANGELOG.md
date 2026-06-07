@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.1.1 build 0628] — 2026-06-07 — fix: Sync-knap tekst opdateret til bidirektionel synkronisering
+
+Knaptekst, korttitel og confirm-dialog opdateret til at afspejle at synkroniseringen
+går begge veje: opretter manglende attribut-definitioner i ISE OG importerer brugte
+værdier fra endpoints. Loading-tekst tilsvarende opdateret.
+**Berørte filer:** `i18n.js`
+
 ## [6.1.1 build 0627] — 2026-06-07 — fix: Sync-knap viser nu attribut-definitionsstatus fra ISE
 
 Result-visningen efter "Importér custom attributter fra ISE" viser nu:

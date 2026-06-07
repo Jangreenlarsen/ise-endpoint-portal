@@ -1329,10 +1329,10 @@ const TRANSLATIONS = {
     "settings.gh_dev_branch_saved":   "Branch skiftet til '{branch}' — klik Tjek GitHub for at se ny version.",
 
     // ── Settings — Advanced/Migration ───────────────────────────────────────
-    "settings.adv_card":                    "Importér custom attributter fra ISE (migration)",
-    "settings.adv_btn":                     "Importér custom attributter fra ISE",
-    "settings.adv_confirm":                 "Dette vil scanne ALLE endpoints i ISE individuelt.\n\nVed mange endpoints kan dette tage lang tid og belaste ISE.\n\nFortset?",
-    "settings.adv_loading":                 "Importerer — vent venligst...",
+    "settings.adv_card":                    "Synkronisér custom attributter med ISE",
+    "settings.adv_btn":                     "↕ Synkronisér custom attributter med ISE",
+    "settings.adv_confirm":                 "Dette vil:\n• Oprette manglende attribut-definitioner i ISE\n• Scanne ALLE endpoints individuelt for at importere brugte værdier\n\nVed mange endpoints kan scanning tage lang tid og belaste ISE.\n\nFortset?",
+    "settings.adv_loading":                 "Synkroniserer — vent venligst...",
     "settings.adv_done":                    "Scannet {n} endpoints. {new} nye værdier importeret.",
     "settings.adv_defs_ok":                 "Attribut-definitioner i ISE: {ok}/{total} ✓",
     "settings.adv_defs_fail":               "Mangler i ISE (opret manuelt): {attrs}",
@@ -2787,10 +2787,10 @@ const TRANSLATIONS = {
     "settings.gh_dev_branch_saved":   "Branch switched to '{branch}' — click Check GitHub to see the new version.",
 
     // ── Settings — Advanced/Migration ───────────────────────────────────────
-    "settings.adv_card":                    "Import custom attributes from ISE (migration)",
-    "settings.adv_btn":                     "Import custom attributes from ISE",
-    "settings.adv_confirm":                 "This will scan ALL endpoints in ISE individually.\n\nWith many endpoints this may take a long time and put load on ISE.\n\nContinue?",
-    "settings.adv_loading":                 "Importing — please wait...",
+    "settings.adv_card":                    "Synchronize custom attributes with ISE",
+    "settings.adv_btn":                     "↕ Synchronize custom attributes with ISE",
+    "settings.adv_confirm":                 "This will:\n• Create missing attribute definitions in ISE\n• Scan ALL endpoints individually to import used values\n\nWith many endpoints this may take a long time and put load on ISE.\n\nContinue?",
+    "settings.adv_loading":                 "Synchronizing — please wait...",
     "settings.adv_done":                    "Scanned {n} endpoints. {new} new values imported.",
     "settings.adv_defs_ok":                 "Attribute definitions in ISE: {ok}/{total} ✓",
     "settings.adv_defs_fail":               "Missing in ISE (create manually): {attrs}",
