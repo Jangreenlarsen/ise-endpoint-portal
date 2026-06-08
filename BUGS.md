@@ -4,12 +4,12 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
-## [FIXED 6.2.3 b0638] 2026-06-08 — ISE 400 ved gem/flyt/slet af Default authz-regel
+## [FIXED 6.2.4 b0639] 2026-06-08 — ISE 400 ved gem/flyt/slet af Default authz-regel
 
 - **Symptom:** `Error: 502: ISE API 400: Failed to handle API request - Network Access Authorization Rule : Default rule cannot be modified` ved save/drag/delete på Default-reglen.
-- **Root cause:** ISE's Default-regel er read-only og afviser alle PUT/DELETE-kald. Ingen guard i frontend eller backend.
-- **Fix:** Tre lags blokering: (1) backend `update_rule`/`delete_rule` returnerer 422 hvis navn er "default"; (2) `showRuleEditor()` returnerer tidligt med fejlbesked; (3) `showRuleDetail` skjuler Edit-knap og deaktiverer Delete-knap for default-reglen; (4) drag-drop afvises med fejlbesked.
-- **Berørte filer:** `backend/app/api/policy.py`, `frontend/js/views/policy.js`
+- **Root cause:** ISE afviser PUT med condition-feltet på Default-reglen og alle DELETE-kald. Profil-ændringer er derimod tilladt.
+- **Fix:** Editoren åbner for Default-reglen men conditions-sektionen erstattes af info-besked. `condition: null` sendes i PUT (udelades fra ISE-payload). Delete blokeres. Drag-drop blokeres med fejlbesked.
+- **Berørte filer:** `backend/app/api/policy.py`, `backend/app/ise/policy.py`, `backend/app/services/policy_service.py`, `backend/app/schemas/policy.py`, `frontend/js/views/policy.js`
 
 ## [FIXED 6.0.3 b0624] 2026-06-06 — Simulering: EndPoints.GuestRegistration og RegistretBy altid skipped
 

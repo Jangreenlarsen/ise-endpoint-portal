@@ -128,11 +128,6 @@ async def update_rule(
     svc: PolicyService = Depends(get_policy_service),
 ) -> AuthzRuleDetail:
     _validate_rule_name(req.name)
-    if req.name.strip().lower() == "default":
-        raise HTTPException(
-            status_code=422,
-            detail="Default-reglen er read-only i ISE og kan ikke ændres.",
-        )
     try:
         return await svc.update_rule(
             policy_set_id, rule_id, req.name, req.rank, req.condition, req.profiles, req.state

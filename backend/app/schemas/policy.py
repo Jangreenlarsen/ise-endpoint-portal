@@ -60,7 +60,7 @@ class UpdateAuthzRuleRequest(BaseModel):
     name: str
     rank: int
     state: str = "enabled"
-    condition: dict
+    condition: dict | None = None
     profiles: list[str]
 
 

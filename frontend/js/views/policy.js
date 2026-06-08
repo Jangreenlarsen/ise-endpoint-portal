@@ -368,15 +368,14 @@ export async function renderPolicy(container) {
     );
 
     if (isEditor) {
-      const isDefault = rule.name?.trim().toLowerCase() === "default";
-      if (isDefault) {
-        detailPanel.querySelector("#pol-detail-edit")?.remove();
+      const isDefaultRule = rule.name?.trim().toLowerCase() === "default";
+      detailPanel.querySelector("#pol-detail-edit")?.addEventListener("click", () =>
+        showRuleEditor(rule, setId)
+      );
+      if (isDefaultRule) {
         const delBtn = detailPanel.querySelector("#pol-detail-del");
-        if (delBtn) { delBtn.disabled = true; delBtn.title = "Default-reglen kan ikke ændres i ISE"; }
+        if (delBtn) { delBtn.disabled = true; delBtn.title = "Default-reglen kan ikke slettes i ISE"; }
       } else {
-        detailPanel.querySelector("#pol-detail-edit")?.addEventListener("click", () =>
-          showRuleEditor(rule, setId)
-        );
         detailPanel.querySelector("#pol-detail-del")?.addEventListener("click", async () => {
           if (!confirm(t("pol.del_confirm").replace("{name}", rule.name))) return;
           try {
@@ -395,10 +394,7 @@ export async function renderPolicy(container) {
 
   // ── Rule editor (right panel) ─────────────────────────────────────────────
   function showRuleEditor(existing = null, setId) {
-    if (existing?.name?.trim().toLowerCase() === "default") {
-      rulesMsg.innerHTML = `<div class="alert error">Default-reglen er read-only i ISE og kan ikke redigeres.</div>`;
-      return;
-    }
+    const isDefault = existing?.name?.trim().toLowerCase() === "default";
     const isNew = !existing;
 
     if (existing) {
@@ -428,7 +424,10 @@ export async function renderPolicy(container) {
         </label>
 
         <div class="editor-section-label">${t("pol.ed_conds_label")}</div>
-        <div id="pol-cond-editor">${groupEditorHtml(existing?.condition ?? null, caValues)}</div>
+        ${isDefault
+          ? `<div class="alert info" style="font-size:.82rem;margin:.2rem 0 .4rem;">Default-reglen matcher alt — betingelser kan ikke ændres i ISE.</div>`
+          : `<div id="pol-cond-editor">${groupEditorHtml(existing?.condition ?? null, caValues)}</div>`
+        }
 
         <div class="editor-section-label">${t("pol.ed_profiles_label")}</div>
         <div id="pol-profiles-wrap">${profilesHtml(existing?.profiles || [], knownProfiles)}</div>
@@ -447,7 +446,7 @@ export async function renderPolicy(container) {
     const condEditorEl  = detailPanel.querySelector("#pol-cond-editor");
     const profilesWrap  = detailPanel.querySelector("#pol-profiles-wrap");
     const pdDetailsEd   = detailPanel.querySelector("#pol-pd-details-ed");
-    wireGroupEditor(condEditorEl, caValues);
+    if (condEditorEl) wireGroupEditor(condEditorEl, caValues);
     wireProfileEvents(profilesWrap, () => {
       loadAndRenderProfileDetails(pdDetailsEd, readProfiles(profilesWrap));
     });
@@ -483,12 +482,12 @@ export async function renderPolicy(container) {
       const name  = detailPanel.querySelector("#pol-rule-name")?.value.trim();
       const rank  = parseInt(detailPanel.querySelector("#pol-rule-rank")?.value || "0", 10);
       const state = detailPanel.querySelector("#pol-rule-state")?.value || "enabled";
-      const cond  = readGroupCondition(condEditorEl);
+      const cond  = isDefault ? null : readGroupCondition(condEditorEl);
       const profs = readProfiles(profilesWrap);
 
-      if (!name)         { editorMsg.innerHTML = `<div class="alert error">${t("pol.ed_err_name")}</div>`; return; }
-      if (!cond)         { editorMsg.innerHTML = `<div class="alert error">${t("pol.ed_err_cond")}</div>`; return; }
-      if (!profs.length) { editorMsg.innerHTML = `<div class="alert error">${t("pol.ed_err_profile")}</div>`; return; }
+      if (!name)                  { editorMsg.innerHTML = `<div class="alert error">${t("pol.ed_err_name")}</div>`; return; }
+      if (!isDefault && !cond)    { editorMsg.innerHTML = `<div class="alert error">${t("pol.ed_err_cond")}</div>`; return; }
+      if (!profs.length)          { editorMsg.innerHTML = `<div class="alert error">${t("pol.ed_err_profile")}</div>`; return; }
 
       editorMsg.innerHTML = `<div class="alert info">${t("pol.ed_saving")}</div>`;
       const btn = detailPanel.querySelector("#pol-save-rule-btn");

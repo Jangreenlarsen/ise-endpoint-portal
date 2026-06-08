@@ -4,6 +4,16 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.2.4] — 2026-06-08 — Fix: Default authz-regel tillader profil-edit
+
+> **Build:** 0639
+
+Default-reglen i ISE kan nu redigeres for autoriseringsprofiler. Conditions-
+sektionen er låst med en forklarende besked. Delete er stadig blokeret.
+Forudgående b0638-fix var for aggressiv og blokerede hele editoren.
+
+---
+
 ## [6.2.3] — 2026-06-08 — Fix: ISE Default authz-regel kan ikke redigeres
 
 > **Build:** 0638

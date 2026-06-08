@@ -3,6 +3,18 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.2.4 build 0639] — 2026-06-08 — fix: Default authz-regel tillader profil-edit men blokerer condition-edit
+
+ISE tillader at ændre autoriseringsprofiler på Default-reglen, men ikke
+conditions. Editoren åbner nu for Default med conditions-sektionen erstattet
+af en info-besked ("Default matcher alt — betingelser kan ikke ændres i ISE").
+Kun Delete-knappen er stadig blokeret. Backend: `condition` er nu optional
+(None → sendes ikke i PUT-payload til ISE).
+
+**Berørte filer:** `backend/app/api/policy.py`, `backend/app/ise/policy.py`,
+`backend/app/services/policy_service.py`, `backend/app/schemas/policy.py`,
+`frontend/js/views/policy.js`
+
 ## [6.2.3 build 0638] — 2026-06-08 — fix: Bloker redigering af ISE Default authz-regel
 
 Default-reglen i ISE er read-only og returnerer 400 ved ændringer. Løsning:

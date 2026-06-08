@@ -375,7 +375,7 @@ class PolicyService:
         rule_id: str,
         name: str,
         rank: int,
-        condition: dict,
+        condition: dict | None,
         profiles: list[str],
         state: str = "enabled",
     ) -> AuthzRuleDetail:
