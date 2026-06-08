@@ -55,6 +55,8 @@ def _client_ip(request: Request) -> str:
 
 class SelfRegisterConfig(BaseModel):
     enabled: bool
+    intro_text: str = "Registrér din enhed for at få adgang til netværket."
+    success_text: str = "Din enhed er nu registreret på netværket."
     terms: str
     redirect_url: str
     ipsk_enabled: bool = False
@@ -96,6 +98,8 @@ async def get_selfregister_config() -> SelfRegisterConfig:
     s = config.settings
     return SelfRegisterConfig(
         enabled=s.selfregister_enabled,
+        intro_text=s.selfregister_intro_text,
+        success_text=s.selfregister_success_text,
         terms=s.selfregister_terms,
         redirect_url=s.selfregister_redirect_url,
         ipsk_enabled=s.selfregister_ipsk_enabled,

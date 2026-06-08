@@ -1384,6 +1384,10 @@ const TRANSLATIONS = {
     "settings.guest_reg_group_lbl":                   "Endpoint-gruppe",
     "settings.guest_reg_group_hint":                  "ISE endpoint-gruppe som selvregistrerede gæster placeres i.",
     "settings.guest_reg_group_default":               "Standard (ISE default)",
+    "settings.guest_reg_intro_text_lbl":              "Tekst under registrering",
+    "settings.guest_reg_intro_text_hint":             "Vises over formularen på selvregistreringssiden.",
+    "settings.guest_reg_success_text_lbl":            "Tekst efter registrering",
+    "settings.guest_reg_success_text_hint":           "Vises til gæsten når registreringen er gennemført.",
 
     // ── Settings — Purge Config ──────────────────────────────────────────────
     "settings.purge_card":            "Anbefalet ISE purge-config",
@@ -2852,6 +2856,10 @@ const TRANSLATIONS = {
     "settings.guest_reg_group_lbl":                   "Endpoint group",
     "settings.guest_reg_group_hint":                  "ISE endpoint group where self-registered guests are placed.",
     "settings.guest_reg_group_default":               "Default (ISE default)",
+    "settings.guest_reg_intro_text_lbl":              "Text during registration",
+    "settings.guest_reg_intro_text_hint":             "Shown above the form on the self-registration page.",
+    "settings.guest_reg_success_text_lbl":            "Text after registration",
+    "settings.guest_reg_success_text_hint":           "Shown to the guest after successful registration.",
 
     // ── Settings — Purge Config ──────────────────────────────────────────────
     "settings.purge_card":            "Recommended ISE purge config",

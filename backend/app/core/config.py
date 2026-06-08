@@ -375,6 +375,8 @@ class Settings(BaseSettings):
     selfregister_enabled: bool = Field(default=True, description="Aktivér public selvregistrerings-side (/selfregister).")
     selfregister_group_id: str = Field(default="", description="ISE endpoint group ID som selvregistrerede endpoints placeres i. Tom = standard gruppe.")
     selfregister_redirect_url: str = Field(default="", description="URL brugeren sendes til efter succesfuld registrering (fx https://company.com). Tom = vis success-besked.")
+    selfregister_intro_text: str = Field(default="Registrér din enhed for at få adgang til netværket.", description="Introduktionstekst vist over formularen på selvregistreringssiden.")
+    selfregister_success_text: str = Field(default="Din enhed er nu registreret på netværket.", description="Tekst vist til gæsten efter succesfuld registrering.")
     selfregister_terms: str = Field(default="Jeg accepterer at min enheds MAC-adresse registreres og at netværksadgang logges.", description="Accepttekst vist på selvregistrerings-siden.")
     selfregister_authz_vlan: str = Field(default="", description="VLAN der assignes til selvregistrerede guest endpoints (AuthzVlan CA).")
     selfregister_authz_acl: str = Field(default="", description="DACL der assignes til selvregistrerede guest endpoints (AuthzACL CA).")

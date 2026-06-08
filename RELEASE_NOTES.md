@@ -4,6 +4,19 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.3.0] — 2026-06-08 — Konfigurerbar tekst på selvregistreringssiden
+
+> **Build:** 0642
+
+To nye tekstfelter i **Settings → Guest Registration (self-registration)**:
+- **Tekst under registrering** — intro-tekst vist over formularen
+- **Tekst efter registrering** — tekst vist når gæsten er registreret
+
+Begge felter er textarea og gemmes i konfigurationen. Selvregistreringssiden
+henter teksten dynamisk fra API'en — ingen genstart nødvendig.
+
+---
+
 ## [6.2.6] — 2026-06-08 — Fix: Default authz-regel gem virker nu
 
 > **Build:** 0641

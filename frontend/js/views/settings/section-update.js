@@ -579,6 +579,8 @@ export async function initGuestRegSection(container) {
   const form              = card.querySelector("#guest-reg-form");
   const enabledCb         = card.querySelector("#guest-reg-enabled");
   const groupSel          = card.querySelector("#guest-reg-group");
+  const introTextEl       = card.querySelector("#guest-reg-intro-text");
+  const successTextEl     = card.querySelector("#guest-reg-success-text");
   const ipskCb            = card.querySelector("#guest-reg-ipsk");
   const vlanSel           = card.querySelector("#guest-reg-vlan");
   const aclSel            = card.querySelector("#guest-reg-acl");
@@ -663,6 +665,14 @@ export async function initGuestRegSection(container) {
   if (groupLbl) groupLbl.textContent = t("settings.guest_reg_group_lbl");
   const groupHint = card.querySelector("#guest-reg-group-hint");
   if (groupHint) groupHint.textContent = t("settings.guest_reg_group_hint");
+  const introTextLbl = card.querySelector("#guest-reg-intro-text-lbl");
+  if (introTextLbl) introTextLbl.textContent = t("settings.guest_reg_intro_text_lbl");
+  const introTextHint = card.querySelector("#guest-reg-intro-text-hint");
+  if (introTextHint) introTextHint.textContent = t("settings.guest_reg_intro_text_hint");
+  const successTextLbl = card.querySelector("#guest-reg-success-text-lbl");
+  if (successTextLbl) successTextLbl.textContent = t("settings.guest_reg_success_text_lbl");
+  const successTextHint = card.querySelector("#guest-reg-success-text-hint");
+  if (successTextHint) successTextHint.textContent = t("settings.guest_reg_success_text_hint");
 
   function _updateExpiryVisibility() {
     if (!expiryOptions) return;
@@ -707,6 +717,8 @@ export async function initGuestRegSection(container) {
     ]);
 
     if (enabledCb) enabledCb.checked = !!s.selfregister_enabled;
+    if (introTextEl) introTextEl.value = s.selfregister_intro_text || "";
+    if (successTextEl) successTextEl.value = s.selfregister_success_text || "";
     if (ipskCb) ipskCb.checked = !!s.selfregister_ipsk_enabled;
     if (expiryCb) expiryCb.checked = !!s.selfregister_expiry_enabled;
     if (expiryModeSel) expiryModeSel.value = s.selfregister_expiry_mode || "period";
@@ -755,6 +767,8 @@ export async function initGuestRegSection(container) {
           ...current,
           selfregister_enabled:                enabledCb?.checked ?? true,
           selfregister_group_id:               groupSel?.value || "",
+          selfregister_intro_text:             introTextEl?.value?.trim() || "",
+          selfregister_success_text:           successTextEl?.value?.trim() || "",
           selfregister_ipsk_enabled:           ipskCb?.checked ?? false,
           selfregister_expiry_enabled:         expiryCb?.checked ?? false,
           selfregister_expiry_mode:            expiryModeSel?.value || "period",

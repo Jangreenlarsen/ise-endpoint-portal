@@ -35,6 +35,8 @@ class BackendSettingsUpdate(BaseModel):
     decomm_authz_acl: str = "deny_all_ipv4_traffic"
     selfregister_enabled: bool = True
     selfregister_group_id: str = ""
+    selfregister_intro_text: str = "Registrér din enhed for at få adgang til netværket."
+    selfregister_success_text: str = "Din enhed er nu registreret på netværket."
     selfregister_redirect_url: str = ""
     selfregister_terms: str = "Jeg accepterer at min enheds MAC-adresse registreres og at netværksadgang logges."
     selfregister_authz_vlan: str = ""
@@ -73,6 +75,8 @@ class BackendSettingsResponse(BaseModel):
     decomm_authz_acl: str = "deny_all_ipv4_traffic"
     selfregister_enabled: bool = True
     selfregister_group_id: str = ""
+    selfregister_intro_text: str = "Registrér din enhed for at få adgang til netværket."
+    selfregister_success_text: str = "Din enhed er nu registreret på netværket."
     selfregister_redirect_url: str = ""
     selfregister_terms: str = "Jeg accepterer at min enheds MAC-adresse registreres og at netværksadgang logges."
     selfregister_authz_vlan: str = ""

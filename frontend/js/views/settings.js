@@ -894,6 +894,16 @@ export async function renderSettings(container) {
           <div class="hint" id="guest-reg-group-hint"></div>
         </div>
         <div class="field">
+          <label for="guest-reg-intro-text" id="guest-reg-intro-text-lbl"></label>
+          <textarea id="guest-reg-intro-text" rows="2" style="width:100%;resize:vertical;"></textarea>
+          <div class="hint" id="guest-reg-intro-text-hint"></div>
+        </div>
+        <div class="field">
+          <label for="guest-reg-success-text" id="guest-reg-success-text-lbl"></label>
+          <textarea id="guest-reg-success-text" rows="2" style="width:100%;resize:vertical;"></textarea>
+          <div class="hint" id="guest-reg-success-text-hint"></div>
+        </div>
+        <div class="field">
           <label for="guest-reg-vlan" id="guest-reg-vlan-lbl"></label>
           <select id="guest-reg-vlan" style="max-width:14rem;">
             <option value="">…</option>

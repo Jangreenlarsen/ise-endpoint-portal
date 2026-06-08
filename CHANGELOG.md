@@ -3,6 +3,24 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.3.0 build 0642] — 2026-06-08 — feat: Konfigurerbar tekst på selvregistreringssiden
+
+To nye konfigurerbare tekstfelter i Settings → Guest Registration:
+- **Tekst under registrering** (`selfregister_intro_text`): intro-tekst vist over
+  formularen — erstatter hardcodet "Registrér din enhed for at få adgang...".
+- **Tekst efter registrering** (`selfregister_success_text`): tekst vist ved
+  succesfuld registrering — erstatter hardcodet "er nu registreret på netværket.".
+
+Backend: nyt felt i config.py, BackendSettingsUpdate/Response, settings_service.py,
+og SelfRegisterConfig → returneres via GET /api/selfregister/config.
+Frontend: to textarea-felter i settings-UI, selfregister.js bruger cfg.intro_text
+og cfg.success_text med fallback til defaults.
+
+**Berørte filer:** `backend/app/core/config.py`, `backend/app/schemas/settings.py`,
+`backend/app/services/settings_service.py`, `backend/app/api/selfregister.py`,
+`frontend/js/selfregister.js`, `frontend/js/views/settings.js`,
+`frontend/js/views/settings/section-update.js`, `frontend/js/i18n.js`
+
 ## [6.2.6 build 0641] — 2026-06-08 — fix: ISE kræver condition-felt i PUT for Default-regel
 
 ISE returnerer 400 "Condition property is required" når condition-feltet

@@ -70,11 +70,11 @@ function renderSessionNotFound(clientIp, onRetry) {
   document.getElementById("retry-btn").addEventListener("click", onRetry);
 }
 
-function renderForm(mac, terms, ipskEnabled) {
+function renderForm(mac, terms, ipskEnabled, introText, successText) {
   setContent(`
     <h1>Netværks-registrering</h1>
     <p style="color:#64748b;font-size:0.9rem;margin-bottom:1.25rem;">
-      Registrér din enhed for at få adgang til netværket.
+      ${esc(introText || "Registrér din enhed for at få adgang til netværket.")}
     </p>
     <div id="msg"></div>
     <form id="selfreg-form" autocomplete="off">
@@ -131,7 +131,7 @@ function renderForm(mac, terms, ipskEnabled) {
       const body = { mac, registrant_name: name, agreed: true };
       if (pskKey) body.psk_key = pskKey;
       const res = await apiPost("/selfregister", body);
-      renderSuccess(mac, res.redirect_url || "", res.coa_sent);
+      renderSuccess(mac, res.redirect_url || "", res.coa_sent, successText);
     } catch (err) {
       msgEl.innerHTML = `<div class="alert alert-error">${esc(err.message)}</div>`;
       btn.disabled = false;
@@ -140,12 +140,12 @@ function renderForm(mac, terms, ipskEnabled) {
   });
 }
 
-function renderSuccess(mac, redirectUrl, coaSent) {
+function renderSuccess(mac, redirectUrl, coaSent, successText) {
   setContent(`
     <div style="text-align:center;">
       <div style="font-size:3rem;margin-bottom:0.5rem;">✅</div>
       <h2 style="color:#166534;margin:0 0 0.5rem;">Registrering gennemført!</h2>
-      <p><strong>${esc(mac)}</strong> er nu registreret på netværket.</p>
+      <p>${esc(successText || "Din enhed er nu registreret på netværket.")}</p>
       ${coaSent
         ? `<p style="color:#1e40af;">Din enhed re-autentificeres automatisk — du får adgang inden for få sekunder.</p>`
         : `<p style="color:#64748b;">Afbryd forbindelsen og opret den igen for at få adgang.</p>`}
@@ -202,7 +202,7 @@ async function init() {
         renderSessionNotFound(session.client_ip || "?", startLookup);
         return;
       }
-      renderForm(session.mac, cfg.terms || "Jeg accepterer betingelserne.", cfg.ipsk_enabled || false);
+      renderForm(session.mac, cfg.terms || "Jeg accepterer betingelserne.", cfg.ipsk_enabled || false, cfg.intro_text || "", cfg.success_text || "");
     };
 
     await startLookup();
