@@ -144,7 +144,11 @@ STANDARD_PROFILE_DETAILS: dict[str, str] = {
 
 
 def _parse_profile_detail(raw: dict[str, Any]) -> AuthzProfileDetail:
+    logger.debug("authz-profile raw ISE data: %s", raw)
+
     attrs: list[str] = []
+
+    # advancedAttributes — RADIUS attribute pairs configured manually
     for item in raw.get("advancedAttributes") or []:
         lhs = item.get("leftHandSideDictionaryAttribue") or {}
         rhs = item.get("rightHandSideAttribueValue") or {}
@@ -155,6 +159,28 @@ def _parse_profile_detail(raw: dict[str, Any]) -> AuthzProfileDetail:
             rhs_s = rhs.get("value", "")
         if lhs_s.strip(":") and rhs_s:
             attrs.append(f"{lhs_s} = {rhs_s}")
+
+    # webRedirection — ISE stores CWA/hotspot redirect settings here when
+    # configured via the Web Redirection GUI section (not via advancedAttributes).
+    # The cisco-av-pair url-redirect-acl comes from webRedirection.acl.
+    web_redir = raw.get("webRedirection") or {}
+    if web_redir:
+        redir_type = web_redir.get("WebRedirectionType", "")
+        redir_acl  = web_redir.get("acl", "")
+        redir_url  = web_redir.get("staticIPHostNameFQDN", "") if web_redir.get("redirectStaticIPHostNameSettings") else ""
+        portal     = web_redir.get("portalName", "")
+
+        if redir_type:
+            attrs.append(f"web-redirect-type = {redir_type}")
+        if portal:
+            attrs.append(f"web-redirect-portal = {portal}")
+        # Only add if not already present from advancedAttributes
+        has_redirect_url = any("url-redirect=" in a and "url-redirect-acl" not in a for a in attrs)
+        if redir_url and not has_redirect_url:
+            attrs.append(f"cisco-av-pair = url-redirect={redir_url}")
+        has_redirect_acl = any("url-redirect-acl=" in a for a in attrs)
+        if redir_acl and not has_redirect_acl:
+            attrs.append(f"cisco-av-pair = url-redirect-acl={redir_acl}")
 
     vlan_obj = raw.get("vlan") or {}
     vlan_str = vlan_obj.get("nameID") or (

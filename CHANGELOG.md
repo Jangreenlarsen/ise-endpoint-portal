@@ -3,6 +3,21 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.3.1 build 0643] — 2026-06-08 — fix: ISE authz-profil webRedirection-parsing
+
+ISE gemmer web-redirect ACL i `webRedirection.acl` (ikke i `advancedAttributes`) når
+profilen konfigureres via ISE GUI's Web Redirection-sektion. Portal viste derfor kun
+ét `cisco-av-pair` — `url-redirect-acl=...` manglede.
+
+Ny parsing af `webRedirection`-feltet i `_parse_profile_detail()`:
+- `web-redirect-type = CentralizedWebAuth` (o.lign.)
+- `web-redirect-portal = <portalName>` (hvis sat)
+- `cisco-av-pair = url-redirect=<url>` (hvis `redirectStaticIPHostNameSettings` = true)
+- `cisco-av-pair = url-redirect-acl=<acl>` (fra `webRedirection.acl`)
+Dubletter med `advancedAttributes`-data undgås. Debug-logging af raw ISE data tilføjet.
+
+**Berørt fil:** `backend/app/services/authz_profile_service.py`
+
 ## [6.3.0 build 0642] — 2026-06-08 — feat: Konfigurerbar tekst på selvregistreringssiden
 
 To nye konfigurerbare tekstfelter i Settings → Guest Registration:

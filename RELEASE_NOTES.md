@@ -4,6 +4,17 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.3.1] — 2026-06-08 — Fix: ISE authz-profil viser nu alle cisco-av-pair attributter
+
+> **Build:** 0643
+
+Profiler med web-redirect (CWA) viste kun `url-redirect` men manglede
+`url-redirect-acl`. Årsag: ISE gemmer ACL-feltet i et separat `webRedirection`-objekt
+(ikke i `advancedAttributes`) når profilen er konfigureret via ISE GUI's Web
+Redirection-sektion. Portalen parser nu begge felter korrekt.
+
+---
+
 ## [6.3.0] — 2026-06-08 — Konfigurerbar tekst på selvregistreringssiden
 
 > **Build:** 0642

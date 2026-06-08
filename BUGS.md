@@ -4,6 +4,13 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 6.3.1 b0643] 2026-06-08 — ISE authz-profil: manglende cisco-av-pair url-redirect-acl attribut
+
+- **Symptom:** Portal viser kun ét `cisco-av-pair` (url-redirect) for CWA-profiler — `url-redirect-acl` mangler i profilvisningen.
+- **Root cause:** `_parse_profile_detail()` parsede kun `advancedAttributes`. ISE gemmer web-redirect ACL i et separat `webRedirection`-objekt (`webRedirection.acl`) når profilen er konfigureret via ISE GUI's Web Redirection-sektion — ikke som `advancedAttributes`-entry.
+- **Fix:** Parser nu også `webRedirection`-feltet: ekstraherer `WebRedirectionType`, `portalName`, `acl` og evt. `staticIPHostNameFQDN`. Undgår dubletter med `advancedAttributes`-data. Debug-logging af raw ISE profile-data tilføjet.
+- **Berørt fil:** `backend/app/services/authz_profile_service.py`
+
 ## [FIXED 6.2.6 b0641] 2026-06-08 — ISE 400 "Condition property is required" ved gem af Default authz-regel
 
 - **Symptom:** `Error: 502: ISE API 400: Condition property is required` ved gem af Default-regelens profiler.
