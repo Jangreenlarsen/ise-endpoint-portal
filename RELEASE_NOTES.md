@@ -4,6 +4,16 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.2.3] — 2026-06-08 — Fix: ISE Default authz-regel kan ikke redigeres
+
+> **Build:** 0638
+
+Default-reglen i ISE policy sets er read-only. Alle forsøg på at gemme,
+flytte (drag) eller slette den er nu blokeret i frontend og backend med en
+klar fejlbesked i stedet for en kryptisk 502-fejl fra ISE.
+
+---
+
 ## [6.2.2] — 2026-06-07 — Fix: 24-timers ur til Guest Expiry date/time-picker
 
 > **Build:** 0637

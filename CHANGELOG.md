@@ -3,6 +3,16 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.2.3 build 0638] — 2026-06-08 — fix: Bloker redigering af ISE Default authz-regel
+
+Default-reglen i ISE er read-only og returnerer 400 ved ændringer. Løsning:
+- Backend `update_rule`/`delete_rule`: returnerer 422 med klar besked hvis regelnavnet er "default"
+- Frontend `showRuleEditor()`: tidlig return med fejlbesked for default-regel
+- Frontend `showRuleDetail`: skjuler Edit-knap, deaktiverer Delete-knap for default-regel
+- Drag-drop: viser fejlbesked og afbryder hvis src eller dst er default-reglen
+
+**Berørte filer:** `backend/app/api/policy.py`, `frontend/js/views/policy.js`
+
 ## [6.2.2 build 0637] — 2026-06-07 — fix: 24-timers ur til Guest Expiry time-picker
 
 Erstattet `<input type="time">` (viser AM/PM på Windows/12h-locale) med to

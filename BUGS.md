@@ -4,6 +4,13 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 6.2.3 b0638] 2026-06-08 — ISE 400 ved gem/flyt/slet af Default authz-regel
+
+- **Symptom:** `Error: 502: ISE API 400: Failed to handle API request - Network Access Authorization Rule : Default rule cannot be modified` ved save/drag/delete på Default-reglen.
+- **Root cause:** ISE's Default-regel er read-only og afviser alle PUT/DELETE-kald. Ingen guard i frontend eller backend.
+- **Fix:** Tre lags blokering: (1) backend `update_rule`/`delete_rule` returnerer 422 hvis navn er "default"; (2) `showRuleEditor()` returnerer tidligt med fejlbesked; (3) `showRuleDetail` skjuler Edit-knap og deaktiverer Delete-knap for default-reglen; (4) drag-drop afvises med fejlbesked.
+- **Berørte filer:** `backend/app/api/policy.py`, `frontend/js/views/policy.js`
+
 ## [FIXED 6.0.3 b0624] 2026-06-06 — Simulering: EndPoints.GuestRegistration og RegistretBy altid skipped
 
 - **Symptom:** Policy-simulering evaluerede aldrig `EndPoints.GuestRegistration equals true/false` eller `EndPoints.RegistretBy equals …` — betingelserne blev markeret som "skipped/unevaluable" uanset endpoint-værdier.

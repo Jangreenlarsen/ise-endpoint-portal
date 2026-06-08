@@ -299,6 +299,10 @@ export async function renderPolicy(container) {
         const srcRule = rules.find((r) => r.id === dragSrcId);
         const dstRule = rule;
         if (!srcRule) return;
+        if (srcRule.name?.trim().toLowerCase() === "default" || dstRule.name?.trim().toLowerCase() === "default") {
+          rulesMsg.innerHTML = `<div class="alert error">Default-reglen kan ikke flyttes — den er read-only i ISE.</div>`;
+          return;
+        }
         try {
           await api.updatePolicyRule(setId, srcRule.id, {
             name: srcRule.name,
@@ -310,6 +314,7 @@ export async function renderPolicy(container) {
           await loadRules(setId);
         } catch (err) {
           console.error("Regel-flytning fejlede:", err.message);
+          rulesMsg.innerHTML = `<div class="alert error">Regel-flytning fejlede: ${esc(err.message)}</div>`;
         }
       });
     });
@@ -363,26 +368,37 @@ export async function renderPolicy(container) {
     );
 
     if (isEditor) {
-      detailPanel.querySelector("#pol-detail-edit")?.addEventListener("click", () =>
-        showRuleEditor(rule, setId)
-      );
-      detailPanel.querySelector("#pol-detail-del")?.addEventListener("click", async () => {
-        if (!confirm(t("pol.del_confirm").replace("{name}", rule.name))) return;
-        try {
-          await api.deletePolicyRule(setId, rule.id);
-          rulesMsg.innerHTML = `<div class="alert success">${t("pol.del_ok")}</div>`;
-          selectedRuleId = null;
-          clearDetail();
-          await loadRules(setId);
-        } catch (err) {
-          rulesMsg.innerHTML = `<div class="alert error">${t("pol.del_err").replace("{msg}", esc(err.message))}</div>`;
-        }
-      });
+      const isDefault = rule.name?.trim().toLowerCase() === "default";
+      if (isDefault) {
+        detailPanel.querySelector("#pol-detail-edit")?.remove();
+        const delBtn = detailPanel.querySelector("#pol-detail-del");
+        if (delBtn) { delBtn.disabled = true; delBtn.title = "Default-reglen kan ikke ændres i ISE"; }
+      } else {
+        detailPanel.querySelector("#pol-detail-edit")?.addEventListener("click", () =>
+          showRuleEditor(rule, setId)
+        );
+        detailPanel.querySelector("#pol-detail-del")?.addEventListener("click", async () => {
+          if (!confirm(t("pol.del_confirm").replace("{name}", rule.name))) return;
+          try {
+            await api.deletePolicyRule(setId, rule.id);
+            rulesMsg.innerHTML = `<div class="alert success">${t("pol.del_ok")}</div>`;
+            selectedRuleId = null;
+            clearDetail();
+            await loadRules(setId);
+          } catch (err) {
+            rulesMsg.innerHTML = `<div class="alert error">${t("pol.del_err").replace("{msg}", esc(err.message))}</div>`;
+          }
+        });
+      }
     }
   }
 
   // ── Rule editor (right panel) ─────────────────────────────────────────────
   function showRuleEditor(existing = null, setId) {
+    if (existing?.name?.trim().toLowerCase() === "default") {
+      rulesMsg.innerHTML = `<div class="alert error">Default-reglen er read-only i ISE og kan ikke redigeres.</div>`;
+      return;
+    }
     const isNew = !existing;
 
     if (existing) {
