@@ -4,6 +4,17 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.2.5] — 2026-06-08 — Fix: Konsistens i Guest Registration settings
+
+> **Build:** 0640
+
+Tre mangler i Settings → Guest Registration (self-registration):
+- **Endpoint-gruppe**: ny dropdown vælger hvilken ISE-gruppe selvregistrerede gæster placeres i
+- **Check-interval**: nyt felt konfigurerer baggrunds-workerens tjek-frekvens (sekunder, 0=deaktiveret)
+- **Klokkeslæt**: `<input type="time">` erstattet med 24-timers select-par (samme fix som b0637)
+
+---
+
 ## [6.2.4] — 2026-06-08 — Fix: Default authz-regel tillader profil-edit
 
 > **Build:** 0639

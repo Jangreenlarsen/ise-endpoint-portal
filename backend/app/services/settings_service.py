@@ -74,6 +74,7 @@ def get_backend_settings() -> BackendSettingsResponse:
         selfregister_expiry_days=s.selfregister_expiry_days,
         selfregister_expiry_date=s.selfregister_expiry_date,
         selfregister_expiry_time=s.selfregister_expiry_time,
+        guest_expiry_check_interval_seconds=s.guest_expiry_check_interval_seconds,
     )
 
 
@@ -113,8 +114,9 @@ async def update_backend_settings(
             "selfregister_expiry_enabled":    new.selfregister_expiry_enabled,
             "selfregister_expiry_mode":       new.selfregister_expiry_mode,
             "selfregister_expiry_days":       new.selfregister_expiry_days,
-            "selfregister_expiry_date":       new.selfregister_expiry_date,
-            "selfregister_expiry_time":       new.selfregister_expiry_time,
+            "selfregister_expiry_date":                 new.selfregister_expiry_date,
+            "selfregister_expiry_time":                 new.selfregister_expiry_time,
+            "guest_expiry_check_interval_seconds":      new.guest_expiry_check_interval_seconds,
         }
     )
     if new.ise_password:

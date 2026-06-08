@@ -887,6 +887,13 @@ export async function renderSettings(container) {
           </div>
         </div>
         <div class="field">
+          <label for="guest-reg-group" id="guest-reg-group-lbl"></label>
+          <select id="guest-reg-group" style="max-width:28rem;">
+            <option value="">— ${t("settings.guest_reg_group_default")} —</option>
+          </select>
+          <div class="hint" id="guest-reg-group-hint"></div>
+        </div>
+        <div class="field">
           <label for="guest-reg-vlan" id="guest-reg-vlan-lbl"></label>
           <select id="guest-reg-vlan" style="max-width:14rem;">
             <option value="">…</option>
@@ -933,8 +940,17 @@ export async function renderSettings(container) {
             <div class="hint" id="guest-reg-expiry-date-hint"></div>
           </div>
           <div class="field">
-            <label for="guest-reg-expiry-time" id="guest-reg-expiry-time-lbl"></label>
-            <input type="time" id="guest-reg-expiry-time" style="max-width:10rem;" />
+            <label id="guest-reg-expiry-time-lbl"></label>
+            <div style="display:flex;gap:0.35rem;align-items:center;max-width:10rem;">
+              <select id="guest-reg-expiry-hour" class="expiry-time-sel"></select>
+              <span style="font-weight:600;">:</span>
+              <select id="guest-reg-expiry-min" class="expiry-time-sel"></select>
+            </div>
+          </div>
+          <div class="field">
+            <label for="guest-reg-expiry-check-interval" id="guest-reg-expiry-check-interval-lbl"></label>
+            <input type="number" id="guest-reg-expiry-check-interval" min="0" max="86400" step="10" style="max-width:8rem;" />
+            <div class="hint" id="guest-reg-expiry-check-interval-hint"></div>
           </div>
         </div>
         <div class="field">

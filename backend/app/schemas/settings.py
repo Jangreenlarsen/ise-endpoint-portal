@@ -45,6 +45,7 @@ class BackendSettingsUpdate(BaseModel):
     selfregister_expiry_days: int = 30
     selfregister_expiry_date: str = ""
     selfregister_expiry_time: str = "23:59"
+    guest_expiry_check_interval_seconds: float = 60.0
 
 
 class BackendSettingsResponse(BaseModel):
@@ -82,6 +83,7 @@ class BackendSettingsResponse(BaseModel):
     selfregister_expiry_days: int = 30
     selfregister_expiry_date: str = ""
     selfregister_expiry_time: str = "23:59"
+    guest_expiry_check_interval_seconds: float = 60.0
 
 
 class TestConnectionRequest(BaseModel):

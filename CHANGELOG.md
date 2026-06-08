@@ -3,6 +3,22 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.2.5 build 0640] — 2026-06-08 — fix: Konsistens i Guest Registration settings
+
+Tre mangler i portal settings / Guest registration (self-registration):
+1. `selfregister_group_id`: fandtes i backend men ingen UI — tilføjet
+   endpoint-gruppe-dropdown (henter fra /api/groups).
+2. `guest_expiry_check_interval_seconds`: fandtes i config.py men manglede
+   i BackendSettingsUpdate/Response schema og frontend — tilføjet overalt.
+3. `<input type="time">` i settings: AM/PM-problem på Windows-locale —
+   erstattet med to 24h selects (timer 00–23, minutter 00–59), samme
+   mønster som b0637-fix i detail-modalen.
+
+**Berørte filer:** `backend/app/schemas/settings.py`,
+`backend/app/services/settings_service.py`,
+`frontend/js/views/settings.js`, `frontend/js/views/settings/section-update.js`,
+`frontend/js/i18n.js`
+
 ## [6.2.4 build 0639] — 2026-06-08 — fix: Default authz-regel tillader profil-edit men blokerer condition-edit
 
 ISE tillader at ændre autoriseringsprofiler på Default-reglen, men ikke

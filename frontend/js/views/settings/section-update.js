@@ -576,24 +576,35 @@ export async function initGuestRegSection(container) {
   const card    = container.querySelector("#guest-reg-card");
   if (!card) return;
 
-  const form            = card.querySelector("#guest-reg-form");
-  const enabledCb       = card.querySelector("#guest-reg-enabled");
-  const ipskCb          = card.querySelector("#guest-reg-ipsk");
-  const vlanSel         = card.querySelector("#guest-reg-vlan");
-  const aclSel          = card.querySelector("#guest-reg-acl");
-  const redirectEl      = card.querySelector("#guest-reg-redirect");
-  const termsEl         = card.querySelector("#guest-reg-terms");
-  const saveBtn         = card.querySelector("#guest-reg-save-btn");
-  const msgEl           = card.querySelector("#guest-reg-msg");
-  const urlDisplay      = card.querySelector("#guest-reg-url-display");
-  const expiryCb        = card.querySelector("#guest-reg-expiry-enabled");
-  const expiryOptions   = card.querySelector("#guest-reg-expiry-options");
-  const expiryModeSel   = card.querySelector("#guest-reg-expiry-mode");
-  const expiryPeriodRow = card.querySelector("#guest-reg-expiry-period-row");
-  const expiryDateRow   = card.querySelector("#guest-reg-expiry-date-row");
-  const expiryDaysEl    = card.querySelector("#guest-reg-expiry-days");
-  const expiryDateEl    = card.querySelector("#guest-reg-expiry-date");
-  const expiryTimeEl    = card.querySelector("#guest-reg-expiry-time");
+  const form              = card.querySelector("#guest-reg-form");
+  const enabledCb         = card.querySelector("#guest-reg-enabled");
+  const groupSel          = card.querySelector("#guest-reg-group");
+  const ipskCb            = card.querySelector("#guest-reg-ipsk");
+  const vlanSel           = card.querySelector("#guest-reg-vlan");
+  const aclSel            = card.querySelector("#guest-reg-acl");
+  const redirectEl        = card.querySelector("#guest-reg-redirect");
+  const termsEl           = card.querySelector("#guest-reg-terms");
+  const saveBtn           = card.querySelector("#guest-reg-save-btn");
+  const msgEl             = card.querySelector("#guest-reg-msg");
+  const urlDisplay        = card.querySelector("#guest-reg-url-display");
+  const expiryCb          = card.querySelector("#guest-reg-expiry-enabled");
+  const expiryOptions     = card.querySelector("#guest-reg-expiry-options");
+  const expiryModeSel     = card.querySelector("#guest-reg-expiry-mode");
+  const expiryPeriodRow   = card.querySelector("#guest-reg-expiry-period-row");
+  const expiryDateRow     = card.querySelector("#guest-reg-expiry-date-row");
+  const expiryDaysEl      = card.querySelector("#guest-reg-expiry-days");
+  const expiryDateEl      = card.querySelector("#guest-reg-expiry-date");
+  const expiryHourSel     = card.querySelector("#guest-reg-expiry-hour");
+  const expiryMinSel      = card.querySelector("#guest-reg-expiry-min");
+  const expiryCheckIntEl  = card.querySelector("#guest-reg-expiry-check-interval");
+
+  // Populate 24h time selects
+  if (expiryHourSel && !expiryHourSel.options.length) {
+    for (let i = 0; i < 24; i++) { const v = String(i).padStart(2,"0"); expiryHourSel.add(new Option(v,v)); }
+  }
+  if (expiryMinSel && !expiryMinSel.options.length) {
+    for (let i = 0; i < 60; i++) { const v = String(i).padStart(2,"0"); expiryMinSel.add(new Option(v,v)); }
+  }
 
   // Labels
   const h3 = card.querySelector("#guest-reg-h3");
@@ -644,6 +655,14 @@ export async function initGuestRegSection(container) {
   if (expiryDateHint) expiryDateHint.textContent = t("settings.guest_reg_expiry_date_hint");
   const expiryTimeLbl = card.querySelector("#guest-reg-expiry-time-lbl");
   if (expiryTimeLbl) expiryTimeLbl.textContent = t("settings.guest_reg_expiry_time_lbl");
+  const expiryCheckIntLbl = card.querySelector("#guest-reg-expiry-check-interval-lbl");
+  if (expiryCheckIntLbl) expiryCheckIntLbl.textContent = t("settings.guest_reg_expiry_check_interval_lbl");
+  const expiryCheckIntHint = card.querySelector("#guest-reg-expiry-check-interval-hint");
+  if (expiryCheckIntHint) expiryCheckIntHint.textContent = t("settings.guest_reg_expiry_check_interval_hint");
+  const groupLbl = card.querySelector("#guest-reg-group-lbl");
+  if (groupLbl) groupLbl.textContent = t("settings.guest_reg_group_lbl");
+  const groupHint = card.querySelector("#guest-reg-group-hint");
+  if (groupHint) groupHint.textContent = t("settings.guest_reg_group_hint");
 
   function _updateExpiryVisibility() {
     if (!expiryOptions) return;
@@ -680,10 +699,11 @@ export async function initGuestRegSection(container) {
 
   // Load settings + populate dropdowns
   try {
-    const [s, caData, daclList] = await Promise.all([
+    const [s, caData, daclList, groupsData] = await Promise.all([
       api.getBackendSettings(),
       api.listCustomAttributes().catch(() => null),
       api.listDacls().catch(() => null),
+      api.listGroups().catch(() => null),
     ]);
 
     if (enabledCb) enabledCb.checked = !!s.selfregister_enabled;
@@ -692,7 +712,10 @@ export async function initGuestRegSection(container) {
     if (expiryModeSel) expiryModeSel.value = s.selfregister_expiry_mode || "period";
     if (expiryDaysEl) expiryDaysEl.value = s.selfregister_expiry_days ?? 30;
     if (expiryDateEl) expiryDateEl.value = s.selfregister_expiry_date || "";
-    if (expiryTimeEl) expiryTimeEl.value = s.selfregister_expiry_time || "23:59";
+    const [tHH, tMM] = (s.selfregister_expiry_time || "23:59").split(":");
+    if (expiryHourSel) expiryHourSel.value = tHH || "23";
+    if (expiryMinSel)  expiryMinSel.value  = tMM || "59";
+    if (expiryCheckIntEl) expiryCheckIntEl.value = s.guest_expiry_check_interval_seconds ?? 60;
     _updateExpiryVisibility();
     if (redirectEl) redirectEl.value = s.selfregister_redirect_url || "";
     if (termsEl) termsEl.value = s.selfregister_terms || "";
@@ -700,6 +723,20 @@ export async function initGuestRegSection(container) {
     const vlanAttr = caData?.attributes?.find(a => a.name === "AuthzVlan");
     _populateSelect(vlanSel, (vlanAttr?.values ?? []).filter(Boolean), s.selfregister_authz_vlan || "");
     _populateSelect(aclSel, (daclList ?? []).map(d => d.name).filter(Boolean), s.selfregister_authz_acl || "");
+
+    // Populate endpoint group dropdown
+    if (groupSel) {
+      const groups = Array.isArray(groupsData) ? groupsData : (groupsData?.groups ?? []);
+      const savedGroupId = s.selfregister_group_id || "";
+      groupSel.innerHTML = `<option value="">— ${t("settings.guest_reg_group_default")} —</option>`;
+      groups.forEach(g => {
+        const opt = document.createElement("option");
+        opt.value = g.id; opt.textContent = g.name;
+        if (g.id === savedGroupId) opt.selected = true;
+        groupSel.appendChild(opt);
+      });
+      if (!savedGroupId) groupSel.value = "";
+    }
   } catch (_) { /* ignore */ }
   finally {
     if (saveBtn) saveBtn.disabled = false;
@@ -712,19 +749,23 @@ export async function initGuestRegSection(container) {
       if (saveBtn) saveBtn.disabled = true;
       try {
         const current = await api.getBackendSettings();
+        const expiryHH = expiryHourSel?.value || "23";
+        const expiryMM = expiryMinSel?.value  || "59";
         await api.updateBackendSettings({
           ...current,
-          selfregister_enabled:         enabledCb?.checked ?? true,
-          selfregister_ipsk_enabled:    ipskCb?.checked ?? false,
-          selfregister_expiry_enabled:  expiryCb?.checked ?? false,
-          selfregister_expiry_mode:     expiryModeSel?.value || "period",
-          selfregister_expiry_days:     parseInt(expiryDaysEl?.value, 10) || 30,
-          selfregister_expiry_date:     expiryDateEl?.value || "",
-          selfregister_expiry_time:     expiryTimeEl?.value || "23:59",
-          selfregister_authz_vlan:      vlanSel?.value || "",
-          selfregister_authz_acl:       aclSel?.value || "",
-          selfregister_redirect_url:    redirectEl?.value?.trim() || "",
-          selfregister_terms:           termsEl?.value?.trim() || current.selfregister_terms,
+          selfregister_enabled:                enabledCb?.checked ?? true,
+          selfregister_group_id:               groupSel?.value || "",
+          selfregister_ipsk_enabled:           ipskCb?.checked ?? false,
+          selfregister_expiry_enabled:         expiryCb?.checked ?? false,
+          selfregister_expiry_mode:            expiryModeSel?.value || "period",
+          selfregister_expiry_days:            parseInt(expiryDaysEl?.value, 10) || 30,
+          selfregister_expiry_date:            expiryDateEl?.value || "",
+          selfregister_expiry_time:            `${expiryHH}:${expiryMM}`,
+          guest_expiry_check_interval_seconds: parseFloat(expiryCheckIntEl?.value) || 60,
+          selfregister_authz_vlan:             vlanSel?.value || "",
+          selfregister_authz_acl:              aclSel?.value || "",
+          selfregister_redirect_url:           redirectEl?.value?.trim() || "",
+          selfregister_terms:                  termsEl?.value?.trim() || current.selfregister_terms,
         });
         msgEl.innerHTML = `<span style="color:var(--success,#166534);font-size:0.82em;">${t("settings.guest_reg_saved")}</span>`;
         setTimeout(() => { msgEl.innerHTML = ""; }, 3000);

@@ -1378,7 +1378,12 @@ const TRANSLATIONS = {
     "settings.guest_reg_expiry_days_hint":    "Gæsteadgang udløber dette antal dage efter registrering.",
     "settings.guest_reg_expiry_date_lbl":     "Udløbsdato",
     "settings.guest_reg_expiry_date_hint":    "Alle gæster der registrerer sig får denne fælles udløbsdato.",
-    "settings.guest_reg_expiry_time_lbl":     "Klokkeslæt for udløb",
+    "settings.guest_reg_expiry_time_lbl":              "Klokkeslæt for udløb",
+    "settings.guest_reg_expiry_check_interval_lbl":   "Tjek-interval (sekunder)",
+    "settings.guest_reg_expiry_check_interval_hint":  "Hvor ofte baggrunds-worker tjekker for udløbne gæster. 0 = deaktiveret.",
+    "settings.guest_reg_group_lbl":                   "Endpoint-gruppe",
+    "settings.guest_reg_group_hint":                  "ISE endpoint-gruppe som selvregistrerede gæster placeres i.",
+    "settings.guest_reg_group_default":               "Standard (ISE default)",
 
     // ── Settings — Purge Config ──────────────────────────────────────────────
     "settings.purge_card":            "Anbefalet ISE purge-config",
@@ -2841,7 +2846,12 @@ const TRANSLATIONS = {
     "settings.guest_reg_expiry_days_hint":    "Guest access expires this many days after registration.",
     "settings.guest_reg_expiry_date_lbl":     "Expiry date",
     "settings.guest_reg_expiry_date_hint":    "All guests who register will receive this shared expiry date.",
-    "settings.guest_reg_expiry_time_lbl":     "Time of expiry",
+    "settings.guest_reg_expiry_time_lbl":              "Time of expiry",
+    "settings.guest_reg_expiry_check_interval_lbl":   "Check interval (seconds)",
+    "settings.guest_reg_expiry_check_interval_hint":  "How often the background worker checks for expired guests. 0 = disabled.",
+    "settings.guest_reg_group_lbl":                   "Endpoint group",
+    "settings.guest_reg_group_hint":                  "ISE endpoint group where self-registered guests are placed.",
+    "settings.guest_reg_group_default":               "Default (ISE default)",
 
     // ── Settings — Purge Config ──────────────────────────────────────────────
     "settings.purge_card":            "Recommended ISE purge config",
