@@ -4,6 +4,16 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.2.6] — 2026-06-08 — Fix: Default authz-regel gem virker nu
+
+> **Build:** 0641
+
+ISE kræver at `condition`-feltet er til stede i PUT-payload — selv for
+Default-reglen. Forrige fix udelod feltet når det var null, hvilket gav
+"Condition property is required". Nu sendes `"condition": null` eksplicit.
+
+---
+
 ## [6.2.5] — 2026-06-08 — Fix: Konsistens i Guest Registration settings
 
 > **Build:** 0640

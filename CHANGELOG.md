@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.2.6 build 0641] — 2026-06-08 — fix: ISE kræver condition-felt i PUT for Default-regel
+
+ISE returnerer 400 "Condition property is required" når condition-feltet
+udelades fra PUT-payload. Rettet: sender nu `"condition": null` eksplicit
+(ikke udeladet) — ISE accepterer null som "ingen betingelse / match alt".
+
+**Berørt fil:** `backend/app/ise/policy.py`
+
 ## [6.2.5 build 0640] — 2026-06-08 — fix: Konsistens i Guest Registration settings
 
 Tre mangler i portal settings / Guest registration (self-registration):

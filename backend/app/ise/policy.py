@@ -96,11 +96,14 @@ async def update_authorization_rule(
     For the Default rule (condition=None) ISE only accepts profile/state changes;
     sending a condition field causes a 400.
     """
-    rule_block: dict = {"id": rule_id, "name": name, "rank": rank, "state": state}
-    if condition is not None:
-        rule_block["condition"] = condition
     payload = {
-        "rule": rule_block,
+        "rule": {
+            "id": rule_id,
+            "name": name,
+            "rank": rank,
+            "state": state,
+            "condition": condition,  # null for Default rule — ISE requires field present
+        },
         "profile": profiles,
         "securityGroup": None,
     }

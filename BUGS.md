@@ -4,6 +4,13 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 6.2.6 b0641] 2026-06-08 — ISE 400 "Condition property is required" ved gem af Default authz-regel
+
+- **Symptom:** `Error: 502: ISE API 400: Condition property is required` ved gem af Default-regelens profiler.
+- **Root cause:** b0639-fix udelod `condition`-feltet fra PUT-payload når det var null — ISE kræver feltet til stede.
+- **Fix:** Sender `"condition": null` eksplicit i JSON-payload i stedet for at udelade feltet.
+- **Berørt fil:** `backend/app/ise/policy.py`
+
 ## [FIXED 6.2.4 b0639] 2026-06-08 — ISE 400 ved gem/flyt/slet af Default authz-regel
 
 - **Symptom:** `Error: 502: ISE API 400: Failed to handle API request - Network Access Authorization Rule : Default rule cannot be modified` ved save/drag/delete på Default-reglen.
