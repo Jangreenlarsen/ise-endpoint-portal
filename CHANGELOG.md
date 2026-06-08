@@ -3,6 +3,15 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.3.3 build 0646] — 2026-06-08 — revert: fjern forkert DACL/VLAN-fallback på profiler
+
+b0645-faldbakken tilknyttede samme dacl/vlan fra sessionen til ALLE profiler der
+ikke matchede et mønster — fx `PermitAccess:32` — selvom VLAN ikke hørte til
+den profil. Tilbageruller til original adfærd: kun profiler der matcher et
+navne-mønster (vlan/dacl/airspace/psk-key) får en suffix.
+
+**Berørt fil:** `frontend/js/views/browse-table.js`
+
 ## [6.3.3 build 0645] — 2026-06-08 — fix: ISE session auth-kolonne viser DACL/VLAN for alle profiler
 
 Profil-suffix i "ISE session auth"-kolonnen viste kun kontekstuel info (DACL-navn,
