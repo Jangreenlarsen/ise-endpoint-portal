@@ -144,7 +144,7 @@ STANDARD_PROFILE_DETAILS: dict[str, str] = {
 
 
 def _parse_profile_detail(raw: dict[str, Any]) -> AuthzProfileDetail:
-    logger.debug("authz-profile raw ISE data: %s", raw)
+    logger.info("authz-profile raw ISE data for '%s': %s", raw.get("name","?"), raw)
 
     attrs: list[str] = []
 
@@ -211,6 +211,9 @@ class AuthzProfileService:
         if raw is None:
             return None
         return _parse_profile_detail(raw)
+
+    async def get_raw(self, name: str) -> dict[str, Any] | None:
+        return await self._repo.get_by_name(name)
 
     async def list_all(self) -> list[AuthzProfileSummary]:
         resources = await self._repo.list_all()
