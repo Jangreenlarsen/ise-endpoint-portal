@@ -4,6 +4,16 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.3.2] — 2026-06-08 — Fix: Register-siden sætter nu "Registered by"
+
+> **Build:** 0644
+
+Endpoints registreret via Register-siden (ISE Register) havde tomt "Registered
+by"-felt. `RegistretBy` var ikke inkluderet i formens custom-attribute-byggeri.
+Løsning: indlogget brugers username auto-sættes som `RegistretBy` ved submit.
+
+---
+
 ## [6.3.1] — 2026-06-08 — Fix: ISE authz-profil viser nu alle cisco-av-pair attributter
 
 > **Build:** 0643

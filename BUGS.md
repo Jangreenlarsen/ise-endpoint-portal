@@ -4,6 +4,13 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 6.3.2 b0644] 2026-06-08 — Register-siden sætter ikke "Registered by"
+
+- **Symptom:** Endpoints registreret via Register-siden (register.js) har tomt "Registered by"-felt.
+- **Root cause:** `register.js`'s `attrLabels`-objekt indeholder kun Type, Owner, Lokation, AuthzVlan, AuthzACL, PlatformType — ikke `RegistretBy`. Submit-handleren bygger `ca`-dict udelukkende herfra, så `RegistretBy` aldrig sættes.
+- **Fix:** Auto-sæt `ca.RegistretBy = me.username` ved submit (brugeren er allerede hentet via `api.authMe()`).
+- **Berørt fil:** `frontend/js/views/register.js`
+
 ## [FIXED 6.3.1 b0643] 2026-06-08 — ISE authz-profil: manglende cisco-av-pair url-redirect-acl attribut
 
 - **Symptom:** Portal viser kun ét `cisco-av-pair` (url-redirect) for CWA-profiler — `url-redirect-acl` mangler i profilvisningen.

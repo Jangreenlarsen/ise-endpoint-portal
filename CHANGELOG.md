@@ -3,6 +3,15 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.3.2 build 0644] — 2026-06-08 — fix: Register-siden auto-sætter nu "Registered by"
+
+`register.js`'s submit-handler byggede custom-attrs-dict udelukkende fra
+`attrLabels`-objektet (Type, Owner, Lokation, AuthzVlan, AuthzACL, PlatformType).
+`RegistretBy` manglede, og feltet forblev tomt på alle endpoints registreret via
+Register-siden. Fix: `ca.RegistretBy = me.username` sættes automatisk ved submit.
+
+**Berørt fil:** `frontend/js/views/register.js`
+
 ## [6.3.1 build 0643] — 2026-06-08 — fix: ISE authz-profil webRedirection-parsing
 
 ISE gemmer web-redirect ACL i `webRedirection.acl` (ikke i `advancedAttributes`) når
