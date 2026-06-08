@@ -4,6 +4,19 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.3.3] — 2026-06-08 — Fix: ISE session auth-kolonne viser context for alle profiler
+
+> **Build:** 0645
+
+Profilsuffix i "ISE session auth"-kolonnen viste kun DACL-navn / VLAN / ACL for
+portals egne standardprofiler (Endpoint_VLAN, Endpoint_DACL, osv.) via
+navne-regex. Enhver anden ISE-profil viste kun profilnavnet.
+
+Nu: hvis en profil ikke matcher et standardmønster men sessionen har en DACL
+vises den som `ProfilNavn:DaclNavn` — samme format som standardprofilerne.
+
+---
+
 ## [6.3.2] — 2026-06-08 — Fix: Register-siden sætter nu "Registered by"
 
 > **Build:** 0644

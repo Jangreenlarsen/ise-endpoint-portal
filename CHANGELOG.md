@@ -3,6 +3,20 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.3.3 build 0645] — 2026-06-08 — fix: ISE session auth-kolonne viser DACL/VLAN for alle profiler
+
+Profil-suffix i "ISE session auth"-kolonnen viste kun kontekstuel info (DACL-navn,
+VLAN, ACL, PSK) for portals egne standard-profiler (Endpoint_VLAN / Endpoint_DACL /
+Endpoint_AirSpaceACL / Endpoint_PSK-KEY) fordi matchet var baseret på profilnavnet.
+Enhver anden ISE authz-profil (Endpoint_Guest_rediret, CorpAccess, o.lign.) viste
+kun profilnavnet uden suffix.
+
+Tilføjet fallback i `iseSessionCellHtml`: hvis intet standard-mønster matcher men
+session-data indeholder `dacl` → vises som `ProfilNavn:DaclNavn`. Hvis `vlan` →
+`ProfilNavn:VLAN`. DACL-badge-logikken opdateres tilsvarende.
+
+**Berørt fil:** `frontend/js/views/browse-table.js`
+
 ## [6.3.2 build 0644] — 2026-06-08 — fix: Register-siden auto-sætter nu "Registered by"
 
 `register.js`'s submit-handler byggede custom-attrs-dict udelukkende fra

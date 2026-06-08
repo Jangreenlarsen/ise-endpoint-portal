@@ -175,6 +175,8 @@ export function initTable(container, state, api, cb) {
       lines.push(`<span class="ise-sess-row"><span class="ise-sess-lbl">${t("browse.sess_auth_label")}:</span> <span class="ise-sess-val ise-sess-badge ise-sess-method">${esc(authMethod.toUpperCase())}</span></span>`);
     }
     // Profiles: one per line, no label. Contextual value appended based on profile name pattern.
+    // Fallback: for profiles that don't match a known pattern, show dacl or vlan from session
+    // so any ISE authz profile (not just portal standard ones) shows what was actually delivered.
     let daclInProfile = false;
     if (profs.length) {
       for (const p of profs) {
@@ -183,13 +185,15 @@ export function initTable(container, state, api, cb) {
         else if (/dacl/i.test(p) && dacl)         { suffix = dacl; daclInProfile = true; }
         else if (/airspace/i.test(p) && authzAcl) { suffix = authzAcl; }
         else if (/psk.*key/i.test(p) && pskKey)   { suffix = state.pskShowKey ? pskKey : "***"; }
+        else if (dacl)                             { suffix = dacl; daclInProfile = true; }
+        else if (vlanNum)                          { suffix = vlanNum; }
         const label = suffix ? `${esc(p)}:${esc(suffix)}` : esc(p);
         lines.push(`<span class="ise-sess-row ise-sess-prof">${label}</span>`);
       }
     } else if (authz) {
       lines.push(`<span class="ise-sess-row ise-sess-prof">${esc(authz)}</span>`);
     }
-    // DACL badge only if not already shown inline via Endpoint_DACL profile
+    // DACL badge only if not already shown inline via a profile
     if (dacl && !daclInProfile) lines.push(`<span class="ise-sess-row"><span class="ise-sess-lbl">${t("browse.sess_dacl_label")}:</span> <span class="ise-sess-val ise-sess-badge ise-sess-dacl">${esc(dacl)}</span></span>`);
     if (sgt) lines.push(`<span class="ise-sess-row"><span class="ise-sess-lbl">${t("browse.sess_sgt_label")}:</span> <span class="ise-sess-val ise-sess-badge ise-sess-sgt">${esc(sgt)}</span></span>`);
     return `<div class="ise-sess-combo">${lines.join("")}</div>`;
