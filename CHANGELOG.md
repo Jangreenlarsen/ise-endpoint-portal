@@ -3,6 +3,11 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.4.5 build 0653] — 2026-06-13 — chore: korriger version til 6.4.5 (manglende PATCH-bumps b0648-b0652)
+
+PATCH blev ikke bumped korrekt ved b0648-b0652. Hver af de 5 afsluttede
+bugfixes siden 6.4.0 burde have bumped PATCH — korrekt version er 6.4.5.
+
 ## [6.4.1 build 0652] — 2026-06-13 — fix: Klient IP vises nu i Endpoint details session-tab
 
 `GET /pxgrid/sessions/{mac}` (get_session) manglede `framed_ip=info.framed_ip`
