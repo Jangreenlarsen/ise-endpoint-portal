@@ -3,6 +3,17 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.4.0 build 0649] — 2026-06-13 — fix: søgning i "Klient IP"-kolonne virker nu
+
+`field: () => ""` i getColumns() returnerede altid tom streng for client_ip,
+så kolonne-filter og sortering aldrig matchede noget. Tilføjet modul-niveau
+`_sessionData`-reference i browse-utils.js med `setSessionDataRef()` setter.
+browse.js kalder setteren ved alle pxgridSessionData-ændringer. field-funktionen
+slår nu MAC op i session-Mappen og returnerer framed_ip.
+
+**Berørte filer:** `frontend/js/views/browse-utils.js`,
+`frontend/js/views/browse.js`
+
 ## [6.4.0 build 0648] — 2026-06-13 — fix: Klient IP-kolonne viser nu IP fra MnT-data
 
 `framed_ip` gik tabt ved MnT-berigelse fordi `_enrich_single_from_mnt()` og

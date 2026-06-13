@@ -234,6 +234,11 @@ export function groupPathParts(groupName) {
   return rest.split(":").filter(Boolean);
 }
 
+// Modul-niveau reference til pxGrid session-data — opdateres af browse.js
+// så field-funktioner kan bruge den til søgning og sortering.
+let _sessionData = null;
+export function setSessionDataRef(map) { _sessionData = map; }
+
 // getColumns() evalueres ved hvert kald så labels afspejler aktivt sprog.
 export function getColumns() {
   return [
@@ -258,7 +263,11 @@ export function getColumns() {
     { key: "roles",         label: t("col.roles"),        field: (r) => (r.roles || []).join(", ") },
     { key: "first_seen",    label: t("col.first_seen"),   field: (r) => r.first_seen_at ? fmtDateTime(new Date(r.first_seen_at * 1000).toISOString()) : "—" },
     { key: "nas",           label: t("col.nas"),          field: () => "" },
-    { key: "client_ip",    label: t("col.client_ip"),    field: () => "" },
+    { key: "client_ip",    label: t("col.client_ip"),    field: (r) => {
+      if (!_sessionData) return "";
+      const mac = normalizeMac(r.mac || r.name || "");
+      return _sessionData.get(mac)?.framed_ip || "";
+    } },
     { key: "ise_session",   label: t("col.ise_session"),  field: () => "" },
   ];
 }

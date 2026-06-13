@@ -4,6 +4,20 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.4.0] — 2026-06-13 — Fix: søgning i "Klient IP"-kolonne virker nu
+
+> **Build:** 0649
+
+Kolonne-filter og sortering på "Klient IP" matchede aldrig noget selvom
+IP-adresser var synlige i kolonnen. Årsagen var at `field: () => ""`-funktionen
+altid returnerede tom streng, og filtrering sker via `field(row)`.
+
+Rettet ved at tilføje en modul-niveau session-data reference i browse-utils.js
+som browse.js opdaterer ved alle pxGrid-events. field-funktionen slår nu
+MAC'en op og returnerer den faktiske IP-adresse.
+
+---
+
 ## [6.4.0] — 2026-06-13 — Fix: Klient IP-kolonne viser nu IP-adresse korrekt
 
 > **Build:** 0648

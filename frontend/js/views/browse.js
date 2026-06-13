@@ -11,6 +11,7 @@ import {
   normalizeMac, fmtAgo, coaSummaryText,
   groupHierarchyOptionsHtml,
   loadMarkedMacs, clearMarkedMacs,
+  setSessionDataRef,
 } from "./browse-utils.js";
 import { initFilter } from "./browse-filter.js";
 import { initTable  } from "./browse-table.js";
@@ -639,6 +640,7 @@ export async function renderBrowse(container) {
         const sessions = data.sessions || [];
         state.pxgridSessionMacs   = new Set(sessions.map((s) => normalizeMac(s.mac)));
         state.pxgridSessionData   = new Map(sessions.map((s) => [normalizeMac(s.mac), s]));
+        setSessionDataRef(state.pxgridSessionData);
         state.pxgridLive          = true;
         state.pxgridLastEventTs   = Math.floor(Date.now() / 1000);
         // Brug pxGrid-data hvis snapshot har sessioner; bevar ellers MnT-data
@@ -660,6 +662,7 @@ export async function renderBrowse(container) {
         state.pxgridSessionMacs.add(mac);
         if (!state.pxgridSessionData) state.pxgridSessionData = new Map();
         state.pxgridSessionData.set(mac, data);
+        setSessionDataRef(state.pxgridSessionData);
         state.pxgridLastEventTs = data.ts || Math.floor(Date.now() / 1000);
         if (!state.activeSessionMacs) state.activeSessionMacs = new Set();
         state.activeSessionMacs.add(mac);
@@ -708,6 +711,7 @@ export async function renderBrowse(container) {
       state.pxgridLive         = false;
       state.pxgridSessionMacs  = null;
       state.pxgridSessionData  = null;
+      setSessionDataRef(null);
       state.activeSessionMacs  = null;
       cb.applyAuthStatusColors?.();
       cb.applyFilter?.();
@@ -731,6 +735,7 @@ export async function renderBrowse(container) {
     state.pxgridLive         = false;
     state.pxgridSessionMacs  = null;
     state.pxgridSessionData  = null;
+    setSessionDataRef(null);
     state.activeSessionMacs  = null;
     state.pxgridLastEventTs  = 0;
   }
@@ -858,6 +863,7 @@ export async function renderBrowse(container) {
         const mac = normalizeMac(s.mac);
         if (mac) state.pxgridSessionData.set(mac, s);
       }
+      setSessionDataRef(state.pxgridSessionData);
       cb.applyAuthStatusColors?.();
     } catch { /* ignore — SSE stream holder sessioner à jour i realtid */ }
   }, 5 * 60 * 1000);
