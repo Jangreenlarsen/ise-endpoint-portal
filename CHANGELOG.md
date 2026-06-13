@@ -3,6 +3,15 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.4.1 build 0652] — 2026-06-13 — fix: Klient IP vises nu i Endpoint details session-tab
+
+`GET /pxgrid/sessions/{mac}` (get_session) manglede `framed_ip=info.framed_ip`
+i PxGridSessionInfoResponse-constructor — feltet var tilføjet til schema men
+ikke videresendt fra cache. Resultatet var at session debug-fanen i Endpoint
+details altid viste "—" for Klient IP.
+
+**Berørt fil:** `backend/app/api/pxgrid.py`
+
 ## [6.4.1 build 0651] — 2026-06-13 — fix: RADIUS simulator evaluerer HypervisionActive korrekt
 
 `HypervisionActive` (og HypervisionStatus/ISEPortal/Roles) manglede i

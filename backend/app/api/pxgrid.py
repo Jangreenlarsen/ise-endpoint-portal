@@ -200,6 +200,7 @@ async def get_session(mac: str) -> PxGridSessionInfoResponse:
         cts_security_group=info.cts_security_group,
         identity_group=info.identity_group,
         auth_method=info.auth_method,
+        framed_ip=info.framed_ip,
     )
 
 
