@@ -894,6 +894,7 @@ async def _enrich_single_from_mnt(cache, mac: str) -> None:  # type: ignore[no-u
             cts_security_group=data.get("cts_security_group") or current.cts_security_group,
             auth_method=data.get("auth_method") or current.auth_method,
             identity_group=data.get("identity_group") or current.identity_group,
+            framed_ip=current.framed_ip or data.get("framed_ip", ""),
             raw=current.raw,
         )
         if (updated.identity_group != current.identity_group
@@ -969,6 +970,7 @@ async def _enrich_sessions_from_mnt(cache) -> None:  # type: ignore[no-untyped-d
                     cts_security_group=data.get("cts_security_group") or current.cts_security_group,
                     auth_method=data.get("auth_method") or current.auth_method,
                     identity_group=data.get("identity_group") or current.identity_group,
+                    framed_ip=current.framed_ip or data.get("framed_ip", ""),
                     raw=current.raw,
                 )
                 await cache.upsert(updated)
@@ -1064,6 +1066,7 @@ async def reconcile_stale_sessions(session_cache, max_batch: int = 50) -> None: 
                             cts_security_group=data.get("cts_security_group") or existing.cts_security_group,
                             auth_method=data.get("auth_method") or existing.auth_method,
                             identity_group=data.get("identity_group") or existing.identity_group,
+                            framed_ip=existing.framed_ip or data.get("framed_ip", ""),
                             raw=existing.raw,
                         )
                         await session_cache.upsert(updated)
@@ -1084,6 +1087,7 @@ async def reconcile_stale_sessions(session_cache, max_batch: int = 50) -> None: 
                             authz_rule_name=data.get("authz_rule_name") or "",
                             nas_ip=data.get("nas_ip") or "",
                             user_name=data.get("user_name") or "",
+                            framed_ip=data.get("framed_ip", ""),
                         )
                         await session_cache.upsert(new_info)
                         created += 1

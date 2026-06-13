@@ -3,6 +3,16 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.4.0 build 0648] — 2026-06-13 — fix: Klient IP-kolonne viser nu IP fra MnT-data
+
+`framed_ip` gik tabt ved MnT-berigelse fordi `_enrich_single_from_mnt()` og
+`reconcile_stale_sessions()` byggede ny `SessionInfo` uden at overføre
+`framed_ip`. Tilsvarende udpakkede `fetch_session_by_mac()` ikke
+`Framed-IP-Address` fra MnT XML-response. Begge fejl rettet.
+
+**Berørte filer:** `backend/app/pxgrid/session_worker.py`,
+`backend/app/ise/mnt_sessions.py`
+
 ## [6.4.0 build 0647] — 2026-06-13 — feat: ny "Klient IP"-kolonne med session-data
 
 Ny togglebar kolonne "Klient IP" der viser klientens tildelte IP-adresse fra

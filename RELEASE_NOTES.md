@@ -4,6 +4,22 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.4.0] — 2026-06-13 — Fix: Klient IP-kolonne viser nu IP-adresse korrekt
+
+> **Build:** 0648
+
+"Klient IP"-kolonnen viste ingen data selvom session-cachen indeholder
+`framedIpAddress` fra pxGrid. To fejl rettet:
+
+1. `fetch_session_by_mac()` (MnT) udpakkede ikke `Framed-IP-Address` fra XML.
+2. `_enrich_single_from_mnt()` og `reconcile_stale_sessions()` nulstillede
+   `framed_ip` ved at bygge ny `SessionInfo` uden at overføre feltet.
+
+Nu bevares pxGrid-IP-adressen ved MnT-berigelse, og MnT-IP bruges som
+fallback hvis pxGrid ikke leverede en.
+
+---
+
 ## [6.4.0] — 2026-06-13 — Ny kolonne: Klient IP fra session-data
 
 > **Build:** 0647

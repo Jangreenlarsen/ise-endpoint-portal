@@ -149,6 +149,7 @@ async def fetch_session_by_mac(mac: str) -> dict[str, str]:
     out: dict[str, str] = {
         "endpoint_policy": "", "dacl": "", "vlan": "", "cts_security_group": "",
         "auth_method": "", "identity_group": "", "authz_profiles_mnt": "",
+        "framed_ip": "",
     }
     if not mac_encoded:
         return out
@@ -173,6 +174,10 @@ async def fetch_session_by_mac(mac: str) -> dict[str, str]:
             out["cts_security_group"] = (
                 f.get("ctsSecurityGroup") or f.get("cts_security_group")
                 or f.get("sgt") or f.get("SecurityGroup") or ""
+            )
+            out["framed_ip"] = (
+                f.get("Framed-IP-Address") or f.get("framedIpAddress")
+                or f.get("framed_ip_address") or f.get("framedIPAddress") or ""
             )
     except IseApiError as exc:
         logger.debug("MnT Session/MACAddress [%s] fejlede: %s", mac, exc)
