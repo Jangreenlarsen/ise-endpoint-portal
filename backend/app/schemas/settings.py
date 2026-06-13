@@ -258,6 +258,7 @@ class PxGridSessionInfoResponse(BaseModel):
     cts_security_group: str = ""
     identity_group: str = ""
     auth_method: str = ""
+    framed_ip: str = ""
 
 
 class PxGridSessionsResponse(BaseModel):

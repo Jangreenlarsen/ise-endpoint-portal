@@ -3,6 +3,19 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.4.0 build 0650] — 2026-06-13 — fix: framed_ip manglede i schema, broadcast og session debug tab
+
+- `PxGridSessionInfoResponse` manglede `framed_ip` → `/api/pxgrid/sessions/{mac}`
+  returnerede ikke IP, og browsetabellens Klient IP forblev tom efter SSE-upsert
+- `_broadcast()` i session_cache.py sendte ikke `framed_ip` → SSE upsert-events
+  nulstillede Klient IP-kolonnen ved re-auth
+- `list_sessions()` API inkluderede ikke `framed_ip=s.framed_ip` i Pydantic-constructor
+- Session debug tab: `framed_ip` viste ikke, `last_event_at` viste rå Unix-float,
+  og felterne `user_name`, `nas_device_type`, `cts_security_group`, `use_case` manglede
+
+**Berørte filer:** `backend/app/schemas/settings.py`, `backend/app/api/pxgrid.py`,
+`backend/app/pxgrid/session_cache.py`, `frontend/js/views/browse-detail.js`
+
 ## [6.4.0 build 0649] — 2026-06-13 — fix: søgning i "Klient IP"-kolonne virker nu
 
 `field: () => ""` i getColumns() returnerede altid tom streng for client_ip,

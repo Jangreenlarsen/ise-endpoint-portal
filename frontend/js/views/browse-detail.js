@@ -457,10 +457,15 @@ export function initDetail(container, state, api, cb) {
     if (!cached) {
       html += `<div class="alert warning">${t("browse.session_no_cache").replace("{mac}", esc(mac))}</div>`;
     } else {
+      const lastEvTs = cached.last_event_at
+        ? new Date(cached.last_event_at * 1000).toLocaleString()
+        : "—";
       html += `<h4 style="margin:.5rem 0 .25rem;font-size:.9em;color:#374151;">${t("browse.session_cache_title")}</h4>
         <table ${tableStyle}><tbody>
           ${_row("MAC", cached.mac)}
           ${_row("State", cached.state)}
+          ${_row("Klient IP", cached.framed_ip || "—")}
+          ${_row("User name", cached.user_name || "—")}
           ${_row("Auth method", cached.auth_method)}
           ${_row("Authz profiles", (cached.authz_profiles||[]).join(", "))}
           ${_row("VLAN", cached.vlan)}
@@ -469,10 +474,13 @@ export function initDetail(container, state, api, cb) {
           ${_row("Authz rule", cached.authz_rule_name)}
           ${_row("NAS IP", cached.nas_ip)}
           ${_row("NAS name", cached.nas_name)}
+          ${_row("NAS device type", cached.nas_device_type || "—")}
           ${_row("Identity group", cached.identity_group)}
           ${_row("Endpoint policy", cached.endpoint_policy)}
+          ${cached.cts_security_group ? _row("CTS security group", cached.cts_security_group) : ""}
+          ${cached.use_case ? _row("Use case", cached.use_case) : ""}
           ${_row("Audit session ID", (cached.audit_session_id||"").slice(0,40))}
-          ${_row("Last event", cached.last_event_at)}
+          ${_row("Last event", lastEvTs)}
         </tbody></table>`;
     }
 

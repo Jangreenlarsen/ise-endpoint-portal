@@ -4,6 +4,22 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.4.0] — 2026-06-13 — Fix: framed_ip gennemgribende rettelse
+
+> **Build:** 0650
+
+Fire relaterede fejl med Klient IP / `framed_ip` rettet på én gang:
+
+1. **API-schema** (`PxGridSessionInfoResponse`) manglede `framed_ip`-felt →
+   `/api/pxgrid/sessions/{mac}` returnerede aldrig IP-adressen til frontend
+2. **SSE broadcast** sendte ikke `framed_ip` → live upsert-events nulstillede
+   Klient IP i browse-tabellen ved re-auth
+3. **Bulk API** (`list_sessions`) videresendte ikke `framed_ip` fra cache
+4. **Session debug tab** (detail modal): IP ikke vist, tidsstempel var rå Unix-float,
+   og felterne user_name, nas_device_type, cts_security_group, use_case manglede
+
+---
+
 ## [6.4.0] — 2026-06-13 — Fix: søgning i "Klient IP"-kolonne virker nu
 
 > **Build:** 0649

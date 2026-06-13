@@ -139,6 +139,7 @@ class SessionCache:
             "cts_security_group": info.cts_security_group,
             "identity_group": info.identity_group,
             "auth_method": info.auth_method,
+            "framed_ip": info.framed_ip,
             "ts": info.last_event_at,
         })
 
