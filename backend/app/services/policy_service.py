@@ -49,6 +49,11 @@ _ENDPOINT_ATTR_MAP = {
     "RegistretBy": "registret_by",
     "GuestExperyDate": "guest_expery_date",
     "GuestAccessExpire": "guest_access_expire",
+    # Portal-specifikke custom attributes
+    "HypervisionActive": "active_status",
+    "HypervisionStatus": "status",
+    "HypervisionISEPortal": "hypervision",
+    "HypervisionRoles": "hypervision_roles",
 }
 
 # Dictionaries we CANNOT evaluate without live session data
@@ -426,6 +431,10 @@ class PolicyService:
             "registret_by":       ca.get("RegistretBy", ""),
             "guest_expery_date":  ca.get("GuestExperyDate", ""),
             "guest_access_expire": ca.get("GuestAccessExpire", ""),
+            "active_status":      ca.get("HypervisionActive", ""),
+            "status":             ca.get("HypervisionStatus", ""),
+            "hypervision":        ca.get("HypervisionISEPortal", ""),
+            "hypervision_roles":  ca.get("HypervisionRoles", ""),
         }
 
     async def match_endpoint(self, policy_set_id: str, ep: dict) -> PolicyMatchResult:

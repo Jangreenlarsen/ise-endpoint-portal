@@ -4,6 +4,19 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.4.1] — 2026-06-13 — Fix: RADIUS simulator evaluerer HypervisionActive korrekt
+
+> **Build:** 0651
+
+Betingelser i RADIUS-simulatoren der refererede `EndPoints.HypervisionActive`
+(fx `= "Aktiv"`) viste altid `?` (ukendt/skipped) i stedet for at evaluere
+mod endpointets faktiske CA-værdi. Årsag: attributten manglede i
+`_ENDPOINT_ATTR_MAP`, og `_fetch_ep_from_ise()` hentede ikke
+`active_status` fra ISE ERS. Rettet — `HypervisionActive`, `HypervisionStatus`,
+`HypervisionISEPortal` og `HypervisionRoles` evalueres nu korrekt i simulatoren.
+
+---
+
 ## [6.4.0] — 2026-06-13 — Fix: framed_ip gennemgribende rettelse
 
 > **Build:** 0650

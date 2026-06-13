@@ -3,6 +3,17 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.4.1 build 0651] — 2026-06-13 — fix: RADIUS simulator evaluerer HypervisionActive korrekt
+
+`HypervisionActive` (og HypervisionStatus/ISEPortal/Roles) manglede i
+`_ENDPOINT_ATTR_MAP` i policy_service.py. Resultatet var at betingelser som
+`EndPoints.HypervisionActive = "Aktiv"` altid returnerede `None` fra
+`_get_ep_value()` og blev markeret som "skipped" (?) i stedet for at
+evaluere korrekt mod endpointets faktiske CA-værdi.
+Derudover hentede `_fetch_ep_from_ise()` ikke disse felter fra ISE ERS.
+
+**Berørt fil:** `backend/app/services/policy_service.py`
+
 ## [6.4.0 build 0650] — 2026-06-13 — fix: framed_ip manglede i schema, broadcast og session debug tab
 
 - `PxGridSessionInfoResponse` manglede `framed_ip` → `/api/pxgrid/sessions/{mac}`
