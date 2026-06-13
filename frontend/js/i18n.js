@@ -197,6 +197,7 @@ const TRANSLATIONS = {
     "filter.first_seen_from": "Fra dato/tid",
     "filter.first_seen_to":   "Til dato/tid",
     "col.nas":          "NAS",
+    "col.client_ip":    "Klient IP",
     "col.ise_session":  "ISE Session Auth",
 
     // Browse — celleværdier
@@ -1669,6 +1670,7 @@ const TRANSLATIONS = {
     "filter.first_seen_from": "From date/time",
     "filter.first_seen_to":   "To date/time",
     "col.nas":          "NAS",
+    "col.client_ip":    "Client IP",
     "col.ise_session":  "ISE Session Auth",
 
     // Browse — cell values

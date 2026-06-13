@@ -3,6 +3,17 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.4.0 build 0647] — 2026-06-13 — feat: ny "Klient IP"-kolonne med session-data
+
+Ny togglebar kolonne "Klient IP" der viser klientens tildelte IP-adresse fra
+pxGrid/MnT session-data (framedIpAddress). Vises med monospace-font og blå farve.
+Opdateres automatisk ved pxGrid session-events (via applyFilter re-render).
+Datakilde: SessionInfo.framed_ip (allerede tilgængeligt fra session_worker).
+
+**Berørte filer:** `frontend/js/views/browse-table.js`,
+`frontend/js/views/browse-utils.js`, `frontend/js/i18n.js`,
+`frontend/css/styles.css`
+
 ## [6.3.3 build 0646] — 2026-06-08 — revert: fjern forkert DACL/VLAN-fallback på profiler
 
 b0645-faldbakken tilknyttede samme dacl/vlan fra sessionen til ALLE profiler der

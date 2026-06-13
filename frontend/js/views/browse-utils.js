@@ -258,6 +258,7 @@ export function getColumns() {
     { key: "roles",         label: t("col.roles"),        field: (r) => (r.roles || []).join(", ") },
     { key: "first_seen",    label: t("col.first_seen"),   field: (r) => r.first_seen_at ? fmtDateTime(new Date(r.first_seen_at * 1000).toISOString()) : "—" },
     { key: "nas",           label: t("col.nas"),          field: () => "" },
+    { key: "client_ip",    label: t("col.client_ip"),    field: () => "" },
     { key: "ise_session",   label: t("col.ise_session"),  field: () => "" },
   ];
 }

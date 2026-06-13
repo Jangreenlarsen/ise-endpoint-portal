@@ -4,6 +4,17 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.4.0] — 2026-06-13 — Ny kolonne: Klient IP fra session-data
+
+> **Build:** 0647
+
+Ny togglebar kolonne **"Klient IP"** i Browse-visningen. Viser den IP-adresse
+ISE/RADIUS har tildelt klienten (framedIpAddress) fra pxGrid- eller MnT-sessionsdata.
+Opdateres i realtid ved pxGrid-events. Vises i monospace/blå så den adskiller sig
+fra tekst-kolonner.
+
+---
+
 ## [6.3.3] — 2026-06-08 — Fix: ISE session auth-kolonne viser context for alle profiler
 
 > **Build:** 0645
