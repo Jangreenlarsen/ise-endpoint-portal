@@ -4,6 +4,13 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 6.7.0666] 2026-06-14 — Portal crasher ved opstart på frisk OVA-install (manglende h2-pakke)
+
+- **Symptom:** Portalen crashede ved opstart med `ImportError` fordi `httpx.AsyncClient(http2=True)` kræver h2-pakken, som ikke er installeret på friske OVA-installs.
+- **Root cause:** `IseClient.__init__` initialiserede klienten med `http2=use_http2` uden at håndtere manglende h2-dependency.
+- **Fix:** `ImportError` fanges og portalen falder automatisk tilbage til HTTP/1.1 med en log-advarsel. OTA-pull (v6.7.0665+) installerer h2 automatisk — næste genstart aktiverer HTTP/2.
+- **Berørt fil:** `backend/app/ise/client.py`
+
 ## [FIXED 6.7.0664] 2026-06-14 — Release notes i portalen viser forkert sektion + brudt bullet-formatering
 
 - **Symptom:** Portalen viste `## [6.7] — ... — Feature: frys pxGrid live-opdatering` (build 0658) som aktuel release note i stedet for den nyeste sektion (`## [6.7.0663]`). Bullet-punkter med linjeskift-continuation (`  baggrunden...`) renderede som separate afsnit.

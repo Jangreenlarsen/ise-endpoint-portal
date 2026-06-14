@@ -3,6 +3,17 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.7.0666] — 2026-06-14 — fix: HTTP/2 falder gracefully tilbage til HTTP/1.1 hvis h2-pakken mangler
+
+`IseClient.__init__` fanger nu `ImportError` ved `httpx.AsyncClient(http2=True)` og
+initialiserer i stedet med `http2=False`. Portalen starter og kører HTTP/1.1 på
+friske OVA-installs uden h2. OTA-pull installerer h2 automatisk (v6.7.0665+),
+og næste genstart aktiverer HTTP/2.
+
+**Berørt fil:** `backend/app/ise/client.py`
+
+---
+
 ## [6.7.0665] — 2026-06-14 — feat: OTA pip install — nye Python-afhængigheder installeres automatisk ved git pull
 
 `_git_pull_sync` kører nu `pip install -e .` (via `sys.executable`) som Trin 3

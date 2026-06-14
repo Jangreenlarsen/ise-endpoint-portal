@@ -4,6 +4,29 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.7.0666] — 2026-06-14 — Fix: HTTP/2 falder tilbage til HTTP/1.1 ved manglende h2-pakke
+
+> **Build:** 0666
+
+På friske OVA-installs er `h2`-pakken ikke installeret. Tidligere crashede
+portalen ved opstart fordi `httpx.AsyncClient(http2=True)` kastede `ImportError`.
+
+Portalen starter nu korrekt og kører HTTP/1.1 hvis h2 mangler. Loggen viser:
+
+```
+h2-pakken mangler — HTTP/2 deaktiveret, kører HTTP/1.1. Installer ved OTA-opdatering.
+```
+
+**Opdateringsflow fra frisk OVA:**
+
+1. Portal starter med HTTP/1.1 (ingen crash)
+2. Settings → GitHub → Pull — koden opdateres og `pip install -e .` kører automatisk (h2 installeres)
+3. Restart — portalen genstarter med HTTP/2 aktiv
+
+Ingen manuel SSH eller bootstrap-script nødvendigt.
+
+---
+
 ## [6.7.0665] — 2026-06-14 — OTA: pip install køres automatisk ved git pull
 
 > **Build:** 0665
