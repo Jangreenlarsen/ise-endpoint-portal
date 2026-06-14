@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.10.0678] — 2026-06-14 — fix: Tre fejl i feature_check_service rettet
+
+- **pxGrid certs**: Tjekker nu først om worker er forbundet — hvis ja → OK (certs virker åbenlyst). Undgår falsk fejl når cert-stier i settings er Windows-stier fra dev-maskine. Fallback: prøver sti direkte og relativ til BACKEND_ROOT.
+- **Custom attributes**: Stien var `/ers/config/customattribute` (eksisterer ikke). Rettet til `/api/v1/endpoint-custom-attribute` (OpenAPI, ISE 3.1+). HTTP 404 rapporteres nu som warning med hint om OpenAPI.
+- **Endpoint-cache**: Import var `from app.services.cache import get_cache` (forkert modul). Rettet til `from app.core.endpoint_cache import get_cache`.
+
+**Berørte filer:** `backend/app/services/feature_check_service.py`, `version.json`, `CHANGELOG.md`
+
 ## [6.10.0677] — 2026-06-14 — feat: Funktionsgennemgang (to-faset portal-audit)
 
 **Nye filer:**

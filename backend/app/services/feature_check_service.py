@@ -188,9 +188,22 @@ async def _p1_pxgrid_certs() -> FCResult:
         if not getattr(settings, "pxgrid_enabled", False):
             return FCResult("p1_pxgrid_certs", "pxGrid certifikater", "ok",
                             "pxGrid deaktiveret — certifikater ikke påkrævet")
+
+        # Hvis workeren allerede er forbundet beviser det at certifikaterne virker.
+        try:
+            from app.pxgrid.session_worker import get_worker
+            status = get_worker().status
+            if status.connected:
+                return FCResult("p1_pxgrid_certs", "pxGrid certifikater", "ok",
+                                f"pxGrid forbundet til {status.peer_node or 'ISE'} — certifikater virker",
+                                {"verified_by": "live_connection"})
+        except Exception:
+            pass
+
         cert_mode = getattr(settings, "pxgrid_cert_mode", "upload")
         cert_path = getattr(settings, "pxgrid_cert_path", "")
         key_path = getattr(settings, "pxgrid_key_path", "")
+
         if cert_mode == "generate":
             cert_dir = BACKEND_ROOT / "certs"
             generated = list(cert_dir.glob("pxgrid_client*.pem")) if cert_dir.is_dir() else []
@@ -199,13 +212,28 @@ async def _p1_pxgrid_certs() -> FCResult:
                                 f"Auto-genereret cert fundet: {generated[0].name}",
                                 {"mode": "generate", "found": [str(p) for p in generated]})
             return FCResult("p1_pxgrid_certs", "pxGrid certifikater", "warning",
-                            "Ingen auto-genereret cert fundet endnu — kør 'Generer CSR' i pxGrid-indstillinger",
+                            "Ingen auto-genereret cert fundet — kør 'Generer CSR' i pxGrid-indstillinger",
                             {"mode": "generate"})
+
+        # Opload-mode: prøv stien direkte, derefter relativ til BACKEND_ROOT
+        def _resolve(p: str) -> Path | None:
+            if not p:
+                return None
+            abs_p = Path(p)
+            if abs_p.exists():
+                return abs_p
+            rel_p = BACKEND_ROOT / p
+            if rel_p.exists():
+                return rel_p
+            return None
+
+        cert_ok = _resolve(cert_path) is not None
+        key_ok  = _resolve(key_path) is not None
         issues = []
-        if not cert_path or not Path(cert_path).exists():
-            issues.append(f"cert mangler: {cert_path or '(ingen sti)'}")
-        if not key_path or not Path(key_path).exists():
-            issues.append(f"key mangler: {key_path or '(ingen sti)'}")
+        if not cert_ok:
+            issues.append(f"cert ikke fundet: {cert_path or '(ingen sti)'}")
+        if not key_ok:
+            issues.append(f"key ikke fundet: {key_path or '(ingen sti)'}")
         if issues:
             return FCResult("p1_pxgrid_certs", "pxGrid certifikater", "error",
                             "; ".join(issues), {"cert_path": cert_path, "key_path": key_path})
@@ -313,26 +341,42 @@ async def _p2_ers_groups() -> FCResult:
 
 
 async def _p2_ers_custom_attrs() -> FCResult:
+    # ISE bruger OpenAPI-stien /api/v1/endpoint-custom-attribute for custom attribute-definitioner.
+    # ERS har ingen tilsvarende endpoint.
     try:
         async with _ise_client() as c:
-            r = await c.get("/ers/config/customattribute")
+            r = await c.get("/api/v1/endpoint-custom-attribute")
         if r.status_code == 200:
-            items = r.json().get("SearchResult", {}).get("resources", [])
-            names = [i.get("name", "") for i in items]
+            data = r.json()
+            # Svaret er typisk en liste direkte eller { "response": [...] }
+            if isinstance(data, list):
+                items = data
+            elif isinstance(data, dict):
+                items = data.get("response", data.get("resources", []))
+            else:
+                items = []
+            names = [
+                i.get("attributeName", i.get("name", ""))
+                for i in items if isinstance(i, dict)
+            ]
             has_portal_attr = any("hypervision" in n.lower() for n in names)
             if has_portal_attr:
-                return FCResult("p2_ers_custom_attrs", "ERS: custom attributes", "ok",
+                return FCResult("p2_ers_custom_attrs", "Custom attributes (OpenAPI)", "ok",
                                 f"{len(names)} custom attributes — HypervisionISEPortal fundet",
                                 {"names": names, "portal_attr": True})
-            return FCResult("p2_ers_custom_attrs", "ERS: custom attributes", "warning",
-                            f"{len(names)} custom attributes — HypervisionISEPortal IKKE fundet (portal-attribut mangler i ISE)",
+            return FCResult("p2_ers_custom_attrs", "Custom attributes (OpenAPI)", "warning",
+                            f"{len(names)} custom attributes — HypervisionISEPortal IKKE fundet i ISE",
                             {"names": names, "portal_attr": False})
-        return FCResult("p2_ers_custom_attrs", "ERS: custom attributes", "error",
+        if r.status_code == 404:
+            return FCResult("p2_ers_custom_attrs", "Custom attributes (OpenAPI)", "warning",
+                            "HTTP 404 — OpenAPI custom attribute endpoint ikke tilgængeligt på ISE",
+                            {"status_code": 404, "hint": "Kræver ISE 3.1+ og OpenAPI aktiveret"})
+        return FCResult("p2_ers_custom_attrs", "Custom attributes (OpenAPI)", "error",
                         f"HTTP {r.status_code}", {"status_code": r.status_code})
     except httpx.TimeoutException:
-        return FCResult("p2_ers_custom_attrs", "ERS: custom attributes", "error", "Timeout (8s)")
+        return FCResult("p2_ers_custom_attrs", "Custom attributes (OpenAPI)", "error", "Timeout (8s)")
     except Exception as exc:  # noqa: BLE001
-        return FCResult("p2_ers_custom_attrs", "ERS: custom attributes", "error",
+        return FCResult("p2_ers_custom_attrs", "Custom attributes (OpenAPI)", "error",
                         f"Fejl: {str(exc)[:100]}")
 
 
@@ -453,7 +497,7 @@ async def _p2_github_reach() -> FCResult:
 
 async def _p2_cache_warm() -> FCResult:
     try:
-        from app.services.cache import get_cache
+        from app.core.endpoint_cache import get_cache
         cache = get_cache()
         count = cache.detail_count() if hasattr(cache, "detail_count") else 0
         if count > 0:
