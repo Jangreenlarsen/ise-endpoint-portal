@@ -3,6 +3,15 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.4.8 build 0656] — 2026-06-14 — fix: søgning på ISE Session Auth (autentificeret/inaktiv)
+
+auth_status kolonnen havde field: () => "" — kolonnefilter og global
+søgning matchede aldrig noget. Løst ved at fix field() til at returnere
+"autentificeret"/"inaktiv" fra _sessionData, og tilføje authText til
+fullTextQ-tjekket i applyFiltersToRows() via state.activeSessionMacs.
+
+**Berørte filer:** `frontend/js/views/browse-utils.js`, `browse-filter.js`
+
 ## [6.4.7 build 0655] — 2026-06-14 — fix: fri tekst søgning virker nu på Klient IP (framed_ip)
 
 Fri tekst søgning sendte fullTextQ til backend som kun søgte i ISE-felter

@@ -4,6 +4,18 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.4.8] — 2026-06-14 — Fix: søgning på ISE Session Auth kolonne (autentificeret/inaktiv)
+
+> **Build:** 0656
+
+`auth_status`-kolonnen havde `field: () => ""` så hverken kolonnefilter
+eller global søgning kunne matche noget. Rettet: `field()` returnerer nu
+"autentificeret" (aktiv RADIUS-session) eller "inaktiv" baseret på
+`_sessionData`. Globalt søgefelt inkluderer nu auth-status, så man kan
+søge fx "autentificeret" og se alle endpoints med aktiv session.
+
+---
+
 ## [6.4.7] — 2026-06-14 — Fix: fri tekst søgning finder nu endpoints på Klient IP
 
 > **Build:** 0655

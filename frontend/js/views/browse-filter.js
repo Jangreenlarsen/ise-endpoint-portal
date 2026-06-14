@@ -122,13 +122,15 @@ export function initFilter(container, state, api, cb) {
     if (state.activeStatusFilter) rows = rows.filter((r) => r.active_status === state.activeStatusFilter);
     if (state.fullTextQ) {
       const low = state.fullTextQ.toLowerCase();
+      const sessMacs = state.activeSessionMacs || (state.pxgridLive && state.pxgridSessionMacs) || null;
       rows = rows.filter((r) => {
         const mac = normalizeMac(r.mac || r.name || "");
         const framed_ip = state.pxgridSessionData?.get(mac)?.framed_ip || "";
+        const authText = sessMacs ? (sessMacs.has(mac) ? "autentificeret" : "inaktiv") : "";
         return [
           r.mac, r.name, r.description, r.group_name, r.profiler_name,
           r.vendor, r.owner, r.lokation, r.endpoint_type, r.platform_type,
-          framed_ip,
+          framed_ip, authText,
         ].some((v) => (v || "").toLowerCase().includes(low));
       });
     }

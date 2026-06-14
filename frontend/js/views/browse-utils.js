@@ -243,7 +243,11 @@ export function setSessionDataRef(map) { _sessionData = map; }
 export function getColumns() {
   return [
     { key: "mac",           label: t("col.mac"),          field: (r) => r.mac || r.name },
-    { key: "auth_status",   label: t("col.auth_status"),  field: () => "" },
+    { key: "auth_status",   label: t("col.auth_status"),  field: (r) => {
+      if (!_sessionData) return "";
+      const mac = normalizeMac(r.mac || r.name || "");
+      return _sessionData.has(mac) ? "autentificeret" : "inaktiv";
+    } },
     { key: "vendor",        label: t("col.vendor"),       field: (r) => r.vendor || "" },
     { key: "group_name",    label: t("col.group_name"),   field: (r) => r.group_name },
     { key: "static_group",  label: t("col.static_group"), field: (r) => r.static_group ? t("cell.static") : t("cell.dynamic") },
