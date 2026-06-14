@@ -61,12 +61,21 @@ class Settings(BaseSettings):
             "Eksempel: ['10.0.0.1', '192.168.1.254'] (reverse proxy / load balancer IPs)."
         ),
     )
-    ise_max_connections: int = Field(
-        default=10,
+    ise_http2: bool = Field(
+        default=True,
         description=(
-            "Max antal samtidige HTTP-forbindelser til ISE. ISE ERS accepterer "
-            "ca. 5-10 samtidige — over denne grænse ses connection-reset. "
-            "10 er sikkert maksimum; 5 er konservativt."
+            "Aktiver HTTP/2 mod ISE (kræver at ISE understøtter HTTP/2 — verificér med "
+            "'curl --http2 -I https://<ise>/ers/config/endpoint'). "
+            "HTTP/2 multiplexer mange requests over én TCP-forbindelse og reducerer "
+            "TLS-handshake-overhead markant over internet. Sæt False for HTTP/1.1."
+        ),
+    )
+    ise_max_connections: int = Field(
+        default=15,
+        description=(
+            "Max antal samtidige HTTP-forbindelser til ISE. Med HTTP/2 multiplexes "
+            "mange requests over færre forbindelser — 15 er et godt udgangspunkt. "
+            "Med HTTP/1.1 og høj latens (internet) anbefales 15-20; på LAN 10."
         ),
     )
     ise_retry_attempts: int = Field(

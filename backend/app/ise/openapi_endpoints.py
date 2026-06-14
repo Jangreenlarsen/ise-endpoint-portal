@@ -16,7 +16,9 @@ as ERS for the common endpoint filterable fields (mac, name, description).
 """
 from __future__ import annotations
 
+import asyncio
 import logging
+import math
 from typing import Any
 
 from app.ise.client import IseClient
@@ -88,17 +90,33 @@ class OpenApiEndpointRepository:
     async def list_all(
         self, filters: list[str] | None = None
     ) -> list[dict[str, Any]]:
-        all_resources: list[dict[str, Any]] = []
-        page = 1
-        while True:
-            resources, total = await self.list_page(
-                page=page, size=100, filters=filters
-            )
-            all_resources.extend(resources)
-            if len(all_resources) >= total or not resources:
-                break
-            page += 1
-        return all_resources
+        """Fetch all endpoints across all ISE pages (Open API max 100 per page).
+
+        Page 1 is fetched first to learn the total count. Remaining pages are
+        fetched in parallel (Semaphore=5) — mirrors the ERS parallel pattern.
+        """
+        resources, total = await self.list_page(page=1, size=100, filters=filters)
+        if not resources or len(resources) >= total:
+            return resources
+
+        total_pages = math.ceil(total / 100)
+        if total_pages <= 1:
+            return resources
+
+        sem = asyncio.Semaphore(5)
+
+        async def _fetch_page(page: int) -> list[dict[str, Any]]:
+            async with sem:
+                result, _ = await self.list_page(page=page, size=100, filters=filters)
+                return result
+
+        remaining = await asyncio.gather(
+            *[_fetch_page(p) for p in range(2, total_pages + 1)],
+            return_exceptions=False,
+        )
+        for page_resources in remaining:
+            resources.extend(page_resources)
+        return resources
 
     async def get(self, endpoint_id: str) -> dict[str, Any]:
         data = await self.client.get(f"{OPENAPI_ENDPOINTS}/{endpoint_id}")

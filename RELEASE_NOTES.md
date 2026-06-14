@@ -4,6 +4,32 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.7.0663] — 2026-06-14 — Forbedret kommunikationshastighed portal ↔ ISE 3.5
+
+> **Build:** 0663
+
+5 optimeringer der reducerer latens og hæver throughput ved ISE-integration over internet:
+
+**HTTP/2 + gzip**
+Portalen kommunikerer nu med ISE via HTTP/2 (multiplexing af mange requests over én
+TCP-forbindelse) og anmoder om gzip-komprimering af alle svar. Store endpoint-lister
+(10.000+ endpoints) er 5-10× mindre over netværket. Kan deaktiveres med
+`ISE_HTTP2=false` i `.env` hvis ISE ikke understøtter HTTP/2.
+
+**Open API parallel paginering**
+Open API-endpoint-listen hentede sider sekventielt — nu parallelt med Semaphore(8)
+ligesom ERS-klienten. Sparer 2-3 sekunder ved 10.000+ endpoints.
+
+**MnT Session + AuthStatus parallelt**
+`fetch_session_by_mac()` lavede 2 MnT-kald i rækkefølge — nu køres de simultant.
+Sparer én fuld RTT pr. MAC (typisk 60-100 ms over internet).
+
+**Semaphore- og connection-pool-tuning**
+Endpoint detail-fetch: 5→8 parallelle kald. Bulk-operationer: 3→5. pxGrid
+session-worker: 3→5. Connection pool default: 10→15 forbindelser.
+
+---
+
 ## [6.7.0662] — 2026-06-14 — Fix: bruger-edits bevares ved pxGrid live-opdatering
 
 > **Build:** 0662

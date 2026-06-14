@@ -46,7 +46,7 @@ async def _mnt_get_xml(path: str) -> tuple[int, str]:
             auth=(s.ise_username, s.ise_password),
             verify=s.ise_verify_tls,
             timeout=s.ise_timeout,
-            headers={"Accept": "application/xml"},
+            headers={"Accept": "application/xml", "Accept-Encoding": "gzip, deflate"},
             follow_redirects=False,
         ) as http:
             response = await http.get(path)
@@ -154,33 +154,49 @@ async def fetch_session_by_mac(mac: str) -> dict[str, str]:
     if not mac_encoded:
         return out
 
+    # Kald Session/MACAddress og AuthStatus/MACAddress parallelt — sparer ~50 % RTT
+    # over internet (2 × 60 ms serial → 60 ms parallel).
+    async def _get_session() -> tuple[int, str]:
+        try:
+            return await _mnt_get_xml(f"/admin/API/mnt/Session/MACAddress/{mac_encoded}")
+        except IseApiError as exc:
+            logger.debug("MnT Session/MACAddress [%s] fejlede: %s", mac, exc)
+            return 0, ""
+
+    async def _get_auth_status() -> tuple[int, str]:
+        try:
+            return await _mnt_get_xml(
+                f"/admin/API/mnt/AuthStatus/MACAddress/{mac_encoded}/3600/25/All"
+            )
+        except IseApiError as exc:
+            logger.debug("MnT AuthStatus/MACAddress [%s] fejlede: %s", mac, exc)
+            return 0, ""
+
+    (sc, text), (sc2, text2) = await asyncio.gather(_get_session(), _get_auth_status())
+
     # ── Session/MACAddress ────────────────────────────────────────────────
     # VLAN gemmes i session_mac_vlan — kombineres med AuthStatus VLAN til sidst.
     session_mac_vlan = ""
-    try:
-        sc, text = await _mnt_get_xml(f"/admin/API/mnt/Session/MACAddress/{mac_encoded}")
-        if sc < 400 and text:
-            f = _parse_all_xml_fields(text)
-            out["endpoint_policy"] = (
-                f.get("endpointPolicy") or f.get("endpoint_policy") or f.get("EndpointPolicy") or ""
-            )
-            out["dacl"] = (
-                f.get("dacl") or f.get("downloadedDacl") or f.get("downloaded_dacl")
-                or f.get("downloadedAVPair") or ""
-            )
-            session_mac_vlan = (
-                f.get("vlan") or f.get("tunnelPrivateGroupId") or f.get("tunnel_private_group_id") or ""
-            )
-            out["cts_security_group"] = (
-                f.get("ctsSecurityGroup") or f.get("cts_security_group")
-                or f.get("sgt") or f.get("SecurityGroup") or ""
-            )
-            out["framed_ip"] = (
-                f.get("Framed-IP-Address") or f.get("framedIpAddress")
-                or f.get("framed_ip_address") or f.get("framedIPAddress") or ""
-            )
-    except IseApiError as exc:
-        logger.debug("MnT Session/MACAddress [%s] fejlede: %s", mac, exc)
+    if sc and sc < 400 and text:
+        f = _parse_all_xml_fields(text)
+        out["endpoint_policy"] = (
+            f.get("endpointPolicy") or f.get("endpoint_policy") or f.get("EndpointPolicy") or ""
+        )
+        out["dacl"] = (
+            f.get("dacl") or f.get("downloadedDacl") or f.get("downloaded_dacl")
+            or f.get("downloadedAVPair") or ""
+        )
+        session_mac_vlan = (
+            f.get("vlan") or f.get("tunnelPrivateGroupId") or f.get("tunnel_private_group_id") or ""
+        )
+        out["cts_security_group"] = (
+            f.get("ctsSecurityGroup") or f.get("cts_security_group")
+            or f.get("sgt") or f.get("SecurityGroup") or ""
+        )
+        out["framed_ip"] = (
+            f.get("Framed-IP-Address") or f.get("framedIpAddress")
+            or f.get("framed_ip_address") or f.get("framedIPAddress") or ""
+        )
 
     # ── AuthStatus/MACAddress — kræver /seconds/records/framed path-params ─
     # VLAN udtrækkes fra RADIUS Accept AV-pair og gemmes i auth_status_vlan.
@@ -188,51 +204,45 @@ async def fetch_session_by_mac(mac: str) -> dict[str, str]:
     # indeholde data fra en stale session ved ISE session-overlap, mens AuthStatus
     # AV-pairs direkte afspejler det seneste RADIUS Accept-svar.
     auth_status_vlan = ""
-    try:
-        sc2, text2 = await _mnt_get_xml(
-            f"/admin/API/mnt/AuthStatus/MACAddress/{mac_encoded}/3600/25/All"
-        )
-        if sc2 < 400 and text2:
-            # AuthStatus returnerer FLERE authStatusElements sorteret nyeste-først.
-            # Vi parser hvert element individuelt og bruger FØRSTE (nyeste) fund per felt.
-            elements = _parse_auth_status_elements(text2)
-            for elem in elements:
-                if not out["auth_method"]:
-                    out["auth_method"] = (
-                        elem.get("authentication_method") or elem.get("authenticationMethod")
-                        or elem.get("auth_method") or ""
-                    )
-                if not out["identity_group"]:
-                    out["identity_group"] = (
-                        elem.get("identity_group") or elem.get("identityGroup") or ""
-                    )
-                if not out["authz_profiles_mnt"]:
-                    azn_str = (
-                        elem.get("selected_azn_profiles") or elem.get("selectedAznProfiles")
-                        or elem.get("selectedAuthzProfiles") or ""
-                    )
-                    if azn_str:
-                        profiles = [p.strip() for p in azn_str.split(",") if p.strip()]
-                        out["authz_profiles_mnt"] = ",".join(profiles)
-                # VLAN fra response AV-pair — tag fra FØRSTE element der har det.
-                # Format: "Tunnel-Private-Group-ID=(tag=1) 32" eller "=32"
-                if not auth_status_vlan:
-                    resp_str = elem.get("response", "")
-                    m = re.search(
-                        r"Tunnel-Private-Group-ID=(?:\(tag=\d+\)\s*)?(\d+)", resp_str
-                    )
-                    if m:
-                        auth_status_vlan = m.group(1)
-                if not out["endpoint_policy"]:
-                    out["endpoint_policy"] = (
-                        elem.get("endpointPolicy") or elem.get("EndpointPolicy") or ""
-                    )
-                if not out["cts_security_group"]:
-                    out["cts_security_group"] = (
-                        elem.get("ctsSecurityGroup") or elem.get("cts_security_group") or ""
-                    )
-    except IseApiError as exc:
-        logger.debug("MnT AuthStatus/MACAddress [%s] fejlede: %s", mac, exc)
+    if sc2 and sc2 < 400 and text2:
+        # AuthStatus returnerer FLERE authStatusElements sorteret nyeste-først.
+        # Vi parser hvert element individuelt og bruger FØRSTE (nyeste) fund per felt.
+        elements = _parse_auth_status_elements(text2)
+        for elem in elements:
+            if not out["auth_method"]:
+                out["auth_method"] = (
+                    elem.get("authentication_method") or elem.get("authenticationMethod")
+                    or elem.get("auth_method") or ""
+                )
+            if not out["identity_group"]:
+                out["identity_group"] = (
+                    elem.get("identity_group") or elem.get("identityGroup") or ""
+                )
+            if not out["authz_profiles_mnt"]:
+                azn_str = (
+                    elem.get("selected_azn_profiles") or elem.get("selectedAznProfiles")
+                    or elem.get("selectedAuthzProfiles") or ""
+                )
+                if azn_str:
+                    profiles = [p.strip() for p in azn_str.split(",") if p.strip()]
+                    out["authz_profiles_mnt"] = ",".join(profiles)
+            # VLAN fra response AV-pair — tag fra FØRSTE element der har det.
+            # Format: "Tunnel-Private-Group-ID=(tag=1) 32" eller "=32"
+            if not auth_status_vlan:
+                resp_str = elem.get("response", "")
+                m = re.search(
+                    r"Tunnel-Private-Group-ID=(?:\(tag=\d+\)\s*)?(\d+)", resp_str
+                )
+                if m:
+                    auth_status_vlan = m.group(1)
+            if not out["endpoint_policy"]:
+                out["endpoint_policy"] = (
+                    elem.get("endpointPolicy") or elem.get("EndpointPolicy") or ""
+                )
+            if not out["cts_security_group"]:
+                out["cts_security_group"] = (
+                    elem.get("ctsSecurityGroup") or elem.get("cts_security_group") or ""
+                )
 
     # AuthStatus VLAN (fra RADIUS Accept AV-pair) foretrækkes; Session/MACAddress som fallback.
     out["vlan"] = auth_status_vlan or session_mac_vlan
@@ -258,7 +268,7 @@ async def fetch_active_sessions() -> list[dict[str, str]]:
             auth=(s.ise_username, s.ise_password),
             verify=s.ise_verify_tls,
             timeout=s.ise_timeout,
-            headers={"Accept": "application/xml"},
+            headers={"Accept": "application/xml", "Accept-Encoding": "gzip, deflate"},
             follow_redirects=False,
         ) as http:
             response = await http.get(path)

@@ -1025,7 +1025,7 @@ async def reconcile_stale_sessions(session_cache, max_batch: int = 50) -> None: 
             "MnT stale-session reconcile: %d stale endpoints, behandler %d",
             len(candidates), len(batch),
         )
-        sem = asyncio.Semaphore(3)
+        sem = asyncio.Semaphore(5)
         enriched = 0
         created = 0
 

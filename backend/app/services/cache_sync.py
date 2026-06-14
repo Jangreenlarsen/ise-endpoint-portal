@@ -93,8 +93,7 @@ class CacheSyncWorker:
             "cache sync: refreshing %d/%d entries past half-TTL", len(due), len(ids)
         )
         service = EndpointService(get_ise_client())
-        # Bound concurrency to stay under ISE's ~5-10 req/sec ceiling.
-        sem = asyncio.Semaphore(5)
+        sem = asyncio.Semaphore(8)
 
         async def refresh_one(endpoint_id: str) -> None:
             async with sem:

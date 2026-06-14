@@ -3,6 +3,35 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.7.0663] — 2026-06-14 — feat: kommunikationshastighed portal ↔ ISE 3.5 (internet)
+
+5 optimeringer til lavere latens og højere throughput over internet:
+
+1. **HTTP/2**: `http2=True` i `httpx.AsyncClient` + `httpx[http2]` i `pyproject.toml`.
+   Multiplexer mange requests over én TCP-forbindelse; reducerer TLS-handshake-overhead.
+   Ny `ise_http2`-setting (default True). `ise_max_connections` default hævet 10→15.
+
+2. **Gzip**: `Accept-Encoding: gzip, deflate` tilføjet til alle ISE HTTP-klienter
+   (ERS/OpenAPI i `client.py` + begge MnT-klienter i `mnt_sessions.py`).
+   Reducerer payload-størrelse 5-10× for store endpoint-lister.
+
+3. **Open API parallel paginering**: `list_all()` i `openapi_endpoints.py` henter nu
+   side 1 for at kende total, derefter alle resterende sider med `asyncio.gather`
+   (Semaphore=5) — identisk ERS-mønster. Sparer 2-3s for 10K endpoints.
+
+4. **MnT parallel kald**: `fetch_session_by_mac()` kørte Session/MACAddress og
+   AuthStatus/MACAddress sekventielt (2 × RTT). Nu `asyncio.gather` — sparer ~1 RTT
+   pr. MAC (60 ms ved 60 ms internet-latens).
+
+5. **Semaphore/pool-tuning**: endpoint detail-fetch 5→8; bulk-ops 3→5;
+   pxGrid session-worker 3→5; ERS/OpenAPI paginering 5→8; cache-sync 5→8.
+
+**Berørte filer:** `backend/app/ise/client.py`, `endpoints.py`, `openapi_endpoints.py`,
+`mnt_sessions.py`, `backend/app/core/config.py`, `backend/app/services/endpoint_service.py`,
+`cache_sync.py`, `backend/app/pxgrid/session_worker.py`, `backend/pyproject.toml`
+
+---
+
 ## [6.7.0662] — 2026-06-14 — fix: dirty-rækkernes inputværdier bevares nu ved renderRows re-render
 
 `renderRows()` brugte `tbody.innerHTML = ...` som komplet erstattede DOM — og dermed

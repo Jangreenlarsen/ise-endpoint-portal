@@ -349,7 +349,7 @@ class EndpointService:
             "(page=%d, total=%d, search=%s)",
             len(resources), page, total, search or "",
         )
-        sem = asyncio.Semaphore(5)
+        sem = asyncio.Semaphore(8)
 
         async def fetch_one(r: dict[str, Any]) -> EndpointDetail:
             async with sem:
@@ -396,7 +396,7 @@ class EndpointService:
         cache = get_cache()
         all_ids = list(cache.get_ids_for_roles(effective_roles))
 
-        sem = asyncio.Semaphore(5)
+        sem = asyncio.Semaphore(8)
 
         async def fetch_one(ep_id: str) -> EndpointDetail | None:
             async with sem:
@@ -440,7 +440,7 @@ class EndpointService:
         cache = get_cache()
         all_ids = list(cache._details.keys())
 
-        sem = asyncio.Semaphore(5)
+        sem = asyncio.Semaphore(8)
 
         async def fetch_one(ep_id: str) -> EndpointDetail | None:
             async with sem:
@@ -486,7 +486,7 @@ class EndpointService:
         if effective_roles is not None and get_cache().detail_count() > 0:
             cache = get_cache()
             all_ids = list(cache.get_ids_for_roles(effective_roles))
-            sem = asyncio.Semaphore(5)
+            sem = asyncio.Semaphore(8)
 
             async def fetch_indexed(ep_id: str) -> EndpointDetail | None:
                 async with sem:
@@ -518,7 +518,7 @@ class EndpointService:
             "fetching details for ALL %d endpoints concurrently (search=%s)",
             len(resources), search or "",
         )
-        sem = asyncio.Semaphore(5)
+        sem = asyncio.Semaphore(8)
 
         async def fetch_one(r: dict[str, Any]) -> EndpointDetail:
             async with sem:
@@ -973,7 +973,7 @@ class EndpointService:
 
     async def bulk_decommission(self, req: BulkDecommissionRequest) -> dict[str, Any]:
         """Decommission op til 200 endpoints parallelt (Semaphore=3)."""
-        sem = asyncio.Semaphore(3)
+        sem = asyncio.Semaphore(5)
 
         async def _one(ep_id: str) -> dict[str, Any]:
             async with sem:
@@ -1017,7 +1017,7 @@ class EndpointService:
 
     async def bulk_undecommission(self, req: BulkDecommissionRequest) -> dict[str, Any]:
         """Genaktiver op til 200 endpoints parallelt (Semaphore=3)."""
-        sem = asyncio.Semaphore(3)
+        sem = asyncio.Semaphore(5)
 
         async def _one(ep_id: str) -> dict[str, Any]:
             async with sem:
@@ -1083,7 +1083,7 @@ class EndpointService:
         t_ca[HIDDEN_ATTR] = "true"
 
         await self._ensure_ca_definitions()
-        sem = asyncio.Semaphore(3)
+        sem = asyncio.Semaphore(5)
 
         async def _one(ep_id: str) -> dict[str, Any]:
             async with sem:
