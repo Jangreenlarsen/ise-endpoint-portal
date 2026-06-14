@@ -3,6 +3,18 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.4.9 build 0657] — 2026-06-14 — fix: global søgning matcher nu pxGrid session-felter inkl. authz-profiler
+
+Søgning på fx "Endpoint_VLAN:10" fandt ingenting fordi displaystrengen
+er sammensat af authz_profiles[i] + VLAN-nummer fra vlan-feltet — to
+separate felter der ikke matchede alene. Løst ved at rekonstruere de
+sammensatte profile:vlan strenge i søgningen og inkludere alle pxGrid
+session-felter: user_name, policy_set_name, authz_rule_name, use_case,
+nas_name, nas_device_type, dacl, vlan, cts_security_group, identity_group,
+auth_method, authz_profiles (med VLAN-suffix som i UI).
+
+**Berørt fil:** `frontend/js/views/browse-filter.js`
+
 ## [6.4.8 build 0656] — 2026-06-14 — fix: søgning på ISE Session Auth (autentificeret/inaktiv)
 
 auth_status kolonnen havde field: () => "" — kolonnefilter og global

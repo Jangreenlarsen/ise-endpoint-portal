@@ -4,6 +4,20 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.4.9] — 2026-06-14 — Fix: global søgning på pxGrid session-felter og authz-profiler
+
+> **Build:** 0657
+
+Søgning på "Endpoint_VLAN:10" returnerede ingen resultater selvom alle
+endpoints med aktiv session bruger dette authz-profil. Årsag: display-
+strengen "Endpoint_VLAN:10" er sammensat af `authz_profiles[]` + VLAN-
+nummer fra `vlan`-feltet. Søgningen kender ikke til den sammensætning.
+Rettet: global søgning rekonstruerer nu de samme profil:vlan-strenge
+som UI'en viser, og inkluderer alle pxGrid session-felter: user_name,
+policy, authz-profiler, NAS-info, DACL, VLAN, SGT, auth-metode osv.
+
+---
+
 ## [6.4.8] — 2026-06-14 — Fix: søgning på ISE Session Auth kolonne (autentificeret/inaktiv)
 
 > **Build:** 0656

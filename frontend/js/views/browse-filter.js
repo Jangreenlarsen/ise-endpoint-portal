@@ -125,12 +125,22 @@ export function initFilter(container, state, api, cb) {
       const sessMacs = state.activeSessionMacs || (state.pxgridLive && state.pxgridSessionMacs) || null;
       rows = rows.filter((r) => {
         const mac = normalizeMac(r.mac || r.name || "");
-        const framed_ip = state.pxgridSessionData?.get(mac)?.framed_ip || "";
+        const sess = state.pxgridSessionData?.get(mac);
+        const framed_ip = sess?.framed_ip || "";
         const authText = sessMacs ? (sessMacs.has(mac) ? "autentificeret" : "inaktiv") : "";
+        // Rebuild profile:vlan combined display strings (e.g. "Endpoint_VLAN:10")
+        const vlanNum = (sess?.vlan || "").match(/(\d+)\s*$/)?.[1] || "";
+        const profileTexts = (sess?.authz_profiles || [])
+          .map((p) => (/vlan/i.test(p) && vlanNum ? `${p}:${vlanNum}` : p))
+          .join(" ");
         return [
           r.mac, r.name, r.description, r.group_name, r.profiler_name,
           r.vendor, r.owner, r.lokation, r.endpoint_type, r.platform_type,
-          framed_ip, authText,
+          framed_ip, authText, profileTexts,
+          sess?.user_name, sess?.policy_set_name, sess?.authz_rule_name,
+          sess?.use_case, sess?.nas_name, sess?.nas_device_type,
+          sess?.dacl, sess?.vlan, sess?.cts_security_group,
+          sess?.identity_group, sess?.auth_method,
         ].some((v) => (v || "").toLowerCase().includes(low));
       });
     }
