@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.8.0673] — 2026-06-14 — fix: Diagnostik cache-tjek brugte forkert attribut (_entries → detail_count)
+
+`_check_cache_status()` tjekkede `cache._entries` som ikke eksisterer — det korrekte
+er `cache.detail_count()` (public metode) eller `cache._details`. Checket returnerede
+altid 0 og viste ⚠️ selvom cachen var fyldt med endpoints.
+
+**Berørte filer:** `backend/app/services/diagnostics_service.py`, `version.json`
+
 ## [6.8.0672] — 2026-06-14 — fix: Systemdiagnostik flyttet til System Opdatering-modulet
 
 Diagnostik-kortet lå under Indstillinger → Performance. Flyttes til

@@ -263,7 +263,7 @@ async def _check_cache_status() -> CheckResult:
     try:
         from app.core.endpoint_cache import get_cache
         cache = get_cache()
-        count = len(cache._entries) if hasattr(cache, "_entries") else 0
+        count = cache.detail_count() if hasattr(cache, "detail_count") else len(getattr(cache, "_details", {}))
         if count == 0:
             return CheckResult("cache_status", "Endpoint cache", "warning",
                                "Cache er tom — pre-warm kører muligvis endnu", {"count": 0})
