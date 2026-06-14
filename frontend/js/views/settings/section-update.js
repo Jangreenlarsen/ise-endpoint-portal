@@ -392,6 +392,25 @@ export function initGithubUpdateSection(container) {
     }
   });
 
+  async function _pollUntilAlive(statusEl) {
+    const MAX_MS = 45_000;
+    const start  = Date.now();
+    while (Date.now() - start < MAX_MS) {
+      await new Promise(r => setTimeout(r, 1800));
+      try {
+        await api.health();
+        if (statusEl) statusEl.innerHTML =
+          `<div class="alert success">Server er oppe igen ✅ — <a href="/" style="font-weight:600;">Genindlæs siden</a></div>`;
+        return;
+      } catch {
+        const elapsed = Math.round((Date.now() - start) / 1000);
+        if (statusEl) statusEl.textContent = `Venter på server… (${elapsed}s)`;
+      }
+    }
+    if (statusEl) statusEl.innerHTML =
+      `<div class="alert warning">Server svarede ikke inden 45s — genindlæs siden manuelt.</div>`;
+  }
+
   pullBtn.addEventListener("click", async () => {
     if (!confirm(t("settings.gh_btn_pull") + "?")) return;
     pullBtn.disabled = true;
@@ -400,10 +419,24 @@ export function initGithubUpdateSection(container) {
     try {
       const res = await api.githubPull();
       const out = [res.stdout, res.stderr].filter(Boolean).join("\n");
-      msgEl.innerHTML = `
-        <div class="alert success">${t("settings.gh_pull_ok")}</div>
-        ${out ? `<pre class="gh-pull-output">${esc(out)}</pre>` : ""}`;
-      pullBtn.hidden = true;
+      if (res.will_restart) {
+        msgEl.innerHTML = `
+          <div class="alert success">Pull OK — pre-flight bestået — server genstarter om 3s…</div>
+          ${out ? `<pre class="gh-pull-output">${esc(out)}</pre>` : ""}
+          <div id="gh-restart-poll" style="margin-top:6px;">Venter på server…</div>`;
+        pullBtn.hidden = true;
+        _pollUntilAlive(msgEl.querySelector("#gh-restart-poll"));
+      } else if (res.ok && res.preflight_ok === false) {
+        msgEl.innerHTML = `
+          <div class="alert error">Pull OK, men pre-flight FEJLEDE — server genstartes IKKE (forhindrer crash). Se output nedenfor.</div>
+          ${out ? `<pre class="gh-pull-output">${esc(out)}</pre>` : ""}`;
+        pullBtn.hidden = true;
+      } else {
+        msgEl.innerHTML = `
+          <div class="alert success">${t("settings.gh_pull_ok")}</div>
+          ${out ? `<pre class="gh-pull-output">${esc(out)}</pre>` : ""}`;
+        pullBtn.hidden = true;
+      }
     } catch (err) {
       msgEl.innerHTML = `<div class="alert error">${t("settings.gh_pull_err").replace("{msg}", esc(err.message))}</div>`;
     } finally {

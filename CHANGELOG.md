@@ -3,6 +3,20 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.8.0669] — 2026-06-14 — fix: Pre-flight tjek i OTA-opdatering forhindrer crash-loop
+
+`_preflight_check()` kører `python -c "from app.main import app"` som subprocess
+(venv-Python, cwd=backend) efter git pull + pip install. Verificerer at den nye kode
+kan importeres uden fejl inden genstart trigges.
+
+Flyet: pull OK + pre-flight OK → auto-genstart om 3s (ingen manuel "Restart"-knap).
+Pull OK + pre-flight fejl → INGEN genstart, fejl vises i UI — crashet er afværget.
+
+Frontend poller `/api/health` efter genstart og viser "Server er oppe igen ✅ — Genindlæs siden"
+med link til reload.
+
+**Berørte filer:** `backend/app/services/update_service.py`, `frontend/js/views/settings/section-update.js`, `version.json`
+
 ## [6.8.0668] — 2026-06-14 — feat: Systemdiagnostik (sundhedstjek af alle afhængigheder)
 
 Ny backend-service `diagnostics_service.py` og API-endpoint `GET /api/diagnostics` (admin-only).

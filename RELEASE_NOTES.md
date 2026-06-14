@@ -4,6 +4,22 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.8.0669] — 2026-06-14 — OTA-opdatering: pre-flight tjek + auto-genstart
+
+> **Build:** 0669
+
+**Forhindrer crash-loop efter OTA-opdatering.**
+
+Tidligere: pull → pip install → bruger klikker manuelt "Genstart server" → server crasher hvis ny kode har fejl → crash-loop.
+
+Nu: pull → pip install → **pre-flight tjek** → auto-genstart (hvis tjek OK) / ingen genstart (hvis tjek fejler).
+
+**Pre-flight tjek:** Kører `python -c "from app.main import app"` som subprocess med det aktive venv. Verificerer at den nye kode på disk kan importeres uden syntax- eller import-fejl.
+
+**Auto-genstart:** Hvis pull + pip + pre-flight alle lykkes genstarter serveren automatisk efter 3 sekunder — ingen manuel knap nødvendig. Browseren poller og viser "Server er oppe igen ✅ — Genindlæs siden".
+
+**Sikkerhed:** Hvis pre-flight fejler (f.eks. ny modul mangler eller syntax-fejl) sker der ingen genstart. Fejlen vises tydeligt i UI'et så problemet kan løses før genstart.
+
 ## [6.8.0668] — 2026-06-14 — Systemdiagnostik
 
 > **Build:** 0668

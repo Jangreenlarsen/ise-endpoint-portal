@@ -4,6 +4,13 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 6.8.0669] 2026-06-14 — Portal kan crashe efter OTA-opdatering (ingen pre-flight tjek)
+
+- **Symptom:** Portal crasher (crash-loop) efter OTA git pull hvis ny kode har importfejl eller manglende afhængighed. Kræved desuden manuel klik på "Genstart server".
+- **Root cause:** `git_pull()` kørte ikke verificering af ny kode inden genstart — `os._exit(0)` med defekt kode → systemd genstarter → crash → loop.
+- **Fix:** `_preflight_check()` kører `python -c "from app.main import app"` som subprocess. Hvis tjek fejler → ingen genstart (fejl vises i UI). Hvis tjek OK → auto-genstart om 3s. Frontend poller `/api/health` og viser "Server oppe igen" med genindlæs-link.
+- **Berørte filer:** `backend/app/services/update_service.py`, `frontend/js/views/settings/section-update.js`
+
 ## [FIXED 6.7.0666] 2026-06-14 — Portal crasher ved opstart på frisk OVA-install (manglende h2-pakke)
 
 - **Symptom:** Portalen crashede ved opstart med `ImportError` fordi `httpx.AsyncClient(http2=True)` kræver h2-pakken, som ikke er installeret på friske OVA-installs.
