@@ -25,6 +25,7 @@ import json
 import logging
 import os
 import subprocess
+import sys
 import time
 import zipfile
 from pathlib import Path
@@ -492,6 +493,39 @@ def _git_pull_sync() -> dict[str, Any]:
             global _github_cache, _github_cache_ts
             _github_cache = {}
             _github_cache_ts = 0.0
+
+            # Trin 3: opdater Python-afhængigheder fra pyproject.toml.
+            # Kræves ved nye pakker (f.eks. httpx[http2]/h2 i v6.7.0663).
+            # sys.executable peger på Python i det aktive virtuelle miljø —
+            # sikrer at pip skriver til det rigtige sted.
+            # Ikke-fatal: pip-fejl vises som advarsel men stopper ikke opdateringen.
+            stdout_parts.append("--- pip install -e . ---")
+            try:
+                pip = subprocess.run(
+                    [sys.executable, "-m", "pip", "install", "-e", "."],
+                    cwd=str(PROJECT_ROOT / "backend"),
+                    capture_output=True, text=True, timeout=180,
+                )
+                if pip.stdout.strip():
+                    stdout_parts.append(pip.stdout.strip())
+                if pip.returncode == 0:
+                    logger.info("pip install gennemført OK")
+                else:
+                    if pip.stderr.strip():
+                        stdout_parts.append(pip.stderr.strip()[:800])
+                    stdout_parts.append(
+                        f"⚠ pip install fejlede (returnkode {pip.returncode}) — "
+                        "nye afhængigheder er muligvis ikke installeret. "
+                        "Kør manuelt på serveren: pip install -e ."
+                    )
+                    logger.warning("pip install fejlede (returnkode=%d): %s", pip.returncode, pip.stderr[:400])
+            except subprocess.TimeoutExpired:
+                stdout_parts.append("⚠ pip install timeout (180s) — kør manuelt: pip install -e .")
+                logger.warning("pip install timeout")
+            except Exception as pip_exc:  # noqa: BLE001
+                stdout_parts.append(f"⚠ pip install fejl: {pip_exc}")
+                logger.warning("pip install fejl: %s", pip_exc)
+
         return {
             "ok": ok,
             "stdout": "\n".join(stdout_parts),

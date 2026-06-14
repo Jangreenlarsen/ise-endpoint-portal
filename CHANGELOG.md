@@ -3,6 +3,19 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.7.0665] — 2026-06-14 — feat: OTA pip install — nye Python-afhængigheder installeres automatisk ved git pull
+
+`_git_pull_sync` kører nu `pip install -e .` (via `sys.executable`) som Trin 3
+umiddelbart efter vellykket `git reset --hard`. Output vises i pull-resultatet i UI'et.
+Ikke-fatal: pip-fejl vises som ⚠-advarsel men stopper ikke opdateringen.
+
+Løser behovet for manuel SSH-kørsel af `pip install httpx[http2]` ved opgradering
+til v6.7.0663+ (HTTP/2-support kræver h2-pakken).
+
+**Berørt fil:** `backend/app/services/update_service.py`
+
+---
+
 ## [6.7.0664] — 2026-06-14 — fix: release notes i portalen viste forkert sektion
 
 `_extract_release_sections_since` fik `VERSION` = "6.7" → `_parse_semver("6.7")` = `(6,7,0)` →

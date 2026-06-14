@@ -4,6 +4,21 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.7.0665] — 2026-06-14 — OTA: pip install køres automatisk ved git pull
+
+> **Build:** 0665
+
+Efter en vellykket OTA-opdatering (Settings → GitHub → Pull) kører portalen
+nu automatisk `pip install -e .` som et ekstra trin. Nye Python-afhængigheder
+fra `pyproject.toml` installeres uden manuel SSH-adgang.
+
+Output fra pip vises direkte i pull-resultatet i UI'et. Hvis pip fejler
+(f.eks. netværksproblem), vises en advarsel — men opdateringen markeres
+stadig som gennemført og portalen kan genstarte. Pip-fejl kræver i så fald
+manuel kørsel: `pip install -e .` i `backend/`-mappen på serveren.
+
+---
+
 ## [6.7.0664] — 2026-06-14 — Fix: release notes viste forkert sektion i portalen
 
 > **Build:** 0664
