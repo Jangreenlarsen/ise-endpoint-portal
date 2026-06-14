@@ -105,6 +105,54 @@ function sparkline(labels, series, height = 110) {
   return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;">${svg}</svg>`;
 }
 
+// ── System health-kort (fra diagnostics/quick) ───────────────────────────────
+
+const DIAG_ICON  = { ok: "✅", warning: "⚠️", error: "❌" };
+const DIAG_COLOR = { ok: "#16a34a", warning: "#d97706", error: "#dc2626" };
+
+function healthCard(diag, isAdmin) {
+  if (!diag || diag._error) return "";
+  const overall      = diag.overall || "ok";
+  const checks       = diag.checks  || [];
+  const overallColor = DIAG_COLOR[overall] || "#6b7280";
+  const overallIcon  = DIAG_ICON[overall]  || "?";
+  const warnCount    = checks.filter(c => c.status === "warning").length;
+  const errCount     = checks.filter(c => c.status === "error").length;
+  const overallLabel = overall === "ok"
+    ? "System OK"
+    : overall === "error"
+      ? `${errCount} fejl${warnCount ? ` · ${warnCount} advarsler` : ""}`
+      : `${warnCount} advarsel${warnCount !== 1 ? "er" : ""}`;
+
+  const rows = checks.map(c => `
+    <div style="display:flex;align-items:baseline;gap:.4rem;padding:2px 0;">
+      <span style="flex:none;font-size:.9em;">${DIAG_ICON[c.status] || "?"}</span>
+      <span style="font-size:.8em;color:#374151;flex:1;min-width:0;overflow:hidden;
+        text-overflow:ellipsis;white-space:nowrap;" title="${esc(c.message)}">${esc(c.name)}</span>
+      <span style="font-size:.75em;color:${DIAG_COLOR[c.status] || "#6b7280"};
+        flex:none;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+        title="${esc(c.message)}">${esc(c.message.split("\n")[0].slice(0, 40))}</span>
+    </div>`).join("");
+
+  const diagLink = isAdmin
+    ? `<a href="#/settings" style="display:block;text-align:right;font-size:.76rem;
+        color:#2563eb;text-decoration:none;margin-top:.5rem;padding-top:.4rem;
+        border-top:1px solid #f3f4f6;">Fuld diagnostik →</a>`
+    : "";
+
+  return `<div style="background:#fff;border-radius:12px;padding:1rem 1.25rem;
+    box-shadow:0 1px 4px rgba(0,0,0,.07);border-top:3px solid ${overallColor};">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;">
+      <h3 style="margin:0;font-size:.92rem;color:#374151;font-weight:600;">System sundhed</h3>
+      <span style="font-size:.8em;font-weight:700;color:${overallColor};">
+        ${overallIcon} ${esc(overallLabel)}
+      </span>
+    </div>
+    ${rows}
+    ${diagLink}
+  </div>`;
+}
+
 // ── Log-tabel ─────────────────────────────────────────────────────────────────
 
 const LOG_COLORS = {
@@ -149,7 +197,7 @@ function renderLogsTable(entries) {
 
 // ── Compose dashboard HTML ─────────────────────────────────────────────────────
 
-function compose(dash, trends, lifecycle, isAdmin) {
+function compose(dash, trends, lifecycle, isAdmin, diagQuick) {
   const cb      = dash.circuit_breaker || {};
   const ep      = dash.endpoints       || {};
   const cache   = dash.cache           || {};
@@ -312,7 +360,8 @@ function compose(dash, trends, lifecycle, isAdmin) {
   }
 
   // ── Samlet layout ─────────────────────────────────────────────────────────
-  const rightCol = [sysCard, lcCard].filter(Boolean).join('<div style="height:.75rem;"></div>');
+  const hCard    = healthCard(diagQuick, isAdmin);
+  const rightCol = [sysCard, lcCard, hCard].filter(Boolean).join('<div style="height:.75rem;"></div>');
 
   return `
     ${kpiRow}
@@ -420,13 +469,14 @@ export async function renderDashboard(container) {
 
   async function load() {
     try {
-      const [dash, alertsRes, trendsRes, lifecycleRes] = await Promise.all([
+      const [dash, alertsRes, trendsRes, lifecycleRes, diagQuick] = await Promise.all([
         api.getDashboard(),
         api.getAlerts().catch(() => ({ alerts: [] })),
         api.getTrends("30d").catch((e) => ({ _error: e.message })),
         isAdmin
           ? api.getStaleEndpoints(90).catch((e) => ({ _error: e.message }))
           : Promise.resolve(null),
+        api.diagnosticsQuick().catch((e) => ({ _error: e.message })),
       ]);
 
       const alertList = alertsRes?.alerts || [];
@@ -443,7 +493,7 @@ export async function renderDashboard(container) {
         alertsEl.innerHTML = "";
       }
 
-      body.innerHTML = compose(dash, trendsRes, lifecycleRes, isAdmin);
+      body.innerHTML = compose(dash, trendsRes, lifecycleRes, isAdmin, diagQuick);
       tsEl.textContent = t("dash.updated") + new Date().toLocaleTimeString();
     } catch (err) {
       body.innerHTML = `<div class="alert error">${t("dash.error").replace("{msg}", esc(err.message))}</div>`;

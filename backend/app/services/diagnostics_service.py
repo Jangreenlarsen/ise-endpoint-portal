@@ -51,6 +51,33 @@ class CheckResult:
     details: dict[str, Any] = field(default_factory=dict)
 
 
+async def run_quick() -> dict[str, Any]:
+    """Hurtig system-status til dashboard.
+
+    Udelukker live ISE-GET og git subprocess så kaldet er < 100 ms.
+    Bruges af dashboard-refresh (hvert 30s) — fuld run_all() kun on-demand.
+    """
+    checks: list[CheckResult] = list(await asyncio.gather(
+        _check_http2(),
+        _check_nmap(),
+        _check_disk_space(),
+        _check_ise_config(),
+        _check_cache_status(),
+        _check_circuit_breaker(),
+        _check_pxgrid(),
+    ))
+    statuses = [c.status for c in checks]
+    overall = "error" if "error" in statuses else "warning" if "warning" in statuses else "ok"
+    return {
+        "timestamp": time.time(),
+        "overall": overall,
+        "checks": [
+            {"id": c.id, "name": c.name, "status": c.status, "message": c.message}
+            for c in checks
+        ],
+    }
+
+
 async def run_all() -> dict[str, Any]:
     """Kør alle diagnostik-tjek parallelt og returner samlet resultat."""
     checks: list[CheckResult] = list(await asyncio.gather(

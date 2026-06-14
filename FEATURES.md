@@ -9,6 +9,8 @@ Alle nye features registreres her FØR implementering påbegyndes.
 
 ## Planlagt / Under implementering
 
+- `[done 6.9.0675] 2026-06-14 — System sundhed på dashboard` — GET /api/diagnostics/quick (alle brugere, 7 hurtige in-memory tjek, < 100ms) vises som "System sundhed"-kort på dashboardet i højre kolonne. Opdateres hvert 30s med resten af dashboard-dataene. Admin-link til fuld diagnostik. **Berørte lag:** `backend/app/services/diagnostics_service.py`, `backend/app/api/diagnostics.py`, `frontend/js/api.js`, `frontend/js/views/dashboard.js`.
+
 - `[done 6.8.0668] 2026-06-14 — Systemdiagnostik` — Admin kan klikke "Kør diagnostik" i Indstillinger → Performance og få et komplet sundhedstjek: Python-version, venv, afhængigheder, HTTP/2 (h2), nmap, diskplads, ISE-konfiguration, ISE ERS-forbindelsestest (latens), endpoint-cache, circuit breaker, pxGrid-worker og git-status. Resultater vises som en tabel med ✅/⚠️/❌ og et samlet overordnet status-banner. **Berørte lag:** `backend/app/services/diagnostics_service.py` (ny), `backend/app/api/diagnostics.py` (ny), `backend/app/main.py`, `frontend/js/api.js`, `frontend/js/views/settings.js`, `frontend/js/views/settings/section-diagnostics.js` (ny).
 
 - `[done 6.7.0665] 2026-06-14 — OTA pip install — nye Python-afhængigheder installeres automatisk` — `_git_pull_sync` kører `pip install -e .` (via `sys.executable`) som Trin 3 efter vellykket git pull. Output vises i UI. Ikke-fatal ved pip-fejl. **Berørt lag:** `backend/app/services/update_service.py`.

@@ -3,6 +3,18 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.9.0675] — 2026-06-14 — feat: System sundhed-kort på dashboard (fra diagnostics/quick)
+
+Ny `GET /api/diagnostics/quick` (alle brugere) kører 7 hurtige in-memory tjek
+(< 100 ms): HTTP/2, nmap, disk plads, ISE config, cache, circuit breaker, pxGrid.
+Udelukker live ISE-GET og git subprocess — egnet til dashboard 30s-refresh.
+
+Dashboard henter quick-status i samme Promise.all som øvrige data og viser
+et "System sundhed"-kort i højre kolonne med: farvet topbord (✅/⚠️/❌),
+kompakt status-linje pr. tjek og link til fuld diagnostik (kun admin).
+
+**Berørte filer:** `backend/app/services/diagnostics_service.py`, `backend/app/api/diagnostics.py`, `frontend/js/api.js`, `frontend/js/views/dashboard.js`, `version.json`
+
 ## [6.8.0674] — 2026-06-14 — fix: NameError 'result' i git pull (500-fejl)
 
 `_git_pull_sync()` refererede til `result["preflight_ok"]` men `result` er ikke

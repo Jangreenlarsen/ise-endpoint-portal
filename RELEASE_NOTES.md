@@ -4,6 +4,16 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.9.0675] — 2026-06-14 — System sundhed på dashboard
+
+> **Build:** 0675
+
+Dashboardet viser nu et **System sundhed**-kort i højre kolonne — opdateres automatisk hvert 30 sekund.
+
+Kortet viser status for 7 hurtige tjek: HTTP/2, nmap, disk plads, ISE konfiguration, endpoint cache, circuit breaker og pxGrid. Den farvede topkant signalerer det samlede niveau: grøn (alt OK), orange (advarsler) eller rød (fejl).
+
+Admin-brugere har et "Fuld diagnostik →"-link til den detaljerede visning i Indstillinger.
+
 ## [6.8.0669] — 2026-06-14 — OTA-opdatering: pre-flight tjek + auto-genstart
 
 > **Build:** 0669
