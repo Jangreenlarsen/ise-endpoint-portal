@@ -3,6 +3,19 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.9.0676] — 2026-06-14 — fix: Dashboard layout omstruktureret
+
+Ny layout:
+- Øverst: KPI-kort (endpoints, MACs, lifecycle, hit rate, circuit breaker)
+- Midterste række: Trend-chart (flex:2) + System sundhed-kort (flex:1) side om side
+- Bundlinje: System stats | Lifecycle | Audit events i tre kolonner
+- Log-sektion fuldt bredde nederst
+
+Tidligere: health-kortet var klemt i en 250px smal højre kolonne sammen med
+sysCard og lcCard. Audit events hang isoleret under alt andet.
+
+**Berørte filer:** `frontend/js/views/dashboard.js`, `version.json`
+
 ## [6.9.0675] — 2026-06-14 — feat: System sundhed-kort på dashboard (fra diagnostics/quick)
 
 Ny `GET /api/diagnostics/quick` (alle brugere) kører 7 hurtige in-memory tjek

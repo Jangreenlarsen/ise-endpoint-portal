@@ -333,7 +333,7 @@ function compose(dash, trends, lifecycle, isAdmin, diagQuick) {
   let eventsCard = "";
   if (events.length) {
     eventsCard = `<div style="background:#fff;border-radius:12px;padding:1rem 1.25rem;
-      box-shadow:0 1px 4px rgba(0,0,0,.07);margin-top:.75rem;">
+      box-shadow:0 1px 4px rgba(0,0,0,.07);">
       <h3 style="margin:0 0 .75rem;font-size:.92rem;color:#374151;font-weight:600;">${t("dash.events_title")}</h3>
       <div style="overflow-x:auto;">
         <table style="width:100%;border-collapse:collapse;font-size:.85em;">
@@ -360,16 +360,23 @@ function compose(dash, trends, lifecycle, isAdmin, diagQuick) {
   }
 
   // ── Samlet layout ─────────────────────────────────────────────────────────
-  const hCard    = healthCard(diagQuick, isAdmin);
-  const rightCol = [sysCard, lcCard, hCard].filter(Boolean).join('<div style="height:.75rem;"></div>');
+  const hCard = healthCard(diagQuick, isAdmin);
+
+  // Bundlinje: system stats + lifecycle + audit events side om side
+  const bottomItems = [sysCard, lcCard, eventsCard].filter(Boolean);
+  const bottomRow = bottomItems.length
+    ? `<div style="display:flex;gap:.75rem;align-items:flex-start;flex-wrap:wrap;margin-top:.75rem;">
+        ${bottomItems.map(c => `<div style="flex:1;min-width:240px;">${c}</div>`).join("")}
+      </div>`
+    : "";
 
   return `
     ${kpiRow}
-    <div style="display:flex;gap:.75rem;align-items:flex-start;flex-wrap:wrap;margin-bottom:.75rem;">
-      <div style="flex:1;min-width:300px;">${trendCard}</div>
-      <div style="flex:0 0 250px;min-width:220px;display:flex;flex-direction:column;gap:.75rem;">${rightCol}</div>
+    <div style="display:flex;gap:.75rem;align-items:flex-start;flex-wrap:wrap;">
+      <div style="flex:2;min-width:320px;">${trendCard}</div>
+      ${hCard ? `<div style="flex:1;min-width:270px;">${hCard}</div>` : ""}
     </div>
-    ${eventsCard}
+    ${bottomRow}
   `;
 }
 
