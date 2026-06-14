@@ -3,6 +3,18 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.7.0661] — 2026-06-14 — fix: nmap markeret eksperimentel, OS-preset fjernet, server-disclaimer tilføjet
+
+nmap-sektionen i Endpoint details / Session-tab og Browse-tabel action-bar
+er opdateret: "Eksperimentel"-badge, forklaring om at scanningen køres fra
+portalserveren (ikke ISE), og "OS + service"-presetten er fjernet fordi
+nmap -O kræver root-rettigheder som portal-processen ikke har.
+
+**Berørte filer:** `frontend/js/views/browse-detail.js`, `frontend/js/views/browse.js`,
+`backend/app/services/nmap_service.py`
+
+---
+
 ## [6.7.0660] — 2026-06-14 — fix: backend startup crash — nmap.py forkert User-import
 
 `nmap.py` importerede `from app.core.users import User` som ikke eksisterer.

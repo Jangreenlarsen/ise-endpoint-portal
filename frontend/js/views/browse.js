@@ -469,14 +469,19 @@ export async function renderBrowse(container) {
 
     <div id="nmap-overlay" class="modal-overlay hidden">
       <div class="modal" style="max-width:640px;">
-        <h3>nmap-scanning</h3>
+        <h3>nmap-scanning
+          <span style="font-size:.68em;background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:10px;font-weight:normal;vertical-align:middle;">Eksperimentel</span>
+        </h3>
+        <p style="font-size:.82em;color:#6b7280;margin:.15rem 0 .5rem;">
+          Scanningen køres fra <strong>portalserveren</strong> — ikke fra ISE.
+          Resultatet afspejler porte og services set fra serverens netværksplacering.
+        </p>
         <p class="hint" id="nmap-overlay-ip" style="font-family:monospace;"></p>
         <div class="modal-body">
           <div style="display:flex;flex-wrap:wrap;gap:.35rem;margin-bottom:.5rem;">
             <button class="nmap-ol-preset secondary small" data-preset="ping">Ping</button>
             <button class="nmap-ol-preset secondary small" data-preset="top1000">Top-1000 porte</button>
             <button class="nmap-ol-preset secondary small" data-preset="service">Service discovery</button>
-            <button class="nmap-ol-preset secondary small" data-preset="os">OS + service</button>
             <button class="nmap-ol-preset secondary small" data-preset="custom">Brugerdefineret…</button>
           </div>
           <div id="nmap-ol-custom-row" style="display:none;margin-bottom:.5rem;">

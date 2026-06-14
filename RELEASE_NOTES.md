@@ -4,6 +4,20 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.7.0661] — 2026-06-14 — Fix: nmap markeret eksperimentel + OS-scan fjernet
+
+> **Build:** 0661
+
+nmap-scanning er nu tydeligt markeret som **eksperimentel** med et amber badge.
+En forklaringstekst under overskriften gør det klart at scanningen køres fra
+**portalserveren** — ikke fra ISE — og at resultatet afspejler netværksadgang
+set fra serverens placering.
+
+"OS + service"-presetten (`nmap -O`) er fjernet da OS-fingerprinting kræver
+root-rettigheder som portal-processen (`hypervision`) ikke har.
+
+---
+
 ## [6.7.0660] — 2026-06-14 — Fix: backend startup crash (nmap-modul)
 
 > **Build:** 0660

@@ -492,12 +492,18 @@ export function initDetail(container, state, api, cb) {
     if (scanIp) {
       html += `
         <hr style="border:none;border-top:1px solid #e5e7eb;margin:.75rem 0;">
-        <h4 style="margin:.25rem 0 .5rem;font-size:.9em;color:#374151;">nmap-scanning mod ${esc(scanIp)}</h4>
+        <h4 style="margin:.25rem 0 .25rem;font-size:.9em;color:#374151;">
+          nmap-scanning mod ${esc(scanIp)}
+          <span style="font-size:.72em;background:#fef3c7;color:#92400e;padding:2px 7px;border-radius:10px;font-weight:normal;vertical-align:middle;">Eksperimentel</span>
+        </h4>
+        <p style="font-size:.78em;color:#6b7280;margin:0 0 .5rem;">
+          Scanningen køres fra <strong>portalserveren</strong> — ikke fra ISE.
+          Resultatet afspejler porte og services set fra serverens netværksplacering.
+        </p>
         <div style="display:flex;flex-wrap:wrap;gap:.35rem;margin-bottom:.5rem;">
           <button class="nmap-preset secondary small" data-preset="ping">Ping</button>
           <button class="nmap-preset secondary small" data-preset="top1000">Top-1000 porte</button>
           <button class="nmap-preset secondary small" data-preset="service">Service discovery</button>
-          <button class="nmap-preset secondary small" data-preset="os">OS + service</button>
           <button class="nmap-preset secondary small" data-preset="custom">Brugerdefineret…</button>
         </div>
         <div id="d-nmap-custom-row" style="display:none;margin-bottom:.5rem;">

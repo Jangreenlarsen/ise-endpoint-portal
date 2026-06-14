@@ -18,7 +18,7 @@ PRESETS: dict[str, list[str]] = {
     "ping":    ["-sn", "-T4"],
     "top1000": ["-T4", "--top-ports", "1000"],
     "service": ["-sV", "-T4"],
-    "os":      ["-sV", "-O", "-T4"],
+    # "os" fjernet — kræver root-rettigheder (-O), portal kører som uprivilegeret bruger
 }
 
 
