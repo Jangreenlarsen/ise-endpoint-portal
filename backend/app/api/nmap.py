@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from app.api.deps import require_register_lookup
-from app.core.users import User
+from app.schemas.user import User
 from app.services import nmap_service
 
 router = APIRouter(prefix="/nmap", tags=["nmap"])

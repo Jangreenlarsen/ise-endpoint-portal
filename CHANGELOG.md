@@ -3,6 +3,15 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.7.0660] — 2026-06-14 — fix: backend startup crash — nmap.py forkert User-import
+
+`nmap.py` importerede `from app.core.users import User` som ikke eksisterer.
+Korrekt modul er `app.schemas.user`.
+
+**Berørt fil:** `backend/app/api/nmap.py`
+
+---
+
 ## [6.7.0659] — 2026-06-14 — fix: OTA update-check sammenligner nu fuld version-tuple, ikke kun build
 
 `update_available` sammenlignede kun build-numre. Med nyt versionsformat kan

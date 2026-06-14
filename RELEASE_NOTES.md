@@ -4,6 +4,15 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.7.0660] — 2026-06-14 — Fix: backend startup crash (nmap-modul)
+
+> **Build:** 0660
+
+`nmap.py` importerede `from app.core.users import User` — modulet eksisterer
+ikke. Backend crashede ved startup. Rettet til `from app.schemas.user import User`.
+
+---
+
 ## [6.7.0659] — 2026-06-14 — Fix: OTA update-check + ny versionsregel
 
 > **Build:** 0659

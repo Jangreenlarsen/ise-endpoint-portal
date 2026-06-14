@@ -4,6 +4,13 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 6.7.0660] 2026-06-14 — Backend startup crash: nmap.py importerer ikke-eksisterende app.core.users
+
+- **Symptom:** Backend crasher ved startup med `ModuleNotFoundError: No module named 'app.core.users'`.
+- **Root cause:** `nmap.py` brugte `from app.core.users import User` — modulet hedder `app.schemas.user`.
+- **Fix:** Ændret import til `from app.schemas.user import User`.
+- **Berørt fil:** `backend/app/api/nmap.py`
+
 ## [FIXED 6.7.0659] 2026-06-14 — OTA update-check: ny version med samme build registreres ikke som opdatering
 
 - **Symptom:** Portalen siger "ingen opdatering" selvom `6.7 build 0658` er nyere end `6.5.0 build 0658` (og lignende). `_parse_semver("6.7")` returnerer `(0,0,0)` fordi regex kræver 3 dele. `update_available` sammenligner KUN build-numre — med det nye versionsformat kan MINOR stige uden at build ændres (features tæller ikke som build-bump), så `658 > 658 = False` selv om MINOR er højere.
