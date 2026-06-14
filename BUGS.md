@@ -4,6 +4,13 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 6.7.0662] 2026-06-14 — Browse: bruger-redigerede inputfelter (description m.fl.) nulstilles ved pxGrid-opdatering
+
+- **Symptom:** Hvis en pxGrid live-event (upsert/remove/endpoint_changed) trigger `applyFilter()` → `renderRows()` mens en bruger er i gang med at redigere felter i en "dirty" række (description, group, type, osv.), erstattes `tbody.innerHTML` komplet — og brugerens urelaterede ændringer slettes. Rækken er stadig markeret dirty, men indeholder nu de originale værdier. Gemmer brugeren derefter, sendes de originale (ikke de redigerede) værdier til ISE. Dataset-attributter (`beStaticGroup`, `bePskKey`, `beActiveStatus`) gik tilsvarende tabt.
+- **Root cause:** `renderRows()` i `browse-table.js` bruger `tbody.innerHTML = rows.map(...).join("")` som erstatter hele DOM inkl. alle input-elementers `.value`. Der var ingen beskyttelse af dirty-rækkernes nuværende bruger-redigerede indhold.
+- **Fix:** `renderRows()` tager nu et snapshot af alle dirty-rækkernes inputværdier og dataset-attributter FØR `innerHTML`-replace, og gendanner dem umiddelbart efter rebuild.
+- **Berørt fil:** `frontend/js/views/browse-table.js`
+
 ## [FIXED 6.7.0660] 2026-06-14 — Backend startup crash: nmap.py importerer ikke-eksisterende app.core.users
 
 - **Symptom:** Backend crasher ved startup med `ModuleNotFoundError: No module named 'app.core.users'`.

@@ -243,6 +243,32 @@ export function initTable(container, state, api, cb) {
         .filter(Boolean)
     );
 
+    // Snapshot bruger-redigerede inputværdier for dirty rækker FØR tbody-rebuild.
+    // tbody.innerHTML erstatter alt DOM, så brugerens ændringer i inputs/selects
+    // ville ellers gå tabt ved pxGrid-opdateringer eller andre re-renders.
+    const dirtySnap = new Map();
+    for (const id of state.dirtyIds) {
+      const tr = tbody.querySelector(`tr[data-id="${CSS.escape(id)}"]`);
+      if (!tr) continue;
+      dirtySnap.set(id, {
+        description:   tr.querySelector(".desc-input")?.value,
+        groupId:       tr.querySelector(".grp-select")?.value,
+        type:          tr.querySelector(".ca-type")?.value,
+        owner:         tr.querySelector(".ca-owner")?.value,
+        lokation:      tr.querySelector(".ca-lokation")?.value,
+        authzVlan:     tr.querySelector(".ca-authzvlan")?.value,
+        authzAcl:      tr.querySelector(".ca-authzacl")?.value,
+        platformType:  tr.querySelector(".ca-platformtype")?.value,
+        pskMode:       tr.querySelector(".psk-mode-cb")?.checked,
+        registretBy:   tr.querySelector(".ca-registretby")?.value,
+        experyDate:    tr.querySelector(".ca-experydate")?.value,
+        accessExpire:  tr.querySelector(".ca-accessexpire")?.value,
+        beStaticGroup: tr.dataset.beStaticGroup,
+        bePskKey:      tr.dataset.bePskKey,
+        beActiveStatus:tr.dataset.beActiveStatus,
+      });
+    }
+
     const cols = getColumns().length + 2;
     if (!rows.length) {
       tbody.innerHTML = `<tr><td colspan="${cols}" class="empty">${t("browse.no_results")}</td></tr>`;
@@ -287,6 +313,29 @@ export function initTable(container, state, api, cb) {
         ${getOrderedColumns().map(c => cells[c.key] || "").join("")}
       </tr>`;
     }).join("");
+
+    // Gendan bruger-redigerede værdier for dirty rækker (tabt ved innerHTML-replace).
+    for (const [id, snap] of dirtySnap) {
+      const tr = tbody.querySelector(`tr[data-id="${CSS.escape(id)}"]`);
+      if (!tr) continue;
+      const set = (sel, val) => { if (val !== undefined && val !== null) { const el = tr.querySelector(sel); if (el) el.value = val; } };
+      set(".desc-input",      snap.description);
+      set(".grp-select",      snap.groupId);
+      set(".ca-type",         snap.type);
+      set(".ca-owner",        snap.owner);
+      set(".ca-lokation",     snap.lokation);
+      set(".ca-authzvlan",    snap.authzVlan);
+      set(".ca-authzacl",     snap.authzAcl);
+      set(".ca-platformtype", snap.platformType);
+      set(".ca-registretby",  snap.registretBy);
+      set(".ca-experydate",   snap.experyDate);
+      set(".ca-accessexpire", snap.accessExpire);
+      if (snap.pskMode !== undefined) { const cb = tr.querySelector(".psk-mode-cb"); if (cb) cb.checked = snap.pskMode; }
+      if (snap.beStaticGroup !== undefined) tr.dataset.beStaticGroup = snap.beStaticGroup;
+      if (snap.bePskKey !== undefined) tr.dataset.bePskKey = snap.bePskKey;
+      if (snap.beActiveStatus !== undefined) tr.dataset.beActiveStatus = snap.beActiveStatus;
+    }
+
     updateSelectionUI();
     updateDirtyUI();
     applyColVis();

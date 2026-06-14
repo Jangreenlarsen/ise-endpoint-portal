@@ -3,6 +3,16 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.7.0662] — 2026-06-14 — fix: dirty-rækkernes inputværdier bevares nu ved renderRows re-render
+
+`renderRows()` brugte `tbody.innerHTML = ...` som komplet erstattede DOM — og dermed
+slettede brugerens urelaterede ændringer (description, group, type, osv.) i dirty rækker
+når pxGrid-events triggede re-render. Snapshot + restore-mekanisme tilføjet.
+
+**Berørt fil:** `frontend/js/views/browse-table.js`
+
+---
+
 ## [6.7.0661] — 2026-06-14 — fix: nmap markeret eksperimentel, OS-preset fjernet, server-disclaimer tilføjet
 
 nmap-sektionen i Endpoint details / Session-tab og Browse-tabel action-bar

@@ -4,6 +4,21 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.7.0662] — 2026-06-14 — Fix: bruger-edits bevares ved pxGrid live-opdatering
+
+> **Build:** 0662
+
+Redigerede felter i Browse/Edit (description, group, type, owner m.fl.) gik tabt
+når en pxGrid live-event triggede en re-render mens en bruger var i gang med at
+redigere en endpoint. Rækken forblev "dirty" men indeholdt de originale ISE-værdier
+— og et efterfølgende gem ville sende de forkerte værdier til ISE.
+
+`renderRows()` snapshotter nu alle dirty-rækkernes inputværdier og dataset-attributter
+(`beStaticGroup`, `bePskKey`, `beActiveStatus`) FØR `tbody.innerHTML`-rebuild og
+gendanner dem umiddelbart efter.
+
+---
+
 ## [6.7.0661] — 2026-06-14 — Fix: nmap markeret eksperimentel + OS-scan fjernet
 
 > **Build:** 0661
