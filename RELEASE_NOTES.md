@@ -4,6 +4,22 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.12.0683] — 2026-06-14 — CoA ved guest-udløb
+
+> **Build:** 0683
+
+Portalen sender nu automatisk en CoA (Change of Authorization) til gæstens enhed når guest-adgangen udløber. Gæsten omdirigeres straks til registreringsportalen — ingen manuel indgriben nødvendig.
+
+**Opsætning:** Settings → Guest Registration → Automatisk udløb → aktiver "Send CoA ved udløb".
+
+**CoA-type:**
+- **Re-Auth** (anbefalet): Gæsten omdirigeres til portalen uden sessionsafbrydelse.
+- **Disconnect**: Sessionen afbrydes; gæsten skal forbinde igen.
+
+**Krav:** ISE-bruger skal have MnT Admin-rolle. `coa_psn_name` skal være sat i ISE-indstillinger.
+
+---
+
 ## [6.11.0681] — 2026-06-14 — CLI Recovery Tool
 
 > **Build:** 0681

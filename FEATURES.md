@@ -9,6 +9,10 @@ Alle nye features registreres her FØR implementering påbegyndes.
 
 ## Planlagt / Under implementering
 
+- `[done 6.12.0683] 2026-06-14 — CoA ved guest-udløb` — Ny setting i Guest Registration: "Send CoA ved udløb". Når guest-expiry-workeren registrerer et udløbet guest-endpoint, sendes der nu automatisk en CoA (Re-Auth eller Disconnect) til gæstens MAC via ISE MnT API, så gæsten omdirigeres til registreringsportalen i realtid. Valg af CoA-type (reauth/disconnect) i UI. **Berørte lag:** `backend/app/core/config.py`, `backend/app/schemas/settings.py`, `backend/app/services/guest_expiry_worker.py`, `frontend/js/views/settings.js`, `frontend/js/views/settings/section-update.js`, `frontend/js/i18n.js`.
+
+- `[done 6.11.0682] 2026-06-14 — Decommission VLAN/DACL-toggle` — Ny setting `decomm_set_authz` (bool). Slås fra → kun HypervisionStatus/ActiveStatus/Hidden sættes ved decommission; AuthzVlan og AuthzACL røres ikke.
+
 - `[done 6.11.0681] 2026-06-14 — CLI Recovery Tool` — Standalone Python-script (`backend/recover.py`) til admin/adgangskode-gendannelse via SSH. Interaktiv menu + CLI-flag. Kræver ingen kørende server og ingen ekstra afhængigheder. Funktioner: vis alle brugere, nulstil adgangskode (med session-invalidering), lås konto op (rydder lockout.db), opret nødadmin, skift rolle, aktivér/deaktivér konto, test adgangskode. **Berørt lag:** `backend/recover.py` (ny).
 
 - `[done 6.11.0680] 2026-06-14 — Dashboard: CPU/RAM/disk ressource-bars` — Dashboardet viser nu CPU-%, RAM-% og disk-% som farvede progress-bars (grøn/orange/rød) i system-kortet. Kræver psutil (tilføjet til dependencies). Hentes hvert 30s via ny `/api/sysinfo`-endpoint. Graceful fallback: viser kun disk-% hvis psutil ikke er installeret. **Berørte lag:** `backend/app/services/sysinfo_service.py` (ny), `backend/app/api/sysinfo.py` (ny), `backend/app/main.py`, `backend/pyproject.toml`, `frontend/js/api.js`, `frontend/js/views/dashboard.js`.

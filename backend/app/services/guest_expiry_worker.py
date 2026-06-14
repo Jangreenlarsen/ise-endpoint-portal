@@ -93,11 +93,28 @@ class GuestExpiryWorker:
                     "guest expiry: GuestAccessExpire=true sat for mac=%s id=%s (udløb=%s)",
                     mac, ep_id, exp,
                 )
+                if getattr(config.settings, "selfregister_expiry_coa_enabled", False) and mac:
+                    await self._send_coa(mac)
             except Exception as exc:  # noqa: BLE001
                 logger.warning(
                     "guest expiry: fejlede opdatering af %s (mac=%s): %s",
                     ep_id, mac, exc,
                 )
+
+
+    async def _send_coa(self, mac: str) -> None:
+        from app.ise import coa as _coa  # lazy import — avoids circular deps at module load
+
+        coa_type = getattr(config.settings, "selfregister_expiry_coa_type", "reauth")
+        try:
+            if coa_type == "disconnect":
+                ok, msg = await _coa.disconnect(mac)
+            else:
+                ok, msg = await _coa.reauth(mac)
+            level = logging.INFO if ok else logging.WARNING
+            logger.log(level, "guest expiry: CoA %s mac=%s → %s: %s", coa_type, mac, "ok" if ok else "fejl", msg)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("guest expiry: CoA %s mac=%s fejlede: %s", coa_type, mac, exc)
 
 
 _worker: GuestExpiryWorker | None = None

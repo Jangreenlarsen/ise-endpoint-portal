@@ -3,6 +3,20 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.12.0683] — 2026-06-14 — feat: CoA ved guest-udløb
+
+Når guest-expiry-workeren registrerer et udløbet guest-endpoint, kan portalen nu automatisk sende en CoA (Change of Authorization) til gæstens MAC-adresse via ISE MnT API.
+
+- **Re-Auth (anbefalet):** Gæsten omdirigeres til registreringsportalen uden at miste netværksforbindelsen.
+- **Disconnect:** Gæstens session afbrydes; gæsten skal forbinde igen og omdirigeres derefter til portalen.
+
+Ny togglecheckbox "Send CoA ved udløb" + CoA-type-select i Settings → Guest Registration → Automatisk udløb.
+Kræver at ISE-brugeren har MnT Admin-rolle og at `coa_psn_name` er konfigureret.
+
+**Berørte filer:** `backend/app/core/config.py`, `backend/app/schemas/settings.py`, `backend/app/services/guest_expiry_worker.py`, `frontend/js/views/settings.js`, `frontend/js/views/settings/section-update.js`, `frontend/js/i18n.js`, `version.json`
+
+---
+
 ## [6.11.0682] — 2026-06-14 — feat: Decommission VLAN/DACL-ændring kan slås fra
 
 Ny setting `decomm_set_authz` (bool, default True) under Settings → Advanced → Standard dekommissioneringsværdier.

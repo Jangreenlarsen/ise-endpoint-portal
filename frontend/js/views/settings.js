@@ -1003,6 +1003,23 @@ export async function renderSettings(container) {
             <input type="number" id="guest-reg-expiry-check-interval" min="0" max="86400" step="10" style="max-width:8rem;" />
             <div class="hint" id="guest-reg-expiry-check-interval-hint"></div>
           </div>
+          <div class="field">
+            <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;">
+              <input type="checkbox" id="guest-reg-expiry-coa-enabled">
+              <span id="guest-reg-expiry-coa-enabled-lbl" style="font-weight:500;"></span>
+            </label>
+            <div class="hint" id="guest-reg-expiry-coa-enabled-hint"></div>
+          </div>
+          <div id="guest-reg-expiry-coa-options" style="display:none;padding-left:1.2rem;border-left:2px solid var(--border);margin-bottom:0.5rem;">
+            <div class="field">
+              <label for="guest-reg-expiry-coa-type" id="guest-reg-expiry-coa-type-lbl"></label>
+              <select id="guest-reg-expiry-coa-type" style="max-width:16rem;">
+                <option value="reauth" id="guest-reg-expiry-coa-opt-reauth"></option>
+                <option value="disconnect" id="guest-reg-expiry-coa-opt-disconnect"></option>
+              </select>
+              <div class="hint" id="guest-reg-expiry-coa-type-hint"></div>
+            </div>
+          </div>
         </div>
         <div class="field">
           <label for="guest-reg-redirect" id="guest-reg-redirect-lbl"></label>

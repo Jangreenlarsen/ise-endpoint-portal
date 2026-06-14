@@ -48,6 +48,8 @@ class BackendSettingsUpdate(BaseModel):
     selfregister_expiry_days: int = 30
     selfregister_expiry_date: str = ""
     selfregister_expiry_time: str = "23:59"
+    selfregister_expiry_coa_enabled: bool = False
+    selfregister_expiry_coa_type: str = "reauth"
     guest_expiry_check_interval_seconds: float = 60.0
 
 
@@ -89,6 +91,8 @@ class BackendSettingsResponse(BaseModel):
     selfregister_expiry_days: int = 30
     selfregister_expiry_date: str = ""
     selfregister_expiry_time: str = "23:59"
+    selfregister_expiry_coa_enabled: bool = False
+    selfregister_expiry_coa_type: str = "reauth"
     guest_expiry_check_interval_seconds: float = 60.0
 
 

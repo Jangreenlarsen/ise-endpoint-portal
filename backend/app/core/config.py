@@ -403,6 +403,14 @@ class Settings(BaseSettings):
     selfregister_expiry_days: int = Field(default=30, description="Antal dage gæsteadgang er gyldig (bruges ved mode='period').")
     selfregister_expiry_date: str = Field(default="", description="Bestemt udløbsdato YYYY-MM-DD (bruges ved mode='date').")
     selfregister_expiry_time: str = Field(default="23:59", description="Klokkeslæt for udløb HH:MM.")
+    selfregister_expiry_coa_enabled: bool = Field(
+        default=False,
+        description="Send CoA (Re-Auth/Disconnect) til gæstens MAC-adresse når udløbstidspunktet er nået, så gæsten omdirigeres til registreringsportalen automatisk.",
+    )
+    selfregister_expiry_coa_type: str = Field(
+        default="reauth",
+        description="CoA-type ved udløb: 'reauth' (re-autoriser — gæsten omdirigeres til portal) eller 'disconnect' (afbryd session — gæsten skal forbinde igen).",
+    )
 
     guest_expiry_check_interval_seconds: float = Field(
         default=60.0,

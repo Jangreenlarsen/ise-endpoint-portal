@@ -654,6 +654,9 @@ export async function initGuestRegSection(container) {
   const expiryHourSel     = card.querySelector("#guest-reg-expiry-hour");
   const expiryMinSel      = card.querySelector("#guest-reg-expiry-min");
   const expiryCheckIntEl  = card.querySelector("#guest-reg-expiry-check-interval");
+  const expiryCoaCb       = card.querySelector("#guest-reg-expiry-coa-enabled");
+  const expiryCoaOptions  = card.querySelector("#guest-reg-expiry-coa-options");
+  const expiryCoaTypeSel  = card.querySelector("#guest-reg-expiry-coa-type");
 
   // Populate 24h time selects
   if (expiryHourSel && !expiryHourSel.options.length) {
@@ -716,6 +719,18 @@ export async function initGuestRegSection(container) {
   if (expiryCheckIntLbl) expiryCheckIntLbl.textContent = t("settings.guest_reg_expiry_check_interval_lbl");
   const expiryCheckIntHint = card.querySelector("#guest-reg-expiry-check-interval-hint");
   if (expiryCheckIntHint) expiryCheckIntHint.textContent = t("settings.guest_reg_expiry_check_interval_hint");
+  const expiryCoaEnabledLbl = card.querySelector("#guest-reg-expiry-coa-enabled-lbl");
+  if (expiryCoaEnabledLbl) expiryCoaEnabledLbl.textContent = t("settings.guest_reg_expiry_coa_enabled_lbl");
+  const expiryCoaEnabledHint = card.querySelector("#guest-reg-expiry-coa-enabled-hint");
+  if (expiryCoaEnabledHint) expiryCoaEnabledHint.textContent = t("settings.guest_reg_expiry_coa_enabled_hint");
+  const expiryCoaTypeLbl = card.querySelector("#guest-reg-expiry-coa-type-lbl");
+  if (expiryCoaTypeLbl) expiryCoaTypeLbl.textContent = t("settings.guest_reg_expiry_coa_type_lbl");
+  const expiryCoaTypeHint = card.querySelector("#guest-reg-expiry-coa-type-hint");
+  if (expiryCoaTypeHint) expiryCoaTypeHint.textContent = t("settings.guest_reg_expiry_coa_type_hint");
+  const expiryCoaOptReauth = card.querySelector("#guest-reg-expiry-coa-opt-reauth");
+  if (expiryCoaOptReauth) expiryCoaOptReauth.textContent = t("settings.guest_reg_expiry_coa_opt_reauth");
+  const expiryCoaOptDisconnect = card.querySelector("#guest-reg-expiry-coa-opt-disconnect");
+  if (expiryCoaOptDisconnect) expiryCoaOptDisconnect.textContent = t("settings.guest_reg_expiry_coa_opt_disconnect");
   const groupLbl = card.querySelector("#guest-reg-group-lbl");
   if (groupLbl) groupLbl.textContent = t("settings.guest_reg_group_lbl");
   const groupHint = card.querySelector("#guest-reg-group-hint");
@@ -740,7 +755,13 @@ export async function initGuestRegSection(container) {
     }
   }
 
+  function _syncCoaOptions() {
+    if (!expiryCoaOptions) return;
+    expiryCoaOptions.style.display = expiryCoaCb?.checked ? "" : "none";
+  }
+
   if (expiryCb)      expiryCb.addEventListener("change", _updateExpiryVisibility);
+  if (expiryCoaCb)   expiryCoaCb.addEventListener("change", _syncCoaOptions);
   if (expiryModeSel) expiryModeSel.addEventListener("change", _updateExpiryVisibility);
 
   // Vis URL
@@ -783,7 +804,10 @@ export async function initGuestRegSection(container) {
     if (expiryHourSel) expiryHourSel.value = tHH || "23";
     if (expiryMinSel)  expiryMinSel.value  = tMM || "59";
     if (expiryCheckIntEl) expiryCheckIntEl.value = s.guest_expiry_check_interval_seconds ?? 60;
+    if (expiryCoaCb) expiryCoaCb.checked = !!s.selfregister_expiry_coa_enabled;
+    if (expiryCoaTypeSel) expiryCoaTypeSel.value = s.selfregister_expiry_coa_type || "reauth";
     _updateExpiryVisibility();
+    _syncCoaOptions();
     if (redirectEl) redirectEl.value = s.selfregister_redirect_url || "";
     if (termsEl) termsEl.value = s.selfregister_terms || "";
 
@@ -831,6 +855,8 @@ export async function initGuestRegSection(container) {
           selfregister_expiry_date:            expiryDateEl?.value || "",
           selfregister_expiry_time:            `${expiryHH}:${expiryMM}`,
           guest_expiry_check_interval_seconds: parseFloat(expiryCheckIntEl?.value) || 60,
+          selfregister_expiry_coa_enabled:     expiryCoaCb?.checked ?? false,
+          selfregister_expiry_coa_type:        expiryCoaTypeSel?.value || "reauth",
           selfregister_authz_vlan:             vlanSel?.value || "",
           selfregister_authz_acl:              aclSel?.value || "",
           selfregister_redirect_url:           redirectEl?.value?.trim() || "",
