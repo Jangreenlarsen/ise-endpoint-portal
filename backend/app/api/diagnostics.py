@@ -2,7 +2,7 @@
 # Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 from fastapi import APIRouter, Depends
 
-from app.core.auth import require_admin
+from app.api.deps import require_admin
 from app.services import diagnostics_service
 
 router = APIRouter(prefix="/diagnostics", tags=["diagnostics"])

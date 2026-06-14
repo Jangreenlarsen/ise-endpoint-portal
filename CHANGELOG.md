@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.8.0671] — 2026-06-14 — fix: ImportError i diagnostics.py (require_admin forkert sti)
+
+`from app.core.auth import require_admin` → `from app.api.deps import require_admin`.
+`require_admin` findes i `app.api.deps`, ikke `app.core.auth`. Fejlen forhindrede portalen i at starte.
+
+**Berørte filer:** `backend/app/api/diagnostics.py`, `version.json`
+
 ## [6.8.0670] — 2026-06-14 — fix: Service-fil og venv-sti korrektioner (server starter ikke efter manuel opdatering)
 
 **Root causes:**
