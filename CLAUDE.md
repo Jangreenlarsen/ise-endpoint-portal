@@ -5,16 +5,14 @@ Dette er Claudes system-prompt for dette projekt. Den læses altid først og fø
 ## Faste regler
 
 1. **Versionering (UFRAVIGELIG)**: Projektet versioneres via [version.json](version.json). Denne fil er den **eneste** kilde til versionsnumre — alle andre steder (backend, frontend, changelog) læser herfra.
-   - Normalt format: `{ "version": "MAJOR.MINOR.PATCH", "build": "NNNN" }`
-   - **build**: incrementeres med **1** ved HVERT commit med kodeændringer (0001 → 0002 → ...).
-   - **PATCH**: incrementeres ved bug fixes (afsluttede). Build nulstilles IKKE.
-   - **MINOR**: incrementeres ved nye features. PATCH sættes til 0.
-   - **MAJOR**: incrementeres ved breaking changes eller store milepæle. MINOR og PATCH sættes til 0.
-   - **Debugging-format (4 decimaler)**: Under aktiv fejlsøgning bruges `MAJOR.MINOR.PATCH.D` hvor D starter på 1 og incrementeres for hvert debug-commit: `v5.6.25.1`, `v5.6.25.2`, osv. Commit-beskeder præfikses `vX.X.X.D-bNNNN: debug: beskrivelse`.
-   - **Afslutning af debugging**: Når Jan bekræfter *"nu virker det som det skal"*, incrementeres PATCH og D nulstilles: `v5.6.25.3` → `v5.6.26.0`. Commit markeres som `fix:` og afslutter debug-serien.
+   - Format i filen: `{ "version": "MAJOR.MINOR", "build": "ZZZZ" }` — den kombinerede visningsversion er `MAJOR.MINOR.ZZZZ` (fx `6.7.0659`).
+   - **build** (ZZZZ): 4-cifret, monotont stigende. Incrementeres **ved ETHVERT commit der ændrer kode** (bugfix OG feature). Nulstilles ALDRIG — heller ikke ved MINOR/MAJOR bump.
+   - **MINOR**: incrementeres ved nye features. `build` incrementeres også.
+   - **MAJOR**: incrementeres ved breaking changes eller store milepæle. MINOR sættes til 0. `build` incrementeres også.
    - **Kun-dokumentations-commits** (RELEASE_NOTES.md, CHANGELOG.md, BUGS.md, FEATURES.md uden kodeændringer): bump IKKE version — lav commit uden versionsbump.
-   - **RELEASE_NOTES.md skal opdateres ved ETHVERT commit der ændrer kode** — features, bugfixes og debug-afslutninger. Dokumentations-commits er undtaget. Glem aldrig dette.
-   - Changelog-entries tagges med versionsnummer: `## [1.0.0 build 0001] — 2026-04-16 — beskrivelse`.
+   - **RELEASE_NOTES.md skal opdateres ved ETHVERT commit der ændrer kode** — features og bugfixes. Dokumentations-commits er undtaget. Glem aldrig dette.
+   - Changelog-entries tagges med kombineret versionsnummer: `## [6.7.0659] — 2026-06-14 — beskrivelse`.
+   - Commit-besked format: `vX.Y.ZZZZ: fix: beskrivelse` (bugfix) eller `vX.Y.ZZZZ: feat: beskrivelse` (feature).
    - Claude **skal** opdatere `version.json` og vise den nye version i commit-beskeden.
 2. **Ny funktionalitet (features)** skal ALTID registreres i [FEATURES.md](FEATURES.md) *før* implementering påbegyndes. Opdatér status når den er færdig.
 2. **Bugs** skal ALTID registreres i [BUGS.md](BUGS.md) så snart de opdages. Opdatér med løsning når de er fikset.
@@ -40,10 +38,10 @@ Dette er Claudes system-prompt for dette projekt. Den læses altid først og fø
 
 1. Tilføj entry i `FEATURES.md` (feature) eller `BUGS.md` (bug).
 2. Implementer ændringen i det korrekte lag jf. `ARCHITECTURE.md`.
-3. Opdater `version.json`: bump build (altid), bump version (hvis feature/bugfix/breaking).
-4. Tilføj entry i `CHANGELOG.md` med `[version build NNNN]` prefix.
+3. Opdater `version.json`: bump **altid** `build` (+1) ved kodeændringer, bump `version` MINOR ved feature, bump `version` MAJOR ved breaking changes.
+4. Tilføj entry i `CHANGELOG.md` med `[X.Y.ZZZZ]` prefix (kombineret version).
 5. Kør tests hvis relevant.
-6. `git add` + `git commit` med besked der inkluderer version: `v1.0.0-b0001: beskrivelse`.
+6. `git add` + `git commit` med besked: `vX.Y.ZZZZ: fix: ...` (bugfix) eller `vX.Y.ZZZZ: feat: ...` (feature).
 7. `git push origin dev` til GitHub.
 8. Spørg Jan: *"Vil du også merge til `main`?"* — merge og push `origin main` hvis ja.
 

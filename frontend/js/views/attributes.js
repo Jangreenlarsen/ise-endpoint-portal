@@ -30,12 +30,49 @@ export async function renderAttributes(container) {
   container.innerHTML = `
     <h2>${t("attr.title")}</h2>
     <p class="hint">${t("attr.hint")}</p>
+    <div style="margin-bottom:1rem;display:flex;gap:0.75rem;align-items:flex-start;flex-wrap:wrap;">
+      <div>
+        <button type="button" id="attr-sync-btn" class="secondary">↕ ${t("settings.adv_btn")}</button>
+        <div id="attr-sync-result" style="margin-top:0.4rem;font-size:0.85em;"></div>
+      </div>
+    </div>
     <div id="attr-msg"></div>
     <div id="attr-sections"></div>
   `;
 
-  const sections = container.querySelector("#attr-sections");
-  const attrMsg = container.querySelector("#attr-msg");
+  const sections  = container.querySelector("#attr-sections");
+  const attrMsg   = container.querySelector("#attr-msg");
+  const syncBtn   = container.querySelector("#attr-sync-btn");
+  const syncResult = container.querySelector("#attr-sync-result");
+
+  if (syncBtn) {
+    syncBtn.addEventListener("click", async () => {
+      if (!confirm(t("settings.adv_confirm"))) return;
+      syncBtn.disabled = true;
+      syncResult.innerHTML = `<span style="color:#1e40af;">${t("settings.adv_loading")}</span>`;
+      try {
+        const res = await api.syncCustomAttributes();
+        const newCount = Object.values(res.new_values_found || {}).reduce((s, v) => s + (v?.length || 0), 0);
+        const created  = res.definitions_created  || [];
+        const existing = res.definitions_existing || [];
+        const failed   = res.definitions_failed   || [];
+        const total    = created.length + existing.length + failed.length;
+        let html = `<span style="color:#166534;">${t("settings.adv_done").replace("{n}", res.scanned_endpoints).replace("{new}", newCount)}</span>`;
+        if (created.length > 0)
+          html += `<br><span style="color:#166534;">${t("settings.adv_defs_created").replace("{attrs}", created.join(", "))}</span>`;
+        if (total > 0)
+          html += `<br><span>${t("settings.adv_defs_ok").replace("{ok}", existing.length + created.length).replace("{total}", total)}</span>`;
+        if (failed.length > 0)
+          html += `<br><span style="color:#991b1b;">${t("settings.adv_defs_fail").replace("{attrs}", failed.join(", "))}</span>`;
+        syncResult.innerHTML = html;
+        await render();
+      } catch (err) {
+        syncResult.innerHTML = `<span style="color:#991b1b;">${esc(err.message)}</span>`;
+      } finally {
+        syncBtn.disabled = false;
+      }
+    });
+  }
 
   function renderMappingEditor(localValues, mapping, nasDevices = {}, nasLoaded = false, nasLoading = false, nasUnmatched = []) {
     const maxMappings = mapping.max_mappings || 20;

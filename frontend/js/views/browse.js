@@ -11,6 +11,7 @@ import {
   normalizeMac, fmtAgo, coaSummaryText,
   groupHierarchyOptionsHtml,
   loadMarkedMacs, clearMarkedMacs,
+  setSessionDataRef,
 } from "./browse-utils.js";
 import { initFilter } from "./browse-filter.js";
 import { initTable  } from "./browse-table.js";
@@ -33,6 +34,9 @@ export async function renderBrowse(container) {
             style="padding:3px 10px; border-radius:12px; font-size:0.8em; background:#e5e7eb; color:#374151; white-space:nowrap;">
         ${t("browse.pxgrid_badge")}
       </span>
+      <button id="pxgrid-pause-btn" class="secondary small"
+              style="font-size:0.78rem;padding:2px 10px;"
+              title="${t("browse.live_pause_title")}">⏸ ${t("browse.btn_pause_live")}</button>
     </div>
     <div id="anomaly-banner" style="display:none;"></div>
     <div class="card">
@@ -88,6 +92,8 @@ export async function renderBrowse(container) {
                   title="${t("browse.disconnect_title")}">${t("browse.btn_bulk_disconnect")}</button>
           <button id="bulk-sim-btn" class="secondary small" disabled
                   title="${t("browse.sim_btn_title")}">${t("browse.sim_btn")}</button>
+          <button id="bulk-nmap-btn" class="secondary small" disabled
+                  title="nmap-scan mod valgt endpoints IP (kræver aktiv RADIUS-session)">⚡ nmap</button>
         </div>
 
         <span class="toolbar-divider"></span>
@@ -192,6 +198,27 @@ export async function renderBrowse(container) {
               <select id="d-owner"></select>
               <label>${t("col.lokation")}</label>
               <select id="d-lokation"></select>
+              <label>${t("col.registret_by")}</label>
+              <input type="text" id="d-registretby" maxlength="128" />
+              <label>${t("col.guest_registration")}</label>
+              <select id="d-guestreg">
+                <option value=""></option>
+                <option value="true">true</option>
+                <option value="false">false</option>
+              </select>
+              <label class="d-guest-expiry-row">${t("col.guest_expery_date")}</label>
+              <div class="d-guest-expiry-row expiry-dt-wrap">
+                <input type="date" id="d-expery-date-d" />
+                <select id="d-expery-hour-s" class="expiry-time-sel"></select>
+                <span class="time-sep">:</span>
+                <select id="d-expery-min-s" class="expiry-time-sel"></select>
+              </div>
+              <label class="d-guest-expiry-row">${t("col.guest_access_expire")}</label>
+              <select id="d-access-expire" class="d-guest-expiry-row">
+                <option value=""></option>
+                <option value="true">true</option>
+                <option value="false">false</option>
+              </select>
               <label>AuthzVlan</label>
               <select id="d-authzvlan"></select>
               <label>AuthzACL</label>
@@ -208,28 +235,22 @@ export async function renderBrowse(container) {
               </div>
               <label>${t("col.roles")}</label>
               <div id="d-roles"></div>
-              <label>HypervisionISEPortal</label>
-              <div class="detail-value mono" id="d-hypervision"></div>
-              <label>Profile ID</label>
-              <div class="detail-value mono" id="d-profile-id"></div>
-              <label>${t("detail.profile_name")}</label>
-              <div class="detail-value" id="d-profiler-name"></div>
-              <label>Static profile</label>
-              <div class="detail-value" id="d-static-profile"></div>
-              <label>Portal user</label>
-              <div class="detail-value" id="d-portal-user"></div>
-              <label>Identity store</label>
-              <div class="detail-value" id="d-identity-store"></div>
-              <label>${t("detail.registered")}</label>
-              <div class="detail-value" id="d-create-time"></div>
-              <label>${t("detail.last_updated")}</label>
-              <div class="detail-value" id="d-update-time"></div>
-              <label>${t("detail.status_lbl")}</label>
-              <div class="detail-value" id="d-status"></div>
-              <label>${t("detail.active_status_lbl")}</label>
-              <div class="detail-value" id="d-active-status"></div>
-
             </div>
+            <details class="detail-meta-details">
+              <summary>ISE Metadata ▾</summary>
+              <div class="detail-meta-grid">
+                <span class="dm-lbl">HypervisionISEPortal</span><div class="detail-value mono" id="d-hypervision"></div>
+                <span class="dm-lbl">Profile ID</span><div class="detail-value mono" id="d-profile-id"></div>
+                <span class="dm-lbl">${t("detail.profile_name")}</span><div class="detail-value" id="d-profiler-name"></div>
+                <span class="dm-lbl">Static profile</span><div class="detail-value" id="d-static-profile"></div>
+                <span class="dm-lbl">Portal user</span><div class="detail-value" id="d-portal-user"></div>
+                <span class="dm-lbl">Identity store</span><div class="detail-value" id="d-identity-store"></div>
+                <span class="dm-lbl">${t("detail.registered")}</span><div class="detail-value" id="d-create-time"></div>
+                <span class="dm-lbl">${t("detail.last_updated")}</span><div class="detail-value" id="d-update-time"></div>
+                <span class="dm-lbl">${t("detail.status_lbl")}</span><div class="detail-value" id="d-status"></div>
+                <span class="dm-lbl">${t("detail.active_status_lbl")}</span><div class="detail-value" id="d-active-status"></div>
+              </div>
+            </details>
             <div id="d-anc-section" class="hidden anc-section">
               <div class="anc-status-row">
                 <span class="anc-label">ANC Quarantine</span>
@@ -308,6 +329,12 @@ export async function renderBrowse(container) {
           <select id="be-authzacl" disabled></select>
           <label><input type="checkbox" class="be-cb" data-field="platformtype" /> Platform</label>
           <select id="be-platformtype" disabled></select>
+          <label><input type="checkbox" class="be-cb" data-field="guestreg" /> ${t("col.guest_registration")}</label>
+          <select id="be-guestreg" disabled>
+            <option value=""></option>
+            <option value="true">true</option>
+            <option value="false">false</option>
+          </select>
           <label id="be-psk-mode-row" class="hidden"><input type="checkbox" class="be-cb" data-field="psk-mode" /> PSK Mode</label>
           <div id="be-psk-mode" class="be-inner-wrap disabled-overlay hidden">
             <label class="inline-cb"><input type="checkbox" id="be-psk-mode-cb" disabled /> ${t("detail.psk_mode_lbl")}</label>
@@ -439,6 +466,36 @@ export async function renderBrowse(container) {
         </div>
       </div>
     </div>
+
+    <div id="nmap-overlay" class="modal-overlay hidden">
+      <div class="modal" style="max-width:640px;">
+        <h3>nmap-scanning
+          <span style="font-size:.68em;background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:10px;font-weight:normal;vertical-align:middle;">Eksperimentel</span>
+        </h3>
+        <p style="font-size:.82em;color:#6b7280;margin:.15rem 0 .5rem;">
+          Scanningen køres fra <strong>portalserveren</strong> — ikke fra ISE.
+          Resultatet afspejler porte og services set fra serverens netværksplacering.
+        </p>
+        <p class="hint" id="nmap-overlay-ip" style="font-family:monospace;"></p>
+        <div class="modal-body">
+          <div style="display:flex;flex-wrap:wrap;gap:.35rem;margin-bottom:.5rem;">
+            <button class="nmap-ol-preset secondary small" data-preset="ping">Ping</button>
+            <button class="nmap-ol-preset secondary small" data-preset="top1000">Top-1000 porte</button>
+            <button class="nmap-ol-preset secondary small" data-preset="service">Service discovery</button>
+            <button class="nmap-ol-preset secondary small" data-preset="custom">Brugerdefineret…</button>
+          </div>
+          <div id="nmap-ol-custom-row" style="display:none;margin-bottom:.5rem;">
+            <input id="nmap-ol-custom-flags" type="text" placeholder="-p 80,443,8080 -sV"
+                   style="width:100%;font-family:monospace;font-size:.85em;" />
+          </div>
+          <button id="nmap-ol-run" class="small" disabled>Kør nmap scan</button>
+          <pre id="nmap-ol-result" style="display:none;margin-top:.5rem;background:#0f172a;color:#e2e8f0;padding:.75rem;border-radius:6px;font-size:.78em;overflow-x:auto;white-space:pre-wrap;max-height:360px;overflow-y:auto;"></pre>
+        </div>
+        <div class="modal-actions">
+          <button id="nmap-ol-close" class="secondary">Luk</button>
+        </div>
+      </div>
+    </div>
   `;
 
   // ── Shared mutable state ──────────────────────────────────────────────────
@@ -464,6 +521,7 @@ export async function renderBrowse(container) {
     macPrivate: false, markedOnly: false, decommOnly: false, activeStatusFilter: "",
     pxgridLive: false, pxgridSessionMacs: null, pxgridSessionData: null,
     pxgridLastEventTs: 0, pxgridEndpointEventCount: 0, pxgridLastEndpointEventTs: 0,
+    pxgridPaused: false, pxgridPendingSessionUpdates: 0, pxgridPendingEndpointReload: false,
   };
 
   // ── Cross-module callback object (populated after all inits) ──────────────
@@ -618,6 +676,7 @@ export async function renderBrowse(container) {
         const sessions = data.sessions || [];
         state.pxgridSessionMacs   = new Set(sessions.map((s) => normalizeMac(s.mac)));
         state.pxgridSessionData   = new Map(sessions.map((s) => [normalizeMac(s.mac), s]));
+        setSessionDataRef(state.pxgridSessionData);
         state.pxgridLive          = true;
         state.pxgridLastEventTs   = Math.floor(Date.now() / 1000);
         // Brug pxGrid-data hvis snapshot har sessioner; bevar ellers MnT-data
@@ -639,11 +698,17 @@ export async function renderBrowse(container) {
         state.pxgridSessionMacs.add(mac);
         if (!state.pxgridSessionData) state.pxgridSessionData = new Map();
         state.pxgridSessionData.set(mac, data);
+        setSessionDataRef(state.pxgridSessionData);
         state.pxgridLastEventTs = data.ts || Math.floor(Date.now() / 1000);
         if (!state.activeSessionMacs) state.activeSessionMacs = new Set();
         state.activeSessionMacs.add(mac);
-        cb.applyAuthStatusColors?.();
-        cb.applyFilter?.();
+        if (state.pxgridPaused) {
+          state.pxgridPendingSessionUpdates++;
+          updatePxGridPauseBtn();
+        } else {
+          cb.applyAuthStatusColors?.();
+          cb.applyFilter?.();
+        }
         updatePxGridSourceBadge();
       } catch {}
     });
@@ -656,8 +721,13 @@ export async function renderBrowse(container) {
         if (state.pxgridSessionData) state.pxgridSessionData.delete(mac);
         state.pxgridLastEventTs = data.ts || Math.floor(Date.now() / 1000);
         if (state.activeSessionMacs) state.activeSessionMacs.delete(mac);
-        cb.applyAuthStatusColors?.();
-        cb.applyFilter?.();
+        if (state.pxgridPaused) {
+          state.pxgridPendingSessionUpdates++;
+          updatePxGridPauseBtn();
+        } else {
+          cb.applyAuthStatusColors?.();
+          cb.applyFilter?.();
+        }
         updatePxGridSourceBadge();
       } catch {}
     });
@@ -667,7 +737,12 @@ export async function renderBrowse(container) {
         state.pxgridLastEventTs           = data.ts || Math.floor(Date.now() / 1000);
         state.pxgridEndpointEventCount   += 1;
         state.pxgridLastEndpointEventTs   = state.pxgridLastEventTs;
-        scheduleEndpointReload();
+        if (state.pxgridPaused) {
+          state.pxgridPendingEndpointReload = true;
+          updatePxGridPauseBtn();
+        } else {
+          scheduleEndpointReload();
+        }
         updatePxGridSourceBadge();
       } catch {}
     });
@@ -687,6 +762,7 @@ export async function renderBrowse(container) {
       state.pxgridLive         = false;
       state.pxgridSessionMacs  = null;
       state.pxgridSessionData  = null;
+      setSessionDataRef(null);
       state.activeSessionMacs  = null;
       cb.applyAuthStatusColors?.();
       cb.applyFilter?.();
@@ -707,12 +783,47 @@ export async function renderBrowse(container) {
     clearTimeout(pxgridErrorTimer);
     pxgridErrorTimer = null;
     if (pxgridEventSource) { pxgridEventSource.close(); pxgridEventSource = null; }
-    state.pxgridLive         = false;
-    state.pxgridSessionMacs  = null;
-    state.pxgridSessionData  = null;
-    state.activeSessionMacs  = null;
-    state.pxgridLastEventTs  = 0;
+    state.pxgridLive                   = false;
+    state.pxgridSessionMacs            = null;
+    state.pxgridSessionData            = null;
+    setSessionDataRef(null);
+    state.activeSessionMacs            = null;
+    state.pxgridLastEventTs            = 0;
+    state.pxgridPaused                 = false;
+    state.pxgridPendingSessionUpdates  = 0;
+    state.pxgridPendingEndpointReload  = false;
+    updatePxGridPauseBtn();
   }
+
+  // ── pxGrid live pause ────────────────────────────────────────────────────
+  const pxgridPauseBtn = container.querySelector("#pxgrid-pause-btn");
+  function updatePxGridPauseBtn() {
+    if (!pxgridPauseBtn) return;
+    const pending = state.pxgridPendingSessionUpdates + (state.pxgridPendingEndpointReload ? 1 : 0);
+    if (state.pxgridPaused) {
+      pxgridPauseBtn.textContent = pending > 0
+        ? `▶ ${t("browse.btn_resume_live")} (${pending})`
+        : `▶ ${t("browse.btn_resume_live")}`;
+      pxgridPauseBtn.classList.add("active-toggle");
+      pxgridPauseBtn.title = t("browse.live_paused_title");
+    } else {
+      pxgridPauseBtn.textContent = `⏸ ${t("browse.btn_pause_live")}`;
+      pxgridPauseBtn.classList.remove("active-toggle");
+      pxgridPauseBtn.title = t("browse.live_pause_title");
+    }
+  }
+  pxgridPauseBtn?.addEventListener("click", () => {
+    state.pxgridPaused = !state.pxgridPaused;
+    if (!state.pxgridPaused) {
+      const hadSession  = state.pxgridPendingSessionUpdates > 0;
+      const hadEndpoint = state.pxgridPendingEndpointReload;
+      state.pxgridPendingSessionUpdates = 0;
+      state.pxgridPendingEndpointReload = false;
+      if (hadSession) { cb.applyAuthStatusColors?.(); cb.applyFilter?.(); }
+      if (hadEndpoint) scheduleEndpointReload();
+    }
+    updatePxGridPauseBtn();
+  });
 
   // ── CoA toggle ────────────────────────────────────────────────────────────
   const coaToggleBtn = container.querySelector("#coa-toggle-btn");
@@ -837,7 +948,8 @@ export async function renderBrowse(container) {
         const mac = normalizeMac(s.mac);
         if (mac) state.pxgridSessionData.set(mac, s);
       }
-      cb.applyAuthStatusColors?.();
+      setSessionDataRef(state.pxgridSessionData);
+      if (!state.pxgridPaused) cb.applyAuthStatusColors?.();
     } catch { /* ignore — SSE stream holder sessioner à jour i realtid */ }
   }, 5 * 60 * 1000);
 

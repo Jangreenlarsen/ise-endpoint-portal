@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 class IseClient:
-    """Async wrapper around the Cisco ISE 3.4 REST APIs (ERS + Open API).
+    """Async wrapper around the Cisco ISE 3.5 REST APIs (ERS + Open API).
 
     Reads connection settings from `app.core.config.settings` at init time,
     so recreate the client after settings changes.
@@ -31,23 +31,46 @@ class IseClient:
 
     def __init__(self) -> None:
         s = config.settings
-        max_conn = int(getattr(s, "ise_max_connections", 10))
-        self._http = httpx.AsyncClient(
-            base_url=s.ise_base_url.rstrip("/"),
-            auth=(s.ise_username, s.ise_password),
-            verify=s.ise_ca_bundle or s.ise_verify_tls,
-            timeout=s.ise_timeout,
-            # Explicit connection limits prevent ISE connection-reset errors under load.
-            # ISE ERS accepts ~5-10 simultaneous connections per client.
-            limits=httpx.Limits(
-                max_connections=max_conn,
-                max_keepalive_connections=max(1, max_conn // 2),
-            ),
-            headers={
-                "Accept": "application/json",
-                "Content-Type": "application/json",
-            },
-        )
+        max_conn = int(getattr(s, "ise_max_connections", 15))
+        use_http2 = getattr(s, "ise_http2", True)
+
+        def _make_client(http2: bool) -> httpx.AsyncClient:
+            return httpx.AsyncClient(
+                base_url=s.ise_base_url.rstrip("/"),
+                auth=(s.ise_username, s.ise_password),
+                verify=s.ise_ca_bundle or s.ise_verify_tls,
+                timeout=s.ise_timeout,
+                http2=http2,
+                # Explicit connection limits prevent ISE connection-reset errors under load.
+                # With HTTP/2, a single connection multiplexes many requests, so the pool
+                # needs fewer entries. HTTP/1.1 fallback still benefits from a larger pool.
+                limits=httpx.Limits(
+                    max_connections=max_conn,
+                    max_keepalive_connections=max(1, max_conn // 2),
+                ),
+                headers={
+                    "Accept": "application/json",
+                    "Content-Type": "application/json",
+                    "Accept-Encoding": "gzip, deflate",
+                },
+            )
+
+        if use_http2:
+            try:
+                self._http = _make_client(http2=True)
+                logger.info("ISE HTTP klient initialiseret med HTTP/2 (max_connections=%d)", max_conn)
+            except ImportError:
+                # h2-pakken er ikke installeret endnu — fald tilbage til HTTP/1.1.
+                # Installeres automatisk ved næste OTA-pull (pip install -e .).
+                self._http = _make_client(http2=False)
+                logger.warning(
+                    "h2-pakken mangler — HTTP/2 deaktiveret, kører HTTP/1.1. "
+                    "Installer ved at køre OTA-opdatering eller manuelt: "
+                    "venv/bin/pip install 'httpx[http2]'"
+                )
+        else:
+            self._http = _make_client(http2=False)
+            logger.info("ISE HTTP klient initialiseret med HTTP/1.1 (max_connections=%d)", max_conn)
         self._retry_attempts = int(getattr(s, "ise_retry_attempts", 3))
         self._cb = CircuitBreaker(
             failure_threshold=int(getattr(s, "ise_cb_failure_threshold", 5)),

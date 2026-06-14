@@ -30,6 +30,8 @@ from app.api import policy as policy_api
 from app.api import settings as settings_api
 from app.api import update as update_api
 from app.api import trends as trends_api
+from app.api import selfregister as selfregister_api
+from app.api import nmap as nmap_api
 from app.core.audit_store import init_db as init_audit_db
 from app.core.metrics_store import init_db as init_metrics_db
 from app.core.config import settings
@@ -42,6 +44,50 @@ from app.pxgrid.session_worker import _enrich_sessions_from_mnt, reconcile_stale
 from app.services.audit_retention import get_worker as get_audit_retention_worker
 from app.services.cache_prewarm import get_worker as get_prewarm_worker
 from app.services.cache_sync import get_worker as get_cache_sync_worker
+from app.services.guest_expiry_worker import get_worker as get_guest_expiry_worker
+from app.core.guest_expiry_store import init_db as init_guest_expiry_db
+
+
+async def _ensure_h2_installed() -> None:
+    """Installer h2-pakken i baggrunden hvis HTTP/2 er aktiveret men h2 mangler.
+
+    Kaldes som asyncio.create_task ved opstart. Portalen kører HTTP/1.1 i
+    mellemtiden (graceful fallback i IseClient). En genstart efter installation
+    aktiverer HTTP/2 uden yderligere bruger-handling.
+    """
+    import logging as _log
+    import sys
+    _logger = _log.getLogger(__name__)
+    try:
+        import h2  # noqa: F401
+        return  # allerede installeret
+    except ImportError:
+        pass
+
+    _logger.info(
+        "h2-pakken mangler — installerer httpx[http2] i baggrunden. "
+        "HTTP/2 aktiveres ved næste genstart."
+    )
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            sys.executable, "-m", "pip", "install", "httpx[http2]",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+        )
+        stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=120)
+        output = (stdout or b"").decode("utf-8", errors="replace").strip()
+        if proc.returncode == 0:
+            _logger.info(
+                "h2 installeret OK — genstart portalen (pkill -f uvicorn) for at aktivere HTTP/2."
+            )
+        else:
+            _logger.warning(
+                "h2 installation fejlede (returnkode=%d): %s", proc.returncode, output[:400]
+            )
+    except asyncio.TimeoutError:
+        _logger.warning("h2 installation timeout (120s)")
+    except Exception as exc:  # noqa: BLE001
+        _logger.warning("h2 installation fejlede: %s", exc)
 
 
 @asynccontextmanager
@@ -76,6 +122,7 @@ async def lifespan(_: FastAPI):
     _auth_core._secret()
     init_audit_db()
     init_metrics_db()
+    init_guest_expiry_db()
     from app.core.first_seen_store import init_db as init_first_seen_db
     init_first_seen_db()
     try:
@@ -145,6 +192,12 @@ async def lifespan(_: FastAPI):
     get_audit_retention_worker().start()
     get_pxgrid_worker().start()
     get_prewarm_worker().start()
+    get_guest_expiry_worker().start()
+
+    # Installer h2 i baggrunden hvis HTTP/2 er aktiveret men pakken mangler.
+    # Dækker friske OVA-installs og første OTA-pull fra gammel version.
+    if getattr(settings, "ise_http2", True):
+        asyncio.create_task(_ensure_h2_installed(), name="h2-install")
 
     # Periodisk autosave af session-cache til disk.
     _autosave_interval = float(getattr(settings, "pxgrid_session_autosave_interval_s", 300.0))
@@ -262,6 +315,7 @@ async def lifespan(_: FastAPI):
         await get_pxgrid_worker().stop()
         await get_audit_retention_worker().stop()
         await get_cache_sync_worker().stop()
+        await get_guest_expiry_worker().stop()
         if _sess_cache_path:
             get_session_cache().save_to_disk(_sess_cache_path)
             logger.info("pxGrid session cache: gemt til disk ved shutdown")
@@ -340,8 +394,23 @@ app.include_router(lifecycle_api.router, prefix="/api")
 app.include_router(config_backup_api.router, prefix="/api")
 app.include_router(trends_api.router, prefix="/api")
 app.include_router(ise_nodes_api.router, prefix="/api")
+app.include_router(selfregister_api.router, prefix="/api")  # Public — ingen auth
+app.include_router(nmap_api.router, prefix="/api")
 app.include_router(metrics_api.router)
 
 frontend_dir = Path(__file__).resolve().parents[2] / "frontend"
+
+# Eksplicit route for selvregistrerings-siden så /selfregister virker uden .html-suffix
+from fastapi.responses import FileResponse as _FileResponse
+
+@app.get("/selfregister", include_in_schema=False)
+async def serve_selfregister():
+    """Server standalone selvregistrerings-side til wireless controller redirect."""
+    p = frontend_dir / "selfregister.html"
+    if not p.exists():
+        from fastapi import HTTPException as _HTTPException
+        raise _HTTPException(404, "selfregister.html ikke fundet")
+    return _FileResponse(str(p), media_type="text/html")
+
 if frontend_dir.exists():
     app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")

@@ -125,6 +125,7 @@ export function initBulk(container, state, api, cb) {
       if ("authzvlan" in fields)   tr.querySelector(".ca-authzvlan").value = fields.authzvlan;
       if ("authzacl" in fields)    tr.querySelector(".ca-authzacl").value  = fields.authzacl;
       if ("platformtype" in fields) tr.querySelector(".ca-platformtype").value = fields.platformtype;
+      if ("guestreg" in fields) { const s = tr.querySelector(".ca-guestreg"); if (s) s.value = fields.guestreg; }
       if ("psk-mode" in fields) {
         const cbEl = tr.querySelector(".psk-mode-cb");
         if (cbEl) cbEl.checked = !!fields["psk-mode"];
@@ -521,5 +522,90 @@ export function initBulk(container, state, api, cb) {
         beUndecommBtn.disabled = false;
       }
     });
+  }
+
+  // ── nmap scanning ─────────────────────────────────────────────────────────
+  const bulkNmapBtn  = container.querySelector("#bulk-nmap-btn");
+  const nmapOverlay  = container.querySelector("#nmap-overlay");
+  if (bulkNmapBtn && nmapOverlay) {
+    const ipLabel     = nmapOverlay.querySelector("#nmap-overlay-ip");
+    const customRow   = nmapOverlay.querySelector("#nmap-ol-custom-row");
+    const customInput = nmapOverlay.querySelector("#nmap-ol-custom-flags");
+    const runBtn      = nmapOverlay.querySelector("#nmap-ol-run");
+    const resultPre   = nmapOverlay.querySelector("#nmap-ol-result");
+    const closeBtn    = nmapOverlay.querySelector("#nmap-ol-close");
+    let selectedPreset = null;
+    let scanIp = "";
+
+    nmapOverlay.querySelectorAll(".nmap-ol-preset").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        nmapOverlay.querySelectorAll(".nmap-ol-preset").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        selectedPreset = btn.dataset.preset;
+        customRow.style.display = selectedPreset === "custom" ? "" : "none";
+        runBtn.disabled = false;
+      });
+    });
+
+    runBtn.addEventListener("click", async () => {
+      const preset = selectedPreset === "custom" ? null : selectedPreset;
+      const flags  = selectedPreset === "custom" ? (customInput.value.trim() || null) : null;
+      runBtn.disabled = true;
+      runBtn.textContent = "Scanner…";
+      resultPre.style.display = "";
+      resultPre.textContent = `Starter nmap mod ${scanIp}…`;
+      try {
+        const res = await api.nmapScan(scanIp, preset, flags);
+        resultPre.textContent = `# ${res.cmd}  (${res.duration}s)\n\n${res.output}`;
+      } catch (err) {
+        resultPre.textContent = `Fejl: ${err.message}`;
+      } finally {
+        runBtn.disabled = false;
+        runBtn.textContent = "Kør nmap scan";
+      }
+    });
+
+    closeBtn.addEventListener("click", () => nmapOverlay.classList.add("hidden"));
+    nmapOverlay.addEventListener("click", (e) => {
+      if (e.target === nmapOverlay) nmapOverlay.classList.add("hidden");
+    });
+
+    bulkNmapBtn.addEventListener("click", () => {
+      const ids = cb.getSelectedIds();
+      if (!ids.length) return;
+      // Find IP for det første valgte endpoint fra pxGrid session data
+      const tr = tbody.querySelector(`tr[data-id="${CSS.escape(ids[0])}"]`);
+      const mac = tr?.dataset.mac || "";
+      const sess = mac && state.pxgridSessionData ? state.pxgridSessionData.get(mac) : null;
+      scanIp = sess?.framed_ip || "";
+      if (!scanIp) {
+        msg.innerHTML = `<div class="alert warning">Ingen IP-adresse fundet — endpoint skal have en aktiv RADIUS-session med framed_ip.</div>`;
+        setTimeout(() => { msg.innerHTML = ""; }, 5000);
+        return;
+      }
+      // Reset modal
+      selectedPreset = null;
+      runBtn.disabled = true;
+      runBtn.textContent = "Kør nmap scan";
+      resultPre.style.display = "none";
+      resultPre.textContent = "";
+      customRow.style.display = "none";
+      customInput.value = "";
+      nmapOverlay.querySelectorAll(".nmap-ol-preset").forEach((b) => b.classList.remove("active"));
+      ipLabel.textContent = scanIp;
+      nmapOverlay.classList.remove("hidden");
+    });
+
+    // Vis/skjul nmap-knap baseret på session-data tilgængelighed
+    cb.updateNmapBtn = () => {
+      const ids = cb.getSelectedIds();
+      if (!ids.length || ids.length > 1) { bulkNmapBtn.disabled = true; return; }
+      const tr  = tbody.querySelector(`tr[data-id="${CSS.escape(ids[0])}"]`);
+      const mac = tr?.dataset.mac || "";
+      const hasIp = mac && state.pxgridSessionData
+        ? !!(state.pxgridSessionData.get(mac)?.framed_ip)
+        : false;
+      bulkNmapBtn.disabled = !hasIp;
+    };
   }
 }

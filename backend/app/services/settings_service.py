@@ -62,6 +62,21 @@ def get_backend_settings() -> BackendSettingsResponse:
         github_branch=s.github_branch,
         decomm_authz_vlan=s.decomm_authz_vlan,
         decomm_authz_acl=s.decomm_authz_acl,
+        selfregister_enabled=s.selfregister_enabled,
+        selfregister_group_id=s.selfregister_group_id,
+        selfregister_intro_text=s.selfregister_intro_text,
+        selfregister_success_text=s.selfregister_success_text,
+        selfregister_redirect_url=s.selfregister_redirect_url,
+        selfregister_terms=s.selfregister_terms,
+        selfregister_authz_vlan=s.selfregister_authz_vlan,
+        selfregister_authz_acl=s.selfregister_authz_acl,
+        selfregister_ipsk_enabled=s.selfregister_ipsk_enabled,
+        selfregister_expiry_enabled=s.selfregister_expiry_enabled,
+        selfregister_expiry_mode=s.selfregister_expiry_mode,
+        selfregister_expiry_days=s.selfregister_expiry_days,
+        selfregister_expiry_date=s.selfregister_expiry_date,
+        selfregister_expiry_time=s.selfregister_expiry_time,
+        guest_expiry_check_interval_seconds=s.guest_expiry_check_interval_seconds,
     )
 
 
@@ -91,6 +106,21 @@ async def update_backend_settings(
             "github_branch": new.github_branch,
             "decomm_authz_vlan": new.decomm_authz_vlan,
             "decomm_authz_acl": new.decomm_authz_acl,
+            "selfregister_enabled": new.selfregister_enabled,
+            "selfregister_group_id": new.selfregister_group_id,
+            "selfregister_intro_text": new.selfregister_intro_text,
+            "selfregister_success_text": new.selfregister_success_text,
+            "selfregister_redirect_url": new.selfregister_redirect_url,
+            "selfregister_terms": new.selfregister_terms,
+            "selfregister_authz_vlan": new.selfregister_authz_vlan,
+            "selfregister_authz_acl": new.selfregister_authz_acl,
+            "selfregister_ipsk_enabled":     new.selfregister_ipsk_enabled,
+            "selfregister_expiry_enabled":    new.selfregister_expiry_enabled,
+            "selfregister_expiry_mode":       new.selfregister_expiry_mode,
+            "selfregister_expiry_days":       new.selfregister_expiry_days,
+            "selfregister_expiry_date":                 new.selfregister_expiry_date,
+            "selfregister_expiry_time":                 new.selfregister_expiry_time,
+            "guest_expiry_check_interval_seconds":      new.guest_expiry_check_interval_seconds,
         }
     )
     if new.ise_password:

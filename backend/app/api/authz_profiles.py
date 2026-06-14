@@ -61,6 +61,22 @@ async def ensure_standard_profiles(
 
 
 @router.get(
+    "/{name}/raw",
+    response_model=dict,
+    dependencies=[Depends(require_admin)],
+)
+async def get_authz_profile_raw(
+    name: str,
+    service: AuthzProfileService = Depends(get_authz_profile_service),
+) -> dict:
+    """Debug: returnerer rå ISE ERS-respons for profilen uden parsing."""
+    raw = await service.get_raw(name)
+    if raw is None:
+        raise HTTPException(status_code=404, detail=f"Profil '{name}' ikke fundet i ISE")
+    return raw
+
+
+@router.get(
     "/{name}",
     response_model=AuthzProfileDetail,
     dependencies=[Depends(require_any)],

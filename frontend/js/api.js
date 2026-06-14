@@ -112,6 +112,8 @@ export const api = {
       `/custom-attributes/${encodeURIComponent(name)}/values/${encodeURIComponent(value)}`,
       { method: "DELETE" },
     ),
+  ensureCustomAttrDefinitions: () =>
+    request("/custom-attributes/ensure-definitions", { method: "POST" }),
   syncCustomAttributes: () =>
     request("/custom-attributes/sync", { method: "POST" }),
   syncPlatformFromMnt: (overwrite = false) =>
@@ -304,7 +306,10 @@ export const api = {
   getPskPolicy: () => request("/settings/psk-policy"),
   updatePskPolicy: (payload) =>
     request("/settings/psk-policy", { method: "PUT", body: JSON.stringify(payload) }),
-  generatePskKey: () => request("/settings/psk-policy/generate", { method: "POST" }),
+  generatePskKey: (policy = null) => request("/settings/psk-policy/generate", {
+    method: "POST",
+    body: policy ? JSON.stringify(policy) : undefined,
+  }),
   validateUpdate: (file) => {
     const fd = new FormData(); fd.append("file", file);
     return request("/update/validate", { method: "POST", body: fd, _noContentType: true });
@@ -457,4 +462,11 @@ export const api = {
     const qs = names.map((n) => `names=${encodeURIComponent(n)}`).join("&") + `&limit=${limit}`;
     return request(`/metrics/history?${qs}`);
   },
+
+  // nmap scanning (6.6)
+  nmapScan: (ip, preset = null, customFlags = null) =>
+    request("/nmap/scan", {
+      method: "POST",
+      body: JSON.stringify({ ip, preset, custom_flags: customFlags }),
+    }),
 };

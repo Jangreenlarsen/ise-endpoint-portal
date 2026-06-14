@@ -24,6 +24,8 @@ class EndpointDetail(BaseModel):
     authz_vlan: str = ""
     authz_acl: str = ""
     platform_type: str = ""
+    registret_by: str = ""
+    guest_registration: str = ""
     hypervision: str = ""
     roles: list[str] = Field(default_factory=list)
     profile_id: str = ""
@@ -47,6 +49,9 @@ class EndpointDetail(BaseModel):
     status: str = ""
     # Aktivitetsstatus fra HypervisionActive CA. "Aktiv" / "Inaktiv" / "" = ukendt.
     active_status: str = ""
+    # Gæsteudløb — sættes ved selvregistrering.
+    guest_expery_date: str = ""
+    guest_access_expire: str = ""
 
 
 class EndpointGroupSummary(BaseModel):
@@ -62,11 +67,15 @@ class CustomAttrs(BaseModel):
     AuthzVlan: str = ""
     AuthzACL: str = ""
     PlatformType: str = ""
+    RegistretBy: str = ""
+    GuestRegistration: str = ""
     HypervisionRoles: str = ""
     HypervisionStatus: str | None = None
     HypervisionActive: str | None = None
     PSK_Mode: str | None = None
     PSK_Key: str | None = None
+    GuestExperyDate: str | None = None
+    GuestAccessExpire: str | None = None
 
 
 class CreateEndpointRequest(BaseModel):

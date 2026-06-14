@@ -64,6 +64,7 @@ async def list_sessions() -> PxGridSessionsResponse:
                 cts_security_group=s.cts_security_group,
                 identity_group=s.identity_group,
                 auth_method=s.auth_method,
+                framed_ip=s.framed_ip,
             )
             for s in items
         ],
@@ -199,6 +200,7 @@ async def get_session(mac: str) -> PxGridSessionInfoResponse:
         cts_security_group=info.cts_security_group,
         identity_group=info.identity_group,
         auth_method=info.auth_method,
+        framed_ip=info.framed_ip,
     )
 
 

@@ -144,8 +144,14 @@ async def update_rule(
 async def delete_rule(
     policy_set_id: str,
     rule_id: str,
+    rule_name: str | None = Query(default=None),
     svc: PolicyService = Depends(get_policy_service),
 ) -> None:
+    if rule_name and rule_name.strip().lower() == "default":
+        raise HTTPException(
+            status_code=422,
+            detail="Default-reglen er read-only i ISE og kan ikke slettes.",
+        )
     try:
         await svc.delete_rule(policy_set_id, rule_id)
     except IseApiError as exc:

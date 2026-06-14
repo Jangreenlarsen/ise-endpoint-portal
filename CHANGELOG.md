@@ -3,6 +3,613 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.7.0667] — 2026-06-14 — feat: h2 installeres automatisk i baggrunden ved opstart hvis det mangler
+
+`_ensure_h2_installed()` startes som `asyncio.create_task` i lifespan når
+`ise_http2=True`. Kører `pip install httpx[http2]` asynkront uden at blokere
+opstart eller requests. Dækker friske OVA-installs og første OTA-pull fra gammel
+version (hvor den kørende kode ikke har pip-trinnet i OTA endnu).
+
+**Flow:** Portal starter HTTP/1.1 → h2 installeres i baggrunden → bruger genstarter
+(pkill -f uvicorn) → HTTP/2 aktiv. Ingen dobbelt-pull, ingen SSH nødvendigt.
+
+**Berørte filer:** `backend/app/main.py`
+
+---
+
+## [6.7.0666] — 2026-06-14 — fix: HTTP/2 falder gracefully tilbage til HTTP/1.1 hvis h2-pakken mangler
+
+`IseClient.__init__` fanger nu `ImportError` ved `httpx.AsyncClient(http2=True)` og
+initialiserer i stedet med `http2=False`. Portalen starter og kører HTTP/1.1 på
+friske OVA-installs uden h2. OTA-pull installerer h2 automatisk (v6.7.0665+),
+og næste genstart aktiverer HTTP/2.
+
+**Berørt fil:** `backend/app/ise/client.py`
+
+---
+
+## [6.7.0665] — 2026-06-14 — feat: OTA pip install — nye Python-afhængigheder installeres automatisk ved git pull
+
+`_git_pull_sync` kører nu `pip install -e .` (via `sys.executable`) som Trin 3
+umiddelbart efter vellykket `git reset --hard`. Output vises i pull-resultatet i UI'et.
+Ikke-fatal: pip-fejl vises som ⚠-advarsel men stopper ikke opdateringen.
+
+Løser behovet for manuel SSH-kørsel af `pip install httpx[http2]` ved opgradering
+til v6.7.0663+ (HTTP/2-support kræver h2-pakken).
+
+**Berørt fil:** `backend/app/services/update_service.py`
+
+---
+
+## [6.7.0664] — 2026-06-14 — fix: release notes i portalen viste forkert sektion
+
+`_extract_release_sections_since` fik `VERSION` = "6.7" → `_parse_semver("6.7")` = `(6,7,0)` →
+fandt `## [6.7]`-sektionen (build 0658) i stedet for den aktuelle `## [6.7.0663]`.
+
+Fix: `check_github_version` sender nu `FULL` ("6.7.0664") og konstrueret `latest_full`
+til `_extract_release_sections_since` så `_parse_semver` matcher præcist på `## [X.Y.ZZZZ]`.
+
+RELEASE_NOTES.md: `## [6.7]` → `## [6.7.0658]`, `## [6.6]` → `## [6.6.0658]`.
+Multi-linje bullet-punkter gjort til single-line (undgår parser-split i separate `<p>`).
+
+**Berørte filer:** `backend/app/services/update_service.py`, `RELEASE_NOTES.md`
+
+---
+
+## [6.7.0663] — 2026-06-14 — feat: kommunikationshastighed portal ↔ ISE 3.5 (internet)
+
+5 optimeringer til lavere latens og højere throughput over internet:
+
+1. **HTTP/2**: `http2=True` i `httpx.AsyncClient` + `httpx[http2]` i `pyproject.toml`.
+   Multiplexer mange requests over én TCP-forbindelse; reducerer TLS-handshake-overhead.
+   Ny `ise_http2`-setting (default True). `ise_max_connections` default hævet 10→15.
+
+2. **Gzip**: `Accept-Encoding: gzip, deflate` tilføjet til alle ISE HTTP-klienter
+   (ERS/OpenAPI i `client.py` + begge MnT-klienter i `mnt_sessions.py`).
+   Reducerer payload-størrelse 5-10× for store endpoint-lister.
+
+3. **Open API parallel paginering**: `list_all()` i `openapi_endpoints.py` henter nu
+   side 1 for at kende total, derefter alle resterende sider med `asyncio.gather`
+   (Semaphore=5) — identisk ERS-mønster. Sparer 2-3s for 10K endpoints.
+
+4. **MnT parallel kald**: `fetch_session_by_mac()` kørte Session/MACAddress og
+   AuthStatus/MACAddress sekventielt (2 × RTT). Nu `asyncio.gather` — sparer ~1 RTT
+   pr. MAC (60 ms ved 60 ms internet-latens).
+
+5. **Semaphore/pool-tuning**: endpoint detail-fetch 5→8; bulk-ops 3→5;
+   pxGrid session-worker 3→5; ERS/OpenAPI paginering 5→8; cache-sync 5→8.
+
+**Berørte filer:** `backend/app/ise/client.py`, `endpoints.py`, `openapi_endpoints.py`,
+`mnt_sessions.py`, `backend/app/core/config.py`, `backend/app/services/endpoint_service.py`,
+`cache_sync.py`, `backend/app/pxgrid/session_worker.py`, `backend/pyproject.toml`
+
+---
+
+## [6.7.0662] — 2026-06-14 — fix: dirty-rækkernes inputværdier bevares nu ved renderRows re-render
+
+`renderRows()` brugte `tbody.innerHTML = ...` som komplet erstattede DOM — og dermed
+slettede brugerens urelaterede ændringer (description, group, type, osv.) i dirty rækker
+når pxGrid-events triggede re-render. Snapshot + restore-mekanisme tilføjet.
+
+**Berørt fil:** `frontend/js/views/browse-table.js`
+
+---
+
+## [6.7.0661] — 2026-06-14 — fix: nmap markeret eksperimentel, OS-preset fjernet, server-disclaimer tilføjet
+
+nmap-sektionen i Endpoint details / Session-tab og Browse-tabel action-bar
+er opdateret: "Eksperimentel"-badge, forklaring om at scanningen køres fra
+portalserveren (ikke ISE), og "OS + service"-presetten er fjernet fordi
+nmap -O kræver root-rettigheder som portal-processen ikke har.
+
+**Berørte filer:** `frontend/js/views/browse-detail.js`, `frontend/js/views/browse.js`,
+`backend/app/services/nmap_service.py`
+
+---
+
+## [6.7.0660] — 2026-06-14 — fix: backend startup crash — nmap.py forkert User-import
+
+`nmap.py` importerede `from app.core.users import User` som ikke eksisterer.
+Korrekt modul er `app.schemas.user`.
+
+**Berørt fil:** `backend/app/api/nmap.py`
+
+---
+
+## [6.7.0659] — 2026-06-14 — fix: OTA update-check sammenligner nu fuld version-tuple, ikke kun build
+
+`update_available` sammenlignede kun build-numre. Med nyt versionsformat kan
+MINOR stige uden build-bump (feature commits), så `6.7.0658 > 6.5.0658`
+fejlagtigt returnerede False. `_parse_semver("6.7")` returnerede desuden
+`(0,0,0)` da regex krævede 3 dele.
+
+Fix: ny `_parse_version_build(version, build)` returnerer `(major, minor, build_int)`
+og bruges til fuld tuple-sammenligning. `_parse_semver` håndterer nu `X.Y`-format.
+`_split_release_sections` matcher nu også `## [X.Y]`-sektioner i RELEASE_NOTES.
+
+**Berørt fil:** `backend/app/services/update_service.py`
+
+---
+
+## [6.7] — 2026-06-14 — feat: frys pxGrid live-opdatering i Browse
+
+Ny "⏸ Frys live"-toggle-knap i Browse page-header (ved siden af
+pxGrid-badgen). Når aktiv fryses tabellen: pxGrid session-events
+(upsert/remove/endpoint_changed) akkumuleres i baggrunden uden at
+trigger `applyFilter()` eller `applyAuthStatusColors()`. Knappens
+label viser antal ventende ændringer, f.eks. "▶ Genoptag live (47)".
+Klik igen → alle ventende ændringer flushes på én gang til UI. Også
+5-minutters sessionRefreshTimer respekterer pause-flaget. Stream-stop
+nulstiller pause automatisk.
+
+**Berørte filer:** `frontend/js/views/browse.js`, `frontend/js/i18n.js`
+
+---
+
+## [6.6] — 2026-06-14 — feat: nmap-scanning af endpoints direkte fra portalen
+
+Ny feature: admin/bruger kan trigge nmap-scan mod et endpoints
+framed_ip (pxGrid session) direkte fra portalen. Konfigurerbare
+presets: Ping, Top-1000 porte, Service discovery, OS+service,
+Brugerdefineret flags. Scan-knap i (1) Endpoint details / Session-tab
+når framed_ip er tilgængeligt, og (2) Browse-tabel action-bar for
+det valgte endpoint (kun aktiv hvis 1 endpoint er valgt og har IP).
+Backend kører nmap som async subprocess med 120s timeout. Resultater
+vises i monospace-boks. Farlige flag (-iL, --script, -oN/-oX osv.)
+blokeres serverside.
+
+**Berørte filer:** `backend/app/api/nmap.py` (ny),
+`backend/app/services/nmap_service.py` (ny), `backend/app/main.py`,
+`frontend/js/api.js`, `frontend/js/views/browse-detail.js`,
+`frontend/js/views/browse.js`, `frontend/js/views/browse-bulk.js`,
+`frontend/js/views/browse-table.js`
+
+## [6.5.0 build 0658] — 2026-06-14 — feat: PSK policy tekst præciseret + key generator bruger aktive form-værdier
+
+MPSK/IPSK radio-labels opdateret med tydelig beskrivelse af om nøglen
+ændres. Key generator-test læser nu aktuelle form-værdier og sender dem
+med kaldet — ikke-gemte ændringer afspejles korrekt i test-nøglen.
+Backend generate-endpoint accepterer nu valgfri PskPolicy i body.
+
+**Berørte filer:** `frontend/js/views/settings.js`, `section-psk.js`,
+`frontend/js/api.js`, `backend/app/api/settings.py`
+
+## [6.4.9 build 0657] — 2026-06-14 — fix: global søgning matcher nu pxGrid session-felter inkl. authz-profiler
+
+Søgning på fx "Endpoint_VLAN:10" fandt ingenting fordi displaystrengen
+er sammensat af authz_profiles[i] + VLAN-nummer fra vlan-feltet — to
+separate felter der ikke matchede alene. Løst ved at rekonstruere de
+sammensatte profile:vlan strenge i søgningen og inkludere alle pxGrid
+session-felter: user_name, policy_set_name, authz_rule_name, use_case,
+nas_name, nas_device_type, dacl, vlan, cts_security_group, identity_group,
+auth_method, authz_profiles (med VLAN-suffix som i UI).
+
+**Berørt fil:** `frontend/js/views/browse-filter.js`
+
+## [6.4.8 build 0656] — 2026-06-14 — fix: søgning på ISE Session Auth (autentificeret/inaktiv)
+
+auth_status kolonnen havde field: () => "" — kolonnefilter og global
+søgning matchede aldrig noget. Løst ved at fix field() til at returnere
+"autentificeret"/"inaktiv" fra _sessionData, og tilføje authText til
+fullTextQ-tjekket i applyFiltersToRows() via state.activeSessionMacs.
+
+**Berørte filer:** `frontend/js/views/browse-utils.js`, `browse-filter.js`
+
+## [6.4.7 build 0655] — 2026-06-14 — fix: fri tekst søgning virker nu på Klient IP (framed_ip)
+
+Fri tekst søgning sendte fullTextQ til backend som kun søgte i ISE-felter
+(mac, vendor, owner osv.) — framed_ip er pxGrid-data og kender ISE ikke.
+Løst ved at flytte hele fullTextQ-filtreringen til klient-siden i
+applyFiltersToRows() så den også tjekker pxgridSessionData.get(mac).framed_ip.
+Backend-kaldet loader nu altid alle rækker (ingen q= parameter), og
+allRowsCache ryddes ikke ved tekstændringer — genbrug giver øjeblikkelig
+filtrering ved næste søgning.
+
+**Berørt fil:** `frontend/js/views/browse-filter.js`
+
+## [6.4.6 build 0654] — 2026-06-14 — fix: browse-tabel opdateres korrekt efter Endpoint details gem
+
+refreshRows() gjorde 80 linjer manuel DOM-manipulation der manglede
+active_status-badge, decomm-badge og fremtidige kolonner. Erstattet med
+state.allRows-opdatering + applyFilter() der kalder renderRows() og
+re-renderer alle kolonner korrekt fra det friske ISE-svar.
+
+**Berørt fil:** `frontend/js/views/browse-table.js`
+
+## [6.4.5 build 0653] — 2026-06-13 — chore: korriger version til 6.4.5 (manglende PATCH-bumps b0648-b0652)
+
+PATCH blev ikke bumped korrekt ved b0648-b0652. Hver af de 5 afsluttede
+bugfixes siden 6.4.0 burde have bumped PATCH — korrekt version er 6.4.5.
+
+## [6.4.1 build 0652] — 2026-06-13 — fix: Klient IP vises nu i Endpoint details session-tab
+
+`GET /pxgrid/sessions/{mac}` (get_session) manglede `framed_ip=info.framed_ip`
+i PxGridSessionInfoResponse-constructor — feltet var tilføjet til schema men
+ikke videresendt fra cache. Resultatet var at session debug-fanen i Endpoint
+details altid viste "—" for Klient IP.
+
+**Berørt fil:** `backend/app/api/pxgrid.py`
+
+## [6.4.1 build 0651] — 2026-06-13 — fix: RADIUS simulator evaluerer HypervisionActive korrekt
+
+`HypervisionActive` (og HypervisionStatus/ISEPortal/Roles) manglede i
+`_ENDPOINT_ATTR_MAP` i policy_service.py. Resultatet var at betingelser som
+`EndPoints.HypervisionActive = "Aktiv"` altid returnerede `None` fra
+`_get_ep_value()` og blev markeret som "skipped" (?) i stedet for at
+evaluere korrekt mod endpointets faktiske CA-værdi.
+Derudover hentede `_fetch_ep_from_ise()` ikke disse felter fra ISE ERS.
+
+**Berørt fil:** `backend/app/services/policy_service.py`
+
+## [6.4.0 build 0650] — 2026-06-13 — fix: framed_ip manglede i schema, broadcast og session debug tab
+
+- `PxGridSessionInfoResponse` manglede `framed_ip` → `/api/pxgrid/sessions/{mac}`
+  returnerede ikke IP, og browsetabellens Klient IP forblev tom efter SSE-upsert
+- `_broadcast()` i session_cache.py sendte ikke `framed_ip` → SSE upsert-events
+  nulstillede Klient IP-kolonnen ved re-auth
+- `list_sessions()` API inkluderede ikke `framed_ip=s.framed_ip` i Pydantic-constructor
+- Session debug tab: `framed_ip` viste ikke, `last_event_at` viste rå Unix-float,
+  og felterne `user_name`, `nas_device_type`, `cts_security_group`, `use_case` manglede
+
+**Berørte filer:** `backend/app/schemas/settings.py`, `backend/app/api/pxgrid.py`,
+`backend/app/pxgrid/session_cache.py`, `frontend/js/views/browse-detail.js`
+
+## [6.4.0 build 0649] — 2026-06-13 — fix: søgning i "Klient IP"-kolonne virker nu
+
+`field: () => ""` i getColumns() returnerede altid tom streng for client_ip,
+så kolonne-filter og sortering aldrig matchede noget. Tilføjet modul-niveau
+`_sessionData`-reference i browse-utils.js med `setSessionDataRef()` setter.
+browse.js kalder setteren ved alle pxgridSessionData-ændringer. field-funktionen
+slår nu MAC op i session-Mappen og returnerer framed_ip.
+
+**Berørte filer:** `frontend/js/views/browse-utils.js`,
+`frontend/js/views/browse.js`
+
+## [6.4.0 build 0648] — 2026-06-13 — fix: Klient IP-kolonne viser nu IP fra MnT-data
+
+`framed_ip` gik tabt ved MnT-berigelse fordi `_enrich_single_from_mnt()` og
+`reconcile_stale_sessions()` byggede ny `SessionInfo` uden at overføre
+`framed_ip`. Tilsvarende udpakkede `fetch_session_by_mac()` ikke
+`Framed-IP-Address` fra MnT XML-response. Begge fejl rettet.
+
+**Berørte filer:** `backend/app/pxgrid/session_worker.py`,
+`backend/app/ise/mnt_sessions.py`
+
+## [6.4.0 build 0647] — 2026-06-13 — feat: ny "Klient IP"-kolonne med session-data
+
+Ny togglebar kolonne "Klient IP" der viser klientens tildelte IP-adresse fra
+pxGrid/MnT session-data (framedIpAddress). Vises med monospace-font og blå farve.
+Opdateres automatisk ved pxGrid session-events (via applyFilter re-render).
+Datakilde: SessionInfo.framed_ip (allerede tilgængeligt fra session_worker).
+
+**Berørte filer:** `frontend/js/views/browse-table.js`,
+`frontend/js/views/browse-utils.js`, `frontend/js/i18n.js`,
+`frontend/css/styles.css`
+
+## [6.3.3 build 0646] — 2026-06-08 — revert: fjern forkert DACL/VLAN-fallback på profiler
+
+b0645-faldbakken tilknyttede samme dacl/vlan fra sessionen til ALLE profiler der
+ikke matchede et mønster — fx `PermitAccess:32` — selvom VLAN ikke hørte til
+den profil. Tilbageruller til original adfærd: kun profiler der matcher et
+navne-mønster (vlan/dacl/airspace/psk-key) får en suffix.
+
+**Berørt fil:** `frontend/js/views/browse-table.js`
+
+## [6.3.3 build 0645] — 2026-06-08 — fix: ISE session auth-kolonne viser DACL/VLAN for alle profiler
+
+Profil-suffix i "ISE session auth"-kolonnen viste kun kontekstuel info (DACL-navn,
+VLAN, ACL, PSK) for portals egne standard-profiler (Endpoint_VLAN / Endpoint_DACL /
+Endpoint_AirSpaceACL / Endpoint_PSK-KEY) fordi matchet var baseret på profilnavnet.
+Enhver anden ISE authz-profil (Endpoint_Guest_rediret, CorpAccess, o.lign.) viste
+kun profilnavnet uden suffix.
+
+Tilføjet fallback i `iseSessionCellHtml`: hvis intet standard-mønster matcher men
+session-data indeholder `dacl` → vises som `ProfilNavn:DaclNavn`. Hvis `vlan` →
+`ProfilNavn:VLAN`. DACL-badge-logikken opdateres tilsvarende.
+
+**Berørt fil:** `frontend/js/views/browse-table.js`
+
+## [6.3.2 build 0644] — 2026-06-08 — fix: Register-siden auto-sætter nu "Registered by"
+
+`register.js`'s submit-handler byggede custom-attrs-dict udelukkende fra
+`attrLabels`-objektet (Type, Owner, Lokation, AuthzVlan, AuthzACL, PlatformType).
+`RegistretBy` manglede, og feltet forblev tomt på alle endpoints registreret via
+Register-siden. Fix: `ca.RegistretBy = me.username` sættes automatisk ved submit.
+
+**Berørt fil:** `frontend/js/views/register.js`
+
+## [6.3.1 build 0643] — 2026-06-08 — fix: ISE authz-profil webRedirection-parsing
+
+ISE gemmer web-redirect ACL i `webRedirection.acl` (ikke i `advancedAttributes`) når
+profilen konfigureres via ISE GUI's Web Redirection-sektion. Portal viste derfor kun
+ét `cisco-av-pair` — `url-redirect-acl=...` manglede.
+
+Ny parsing af `webRedirection`-feltet i `_parse_profile_detail()`:
+- `web-redirect-type = CentralizedWebAuth` (o.lign.)
+- `web-redirect-portal = <portalName>` (hvis sat)
+- `cisco-av-pair = url-redirect=<url>` (hvis `redirectStaticIPHostNameSettings` = true)
+- `cisco-av-pair = url-redirect-acl=<acl>` (fra `webRedirection.acl`)
+Dubletter med `advancedAttributes`-data undgås. Debug-logging af raw ISE data tilføjet.
+
+**Berørt fil:** `backend/app/services/authz_profile_service.py`
+
+## [6.3.0 build 0642] — 2026-06-08 — feat: Konfigurerbar tekst på selvregistreringssiden
+
+To nye konfigurerbare tekstfelter i Settings → Guest Registration:
+- **Tekst under registrering** (`selfregister_intro_text`): intro-tekst vist over
+  formularen — erstatter hardcodet "Registrér din enhed for at få adgang...".
+- **Tekst efter registrering** (`selfregister_success_text`): tekst vist ved
+  succesfuld registrering — erstatter hardcodet "er nu registreret på netværket.".
+
+Backend: nyt felt i config.py, BackendSettingsUpdate/Response, settings_service.py,
+og SelfRegisterConfig → returneres via GET /api/selfregister/config.
+Frontend: to textarea-felter i settings-UI, selfregister.js bruger cfg.intro_text
+og cfg.success_text med fallback til defaults.
+
+**Berørte filer:** `backend/app/core/config.py`, `backend/app/schemas/settings.py`,
+`backend/app/services/settings_service.py`, `backend/app/api/selfregister.py`,
+`frontend/js/selfregister.js`, `frontend/js/views/settings.js`,
+`frontend/js/views/settings/section-update.js`, `frontend/js/i18n.js`
+
+## [6.2.6 build 0641] — 2026-06-08 — fix: ISE kræver condition-felt i PUT for Default-regel
+
+ISE returnerer 400 "Condition property is required" når condition-feltet
+udelades fra PUT-payload. Rettet: sender nu `"condition": null` eksplicit
+(ikke udeladet) — ISE accepterer null som "ingen betingelse / match alt".
+
+**Berørt fil:** `backend/app/ise/policy.py`
+
+## [6.2.5 build 0640] — 2026-06-08 — fix: Konsistens i Guest Registration settings
+
+Tre mangler i portal settings / Guest registration (self-registration):
+1. `selfregister_group_id`: fandtes i backend men ingen UI — tilføjet
+   endpoint-gruppe-dropdown (henter fra /api/groups).
+2. `guest_expiry_check_interval_seconds`: fandtes i config.py men manglede
+   i BackendSettingsUpdate/Response schema og frontend — tilføjet overalt.
+3. `<input type="time">` i settings: AM/PM-problem på Windows-locale —
+   erstattet med to 24h selects (timer 00–23, minutter 00–59), samme
+   mønster som b0637-fix i detail-modalen.
+
+**Berørte filer:** `backend/app/schemas/settings.py`,
+`backend/app/services/settings_service.py`,
+`frontend/js/views/settings.js`, `frontend/js/views/settings/section-update.js`,
+`frontend/js/i18n.js`
+
+## [6.2.4 build 0639] — 2026-06-08 — fix: Default authz-regel tillader profil-edit men blokerer condition-edit
+
+ISE tillader at ændre autoriseringsprofiler på Default-reglen, men ikke
+conditions. Editoren åbner nu for Default med conditions-sektionen erstattet
+af en info-besked ("Default matcher alt — betingelser kan ikke ændres i ISE").
+Kun Delete-knappen er stadig blokeret. Backend: `condition` er nu optional
+(None → sendes ikke i PUT-payload til ISE).
+
+**Berørte filer:** `backend/app/api/policy.py`, `backend/app/ise/policy.py`,
+`backend/app/services/policy_service.py`, `backend/app/schemas/policy.py`,
+`frontend/js/views/policy.js`
+
+## [6.2.3 build 0638] — 2026-06-08 — fix: Bloker redigering af ISE Default authz-regel
+
+Default-reglen i ISE er read-only og returnerer 400 ved ændringer. Løsning:
+- Backend `update_rule`/`delete_rule`: returnerer 422 med klar besked hvis regelnavnet er "default"
+- Frontend `showRuleEditor()`: tidlig return med fejlbesked for default-regel
+- Frontend `showRuleDetail`: skjuler Edit-knap, deaktiverer Delete-knap for default-regel
+- Drag-drop: viser fejlbesked og afbryder hvis src eller dst er default-reglen
+
+**Berørte filer:** `backend/app/api/policy.py`, `frontend/js/views/policy.js`
+
+## [6.2.2 build 0637] — 2026-06-07 — fix: 24-timers ur til Guest Expiry time-picker
+
+Erstattet `<input type="time">` (viser AM/PM på Windows/12h-locale) med to
+`<select>`-elementer: timer 00–23 og minutter 00–59. Altid 24-timers format
+uafhængigt af OS/browser-locale. Populeres via `_populateTimeSelects()` i
+`initDetail`. Gem-handler kombinerer `HH` + `MM` til `YYYY-MM-DD:HH:MM`.
+
+**Berørte filer:** `browse.js`, `browse-detail.js`, `styles.css`
+
+## [6.2.1 build 0636] — 2026-06-07 — fix: Date+time picker til Guest Expiry date i edit-modal
+
+Erstattet tekst-input med date+time input-par i Endpoint details edit.
+Dato-del: `<input type="date">`, tid-del: `<input type="time" step="60">`.
+Populate splitter `YYYY-MM-DD:HH:MM` på første kolon. Gem kombinerer de to
+felter — mangler tidsværdi defaulter til `23:59`. CSS .expiry-dt-wrap med
+dark/midnight theme support.
+
+**Berørte filer:** `browse.js`, `browse-detail.js`, `styles.css`
+
+## [6.2.0 build 0635] — 2026-06-07 — feat: Guest Expiry background worker
+
+Ny periodisk baggrunds-worker der automatisk sætter GuestAccessExpire=true i ISE
+når GuestExperyDate er passeret. Workflow:
+  1. `guest_expiry_store.py` (SQLite, `backend/cache/guest_expiry.db`) tracker alle
+     endpoints med GuestRegistration=true og en GuestExperyDate.
+  2. `guest_expiry_worker.py` kører hvert 60s (`guest_expiry_check_interval_seconds`),
+     finder udløbne poster og kalder ISE ERS for at sætte GuestAccessExpire=true.
+  3. `endpoint_service._sync_guest_expiry()` opdaterer storen ved create/update/delete.
+  4. Worker startes og stoppes rent i `main.py` lifespan.
+
+**Berørte filer:** `core/guest_expiry_store.py` (ny), `services/guest_expiry_worker.py` (ny),
+`services/endpoint_service.py`, `core/config.py`, `main.py`, `FEATURES.md`
+
+## [6.1.4 build 0634] — 2026-06-07 — fix: Ret manglende PATCH-versionsbump fra b0633
+
+b0633 var en fix-commit men PATCH blev ikke bumped (6.1.3 → 6.1.3 fejlagtigt).
+Rettet til 6.1.4.
+
+## [6.1.3 build 0633] — 2026-06-07 — fix: Omdøb guest expiry felter + skjul dem når GuestRegistration != true
+
+Labels: "Guest Expiry date" og "Guest access expired" (DA+EN). Felterne i
+detail-modal skjules automatisk når GuestRegistration er tom/false og vises
+kun når GuestRegistration = true. Change-listener på #d-guestreg håndterer
+live toggle. Tabelkolonnerne (browse) er uberørte da de styres af col-vis.
+
+**Berørte filer:** `i18n.js`, `browse.js`, `browse-detail.js`
+
+## [6.1.3 build 0632] — 2026-06-07 — feat: GuestExperyDate + GuestAccessExpire i edit-mode + kompakt detail-modal
+
+Tilføjet GuestExperyDate (text input) og GuestAccessExpire (select) til:
+- Detail modal (Endpoint details edit) — HTML + populate openDetail() + gem i #d-save
+- Inline browse-tabel — ny kolonne + inline input/select + buildSavePayload()
+ISE read-only metadata (Hypervision, Profile IDs, timestamps, Status) er flyttet til
+en `<details>` collapsible sektion så edit-felterne fylder et vindue.
+detail-grid er gjort kompakt: gap 0.28rem, margin 0.3rem, label-kolonne 130px,
+font/padding reduceret. Ny .detail-meta-grid CSS (2+2 kolonner).
+
+**Berørte filer:** `browse.js`, `browse-detail.js`, `browse-table.js`, `browse-utils.js`,
+`i18n.js`, `styles.css`
+
+## [6.1.2 build 0631] — 2026-06-07 — feat: Flyt tung sync-knap til Endpoint Attributes-side
+
+Flyttet "↕ Synkronisér custom attributter med ISE" fra Settings → Advanced til toppen af
+Endpoint Attributes-siden (`attributes.js`). Fjernet `#migration-sync-btn` og tilhørende
+handler fra `section-update.js` — `if (!btn) return;` guard der brækkede resten af
+`initAdvancedSection()` er nu også fjernet. Settings → Advanced viser kun "Tjek & opret".
+
+**Berørte filer:** `frontend/js/views/attributes.js`, `frontend/js/views/settings/section-update.js`
+
+## [6.1.2 build 0630] — 2026-06-07 — feat: Ny let knap "Tjek & opret attributter i ISE"
+
+Ny backend `POST /custom-attributes/ensure-definitions` + ny knap i Settings → Advanced.
+Kalder kun ISE Open API for at liste og oprette manglende attribut-definitioner — ingen
+endpoint-scanning. Tager sekunder. Den tunge sync-knap viser nu også definitions-resultatet
+via fælles `_renderDefsResult`-hjælpefunktion.
+**Berørte filer:** `schemas/custom_attribute.py`, `services/custom_attribute_service.py`,
+`api/custom_attributes.py`, `api.js`, `views/settings.js`, `section-update.js`, `i18n.js`
+
+## [6.1.2 build 0629] — 2026-06-07 — fix: Sync viser nu oprettede vs. eksisterende attributter separat
+
+`ensure_definitions` returnerer nu "existed"/"created"/"failed" pr. attribut.
+`SyncResult` har tre nye lister: `definitions_existing`, `definitions_created`, `definitions_failed`.
+Frontend viser grøn linje med navne på nyoprettede attributter, samlet tæller og evt. fejl.
+**Berørte filer:** `ise/custom_attributes.py`, `schemas/custom_attribute.py`,
+`services/custom_attribute_service.py`, `services/endpoint_service.py`,
+`section-update.js`, `i18n.js`
+
+## [6.1.1 build 0628] — 2026-06-07 — fix: Sync-knap tekst opdateret til bidirektionel synkronisering
+
+Knaptekst, korttitel og confirm-dialog opdateret til at afspejle at synkroniseringen
+går begge veje: opretter manglende attribut-definitioner i ISE OG importerer brugte
+værdier fra endpoints. Loading-tekst tilsvarende opdateret.
+**Berørte filer:** `i18n.js`
+
+## [6.1.1 build 0627] — 2026-06-07 — fix: Sync-knap viser nu attribut-definitionsstatus fra ISE
+
+Result-visningen efter "Importér custom attributter fra ISE" viser nu:
+- Antal endpoints scannet + nye værdier (som før)
+- Attribut-definitioner i ISE: X/Y ✓ (alle ok)
+- Eller: hvilke attributter der mangler i ISE og skal oprettes manuelt (rød tekst)
+**Berørte filer:** `section-update.js`, `i18n.js`
+
+## [6.1.0 build 0626] — 2026-06-07 — feat: Gæsteadgang udløb (GuestExperyDate + GuestAccessExpire)
+
+Ny settings-sektion under Gæste-registrering: admin vælger tidsperiode (N dage) eller bestemt dato + klokkeslæt for udløb.
+Ved selvregistrering sættes `GuestExperyDate` (YYYY-MM-DD:HH:MM) og `GuestAccessExpire=false` som custom attributes.
+`GuestAccessExpire` tilføjet til policy condition-builder og caValues (true/false dropdown).
+**Berørte filer:** `core/config.py`, `schemas/settings.py`, `schemas/endpoint.py`, `services/settings_service.py`,
+`api/selfregister.py`, `core/custom_attr_store.py`, `services/endpoint_service.py`, `services/policy_service.py`,
+`views/settings.js`, `views/settings/section-update.js`, `i18n.js`, `views/policy-condition-builder.js`, `views/policy.js`
+
+## [6.0.4 build 0625] — 2026-06-06 — release: Versionsbump til 6.0.4
+
+Samler 6.0.4 fix: GuestRegistration + RegistretBy skipped i policy-simulering.
+
+## [6.0.3 build 0624] — 2026-06-06 — fix: GuestRegistration + RegistretBy skipped i policy-simulering
+
+`_ENDPOINT_ATTR_MAP` manglede entries for `GuestRegistration` og `RegistretBy` → conditions altid skipped.
+`_fetch_ep_from_ise()` returnerede heller ikke disse felter for live-endpoint simulation.
+**Berørt fil:** `backend/app/services/policy_service.py`
+
+## [6.0.3 build 0623] — 2026-06-06 — release: Versionsbump til 6.0.3
+
+Samler 6.0.x fixes: GuestRegistration i Browse/Policies, auto-scan authz-profiler,
+ActiveList MnT fallback, CWA session-lookup via pxGrid + MnT, KNOWN_PROFILES import-fix.
+
+## [6.0.2 build 0622] — 2026-06-06 — fix: KNOWN_PROFILES is not defined i policy.js
+
+Manglende import af KNOWN_PROFILES fra policy-condition-builder.js.
+**Berørt fil:** `frontend/js/views/policy.js`
+
+## [6.0.2 build 0621] — 2026-06-06 — feat: Auto-scan ISE authz-profiler ved åbning af profile-dropdown
+
+Første gang brugeren klikker/fokuserer dropdown'en i "Autoriseringsprofiler" i policy-editoren,
+hentes alle ISE authz-profiler automatisk via `api.listAuthzProfiles()` og vises som options.
+Viser "Henter profiler fra ISE…" mens hentning er i gang. `knownProfiles` initialiseres ved load.
+**Berørte filer:** `policy.js`, `i18n.js`
+
+## [6.0.2 build 0620] — 2026-06-06 — feat: GuestRegistration synlig og redigerbar i Browse + Policies
+
+Browse-kolonne, inline-edit celle (select true/false), detail-panel felt, bulk-edit felt.
+GuestRegistration + RegistretBy tilføjet til policy condition-builder EndPoints-dictionary.
+GuestRegistration ["true","false"] injiceret i caValues (dropdown i conditions).
+**Berørte filer:** `browse-utils.js`, `browse-table.js`, `browse.js`, `browse-detail.js`,
+`browse-bulk.js`, `policy-condition-builder.js`, `policy.js`, `i18n.js`
+
+## [6.0.1 build 0619] — 2026-06-06 — fix: ActiveList-fallback når ISE MnT Session/IPAddress returnerer 500
+
+ISE 3.4 bug: `GET /Session/IPAddress/{ip}` returnerer HTTP 500 (CPM 34110) for visse sessioner.
+Fix: ved HTTP 500 scannes `ActiveList` og filtreres på `framed_ip` — samme data, mere robust endpoint.
+Ny `_session_from_active_list_row()` og `_session_by_ip_from_active_list()` i `mnt_sessions.py`.
+**Berørt fil:** `backend/app/ise/mnt_sessions.py`
+
+## [6.0.1 build 0618] — 2026-06-06 — fix: selfregister/session bruger kun MnT direkte (ikke cache)
+
+Fjerner pxGrid-cache som kilde til session-lookup. Hvert polling-kald fra frontend
+laver ét direkte MnT-kald. Tilføjet debug-logging så raw XML-svar fra ISE skrives til
+app.log ved fejl — letter diagnosticering af MnT-adgang og parse-problemer.
+**Berørte filer:** `api/selfregister.py`, `ise/mnt_sessions.py`
+
+## [6.0.1 build 0617] — 2026-06-06 — release: Versionsbump til 6.0.1
+
+## [6.0.0 build 0616] — 2026-06-06 — fix: selfregister/session bruger pxGrid-cache som primær kilde
+
+`GET /api/selfregister/session` prøver nu pxGrid session-cache (in-memory) FØR MnT API.
+`SessionInfo` har fået nyt `framed_ip`-felt populeret fra `framedIpAddress`/`ipAddresses[0]`
+i pxGrid-payload. `SessionCache.get_by_ip()` scanner sessioner for matchende `framed_ip`.
+Eliminerer fejlede MnT-opslag når pxGrid er aktiv — svar er øjeblikkeligt fra cache.
+**Berørte filer:** `pxgrid/session_cache.py`, `pxgrid/session_worker.py`, `api/selfregister.py`
+
+## [6.0.0 build 0615] — 2026-06-06 — feat: Komplet CWA-flow — MnT IP-session-lookup + upsert + CoA
+
+**MnT IP-session-lookup** (`mnt_sessions.session_by_ip`):
+Ny funktion der kalder `GET /admin/API/mnt/Session/IPAddress/{ip}` med retry-logik
+(3 forsøg, 2 sek. mellemrum). Returnerer MAC, ACSSessionID, NAS-IP, NAS-Port-Id.
+
+**Ny API-endpoint `GET /api/selfregister/session`:**
+Frontend kalder dette efter sideload — portal bestemmer klientens IP fra
+X-Forwarded-For/remote_addr og slår session op i ISE MnT. Returnerer MAC + session-data.
+
+**Upsert-logik i `POST /api/selfregister`:**
+Tjekker om MAC allerede eksisterer i ISE (ERS get_by_mac). Opdaterer (PUT) hvis ja,
+opretter (POST) hvis nej. Eliminerer duplikat-fejl.
+
+**Refaktoreret `selfregister.js`:**
+Fjerner URL-param `?mac=...`. Kalder session-API i stedet med polling-UI (op til 5 runder,
+3 sek. mellemrum). Viser "finder din enhed"-animation og retry-knap ved timeout.
+
+**Berørte filer:** `ise/mnt_sessions.py`, `api/selfregister.py`, `frontend/js/selfregister.js`
+
+## [5.30.1 build 0614] — 2026-06-04 — feat: Guest reg config i Settings + IPSK + CoA + GuestRegistration CA
+
+**Ny CA `GuestRegistration`** — sættes til "true" på alle selvregistrerede endpoints.
+**Settings → Portal Config → Advanced → "Gæste-registrering":**
+- Aktivér/deaktivér selvregistrering, VLAN-dropdown (fra ISE CA-værdier), DACL-dropdown (fra ISE),
+  IPSK-toggle, redirect URL og accepttekst.
+**Selvregistrerings-siden:** valgfrit IPSK-felt vises hvis aktiveret i settings.
+**CoA Reauth** sendes automatisk til NAS efter succesfuld registrering.
+**HypervisionActive=Aktiv** sættes automatisk på alle selvregistrerede endpoints.
+**Berørte filer:** `config.py`, `schemas/settings.py`, `services/settings_service.py`,
+`api/selfregister.py`, `settings.js`, `section-update.js`, `selfregister.js`, `i18n.js`,
+`custom_attr_store.py`, `schemas/endpoint.py`, `endpoint_service.py`
+
+## [5.30.0 build 0611] — 2026-06-04 — feat: Public selvregistrerings-side + RegistretBy CA
+
+Ny `selfregister.html` standalone side til wireless controller redirect.
+Ny public API: `GET /api/selfregister/config` + `POST /api/selfregister` (ingen auth).
+Ny endpoint CA `RegistretBy` i MANAGED_ATTRS, Browse-kolonne og edit-form.
+Konfigurerbar via `selfregister_*` settings i `config.py`.
+**Berørte filer:** `config.py`, `custom_attr_store.py`, `schemas/endpoint.py`, `endpoint_service.py`,
+`api/selfregister.py`, `main.py`, `frontend/selfregister.html`, `frontend/js/selfregister.js`,
+`browse-utils.js`, `browse-table.js`, `browse-detail.js`, `browse.js`, `i18n.js`
+
 ## [5.22.3 build 0610] — 2026-06-04 — release: Versionsbump til 5.22.3
 
 ## [5.22.2 build 0609] — 2026-06-04 — fix: HypervisionRegisteredAt stampes ved første portal-edit af pre-existing endpoints

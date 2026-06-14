@@ -7,6 +7,7 @@ import { auth } from "../auth.js";
 import { t } from "../i18n.js";
 import { esc } from "./browse-utils.js";
 import {
+  KNOWN_PROFILES,
   groupEditorHtml, wireGroupEditor, readGroupCondition,
   renderConditionTree, renderConditionChips,
   profilesHtml, readProfiles, wireProfileEvents,
@@ -106,6 +107,14 @@ export async function renderPolicy(container) {
   let selectedSetName = "";
   let selectedRuleId  = null;
   let caValues        = {};
+  let knownProfiles   = [...KNOWN_PROFILES]; // opdateres ved scan fra ISE
+
+  // Hent alle ISE authz-profiler ved load — udfylder profile-dropdown i editoren
+  api.listAuthzProfiles().then((res) => {
+    if (Array.isArray(res) && res.length) {
+      knownProfiles = res.map((p) => p.name).filter(Boolean);
+    }
+  }).catch(() => { /* bevar KNOWN_PROFILES som fallback */ });
 
   const setsList    = container.querySelector("#pol-sets-list");
   const rulesTitle  = container.querySelector("#pol-rules-title");
@@ -122,9 +131,11 @@ export async function renderPolicy(container) {
     console.warn("[policy] Custom attributes unavailable:", err.message);
   }).finally(() => {
     // Portal-managed attributes have fixed value sets — always override
-    caValues["HypervisionActive"] = ["Aktiv", "Inaktiv"];
-    caValues["HypervisionStatus"] = ["Decommissioned"];
-    caValues["PSK_Mode"]          = ["true", "false"];
+    caValues["HypervisionActive"]  = ["Aktiv", "Inaktiv"];
+    caValues["HypervisionStatus"]  = ["Decommissioned"];
+    caValues["PSK_Mode"]           = ["true", "false"];
+    caValues["GuestRegistration"]  = ["true", "false"];
+    caValues["GuestAccessExpire"]  = ["true", "false"];
   });
 
   api.listGroups().then((res) => {
@@ -288,6 +299,10 @@ export async function renderPolicy(container) {
         const srcRule = rules.find((r) => r.id === dragSrcId);
         const dstRule = rule;
         if (!srcRule) return;
+        if (srcRule.name?.trim().toLowerCase() === "default" || dstRule.name?.trim().toLowerCase() === "default") {
+          rulesMsg.innerHTML = `<div class="alert error">Default-reglen kan ikke flyttes — den er read-only i ISE.</div>`;
+          return;
+        }
         try {
           await api.updatePolicyRule(setId, srcRule.id, {
             name: srcRule.name,
@@ -299,6 +314,7 @@ export async function renderPolicy(container) {
           await loadRules(setId);
         } catch (err) {
           console.error("Regel-flytning fejlede:", err.message);
+          rulesMsg.innerHTML = `<div class="alert error">Regel-flytning fejlede: ${esc(err.message)}</div>`;
         }
       });
     });
@@ -352,26 +368,33 @@ export async function renderPolicy(container) {
     );
 
     if (isEditor) {
+      const isDefaultRule = rule.name?.trim().toLowerCase() === "default";
       detailPanel.querySelector("#pol-detail-edit")?.addEventListener("click", () =>
         showRuleEditor(rule, setId)
       );
-      detailPanel.querySelector("#pol-detail-del")?.addEventListener("click", async () => {
-        if (!confirm(t("pol.del_confirm").replace("{name}", rule.name))) return;
-        try {
-          await api.deletePolicyRule(setId, rule.id);
-          rulesMsg.innerHTML = `<div class="alert success">${t("pol.del_ok")}</div>`;
-          selectedRuleId = null;
-          clearDetail();
-          await loadRules(setId);
-        } catch (err) {
-          rulesMsg.innerHTML = `<div class="alert error">${t("pol.del_err").replace("{msg}", esc(err.message))}</div>`;
-        }
-      });
+      if (isDefaultRule) {
+        const delBtn = detailPanel.querySelector("#pol-detail-del");
+        if (delBtn) { delBtn.disabled = true; delBtn.title = "Default-reglen kan ikke slettes i ISE"; }
+      } else {
+        detailPanel.querySelector("#pol-detail-del")?.addEventListener("click", async () => {
+          if (!confirm(t("pol.del_confirm").replace("{name}", rule.name))) return;
+          try {
+            await api.deletePolicyRule(setId, rule.id);
+            rulesMsg.innerHTML = `<div class="alert success">${t("pol.del_ok")}</div>`;
+            selectedRuleId = null;
+            clearDetail();
+            await loadRules(setId);
+          } catch (err) {
+            rulesMsg.innerHTML = `<div class="alert error">${t("pol.del_err").replace("{msg}", esc(err.message))}</div>`;
+          }
+        });
+      }
     }
   }
 
   // ── Rule editor (right panel) ─────────────────────────────────────────────
   function showRuleEditor(existing = null, setId) {
+    const isDefault = existing?.name?.trim().toLowerCase() === "default";
     const isNew = !existing;
 
     if (existing) {
@@ -401,10 +424,13 @@ export async function renderPolicy(container) {
         </label>
 
         <div class="editor-section-label">${t("pol.ed_conds_label")}</div>
-        <div id="pol-cond-editor">${groupEditorHtml(existing?.condition ?? null, caValues)}</div>
+        ${isDefault
+          ? `<div class="alert info" style="font-size:.82rem;margin:.2rem 0 .4rem;">Default-reglen matcher alt — betingelser kan ikke ændres i ISE.</div>`
+          : `<div id="pol-cond-editor">${groupEditorHtml(existing?.condition ?? null, caValues)}</div>`
+        }
 
         <div class="editor-section-label">${t("pol.ed_profiles_label")}</div>
-        <div id="pol-profiles-wrap">${profilesHtml(existing?.profiles || [])}</div>
+        <div id="pol-profiles-wrap">${profilesHtml(existing?.profiles || [], knownProfiles)}</div>
 
         <div class="pol-pd-section">
           <div class="pol-detail-col-label">${t("pol.pd_section_label")}</div>
@@ -420,23 +446,48 @@ export async function renderPolicy(container) {
     const condEditorEl  = detailPanel.querySelector("#pol-cond-editor");
     const profilesWrap  = detailPanel.querySelector("#pol-profiles-wrap");
     const pdDetailsEd   = detailPanel.querySelector("#pol-pd-details-ed");
-    wireGroupEditor(condEditorEl, caValues);
+    if (condEditorEl) wireGroupEditor(condEditorEl, caValues);
     wireProfileEvents(profilesWrap, () => {
       loadAndRenderProfileDetails(pdDetailsEd, readProfiles(profilesWrap));
     });
     loadAndRenderProfileDetails(pdDetailsEd, existing?.profiles || []);
+
+    // Auto-scan: hent ISE authz-profiler første gang dropdown åbnes
+    const profilePreset = profilesWrap.querySelector(".profile-preset");
+    if (profilePreset) {
+      let _scanned = false;
+      const _doScan = async () => {
+        if (_scanned) return;
+        _scanned = true;
+        const loadingOpt = document.createElement("option");
+        loadingOpt.value = ""; loadingOpt.textContent = t("pol.scan_profiles_scanning");
+        profilePreset.prepend(loadingOpt);
+        try {
+          const res = await api.listAuthzProfiles();
+          if (Array.isArray(res) && res.length) {
+            knownProfiles = res.map((p) => p.name).filter(Boolean);
+            const current = profilePreset.value;
+            profilePreset.innerHTML = `<option value="">${t("pol.cb_profile_sel")}</option>`
+              + knownProfiles.map((p) => `<option value="${esc(p)}"${p===current?" selected":""}>${esc(p)}</option>`).join("");
+          }
+        } catch { _scanned = false; /* tillad retry næste gang */ }
+        finally { loadingOpt.remove?.(); }
+      };
+      profilePreset.addEventListener("focus",     _doScan, { once: false });
+      profilePreset.addEventListener("mousedown",  _doScan, { once: false });
+    }
 
     detailPanel.querySelector("#pol-save-rule-btn").addEventListener("click", async () => {
       const editorMsg = detailPanel.querySelector("#pol-editor-msg");
       const name  = detailPanel.querySelector("#pol-rule-name")?.value.trim();
       const rank  = parseInt(detailPanel.querySelector("#pol-rule-rank")?.value || "0", 10);
       const state = detailPanel.querySelector("#pol-rule-state")?.value || "enabled";
-      const cond  = readGroupCondition(condEditorEl);
+      const cond  = isDefault ? null : readGroupCondition(condEditorEl);
       const profs = readProfiles(profilesWrap);
 
-      if (!name)         { editorMsg.innerHTML = `<div class="alert error">${t("pol.ed_err_name")}</div>`; return; }
-      if (!cond)         { editorMsg.innerHTML = `<div class="alert error">${t("pol.ed_err_cond")}</div>`; return; }
-      if (!profs.length) { editorMsg.innerHTML = `<div class="alert error">${t("pol.ed_err_profile")}</div>`; return; }
+      if (!name)                  { editorMsg.innerHTML = `<div class="alert error">${t("pol.ed_err_name")}</div>`; return; }
+      if (!isDefault && !cond)    { editorMsg.innerHTML = `<div class="alert error">${t("pol.ed_err_cond")}</div>`; return; }
+      if (!profs.length)          { editorMsg.innerHTML = `<div class="alert error">${t("pol.ed_err_profile")}</div>`; return; }
 
       editorMsg.innerHTML = `<div class="alert info">${t("pol.ed_saving")}</div>`;
       const btn = detailPanel.querySelector("#pol-save-rule-btn");

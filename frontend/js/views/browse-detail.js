@@ -16,11 +16,37 @@ import {
   profilesHtml, readProfiles, wireProfileEvents,
 } from "./policy-condition-builder.js";
 
+function _updateGuestExpiryVisibility(container) {
+  const show = container.querySelector("#d-guestreg")?.value === "true";
+  container.querySelectorAll(".d-guest-expiry-row").forEach((el) => {
+    el.style.display = show ? "" : "none";
+  });
+}
+
+function _populateTimeSelects(container) {
+  const hourSel = container.querySelector("#d-expery-hour-s");
+  const minSel  = container.querySelector("#d-expery-min-s");
+  if (hourSel && !hourSel.options.length) {
+    for (let i = 0; i < 24; i++) {
+      const v = String(i).padStart(2, "0");
+      hourSel.add(new Option(v, v));
+    }
+  }
+  if (minSel && !minSel.options.length) {
+    for (let i = 0; i < 60; i++) {
+      const v = String(i).padStart(2, "0");
+      minSel.add(new Option(v, v));
+    }
+  }
+}
+
 export function initDetail(container, state, api, cb) {
   const detailOverlay = container.querySelector("#detail-overlay");
   const detailMsg     = container.querySelector("#detail-msg");
   const msg           = container.querySelector("#msg");
   let _templates = [];
+
+  _populateTimeSelects(container);
 
   function updateGroupPath(groupId) {
     const pathEl = container.querySelector("#d-group-path");
@@ -72,6 +98,30 @@ export function initDetail(container, state, api, cb) {
       container.querySelector("#d-type").innerHTML        = optionsHtml(state.caValues.Type, d.endpoint_type);
       container.querySelector("#d-owner").innerHTML       = optionsHtml(state.caValues.Owner, d.owner);
       container.querySelector("#d-lokation").innerHTML    = optionsHtml(state.caValues.Lokation, d.lokation);
+      const regByEl = container.querySelector("#d-registretby");
+      if (regByEl) regByEl.value = d.registret_by || "";
+      const guestRegEl = container.querySelector("#d-guestreg");
+      if (guestRegEl) {
+        guestRegEl.value = d.guest_registration || "";
+        if (!guestRegEl._expiryListenerAttached) {
+          guestRegEl.addEventListener("change", () => _updateGuestExpiryVisibility(container));
+          guestRegEl._expiryListenerAttached = true;
+        }
+      }
+      const rawExpiry = d.guest_expery_date || "";
+      const expiryColon = rawExpiry.indexOf(":");
+      const expiryDatePart = expiryColon > 0 ? rawExpiry.slice(0, expiryColon) : rawExpiry;
+      const expiryTimePart = expiryColon > 0 ? rawExpiry.slice(expiryColon + 1) : "";
+      const experyDateD = container.querySelector("#d-expery-date-d");
+      if (experyDateD) experyDateD.value = expiryDatePart;
+      const [hh, mm] = (expiryTimePart || "23:59").split(":");
+      const hourSel = container.querySelector("#d-expery-hour-s");
+      const minSel  = container.querySelector("#d-expery-min-s");
+      if (hourSel) hourSel.value = hh || "23";
+      if (minSel)  minSel.value  = mm || "59";
+      const accessExpireEl = container.querySelector("#d-access-expire");
+      if (accessExpireEl) accessExpireEl.value = d.guest_access_expire || "";
+      _updateGuestExpiryVisibility(container);
       container.querySelector("#d-authzvlan").innerHTML   = optionsHtml(state.caValues.AuthzVlan, d.authz_vlan);
       container.querySelector("#d-authzacl").innerHTML    = optionsHtml(state.caValues.AuthzACL, d.authz_acl);
       const detailNasPt = state.pxgridSessionData
@@ -407,10 +457,15 @@ export function initDetail(container, state, api, cb) {
     if (!cached) {
       html += `<div class="alert warning">${t("browse.session_no_cache").replace("{mac}", esc(mac))}</div>`;
     } else {
+      const lastEvTs = cached.last_event_at
+        ? new Date(cached.last_event_at * 1000).toLocaleString()
+        : "—";
       html += `<h4 style="margin:.5rem 0 .25rem;font-size:.9em;color:#374151;">${t("browse.session_cache_title")}</h4>
         <table ${tableStyle}><tbody>
           ${_row("MAC", cached.mac)}
           ${_row("State", cached.state)}
+          ${_row("Klient IP", cached.framed_ip || "—")}
+          ${_row("User name", cached.user_name || "—")}
           ${_row("Auth method", cached.auth_method)}
           ${_row("Authz profiles", (cached.authz_profiles||[]).join(", "))}
           ${_row("VLAN", cached.vlan)}
@@ -419,15 +474,44 @@ export function initDetail(container, state, api, cb) {
           ${_row("Authz rule", cached.authz_rule_name)}
           ${_row("NAS IP", cached.nas_ip)}
           ${_row("NAS name", cached.nas_name)}
+          ${_row("NAS device type", cached.nas_device_type || "—")}
           ${_row("Identity group", cached.identity_group)}
           ${_row("Endpoint policy", cached.endpoint_policy)}
+          ${cached.cts_security_group ? _row("CTS security group", cached.cts_security_group) : ""}
+          ${cached.use_case ? _row("Use case", cached.use_case) : ""}
           ${_row("Audit session ID", (cached.audit_session_id||"").slice(0,40))}
-          ${_row("Last event", cached.last_event_at)}
+          ${_row("Last event", lastEvTs)}
         </tbody></table>`;
     }
 
     html += `<button id="d-session-probe-btn" class="secondary small" style="margin-bottom:.5rem;">Probe MnT (admin)</button>
       <div id="d-session-probe-result"></div>`;
+
+    // nmap-scanning — kun synlig hvis endpoint har en IP-adresse
+    const scanIp = cached?.framed_ip || "";
+    if (scanIp) {
+      html += `
+        <hr style="border:none;border-top:1px solid #e5e7eb;margin:.75rem 0;">
+        <h4 style="margin:.25rem 0 .25rem;font-size:.9em;color:#374151;">
+          nmap-scanning mod ${esc(scanIp)}
+          <span style="font-size:.72em;background:#fef3c7;color:#92400e;padding:2px 7px;border-radius:10px;font-weight:normal;vertical-align:middle;">Eksperimentel</span>
+        </h4>
+        <p style="font-size:.78em;color:#6b7280;margin:0 0 .5rem;">
+          Scanningen køres fra <strong>portalserveren</strong> — ikke fra ISE.
+          Resultatet afspejler porte og services set fra serverens netværksplacering.
+        </p>
+        <div style="display:flex;flex-wrap:wrap;gap:.35rem;margin-bottom:.5rem;">
+          <button class="nmap-preset secondary small" data-preset="ping">Ping</button>
+          <button class="nmap-preset secondary small" data-preset="top1000">Top-1000 porte</button>
+          <button class="nmap-preset secondary small" data-preset="service">Service discovery</button>
+          <button class="nmap-preset secondary small" data-preset="custom">Brugerdefineret…</button>
+        </div>
+        <div id="d-nmap-custom-row" style="display:none;margin-bottom:.5rem;">
+          <input id="d-nmap-custom-flags" type="text" placeholder="-p 80,443,8080 -sV" style="width:100%;font-family:monospace;font-size:.85em;" />
+        </div>
+        <button id="d-nmap-run" class="small" disabled>Kør nmap scan</button>
+        <pre id="d-nmap-result" style="display:none;margin-top:.5rem;background:#0f172a;color:#e2e8f0;padding:.75rem;border-radius:6px;font-size:.78em;overflow-x:auto;white-space:pre-wrap;max-height:400px;overflow-y:auto;"></pre>`;
+    }
 
     panel.innerHTML = html;
 
@@ -477,6 +561,43 @@ export function initDetail(container, state, api, cb) {
         resEl.innerHTML = `<div class="alert error">Debug fejlede: ${esc(err.message)} (kræver admin-rolle)</div>`;
       }
     });
+
+    // ── nmap event listeners ─────────────────────────────────────────────
+    if (scanIp) {
+      let selectedPreset = null;
+      const runBtn       = panel.querySelector("#d-nmap-run");
+      const customRow    = panel.querySelector("#d-nmap-custom-row");
+      const customInput  = panel.querySelector("#d-nmap-custom-flags");
+      const resultPre    = panel.querySelector("#d-nmap-result");
+
+      panel.querySelectorAll(".nmap-preset").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          panel.querySelectorAll(".nmap-preset").forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          selectedPreset = btn.dataset.preset;
+          customRow.style.display = selectedPreset === "custom" ? "" : "none";
+          runBtn.disabled = false;
+        });
+      });
+
+      runBtn.addEventListener("click", async () => {
+        const preset = selectedPreset === "custom" ? null : selectedPreset;
+        const flags  = selectedPreset === "custom" ? (customInput.value.trim() || null) : null;
+        runBtn.disabled = true;
+        runBtn.textContent = "Scanner…";
+        resultPre.style.display = "";
+        resultPre.textContent = `Starter nmap mod ${scanIp}…`;
+        try {
+          const res = await api.nmapScan(scanIp, preset, flags);
+          resultPre.textContent = `# ${res.cmd}  (${res.duration}s)\n\n${res.output}`;
+        } catch (err) {
+          resultPre.textContent = `Fejl: ${err.message}`;
+        } finally {
+          runBtn.disabled = false;
+          runBtn.textContent = "Kør nmap scan";
+        }
+      });
+    }
   }
 
   // ── Policy areas ──────────────────────────────────────────────────────────
@@ -707,7 +828,9 @@ export function initDetail(container, state, api, cb) {
     return {
       owner:          container.querySelector("#d-owner")?.value || "",
       endpoint_type:  container.querySelector("#d-type")?.value || "",
-      lokation:       container.querySelector("#d-lokation")?.value || "",
+      lokation:           container.querySelector("#d-lokation")?.value || "",
+      registret_by:       container.querySelector("#d-registretby")?.value || "",
+      guest_registration: container.querySelector("#d-guestreg")?.value || "",
       authz_vlan:     container.querySelector("#d-authzvlan")?.value || "",
       authz_acl:      container.querySelector("#d-authzacl")?.value || "",
       platform_type:  container.querySelector("#d-platformtype")?.value || "",
@@ -1095,6 +1218,15 @@ export function initDetail(container, state, api, cb) {
       Type: container.querySelector("#d-type").value,
       Owner: container.querySelector("#d-owner").value,
       Lokation: container.querySelector("#d-lokation").value,
+      RegistretBy: container.querySelector("#d-registretby")?.value || "",
+      GuestRegistration: container.querySelector("#d-guestreg")?.value || "",
+      GuestExperyDate: (() => {
+        const d = container.querySelector("#d-expery-date-d")?.value || "";
+        const h = container.querySelector("#d-expery-hour-s")?.value || "23";
+        const m = container.querySelector("#d-expery-min-s")?.value || "59";
+        return d ? `${d}:${h}:${m}` : "";
+      })(),
+      GuestAccessExpire: container.querySelector("#d-access-expire")?.value || "",
       AuthzVlan: container.querySelector("#d-authzvlan").value,
       AuthzACL: container.querySelector("#d-authzacl").value,
       PlatformType: container.querySelector("#d-platformtype").value,

@@ -414,20 +414,50 @@ export function initGithubUpdateSection(container) {
 }
 
 export function initAdvancedSection(container) {
-  const btn    = container.querySelector("#migration-sync-btn");
-  const result = container.querySelector("#migration-sync-result");
+  const ensureBtn   = container.querySelector("#ensure-defs-btn");
+  const ensureResult = container.querySelector("#ensure-defs-result");
   const debugCb     = container.querySelector("#debug-pxgrid-sessions-cb");
   const debugResult = container.querySelector("#debug-pxgrid-sessions-result");
-  if (!btn) return;
 
   // Set element texts
   const advCardH3 = container.querySelector("#adv-card-h3");
   if (advCardH3) advCardH3.textContent = t("settings.adv_card");
-  btn.textContent = t("settings.adv_btn");
+  if (ensureBtn) ensureBtn.textContent = t("settings.adv_ensure_btn");
   const debugLbl = container.querySelector("#debug-pxgrid-sessions-lbl");
   if (debugLbl) debugLbl.textContent = t("settings.adv_debug_pxgrid_lbl");
   const debugHint = container.querySelector("#debug-pxgrid-sessions-hint");
   if (debugHint) debugHint.textContent = t("settings.adv_debug_pxgrid_hint");
+
+  // Ensure definitions — light button (no endpoint scan)
+  function _renderDefsResult(res, el) {
+    const created  = res.definitions_created  || [];
+    const existing = res.definitions_existing || [];
+    const failed   = res.definitions_failed   || [];
+    const total    = created.length + existing.length + failed.length;
+    let html = "";
+    if (created.length > 0)
+      html += `<div style="color:#166534;font-size:0.85em;">${t("settings.adv_defs_created").replace("{attrs}", created.join(", "))}</div>`;
+    if (total > 0)
+      html += `<div style="font-size:0.85em;">${t("settings.adv_defs_ok").replace("{ok}", existing.length + created.length).replace("{total}", total)}</div>`;
+    if (failed.length > 0)
+      html += `<div style="color:#991b1b;font-size:0.85em;">${t("settings.adv_defs_fail").replace("{attrs}", failed.join(", "))}</div>`;
+    if (el) el.innerHTML = `<div class="alert" style="background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:0.6rem 1rem;">${html}</div>`;
+  }
+
+  if (ensureBtn) {
+    ensureBtn.addEventListener("click", async () => {
+      ensureBtn.disabled = true;
+      if (ensureResult) ensureResult.innerHTML = `<div class="alert" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:0.6rem 1rem;color:#1e40af;">${t("settings.adv_ensure_loading")}</div>`;
+      try {
+        const res = await api.ensureCustomAttrDefinitions();
+        _renderDefsResult(res, ensureResult);
+      } catch (err) {
+        if (ensureResult) ensureResult.innerHTML = `<div class="alert" style="background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;padding:0.6rem 1rem;color:#991b1b;">${esc(err.message)}</div>`;
+      } finally {
+        ensureBtn.disabled = false;
+      }
+    });
+  }
 
   // Decommission defaults
   const decommH4   = container.querySelector("#adv-decomm-h4");
@@ -540,19 +570,224 @@ export function initAdvancedSection(container) {
     });
   }
 
-  btn.addEventListener("click", async () => {
-    if (!confirm(t("settings.adv_confirm"))) return;
+}
 
-    btn.disabled = true;
-    result.innerHTML = `<div class="alert" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:0.6rem 1rem;color:#1e40af;">${t("settings.adv_loading")}</div>`;
-    try {
-      const res = await api.syncCustomAttributes();
-      const newCount = Object.values(res.new_values_found || {}).reduce((s, v) => s + (v?.length || 0), 0);
-      result.innerHTML = `<div class="alert" style="background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:0.6rem 1rem;color:#166534;">${t("settings.adv_done").replace("{n}", res.scanned_endpoints).replace("{new}", newCount)}</div>`;
-    } catch (err) {
-      result.innerHTML = `<div class="alert" style="background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;padding:0.6rem 1rem;color:#991b1b;">${esc(err.message)}</div>`;
-    } finally {
-      btn.disabled = false;
+export async function initGuestRegSection(container) {
+  const card    = container.querySelector("#guest-reg-card");
+  if (!card) return;
+
+  const form              = card.querySelector("#guest-reg-form");
+  const enabledCb         = card.querySelector("#guest-reg-enabled");
+  const groupSel          = card.querySelector("#guest-reg-group");
+  const introTextEl       = card.querySelector("#guest-reg-intro-text");
+  const successTextEl     = card.querySelector("#guest-reg-success-text");
+  const ipskCb            = card.querySelector("#guest-reg-ipsk");
+  const vlanSel           = card.querySelector("#guest-reg-vlan");
+  const aclSel            = card.querySelector("#guest-reg-acl");
+  const redirectEl        = card.querySelector("#guest-reg-redirect");
+  const termsEl           = card.querySelector("#guest-reg-terms");
+  const saveBtn           = card.querySelector("#guest-reg-save-btn");
+  const msgEl             = card.querySelector("#guest-reg-msg");
+  const urlDisplay        = card.querySelector("#guest-reg-url-display");
+  const expiryCb          = card.querySelector("#guest-reg-expiry-enabled");
+  const expiryOptions     = card.querySelector("#guest-reg-expiry-options");
+  const expiryModeSel     = card.querySelector("#guest-reg-expiry-mode");
+  const expiryPeriodRow   = card.querySelector("#guest-reg-expiry-period-row");
+  const expiryDateRow     = card.querySelector("#guest-reg-expiry-date-row");
+  const expiryDaysEl      = card.querySelector("#guest-reg-expiry-days");
+  const expiryDateEl      = card.querySelector("#guest-reg-expiry-date");
+  const expiryHourSel     = card.querySelector("#guest-reg-expiry-hour");
+  const expiryMinSel      = card.querySelector("#guest-reg-expiry-min");
+  const expiryCheckIntEl  = card.querySelector("#guest-reg-expiry-check-interval");
+
+  // Populate 24h time selects
+  if (expiryHourSel && !expiryHourSel.options.length) {
+    for (let i = 0; i < 24; i++) { const v = String(i).padStart(2,"0"); expiryHourSel.add(new Option(v,v)); }
+  }
+  if (expiryMinSel && !expiryMinSel.options.length) {
+    for (let i = 0; i < 60; i++) { const v = String(i).padStart(2,"0"); expiryMinSel.add(new Option(v,v)); }
+  }
+
+  // Labels
+  const h3 = card.querySelector("#guest-reg-h3");
+  if (h3) h3.textContent = t("settings.guest_reg_title");
+  const hint = card.querySelector("#guest-reg-hint");
+  if (hint) hint.textContent = t("settings.guest_reg_hint");
+  const enabledLbl = card.querySelector("#guest-reg-enabled-lbl");
+  if (enabledLbl) enabledLbl.textContent = t("settings.guest_reg_enabled_lbl");
+  const ipskLbl = card.querySelector("#guest-reg-ipsk-lbl");
+  if (ipskLbl) ipskLbl.textContent = t("settings.guest_reg_ipsk_lbl");
+  const ipskHint = card.querySelector("#guest-reg-ipsk-hint");
+  if (ipskHint) ipskHint.textContent = t("settings.guest_reg_ipsk_hint");
+  const vlanLbl = card.querySelector("#guest-reg-vlan-lbl");
+  if (vlanLbl) vlanLbl.textContent = t("settings.guest_reg_vlan_lbl");
+  const vlanHint = card.querySelector("#guest-reg-vlan-hint");
+  if (vlanHint) vlanHint.textContent = t("settings.guest_reg_vlan_hint");
+  const aclLbl = card.querySelector("#guest-reg-acl-lbl");
+  if (aclLbl) aclLbl.textContent = t("settings.guest_reg_acl_lbl");
+  const aclHint = card.querySelector("#guest-reg-acl-hint");
+  if (aclHint) aclHint.textContent = t("settings.guest_reg_acl_hint");
+  const redirectLbl = card.querySelector("#guest-reg-redirect-lbl");
+  if (redirectLbl) redirectLbl.textContent = t("settings.guest_reg_redirect_lbl");
+  const redirectHint = card.querySelector("#guest-reg-redirect-hint");
+  if (redirectHint) redirectHint.textContent = t("settings.guest_reg_redirect_hint");
+  const termsLbl = card.querySelector("#guest-reg-terms-lbl");
+  if (termsLbl) termsLbl.textContent = t("settings.guest_reg_terms_lbl");
+  const termsHint = card.querySelector("#guest-reg-terms-hint");
+  if (termsHint) termsHint.textContent = t("settings.guest_reg_terms_hint");
+  if (saveBtn) saveBtn.textContent = t("settings.guest_reg_save_btn");
+
+  const expiryEnabledLbl = card.querySelector("#guest-reg-expiry-enabled-lbl");
+  if (expiryEnabledLbl) expiryEnabledLbl.textContent = t("settings.guest_reg_expiry_enabled_lbl");
+  const expiryEnabledHint = card.querySelector("#guest-reg-expiry-enabled-hint");
+  if (expiryEnabledHint) expiryEnabledHint.textContent = t("settings.guest_reg_expiry_enabled_hint");
+  const expiryModeLbl = card.querySelector("#guest-reg-expiry-mode-lbl");
+  if (expiryModeLbl) expiryModeLbl.textContent = t("settings.guest_reg_expiry_mode_lbl");
+  const expiryOptPeriod = card.querySelector("#guest-reg-expiry-opt-period");
+  if (expiryOptPeriod) expiryOptPeriod.textContent = t("settings.guest_reg_expiry_period");
+  const expiryOptDate = card.querySelector("#guest-reg-expiry-opt-date");
+  if (expiryOptDate) expiryOptDate.textContent = t("settings.guest_reg_expiry_date_mode");
+  const expiryDaysLbl = card.querySelector("#guest-reg-expiry-days-lbl");
+  if (expiryDaysLbl) expiryDaysLbl.textContent = t("settings.guest_reg_expiry_days_lbl");
+  const expiryDaysHint = card.querySelector("#guest-reg-expiry-days-hint");
+  if (expiryDaysHint) expiryDaysHint.textContent = t("settings.guest_reg_expiry_days_hint");
+  const expiryDateLbl = card.querySelector("#guest-reg-expiry-date-lbl");
+  if (expiryDateLbl) expiryDateLbl.textContent = t("settings.guest_reg_expiry_date_lbl");
+  const expiryDateHint = card.querySelector("#guest-reg-expiry-date-hint");
+  if (expiryDateHint) expiryDateHint.textContent = t("settings.guest_reg_expiry_date_hint");
+  const expiryTimeLbl = card.querySelector("#guest-reg-expiry-time-lbl");
+  if (expiryTimeLbl) expiryTimeLbl.textContent = t("settings.guest_reg_expiry_time_lbl");
+  const expiryCheckIntLbl = card.querySelector("#guest-reg-expiry-check-interval-lbl");
+  if (expiryCheckIntLbl) expiryCheckIntLbl.textContent = t("settings.guest_reg_expiry_check_interval_lbl");
+  const expiryCheckIntHint = card.querySelector("#guest-reg-expiry-check-interval-hint");
+  if (expiryCheckIntHint) expiryCheckIntHint.textContent = t("settings.guest_reg_expiry_check_interval_hint");
+  const groupLbl = card.querySelector("#guest-reg-group-lbl");
+  if (groupLbl) groupLbl.textContent = t("settings.guest_reg_group_lbl");
+  const groupHint = card.querySelector("#guest-reg-group-hint");
+  if (groupHint) groupHint.textContent = t("settings.guest_reg_group_hint");
+  const introTextLbl = card.querySelector("#guest-reg-intro-text-lbl");
+  if (introTextLbl) introTextLbl.textContent = t("settings.guest_reg_intro_text_lbl");
+  const introTextHint = card.querySelector("#guest-reg-intro-text-hint");
+  if (introTextHint) introTextHint.textContent = t("settings.guest_reg_intro_text_hint");
+  const successTextLbl = card.querySelector("#guest-reg-success-text-lbl");
+  if (successTextLbl) successTextLbl.textContent = t("settings.guest_reg_success_text_lbl");
+  const successTextHint = card.querySelector("#guest-reg-success-text-hint");
+  if (successTextHint) successTextHint.textContent = t("settings.guest_reg_success_text_hint");
+
+  function _updateExpiryVisibility() {
+    if (!expiryOptions) return;
+    const enabled = expiryCb?.checked ?? false;
+    expiryOptions.style.display = enabled ? "" : "none";
+    if (enabled && expiryModeSel) {
+      const mode = expiryModeSel.value;
+      if (expiryPeriodRow) expiryPeriodRow.style.display = mode === "period" ? "" : "none";
+      if (expiryDateRow)   expiryDateRow.style.display   = mode === "date"   ? "" : "none";
     }
-  });
+  }
+
+  if (expiryCb)      expiryCb.addEventListener("change", _updateExpiryVisibility);
+  if (expiryModeSel) expiryModeSel.addEventListener("change", _updateExpiryVisibility);
+
+  // Vis URL
+  if (urlDisplay) urlDisplay.textContent = window.location.origin + "/selfregister?mac=...";
+
+  function _populateSelect(sel, values, savedValue) {
+    if (!sel) return;
+    sel.innerHTML = "";
+    const emptyOpt = document.createElement("option");
+    emptyOpt.value = ""; emptyOpt.textContent = `— ${t("settings.guest_reg_none")} —`;
+    sel.appendChild(emptyOpt);
+    const all = savedValue && !values.includes(savedValue) ? [savedValue, ...values] : values;
+    all.forEach(v => {
+      const opt = document.createElement("option");
+      opt.value = v; opt.textContent = v;
+      if (v === savedValue) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    if (!savedValue) sel.value = "";
+  }
+
+  // Load settings + populate dropdowns
+  try {
+    const [s, caData, daclList, groupsData] = await Promise.all([
+      api.getBackendSettings(),
+      api.listCustomAttributes().catch(() => null),
+      api.listDacls().catch(() => null),
+      api.listGroups().catch(() => null),
+    ]);
+
+    if (enabledCb) enabledCb.checked = !!s.selfregister_enabled;
+    if (introTextEl) introTextEl.value = s.selfregister_intro_text || "";
+    if (successTextEl) successTextEl.value = s.selfregister_success_text || "";
+    if (ipskCb) ipskCb.checked = !!s.selfregister_ipsk_enabled;
+    if (expiryCb) expiryCb.checked = !!s.selfregister_expiry_enabled;
+    if (expiryModeSel) expiryModeSel.value = s.selfregister_expiry_mode || "period";
+    if (expiryDaysEl) expiryDaysEl.value = s.selfregister_expiry_days ?? 30;
+    if (expiryDateEl) expiryDateEl.value = s.selfregister_expiry_date || "";
+    const [tHH, tMM] = (s.selfregister_expiry_time || "23:59").split(":");
+    if (expiryHourSel) expiryHourSel.value = tHH || "23";
+    if (expiryMinSel)  expiryMinSel.value  = tMM || "59";
+    if (expiryCheckIntEl) expiryCheckIntEl.value = s.guest_expiry_check_interval_seconds ?? 60;
+    _updateExpiryVisibility();
+    if (redirectEl) redirectEl.value = s.selfregister_redirect_url || "";
+    if (termsEl) termsEl.value = s.selfregister_terms || "";
+
+    const vlanAttr = caData?.attributes?.find(a => a.name === "AuthzVlan");
+    _populateSelect(vlanSel, (vlanAttr?.values ?? []).filter(Boolean), s.selfregister_authz_vlan || "");
+    _populateSelect(aclSel, (daclList ?? []).map(d => d.name).filter(Boolean), s.selfregister_authz_acl || "");
+
+    // Populate endpoint group dropdown
+    if (groupSel) {
+      const groups = Array.isArray(groupsData) ? groupsData : (groupsData?.groups ?? []);
+      const savedGroupId = s.selfregister_group_id || "";
+      groupSel.innerHTML = `<option value="">— ${t("settings.guest_reg_group_default")} —</option>`;
+      groups.forEach(g => {
+        const opt = document.createElement("option");
+        opt.value = g.id; opt.textContent = g.name;
+        if (g.id === savedGroupId) opt.selected = true;
+        groupSel.appendChild(opt);
+      });
+      if (!savedGroupId) groupSel.value = "";
+    }
+  } catch (_) { /* ignore */ }
+  finally {
+    if (saveBtn) saveBtn.disabled = false;
+  }
+
+  // Save
+  if (form) {
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (saveBtn) saveBtn.disabled = true;
+      try {
+        const current = await api.getBackendSettings();
+        const expiryHH = expiryHourSel?.value || "23";
+        const expiryMM = expiryMinSel?.value  || "59";
+        await api.updateBackendSettings({
+          ...current,
+          selfregister_enabled:                enabledCb?.checked ?? true,
+          selfregister_group_id:               groupSel?.value || "",
+          selfregister_intro_text:             introTextEl?.value?.trim() || "",
+          selfregister_success_text:           successTextEl?.value?.trim() || "",
+          selfregister_ipsk_enabled:           ipskCb?.checked ?? false,
+          selfregister_expiry_enabled:         expiryCb?.checked ?? false,
+          selfregister_expiry_mode:            expiryModeSel?.value || "period",
+          selfregister_expiry_days:            parseInt(expiryDaysEl?.value, 10) || 30,
+          selfregister_expiry_date:            expiryDateEl?.value || "",
+          selfregister_expiry_time:            `${expiryHH}:${expiryMM}`,
+          guest_expiry_check_interval_seconds: parseFloat(expiryCheckIntEl?.value) || 60,
+          selfregister_authz_vlan:             vlanSel?.value || "",
+          selfregister_authz_acl:              aclSel?.value || "",
+          selfregister_redirect_url:           redirectEl?.value?.trim() || "",
+          selfregister_terms:                  termsEl?.value?.trim() || current.selfregister_terms,
+        });
+        msgEl.innerHTML = `<span style="color:var(--success,#166534);font-size:0.82em;">${t("settings.guest_reg_saved")}</span>`;
+        setTimeout(() => { msgEl.innerHTML = ""; }, 3000);
+      } catch (err) {
+        msgEl.innerHTML = `<span style="color:var(--danger,#991b1b);font-size:0.82em;">${esc(err.message)}</span>`;
+      } finally {
+        if (saveBtn) saveBtn.disabled = false;
+      }
+    });
+  }
 }

@@ -4,6 +4,610 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.7.0667] — 2026-06-14 — h2 installeres automatisk i baggrunden ved opstart
+
+> **Build:** 0667
+
+Portalen installerer nu selv `h2`-pakken i baggrunden hvis den mangler ved opstart.
+
+**Komplet flow fra gammel OVA uden manuel SSH:**
+
+1. OTA Pull — ny kode hentes (portalen kører stadig med gammel kode i hukommelsen)
+2. Genstart — ny kode starter, h2 mangler → HTTP/1.1 (graceful), baggrunds-install starter
+3. Vent ~10 sekunder til loggen viser `h2 installeret OK`
+4. Genstart igen (`pkill -f uvicorn`) — HTTP/2 aktiv
+
+**Fra ny OVA med latest kode:**
+
+1. Portal starter → h2 mangler → baggrunds-install starter automatisk
+2. Genstart efter ~10 sekunder → HTTP/2 aktiv
+
+Loggen viser installationsforløbet:
+```
+h2-pakken mangler — installerer httpx[http2] i baggrunden. HTTP/2 aktiveres ved næste genstart.
+h2 installeret OK — genstart portalen (pkill -f uvicorn) for at aktivere HTTP/2.
+```
+
+---
+
+## [6.7.0666] — 2026-06-14 — Fix: HTTP/2 falder tilbage til HTTP/1.1 ved manglende h2-pakke
+
+> **Build:** 0666
+
+På friske OVA-installs er `h2`-pakken ikke installeret. Tidligere crashede
+portalen ved opstart fordi `httpx.AsyncClient(http2=True)` kastede `ImportError`.
+
+Portalen starter nu korrekt og kører HTTP/1.1 hvis h2 mangler. Loggen viser:
+
+```
+h2-pakken mangler — HTTP/2 deaktiveret, kører HTTP/1.1. Installer ved OTA-opdatering.
+```
+
+**Opdateringsflow fra frisk OVA:**
+
+1. Portal starter med HTTP/1.1 (ingen crash)
+2. Settings → GitHub → Pull — koden opdateres og `pip install -e .` kører automatisk (h2 installeres)
+3. Restart — portalen genstarter med HTTP/2 aktiv
+
+Ingen manuel SSH eller bootstrap-script nødvendigt.
+
+---
+
+## [6.7.0665] — 2026-06-14 — OTA: pip install køres automatisk ved git pull
+
+> **Build:** 0665
+
+Efter en vellykket OTA-opdatering (Settings → GitHub → Pull) kører portalen
+nu automatisk `pip install -e .` som et ekstra trin. Nye Python-afhængigheder
+fra `pyproject.toml` installeres uden manuel SSH-adgang.
+
+Output fra pip vises direkte i pull-resultatet i UI'et. Hvis pip fejler
+(f.eks. netværksproblem), vises en advarsel — men opdateringen markeres
+stadig som gennemført og portalen kan genstarte. Pip-fejl kræver i så fald
+manuel kørsel: `pip install -e .` i `backend/`-mappen på serveren.
+
+---
+
+## [6.7.0664] — 2026-06-14 — Fix: release notes viste forkert sektion i portalen
+
+> **Build:** 0664
+
+Portalen viste `[6.7] — Feature: frys pxGrid...` (build 0658) som aktuel
+release note i stedet for den nyeste sektion. Årsag: `VERSION` = "6.7" blev
+sendt til `_extract_release_sections_since` og matchede `## [6.7]`-headeren
+i RELEASE_NOTES.md fremfor `## [6.7.0663]`.
+
+Nu sendes `FULL` ("6.7.0664") og den tilsvarende `latest_full` fra GitHub,
+så release notes matcher præcist på det kombinerede version+build-nummer.
+
+Multi-linje bullet-punkter i ældre sektioner er desuden rettet til single-line
+så de ikke splittes i separate afsnit af markdownrendereren.
+
+---
+
+## [6.7.0663] — 2026-06-14 — Forbedret kommunikationshastighed portal ↔ ISE 3.5
+
+> **Build:** 0663
+
+5 optimeringer der reducerer latens og hæver throughput ved ISE-integration over internet:
+
+**HTTP/2 + gzip**
+Portalen kommunikerer nu med ISE via HTTP/2 (multiplexing af mange requests over én
+TCP-forbindelse) og anmoder om gzip-komprimering af alle svar. Store endpoint-lister
+(10.000+ endpoints) er 5-10× mindre over netværket. Kan deaktiveres med
+`ISE_HTTP2=false` i `.env` hvis ISE ikke understøtter HTTP/2.
+
+**Open API parallel paginering**
+Open API-endpoint-listen hentede sider sekventielt — nu parallelt med Semaphore(8)
+ligesom ERS-klienten. Sparer 2-3 sekunder ved 10.000+ endpoints.
+
+**MnT Session + AuthStatus parallelt**
+`fetch_session_by_mac()` lavede 2 MnT-kald i rækkefølge — nu køres de simultant.
+Sparer én fuld RTT pr. MAC (typisk 60-100 ms over internet).
+
+**Semaphore- og connection-pool-tuning**
+Endpoint detail-fetch: 5→8 parallelle kald. Bulk-operationer: 3→5. pxGrid
+session-worker: 3→5. Connection pool default: 10→15 forbindelser.
+
+---
+
+## [6.7.0662] — 2026-06-14 — Fix: bruger-edits bevares ved pxGrid live-opdatering
+
+> **Build:** 0662
+
+Redigerede felter i Browse/Edit (description, group, type, owner m.fl.) gik tabt
+når en pxGrid live-event triggede en re-render mens en bruger var i gang med at
+redigere en endpoint. Rækken forblev "dirty" men indeholdt de originale ISE-værdier
+— og et efterfølgende gem ville sende de forkerte værdier til ISE.
+
+`renderRows()` snapshotter nu alle dirty-rækkernes inputværdier og dataset-attributter
+(`beStaticGroup`, `bePskKey`, `beActiveStatus`) FØR `tbody.innerHTML`-rebuild og
+gendanner dem umiddelbart efter.
+
+---
+
+## [6.7.0661] — 2026-06-14 — Fix: nmap markeret eksperimentel + OS-scan fjernet
+
+> **Build:** 0661
+
+nmap-scanning er nu tydeligt markeret som **eksperimentel** med et amber badge.
+En forklaringstekst under overskriften gør det klart at scanningen køres fra
+**portalserveren** — ikke fra ISE — og at resultatet afspejler netværksadgang
+set fra serverens placering.
+
+"OS + service"-presetten (`nmap -O`) er fjernet da OS-fingerprinting kræver
+root-rettigheder som portal-processen (`hypervision`) ikke har.
+
+---
+
+## [6.7.0660] — 2026-06-14 — Fix: backend startup crash (nmap-modul)
+
+> **Build:** 0660
+
+`nmap.py` importerede `from app.core.users import User` — modulet eksisterer
+ikke. Backend crashede ved startup. Rettet til `from app.schemas.user import User`.
+
+---
+
+## [6.7.0659] — 2026-06-14 — Fix: OTA update-check + ny versionsregel
+
+> **Build:** 0659
+
+**OTA fix:** Portalens update-check sammenlignede kun build-numre. Med det
+nye versionsformat kan MINOR stige uden build-bump (feature commits), så
+`6.7.0658` vs `6.5.0658` fejlagtigt returnerede "ingen opdatering" selvom
+MINOR er højere. Nu sammenlignes fuld `(major, minor, build)`-tuple.
+
+**Ny versionsregel:** `build` (ZZZZ) incrementeres nu ved **alle** kodeændringer
+— features OG bugfixes. Commit-format: `vX.Y.ZZZZ: feat/fix: beskrivelse`.
+
+---
+
+## [6.7.0658] — 2026-06-14 — Feature: frys pxGrid live-opdatering i Browse
+
+> **Build:** 0658
+
+I miljøer med tusindvis af endpoints der autentificerer og frakobler sig konstant, kan Browse-viewet blive meget aktivt og gøre det svært at fokusere.
+
+Ny **"⏸ Frys live"**-knap i Browse-headeren (ved siden af pxGrid-badgen):
+
+- **Klik én gang** → tabellen fryses. pxGrid-events akkumuleres stadig i baggrunden (data er frisk), men UI opdateres ikke.
+- **Knappen viser antal ventende ændringer**, f.eks. `▶ Genoptag live (47)`.
+- **Klik igen** → alle ventende ændringer anvises på én gang og viewet er hurtigt à jour.
+- Fryse-tilstanden nulstilles automatisk hvis pxGrid-streamen genstarter.
+
+---
+
+## [6.6.0658] — 2026-06-14 — Feature: nmap-scanning direkte fra portalen
+
+> **Build:** 0658
+
+Netværksadministratorer kan nu trigge en nmap-scan mod et endpoints IP-adresse direkte fra portalen. IP'en hentes automatisk fra pxGrid-sessionens `framed_ip`.
+
+**Konfigurerbare presets:**
+
+- **Ping** — `nmap -sn -T4 <ip>` — er enheden oppe?
+- **Top-1000 porte** — `nmap -T4 --top-ports 1000 <ip>`
+- **Service discovery** — `nmap -sV -T4 <ip>` — services og versioner
+- **Brugerdefineret** — fri flag-input
+
+**Tilgængeligt fra:**
+
+- **Endpoint details → Session-tab** — nmap-sektion vises automatisk når endpointet har en aktiv RADIUS-session med framed_ip.
+- **Browse-tabel action-bar** — nmap-knap aktiveres når præcis ét endpoint med aktiv session og IP er valgt.
+
+Farlige flag blokeres serverside (`-iL`, `--script`, `-oN`, `-oX` osv.). Timeout: 120 sekunder. nmap skal være installeret på backend-serveren.
+
+---
+
+## [6.5.0] — 2026-06-14 — Feature: PSK policy tekst + key generator fix
+
+> **Build:** 0658
+
+**Tekst:** MPSK- og IPSK-labels under Settings → PSK policy er opdateret
+med tydelig beskrivelse: MPSK gemmer nøglen uændret i ISE; IPSK ændrer
+nøglen automatisk ved at tilføje `psk=`-prefix inden ISE-gemning.
+
+**Bug:** Test PSK key generator ignorerede ikke-gemte form-ændringer — den
+kaldte backend uden parametre og backend brugte de gemte (gamle) settings.
+Rettet: test-knappen sender nu de aktuelle form-værdier med POST-kaldet,
+så generatoren afspejler min. nøglelængde, krav om store bogstaver, tal
+og specialtegn præcis som formen viser dem.
+
+---
+
+## [6.4.9] — 2026-06-14 — Fix: global søgning på pxGrid session-felter og authz-profiler
+
+> **Build:** 0657
+
+Søgning på "Endpoint_VLAN:10" returnerede ingen resultater selvom alle
+endpoints med aktiv session bruger dette authz-profil. Årsag: display-
+strengen "Endpoint_VLAN:10" er sammensat af `authz_profiles[]` + VLAN-
+nummer fra `vlan`-feltet. Søgningen kender ikke til den sammensætning.
+Rettet: global søgning rekonstruerer nu de samme profil:vlan-strenge
+som UI'en viser, og inkluderer alle pxGrid session-felter: user_name,
+policy, authz-profiler, NAS-info, DACL, VLAN, SGT, auth-metode osv.
+
+---
+
+## [6.4.8] — 2026-06-14 — Fix: søgning på ISE Session Auth kolonne (autentificeret/inaktiv)
+
+> **Build:** 0656
+
+`auth_status`-kolonnen havde `field: () => ""` så hverken kolonnefilter
+eller global søgning kunne matche noget. Rettet: `field()` returnerer nu
+"autentificeret" (aktiv RADIUS-session) eller "inaktiv" baseret på
+`_sessionData`. Globalt søgefelt inkluderer nu auth-status, så man kan
+søge fx "autentificeret" og se alle endpoints med aktiv session.
+
+---
+
+## [6.4.7] — 2026-06-14 — Fix: fri tekst søgning finder nu endpoints på Klient IP
+
+> **Build:** 0655
+
+Søgning i det globale søgefelt (fri tekst) kunne ikke finde endpoints
+via Klient IP (framed_ip). Årsag: søgningen gik til backend der kun
+kender ISE-attributter — framed_ip er pxGrid session-data som backend
+ikke søger i. Løst ved at flytte fullTextQ-filtrering til klient-siden
+så den inkluderer `framed_ip` fra live pxGrid-sessioner. Bivirkning:
+gentagne tekst-søgninger er nu øjeblikkelige da allRowsCache genbruges.
+
+---
+
+## [6.4.6] — 2026-06-14 — Fix: browse-tabel opdateres korrekt efter gem i Endpoint details
+
+> **Build:** 0654
+
+Når man gemte ændringer i Endpoint details-modalen opdaterede tabellen
+ikke alle felter — bl.a. `active_status`-badge (⊘/✓) og `decomm`-badge (⚰)
+i MAC-cellen forblev uændrede. Erstattet manuel celle-for-celle DOM-opdatering
+med `applyFilter()` der re-renderer hele tabellen fra det friske ISE-svar.
+
+---
+
+## [6.4.1] — 2026-06-13 — Fix: RADIUS simulator evaluerer HypervisionActive korrekt
+
+> **Build:** 0651
+
+Betingelser i RADIUS-simulatoren der refererede `EndPoints.HypervisionActive`
+(fx `= "Aktiv"`) viste altid `?` (ukendt/skipped) i stedet for at evaluere
+mod endpointets faktiske CA-værdi. Årsag: attributten manglede i
+`_ENDPOINT_ATTR_MAP`, og `_fetch_ep_from_ise()` hentede ikke
+`active_status` fra ISE ERS. Rettet — `HypervisionActive`, `HypervisionStatus`,
+`HypervisionISEPortal` og `HypervisionRoles` evalueres nu korrekt i simulatoren.
+
+---
+
+## [6.4.0] — 2026-06-13 — Fix: framed_ip gennemgribende rettelse
+
+> **Build:** 0650
+
+Fire relaterede fejl med Klient IP / `framed_ip` rettet på én gang:
+
+1. **API-schema** (`PxGridSessionInfoResponse`) manglede `framed_ip`-felt →
+   `/api/pxgrid/sessions/{mac}` returnerede aldrig IP-adressen til frontend
+2. **SSE broadcast** sendte ikke `framed_ip` → live upsert-events nulstillede
+   Klient IP i browse-tabellen ved re-auth
+3. **Bulk API** (`list_sessions`) videresendte ikke `framed_ip` fra cache
+4. **Session debug tab** (detail modal): IP ikke vist, tidsstempel var rå Unix-float,
+   og felterne user_name, nas_device_type, cts_security_group, use_case manglede
+
+---
+
+## [6.4.0] — 2026-06-13 — Fix: søgning i "Klient IP"-kolonne virker nu
+
+> **Build:** 0649
+
+Kolonne-filter og sortering på "Klient IP" matchede aldrig noget selvom
+IP-adresser var synlige i kolonnen. Årsagen var at `field: () => ""`-funktionen
+altid returnerede tom streng, og filtrering sker via `field(row)`.
+
+Rettet ved at tilføje en modul-niveau session-data reference i browse-utils.js
+som browse.js opdaterer ved alle pxGrid-events. field-funktionen slår nu
+MAC'en op og returnerer den faktiske IP-adresse.
+
+---
+
+## [6.4.0] — 2026-06-13 — Fix: Klient IP-kolonne viser nu IP-adresse korrekt
+
+> **Build:** 0648
+
+"Klient IP"-kolonnen viste ingen data selvom session-cachen indeholder
+`framedIpAddress` fra pxGrid. To fejl rettet:
+
+1. `fetch_session_by_mac()` (MnT) udpakkede ikke `Framed-IP-Address` fra XML.
+2. `_enrich_single_from_mnt()` og `reconcile_stale_sessions()` nulstillede
+   `framed_ip` ved at bygge ny `SessionInfo` uden at overføre feltet.
+
+Nu bevares pxGrid-IP-adressen ved MnT-berigelse, og MnT-IP bruges som
+fallback hvis pxGrid ikke leverede en.
+
+---
+
+## [6.4.0] — 2026-06-13 — Ny kolonne: Klient IP fra session-data
+
+> **Build:** 0647
+
+Ny togglebar kolonne **"Klient IP"** i Browse-visningen. Viser den IP-adresse
+ISE/RADIUS har tildelt klienten (framedIpAddress) fra pxGrid- eller MnT-sessionsdata.
+Opdateres i realtid ved pxGrid-events. Vises i monospace/blå så den adskiller sig
+fra tekst-kolonner.
+
+---
+
+## [6.3.3] — 2026-06-08 — Fix: ISE session auth-kolonne viser context for alle profiler
+
+> **Build:** 0645
+
+Profilsuffix i "ISE session auth"-kolonnen viste kun DACL-navn / VLAN / ACL for
+portals egne standardprofiler (Endpoint_VLAN, Endpoint_DACL, osv.) via
+navne-regex. Enhver anden ISE-profil viste kun profilnavnet.
+
+Nu: hvis en profil ikke matcher et standardmønster men sessionen har en DACL
+vises den som `ProfilNavn:DaclNavn` — samme format som standardprofilerne.
+
+---
+
+## [6.3.2] — 2026-06-08 — Fix: Register-siden sætter nu "Registered by"
+
+> **Build:** 0644
+
+Endpoints registreret via Register-siden (ISE Register) havde tomt "Registered
+by"-felt. `RegistretBy` var ikke inkluderet i formens custom-attribute-byggeri.
+Løsning: indlogget brugers username auto-sættes som `RegistretBy` ved submit.
+
+---
+
+## [6.3.1] — 2026-06-08 — Fix: ISE authz-profil viser nu alle cisco-av-pair attributter
+
+> **Build:** 0643
+
+Profiler med web-redirect (CWA) viste kun `url-redirect` men manglede
+`url-redirect-acl`. Årsag: ISE gemmer ACL-feltet i et separat `webRedirection`-objekt
+(ikke i `advancedAttributes`) når profilen er konfigureret via ISE GUI's Web
+Redirection-sektion. Portalen parser nu begge felter korrekt.
+
+---
+
+## [6.3.0] — 2026-06-08 — Konfigurerbar tekst på selvregistreringssiden
+
+> **Build:** 0642
+
+To nye tekstfelter i **Settings → Guest Registration (self-registration)**:
+- **Tekst under registrering** — intro-tekst vist over formularen
+- **Tekst efter registrering** — tekst vist når gæsten er registreret
+
+Begge felter er textarea og gemmes i konfigurationen. Selvregistreringssiden
+henter teksten dynamisk fra API'en — ingen genstart nødvendig.
+
+---
+
+## [6.2.6] — 2026-06-08 — Fix: Default authz-regel gem virker nu
+
+> **Build:** 0641
+
+ISE kræver at `condition`-feltet er til stede i PUT-payload — selv for
+Default-reglen. Forrige fix udelod feltet når det var null, hvilket gav
+"Condition property is required". Nu sendes `"condition": null` eksplicit.
+
+---
+
+## [6.2.5] — 2026-06-08 — Fix: Konsistens i Guest Registration settings
+
+> **Build:** 0640
+
+Tre mangler i Settings → Guest Registration (self-registration):
+- **Endpoint-gruppe**: ny dropdown vælger hvilken ISE-gruppe selvregistrerede gæster placeres i
+- **Check-interval**: nyt felt konfigurerer baggrunds-workerens tjek-frekvens (sekunder, 0=deaktiveret)
+- **Klokkeslæt**: `<input type="time">` erstattet med 24-timers select-par (samme fix som b0637)
+
+---
+
+## [6.2.4] — 2026-06-08 — Fix: Default authz-regel tillader profil-edit
+
+> **Build:** 0639
+
+Default-reglen i ISE kan nu redigeres for autoriseringsprofiler. Conditions-
+sektionen er låst med en forklarende besked. Delete er stadig blokeret.
+Forudgående b0638-fix var for aggressiv og blokerede hele editoren.
+
+---
+
+## [6.2.3] — 2026-06-08 — Fix: ISE Default authz-regel kan ikke redigeres
+
+> **Build:** 0638
+
+Default-reglen i ISE policy sets er read-only. Alle forsøg på at gemme,
+flytte (drag) eller slette den er nu blokeret i frontend og backend med en
+klar fejlbesked i stedet for en kryptisk 502-fejl fra ISE.
+
+---
+
+## [6.2.2] — 2026-06-07 — Fix: 24-timers ur til Guest Expiry date/time-picker
+
+> **Build:** 0637
+
+Guest Expiry date-pickeren i Endpoint details edit-modal bruger nu to
+dropdown-lister (00–23 for timer, 00–59 for minutter) i stedet for
+`<input type="time">`. Sikrer altid 24-timers format uanset OS-locale.
+
+---
+
+## [6.1.1] — 2026-06-07 — Fix: Sync-knap viser attribut-definitionsstatus
+
+> **Build:** 0627
+
+Efter "Importér custom attributter fra ISE" vises nu to linjer:
+- `Scannet N endpoints. X nye værdier importeret.`
+- `Attribut-definitioner i ISE: Y/Z ✓` — eller rød tekst med navne på manglende attributter der skal oprettes manuelt i ISE.
+
+---
+
+## [6.1.0] — 2026-06-07 — Feat: Gæsteadgang udløb
+
+> **Build:** 0626
+
+**Automatisk udløb af gæsteadgang**
+Under Settings → Portal Config → Advanced → Gæste-registrering er der nu en ny sektion:
+
+- **Aktivér udløb** — checkbox der slår funktionen til/fra
+- **Udløbstype:**
+  - *Tidsperiode* — N dage efter registrering (f.eks. 30 dage)
+  - *Bestemt dato* — én fælles udløbsdato for alle gæster der registrerer sig
+- **Klokkeslæt** — tidspunkt for udløb (f.eks. 23:59)
+
+Ved selvregistrering sættes to nye custom attributes på endpoint:
+- `GuestExperyDate` — udløbsdatotid i format `YYYY-MM-DD:HH:MM`
+- `GuestAccessExpire` — `false` (sættes til `true` af ISE-politik eller ekstern checker)
+
+Begge attributter er tilgængelige i ISE Policies condition-builder (`EndPoints.GuestAccessExpire equals true`).
+
+> **ISE-opsætning:** Opret `GuestExperyDate` (String) og `GuestAccessExpire` (String) som custom endpoint attributes i ISE, og brug `GuestAccessExpire equals true` i en authz-regel til at nægte adgang.
+
+---
+
+## [6.0.4] — 2026-06-06 — Fix: GuestRegistration + RegistretBy skipped i policy-simulering
+
+> **Build:** 0625
+
+**Policy-simulering evaluerede aldrig GuestRegistration/RegistretBy**
+`EndPoints.GuestRegistration equals true/false` og `EndPoints.RegistretBy equals …` blev altid markeret som *skipped* i simuleringsresultatet — uanset endpoint-værdier. Root cause: `_ENDPOINT_ATTR_MAP` i backend manglede entries for begge attributter, og `_fetch_ep_from_ise()` sendte heller ikke felterne med. Nu evalueres betingelserne korrekt i både manuel og live-endpoint simulation.
+
+---
+
+## [6.0.3] — 2026-06-06 — Release: GuestRegistration, authz-profile auto-scan, CWA fixes
+
+> **Build:** 0623
+
+**GuestRegistration attribut fuldt integreret**
+Vises og kan redigeres i Browse inline-edit, endpoint detail-panel, bulk-edit dialog og ISE Policies conditions (dropdown `true`/`false`). `RegistretBy` tilføjet til policy conditions.
+
+**Auto-scan af ISE authz-profiler**
+Første gang man klikker på "Tilføj profil"-dropdown i policy-editoren scannes alle ISE authorization profiles automatisk — ingen manuel knap nødvendig.
+
+**CWA session-lookup — ActiveList fallback**
+ISE 3.4 returnerer HTTP 500 på `Session/IPAddress/{ip}` (kendt bug). Portal falder nu automatisk tilbage til at scanne `ActiveList` og filtrere på `framed_ip`.
+
+**KNOWN_PROFILES import-fix**
+Manglende import forårsagede "KNOWN_PROFILES is not defined" fejl i policy-editor.
+
+---
+
+## [6.0.1] — 2026-06-06 — Fix: selfregister MAC-lookup via pxGrid session-cache
+
+> **Build:** 0617
+
+Registreringssiden fandt ikke MAC fordi MnT `Session/IPAddress` API'et fejlede.
+
+**Root cause:** `GET /api/selfregister/session` brugte kun ISE MnT API som kilde.
+MnT kræver MnT Admin-rollen og kan have latency — 5 forsøg × 2s = 10s ventetid.
+
+**Fix:** Sessionsopslag prøver nu **pxGrid session-cache** (in-memory) **først**.
+Portalen har allerede disse sessions fra pxGrid STOMP. `SessionInfo` er udvidet
+med `framed_ip` populeret fra `framedIpAddress`/`ipAddresses[0]` i pxGrid-payload.
+
+Prioritet: **pxGrid cache (øjeblikkelig) → MnT API fallback (3 forsøg)**
+
+---
+
+## [6.0.0] — 2026-06-06 — Release: Komplet CWA MAC-registrering
+
+> **Build:** 0615
+
+### CWA-flow (Central Web Authentication)
+
+Wireless controller (AireOS 8.10) redirect flow er nu fuldt implementeret:
+
+```
+Klient → SSID → WLC → ISE MAB
+  ↓ MAC ukendt
+ISE → url-redirect AV-pair → WLC
+  ↓ WLC intercepter HTTP
+Portal /selfregister (ingen MAC i URL)
+  ↓ portal finder klientens IP
+ISE MnT /Session/IPAddress/{ip} → MAC + session-data
+  ↓ bruger udfylder navn + accept
+ISE ERS upsert endpoint (opret ELLER opdater)
+  ↓
+ISE MnT CoA Reauth → WLC re-autentificerer
+  ↓
+Klient får netværksadgang
+```
+
+### Hvad er nyt
+
+**MnT IP-session-lookup med retry**
+Portalen slår selv MAC op via `GET /admin/API/mnt/Session/IPAddress/{ip}`.
+Tre automatiske forsøg med 2 sekunders mellemrum (RADIUS-session kan være forsinket).
+
+**Polling-UI på registreringssiden**
+Siden viser "Finder din enhed..." med animeret spinner og forsøgs-tæller.
+Hvis session ikke findes inden timeout: retry-knap vises.
+
+**Upsert-logik**
+Tjekker automatisk om MAC allerede eksisterer i ISE:
+- Ny MAC → opretter endpoint (POST)
+- Eksisterende MAC → opdaterer attributter (PUT)
+
+**Automatisk CoA Reauth**
+Trigges med det samme efter registrering via ISE MnT — klienten
+re-autentificeres af WLC uden manuel disconnect.
+
+### ISE Authorization Profile opsætning
+
+```
+cisco-av-pair = url-redirect=https://hypervision.ll.lan:8000/selfregister
+cisco-av-pair = url-redirect-acl=REDIRECT_ACL
+```
+
+Konfigurer Settings → Portal Config → Advanced → Gæste-registrering:
+- VLAN og DACL til gæsteendpoints
+- IPSK-toggle (valgfrit nøgle-felt på siden)
+- Accepttekst og redirect URL
+
+---
+
+## [5.30.1] — 2026-06-04 — Release: Gæste-selvregistrering
+
+> **Build:** 0614
+
+### Selvregistreringsside til wireless controller redirect
+
+Wireless controller kan nu redirecte uregistrerede klienter til:
+`https://portal.example.com/selfregister?mac=AA:BB:CC:DD:EE:FF`
+
+**Siden spørger om:**
+- MAC-adresse (pre-udfyldt, read-only — sat af WLC)
+- Navn på registranten
+- Valgfri IPSK-nøgle (hvis aktiveret i settings)
+- Accept af vilkår
+
+**Hvad der sker ved registrering:**
+- Endpoint oprettes i ISE med `GuestRegistration=true`, `RegistretBy=navn`, `HypervisionActive=Aktiv`
+- VLAN og DACL assignes som custom-attributter (konfigurerbart)
+- IPSK-nøgle gemmes som `PSK_Key` CA (hvis aktiveret)
+- CoA Reauth sendes automatisk til NAS — klienten re-autentificeres straks
+
+### Settings → Portal Config → Advanced → "Gæste-registrering"
+
+Ny konfigurationssektion med:
+- Aktivér/deaktivér toggle
+- VLAN-dropdown (fra eksisterende ISE-værdier)
+- DACL-dropdown (direkte fra ISE)
+- IPSK-toggle
+- Redirect URL efter registrering
+- Accepttekst (vilkår)
+
+### Nye endpoint custom attributes
+
+| Attribut | Beskrivelse |
+|----------|-------------|
+| `RegistretBy` | Navn på registranten (selvregistrering eller manuel) |
+| `GuestRegistration` | `"true"` på selvregistrerede endpoints |
+
+---
+
 ## [5.22.3] — 2026-06-04 — Release: Cache-engine forbedringer + HypervisionRegisteredAt fixes
 
 > **Build:** 0610

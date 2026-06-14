@@ -87,18 +87,22 @@ async def update_authorization_rule(
     rule_id: str,
     name: str,
     rank: int,
-    condition: dict,
+    condition: dict | None,
     profiles: list[str],
     state: str = "enabled",
 ) -> dict:
-    """Update an existing authorization rule."""
+    """Update an existing authorization rule.
+
+    For the Default rule (condition=None) ISE only accepts profile/state changes;
+    sending a condition field causes a 400.
+    """
     payload = {
         "rule": {
             "id": rule_id,
             "name": name,
             "rank": rank,
             "state": state,
-            "condition": condition,
+            "condition": condition,  # null for Default rule — ISE requires field present
         },
         "profile": profiles,
         "securityGroup": None,

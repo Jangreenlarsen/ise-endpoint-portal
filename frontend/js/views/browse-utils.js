@@ -234,11 +234,20 @@ export function groupPathParts(groupName) {
   return rest.split(":").filter(Boolean);
 }
 
+// Modul-niveau reference til pxGrid session-data — opdateres af browse.js
+// så field-funktioner kan bruge den til søgning og sortering.
+let _sessionData = null;
+export function setSessionDataRef(map) { _sessionData = map; }
+
 // getColumns() evalueres ved hvert kald så labels afspejler aktivt sprog.
 export function getColumns() {
   return [
     { key: "mac",           label: t("col.mac"),          field: (r) => r.mac || r.name },
-    { key: "auth_status",   label: t("col.auth_status"),  field: () => "" },
+    { key: "auth_status",   label: t("col.auth_status"),  field: (r) => {
+      if (!_sessionData) return "";
+      const mac = normalizeMac(r.mac || r.name || "");
+      return _sessionData.has(mac) ? "autentificeret" : "inaktiv";
+    } },
     { key: "vendor",        label: t("col.vendor"),       field: (r) => r.vendor || "" },
     { key: "group_name",    label: t("col.group_name"),   field: (r) => r.group_name },
     { key: "static_group",  label: t("col.static_group"), field: (r) => r.static_group ? t("cell.static") : t("cell.dynamic") },
@@ -246,6 +255,10 @@ export function getColumns() {
     { key: "endpoint_type", label: t("col.endpoint_type"),field: (r) => r.endpoint_type },
     { key: "owner",         label: t("col.owner"),        field: (r) => r.owner },
     { key: "lokation",      label: t("col.lokation"),     field: (r) => r.lokation },
+    { key: "registret_by",      label: t("col.registret_by"),      field: (r) => r.registret_by },
+    { key: "guest_registration", label: t("col.guest_registration"), field: (r) => r.guest_registration },
+    { key: "guest_expery_date",  label: t("col.guest_expery_date"),  field: (r) => r.guest_expery_date || "" },
+    { key: "guest_access_expire",label: t("col.guest_access_expire"),field: (r) => r.guest_access_expire || "" },
     { key: "platform_type", label: t("col.platform_type"),field: (r) => r.platform_type },
     { key: "psk_mode",      label: t("col.psk_mode"),     field: (r) => r.psk_mode ? t("cell.yes") : "" },
     { key: "psk_key",       label: t("col.psk_key"),      field: (r) => r.psk_key || "",       cls: "authz-col" },
@@ -254,6 +267,11 @@ export function getColumns() {
     { key: "roles",         label: t("col.roles"),        field: (r) => (r.roles || []).join(", ") },
     { key: "first_seen",    label: t("col.first_seen"),   field: (r) => r.first_seen_at ? fmtDateTime(new Date(r.first_seen_at * 1000).toISOString()) : "—" },
     { key: "nas",           label: t("col.nas"),          field: () => "" },
+    { key: "client_ip",    label: t("col.client_ip"),    field: (r) => {
+      if (!_sessionData) return "";
+      const mac = normalizeMac(r.mac || r.name || "");
+      return _sessionData.get(mac)?.framed_ip || "";
+    } },
     { key: "ise_session",   label: t("col.ise_session"),  field: () => "" },
   ];
 }

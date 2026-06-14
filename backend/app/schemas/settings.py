@@ -33,6 +33,21 @@ class BackendSettingsUpdate(BaseModel):
     github_branch: str = "main"
     decomm_authz_vlan: str = "999"
     decomm_authz_acl: str = "deny_all_ipv4_traffic"
+    selfregister_enabled: bool = True
+    selfregister_group_id: str = ""
+    selfregister_intro_text: str = "Registrér din enhed for at få adgang til netværket."
+    selfregister_success_text: str = "Din enhed er nu registreret på netværket."
+    selfregister_redirect_url: str = ""
+    selfregister_terms: str = "Jeg accepterer at min enheds MAC-adresse registreres og at netværksadgang logges."
+    selfregister_authz_vlan: str = ""
+    selfregister_authz_acl: str = ""
+    selfregister_ipsk_enabled: bool = False
+    selfregister_expiry_enabled: bool = False
+    selfregister_expiry_mode: str = "period"
+    selfregister_expiry_days: int = 30
+    selfregister_expiry_date: str = ""
+    selfregister_expiry_time: str = "23:59"
+    guest_expiry_check_interval_seconds: float = 60.0
 
 
 class BackendSettingsResponse(BaseModel):
@@ -58,6 +73,21 @@ class BackendSettingsResponse(BaseModel):
     github_branch: str = "main"
     decomm_authz_vlan: str = "999"
     decomm_authz_acl: str = "deny_all_ipv4_traffic"
+    selfregister_enabled: bool = True
+    selfregister_group_id: str = ""
+    selfregister_intro_text: str = "Registrér din enhed for at få adgang til netværket."
+    selfregister_success_text: str = "Din enhed er nu registreret på netværket."
+    selfregister_redirect_url: str = ""
+    selfregister_terms: str = "Jeg accepterer at min enheds MAC-adresse registreres og at netværksadgang logges."
+    selfregister_authz_vlan: str = ""
+    selfregister_authz_acl: str = ""
+    selfregister_ipsk_enabled: bool = False
+    selfregister_expiry_enabled: bool = False
+    selfregister_expiry_mode: str = "period"
+    selfregister_expiry_days: int = 30
+    selfregister_expiry_date: str = ""
+    selfregister_expiry_time: str = "23:59"
+    guest_expiry_check_interval_seconds: float = 60.0
 
 
 class TestConnectionRequest(BaseModel):
@@ -228,6 +258,7 @@ class PxGridSessionInfoResponse(BaseModel):
     cts_security_group: str = ""
     identity_group: str = ""
     auth_method: str = ""
+    framed_ip: str = ""
 
 
 class PxGridSessionsResponse(BaseModel):

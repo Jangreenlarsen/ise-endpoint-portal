@@ -4,6 +4,79 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 6.7.0666] 2026-06-14 — Portal crasher ved opstart på frisk OVA-install (manglende h2-pakke)
+
+- **Symptom:** Portalen crashede ved opstart med `ImportError` fordi `httpx.AsyncClient(http2=True)` kræver h2-pakken, som ikke er installeret på friske OVA-installs.
+- **Root cause:** `IseClient.__init__` initialiserede klienten med `http2=use_http2` uden at håndtere manglende h2-dependency.
+- **Fix:** `ImportError` fanges og portalen falder automatisk tilbage til HTTP/1.1 med en log-advarsel. OTA-pull (v6.7.0665+) installerer h2 automatisk — næste genstart aktiverer HTTP/2.
+- **Berørt fil:** `backend/app/ise/client.py`
+
+## [FIXED 6.7.0664] 2026-06-14 — Release notes i portalen viser forkert sektion + brudt bullet-formatering
+
+- **Symptom:** Portalen viste `## [6.7] — ... — Feature: frys pxGrid live-opdatering` (build 0658) som aktuel release note i stedet for den nyeste sektion (`## [6.7.0663]`). Bullet-punkter med linjeskift-continuation (`  baggrunden...`) renderede som separate afsnit.
+- **Root cause 1:** `_extract_release_sections_since` fik `VERSION` = "6.7" som `current_version`. `_parse_semver("6.7")` = `(6, 7, 0)` → fandt eksakt match på `## [6.7]`-sektionen i stedet for `## [6.7.ZZZZ]`.
+- **Root cause 2:** `RELEASE_NOTES.md` brugte `## [6.7]` og `## [6.6]` som headers (gammelt format uden build-nummer).
+- **Root cause 3:** Multi-linje bullet-punkter med 2-space continuation-indent splitter i separate `<p>`-elementer af rendererens linje-for-linje parser.
+- **Fix:** `check_github_version` sender nu `FULL` ("6.7.0664") som `current_version` og `"{version}.{build}"` som `latest_version` til `_extract_release_sections_since`. RELEASE_NOTES.md: `## [6.7]` → `## [6.7.0658]`, `## [6.6]` → `## [6.6.0658]`. Alle multi-linje bullet-punkter gjort til single-line.
+- **Berørte filer:** `backend/app/services/update_service.py`, `RELEASE_NOTES.md`
+
+## [FIXED 6.7.0662] 2026-06-14 — Browse: bruger-redigerede inputfelter (description m.fl.) nulstilles ved pxGrid-opdatering
+
+- **Symptom:** Hvis en pxGrid live-event (upsert/remove/endpoint_changed) trigger `applyFilter()` → `renderRows()` mens en bruger er i gang med at redigere felter i en "dirty" række (description, group, type, osv.), erstattes `tbody.innerHTML` komplet — og brugerens urelaterede ændringer slettes. Rækken er stadig markeret dirty, men indeholder nu de originale værdier. Gemmer brugeren derefter, sendes de originale (ikke de redigerede) værdier til ISE. Dataset-attributter (`beStaticGroup`, `bePskKey`, `beActiveStatus`) gik tilsvarende tabt.
+- **Root cause:** `renderRows()` i `browse-table.js` bruger `tbody.innerHTML = rows.map(...).join("")` som erstatter hele DOM inkl. alle input-elementers `.value`. Der var ingen beskyttelse af dirty-rækkernes nuværende bruger-redigerede indhold.
+- **Fix:** `renderRows()` tager nu et snapshot af alle dirty-rækkernes inputværdier og dataset-attributter FØR `innerHTML`-replace, og gendanner dem umiddelbart efter rebuild.
+- **Berørt fil:** `frontend/js/views/browse-table.js`
+
+## [FIXED 6.7.0660] 2026-06-14 — Backend startup crash: nmap.py importerer ikke-eksisterende app.core.users
+
+- **Symptom:** Backend crasher ved startup med `ModuleNotFoundError: No module named 'app.core.users'`.
+- **Root cause:** `nmap.py` brugte `from app.core.users import User` — modulet hedder `app.schemas.user`.
+- **Fix:** Ændret import til `from app.schemas.user import User`.
+- **Berørt fil:** `backend/app/api/nmap.py`
+
+## [FIXED 6.7.0659] 2026-06-14 — OTA update-check: ny version med samme build registreres ikke som opdatering
+
+- **Symptom:** Portalen siger "ingen opdatering" selvom `6.7 build 0658` er nyere end `6.5.0 build 0658` (og lignende). `_parse_semver("6.7")` returnerer `(0,0,0)` fordi regex kræver 3 dele. `update_available` sammenligner KUN build-numre — med det nye versionsformat kan MINOR stige uden at build ændres (features tæller ikke som build-bump), så `658 > 658 = False` selv om MINOR er højere.
+- **Root cause:** (1) `_parse_semver` regex: `r"(\d+)\.(\d+)\.(\d+)"` kræver 3 dele — fejler på nyt `X.Y`-format. (2) `update_available = int(latest_build) > int(current_build)` ignorerer MAJOR og MINOR helt.
+- **Fix:** Ny `_parse_version_build(version, build)` sammenligner fuldt `(major, minor, build_int)`-tuple. Håndterer både gammelt `X.Y.Z`-format og nyt `X.Y`-format. `_parse_semver` opdateret til at matche `X.Y` som fallback (returnerer `(X, Y, 0)`). `_split_release_sections` accepterer nu både `X.Y` og `X.Y.Z` i section-headers.
+- **Berørt fil:** `backend/app/services/update_service.py`
+
+## [FIXED 6.3.2 b0644] 2026-06-08 — Register-siden sætter ikke "Registered by"
+
+- **Symptom:** Endpoints registreret via Register-siden (register.js) har tomt "Registered by"-felt.
+- **Root cause:** `register.js`'s `attrLabels`-objekt indeholder kun Type, Owner, Lokation, AuthzVlan, AuthzACL, PlatformType — ikke `RegistretBy`. Submit-handleren bygger `ca`-dict udelukkende herfra, så `RegistretBy` aldrig sættes.
+- **Fix:** Auto-sæt `ca.RegistretBy = me.username` ved submit (brugeren er allerede hentet via `api.authMe()`).
+- **Berørt fil:** `frontend/js/views/register.js`
+
+## [FIXED 6.3.1 b0643] 2026-06-08 — ISE authz-profil: manglende cisco-av-pair url-redirect-acl attribut
+
+- **Symptom:** Portal viser kun ét `cisco-av-pair` (url-redirect) for CWA-profiler — `url-redirect-acl` mangler i profilvisningen.
+- **Root cause:** `_parse_profile_detail()` parsede kun `advancedAttributes`. ISE gemmer web-redirect ACL i et separat `webRedirection`-objekt (`webRedirection.acl`) når profilen er konfigureret via ISE GUI's Web Redirection-sektion — ikke som `advancedAttributes`-entry.
+- **Fix:** Parser nu også `webRedirection`-feltet: ekstraherer `WebRedirectionType`, `portalName`, `acl` og evt. `staticIPHostNameFQDN`. Undgår dubletter med `advancedAttributes`-data. Debug-logging af raw ISE profile-data tilføjet.
+- **Berørt fil:** `backend/app/services/authz_profile_service.py`
+
+## [FIXED 6.2.6 b0641] 2026-06-08 — ISE 400 "Condition property is required" ved gem af Default authz-regel
+
+- **Symptom:** `Error: 502: ISE API 400: Condition property is required` ved gem af Default-regelens profiler.
+- **Root cause:** b0639-fix udelod `condition`-feltet fra PUT-payload når det var null — ISE kræver feltet til stede.
+- **Fix:** Sender `"condition": null` eksplicit i JSON-payload i stedet for at udelade feltet.
+- **Berørt fil:** `backend/app/ise/policy.py`
+
+## [FIXED 6.2.4 b0639] 2026-06-08 — ISE 400 ved gem/flyt/slet af Default authz-regel
+
+- **Symptom:** `Error: 502: ISE API 400: Failed to handle API request - Network Access Authorization Rule : Default rule cannot be modified` ved save/drag/delete på Default-reglen.
+- **Root cause:** ISE afviser PUT med condition-feltet på Default-reglen og alle DELETE-kald. Profil-ændringer er derimod tilladt.
+- **Fix:** Editoren åbner for Default-reglen men conditions-sektionen erstattes af info-besked. `condition: null` sendes i PUT (udelades fra ISE-payload). Delete blokeres. Drag-drop blokeres med fejlbesked.
+- **Berørte filer:** `backend/app/api/policy.py`, `backend/app/ise/policy.py`, `backend/app/services/policy_service.py`, `backend/app/schemas/policy.py`, `frontend/js/views/policy.js`
+
+## [FIXED 6.0.3 b0624] 2026-06-06 — Simulering: EndPoints.GuestRegistration og RegistretBy altid skipped
+
+- **Symptom:** Policy-simulering evaluerede aldrig `EndPoints.GuestRegistration equals true/false` eller `EndPoints.RegistretBy equals …` — betingelserne blev markeret som "skipped/unevaluable" uanset endpoint-værdier.
+- **Root cause 1:** `_ENDPOINT_ATTR_MAP` i `policy_service.py` manglede entries for `"GuestRegistration"` og `"RegistretBy"` → `_get_ep_value()` returnerede `None` → condition skipped.
+- **Root cause 2:** `_fetch_ep_from_ise()` (live-endpoint simulation) returnererede ikke `guest_registration`/`registret_by` i ep-dict, så custom_attributes-fallback hjalp heller ikke.
+- **Fix:** Tilføjet `"GuestRegistration": "guest_registration"` og `"RegistretBy": "registret_by"` til `_ENDPOINT_ATTR_MAP`, samt tilsvarende felter i `_fetch_ep_from_ise` return-dict.
+- **Berørt fil:** `backend/app/services/policy_service.py`
+
 ## [FIXED 5.20.3 b0596] 2026-06-02 — Auth-status kolonne altid rød
 
 - **Symptom:** Auth-status søjle (og MAC-celle farve) viste rød (auth-failed) på alle endpoints — selv aktive sessioner.

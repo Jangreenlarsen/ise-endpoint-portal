@@ -195,6 +195,14 @@ export function initTable(container, state, api, cb) {
     return `<div class="ise-sess-combo">${lines.join("")}</div>`;
   }
 
+  // ── Client IP cell (framedIpAddress fra pxGrid/MnT session) ─────────────
+  function clientIpCellHtml(mac) {
+    if (!state.pxgridSessionData) return '<span class="hint">—</span>';
+    const sess = state.pxgridSessionData.get(normalizeMac(mac));
+    if (!sess || !sess.framed_ip) return '<span class="hint">—</span>';
+    return `<span class="client-ip-val">${esc(sess.framed_ip)}</span>`;
+  }
+
   // ── NAS info cell ────────────────────────────────────────────────────────
   function nasInfoCellHtml(mac) {
     if (!state.pxgridSessionData) return '<span class="hint">—</span>';
@@ -235,6 +243,32 @@ export function initTable(container, state, api, cb) {
         .filter(Boolean)
     );
 
+    // Snapshot bruger-redigerede inputværdier for dirty rækker FØR tbody-rebuild.
+    // tbody.innerHTML erstatter alt DOM, så brugerens ændringer i inputs/selects
+    // ville ellers gå tabt ved pxGrid-opdateringer eller andre re-renders.
+    const dirtySnap = new Map();
+    for (const id of state.dirtyIds) {
+      const tr = tbody.querySelector(`tr[data-id="${CSS.escape(id)}"]`);
+      if (!tr) continue;
+      dirtySnap.set(id, {
+        description:   tr.querySelector(".desc-input")?.value,
+        groupId:       tr.querySelector(".grp-select")?.value,
+        type:          tr.querySelector(".ca-type")?.value,
+        owner:         tr.querySelector(".ca-owner")?.value,
+        lokation:      tr.querySelector(".ca-lokation")?.value,
+        authzVlan:     tr.querySelector(".ca-authzvlan")?.value,
+        authzAcl:      tr.querySelector(".ca-authzacl")?.value,
+        platformType:  tr.querySelector(".ca-platformtype")?.value,
+        pskMode:       tr.querySelector(".psk-mode-cb")?.checked,
+        registretBy:   tr.querySelector(".ca-registretby")?.value,
+        experyDate:    tr.querySelector(".ca-experydate")?.value,
+        accessExpire:  tr.querySelector(".ca-accessexpire")?.value,
+        beStaticGroup: tr.dataset.beStaticGroup,
+        bePskKey:      tr.dataset.bePskKey,
+        beActiveStatus:tr.dataset.beActiveStatus,
+      });
+    }
+
     const cols = getColumns().length + 2;
     if (!rows.length) {
       tbody.innerHTML = `<tr><td colspan="${cols}" class="empty">${t("browse.no_results")}</td></tr>`;
@@ -255,6 +289,10 @@ export function initTable(container, state, api, cb) {
         endpoint_type: `<td data-col="endpoint_type"><select class="ca-type">${optionsHtml(state.caValues.Type, r.endpoint_type)}</select></td>`,
         owner:         `<td data-col="owner"><select class="ca-owner">${optionsHtml(state.caValues.Owner, r.owner)}</select></td>`,
         lokation:      `<td data-col="lokation"><select class="ca-lokation">${optionsHtml(state.caValues.Lokation, r.lokation)}</select></td>`,
+        registret_by:        `<td data-col="registret_by"><input type="text" class="ca-registretby desc-input" value="${esc(r.registret_by || "")}" /></td>`,
+        guest_registration:  `<td data-col="guest_registration"><select class="ca-guestreg">${optionsHtml(["true","false"], r.guest_registration)}</select></td>`,
+        guest_expery_date:   `<td data-col="guest_expery_date"><input type="text" class="ca-experydate desc-input" value="${esc(r.guest_expery_date || "")}" placeholder="ÅÅÅÅ-MM-DD:TT:MM" maxlength="16" style="width:130px;" /></td>`,
+        guest_access_expire: `<td data-col="guest_access_expire"><select class="ca-accessexpire">${optionsHtml(["true","false"], r.guest_access_expire)}</select></td>`,
         platform_type: nasPt
           ? `<td data-col="platform_type" class="platform-auto-td"><div class="platform-auto-wrap"><select class="ca-platformtype" disabled>${optionsHtml(state.caValues.PlatformType, nasPt)}</select><span class="platform-auto-badge" title="${t("browse.platform_auto_title")}">&#9889;</span></div></td>`
           : `<td data-col="platform_type"><select class="ca-platformtype">${optionsHtml(state.caValues.PlatformType, r.platform_type)}</select></td>`,
@@ -266,6 +304,7 @@ export function initTable(container, state, api, cb) {
         create_time:   `<td data-col="create_time" class="age-cell" title="${esc(fmtDateTime(endpointCreateTime(r)))}">${esc(fmtRelativeAge(endpointCreateTime(r)))}</td>`,
         first_seen:    `<td data-col="first_seen" class="age-cell">${esc(r.first_seen_at ? fmtDateTime(new Date(r.first_seen_at * 1000).toISOString()) : "—")}</td>`,
         nas:           `<td data-col="nas" class="nas-info-col">${nasInfoCellHtml(mac)}</td>`,
+        client_ip:     `<td data-col="client_ip" class="client-ip-col">${clientIpCellHtml(mac)}</td>`,
         ise_session:   `<td data-col="ise_session" class="ise-session-col">${iseSessionCellHtml(mac)}</td>`,
       };
       return `
@@ -274,6 +313,29 @@ export function initTable(container, state, api, cb) {
         ${getOrderedColumns().map(c => cells[c.key] || "").join("")}
       </tr>`;
     }).join("");
+
+    // Gendan bruger-redigerede værdier for dirty rækker (tabt ved innerHTML-replace).
+    for (const [id, snap] of dirtySnap) {
+      const tr = tbody.querySelector(`tr[data-id="${CSS.escape(id)}"]`);
+      if (!tr) continue;
+      const set = (sel, val) => { if (val !== undefined && val !== null) { const el = tr.querySelector(sel); if (el) el.value = val; } };
+      set(".desc-input",      snap.description);
+      set(".grp-select",      snap.groupId);
+      set(".ca-type",         snap.type);
+      set(".ca-owner",        snap.owner);
+      set(".ca-lokation",     snap.lokation);
+      set(".ca-authzvlan",    snap.authzVlan);
+      set(".ca-authzacl",     snap.authzAcl);
+      set(".ca-platformtype", snap.platformType);
+      set(".ca-registretby",  snap.registretBy);
+      set(".ca-experydate",   snap.experyDate);
+      set(".ca-accessexpire", snap.accessExpire);
+      if (snap.pskMode !== undefined) { const cb = tr.querySelector(".psk-mode-cb"); if (cb) cb.checked = snap.pskMode; }
+      if (snap.beStaticGroup !== undefined) tr.dataset.beStaticGroup = snap.beStaticGroup;
+      if (snap.bePskKey !== undefined) tr.dataset.bePskKey = snap.bePskKey;
+      if (snap.beActiveStatus !== undefined) tr.dataset.beActiveStatus = snap.beActiveStatus;
+    }
+
     updateSelectionUI();
     updateDirtyUI();
     applyColVis();
@@ -296,81 +358,8 @@ export function initTable(container, state, api, cb) {
         if (upd) state.allRowsCache[i] = upd;
       }
     }
-    for (const [id, r] of byId) {
-      const tr = tbody.querySelector(`tr[data-id="${CSS.escape(id)}"]`);
-      if (!tr) continue;
-      const macLink = tr.querySelector(".mac-cell .mac-link");
-      if (macLink) macLink.innerHTML = macDisplayHtml(r.mac || r.name);
-      const macCellTd = tr.querySelector(".mac-cell");
-      if (macCellTd) {
-        const freshMarked = loadMarkedMacs();
-        const pin = macCellTd.querySelector(".marked-pin");
-        const nowMarked = freshMarked.has(normalizeMac(r.mac || r.name || ""));
-        if (pin && !nowMarked) pin.remove();
-        else if (!pin && nowMarked) macCellTd.insertAdjacentHTML("beforeend", `<span class="marked-pin" title="Markeret fra Livscyklus">📌</span>`);
-      }
-      const vendorCell = tr.querySelector(".vendor-cell-td");
-      if (vendorCell) vendorCell.textContent = r.vendor || "";
-      const grpSel = tr.querySelector(".grp-select");
-      if (grpSel) grpSel.innerHTML = groupOptionsHtml(r.group_id);
-      const assignCell = tr.querySelector(".assign-cell");
-      if (assignCell) assignCell.textContent = r.static_group ? t("cell.static") : t("cell.dynamic");
-      const descInput = tr.querySelector(".desc-input");
-      if (descInput) descInput.value = r.description || "";
-      const setSel = (cls, val, vals) => {
-        const el = tr.querySelector(`.${cls}`);
-        if (el) el.innerHTML = optionsHtml(vals, val);
-      };
-      setSel("ca-type",       r.endpoint_type, state.caValues.Type);
-      setSel("ca-owner",      r.owner,          state.caValues.Owner);
-      setSel("ca-lokation",   r.lokation,       state.caValues.Lokation);
-      setSel("ca-authzvlan",  r.authz_vlan,     state.caValues.AuthzVlan);
-      setSel("ca-authzacl",   r.authz_acl,      state.caValues.AuthzACL);
-      setSel("ca-platformtype", r.platform_type, state.caValues.PlatformType);
-      // Re-apply auto-platform indicator after refresh
-      const ptTd   = tr.querySelector(".ca-platformtype")?.closest("td");
-      const nasPt2 = getNasPlatformType(r.mac || r.name);
-      if (ptTd) {
-        ptTd.classList.toggle("platform-auto-td", !!nasPt2);
-        const ptSel = ptTd.querySelector(".ca-platformtype");
-        if (ptSel) ptSel.disabled = !!nasPt2;
-        if (ptSel && nasPt2) ptSel.value = nasPt2;
-        const oldBadge = ptTd.querySelector(".platform-auto-badge");
-        if (nasPt2 && !oldBadge) {
-          const badge = document.createElement("span");
-          badge.className = "platform-auto-badge";
-          badge.title = t("browse.platform_auto_title");
-          badge.innerHTML = "&#9889;";
-          let wrap = ptTd.querySelector(".platform-auto-wrap");
-          if (!wrap) {
-            wrap = document.createElement("div");
-            wrap.className = "platform-auto-wrap";
-            ptSel.replaceWith(wrap);
-            wrap.appendChild(ptSel);
-          }
-          wrap.appendChild(badge);
-        } else if (!nasPt2 && oldBadge) {
-          oldBadge.remove();
-          const wrap = ptTd.querySelector(".platform-auto-wrap");
-          if (wrap) { wrap.replaceWith(ptSel || wrap.querySelector(".ca-platformtype")); }
-        }
-      }
-      const rolesCell = tr.querySelector(".roles-cell");
-      if (rolesCell) rolesCell.innerHTML = rolesChipsHtml(r.roles);
-      const pskModeCb = tr.querySelector(".psk-mode-cb");
-      if (pskModeCb) pskModeCb.checked = !!r.psk_mode;
-      const pskKeyCell = tr.querySelector(".psk-key-cell");
-      if (pskKeyCell) pskKeyCell.textContent = state.pskShowKey ? (r.psk_key || "") : (r.psk_key ? "••••••" : "");
-      delete tr.dataset.beStaticGroup;
-      delete tr.dataset.bePskKey;
-      delete tr.dataset.beActiveStatus;
-      tr.classList.remove("dirty");
-      state.dirtyIds.delete(id);
-    }
-    applyColVis();
-    applyAuthStatusColors();
-    updateDirtyUI();
-    updateSelectionUI();
+    for (const id of byId.keys()) state.dirtyIds.delete(id);
+    applyFilter();
   }
 
   // ── Dirty tracking ───────────────────────────────────────────────────────
@@ -411,6 +400,14 @@ export function initTable(container, state, api, cb) {
       setSel("ca-type",        r.endpoint_type, state.caValues.Type);
       setSel("ca-owner",       r.owner,          state.caValues.Owner);
       setSel("ca-lokation",    r.lokation,       state.caValues.Lokation);
+      const regByInp = tr.querySelector(".ca-registretby");
+      if (regByInp) regByInp.value = r.registret_by || "";
+      const guestRegSel = tr.querySelector(".ca-guestreg");
+      if (guestRegSel) guestRegSel.innerHTML = optionsHtml(["true","false"], r.guest_registration || "");
+      const experyInp = tr.querySelector(".ca-experydate");
+      if (experyInp) experyInp.value = r.guest_expery_date || "";
+      const accessExpSel = tr.querySelector(".ca-accessexpire");
+      if (accessExpSel) accessExpSel.innerHTML = optionsHtml(["true","false"], r.guest_access_expire || "");
       setSel("ca-authzvlan",   r.authz_vlan,     state.caValues.AuthzVlan);
       setSel("ca-authzacl",    r.authz_acl,      state.caValues.AuthzACL);
       setSel("ca-platformtype",r.platform_type,  state.caValues.PlatformType);
@@ -484,6 +481,7 @@ export function initTable(container, state, api, cb) {
     bulkEditBtn.disabled    = !hasSelection;
     if (bulkCoaBtn)  bulkCoaBtn.disabled  = !hasSelection;
     if (bulkSimBtn)  bulkSimBtn.disabled  = !hasSelection;
+    cb.updateNmapBtn?.();
     selectionCount.textContent = hasSelection ? t("browse.selection_n").replace("{n}", selected.length) : "";
     selectAllCb.indeterminate  = selected.length > 0 && selected.length < tbody.querySelectorAll(".row-select").length;
   }
@@ -496,6 +494,10 @@ export function initTable(container, state, api, cb) {
     const endpointType    = tr.querySelector(".ca-type").value;
     const owner           = tr.querySelector(".ca-owner").value;
     const lokation        = tr.querySelector(".ca-lokation").value;
+    const registretBy     = tr.querySelector(".ca-registretby")?.value || "";
+    const guestReg        = tr.querySelector(".ca-guestreg")?.value || "";
+    const experyDate      = tr.querySelector(".ca-experydate")?.value || "";
+    const accessExpire    = tr.querySelector(".ca-accessexpire")?.value || "";
     const authzVlan       = tr.querySelector(".ca-authzvlan").value;
     const authzAcl        = tr.querySelector(".ca-authzacl").value;
     const platformType    = tr.querySelector(".ca-platformtype").value;
@@ -534,6 +536,10 @@ export function initTable(container, state, api, cb) {
         custom_attributes: {
           Type: endpointType, Owner: owner, Lokation: lokation,
           AuthzVlan: authzVlan, AuthzACL: authzAcl, PlatformType: platformType,
+          RegistretBy: registretBy,
+          GuestRegistration: guestReg,
+          GuestExperyDate: experyDate,
+          GuestAccessExpire: accessExpire,
           HypervisionRoles: hypervisionRoles,
           ...(state.isPskEditor && pskMode !== null ? { PSK_Mode: pskMode ? "true" : "false" } : {}),
           ...(bePskKey !== undefined && bePskKey !== "****" ? { PSK_Key: bePskKey } : {}),

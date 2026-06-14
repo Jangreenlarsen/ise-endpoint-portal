@@ -69,7 +69,7 @@ class IseEndpointRepository:
         if total_pages <= 1:
             return resources
 
-        sem = asyncio.Semaphore(5)
+        sem = asyncio.Semaphore(8)
 
         async def _fetch_page(page: int) -> list[dict[str, Any]]:
             async with sem:
@@ -209,7 +209,7 @@ class IseEndpointGroupRepository:
         resources, total = await self._list_groups_page(1)
         if resources and len(resources) < total:
             total_pages = math.ceil(total / 100)
-            sem_pages = asyncio.Semaphore(5)
+            sem_pages = asyncio.Semaphore(8)
 
             async def _fetch_page(page: int) -> list[dict[str, Any]]:
                 async with sem_pages:

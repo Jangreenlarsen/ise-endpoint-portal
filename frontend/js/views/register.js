@@ -428,6 +428,9 @@ export async function renderRegister(container) {
       const v = sel ? sel.value : "";
       if (v) ca[name] = v;
     }
+    if (me?.username) {
+      ca.RegistretBy = me.username;
+    }
     if (canPickRoles) {
       const checked = container.querySelectorAll(".r-role-chip:checked");
       if (checked.length) {

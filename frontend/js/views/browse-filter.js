@@ -120,6 +120,30 @@ export function initFilter(container, state, api, cb) {
     if (state.decommOnly) rows = rows.filter((r) => r.status === "Decommissioned");
     else if (state.hideDecommissioned) rows = rows.filter((r) => r.status !== "Decommissioned");
     if (state.activeStatusFilter) rows = rows.filter((r) => r.active_status === state.activeStatusFilter);
+    if (state.fullTextQ) {
+      const low = state.fullTextQ.toLowerCase();
+      const sessMacs = state.activeSessionMacs || (state.pxgridLive && state.pxgridSessionMacs) || null;
+      rows = rows.filter((r) => {
+        const mac = normalizeMac(r.mac || r.name || "");
+        const sess = state.pxgridSessionData?.get(mac);
+        const framed_ip = sess?.framed_ip || "";
+        const authText = sessMacs ? (sessMacs.has(mac) ? "autentificeret" : "inaktiv") : "";
+        // Rebuild profile:vlan combined display strings (e.g. "Endpoint_VLAN:10")
+        const vlanNum = (sess?.vlan || "").match(/(\d+)\s*$/)?.[1] || "";
+        const profileTexts = (sess?.authz_profiles || [])
+          .map((p) => (/vlan/i.test(p) && vlanNum ? `${p}:${vlanNum}` : p))
+          .join(" ");
+        return [
+          r.mac, r.name, r.description, r.group_name, r.profiler_name,
+          r.vendor, r.owner, r.lokation, r.endpoint_type, r.platform_type,
+          framed_ip, authText, profileTexts,
+          sess?.user_name, sess?.policy_set_name, sess?.authz_rule_name,
+          sess?.use_case, sess?.nas_name, sess?.nas_device_type,
+          sess?.dacl, sess?.vlan, sess?.cts_security_group,
+          sess?.identity_group, sess?.auth_method,
+        ].some((v) => (v || "").toLowerCase().includes(low));
+      });
+    }
     const filters = getColumnFilters();
     if (filters.length) rows = rows.filter((r) => filters.every((f) => f.re.test(f.field(r) || "")));
     const authFilter = authStatusSelect ? authStatusSelect.value : "all";
@@ -208,7 +232,7 @@ export function initFilter(container, state, api, cb) {
       `<tr><td colspan="${cols}" class="empty">${t("browse.filter_loading_td")}</td></tr>`;
     msg.innerHTML = `<div class="alert info">${t("browse.filter_loading_msg")}</div>`;
     try {
-      const all = await api.listAllEndpointDetails("", state.currentFilters, state.fullTextQ || "");
+      const all = await api.listAllEndpointDetails("", state.currentFilters);
       state.allRowsCache = all;
       state.allRows = all;
       state.filterMode = true;
@@ -388,7 +412,6 @@ export function initFilter(container, state, api, cb) {
       const newQ = globalQInput.value.trim();
       if (newQ === state.fullTextQ) return;
       state.fullTextQ = newQ;
-      state.allRowsCache = null;
       updateClearBtn();
       clearActiveView();
       clearTimeout(qDebounce);

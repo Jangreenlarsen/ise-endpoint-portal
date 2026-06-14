@@ -61,12 +61,21 @@ class Settings(BaseSettings):
             "Eksempel: ['10.0.0.1', '192.168.1.254'] (reverse proxy / load balancer IPs)."
         ),
     )
-    ise_max_connections: int = Field(
-        default=10,
+    ise_http2: bool = Field(
+        default=True,
         description=(
-            "Max antal samtidige HTTP-forbindelser til ISE. ISE ERS accepterer "
-            "ca. 5-10 samtidige — over denne grænse ses connection-reset. "
-            "10 er sikkert maksimum; 5 er konservativt."
+            "Aktiver HTTP/2 mod ISE (kræver at ISE understøtter HTTP/2 — verificér med "
+            "'curl --http2 -I https://<ise>/ers/config/endpoint'). "
+            "HTTP/2 multiplexer mange requests over én TCP-forbindelse og reducerer "
+            "TLS-handshake-overhead markant over internet. Sæt False for HTTP/1.1."
+        ),
+    )
+    ise_max_connections: int = Field(
+        default=15,
+        description=(
+            "Max antal samtidige HTTP-forbindelser til ISE. Med HTTP/2 multiplexes "
+            "mange requests over færre forbindelser — 15 er et godt udgangspunkt. "
+            "Med HTTP/1.1 og høj latens (internet) anbefales 15-20; på LAN 10."
         ),
     )
     ise_retry_attempts: int = Field(
@@ -372,6 +381,25 @@ class Settings(BaseSettings):
     github_branch: str = Field(default="main", description="GitHub-branch til opdateringscheck og git pull. 'main' = stabil release, 'dev' = udviklingsversion.")
     decomm_authz_vlan: str = Field(default="999", description="AuthzVlan der sættes på et endpoint ved dekommissionering.")
     decomm_authz_acl: str = Field(default="deny_all_ipv4_traffic", description="AuthzACL (DACL) der sættes på et endpoint ved dekommissionering.")
+    selfregister_enabled: bool = Field(default=True, description="Aktivér public selvregistrerings-side (/selfregister).")
+    selfregister_group_id: str = Field(default="", description="ISE endpoint group ID som selvregistrerede endpoints placeres i. Tom = standard gruppe.")
+    selfregister_redirect_url: str = Field(default="", description="URL brugeren sendes til efter succesfuld registrering (fx https://company.com). Tom = vis success-besked.")
+    selfregister_intro_text: str = Field(default="Registrér din enhed for at få adgang til netværket.", description="Introduktionstekst vist over formularen på selvregistreringssiden.")
+    selfregister_success_text: str = Field(default="Din enhed er nu registreret på netværket.", description="Tekst vist til gæsten efter succesfuld registrering.")
+    selfregister_terms: str = Field(default="Jeg accepterer at min enheds MAC-adresse registreres og at netværksadgang logges.", description="Accepttekst vist på selvregistrerings-siden.")
+    selfregister_authz_vlan: str = Field(default="", description="VLAN der assignes til selvregistrerede guest endpoints (AuthzVlan CA).")
+    selfregister_authz_acl: str = Field(default="", description="DACL der assignes til selvregistrerede guest endpoints (AuthzACL CA).")
+    selfregister_ipsk_enabled: bool = Field(default=False, description="Tillad gæster at indtaste en IPSK-nøgle på registreringssiden.")
+    selfregister_expiry_enabled: bool = Field(default=False, description="Aktivér automatisk udløb af gæsteadgang via GuestExperyDate + GuestAccessExpire CAs.")
+    selfregister_expiry_mode: str = Field(default="period", description="Udløbstype: 'period' (N dage efter registrering) eller 'date' (bestemt dato).")
+    selfregister_expiry_days: int = Field(default=30, description="Antal dage gæsteadgang er gyldig (bruges ved mode='period').")
+    selfregister_expiry_date: str = Field(default="", description="Bestemt udløbsdato YYYY-MM-DD (bruges ved mode='date').")
+    selfregister_expiry_time: str = Field(default="23:59", description="Klokkeslæt for udløb HH:MM.")
+
+    guest_expiry_check_interval_seconds: float = Field(
+        default=60.0,
+        description="Interval i sekunder for baggrunds-tjek af GuestExperyDate. 0 = deaktiveret.",
+    )
 
 
 def _load() -> Settings:

@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from typing import Optional
 from fastapi.responses import FileResponse
 
 from app.api.deps import require_admin, require_psk_editor
@@ -301,9 +302,9 @@ async def update_psk_policy(req: PskPolicy) -> PskPolicy:
 
 
 @psk_router.post("/psk-policy/generate", response_model=GeneratedPskKey)
-async def generate_psk_key() -> GeneratedPskKey:
-    """Generér én PSK-nøgle der overholder den aktive PSK-politik."""
-    return settings_service.generate_psk_key()
+async def generate_psk_key(policy: Optional[PskPolicy] = None) -> GeneratedPskKey:
+    """Generér én PSK-nøgle. Accepterer valgfri PskPolicy i body — bruges til preview af ikke-gemte indstillinger."""
+    return settings_service.generate_psk_key(policy)
 
 
 # ── Portal Auth Config (TACACS+) ─────────────────────────────────────────────
