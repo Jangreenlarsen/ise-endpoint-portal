@@ -489,8 +489,8 @@ def _git_pull_sync() -> dict[str, Any]:
             "stderr": (
                 f"Portal-processen (bruger '{portal_user}') ejer ikke .git/objects/ og kan ikke skrive til det.\n"
                 f"Løs det med én kommando på serveren (som root):\n\n"
-                f"  chown -R {portal_user}:{portal_user} {PROJECT_ROOT}/.git\n\n"
-                "Herefter virker git pull automatisk uden yderligere indgreb."
+                f"  chown -R {portal_user}:{portal_user} {PROJECT_ROOT}\n\n"
+                "Herefter virker OTA-opdatering automatisk uden yderligere indgreb."
             ),
             "returncode": -1,
         }

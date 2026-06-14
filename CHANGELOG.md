@@ -3,6 +3,23 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.8.0670] — 2026-06-14 — fix: Service-fil og venv-sti korrektioner (server starter ikke efter manuel opdatering)
+
+**Root causes:**
+1. `deploy/hypervision.service` brugte `/opt/hypervision/backend/.venv/bin/python` men det korrekte venv er `/opt/hypervision/venv/` — serveren startede aldrig fordi Python-stien ikke eksisterede.
+2. Ingen `StartLimitBurst=0` — systemd default er 5 crash i 10s → "gave up" → server forbliver nede selv efter `systemctl restart`.
+3. `ReadWritePaths=/opt/hypervision/backend` — service kunne ikke skrive til `/opt/hypervision/` (logs, cache der peger opad).
+4. `WorkingDirectory` retttet til `/opt/hypervision/backend` så uvicorn finder `app.main` uden `--app-dir`.
+
+**Rettelser i `deploy/hypervision.service`:**
+- `ExecStart`: `/opt/hypervision/backend/.venv/...` → `/opt/hypervision/venv/bin/python`
+- `WorkingDirectory`: `/opt/hypervision` → `/opt/hypervision/backend`
+- `StartLimitBurst=0` tilføjet
+- `ReadWritePaths`: `/opt/hypervision/backend` → `/opt/hypervision`
+- Fjernet `--app-dir backend` (WorkingDirectory er nu backend)
+
+**Berørte filer:** `deploy/hypervision.service`, `backend/app/services/update_service.py`, `version.json`
+
 ## [6.8.0669] — 2026-06-14 — fix: Pre-flight tjek i OTA-opdatering forhindrer crash-loop
 
 `_preflight_check()` kører `python -c "from app.main import app"` som subprocess
