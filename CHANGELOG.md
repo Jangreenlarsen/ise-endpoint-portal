@@ -3,6 +3,21 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.7.0664] — 2026-06-14 — fix: release notes i portalen viste forkert sektion
+
+`_extract_release_sections_since` fik `VERSION` = "6.7" → `_parse_semver("6.7")` = `(6,7,0)` →
+fandt `## [6.7]`-sektionen (build 0658) i stedet for den aktuelle `## [6.7.0663]`.
+
+Fix: `check_github_version` sender nu `FULL` ("6.7.0664") og konstrueret `latest_full`
+til `_extract_release_sections_since` så `_parse_semver` matcher præcist på `## [X.Y.ZZZZ]`.
+
+RELEASE_NOTES.md: `## [6.7]` → `## [6.7.0658]`, `## [6.6]` → `## [6.6.0658]`.
+Multi-linje bullet-punkter gjort til single-line (undgår parser-split i separate `<p>`).
+
+**Berørte filer:** `backend/app/services/update_service.py`, `RELEASE_NOTES.md`
+
+---
+
 ## [6.7.0663] — 2026-06-14 — feat: kommunikationshastighed portal ↔ ISE 3.5 (internet)
 
 5 optimeringer til lavere latens og højere throughput over internet:

@@ -4,6 +4,23 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.7.0664] — 2026-06-14 — Fix: release notes viste forkert sektion i portalen
+
+> **Build:** 0664
+
+Portalen viste `[6.7] — Feature: frys pxGrid...` (build 0658) som aktuel
+release note i stedet for den nyeste sektion. Årsag: `VERSION` = "6.7" blev
+sendt til `_extract_release_sections_since` og matchede `## [6.7]`-headeren
+i RELEASE_NOTES.md fremfor `## [6.7.0663]`.
+
+Nu sendes `FULL` ("6.7.0664") og den tilsvarende `latest_full` fra GitHub,
+så release notes matcher præcist på det kombinerede version+build-nummer.
+
+Multi-linje bullet-punkter i ældre sektioner er desuden rettet til single-line
+så de ikke splittes i separate afsnit af markdownrendereren.
+
+---
+
 ## [6.7.0663] — 2026-06-14 — Forbedret kommunikationshastighed portal ↔ ISE 3.5
 
 > **Build:** 0663
@@ -82,47 +99,40 @@ MINOR er højere. Nu sammenlignes fuld `(major, minor, build)`-tuple.
 
 ---
 
-## [6.7] — 2026-06-14 — Feature: frys pxGrid live-opdatering i Browse
+## [6.7.0658] — 2026-06-14 — Feature: frys pxGrid live-opdatering i Browse
 
 > **Build:** 0658
 
-I miljøer med tusindvis af endpoints der autentificerer og frakobler sig
-konstant, kan Browse-viewet blive meget aktivt og gøre det svært at fokusere.
+I miljøer med tusindvis af endpoints der autentificerer og frakobler sig konstant, kan Browse-viewet blive meget aktivt og gøre det svært at fokusere.
 
 Ny **"⏸ Frys live"**-knap i Browse-headeren (ved siden af pxGrid-badgen):
 
-- **Klik én gang** → tabellen fryses. pxGrid-events akkumuleres stadig i
-  baggrunden (data er frisk), men UI opdateres ikke.
+- **Klik én gang** → tabellen fryses. pxGrid-events akkumuleres stadig i baggrunden (data er frisk), men UI opdateres ikke.
 - **Knappen viser antal ventende ændringer**, f.eks. `▶ Genoptag live (47)`.
-- **Klik igen** → alle ventende ændringer anvises på én gang og viewet
-  er hurtigt à jour.
+- **Klik igen** → alle ventende ændringer anvises på én gang og viewet er hurtigt à jour.
 - Fryse-tilstanden nulstilles automatisk hvis pxGrid-streamen genstarter.
 
 ---
 
-## [6.6] — 2026-06-14 — Feature: nmap-scanning direkte fra portalen
+## [6.6.0658] — 2026-06-14 — Feature: nmap-scanning direkte fra portalen
 
 > **Build:** 0658
 
-Netværksadministratorer kan nu trigge en nmap-scan mod et endpoints
-IP-adresse direkte fra portalen. IP'en hentes automatisk fra
-pxGrid-sessionens `framed_ip`.
+Netværksadministratorer kan nu trigge en nmap-scan mod et endpoints IP-adresse direkte fra portalen. IP'en hentes automatisk fra pxGrid-sessionens `framed_ip`.
 
 **Konfigurerbare presets:**
+
 - **Ping** — `nmap -sn -T4 <ip>` — er enheden oppe?
 - **Top-1000 porte** — `nmap -T4 --top-ports 1000 <ip>`
 - **Service discovery** — `nmap -sV -T4 <ip>` — services og versioner
-- **OS + service** — `nmap -sV -O -T4 <ip>` — OS-fingerprinting
 - **Brugerdefineret** — fri flag-input
 
 **Tilgængeligt fra:**
-1. **Endpoint details → Session-tab** — Kør nmap-sektion vises automatisk
-   når endpointet har en aktiv RADIUS-session med framed_ip.
-2. **Browse-tabel action-bar** — ⚡ nmap-knap aktiveres når præcis ét
-   endpoint med aktiv session og IP er valgt.
 
-Farlige flag blokeres serverside (`-iL`, `--script`, `-oN`, `-oX` osv.).
-Timeout: 120 sekunder. nmap skal være installeret på backend-serveren.
+- **Endpoint details → Session-tab** — nmap-sektion vises automatisk når endpointet har en aktiv RADIUS-session med framed_ip.
+- **Browse-tabel action-bar** — nmap-knap aktiveres når præcis ét endpoint med aktiv session og IP er valgt.
+
+Farlige flag blokeres serverside (`-iL`, `--script`, `-oN`, `-oX` osv.). Timeout: 120 sekunder. nmap skal være installeret på backend-serveren.
 
 ---
 

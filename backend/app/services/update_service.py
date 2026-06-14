@@ -351,6 +351,7 @@ async def check_github_version(*, force: bool = False) -> dict[str, Any]:
     }
     try:
         import httpx
+        from app.core.version import FULL
         _cb = int(now)  # cache-buster — råt.githubusercontent.com CDN ignorerer headers
         no_cache = {"Cache-Control": "no-cache", "Pragma": "no-cache"}
         async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
@@ -376,8 +377,12 @@ async def check_github_version(*, force: bool = False) -> dict[str, Any]:
 
             notes_text = ""
             if rn_resp.status_code == 200:
+                # Brug FULL ("6.7.0663") som current og kombinér version+build til latest_full
+                # så _parse_semver kan matche præcist mod ## [6.7.0663]-sektioner.
+                # Med bare VERSION ("6.7") → (6,7,0) finder den fejlagtigt ## [6.7]-sektioner.
+                latest_full = f"{data.get('version', '0')}.{data.get('build', '0')}"
                 notes_text = _extract_release_sections_since(
-                    rn_resp.text, VERSION, result["latest_version"]
+                    rn_resp.text, FULL, latest_full
                 )
             result["release_notes"] = notes_text
         _github_cache = result

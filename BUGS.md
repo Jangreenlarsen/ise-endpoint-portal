@@ -4,6 +4,15 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 6.7.0664] 2026-06-14 — Release notes i portalen viser forkert sektion + brudt bullet-formatering
+
+- **Symptom:** Portalen viste `## [6.7] — ... — Feature: frys pxGrid live-opdatering` (build 0658) som aktuel release note i stedet for den nyeste sektion (`## [6.7.0663]`). Bullet-punkter med linjeskift-continuation (`  baggrunden...`) renderede som separate afsnit.
+- **Root cause 1:** `_extract_release_sections_since` fik `VERSION` = "6.7" som `current_version`. `_parse_semver("6.7")` = `(6, 7, 0)` → fandt eksakt match på `## [6.7]`-sektionen i stedet for `## [6.7.ZZZZ]`.
+- **Root cause 2:** `RELEASE_NOTES.md` brugte `## [6.7]` og `## [6.6]` som headers (gammelt format uden build-nummer).
+- **Root cause 3:** Multi-linje bullet-punkter med 2-space continuation-indent splitter i separate `<p>`-elementer af rendererens linje-for-linje parser.
+- **Fix:** `check_github_version` sender nu `FULL` ("6.7.0664") som `current_version` og `"{version}.{build}"` som `latest_version` til `_extract_release_sections_since`. RELEASE_NOTES.md: `## [6.7]` → `## [6.7.0658]`, `## [6.6]` → `## [6.6.0658]`. Alle multi-linje bullet-punkter gjort til single-line.
+- **Berørte filer:** `backend/app/services/update_service.py`, `RELEASE_NOTES.md`
+
 ## [FIXED 6.7.0662] 2026-06-14 — Browse: bruger-redigerede inputfelter (description m.fl.) nulstilles ved pxGrid-opdatering
 
 - **Symptom:** Hvis en pxGrid live-event (upsert/remove/endpoint_changed) trigger `applyFilter()` → `renderRows()` mens en bruger er i gang med at redigere felter i en "dirty" række (description, group, type, osv.), erstattes `tbody.innerHTML` komplet — og brugerens urelaterede ændringer slettes. Rækken er stadig markeret dirty, men indeholder nu de originale værdier. Gemmer brugeren derefter, sendes de originale (ikke de redigerede) værdier til ISE. Dataset-attributter (`beStaticGroup`, `bePskKey`, `beActiveStatus`) gik tilsvarende tabt.
