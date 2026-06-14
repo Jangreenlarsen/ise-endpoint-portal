@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.8.0674] — 2026-06-14 — fix: NameError 'result' i git pull (500-fejl)
+
+`_git_pull_sync()` refererede til `result["preflight_ok"]` men `result` er ikke
+en variabel i den funktion — det er det returnerede dict. Linjerne fjernet;
+`preflight_ok` sendes allerede korrekt med i `return`-sætningen.
+
+**Berørte filer:** `backend/app/services/update_service.py`, `version.json`
+
 ## [6.8.0673] — 2026-06-14 — fix: Diagnostik cache-tjek brugte forkert attribut (_entries → detail_count)
 
 `_check_cache_status()` tjekkede `cache._entries` som ikke eksisterer — det korrekte

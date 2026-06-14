@@ -563,9 +563,6 @@ def _git_pull_sync() -> dict[str, Any]:
             stdout_parts.append(preflight_msg)
             if not preflight_ok:
                 logger.warning("pre-flight fejlede — auto-genstart afbrudt: %s", preflight_msg[:200])
-            result["preflight_ok"] = preflight_ok
-        else:
-            result["preflight_ok"] = False
 
         return {
             "ok": ok,
