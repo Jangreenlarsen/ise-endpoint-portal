@@ -4,6 +4,20 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.11.0680] — 2026-06-14 — Dashboard: CPU/RAM/disk ressource-bars
+
+> **Build:** 0680
+
+Dashboardets system-kort viser nu tre kompakte progress-bars øverst:
+
+- **CPU %** — realtids CPU-forbrug (gennemsnit over 0,3 s)
+- **RAM %** — RAM-forbrug med brugt/total i GB
+- **Disk %** — diskforbrug med fri plads i GB
+
+Farvekodning: grøn (< 75%), orange (75-90%), rød (> 90%). Opdateres hvert 30 sekund med resten af dashboard-dataene.
+
+Ny afhængighed: `psutil >= 5.9.0` — installeres automatisk via OTA-opdatering. Hvis psutil ikke er installeret endnu, vises en besked og kun disk-% (via `shutil`) er tilgængeligt.
+
 ## [6.10.0677] — 2026-06-14 — Funktionsgennemgang: to-faset portal-audit
 
 > **Build:** 0677

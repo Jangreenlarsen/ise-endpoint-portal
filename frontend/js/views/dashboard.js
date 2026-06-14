@@ -26,6 +26,20 @@ function statRow(label, value, sub = "") {
   </div>`;
 }
 
+function resBar(label, pct, usedLabel) {
+  if (pct === null || pct === undefined) return "";
+  const color = pct >= 90 ? "#dc2626" : pct >= 75 ? "#d97706" : "#16a34a";
+  return `<div style="padding:4px 0;border-bottom:1px solid #f9fafb;">
+    <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+      <span style="color:#6b7280;font-size:.82em;">${label}</span>
+      <span style="font-size:.82em;font-weight:500;color:${color}">${pct.toFixed(0)}%${usedLabel ? `<span style="color:#9ca3af;font-weight:400;margin-left:4px;font-size:.9em;">${usedLabel}</span>` : ""}</span>
+    </div>
+    <div style="background:#f3f4f6;border-radius:3px;height:5px;overflow:hidden;">
+      <div style="width:${Math.min(pct,100)}%;height:100%;background:${color};border-radius:3px;transition:width .4s;"></div>
+    </div>
+  </div>`;
+}
+
 // ── KPI-kort ──────────────────────────────────────────────────────────────────
 
 function kpiCard(label, value, sub = "", accent = "#2563eb") {
@@ -197,7 +211,7 @@ function renderLogsTable(entries) {
 
 // ── Compose dashboard HTML ─────────────────────────────────────────────────────
 
-function compose(dash, trends, lifecycle, isAdmin, diagQuick) {
+function compose(dash, trends, lifecycle, isAdmin, diagQuick, sysinfo) {
   const cb      = dash.circuit_breaker || {};
   const ep      = dash.endpoints       || {};
   const cache   = dash.cache           || {};
@@ -292,12 +306,17 @@ function compose(dash, trends, lifecycle, isAdmin, diagQuick) {
       <div style="font-size:.77rem;color:#9ca3af;margin-top:.3rem;">${prewarm.scanning ? t("dash.prewarm_scanning") : "Idle"}</div>
     </div>` : "";
 
+  const si = sysinfo || {};
   const sysCard = `<div style="background:#fff;border-radius:12px;padding:1rem 1.25rem;
     box-shadow:0 1px 4px rgba(0,0,0,.07);">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;">
       <h3 style="margin:0;font-size:.92rem;color:#374151;font-weight:600;">${t("dash.sys_title")}</h3>
       ${cbPill(cb.state)}
     </div>
+    ${resBar("CPU", si.cpu_pct ?? null, si.cpu_pct != null ? "" : "")}
+    ${resBar("RAM", si.ram_pct ?? null, si.ram_used_gb != null ? `${si.ram_used_gb}/${si.ram_total_gb} GB` : "")}
+    ${resBar("Disk", si.disk_pct ?? null, si.disk_free_gb != null ? `${si.disk_free_gb} GB fri` : "")}
+    ${si.cpu_pct == null ? `<div style="font-size:.75rem;color:#9ca3af;padding:4px 0;border-bottom:1px solid #f9fafb;">psutil ikke installeret — kør OTA-opdatering</div>` : ""}
     ${statRow(t("dash.sys_sessions"), sess.active ?? "—")}
     ${statRow(t("dash.sys_hit_rate"), hitRate)}
     ${statRow("Stale serves", cache.stale_serves ?? "—")}
@@ -476,7 +495,7 @@ export async function renderDashboard(container) {
 
   async function load() {
     try {
-      const [dash, alertsRes, trendsRes, lifecycleRes, diagQuick] = await Promise.all([
+      const [dash, alertsRes, trendsRes, lifecycleRes, diagQuick, sysinfo] = await Promise.all([
         api.getDashboard(),
         api.getAlerts().catch(() => ({ alerts: [] })),
         api.getTrends("30d").catch((e) => ({ _error: e.message })),
@@ -484,6 +503,7 @@ export async function renderDashboard(container) {
           ? api.getStaleEndpoints(90).catch((e) => ({ _error: e.message }))
           : Promise.resolve(null),
         api.diagnosticsQuick().catch((e) => ({ _error: e.message })),
+        api.sysinfo().catch(() => null),
       ]);
 
       const alertList = alertsRes?.alerts || [];
@@ -500,7 +520,7 @@ export async function renderDashboard(container) {
         alertsEl.innerHTML = "";
       }
 
-      body.innerHTML = compose(dash, trendsRes, lifecycleRes, isAdmin, diagQuick);
+      body.innerHTML = compose(dash, trendsRes, lifecycleRes, isAdmin, diagQuick, sysinfo);
       tsEl.textContent = t("dash.updated") + new Date().toLocaleTimeString();
     } catch (err) {
       body.innerHTML = `<div class="alert error">${t("dash.error").replace("{msg}", esc(err.message))}</div>`;

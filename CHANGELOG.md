@@ -3,6 +3,20 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.11.0680] — 2026-06-14 — feat: Dashboard CPU/RAM/disk ressource-bars
+
+**Nye filer:**
+- `backend/app/services/sysinfo_service.py` — henter cpu_pct, ram_pct, disk_pct via psutil (0.3s interval for reel CPU-måling); kører i executor; graceful fallback til shutil hvis psutil mangler
+- `backend/app/api/sysinfo.py` — GET /api/sysinfo (require_any)
+
+**Ændrede filer:**
+- `backend/app/main.py` — registrerer sysinfo_api router
+- `backend/pyproject.toml` — tilføjer `psutil>=5.9.0`
+- `backend/app/services/diagnostics_service.py` — psutil tilføjet til REQUIRED_DISTS
+- `frontend/js/api.js` — tilføjer `sysinfo()`
+- `frontend/js/views/dashboard.js` — `resBar()` hjælper, sysinfo i Promise.all, CPU/RAM/disk-bars i sysCard
+- `version.json` → 6.11.0680
+
 ## [6.10.0679] — 2026-06-14 — fix: OpenAPI-tjek tager nu hensyn til ise_api_type
 
 OpenAPI endpoint-count (fase 2) vurderer nu resultatet ud fra portalens konfiguration:

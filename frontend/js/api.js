@@ -323,6 +323,7 @@ export const api = {
   diagnosticsQuick:   () => request("/diagnostics/quick",    { _timeout: 10_000 }),
   featureCheckPhase1: () => request("/feature-check/phase1", { _timeout: 10_000 }),
   featureCheckPhase2: () => request("/feature-check/phase2", { _timeout: 30_000 }),
+  sysinfo:            () => request("/sysinfo",              { _timeout:  5_000 }),
   listAncPolicies: () => request("/endpoints/anc-policies"),
   ancStatus: (id) => request(`/endpoints/${encodeURIComponent(id)}/anc-status`),
   ancQuarantine: (id, policyName) =>

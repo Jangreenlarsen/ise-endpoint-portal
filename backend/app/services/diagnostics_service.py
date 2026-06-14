@@ -39,6 +39,7 @@ _REQUIRED_DISTS = [
     "tenacity",
     "prometheus-client",
     "tacacs-plus",
+    "psutil",
 ]
 
 
