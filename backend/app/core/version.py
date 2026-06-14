@@ -13,11 +13,11 @@ def _read() -> dict[str, str]:
     try:
         return json.loads(_VERSION_FILE.read_text(encoding="utf-8"))
     except Exception:
-        return {"version": "0.0.0", "build": "0000"}
+        return {"version": "0.0", "build": "0000"}
 
 
 _info = _read()
 
-VERSION: str = _info.get("version", "0.0.0")
+VERSION: str = _info.get("version", "0.0")
 BUILD: str = _info.get("build", "0000")
-FULL: str = f"{VERSION} build {BUILD}"
+FULL: str = f"{VERSION}.{BUILD}"
