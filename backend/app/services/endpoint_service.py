@@ -945,15 +945,19 @@ class EndpointService:
         Kun custom-attribute-feltet opdateres — gruppe, beskrivelse og øvrige
         felter bevares. Cachen invalideres og handlingen auditeres.
         """
-        authz_vlan = config.settings.decomm_authz_vlan
-        authz_acl = config.settings.decomm_authz_acl
         ca: dict[str, Any] = {
             STATUS_ATTR: "Decommissioned",
             ACTIVE_ATTR: "Inaktiv",
             HIDDEN_ATTR: "true",
-            "AuthzVlan": authz_vlan,
-            "AuthzACL": authz_acl,
         }
+        audit_after: dict[str, Any] = {"status": "Decommissioned", "active_status": "Inaktiv"}
+        if config.settings.decomm_set_authz:
+            authz_vlan = config.settings.decomm_authz_vlan
+            authz_acl  = config.settings.decomm_authz_acl
+            ca["AuthzVlan"] = authz_vlan
+            ca["AuthzACL"]  = authz_acl
+            audit_after["authz_vlan"] = authz_vlan
+            audit_after["authz_acl"]  = authz_acl
         await self._ensure_ca_definitions()
         before: dict[str, Any] | None = None
         try:
@@ -967,7 +971,7 @@ class EndpointService:
             "endpoint",
             endpoint_id,
             before=before,
-            after={"status": "Decommissioned", "active_status": "Inaktiv", "authz_vlan": authz_vlan, "authz_acl": authz_acl},
+            after=audit_after,
         )
         logger.info("decommissioned endpoint id=%s", endpoint_id)
 

@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
+﻿# SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 from typing import Literal
 
@@ -31,6 +31,7 @@ class BackendSettingsUpdate(BaseModel):
     cache_prewarm_interval_s: float = 1800.0
     debug_pxgrid_sessions: bool = False
     github_branch: str = "main"
+    decomm_set_authz: bool = True
     decomm_authz_vlan: str = "999"
     decomm_authz_acl: str = "deny_all_ipv4_traffic"
     selfregister_enabled: bool = True
@@ -71,6 +72,7 @@ class BackendSettingsResponse(BaseModel):
     cache_prewarm_interval_s: float = 1800.0
     debug_pxgrid_sessions: bool = False
     github_branch: str = "main"
+    decomm_set_authz: bool = True
     decomm_authz_vlan: str = "999"
     decomm_authz_acl: str = "deny_all_ipv4_traffic"
     selfregister_enabled: bool = True

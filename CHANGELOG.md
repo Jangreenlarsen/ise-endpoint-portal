@@ -3,6 +3,17 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.11.0682] — 2026-06-14 — feat: Decommission VLAN/DACL-ændring kan slås fra
+
+Ny setting `decomm_set_authz` (bool, default True) under Settings → Advanced → Standard dekommissioneringsværdier.
+
+- **Til (default):** decommission sætter HypervisionStatus + AuthzVlan + AuthzACL som hidtil.
+- **Fra:** decommission sætter kun HypervisionStatus=Decommissioned, HypervisionActiveStatus=Inaktiv og HypervisionHidden=true — VLAN og DACL på endpointet bevares uændret.
+
+UI: checkbox øverst i decommission-sektionen; VLAN/DACL-dropdowns dimmes og deaktiveres når checkbox er slået fra.
+
+**Berørte filer:** `backend/app/core/config.py`, `backend/app/schemas/settings.py`, `backend/app/services/endpoint_service.py`, `frontend/js/views/settings.js`, `frontend/js/views/settings/section-update.js`, `frontend/js/i18n.js`, `version.json`
+
 ## [6.11.0681] — 2026-06-14 — feat: CLI Recovery Tool (backend/recover.py)
 
 **Ny fil:** `backend/recover.py`

@@ -495,6 +495,10 @@ export function initAdvancedSection(container) {
   // Decommission defaults
   const decommH4   = container.querySelector("#adv-decomm-h4");
   const decommHint = container.querySelector("#adv-decomm-hint");
+  const decommSetAuthzCb    = container.querySelector("#adv-decomm-set-authz");
+  const decommSetAuthzLbl   = container.querySelector("#adv-decomm-set-authz-lbl");
+  const decommSetAuthzHint  = container.querySelector("#adv-decomm-set-authz-hint");
+  const decommAuthzFields   = container.querySelector("#adv-decomm-authz-fields");
   const decommVlanLbl  = container.querySelector("#adv-decomm-vlan-lbl");
   const decommVlanHint = container.querySelector("#adv-decomm-vlan-hint");
   const decommAclLbl   = container.querySelector("#adv-decomm-acl-lbl");
@@ -505,13 +509,22 @@ export function initAdvancedSection(container) {
   const decommMsg      = container.querySelector("#adv-decomm-msg");
   const decommForm     = container.querySelector("#adv-decomm-form");
 
-  if (decommH4)       decommH4.textContent       = t("settings.adv_decomm_h4");
-  if (decommHint)     decommHint.textContent      = t("settings.adv_decomm_hint");
-  if (decommVlanLbl)  decommVlanLbl.textContent   = t("settings.adv_decomm_vlan_lbl");
-  if (decommVlanHint) decommVlanHint.textContent  = t("settings.adv_decomm_vlan_hint");
-  if (decommAclLbl)   decommAclLbl.textContent    = t("settings.adv_decomm_acl_lbl");
-  if (decommAclHint)  decommAclHint.textContent   = t("settings.adv_decomm_acl_hint");
-  if (decommSaveBtn)  decommSaveBtn.textContent   = t("settings.adv_decomm_save_btn");
+  if (decommH4)            decommH4.textContent            = t("settings.adv_decomm_h4");
+  if (decommHint)          decommHint.textContent          = t("settings.adv_decomm_hint");
+  if (decommSetAuthzLbl)   decommSetAuthzLbl.textContent   = t("settings.adv_decomm_set_authz_lbl");
+  if (decommSetAuthzHint)  decommSetAuthzHint.textContent  = t("settings.adv_decomm_set_authz_hint");
+  if (decommVlanLbl)       decommVlanLbl.textContent       = t("settings.adv_decomm_vlan_lbl");
+  if (decommVlanHint)      decommVlanHint.textContent      = t("settings.adv_decomm_vlan_hint");
+  if (decommAclLbl)        decommAclLbl.textContent        = t("settings.adv_decomm_acl_lbl");
+  if (decommAclHint)       decommAclHint.textContent       = t("settings.adv_decomm_acl_hint");
+  if (decommSaveBtn)       decommSaveBtn.textContent       = t("settings.adv_decomm_save_btn");
+
+  function _syncAuthzFields() {
+    if (!decommAuthzFields) return;
+    const enabled = decommSetAuthzCb?.checked ?? true;
+    decommAuthzFields.style.opacity = enabled ? "1" : "0.4";
+    decommAuthzFields.style.pointerEvents = enabled ? "" : "none";
+  }
 
   // Populate a <select> with values; pre-select savedValue (add it if missing)
   function _populateSelect(sel, values, savedValue) {
@@ -550,6 +563,9 @@ export function initAdvancedSection(container) {
 
       if (debugCb) debugCb.checked = !!s.debug_pxgrid_sessions;
 
+      if (decommSetAuthzCb) decommSetAuthzCb.checked = s.decomm_set_authz !== false;
+      _syncAuthzFields();
+
       const savedVlan = s.decomm_authz_vlan ?? "999";
       const savedAcl  = s.decomm_authz_acl  ?? "deny_all_ipv4_traffic";
 
@@ -582,17 +598,23 @@ export function initAdvancedSection(container) {
     });
   }
 
+  // Toggle authz-felter ved checkbox-ændring
+  if (decommSetAuthzCb) {
+    decommSetAuthzCb.addEventListener("change", _syncAuthzFields);
+  }
+
   // Save decommission defaults
   if (decommForm) {
     decommForm.addEventListener("submit", async (e) => {
       e.preventDefault();
+      const setAuthz = decommSetAuthzCb?.checked ?? true;
       const vlan = (decommVlanEl?.value ?? "").trim();
       const acl  = (decommAclEl?.value ?? "").trim();
-      if (!vlan || !acl) return;
+      if (setAuthz && (!vlan || !acl)) return;
       decommSaveBtn.disabled = true;
       try {
         const current = await api.getBackendSettings();
-        await api.updateBackendSettings({ ...current, decomm_authz_vlan: vlan, decomm_authz_acl: acl });
+        await api.updateBackendSettings({ ...current, decomm_set_authz: setAuthz, decomm_authz_vlan: vlan, decomm_authz_acl: acl });
         decommMsg.innerHTML = `<span style="color:var(--success,#166534);font-size:0.82em;">${t("settings.adv_decomm_saved")}</span>`;
         setTimeout(() => { decommMsg.innerHTML = ""; }, 3000);
       } catch (err) {
