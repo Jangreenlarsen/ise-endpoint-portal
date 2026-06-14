@@ -3,6 +3,21 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.7] — 2026-06-14 — feat: frys pxGrid live-opdatering i Browse
+
+Ny "⏸ Frys live"-toggle-knap i Browse page-header (ved siden af
+pxGrid-badgen). Når aktiv fryses tabellen: pxGrid session-events
+(upsert/remove/endpoint_changed) akkumuleres i baggrunden uden at
+trigger `applyFilter()` eller `applyAuthStatusColors()`. Knappens
+label viser antal ventende ændringer, f.eks. "▶ Genoptag live (47)".
+Klik igen → alle ventende ændringer flushes på én gang til UI. Også
+5-minutters sessionRefreshTimer respekterer pause-flaget. Stream-stop
+nulstiller pause automatisk.
+
+**Berørte filer:** `frontend/js/views/browse.js`, `frontend/js/i18n.js`
+
+---
+
 ## [6.6] — 2026-06-14 — feat: nmap-scanning af endpoints direkte fra portalen
 
 Ny feature: admin/bruger kan trigge nmap-scan mod et endpoints

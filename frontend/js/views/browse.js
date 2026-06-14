@@ -34,6 +34,9 @@ export async function renderBrowse(container) {
             style="padding:3px 10px; border-radius:12px; font-size:0.8em; background:#e5e7eb; color:#374151; white-space:nowrap;">
         ${t("browse.pxgrid_badge")}
       </span>
+      <button id="pxgrid-pause-btn" class="secondary small"
+              style="font-size:0.78rem;padding:2px 10px;"
+              title="${t("browse.live_pause_title")}">⏸ ${t("browse.btn_pause_live")}</button>
     </div>
     <div id="anomaly-banner" style="display:none;"></div>
     <div class="card">
@@ -513,6 +516,7 @@ export async function renderBrowse(container) {
     macPrivate: false, markedOnly: false, decommOnly: false, activeStatusFilter: "",
     pxgridLive: false, pxgridSessionMacs: null, pxgridSessionData: null,
     pxgridLastEventTs: 0, pxgridEndpointEventCount: 0, pxgridLastEndpointEventTs: 0,
+    pxgridPaused: false, pxgridPendingSessionUpdates: 0, pxgridPendingEndpointReload: false,
   };
 
   // ── Cross-module callback object (populated after all inits) ──────────────
@@ -693,8 +697,13 @@ export async function renderBrowse(container) {
         state.pxgridLastEventTs = data.ts || Math.floor(Date.now() / 1000);
         if (!state.activeSessionMacs) state.activeSessionMacs = new Set();
         state.activeSessionMacs.add(mac);
-        cb.applyAuthStatusColors?.();
-        cb.applyFilter?.();
+        if (state.pxgridPaused) {
+          state.pxgridPendingSessionUpdates++;
+          updatePxGridPauseBtn();
+        } else {
+          cb.applyAuthStatusColors?.();
+          cb.applyFilter?.();
+        }
         updatePxGridSourceBadge();
       } catch {}
     });
@@ -707,8 +716,13 @@ export async function renderBrowse(container) {
         if (state.pxgridSessionData) state.pxgridSessionData.delete(mac);
         state.pxgridLastEventTs = data.ts || Math.floor(Date.now() / 1000);
         if (state.activeSessionMacs) state.activeSessionMacs.delete(mac);
-        cb.applyAuthStatusColors?.();
-        cb.applyFilter?.();
+        if (state.pxgridPaused) {
+          state.pxgridPendingSessionUpdates++;
+          updatePxGridPauseBtn();
+        } else {
+          cb.applyAuthStatusColors?.();
+          cb.applyFilter?.();
+        }
         updatePxGridSourceBadge();
       } catch {}
     });
@@ -718,7 +732,12 @@ export async function renderBrowse(container) {
         state.pxgridLastEventTs           = data.ts || Math.floor(Date.now() / 1000);
         state.pxgridEndpointEventCount   += 1;
         state.pxgridLastEndpointEventTs   = state.pxgridLastEventTs;
-        scheduleEndpointReload();
+        if (state.pxgridPaused) {
+          state.pxgridPendingEndpointReload = true;
+          updatePxGridPauseBtn();
+        } else {
+          scheduleEndpointReload();
+        }
         updatePxGridSourceBadge();
       } catch {}
     });
@@ -759,13 +778,47 @@ export async function renderBrowse(container) {
     clearTimeout(pxgridErrorTimer);
     pxgridErrorTimer = null;
     if (pxgridEventSource) { pxgridEventSource.close(); pxgridEventSource = null; }
-    state.pxgridLive         = false;
-    state.pxgridSessionMacs  = null;
-    state.pxgridSessionData  = null;
+    state.pxgridLive                   = false;
+    state.pxgridSessionMacs            = null;
+    state.pxgridSessionData            = null;
     setSessionDataRef(null);
-    state.activeSessionMacs  = null;
-    state.pxgridLastEventTs  = 0;
+    state.activeSessionMacs            = null;
+    state.pxgridLastEventTs            = 0;
+    state.pxgridPaused                 = false;
+    state.pxgridPendingSessionUpdates  = 0;
+    state.pxgridPendingEndpointReload  = false;
+    updatePxGridPauseBtn();
   }
+
+  // ── pxGrid live pause ────────────────────────────────────────────────────
+  const pxgridPauseBtn = container.querySelector("#pxgrid-pause-btn");
+  function updatePxGridPauseBtn() {
+    if (!pxgridPauseBtn) return;
+    const pending = state.pxgridPendingSessionUpdates + (state.pxgridPendingEndpointReload ? 1 : 0);
+    if (state.pxgridPaused) {
+      pxgridPauseBtn.textContent = pending > 0
+        ? `▶ ${t("browse.btn_resume_live")} (${pending})`
+        : `▶ ${t("browse.btn_resume_live")}`;
+      pxgridPauseBtn.classList.add("active-toggle");
+      pxgridPauseBtn.title = t("browse.live_paused_title");
+    } else {
+      pxgridPauseBtn.textContent = `⏸ ${t("browse.btn_pause_live")}`;
+      pxgridPauseBtn.classList.remove("active-toggle");
+      pxgridPauseBtn.title = t("browse.live_pause_title");
+    }
+  }
+  pxgridPauseBtn?.addEventListener("click", () => {
+    state.pxgridPaused = !state.pxgridPaused;
+    if (!state.pxgridPaused) {
+      const hadSession  = state.pxgridPendingSessionUpdates > 0;
+      const hadEndpoint = state.pxgridPendingEndpointReload;
+      state.pxgridPendingSessionUpdates = 0;
+      state.pxgridPendingEndpointReload = false;
+      if (hadSession) { cb.applyAuthStatusColors?.(); cb.applyFilter?.(); }
+      if (hadEndpoint) scheduleEndpointReload();
+    }
+    updatePxGridPauseBtn();
+  });
 
   // ── CoA toggle ────────────────────────────────────────────────────────────
   const coaToggleBtn = container.querySelector("#coa-toggle-btn");
@@ -891,7 +944,7 @@ export async function renderBrowse(container) {
         if (mac) state.pxgridSessionData.set(mac, s);
       }
       setSessionDataRef(state.pxgridSessionData);
-      cb.applyAuthStatusColors?.();
+      if (!state.pxgridPaused) cb.applyAuthStatusColors?.();
     } catch { /* ignore — SSE stream holder sessioner à jour i realtid */ }
   }, 5 * 60 * 1000);
 

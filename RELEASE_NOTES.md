@@ -4,6 +4,24 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.7] — 2026-06-14 — Feature: frys pxGrid live-opdatering i Browse
+
+> **Build:** 0658
+
+I miljøer med tusindvis af endpoints der autentificerer og frakobler sig
+konstant, kan Browse-viewet blive meget aktivt og gøre det svært at fokusere.
+
+Ny **"⏸ Frys live"**-knap i Browse-headeren (ved siden af pxGrid-badgen):
+
+- **Klik én gang** → tabellen fryses. pxGrid-events akkumuleres stadig i
+  baggrunden (data er frisk), men UI opdateres ikke.
+- **Knappen viser antal ventende ændringer**, f.eks. `▶ Genoptag live (47)`.
+- **Klik igen** → alle ventende ændringer anvises på én gang og viewet
+  er hurtigt à jour.
+- Fryse-tilstanden nulstilles automatisk hvis pxGrid-streamen genstarter.
+
+---
+
 ## [6.6] — 2026-06-14 — Feature: nmap-scanning direkte fra portalen
 
 > **Build:** 0658

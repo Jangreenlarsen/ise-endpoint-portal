@@ -150,6 +150,10 @@ const TRANSLATIONS = {
     "browse.select_all_title":   "Vælg alle",
     "browse.pxgrid_badge":       "⚪ Auth-status: ukendt",
     "browse.pxgrid_badge_title": "Hvor auth-status kommer fra: pxGrid push (live) eller MnT pull (5-15s forsinkelse)",
+    "browse.btn_pause_live":     "Frys live",
+    "browse.btn_resume_live":    "Genoptag live",
+    "browse.live_pause_title":   "Frys pxGrid live-opdatering — tabellen fryses, data akkumuleres i baggrunden",
+    "browse.live_paused_title":  "Live-opdatering er sat på pause — klik for at genoptage og anvende alle ventende ændringer",
 
     // Browse — tabel-tilstande
     "browse.no_results":        "Ingen resultater",
@@ -1623,6 +1627,10 @@ const TRANSLATIONS = {
     "browse.select_all_title":   "Select all",
     "browse.pxgrid_badge":       "⚪ Auth-status: unknown",
     "browse.pxgrid_badge_title": "Where auth-status comes from: pxGrid push (live) or MnT pull (5-15s delay)",
+    "browse.btn_pause_live":     "Freeze live",
+    "browse.btn_resume_live":    "Resume live",
+    "browse.live_pause_title":   "Freeze pxGrid live updates — table is frozen, data accumulates in background",
+    "browse.live_paused_title":  "Live update paused — click to resume and apply all pending changes",
 
     // Browse — table states
     "browse.no_results":        "No results",
