@@ -4,6 +4,18 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.12.0684] — 2026-06-14 — Lokal genindlæsning i Browse
+
+> **Build:** 0684
+
+Ny knap "↻ Genindlæs" i Browse-toolbar — opdaterer den aktuelle side direkte fra backend-cache uden at ramme ISE. Ideel til at se ændringer du netop har gemt, eller til at opdatere visningen hurtigt.
+
+Den eksisterende "Opdater"-knap er omdøbt til "Opdater fra ISE" og er fortsat den knap der ryder cache og henter alle endpoints forfra.
+
+Begge knapper har tooltip der forklarer forskellen.
+
+---
+
 ## [6.12.0683] — 2026-06-14 — CoA ved guest-udløb
 
 > **Build:** 0683

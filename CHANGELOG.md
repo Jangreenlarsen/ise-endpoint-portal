@@ -3,6 +3,16 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.12.0684] — 2026-06-14 — feat: Lokal genindlæsning i Browse
+
+Ny "↻ Genindlæs"-knap i Browse-toolbar ved siden af den eksisterende "Opdater fra ISE".
+- **↻ Genindlæs** — henter den aktuelle side fra backend-cache; ingen ISE-kald, ingen cache-invalidering. Hurtig (< 1 sek).
+- **Opdater fra ISE** (omdøbt fra "Opdater") — ryder cache og henter alle endpoints direkte fra ISE.
+
+**Berørte filer:** `frontend/js/views/browse.js`, `frontend/js/views/browse-table.js`, `frontend/js/i18n.js`, `version.json`
+
+---
+
 ## [6.12.0683] — 2026-06-14 — feat: CoA ved guest-udløb
 
 Når guest-expiry-workeren registrerer et udløbet guest-endpoint, kan portalen nu automatisk sende en CoA (Change of Authorization) til gæstens MAC-adresse via ISE MnT API.

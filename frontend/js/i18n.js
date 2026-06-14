@@ -131,7 +131,11 @@ const TRANSLATIONS = {
 
     // Browse — toolbar
     "browse.title":              "Gennemse / Rediger endpoints",
-    "browse.btn_refresh":        "Opdater",
+    "browse.btn_refresh":             "Opdater fra ISE",
+    "browse.btn_refresh_title":       "Ryd cache og hent alle endpoints direkte fra ISE — kan tage 5-30 sek.",
+    "browse.btn_local_refresh":       "Genindlæs",
+    "browse.btn_local_refresh_title": "Genindlæs den aktuelle side fra backend-cache — hurtigt, uden ISE-kald.",
+    "browse.local_refreshing":        "Genindlæser…",
     "browse.btn_export":         "Eksportér CSV",
     "browse.btn_export_json":    "Eksportér JSON",
     "browse.btn_columns":        "Kolonner ▾",
@@ -1616,7 +1620,11 @@ const TRANSLATIONS = {
 
     // Browse — toolbar
     "browse.title":              "Browse / Edit endpoints",
-    "browse.btn_refresh":        "Refresh",
+    "browse.btn_refresh":             "Refresh from ISE",
+    "browse.btn_refresh_title":       "Clear cache and fetch all endpoints directly from ISE — may take 5-30 sec.",
+    "browse.btn_local_refresh":       "Reload",
+    "browse.btn_local_refresh_title": "Reload the current view from backend cache — fast, no ISE call.",
+    "browse.local_refreshing":        "Reloading…",
     "browse.btn_export":         "Export CSV",
     "browse.btn_export_json":    "Export JSON",
     "browse.btn_columns":        "Columns ▾",

@@ -37,9 +37,10 @@ export function initTable(container, state, api, cb) {
   const pageSizeSelect = container.querySelector("#page-size-select");
   const colVisBtn      = container.querySelector("#col-vis-btn");
   const colVisMenu     = container.querySelector("#col-vis-menu");
-  const exportBtn      = container.querySelector("#export-btn");
-  const exportJsonBtn  = container.querySelector("#export-json-btn");
-  const refreshBtn     = container.querySelector("#refresh-btn");
+  const exportBtn        = container.querySelector("#export-btn");
+  const exportJsonBtn    = container.querySelector("#export-json-btn");
+  const refreshBtn       = container.querySelector("#refresh-btn");
+  const localRefreshBtn  = container.querySelector("#local-refresh-btn");
 
   // ── Render helpers (need state.groups / state.roleCatalog) ───────────────
   function groupOptionsHtml(selectedId) {
@@ -779,7 +780,7 @@ export function initTable(container, state, api, cb) {
     bulkSaveBtn.disabled = false;
   });
 
-  // Refresh button
+  // Refresh button — invaliderer ISE-cache og henter alt forfra
   refreshBtn.addEventListener("click", async () => {
     refreshBtn.disabled    = true;
     refreshBtn.textContent = t("browse.refreshing");
@@ -789,6 +790,19 @@ export function initTable(container, state, api, cb) {
     } finally {
       refreshBtn.disabled    = false;
       refreshBtn.textContent = t("browse.btn_refresh");
+    }
+  });
+
+  // Local refresh — genindlæser fra backend-cache uden at røre ISE
+  localRefreshBtn?.addEventListener("click", async () => {
+    if (!localRefreshBtn) return;
+    localRefreshBtn.disabled    = true;
+    localRefreshBtn.textContent = t("browse.local_refreshing");
+    try {
+      await load(false);
+    } finally {
+      localRefreshBtn.disabled    = false;
+      localRefreshBtn.textContent = `↻ ${t("browse.btn_local_refresh")}`;
     }
   });
 

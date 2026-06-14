@@ -43,7 +43,10 @@ export async function renderBrowse(container) {
       <div class="toolbar">
 
         <div class="toolbar-group" title="${t("browse.tooltip_data")}">
-          <button id="refresh-btn" class="secondary small">${t("browse.btn_refresh")}</button>
+          <button id="refresh-btn" class="secondary small"
+                  title="${t("browse.btn_refresh_title")}">${t("browse.btn_refresh")}</button>
+          <button id="local-refresh-btn" class="secondary small"
+                  title="${t("browse.btn_local_refresh_title")}">↻ ${t("browse.btn_local_refresh")}</button>
           <button id="export-btn" class="secondary small">${t("browse.btn_export")}</button>
           <button id="export-json-btn" class="secondary small">${t("browse.btn_export_json")}</button>
           <button id="new-group-btn" class="secondary small hidden" title="${t("browse.new_group_title")}">${t("browse.new_group_btn")}</button>
