@@ -4,6 +4,32 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.6] — 2026-06-14 — Feature: nmap-scanning direkte fra portalen
+
+> **Build:** 0658
+
+Netværksadministratorer kan nu trigge en nmap-scan mod et endpoints
+IP-adresse direkte fra portalen. IP'en hentes automatisk fra
+pxGrid-sessionens `framed_ip`.
+
+**Konfigurerbare presets:**
+- **Ping** — `nmap -sn -T4 <ip>` — er enheden oppe?
+- **Top-1000 porte** — `nmap -T4 --top-ports 1000 <ip>`
+- **Service discovery** — `nmap -sV -T4 <ip>` — services og versioner
+- **OS + service** — `nmap -sV -O -T4 <ip>` — OS-fingerprinting
+- **Brugerdefineret** — fri flag-input
+
+**Tilgængeligt fra:**
+1. **Endpoint details → Session-tab** — Kør nmap-sektion vises automatisk
+   når endpointet har en aktiv RADIUS-session med framed_ip.
+2. **Browse-tabel action-bar** — ⚡ nmap-knap aktiveres når præcis ét
+   endpoint med aktiv session og IP er valgt.
+
+Farlige flag blokeres serverside (`-iL`, `--script`, `-oN`, `-oX` osv.).
+Timeout: 120 sekunder. nmap skal være installeret på backend-serveren.
+
+---
+
 ## [6.5.0] — 2026-06-14 — Feature: PSK policy tekst + key generator fix
 
 > **Build:** 0658

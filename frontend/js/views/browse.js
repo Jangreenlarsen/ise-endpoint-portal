@@ -89,6 +89,8 @@ export async function renderBrowse(container) {
                   title="${t("browse.disconnect_title")}">${t("browse.btn_bulk_disconnect")}</button>
           <button id="bulk-sim-btn" class="secondary small" disabled
                   title="${t("browse.sim_btn_title")}">${t("browse.sim_btn")}</button>
+          <button id="bulk-nmap-btn" class="secondary small" disabled
+                  title="nmap-scan mod valgt endpoints IP (kræver aktiv RADIUS-session)">⚡ nmap</button>
         </div>
 
         <span class="toolbar-divider"></span>
@@ -458,6 +460,31 @@ export async function renderBrowse(container) {
         <div class="modal-actions">
           <button id="new-group-save">${t("browse.ng_save_btn")}</button>
           <button id="new-group-cancel" class="secondary">${t("browse.ng_cancel_btn")}</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="nmap-overlay" class="modal-overlay hidden">
+      <div class="modal" style="max-width:640px;">
+        <h3>nmap-scanning</h3>
+        <p class="hint" id="nmap-overlay-ip" style="font-family:monospace;"></p>
+        <div class="modal-body">
+          <div style="display:flex;flex-wrap:wrap;gap:.35rem;margin-bottom:.5rem;">
+            <button class="nmap-ol-preset secondary small" data-preset="ping">Ping</button>
+            <button class="nmap-ol-preset secondary small" data-preset="top1000">Top-1000 porte</button>
+            <button class="nmap-ol-preset secondary small" data-preset="service">Service discovery</button>
+            <button class="nmap-ol-preset secondary small" data-preset="os">OS + service</button>
+            <button class="nmap-ol-preset secondary small" data-preset="custom">Brugerdefineret…</button>
+          </div>
+          <div id="nmap-ol-custom-row" style="display:none;margin-bottom:.5rem;">
+            <input id="nmap-ol-custom-flags" type="text" placeholder="-p 80,443,8080 -sV"
+                   style="width:100%;font-family:monospace;font-size:.85em;" />
+          </div>
+          <button id="nmap-ol-run" class="small" disabled>Kør nmap scan</button>
+          <pre id="nmap-ol-result" style="display:none;margin-top:.5rem;background:#0f172a;color:#e2e8f0;padding:.75rem;border-radius:6px;font-size:.78em;overflow-x:auto;white-space:pre-wrap;max-height:360px;overflow-y:auto;"></pre>
+        </div>
+        <div class="modal-actions">
+          <button id="nmap-ol-close" class="secondary">Luk</button>
         </div>
       </div>
     </div>

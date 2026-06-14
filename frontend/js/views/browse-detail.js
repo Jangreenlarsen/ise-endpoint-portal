@@ -487,6 +487,26 @@ export function initDetail(container, state, api, cb) {
     html += `<button id="d-session-probe-btn" class="secondary small" style="margin-bottom:.5rem;">Probe MnT (admin)</button>
       <div id="d-session-probe-result"></div>`;
 
+    // nmap-scanning — kun synlig hvis endpoint har en IP-adresse
+    const scanIp = cached?.framed_ip || "";
+    if (scanIp) {
+      html += `
+        <hr style="border:none;border-top:1px solid #e5e7eb;margin:.75rem 0;">
+        <h4 style="margin:.25rem 0 .5rem;font-size:.9em;color:#374151;">nmap-scanning mod ${esc(scanIp)}</h4>
+        <div style="display:flex;flex-wrap:wrap;gap:.35rem;margin-bottom:.5rem;">
+          <button class="nmap-preset secondary small" data-preset="ping">Ping</button>
+          <button class="nmap-preset secondary small" data-preset="top1000">Top-1000 porte</button>
+          <button class="nmap-preset secondary small" data-preset="service">Service discovery</button>
+          <button class="nmap-preset secondary small" data-preset="os">OS + service</button>
+          <button class="nmap-preset secondary small" data-preset="custom">Brugerdefineret…</button>
+        </div>
+        <div id="d-nmap-custom-row" style="display:none;margin-bottom:.5rem;">
+          <input id="d-nmap-custom-flags" type="text" placeholder="-p 80,443,8080 -sV" style="width:100%;font-family:monospace;font-size:.85em;" />
+        </div>
+        <button id="d-nmap-run" class="small" disabled>Kør nmap scan</button>
+        <pre id="d-nmap-result" style="display:none;margin-top:.5rem;background:#0f172a;color:#e2e8f0;padding:.75rem;border-radius:6px;font-size:.78em;overflow-x:auto;white-space:pre-wrap;max-height:400px;overflow-y:auto;"></pre>`;
+    }
+
     panel.innerHTML = html;
 
     panel.querySelector("#d-session-probe-btn")?.addEventListener("click", async () => {
@@ -535,6 +555,43 @@ export function initDetail(container, state, api, cb) {
         resEl.innerHTML = `<div class="alert error">Debug fejlede: ${esc(err.message)} (kræver admin-rolle)</div>`;
       }
     });
+
+    // ── nmap event listeners ─────────────────────────────────────────────
+    if (scanIp) {
+      let selectedPreset = null;
+      const runBtn       = panel.querySelector("#d-nmap-run");
+      const customRow    = panel.querySelector("#d-nmap-custom-row");
+      const customInput  = panel.querySelector("#d-nmap-custom-flags");
+      const resultPre    = panel.querySelector("#d-nmap-result");
+
+      panel.querySelectorAll(".nmap-preset").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          panel.querySelectorAll(".nmap-preset").forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          selectedPreset = btn.dataset.preset;
+          customRow.style.display = selectedPreset === "custom" ? "" : "none";
+          runBtn.disabled = false;
+        });
+      });
+
+      runBtn.addEventListener("click", async () => {
+        const preset = selectedPreset === "custom" ? null : selectedPreset;
+        const flags  = selectedPreset === "custom" ? (customInput.value.trim() || null) : null;
+        runBtn.disabled = true;
+        runBtn.textContent = "Scanner…";
+        resultPre.style.display = "";
+        resultPre.textContent = `Starter nmap mod ${scanIp}…`;
+        try {
+          const res = await api.nmapScan(scanIp, preset, flags);
+          resultPre.textContent = `# ${res.cmd}  (${res.duration}s)\n\n${res.output}`;
+        } catch (err) {
+          resultPre.textContent = `Fejl: ${err.message}`;
+        } finally {
+          runBtn.disabled = false;
+          runBtn.textContent = "Kør nmap scan";
+        }
+      });
+    }
   }
 
   // ── Policy areas ──────────────────────────────────────────────────────────

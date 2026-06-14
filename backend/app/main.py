@@ -31,6 +31,7 @@ from app.api import settings as settings_api
 from app.api import update as update_api
 from app.api import trends as trends_api
 from app.api import selfregister as selfregister_api
+from app.api import nmap as nmap_api
 from app.core.audit_store import init_db as init_audit_db
 from app.core.metrics_store import init_db as init_metrics_db
 from app.core.config import settings
@@ -347,6 +348,7 @@ app.include_router(config_backup_api.router, prefix="/api")
 app.include_router(trends_api.router, prefix="/api")
 app.include_router(ise_nodes_api.router, prefix="/api")
 app.include_router(selfregister_api.router, prefix="/api")  # Public — ingen auth
+app.include_router(nmap_api.router, prefix="/api")
 app.include_router(metrics_api.router)
 
 frontend_dir = Path(__file__).resolve().parents[2] / "frontend"

@@ -3,6 +3,24 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.6] — 2026-06-14 — feat: nmap-scanning af endpoints direkte fra portalen
+
+Ny feature: admin/bruger kan trigge nmap-scan mod et endpoints
+framed_ip (pxGrid session) direkte fra portalen. Konfigurerbare
+presets: Ping, Top-1000 porte, Service discovery, OS+service,
+Brugerdefineret flags. Scan-knap i (1) Endpoint details / Session-tab
+når framed_ip er tilgængeligt, og (2) Browse-tabel action-bar for
+det valgte endpoint (kun aktiv hvis 1 endpoint er valgt og har IP).
+Backend kører nmap som async subprocess med 120s timeout. Resultater
+vises i monospace-boks. Farlige flag (-iL, --script, -oN/-oX osv.)
+blokeres serverside.
+
+**Berørte filer:** `backend/app/api/nmap.py` (ny),
+`backend/app/services/nmap_service.py` (ny), `backend/app/main.py`,
+`frontend/js/api.js`, `frontend/js/views/browse-detail.js`,
+`frontend/js/views/browse.js`, `frontend/js/views/browse-bulk.js`,
+`frontend/js/views/browse-table.js`
+
 ## [6.5.0 build 0658] — 2026-06-14 — feat: PSK policy tekst præciseret + key generator bruger aktive form-værdier
 
 MPSK/IPSK radio-labels opdateret med tydelig beskrivelse af om nøglen

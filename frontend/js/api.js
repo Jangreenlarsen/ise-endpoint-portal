@@ -462,4 +462,11 @@ export const api = {
     const qs = names.map((n) => `names=${encodeURIComponent(n)}`).join("&") + `&limit=${limit}`;
     return request(`/metrics/history?${qs}`);
   },
+
+  // nmap scanning (6.6)
+  nmapScan: (ip, preset = null, customFlags = null) =>
+    request("/nmap/scan", {
+      method: "POST",
+      body: JSON.stringify({ ip, preset, custom_flags: customFlags }),
+    }),
 };
