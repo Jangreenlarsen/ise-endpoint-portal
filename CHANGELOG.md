@@ -3,6 +3,20 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.10.0677] — 2026-06-14 — feat: Funktionsgennemgang (to-faset portal-audit)
+
+**Nye filer:**
+- `backend/app/services/feature_check_service.py` — Fase 1 (9 statiske tjek) + Fase 2 (9 live ISE/nmap/GitHub-tjek)
+- `backend/app/api/feature_check.py` — GET /api/feature-check/phase1 + /phase2 (require_admin)
+- `frontend/js/views/settings/section-feature-check.js` — UI med to-faset knap + resultat-tabeller
+
+**Ændrede filer:**
+- `backend/app/main.py` — registrerer feature_check_api router
+- `frontend/js/api.js` — tilføjer featureCheckPhase1 + featureCheckPhase2
+- `frontend/js/views/settings.js` — importer initFeatureCheckSection, HTML-kort + init-kald
+- `version.json` — 6.9.0676 → 6.10.0677
+- `FEATURES.md`, `RELEASE_NOTES.md`, `CHANGELOG.md` opdateret
+
 ## [6.9.0676] — 2026-06-14 — fix: Dashboard layout omstruktureret
 
 Ny layout:

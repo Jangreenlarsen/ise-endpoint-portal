@@ -18,6 +18,7 @@ import { initSystemUpdateSection, initAdvancedSection, initGithubUpdateSection, 
 import { initAuthzProfilesSection } from "./settings/section-authz-profiles.js";
 import { initBackupSection } from "./settings/section-backup.js";
 import { initDiagnosticsSection } from "./settings/section-diagnostics.js";
+import { initFeatureCheckSection } from "./settings/section-feature-check.js";
 
 export async function renderSettings(container) {
   const isAdmin = auth.isAdmin();
@@ -808,6 +809,22 @@ export async function renderSettings(container) {
         <button type="button" id="diag-run-btn" class="secondary">Kør diagnostik</button>
       </div>
     </div>
+
+    <div class="card" data-tab="portal-config" data-subtab="pc-update">
+      <h3>Funktionsgennemgang</h3>
+      <p class="hint">
+        To-faset gennemgang af alle portal-funktioner.<br>
+        <strong>Fase 1</strong> (statisk, &lt; 1 s): config, databaser, certifikater, mappestruktur.<br>
+        <strong>Fase 2</strong> (live, 5-15 s): ERS endpoint-liste, grupper, custom attributes,
+        MnT-sessioner, OpenAPI, nmap, GitHub-forbindelse, cache og pxGrid.
+      </p>
+      <div id="fc-phase1-result"></div>
+      <div id="fc-phase2-result"></div>
+      <div class="actions" style="gap:.5rem">
+        <button type="button" id="fc-phase1-btn" class="secondary">Kør fase 1 (statisk)</button>
+        <button type="button" id="fc-phase2-btn" class="secondary" disabled>Kør fase 2 (live ISE)</button>
+      </div>
+    </div>
     ` : ""}
 
     ${isAdmin ? `
@@ -1034,6 +1051,7 @@ export async function renderSettings(container) {
     await initBackendSection(container);
     await initCacheSection(container);
     initDiagnosticsSection(container);
+    initFeatureCheckSection(container);
     await initPxGridSection(container);
     await initPurgeProtectSection(container);
     const rolesState = await initRolesSection(container);

@@ -319,8 +319,10 @@ export const api = {
     return request("/update/apply", { method: "POST", body: fd, _noContentType: true });
   },
   restartServer: () => request("/update/restart", { method: "POST" }),
-  diagnostics:      () => request("/diagnostics",        { _timeout: 30_000 }),
-  diagnosticsQuick: () => request("/diagnostics/quick",  { _timeout: 10_000 }),
+  diagnostics:        () => request("/diagnostics",          { _timeout: 30_000 }),
+  diagnosticsQuick:   () => request("/diagnostics/quick",    { _timeout: 10_000 }),
+  featureCheckPhase1: () => request("/feature-check/phase1", { _timeout: 10_000 }),
+  featureCheckPhase2: () => request("/feature-check/phase2", { _timeout: 30_000 }),
   listAncPolicies: () => request("/endpoints/anc-policies"),
   ancStatus: (id) => request(`/endpoints/${encodeURIComponent(id)}/anc-status`),
   ancQuarantine: (id, policyName) =>

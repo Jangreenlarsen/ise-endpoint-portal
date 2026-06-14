@@ -4,6 +4,33 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.10.0677] — 2026-06-14 — Funktionsgennemgang: to-faset portal-audit
+
+> **Build:** 0677
+
+Ny sektion under **Indstillinger → System Opdatering: Funktionsgennemgang** giver en struktureret to-faset gennemgang af alle portal-funktioner.
+
+**Fase 1 — Statisk (< 1 sekund, ingen netværk):**
+- ISE URL, brugernavn og adgangskode konfigureret
+- GitHub OTA-branch og .git-mappe tilgængelig
+- Databaser: audit.db, lockout.db, cache/first_seen.db, cache/guest_expiry.db, metrics_history.db
+- Log-mappe (backend/logs/app.log)
+- pxGrid-certifikater (hvis pxGrid aktiveret)
+- Custom attributes JSON-store
+
+**Fase 2 — Live ISE-test (5-15 sekunder):**
+- ERS: kan vi liste endpoints? (total count)
+- ERS: kan vi hente endpoint-grupper?
+- ERS: er custom attributes defineret i ISE — inkl. HypervisionISEPortal?
+- MnT: kan vi query aktive sessioner? (kræver MnT Admin-rolle)
+- OpenAPI: er `/api/v1/endpoint/count` tilgængeligt?
+- nmap: localhost ping-scan som funktionstest
+- GitHub: kan vi nå GitHub og hente seneste version?
+- Cache: er endpoint-cache opvarmet?
+- pxGrid: live forbindelsesstatus (hvis aktiveret)
+
+Resultater vises med ✅/⚠️/❌ pr. tjek med detaljerede metadata. Fase 2-knappen aktiveres først efter Fase 1 er kørt.
+
 ## [6.9.0675] — 2026-06-14 — System sundhed på dashboard
 
 > **Build:** 0675
