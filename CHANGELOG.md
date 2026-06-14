@@ -3,6 +3,15 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.10.0679] — 2026-06-14 — fix: OpenAPI-tjek tager nu hensyn til ise_api_type
+
+OpenAPI endpoint-count (fase 2) vurderer nu resultatet ud fra portalens konfiguration:
+- `ise_api_type = "ers"` + HTTP 404 → **OK** ("OpenAPI ikke tilgængeligt — portal er konfigureret til ERS (forventet)")
+- `ise_api_type = "openapi"` + HTTP 404 → **Fejl** med hint om at aktivere OpenAPI på ISE
+- HTTP 200 → OK uanset api_type
+
+**Berørte filer:** `backend/app/services/feature_check_service.py`, `version.json`, `CHANGELOG.md`
+
 ## [6.10.0678] — 2026-06-14 — fix: Tre fejl i feature_check_service rettet
 
 - **pxGrid certs**: Tjekker nu først om worker er forbundet — hvis ja → OK (certs virker åbenlyst). Undgår falsk fejl når cert-stier i settings er Windows-stier fra dev-maskine. Fallback: prøver sti direkte og relativ til BACKEND_ROOT.

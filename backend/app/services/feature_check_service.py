@@ -416,20 +416,27 @@ async def _p2_mnt_sessions() -> FCResult:
 
 
 async def _p2_openapi() -> FCResult:
+    api_type = getattr(settings, "ise_api_type", "ers")
     try:
         async with _ise_client() as c:
             r = await c.get("/api/v1/endpoint/count")
         if r.status_code == 200:
             count = r.json().get("count", "?")
+            suffix = " (portal bruger ERS — OpenAPI er valgfri)" if api_type == "ers" else ""
             return FCResult("p2_openapi", "OpenAPI endpoint-count", "ok",
-                            f"OpenAPI tilgængeligt — {count} endpoints",
-                            {"count": count})
+                            f"OpenAPI tilgængeligt — {count} endpoints{suffix}",
+                            {"count": count, "api_type": api_type})
         if r.status_code in (404, 405):
-            return FCResult("p2_openapi", "OpenAPI endpoint-count", "warning",
-                            f"HTTP {r.status_code} — OpenAPI muligvis ikke aktiveret på ISE",
-                            {"status_code": r.status_code})
+            if api_type == "ers":
+                return FCResult("p2_openapi", "OpenAPI endpoint-count", "ok",
+                                "OpenAPI ikke tilgængeligt — portal er konfigureret til ERS (forventet)",
+                                {"status_code": r.status_code, "api_type": "ers"})
+            return FCResult("p2_openapi", "OpenAPI endpoint-count", "error",
+                            f"HTTP {r.status_code} — portal er konfigureret til OpenAPI men ISE svarer ikke",
+                            {"status_code": r.status_code, "api_type": "openapi",
+                             "hint": "Aktivér OpenAPI på ISE eller skift portal til ERS i indstillinger"})
         return FCResult("p2_openapi", "OpenAPI endpoint-count", "error",
-                        f"HTTP {r.status_code}", {"status_code": r.status_code})
+                        f"HTTP {r.status_code}", {"status_code": r.status_code, "api_type": api_type})
     except httpx.TimeoutException:
         return FCResult("p2_openapi", "OpenAPI endpoint-count", "error", "Timeout (8s)")
     except Exception as exc:  # noqa: BLE001
