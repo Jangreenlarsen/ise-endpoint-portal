@@ -4,6 +4,36 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.11.0681] — 2026-06-14 — CLI Recovery Tool
+
+> **Build:** 0681
+
+Ny fil: `backend/recover.py` — standalone recovery-script til brug via SSH hvis man er låst ude af portalen.
+
+**Krav:** Ingen kørende server, kun stdlib Python 3.
+
+```bash
+cd /opt/hypervision
+python backend/recover.py
+```
+
+**Interaktiv menu:**
+1. Vis alle brugere (brugernavn, rolle, aktiv, oprettet, låst status)
+2. Nulstil adgangskode (PBKDF2-SHA256, invaliderer alle aktive sessioner via token_gen)
+3. Lås konto op (rydder lockout.db)
+4. Opret nødadmin (opretter ny admin-bruger)
+5. Skift rolle (admin ↔ user)
+6. Aktivér / deaktivér konto
+7. Test adgangskode (debug-tjek)
+
+**Ikke-interaktiv brug (scripting):**
+```bash
+python backend/recover.py --list
+python backend/recover.py --reset admin
+python backend/recover.py --unlock admin
+python backend/recover.py --emergency
+```
+
 ## [6.11.0680] — 2026-06-14 — Dashboard: CPU/RAM/disk ressource-bars
 
 > **Build:** 0680

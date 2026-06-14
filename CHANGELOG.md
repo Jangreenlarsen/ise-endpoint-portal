@@ -3,6 +3,17 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.11.0681] — 2026-06-14 — feat: CLI Recovery Tool (backend/recover.py)
+
+**Ny fil:** `backend/recover.py`
+- Standalone Python 3-script, ingen afhængigheder udover stdlib
+- Bruger samme PBKDF2-SHA256-format som `app/core/auth.py` (600k iterationer)
+- Arbejder direkte med `backend/users.json` og `backend/lockout.db`
+- Atomisk write via tmp-fil + rename for at undgå korrupt users.json
+- Interaktiv menu + argparse flags (--list, --reset, --unlock, --emergency)
+- Nulstilling bumper token_gen → invaliderer alle aktive sessioner
+- ANSI-farver (grøn/orange/rød) med fallback til no-color på ikke-TTY
+
 ## [6.11.0680] — 2026-06-14 — feat: Dashboard CPU/RAM/disk ressource-bars
 
 **Nye filer:**
