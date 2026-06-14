@@ -62,10 +62,13 @@ Ved genstart (disk-cache eksisterer): portalen viser cached data øjeblikkeligt.
 | `backend/config.json` | ISE-credentials, alle settings | Kritisk |
 | `backend/users.json` | Alle brugerkonti med hashede passwords | Kritisk |
 | `backend/auth_secret.key` | JWT-signeringsnøgle | Kritisk — tab af denne ugyldiggør alle sessioner |
+| `backend/audit.db` | Fuld audit-log over alle endpoint-ændringer (SQLite) | Vigtig — kræves til compliance-sporing |
+| `backend/lockout.db` | Aktive konto-lockouts (SQLite) | Ikke kritisk — nulstilles automatisk |
 | `backend/custom_attr_values.json` | Tilladte værdier for managed attributter | Vigtig |
 | `backend/platform_mapping.json` | PlatformType-mapping med CoA-binding | Vigtig |
 | `backend/endpoint_roles.json` | System adm-tag-katalog | Vigtig |
 | `backend/pxgrid/` | pxGrid-certifikatfiler | Vigtig — genskabes via CSR-flow men kræver ISE-godkendelse |
+| `backend/cache/first_seen.db` | Første-gang-set tidsstempler per MAC (SQLite) | Anbefalet — datatab sletter historik |
 | `cache/endpoints.json` | Disk-persisteret endpoint-cache | Ikke kritisk — regenereres automatisk |
 | `backend/logs/` | Runtime-logfiler | Anbefalet til audit-trail |
 
@@ -114,6 +117,60 @@ Log-niveau konfigureres i `backend/app/core/logging.py`. DEBUG-niveau genererer 
 
 ---
 
+## CLI Recovery Tool
+
+Hvis alle admin-konti er låst ude eller adgangskoden er glemt bruges `backend/recover.py` direkte på serveren via SSH. Kræver ingen kørende server og ingen ekstra Python-pakker.
+
+```bash
+cd /opt/hypervision
+python backend/recover.py
+```
+
+### Interaktiv menu
+
+```
+╔══════════════════════════════════════════════╗
+║  HyperVision ISE Portal — CLI Recovery Tool  ║
+╚══════════════════════════════════════════════╝
+
+  Status: 3 brugere  2 admin  1 låst
+
+  1. Vis alle brugere
+  2. Nulstil adgangskode
+  3. Lås konto op
+  4. Opret nødadmin
+  5. Skift rolle (admin↔user)
+  6. Aktivér / deaktivér konto
+  7. Test adgangskode
+  8. Afslut
+```
+
+### Kommandolinje-tilstand (ikke-interaktiv)
+
+```bash
+# Vis alle brugere
+python backend/recover.py --list
+
+# Nulstil adgangskode (spørger om ny adgangskode interaktivt)
+python backend/recover.py --reset jan
+
+# Lås konto op
+python backend/recover.py --unlock jan
+
+# Opret nødadmin (interaktivt — spørger om brugernavn + adgangskode)
+python backend/recover.py --emergency
+```
+
+### Vigtige noter
+
+- **Password-reset bumper `token_gen`** — alle aktive sessioner invalideres øjeblikkeligt. Brugere logges ud ved næste request.
+- **Nulstilling rydder lockout** automatisk — brugeren kan logge ind igen med det samme.
+- Scriptet skriver til `backend/users.json` via tmp-fil + atomisk rename — filen kan aldrig blive korrupt.
+- Samme PBKDF2-SHA256-hashing som backend (600.000 iterationer) — passwords er direkte kompatible.
+- **Slet nødadmin** via portalen (Users-siden) efter krisen er løst.
+
+---
+
 ## Fejlsøgningsguide
 
 | Symptom | Sandsynlig årsag | Løsning |
@@ -123,13 +180,16 @@ Log-niveau konfigureres i `backend/app/core/logging.py`. DEBUG-niveau genererer 
 | pxGrid-worker viser "Disconnected" i Settings | WebSocket-forbindelsen til ISE mistet | Tjek at ISE pxGrid Service kører. Tjek port 8910. Se "Last error" i worker-status. Klik "Genstart worker" |
 | pxGrid forbinder men modtager 0 session-events | Ingen aktiv RADIUS-trafik i testperioden, eller ISE-klient ikke godkendt | Kør STOMP-prober under aktiv bruger-login. Verificér at klienten er "Approved" i ISE pxGrid Clients |
 | Login fejler med "Ugyldige credentials" | Forkert password, eller auth_secret.key er ændret/slettet | Nulstil brugerens password via admin-bruger. Hvis auth_secret.key mangler: genopret fra backup |
+| Alle admin-brugere låst ude eller password glemt | For mange fejlede loginforsøg (lockout 15 min), eller password tabt | Brug `python backend/recover.py` via SSH — se [CLI Recovery Tool](#cli-recovery-tool) |
 | Alle brugere logges ud efter genstart | auth_secret.key er regenereret (f.eks. efter manuel sletning) | Alle brugere skal logge ind igen. Tag backup af auth_secret.key |
 | CSV-import fejler med "Failed: N" | Ugyldige MAC-adresser, ISE rate-limit eller ISE-fejl | Se fejl-kolonnens MAC-liste. Tjek app.log for ISE-fejlkode. Prøv igen med færre rækker |
 | CoA reauth virker ikke | PSN-hostnavn forkert, ISE-bruger mangler MnT Admin-rolle, forkert reauth-type | Kontrollér PSN-hostnavn i Settings. Verificér MnT Admin-rollen på ISE-brugeren. Tjek app.log for MnT-fejlkode |
 | PlatformType sync fra MnT returnerer 0 | Ingen aktive RADIUS-sessions med genkendelig platform-AVP | Kør sync under aktiv netværkstrafik. Kontrollér at ISE RADIUS-accounting er aktiveret |
 | Edit-modal viser "Henter..." i lang tid | Force-fresh-kald til ISE tager lang tid (høj ISE-latency) | Hæv `ise_timeout` i Settings. Kontrollér ISE-load |
-| Portal starter ikke (START.bat afsluttes straks) | Python-fejl ved opstart — typisk syntaksfejl i opdateret kode eller manglende dependency | Start manuelt: `cd backend && .venv\Scripts\python -m uvicorn app.main:app` og læs fejloutput |
+| Portal starter ikke efter OTA-opdatering | Ny kode har syntaksfejl eller manglende dependency | Pre-flight-tjekket burde have fanget det — tjek output i Settings → System Opdatering. Kør `python backend/recover.py` for at verificere installation |
+| Portal starter ikke (systemd/START.bat afsluttes straks) | Python-fejl ved opstart | Start manuelt: `cd /opt/hypervision/backend && python -m uvicorn app.main:app` og læs fejloutput |
 | "400 Ugyldig DACL — src skal være any" fra ISE | En ACE har konkret source-IP (portalen burde have fanget dette) | Ret ACE til `any` som source. Rapportér som bug |
+| Dashboard viser "psutil ikke installeret" | psutil-pakken mangler — OTA-opdatering ikke kørt endnu | Kør GitHub OTA-opdatering fra Settings → System Opdatering. CPU/RAM vises herefter |
 
 ---
 

@@ -276,9 +276,9 @@ Under pxGrid-kortet vises automatisk-opdaterende worker-status:
 
 ## System-opdatering
 
-Portalen understøtter opdatering via ZIP-pakke uploadet direkte i Settings → Opdatering. Ingen SSH eller manuel filkopiering er nødvendig.
+Portalen understøtter to opdateringsmetoder: ZIP-upload og GitHub OTA (Over-The-Air) via git pull.
 
-### Forberedelse af opdateringspakke
+### ZIP-opdatering
 
 En gyldig opdateringspakke er et ZIP-arkiv der:
 
@@ -286,19 +286,85 @@ En gyldig opdateringspakke er et ZIP-arkiv der:
 - Ikke indeholder `.env`-filer eller andre sekretfiler (blokeres af portalen).
 - Ikke indeholder path-traversal-stier (blokeres af portalen).
 
-Opdateringspakken kan indeholde en delmængde af projektfilerne — kun de inkluderede filer overskrives.
-
-### Opdateringsflow
-
-1. Under Settings → Opdatering: klik "Vælg fil" og upload ZIP-pakken.
-2. Portalen validerer pakken og viser preview:
-   - Filer der vil blive opdateret
-   - Filer der er blokeret (`.env`, path-traversal)
-3. Klik "Anvend opdatering". Portalen skriver filerne til disk; frontend-filer er aktive med det samme.
-4. Klik "Genstart server". Portalen kalder `os._exit(0)`; START.bat genstarter processen med den nye kode.
+**Flow:**
+1. Under Settings → System Opdatering: klik "Vælg fil" og upload ZIP-pakken.
+2. Portalen validerer pakken og viser preview (filer der opdateres, blokerede filer).
+3. Klik "Anvend opdatering". Portalen skriver filerne til disk.
+4. Klik "Genstart server". Portalen kalder `os._exit(0)`; systemd/START.bat genstarter.
 5. Genindlæs browser efter 5–10 sekunder.
 
-Frontend-ændringer aktiveres uden genstart. Backend-ændringer kræver genstart.
+### GitHub OTA (git pull)
+
+Settings → System Opdatering → "Hent fra GitHub":
+
+1. Portalen kører `git pull origin <branch>`.
+2. Nye Python-afhængigheder installeres automatisk via `pip install -e .`.
+3. **Pre-flight tjek** — portalen kører `python -c "from app.main import app"` i det aktive venv og verificerer at den nye kode kan importeres uden fejl. Hvis pre-flight fejler afbrydes genstart og fejlbeskeden vises — serveren forbliver på den gamle kode.
+4. Hvis alt OK genstarter serveren automatisk efter 3 sekunder.
+5. Browseren poller `/api/health` og viser **"Server er oppe igen ✅ — Genindlæs siden"** når backend er klar.
+
+Pre-flight-tjekket forhindrer crash-loops: kode der ikke kan importeres (syntaksfejl, manglende dependency) opdages inden genstart.
+
+---
+
+## Systemdiagnostik
+
+Settings → System Opdatering → **Systemdiagnostik** — klik "Kør diagnostik" for et komplet sundhedstjek.
+
+| Tjek | Hvad der undersøges |
+|------|---------------------|
+| Python version | Mindst 3.11 krævet |
+| Virtuel miljø | Kører backend i venv? |
+| Python afhængigheder | Alle 13 pakker installeret (inkl. psutil) |
+| HTTP/2 (h2) | h2-pakke tilgængelig — multiplexing aktiveret? |
+| nmap | Binary i PATH |
+| Diskplads | Fri plads — advarsel < 2 GB, fejl < 0,5 GB |
+| ISE konfiguration | URL, brugernavn og password sat |
+| ISE ERS forbindelsestest | Live GET mod ISE — måler latens |
+| Endpoint-cache | Antal cached endpoints |
+| Circuit breaker | CLOSED / HALF_OPEN / OPEN |
+| pxGrid | Worker connected / running / stopped |
+| Git | Aktiv branch og seneste commit |
+
+Resultater vises som ✅ / ⚠️ / ❌ med detaljer. Tjekket kræver admin-rolle.
+
+---
+
+## Funktionsgennemgang
+
+Settings → System Opdatering → **Funktionsgennemgang** — to-faset gennemgang af alle portal-funktioner.
+
+### Fase 1 — Statisk (< 1 sekund)
+
+Ingen netværkskald. Klik **"Kør fase 1 (statisk)"**.
+
+| Tjek | Hvad der undersøges |
+|------|---------------------|
+| ISE URL + credentials | URL ikke default; brugernavn og password sat |
+| GitHub OTA-config | `github_branch` konfigureret; `.git`-mappe eksisterer |
+| Audit database | `backend/audit.db` tilgængeligt |
+| Lockout database | `backend/lockout.db` tilgængeligt |
+| Cache databaser | `cache/first_seen.db` + `cache/guest_expiry.db` |
+| Metrics database | `backend/metrics_history.db` tilgængeligt |
+| Log-mappe | `backend/logs/app.log` eksisterer og har indhold |
+| pxGrid certifikater | Cert + key-filer tilgængelige (hvis pxGrid aktiveret) |
+| Custom attrs store | `backend/custom_attr_values.json` er gyldig JSON |
+
+### Fase 2 — Live ISE-test (5-15 sekunder)
+
+Kræver ISE-forbindelse. Aktiveres automatisk efter Fase 1. Klik **"Kør fase 2 (live ISE)"**.
+
+| Tjek | Hvad der undersøges |
+|------|---------------------|
+| ERS endpoint-liste | GET `/ers/config/endpoint` — kan vi liste endpoints? |
+| ERS endpoint-grupper | GET `/ers/config/endpointgroup` — antal grupper |
+| Custom attributes (OpenAPI) | Er `HypervisionISEPortal`-attributten defineret i ISE? |
+| MnT aktive sessioner | GET `/admin/API/mnt/Session/ActiveList` — kræver MnT Admin-rolle |
+| OpenAPI endpoint-count | `/api/v1/endpoint/count` — vurderes ud fra `ise_api_type`-indstillingen |
+| nmap funktionstest | Localhost ping-scan som funktionsverifikation |
+| GitHub-forbindelse | Henter seneste `version.json` fra GitHub |
+| Endpoint-cache | Er cachen opvarmet med endpoints? |
+| pxGrid live-status | Worker connected / running / stopped (live) |
 
 ---
 
