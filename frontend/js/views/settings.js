@@ -628,8 +628,8 @@ export async function renderSettings(container) {
         <div class="field">
           <label id="psk-mode-type-lbl"></label>
           <div class="radio-group">
-            <label class="radio-label"><input type="radio" name="psk-type" id="psk-type-mpsk" value="MPSK" checked /> <b>MPSK</b> — Multi-PSK (Cisco WLC)</label>
-            <label class="radio-label"><input type="radio" name="psk-type" id="psk-type-ipsk" value="IPSK" /> <b>IPSK</b> — Identity PSK (Cisco ISE RADIUS). Portalen tilføjer automatisk <code>psk=</code>-prefix i ISE.</label>
+            <label class="radio-label"><input type="radio" name="psk-type" id="psk-type-mpsk" value="MPSK" checked /> <b>MPSK</b> — Multi-PSK (Cisco WLC). PSK-nøglen gemmes uændret i ISE — ingen automatisk ændring af nøgleværdien.</label>
+            <label class="radio-label"><input type="radio" name="psk-type" id="psk-type-ipsk" value="IPSK" /> <b>IPSK</b> — Identity PSK (Cisco ISE RADIUS). PSK-nøglen ændres automatisk: portalen tilføjer <code>psk=</code>-prefix på nøglen inden gemning i ISE, så ISE kan genkende den som IPSK.</label>
           </div>
         </div>
         <div class="field checkbox-field">

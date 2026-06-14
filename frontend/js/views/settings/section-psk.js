@@ -74,7 +74,16 @@ export async function initPskPolicySection(container) {
   container.querySelector("#psk-test-gen").addEventListener("click", async () => {
     genResult.textContent = t("settings.psk_generating");
     try {
-      const { key } = await api.generatePskKey();
+      const pskTypeEl = container.querySelector("input[name='psk-type']:checked");
+      const policy = {
+        psk_type:          pskTypeEl ? pskTypeEl.value : "MPSK",
+        show_key_in_table: container.querySelector("#psk-show-key").checked,
+        min_length:        parseInt(container.querySelector("#psk-min-length").value, 10) || 8,
+        require_uppercase: container.querySelector("#psk-req-upper").checked,
+        require_numbers:   container.querySelector("#psk-req-number").checked,
+        require_special:   container.querySelector("#psk-req-special").checked,
+      };
+      const { key } = await api.generatePskKey(policy);
       genResult.textContent = t("settings.psk_example").replace("{key}", key);
     } catch (err) {
       genResult.textContent = t("settings.psk_gen_err").replace("{msg}", err.message);

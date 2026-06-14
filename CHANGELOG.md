@@ -3,6 +3,16 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.5.0 build 0658] — 2026-06-14 — feat: PSK policy tekst præciseret + key generator bruger aktive form-værdier
+
+MPSK/IPSK radio-labels opdateret med tydelig beskrivelse af om nøglen
+ændres. Key generator-test læser nu aktuelle form-værdier og sender dem
+med kaldet — ikke-gemte ændringer afspejles korrekt i test-nøglen.
+Backend generate-endpoint accepterer nu valgfri PskPolicy i body.
+
+**Berørte filer:** `frontend/js/views/settings.js`, `section-psk.js`,
+`frontend/js/api.js`, `backend/app/api/settings.py`
+
 ## [6.4.9 build 0657] — 2026-06-14 — fix: global søgning matcher nu pxGrid session-felter inkl. authz-profiler
 
 Søgning på fx "Endpoint_VLAN:10" fandt ingenting fordi displaystrengen

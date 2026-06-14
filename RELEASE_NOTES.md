@@ -4,6 +4,22 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.5.0] — 2026-06-14 — Feature: PSK policy tekst + key generator fix
+
+> **Build:** 0658
+
+**Tekst:** MPSK- og IPSK-labels under Settings → PSK policy er opdateret
+med tydelig beskrivelse: MPSK gemmer nøglen uændret i ISE; IPSK ændrer
+nøglen automatisk ved at tilføje `psk=`-prefix inden ISE-gemning.
+
+**Bug:** Test PSK key generator ignorerede ikke-gemte form-ændringer — den
+kaldte backend uden parametre og backend brugte de gemte (gamle) settings.
+Rettet: test-knappen sender nu de aktuelle form-værdier med POST-kaldet,
+så generatoren afspejler min. nøglelængde, krav om store bogstaver, tal
+og specialtegn præcis som formen viser dem.
+
+---
+
 ## [6.4.9] — 2026-06-14 — Fix: global søgning på pxGrid session-felter og authz-profiler
 
 > **Build:** 0657

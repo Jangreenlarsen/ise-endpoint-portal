@@ -306,7 +306,10 @@ export const api = {
   getPskPolicy: () => request("/settings/psk-policy"),
   updatePskPolicy: (payload) =>
     request("/settings/psk-policy", { method: "PUT", body: JSON.stringify(payload) }),
-  generatePskKey: () => request("/settings/psk-policy/generate", { method: "POST" }),
+  generatePskKey: (policy = null) => request("/settings/psk-policy/generate", {
+    method: "POST",
+    body: policy ? JSON.stringify(policy) : undefined,
+  }),
   validateUpdate: (file) => {
     const fd = new FormData(); fd.append("file", file);
     return request("/update/validate", { method: "POST", body: fd, _noContentType: true });
