@@ -4,6 +4,20 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.7.0659] — 2026-06-14 — Fix: OTA update-check + ny versionsregel
+
+> **Build:** 0659
+
+**OTA fix:** Portalens update-check sammenlignede kun build-numre. Med det
+nye versionsformat kan MINOR stige uden build-bump (feature commits), så
+`6.7.0658` vs `6.5.0658` fejlagtigt returnerede "ingen opdatering" selvom
+MINOR er højere. Nu sammenlignes fuld `(major, minor, build)`-tuple.
+
+**Ny versionsregel:** `build` (ZZZZ) incrementeres nu ved **alle** kodeændringer
+— features OG bugfixes. Commit-format: `vX.Y.ZZZZ: feat/fix: beskrivelse`.
+
+---
+
 ## [6.7] — 2026-06-14 — Feature: frys pxGrid live-opdatering i Browse
 
 > **Build:** 0658

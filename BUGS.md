@@ -4,6 +4,13 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 6.7.0659] 2026-06-14 — OTA update-check: ny version med samme build registreres ikke som opdatering
+
+- **Symptom:** Portalen siger "ingen opdatering" selvom `6.7 build 0658` er nyere end `6.5.0 build 0658` (og lignende). `_parse_semver("6.7")` returnerer `(0,0,0)` fordi regex kræver 3 dele. `update_available` sammenligner KUN build-numre — med det nye versionsformat kan MINOR stige uden at build ændres (features tæller ikke som build-bump), så `658 > 658 = False` selv om MINOR er højere.
+- **Root cause:** (1) `_parse_semver` regex: `r"(\d+)\.(\d+)\.(\d+)"` kræver 3 dele — fejler på nyt `X.Y`-format. (2) `update_available = int(latest_build) > int(current_build)` ignorerer MAJOR og MINOR helt.
+- **Fix:** Ny `_parse_version_build(version, build)` sammenligner fuldt `(major, minor, build_int)`-tuple. Håndterer både gammelt `X.Y.Z`-format og nyt `X.Y`-format. `_parse_semver` opdateret til at matche `X.Y` som fallback (returnerer `(X, Y, 0)`). `_split_release_sections` accepterer nu både `X.Y` og `X.Y.Z` i section-headers.
+- **Berørt fil:** `backend/app/services/update_service.py`
+
 ## [FIXED 6.3.2 b0644] 2026-06-08 — Register-siden sætter ikke "Registered by"
 
 - **Symptom:** Endpoints registreret via Register-siden (register.js) har tomt "Registered by"-felt.

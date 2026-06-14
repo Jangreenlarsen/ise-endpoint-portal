@@ -3,6 +3,21 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.7.0659] — 2026-06-14 — fix: OTA update-check sammenligner nu fuld version-tuple, ikke kun build
+
+`update_available` sammenlignede kun build-numre. Med nyt versionsformat kan
+MINOR stige uden build-bump (feature commits), så `6.7.0658 > 6.5.0658`
+fejlagtigt returnerede False. `_parse_semver("6.7")` returnerede desuden
+`(0,0,0)` da regex krævede 3 dele.
+
+Fix: ny `_parse_version_build(version, build)` returnerer `(major, minor, build_int)`
+og bruges til fuld tuple-sammenligning. `_parse_semver` håndterer nu `X.Y`-format.
+`_split_release_sections` matcher nu også `## [X.Y]`-sektioner i RELEASE_NOTES.
+
+**Berørt fil:** `backend/app/services/update_service.py`
+
+---
+
 ## [6.7] — 2026-06-14 — feat: frys pxGrid live-opdatering i Browse
 
 Ny "⏸ Frys live"-toggle-knap i Browse page-header (ved siden af

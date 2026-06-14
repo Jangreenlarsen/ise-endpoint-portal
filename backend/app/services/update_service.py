@@ -215,21 +215,48 @@ _GITHUB_CACHE_TTL = 3600.0  # 1 time
 
 
 def _parse_semver(v: str) -> tuple[int, int, int]:
-    """Parse 'X.Y.Z' → (X, Y, Z). Returnerer (0,0,0) ved fejl."""
+    """Parse 'X.Y.Z' eller 'X.Y' → (X, Y, Z). Returnerer (0,0,0) ved fejl.
+    Nyt versionsformat har kun X.Y (build er separat felt).
+    """
     import re
-    m = re.match(r"(\d+)\.(\d+)\.(\d+)", v or "")
+    m3 = re.match(r"(\d+)\.(\d+)\.(\d+)", v or "")
+    if m3:
+        return (int(m3.group(1)), int(m3.group(2)), int(m3.group(3)))
+    m2 = re.match(r"(\d+)\.(\d+)", v or "")
+    if m2:
+        return (int(m2.group(1)), int(m2.group(2)), 0)
+    return (0, 0, 0)
+
+
+def _parse_version_build(version: str, build: str) -> tuple[int, int, int]:
+    """Byg sammenlignelig 3-tuple (major, minor, build_int) fra version + build.
+
+    Håndterer begge formater:
+    - Nyt:   version="6.7",   build="0658" → (6, 7, 658)
+    - Gammelt: version="6.5.0", build="0653" → (6, 5, 653)
+    Build-feltet er autoritativt som 3. led — det er monotont stigende på tværs
+    af versioner og erstatter PATCH i det gamle format.
+    """
+    import re
+    build_int = 0
+    try:
+        build_int = int(build or "0")
+    except ValueError:
+        pass
+    m = re.match(r"(\d+)\.(\d+)", version or "")
     if not m:
-        return (0, 0, 0)
-    return (int(m.group(1)), int(m.group(2)), int(m.group(3)))
+        return (0, 0, build_int)
+    return (int(m.group(1)), int(m.group(2)), build_int)
 
 
 def _split_release_sections(md_text: str) -> list[tuple[tuple[int, int, int], str]]:
-    """Opdel RELEASE_NOTES.md i (semver-tuple, tekst)-par for alle ## [X.Y.Z]-sektioner."""
+    """Opdel RELEASE_NOTES.md i (version-tuple, tekst)-par for ## [X.Y] og ## [X.Y.Z]-sektioner."""
     import re
-    section_re = re.compile(r'(## \[\d+\.\d+\.\d+\][^\n]*(?:\n(?!## \[).*)*)', re.MULTILINE)
+    # Matcher både X.Y og X.Y.Z i section-headers
+    section_re = re.compile(r'(## \[\d+\.\d+(?:\.\d+)?\][^\n]*(?:\n(?!## \[).*)*)', re.MULTILINE)
     result = []
     for section in section_re.findall(md_text):
-        m = re.match(r'## \[(\d+\.\d+\.\d+)\]', section)
+        m = re.match(r'## \[(\d+\.\d+(?:\.\d+)?)\]', section)
         if m:
             result.append((_parse_semver(m.group(1)), section.strip()))
     return result
@@ -339,10 +366,13 @@ async def check_github_version(*, force: bool = False) -> dict[str, Any]:
             data = version_resp.json()
             result["latest_version"] = data.get("version", "?")
             result["latest_build"]   = data.get("build", "?")
-            try:
-                result["update_available"] = int(data.get("build", "0")) > int(BUILD)
-            except ValueError:
-                result["update_available"] = data.get("build") != BUILD
+            # Sammenlign fuldt (major, minor, build_int)-tuple — build alene
+            # er ikke tilstrækkeligt fordi MINOR kan stige uden build-bump (features).
+            current_tuple = _parse_version_build(VERSION, BUILD)
+            latest_tuple  = _parse_version_build(
+                data.get("version", "0"), data.get("build", "0")
+            )
+            result["update_available"] = latest_tuple > current_tuple
 
             notes_text = ""
             if rn_resp.status_code == 200:
