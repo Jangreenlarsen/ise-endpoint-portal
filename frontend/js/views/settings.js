@@ -17,6 +17,7 @@ import { initPortalAuthConfigSection, initLocaleSection } from "./settings/secti
 import { initSystemUpdateSection, initAdvancedSection, initGithubUpdateSection, initGuestRegSection } from "./settings/section-update.js";
 import { initAuthzProfilesSection } from "./settings/section-authz-profiles.js";
 import { initBackupSection } from "./settings/section-backup.js";
+import { initDiagnosticsSection } from "./settings/section-diagnostics.js";
 
 export async function renderSettings(container) {
   const isAdmin = auth.isAdmin();
@@ -182,6 +183,19 @@ export async function renderSettings(container) {
       <div class="actions">
         <button type="button" id="cache-refresh-btn" class="secondary"></button>
         <button type="button" id="cache-invalidate-btn" class="danger"></button>
+      </div>
+    </div>
+
+    <div class="card" data-tab="portal-performance">
+      <h3>Systemdiagnostik</h3>
+      <p class="hint">
+        Kør et komplet sundhedstjek af alle backend-afhængigheder: Python-pakker,
+        HTTP/2-understøttelse, ISE-forbindelse, disk plads, cache, circuit breaker,
+        pxGrid og git-status.
+      </p>
+      <div id="diag-result"></div>
+      <div class="actions">
+        <button type="button" id="diag-run-btn" class="secondary">Kør diagnostik</button>
       </div>
     </div>
     ` : ""}
@@ -1018,6 +1032,7 @@ export async function renderSettings(container) {
   if (isAdmin) {
     await initBackendSection(container);
     await initCacheSection(container);
+    initDiagnosticsSection(container);
     await initPxGridSection(container);
     await initPurgeProtectSection(container);
     const rolesState = await initRolesSection(container);

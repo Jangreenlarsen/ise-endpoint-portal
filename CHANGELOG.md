@@ -3,6 +3,16 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.8.0668] — 2026-06-14 — feat: Systemdiagnostik (sundhedstjek af alle afhængigheder)
+
+Ny backend-service `diagnostics_service.py` og API-endpoint `GET /api/diagnostics` (admin-only).
+Kører 12 tjek parallelt: Python-version, venv, Python-afhængigheder, HTTP/2 (h2), nmap, diskplads,
+ISE-konfiguration, ISE ERS-forbindelsestest med latens, endpoint-cache-status, circuit breaker,
+pxGrid-worker og git branch/commit. Frontend: ny sektion "Systemdiagnostik" under Indstillinger →
+Performance med "Kør diagnostik"-knap og resultat-tabel (✅/⚠️/❌ + samlet status-banner).
+
+**Berørte filer:** `backend/app/services/diagnostics_service.py` (ny), `backend/app/api/diagnostics.py` (ny), `backend/app/main.py`, `frontend/js/api.js`, `frontend/js/views/settings.js`, `frontend/js/views/settings/section-diagnostics.js` (ny), `version.json`
+
 ## [6.7.0667] — 2026-06-14 — feat: h2 installeres automatisk i baggrunden ved opstart hvis det mangler
 
 `_ensure_h2_installed()` startes som `asyncio.create_task` i lifespan når

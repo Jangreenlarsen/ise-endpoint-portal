@@ -319,6 +319,7 @@ export const api = {
     return request("/update/apply", { method: "POST", body: fd, _noContentType: true });
   },
   restartServer: () => request("/update/restart", { method: "POST" }),
+  diagnostics: () => request("/diagnostics", { _timeout: 30_000 }),
   listAncPolicies: () => request("/endpoints/anc-policies"),
   ancStatus: (id) => request(`/endpoints/${encodeURIComponent(id)}/anc-status`),
   ancQuarantine: (id, policyName) =>

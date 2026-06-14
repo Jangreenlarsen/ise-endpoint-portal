@@ -4,6 +4,28 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.8.0668] — 2026-06-14 — Systemdiagnostik
+
+> **Build:** 0668
+
+Ny funktion i Indstillinger → Performance: **Systemdiagnostik**. Klik "Kør diagnostik" og få et komplet sundhedstjek af alle afhængigheder og tjenester på ét sekund.
+
+**12 tjek køres parallelt:**
+
+- Python version (kræver 3.11+) og virtuel miljø (venv)
+- Alle 12 påkrævede Python-pakker (fastapi, uvicorn, httpx, pydantic, cryptography m.fl.)
+- HTTP/2 h2-pakke installeret og aktiv
+- nmap tilgængelig i PATH (bruges til nmap-scanning)
+- Disk plads med advarsler under 2 GB fri
+- ISE konfiguration (URL, brugernavn, adgangskode konfigureret)
+- ISE ERS-forbindelsestest med latens (live GET mod ISE med 10 s timeout)
+- Endpoint cache (antal endpoints i memory-cache)
+- Circuit breaker state (closed/half-open/open)
+- pxGrid worker (connected/running/stopped)
+- Git branch og seneste commit
+
+Resultater vises som tabel med ✅ OK / ⚠️ Advarsel / ❌ Fejl og et samlet status-banner øverst.
+
 ## [6.7.0667] — 2026-06-14 — h2 installeres automatisk i baggrunden ved opstart
 
 > **Build:** 0667
