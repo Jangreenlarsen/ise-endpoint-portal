@@ -309,87 +309,8 @@ export function initTable(container, state, api, cb) {
         if (upd) state.allRowsCache[i] = upd;
       }
     }
-    for (const [id, r] of byId) {
-      const tr = tbody.querySelector(`tr[data-id="${CSS.escape(id)}"]`);
-      if (!tr) continue;
-      const macLink = tr.querySelector(".mac-cell .mac-link");
-      if (macLink) macLink.innerHTML = macDisplayHtml(r.mac || r.name);
-      const macCellTd = tr.querySelector(".mac-cell");
-      if (macCellTd) {
-        const freshMarked = loadMarkedMacs();
-        const pin = macCellTd.querySelector(".marked-pin");
-        const nowMarked = freshMarked.has(normalizeMac(r.mac || r.name || ""));
-        if (pin && !nowMarked) pin.remove();
-        else if (!pin && nowMarked) macCellTd.insertAdjacentHTML("beforeend", `<span class="marked-pin" title="Markeret fra Livscyklus">📌</span>`);
-      }
-      const vendorCell = tr.querySelector(".vendor-cell-td");
-      if (vendorCell) vendorCell.textContent = r.vendor || "";
-      const grpSel = tr.querySelector(".grp-select");
-      if (grpSel) grpSel.innerHTML = groupOptionsHtml(r.group_id);
-      const assignCell = tr.querySelector(".assign-cell");
-      if (assignCell) assignCell.textContent = r.static_group ? t("cell.static") : t("cell.dynamic");
-      const descInput = tr.querySelector(".desc-input");
-      if (descInput) descInput.value = r.description || "";
-      const setSel = (cls, val, vals) => {
-        const el = tr.querySelector(`.${cls}`);
-        if (el) el.innerHTML = optionsHtml(vals, val);
-      };
-      setSel("ca-type",       r.endpoint_type, state.caValues.Type);
-      setSel("ca-owner",      r.owner,          state.caValues.Owner);
-      setSel("ca-lokation",   r.lokation,       state.caValues.Lokation);
-      const regByCell = tr.querySelector(".ca-registretby");
-      if (regByCell) regByCell.value = r.registret_by || "";
-      setSel("ca-guestreg",   r.guest_registration, ["true","false"]);
-      const experyCell = tr.querySelector(".ca-experydate");
-      if (experyCell) experyCell.value = r.guest_expery_date || "";
-      setSel("ca-accessexpire", r.guest_access_expire, ["true","false"]);
-      setSel("ca-authzvlan",  r.authz_vlan,     state.caValues.AuthzVlan);
-      setSel("ca-authzacl",   r.authz_acl,      state.caValues.AuthzACL);
-      setSel("ca-platformtype", r.platform_type, state.caValues.PlatformType);
-      // Re-apply auto-platform indicator after refresh
-      const ptTd   = tr.querySelector(".ca-platformtype")?.closest("td");
-      const nasPt2 = getNasPlatformType(r.mac || r.name);
-      if (ptTd) {
-        ptTd.classList.toggle("platform-auto-td", !!nasPt2);
-        const ptSel = ptTd.querySelector(".ca-platformtype");
-        if (ptSel) ptSel.disabled = !!nasPt2;
-        if (ptSel && nasPt2) ptSel.value = nasPt2;
-        const oldBadge = ptTd.querySelector(".platform-auto-badge");
-        if (nasPt2 && !oldBadge) {
-          const badge = document.createElement("span");
-          badge.className = "platform-auto-badge";
-          badge.title = t("browse.platform_auto_title");
-          badge.innerHTML = "&#9889;";
-          let wrap = ptTd.querySelector(".platform-auto-wrap");
-          if (!wrap) {
-            wrap = document.createElement("div");
-            wrap.className = "platform-auto-wrap";
-            ptSel.replaceWith(wrap);
-            wrap.appendChild(ptSel);
-          }
-          wrap.appendChild(badge);
-        } else if (!nasPt2 && oldBadge) {
-          oldBadge.remove();
-          const wrap = ptTd.querySelector(".platform-auto-wrap");
-          if (wrap) { wrap.replaceWith(ptSel || wrap.querySelector(".ca-platformtype")); }
-        }
-      }
-      const rolesCell = tr.querySelector(".roles-cell");
-      if (rolesCell) rolesCell.innerHTML = rolesChipsHtml(r.roles);
-      const pskModeCb = tr.querySelector(".psk-mode-cb");
-      if (pskModeCb) pskModeCb.checked = !!r.psk_mode;
-      const pskKeyCell = tr.querySelector(".psk-key-cell");
-      if (pskKeyCell) pskKeyCell.textContent = state.pskShowKey ? (r.psk_key || "") : (r.psk_key ? "••••••" : "");
-      delete tr.dataset.beStaticGroup;
-      delete tr.dataset.bePskKey;
-      delete tr.dataset.beActiveStatus;
-      tr.classList.remove("dirty");
-      state.dirtyIds.delete(id);
-    }
-    applyColVis();
-    applyAuthStatusColors();
-    updateDirtyUI();
-    updateSelectionUI();
+    for (const id of byId.keys()) state.dirtyIds.delete(id);
+    applyFilter();
   }
 
   // ── Dirty tracking ───────────────────────────────────────────────────────

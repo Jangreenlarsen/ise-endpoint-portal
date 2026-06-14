@@ -4,6 +4,17 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.4.6] — 2026-06-14 — Fix: browse-tabel opdateres korrekt efter gem i Endpoint details
+
+> **Build:** 0654
+
+Når man gemte ændringer i Endpoint details-modalen opdaterede tabellen
+ikke alle felter — bl.a. `active_status`-badge (⊘/✓) og `decomm`-badge (⚰)
+i MAC-cellen forblev uændrede. Erstattet manuel celle-for-celle DOM-opdatering
+med `applyFilter()` der re-renderer hele tabellen fra det friske ISE-svar.
+
+---
+
 ## [6.4.1] — 2026-06-13 — Fix: RADIUS simulator evaluerer HypervisionActive korrekt
 
 > **Build:** 0651

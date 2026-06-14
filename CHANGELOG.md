@@ -3,6 +3,15 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.4.6 build 0654] — 2026-06-14 — fix: browse-tabel opdateres korrekt efter Endpoint details gem
+
+refreshRows() gjorde 80 linjer manuel DOM-manipulation der manglede
+active_status-badge, decomm-badge og fremtidige kolonner. Erstattet med
+state.allRows-opdatering + applyFilter() der kalder renderRows() og
+re-renderer alle kolonner korrekt fra det friske ISE-svar.
+
+**Berørt fil:** `frontend/js/views/browse-table.js`
+
 ## [6.4.5 build 0653] — 2026-06-13 — chore: korriger version til 6.4.5 (manglende PATCH-bumps b0648-b0652)
 
 PATCH blev ikke bumped korrekt ved b0648-b0652. Hver af de 5 afsluttede
