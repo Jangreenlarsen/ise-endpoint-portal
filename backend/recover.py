@@ -7,7 +7,10 @@ HyperVision ISE Portal — CLI Recovery Tool
 Kør dette script via SSH når du er låst ude af portalen:
 
     cd /opt/hypervision
-    python backend/recover.py
+    python3 backend/recover.py
+
+    # Eller direkte via venv (hvis python3 ikke er i PATH):
+    /opt/hypervision/venv/bin/python backend/recover.py
 
 Kræver ingen kørende server og ingen afhængigheder udover stdlib.
 """
@@ -455,11 +458,11 @@ def main() -> None:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Eksempler:
-  python backend/recover.py                    # interaktiv menu
-  python backend/recover.py --list             # vis alle brugere
-  python backend/recover.py --reset admin      # nulstil adgangskode
-  python backend/recover.py --unlock admin     # lås konto op
-  python backend/recover.py --emergency        # opret nødadmin
+  python3 backend/recover.py                    # interaktiv menu
+  python3 backend/recover.py --list             # vis alle brugere
+  python3 backend/recover.py --reset admin      # nulstil adgangskode
+  python3 backend/recover.py --unlock admin     # lås konto op
+  python3 backend/recover.py --emergency        # opret nødadmin
         """,
     )
     parser.add_argument("--list",      action="store_true",  help="Vis alle brugere og afslut")

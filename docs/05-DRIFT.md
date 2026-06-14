@@ -123,7 +123,10 @@ Hvis alle admin-konti er låst ude eller adgangskoden er glemt bruges `backend/r
 
 ```bash
 cd /opt/hypervision
-python backend/recover.py
+python3 backend/recover.py
+
+# Alternativt via venv hvis python3 ikke er i PATH:
+/opt/hypervision/venv/bin/python backend/recover.py
 ```
 
 ### Interaktiv menu
@@ -149,16 +152,16 @@ python backend/recover.py
 
 ```bash
 # Vis alle brugere
-python backend/recover.py --list
+python3 backend/recover.py --list
 
 # Nulstil adgangskode (spørger om ny adgangskode interaktivt)
-python backend/recover.py --reset jan
+python3 backend/recover.py --reset jan
 
 # Lås konto op
-python backend/recover.py --unlock jan
+python3 backend/recover.py --unlock jan
 
 # Opret nødadmin (interaktivt — spørger om brugernavn + adgangskode)
-python backend/recover.py --emergency
+python3 backend/recover.py --emergency
 ```
 
 ### Vigtige noter

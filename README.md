@@ -97,7 +97,7 @@ De to protokoller supplerer hinanden: REST til management, pxGrid til observabil
 - **GitHub OTA-opdatering** — git pull direkte fra portalen; **pre-flight import-tjek** verificerer at ny kode ikke crasher inden genstart; auto-genstart efter 3 s hvis pre-flight OK; browser poller og melder "Server er oppe igen ✅" ved genoprettelse
 - **Systemdiagnostik** — komplet sundhedstjek on-demand (12 tjek: Python-version, venv, afhængigheder, HTTP/2, nmap, diskplads, ISE ERS-forbindelses­test med latens, cache, circuit breaker, pxGrid-worker, git); resultater med ✅/⚠️/❌
 - **Funktionsgennemgang** — to-faset portal-audit under Indstillinger → System Opdatering: Fase 1 (statisk < 1 s): config, databaser, certifikater, log-mappe; Fase 2 (live 5-15 s): ERS, grupper, custom attributes, MnT-sessioner, OpenAPI, nmap-test, GitHub-forbindelse, cache og pxGrid
-- **CLI Recovery Tool** (`backend/recover.py`) — standalone Python-script til adgangskode­gendannelse via SSH uden kørende server; nulstil password, lås konto op, opret nødadmin, skift rolle, aktivér/deaktivér konto
+- **CLI Recovery Tool** (`backend/recover.py`) — standalone Python-script til adgangskode­gendannelse via SSH uden kørende server (`python3 backend/recover.py`); nulstil password, lås konto op, opret nødadmin, skift rolle, aktivér/deaktivér konto
 - Brugervenlige fejlbeskeder — ISE-utilgængelighed vises med klar dansk tekst og Prøv igen-knap
 
 ---
