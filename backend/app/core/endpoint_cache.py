@@ -170,6 +170,10 @@ class EndpointCache:
     def detail_count(self) -> int:
         return len(self._details)
 
+    def get_all_details(self) -> list[Any]:
+        """Return a snapshot of all cached EndpointDetail objects (unmasked)."""
+        return list(self._details.values())
+
     def get_oldest_id(self) -> str | None:
         """Returnér ID på den cachede entry med den ældste fetched_at-timestamp.
 

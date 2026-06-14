@@ -4,6 +4,13 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 6.13.0685] 2026-06-14 — Aktiv/Inaktiv-knapper mangler i Endpoint Details
+
+- **Symptom:** I Endpoint Details modal var der ingen tydelig/synlig måde at sætte aktiv/inaktiv-status. Knapperne "Sæt Aktiv"/"Sæt Inaktiv" var gemt i bunden af modalens footer og kun vist konditionelt — svære at finde.
+- **Root cause:** `HypervisionActive`-feltet var ikke en del af det redigerbare formular-grid — kun eksponeret via skjulte action-knapper i modal-actions-baren.
+- **Fix:** `HypervisionActive` tilføjet som synlig `<select>`-dropdown direkte i formular-griddet (efter Description, før Type). Dropdownen er altid synlig og gemmes via det normale Gem-flow. Derudover paralleliseret `getEndpoint`+`listCustomAttributes`+`listDacls` i `openDetail` for hurtigere indlæsning.
+- **Berørte filer:** `frontend/js/views/browse.js`, `frontend/js/views/browse-detail.js`, `frontend/js/i18n.js`
+
 ## [FIXED 6.8.0669] 2026-06-14 — Portal kan crashe efter OTA-opdatering (ingen pre-flight tjek)
 
 - **Symptom:** Portal crasher (crash-loop) efter OTA git pull hvis ny kode har importfejl eller manglende afhængighed. Kræved desuden manuel klik på "Genstart server".

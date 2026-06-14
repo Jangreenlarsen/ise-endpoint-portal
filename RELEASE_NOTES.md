@@ -4,6 +4,24 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.13.0685] — 2026-06-14 — Aktiv/Inaktiv i form · System adm dropdown · Hurtigere filter
+
+> **Build:** 0685
+
+### Bugfix: Aktiv/Inaktiv-felt i Endpoint Details
+Aktiv/Inaktiv-status (`HypervisionActive`) er nu et synligt `<select>`-felt direkte i formular-griddet i Endpoint Details — ikke længere gemt i action-knapper i bunden. Feltet gemmes som alle andre CA-felter via **Gem**-knappen.
+
+Detalje-modalen åbner nu hurtigere fordi tre API-kald kører parallelt i stedet for sekventielt.
+
+### Feat: System adm — kompakt kolonne + dropdown i details
+- **Browse-tabel:** Kolonnen "System adm" viser nu kun de valgte roller som kompakte farvede badges — ikke hele katalog med tomme markeringsbokse.
+- **Endpoint Details:** Roller vælges nu via en `<select multiple>`-dropdown, der giver overblik over alle tilgængelige roller og lader dig vælge/fravælge med Ctrl/Cmd-klik.
+
+### Feat: Filter-chips henter ikke længere fra ISE
+Klik på filter-chips i MAC-kolonnen (Aktiv/Inaktiv, DeComm, Markeret) bruger nu backend-cachen direkte i stedet for at lave nye ISE-kald. Filtreringen sker øjeblikkeligt når cachen er varm.
+
+---
+
 ## [6.12.0684] — 2026-06-14 — Lokal genindlæsning i Browse
 
 > **Build:** 0684

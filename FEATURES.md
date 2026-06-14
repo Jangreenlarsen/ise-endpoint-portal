@@ -9,6 +9,10 @@ Alle nye features registreres her FØR implementering påbegyndes.
 
 ## Planlagt / Under implementering
 
+- `[done 6.13.0685] 2026-06-14 — System adm: kompakt kolonne + multi-select i details` — Browse-tabelkolonnen "System adm" viser nu kun de valgte roller som kompakte badges (ikke hele katalog med tomme felter). I Endpoint Details er rollerne nu en `<select multiple>`-dropdown i stedet for checkboxes. Backend: ny admin-fast-path i `list_all_endpoint_details` — serverer fra cache i stedet for ISE ved filterskift (MAC-chip-kliks).
+
+- `[done 6.12.0684] 2026-06-14 — Lokal genindlæsning i Browse-toolbar`
+
 - `[done 6.12.0683] 2026-06-14 — CoA ved guest-udløb` — Ny setting i Guest Registration: "Send CoA ved udløb". Når guest-expiry-workeren registrerer et udløbet guest-endpoint, sendes der nu automatisk en CoA (Re-Auth eller Disconnect) til gæstens MAC via ISE MnT API, så gæsten omdirigeres til registreringsportalen i realtid. Valg af CoA-type (reauth/disconnect) i UI. **Berørte lag:** `backend/app/core/config.py`, `backend/app/schemas/settings.py`, `backend/app/services/guest_expiry_worker.py`, `frontend/js/views/settings.js`, `frontend/js/views/settings/section-update.js`, `frontend/js/i18n.js`.
 
 - `[done 6.11.0682] 2026-06-14 — Decommission VLAN/DACL-toggle` — Ny setting `decomm_set_authz` (bool). Slås fra → kun HypervisionStatus/ActiveStatus/Hidden sættes ved decommission; AuthzVlan og AuthzACL røres ikke.

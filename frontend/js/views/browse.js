@@ -195,6 +195,12 @@ export async function renderBrowse(container) {
               <label class="inline-cb"><input type="checkbox" id="d-static-group" /> ${t("detail.static_assign")}</label>
               <label>Description</label>
               <input type="text" id="d-description" />
+              <label>${t("detail.active_status_lbl")}</label>
+              <select id="d-active-status-sel">
+                <option value="">— ${t("detail.active_status_auto")}</option>
+                <option value="Aktiv">${t("detail.active_status_aktiv")}</option>
+                <option value="Inaktiv">${t("detail.active_status_inaktiv")}</option>
+              </select>
               <label>Type</label>
               <select id="d-type"></select>
               <label>Owner</label>
@@ -237,7 +243,7 @@ export async function renderBrowse(container) {
                 <button type="button" id="d-psk-gen" class="secondary small">${t("detail.btn_generate")}</button>
               </div>
               <label>${t("col.roles")}</label>
-              <div id="d-roles"></div>
+              <select id="d-roles-sel" multiple size="5" class="roles-multiselect"></select>
             </div>
             <details class="detail-meta-details">
               <summary>ISE Metadata ▾</summary>

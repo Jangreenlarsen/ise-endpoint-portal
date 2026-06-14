@@ -482,8 +482,31 @@ class EndpointService:
         Hvis ``effective_roles`` er sat (non-admin) og cachen er varm, bruges
         roles-indekset til at returnere kun brugerens endpoints uden ISE-scan.
         Kold cache falder tilbage til fuld ISE list_all + post-filter.
+
+        Admin fast-path: hvis cachen er varm og ingen ISE ERS-filtre er sat,
+        serveres alle endpoints direkte fra cache — ingen ISE round-trip.
         """
-        if effective_roles is not None and get_cache().detail_count() > 0:
+        cache = get_cache()
+
+        # Admin fast-path: serve from cache when no ERS column-filters force an ISE scan.
+        # Avoids list_all() + N individual fetches when chips/filter-mode triggers this call.
+        if effective_roles is None and not filters and cache.detail_count() > 0:
+            items: list[EndpointDetail] = cache.get_all_details()
+            if not is_psk_editor:
+                items = [_mask_psk(d) for d in items]
+            if search:
+                low = search.strip().lower()
+                items = [
+                    d for d in items
+                    if low in (d.mac or "").lower() or low in (d.description or "").lower()
+                ]
+            if full_text_q:
+                items = _full_text_filter(items, full_text_q)
+            items.sort(key=lambda d: d.mac or d.name)
+            logger.info("admin list_all cache fast-path: %d endpoints from cache", len(items))
+            return items
+
+        if effective_roles is not None and cache.detail_count() > 0:
             cache = get_cache()
             all_ids = list(cache.get_ids_for_roles(effective_roles))
             sem = asyncio.Semaphore(8)

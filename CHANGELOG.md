@@ -3,6 +3,26 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.13.0685] — 2026-06-14 — fix+feat: Aktiv/Inaktiv i form + System adm dropdown + cache-filter
+
+**Fix: Aktiv/Inaktiv-felt manglede i Endpoint Details form**
+- `HypervisionActive` tilføjet som `<select>` direkte i formular-griddet; gemmes via Gem-knappen
+- `openDetail` paralleliserer nu `getEndpoint`+`listCustomAttributes`+`listDacls` → hurtigere åbning
+
+**Feat: System adm — kompakt kolonne + multi-select i details**
+- Browse-tabelkolonnen viser kun valgte roller som kompakte badges (ikke hele katalog)
+- Endpoint Details bruger nu `<select multiple>` i stedet for checkboxes
+- Inline rolle-redigering i tabellrækker fjernet (brug detalje-modalen i stedet)
+- CSS: ny `.role-tag`-klasse + `.roles-multiselect`
+
+**Feat: Backend admin fast-path for filter-mode**
+- `endpoint_cache.get_all_details()` tilføjet
+- `list_all_endpoint_details` serverer nu fra cache for admin-brugere (ingen ISE-kald ved chip-klik)
+
+**Berørte filer:** `frontend/js/views/browse.js`, `frontend/js/views/browse-detail.js`, `frontend/js/views/browse-table.js`, `frontend/js/i18n.js`, `frontend/css/styles.css`, `backend/app/core/endpoint_cache.py`, `backend/app/services/endpoint_service.py`, `version.json`
+
+---
+
 ## [6.12.0684] — 2026-06-14 — feat: Lokal genindlæsning i Browse
 
 Ny "↻ Genindlæs"-knap i Browse-toolbar ved siden af den eksisterende "Opdater fra ISE".

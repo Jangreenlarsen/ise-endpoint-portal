@@ -47,25 +47,20 @@ export function initTable(container, state, api, cb) {
     return groupHierarchyOptionsHtml(state.groups, selectedId);
   }
 
-  function rolesChipsHtml(selected, opts = {}) {
-    const editable   = opts.editable !== false && state.canEditRoles;
+  function rolesChipsHtml(selected) {
     const sel        = (selected || []).filter((r) => r.toLowerCase() !== "admin");
     const selLower   = new Set(sel.map((s) => (s || "").toLowerCase()));
     const catalogLow = new Set(state.roleCatalog.map((r) => r.name.toLowerCase()));
     const items      = [];
     for (const r of state.roleCatalog) {
-      const checked = selLower.has(r.name.toLowerCase()) ? "checked" : "";
-      const dis     = editable ? "" : "disabled";
-      items.push(
-        `<label class="role-chip" title="${esc(r.description || r.name)}">` +
-        `<input type="checkbox" class="row-role-chip" data-role="${esc(r.name)}" ${checked} ${dis} />` +
-        `<span>${esc(r.name)}</span></label>`,
-      );
+      if (selLower.has(r.name.toLowerCase())) {
+        items.push(`<span class="role-tag" title="${esc(r.description || r.name)}">${esc(r.name)}</span>`);
+      }
     }
     for (const r of sel) {
       if (!catalogLow.has(r.toLowerCase())) {
         items.push(
-          `<span class="role-chip role-chip-extern" title="${t("browse.extern_role_title")}">` +
+          `<span class="role-tag role-chip-extern" title="${t("browse.extern_role_title")}">` +
           `${esc(r)}</span>`,
         );
       }
@@ -508,13 +503,7 @@ export function initTable(container, state, api, cb) {
     const originalGroupId = row ? (row.group_id || "") : "";
     const groupChanged    = selectedGroupId !== originalGroupId;
 
-    const checkedChips        = tr.querySelectorAll(".row-role-chip:checked");
-    const selectedCatalogRoles = Array.from(checkedChips).map((cb) => cb.dataset.role);
-    const catalogLower         = new Set(state.roleCatalog.map((c) => c.name.toLowerCase()));
-    const externalRoles        = ((row && row.roles) || []).filter(
-      (r) => !catalogLower.has((r || "").toLowerCase()),
-    );
-    const hypervisionRoles = [...externalRoles, ...selectedCatalogRoles].join(",");
+    const hypervisionRoles = ((row && row.roles) || []).join(",");
 
     let group_id = null, static_group_assignment = null;
     if (groupChanged) {

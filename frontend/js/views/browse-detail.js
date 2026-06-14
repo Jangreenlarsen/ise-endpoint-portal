@@ -66,12 +66,11 @@ export function initDetail(container, state, api, cb) {
     detailMsg.innerHTML   = `<div class="alert info">${t("alert.loading")}</div>`;
     detailOverlay.classList.remove("hidden");
     try {
-      const d = await api.getEndpoint(id);
-
-      // Refresh caValues + DACL list after the detail fetch so the dropdowns
-      // always reflect the current ISE state (auto_discover may have written
-      // new attribute values; DACLs may have been added/removed in ISE).
-      const [caData, freshDacls] = await Promise.all([
+      // Fire all three requests in parallel — endpoint detail, CA list, DACL list.
+      // listCustomAttributes + listDacls are served from backend cache and complete
+      // fast; running them alongside getEndpoint saves ~1-2 s on cold starts.
+      const [d, caData, freshDacls] = await Promise.all([
+        api.getEndpoint(id),
         api.listCustomAttributes().catch(() => null),
         api.listDacls().catch(() => null),
       ]);
@@ -95,6 +94,8 @@ export function initDetail(container, state, api, cb) {
       dGroupEl.onchange = () => updateGroupPath(dGroupEl.value);
       container.querySelector("#d-static-group").checked  = !!d.static_group;
       container.querySelector("#d-description").value     = d.description || "";
+      const activeStatusSel = container.querySelector("#d-active-status-sel");
+      if (activeStatusSel) activeStatusSel.value = d.active_status || "";
       container.querySelector("#d-type").innerHTML        = optionsHtml(state.caValues.Type, d.endpoint_type);
       container.querySelector("#d-owner").innerHTML       = optionsHtml(state.caValues.Owner, d.owner);
       container.querySelector("#d-lokation").innerHTML    = optionsHtml(state.caValues.Lokation, d.lokation);
@@ -157,9 +158,16 @@ export function initDetail(container, state, api, cb) {
       container.querySelector("#d-psk-show").classList.toggle("hidden", !state.isPskEditor);
       container.querySelector("#d-psk-gen").classList.toggle("hidden",  !state.isPskEditor);
 
-      const rolesEl = container.querySelector("#d-roles");
-      rolesEl.innerHTML       = cb.rolesChipsHtml(d.roles);
-      rolesEl.dataset.original = JSON.stringify(d.roles || []);
+      const rolesSel = container.querySelector("#d-roles-sel");
+      if (rolesSel) {
+        const selLower = new Set((d.roles || []).map((r) => (r || "").toLowerCase()));
+        rolesSel.innerHTML = state.roleCatalog.map((r) =>
+          `<option value="${esc(r.name)}" title="${esc(r.description || r.name)}"${
+            selLower.has(r.name.toLowerCase()) ? " selected" : ""
+          }>${esc(r.name)}</option>`
+        ).join("");
+        rolesSel.dataset.original = JSON.stringify(d.roles || []);
+      }
 
       container.querySelector("#d-hypervision").textContent  = d.hypervision || "—";
       container.querySelector("#d-profile-id").textContent   = d.profile_id || "—";
@@ -1205,19 +1213,22 @@ export function initDetail(container, state, api, cb) {
       static_group_assignment = staticGroup;
     }
 
-    const dRolesEl = container.querySelector("#d-roles");
-    const checkedChips = dRolesEl.querySelectorAll(".row-role-chip:checked");
-    const selectedCatalogRoles = Array.from(checkedChips).map((cbEl) => cbEl.dataset.role);
+    const rolesSel_ = container.querySelector("#d-roles-sel");
+    const selectedCatalogRoles = rolesSel_
+      ? Array.from(rolesSel_.selectedOptions).map((o) => o.value)
+      : [];
     let originalRoles = [];
-    try { originalRoles = JSON.parse(dRolesEl.dataset.original || "[]"); } catch { /* ignore */ }
+    try { originalRoles = JSON.parse((rolesSel_?.dataset.original) || "[]"); } catch { /* ignore */ }
     const catalogLower  = new Set(state.roleCatalog.map((c) => c.name.toLowerCase()));
     const externalRoles = originalRoles.filter((r) => !catalogLower.has((r || "").toLowerCase()));
     const hypervisionRoles = [...externalRoles, ...selectedCatalogRoles].join(",");
 
+    const _activeStatusVal = container.querySelector("#d-active-status-sel")?.value || "";
     const customAttrs = {
       Type: container.querySelector("#d-type").value,
       Owner: container.querySelector("#d-owner").value,
       Lokation: container.querySelector("#d-lokation").value,
+      ...(_activeStatusVal ? { HypervisionActive: _activeStatusVal } : {}),
       RegistretBy: container.querySelector("#d-registretby")?.value || "",
       GuestRegistration: container.querySelector("#d-guestreg")?.value || "",
       GuestExperyDate: (() => {
