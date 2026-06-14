@@ -48,6 +48,48 @@ from app.services.guest_expiry_worker import get_worker as get_guest_expiry_work
 from app.core.guest_expiry_store import init_db as init_guest_expiry_db
 
 
+async def _ensure_h2_installed() -> None:
+    """Installer h2-pakken i baggrunden hvis HTTP/2 er aktiveret men h2 mangler.
+
+    Kaldes som asyncio.create_task ved opstart. Portalen kører HTTP/1.1 i
+    mellemtiden (graceful fallback i IseClient). En genstart efter installation
+    aktiverer HTTP/2 uden yderligere bruger-handling.
+    """
+    import logging as _log
+    import sys
+    _logger = _log.getLogger(__name__)
+    try:
+        import h2  # noqa: F401
+        return  # allerede installeret
+    except ImportError:
+        pass
+
+    _logger.info(
+        "h2-pakken mangler — installerer httpx[http2] i baggrunden. "
+        "HTTP/2 aktiveres ved næste genstart."
+    )
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            sys.executable, "-m", "pip", "install", "httpx[http2]",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+        )
+        stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=120)
+        output = (stdout or b"").decode("utf-8", errors="replace").strip()
+        if proc.returncode == 0:
+            _logger.info(
+                "h2 installeret OK — genstart portalen (pkill -f uvicorn) for at aktivere HTTP/2."
+            )
+        else:
+            _logger.warning(
+                "h2 installation fejlede (returnkode=%d): %s", proc.returncode, output[:400]
+            )
+    except asyncio.TimeoutError:
+        _logger.warning("h2 installation timeout (120s)")
+    except Exception as exc:  # noqa: BLE001
+        _logger.warning("h2 installation fejlede: %s", exc)
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     setup_logging()
@@ -151,6 +193,11 @@ async def lifespan(_: FastAPI):
     get_pxgrid_worker().start()
     get_prewarm_worker().start()
     get_guest_expiry_worker().start()
+
+    # Installer h2 i baggrunden hvis HTTP/2 er aktiveret men pakken mangler.
+    # Dækker friske OVA-installs og første OTA-pull fra gammel version.
+    if getattr(settings, "ise_http2", True):
+        asyncio.create_task(_ensure_h2_installed(), name="h2-install")
 
     # Periodisk autosave af session-cache til disk.
     _autosave_interval = float(getattr(settings, "pxgrid_session_autosave_interval_s", 300.0))

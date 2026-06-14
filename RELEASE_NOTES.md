@@ -4,6 +4,32 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.7.0667] — 2026-06-14 — h2 installeres automatisk i baggrunden ved opstart
+
+> **Build:** 0667
+
+Portalen installerer nu selv `h2`-pakken i baggrunden hvis den mangler ved opstart.
+
+**Komplet flow fra gammel OVA uden manuel SSH:**
+
+1. OTA Pull — ny kode hentes (portalen kører stadig med gammel kode i hukommelsen)
+2. Genstart — ny kode starter, h2 mangler → HTTP/1.1 (graceful), baggrunds-install starter
+3. Vent ~10 sekunder til loggen viser `h2 installeret OK`
+4. Genstart igen (`pkill -f uvicorn`) — HTTP/2 aktiv
+
+**Fra ny OVA med latest kode:**
+
+1. Portal starter → h2 mangler → baggrunds-install starter automatisk
+2. Genstart efter ~10 sekunder → HTTP/2 aktiv
+
+Loggen viser installationsforløbet:
+```
+h2-pakken mangler — installerer httpx[http2] i baggrunden. HTTP/2 aktiveres ved næste genstart.
+h2 installeret OK — genstart portalen (pkill -f uvicorn) for at aktivere HTTP/2.
+```
+
+---
+
 ## [6.7.0666] — 2026-06-14 — Fix: HTTP/2 falder tilbage til HTTP/1.1 ved manglende h2-pakke
 
 > **Build:** 0666

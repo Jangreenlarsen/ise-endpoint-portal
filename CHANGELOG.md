@@ -3,6 +3,20 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.7.0667] — 2026-06-14 — feat: h2 installeres automatisk i baggrunden ved opstart hvis det mangler
+
+`_ensure_h2_installed()` startes som `asyncio.create_task` i lifespan når
+`ise_http2=True`. Kører `pip install httpx[http2]` asynkront uden at blokere
+opstart eller requests. Dækker friske OVA-installs og første OTA-pull fra gammel
+version (hvor den kørende kode ikke har pip-trinnet i OTA endnu).
+
+**Flow:** Portal starter HTTP/1.1 → h2 installeres i baggrunden → bruger genstarter
+(pkill -f uvicorn) → HTTP/2 aktiv. Ingen dobbelt-pull, ingen SSH nødvendigt.
+
+**Berørte filer:** `backend/app/main.py`
+
+---
+
 ## [6.7.0666] — 2026-06-14 — fix: HTTP/2 falder gracefully tilbage til HTTP/1.1 hvis h2-pakken mangler
 
 `IseClient.__init__` fanger nu `ImportError` ved `httpx.AsyncClient(http2=True)` og
