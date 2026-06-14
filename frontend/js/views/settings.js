@@ -186,18 +186,6 @@ export async function renderSettings(container) {
       </div>
     </div>
 
-    <div class="card" data-tab="portal-performance">
-      <h3>Systemdiagnostik</h3>
-      <p class="hint">
-        Kør et komplet sundhedstjek af alle backend-afhængigheder: Python-pakker,
-        HTTP/2-understøttelse, ISE-forbindelse, disk plads, cache, circuit breaker,
-        pxGrid og git-status.
-      </p>
-      <div id="diag-result"></div>
-      <div class="actions">
-        <button type="button" id="diag-run-btn" class="secondary">Kør diagnostik</button>
-      </div>
-    </div>
     ` : ""}
 
     ${isAdmin ? `
@@ -805,6 +793,19 @@ export async function renderSettings(container) {
         </label>
         <p class="hint" id="gh-dev-branch-hint" style="margin:0.25rem 0 0 1.5rem;font-size:0.8rem;"></p>
         <div id="gh-dev-branch-result" style="margin-top:0.25rem;margin-left:1.5rem;"></div>
+      </div>
+    </div>
+
+    <div class="card" data-tab="portal-config" data-subtab="pc-update">
+      <h3>Systemdiagnostik</h3>
+      <p class="hint">
+        Komplet sundhedstjek af alle backend-afhængigheder og -tjenester:
+        Python-pakker, HTTP/2, ISE-forbindelse med latens, disk plads,
+        cache, circuit breaker, pxGrid-worker og git-status.
+      </p>
+      <div id="diag-result"></div>
+      <div class="actions">
+        <button type="button" id="diag-run-btn" class="secondary">Kør diagnostik</button>
       </div>
     </div>
     ` : ""}

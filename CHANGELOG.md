@@ -3,6 +3,15 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.8.0672] — 2026-06-14 — fix: Systemdiagnostik flyttet til System Opdatering-modulet
+
+Diagnostik-kortet lå under Indstillinger → Performance. Flyttes til
+Indstillinger → Portal config → System opdatering (pc-update subtab) så
+det er samlet med OTA-opdatering og GitHub pull — logisk placering da
+diagnostik bruges netop til at verificere en opdatering.
+
+**Berørte filer:** `frontend/js/views/settings.js`, `version.json`
+
 ## [6.8.0671] — 2026-06-14 — fix: ImportError i diagnostics.py (require_admin forkert sti)
 
 `from app.core.auth import require_admin` → `from app.api.deps import require_admin`.
