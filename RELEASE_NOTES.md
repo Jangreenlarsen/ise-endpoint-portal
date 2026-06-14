@@ -4,6 +4,19 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.4.7] — 2026-06-14 — Fix: fri tekst søgning finder nu endpoints på Klient IP
+
+> **Build:** 0655
+
+Søgning i det globale søgefelt (fri tekst) kunne ikke finde endpoints
+via Klient IP (framed_ip). Årsag: søgningen gik til backend der kun
+kender ISE-attributter — framed_ip er pxGrid session-data som backend
+ikke søger i. Løst ved at flytte fullTextQ-filtrering til klient-siden
+så den inkluderer `framed_ip` fra live pxGrid-sessioner. Bivirkning:
+gentagne tekst-søgninger er nu øjeblikkelige da allRowsCache genbruges.
+
+---
+
 ## [6.4.6] — 2026-06-14 — Fix: browse-tabel opdateres korrekt efter gem i Endpoint details
 
 > **Build:** 0654

@@ -3,6 +3,18 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.4.7 build 0655] — 2026-06-14 — fix: fri tekst søgning virker nu på Klient IP (framed_ip)
+
+Fri tekst søgning sendte fullTextQ til backend som kun søgte i ISE-felter
+(mac, vendor, owner osv.) — framed_ip er pxGrid-data og kender ISE ikke.
+Løst ved at flytte hele fullTextQ-filtreringen til klient-siden i
+applyFiltersToRows() så den også tjekker pxgridSessionData.get(mac).framed_ip.
+Backend-kaldet loader nu altid alle rækker (ingen q= parameter), og
+allRowsCache ryddes ikke ved tekstændringer — genbrug giver øjeblikkelig
+filtrering ved næste søgning.
+
+**Berørt fil:** `frontend/js/views/browse-filter.js`
+
 ## [6.4.6 build 0654] — 2026-06-14 — fix: browse-tabel opdateres korrekt efter Endpoint details gem
 
 refreshRows() gjorde 80 linjer manuel DOM-manipulation der manglede

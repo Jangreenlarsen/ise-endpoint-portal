@@ -120,6 +120,18 @@ export function initFilter(container, state, api, cb) {
     if (state.decommOnly) rows = rows.filter((r) => r.status === "Decommissioned");
     else if (state.hideDecommissioned) rows = rows.filter((r) => r.status !== "Decommissioned");
     if (state.activeStatusFilter) rows = rows.filter((r) => r.active_status === state.activeStatusFilter);
+    if (state.fullTextQ) {
+      const low = state.fullTextQ.toLowerCase();
+      rows = rows.filter((r) => {
+        const mac = normalizeMac(r.mac || r.name || "");
+        const framed_ip = state.pxgridSessionData?.get(mac)?.framed_ip || "";
+        return [
+          r.mac, r.name, r.description, r.group_name, r.profiler_name,
+          r.vendor, r.owner, r.lokation, r.endpoint_type, r.platform_type,
+          framed_ip,
+        ].some((v) => (v || "").toLowerCase().includes(low));
+      });
+    }
     const filters = getColumnFilters();
     if (filters.length) rows = rows.filter((r) => filters.every((f) => f.re.test(f.field(r) || "")));
     const authFilter = authStatusSelect ? authStatusSelect.value : "all";
@@ -208,7 +220,7 @@ export function initFilter(container, state, api, cb) {
       `<tr><td colspan="${cols}" class="empty">${t("browse.filter_loading_td")}</td></tr>`;
     msg.innerHTML = `<div class="alert info">${t("browse.filter_loading_msg")}</div>`;
     try {
-      const all = await api.listAllEndpointDetails("", state.currentFilters, state.fullTextQ || "");
+      const all = await api.listAllEndpointDetails("", state.currentFilters);
       state.allRowsCache = all;
       state.allRows = all;
       state.filterMode = true;
@@ -388,7 +400,6 @@ export function initFilter(container, state, api, cb) {
       const newQ = globalQInput.value.trim();
       if (newQ === state.fullTextQ) return;
       state.fullTextQ = newQ;
-      state.allRowsCache = null;
       updateClearBtn();
       clearActiveView();
       clearTimeout(qDebounce);
