@@ -45,17 +45,27 @@ function renderDisabled() {
     </div>`);
 }
 
-function renderLookingUp(attempt, maxAttempts) {
+function renderLookingUp(attempt, maxAttempts, lastMs) {
+  const timingHint = lastMs > 0
+    ? `<p style="font-size:0.78rem;color:#94a3b8;">Sidst svar: ${lastMs} ms</p>`
+    : "";
+  const slowHint = lastMs > 4000
+    ? `<p style="font-size:0.78rem;color:#f59e0b;">⚠️ MnT-node svarer langsomt — prøver igen...</p>`
+    : "";
   setContent(`
     <h1>Netværks-registrering</h1>
     <div style="text-align:center;padding:1.5rem 0;">
       <div style="font-size:2rem;">🔍</div>
       <p><span class="spinner"></span>Finder din enhed på netværket...</p>
       <p style="font-size:0.8rem;color:#64748b;">Forsøg ${attempt}/${maxAttempts}</p>
+      ${timingHint}${slowHint}
     </div>`);
 }
 
-function renderSessionNotFound(clientIp, onRetry) {
+function renderSessionNotFound(clientIp, onRetry, totalMs) {
+  const timingNote = totalMs > 0
+    ? `<p style="font-size:0.78rem;color:#94a3b8;margin-top:0.5rem;">Samlet søgetid: ${Math.round(totalMs / 1000)} s</p>`
+    : "";
   setContent(`
     <h1>Netværks-registrering</h1>
     <div class="alert alert-info" style="margin-bottom:1rem;">
@@ -64,6 +74,7 @@ function renderSessionNotFound(clientIp, onRetry) {
       Vent et øjeblik og prøv igen.
     </div>
     <p style="font-size:0.85rem;color:#64748b;">Din IP: <code>${esc(clientIp)}</code></p>
+    ${timingNote}
     <button type="button" id="retry-btn" style="width:100%;padding:0.7rem;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:1rem;font-weight:600;cursor:pointer;">
       Prøv igen
     </button>`);
@@ -166,27 +177,31 @@ function renderSuccess(mac, redirectUrl, coaSent, successText) {
 // ── MnT session-lookup med polling ───────────────────────────────────────────
 
 async function lookupSession(maxAttempts = 5) {
+  const t0Total = performance.now();
+  let lastMs = 0;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    renderLookingUp(attempt, maxAttempts);
+    renderLookingUp(attempt, maxAttempts, attempt > 1 ? lastMs : 0);
+    const t0 = performance.now();
     try {
-      // Backend laver 3 interne forsøg — vi kalder én gang og venter
       const data = await apiGet("/selfregister/session");
+      lastMs = Math.round(performance.now() - t0);
       if (data.found) return data;
-      // Ikke fundet endnu — vis status og vent
       if (attempt < maxAttempts) {
         await new Promise(r => setTimeout(r, SESSION_POLL_INTERVAL));
       } else {
-        return data; // found=false — frontend viser retry-knap
+        data._totalMs = Math.round(performance.now() - t0Total);
+        return data;
       }
     } catch (err) {
+      lastMs = Math.round(performance.now() - t0);
       if (attempt < maxAttempts) {
         await new Promise(r => setTimeout(r, SESSION_POLL_INTERVAL));
       } else {
-        return { found: false, client_ip: "", message: err.message };
+        return { found: false, client_ip: "", message: err.message, _totalMs: Math.round(performance.now() - t0Total) };
       }
     }
   }
-  return { found: false, client_ip: "", message: "Timeout" };
+  return { found: false, client_ip: "", message: "Timeout", _totalMs: Math.round(performance.now() - t0Total) };
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
@@ -199,7 +214,7 @@ async function init() {
     const startLookup = async () => {
       const session = await lookupSession(5);
       if (!session.found) {
-        renderSessionNotFound(session.client_ip || "?", startLookup);
+        renderSessionNotFound(session.client_ip || "?", startLookup, session._totalMs || 0);
         return;
       }
       renderForm(session.mac, cfg.terms || "Jeg accepterer betingelserne.", cfg.ipsk_enabled || false, cfg.intro_text || "", cfg.success_text || "");

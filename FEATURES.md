@@ -9,6 +9,8 @@ Alle nye features registreres her FØR implementering påbegyndes.
 
 ## Planlagt / Under implementering
 
+- `[done 6.14.0690] 2026-06-15 — MnT node status for guest-registrering` — Admin kan se MnT-node latens direkte fra Guest Registration-indstillingssiden (Test MnT-knap). Diagnostik-tab viser nu MnT-forbindelsestjek (både quick og full). Guest-siden viser per-forsøg svar-tid og advarsel ved langsom MnT. **Berørte lag:** `backend/app/services/diagnostics_service.py`, `backend/app/api/selfregister.py`, `frontend/js/api.js`, `frontend/js/views/settings.js`, `frontend/js/views/settings/section-update.js`, `frontend/js/selfregister.js`.
+
 - `[done 6.13.0685] 2026-06-14 — System adm: kompakt kolonne + multi-select i details` — Browse-tabelkolonnen "System adm" viser nu kun de valgte roller som kompakte badges (ikke hele katalog med tomme felter). I Endpoint Details er rollerne nu en `<select multiple>`-dropdown i stedet for checkboxes. Backend: ny admin-fast-path i `list_all_endpoint_details` — serverer fra cache i stedet for ISE ved filterskift (MAC-chip-kliks).
 
 - `[done 6.12.0684] 2026-06-14 — Lokal genindlæsning i Browse-toolbar`

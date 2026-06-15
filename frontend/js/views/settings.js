@@ -917,6 +917,16 @@ export async function renderSettings(container) {
     <div class="card" data-tab="portal-config" data-subtab="pc-advanced" id="guest-reg-card">
       <h3 id="guest-reg-h3"></h3>
       <p class="hint" id="guest-reg-hint"></p>
+
+      <div id="mnt-probe-widget" style="margin-bottom:1.25rem;padding:0.75rem 1rem;border-radius:8px;background:var(--bg-card,#f8fafc);border:1px solid var(--border,#e2e8f0);">
+        <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+          <strong style="white-space:nowrap;">MnT node status</strong>
+          <span id="mnt-probe-badge" style="font-size:0.82rem;color:#64748b;">Ikke testet endnu</span>
+          <button type="button" id="mnt-probe-btn" class="secondary" style="margin-left:auto;padding:0.3rem 0.85rem;font-size:0.85rem;">Test MnT</button>
+        </div>
+        <div id="mnt-probe-detail" style="font-size:0.8rem;color:#64748b;margin-top:0.3rem;"></div>
+      </div>
+
       <form id="guest-reg-form" onsubmit="return false;">
         <div class="field">
           <label>

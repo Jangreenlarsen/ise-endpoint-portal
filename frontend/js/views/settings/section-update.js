@@ -631,6 +631,40 @@ export async function initGuestRegSection(container) {
   const card    = container.querySelector("#guest-reg-card");
   if (!card) return;
 
+  // ── MnT-probe widget ──────────────────────────────────────────────────────
+  const probeBtn    = card.querySelector("#mnt-probe-btn");
+  const probeBadge  = card.querySelector("#mnt-probe-badge");
+  const probeDetail = card.querySelector("#mnt-probe-detail");
+  if (probeBtn && probeBadge) {
+    probeBtn.addEventListener("click", async () => {
+      probeBtn.disabled = true;
+      probeBtn.textContent = "Tester…";
+      probeBadge.style.color = "#64748b";
+      probeBadge.textContent = "Kalder ISE MnT…";
+      if (probeDetail) probeDetail.textContent = "";
+      try {
+        const r = await api.selfregisterMntProbe();
+        if (r.ok) {
+          const color = r.latency_ms > 5000 ? "#d97706" : r.latency_ms > 2000 ? "#f59e0b" : "#16a34a";
+          probeBadge.style.color = color;
+          probeBadge.textContent = `${r.latency_ms > 5000 ? "⚠️" : r.latency_ms > 2000 ? "⚠️" : "✅"} ${r.latency_ms} ms`;
+        } else {
+          probeBadge.style.color = "#dc2626";
+          probeBadge.textContent = `❌ Fejl`;
+        }
+        if (probeDetail) probeDetail.textContent = r.note + (r.error ? ` — ${r.error}` : "");
+      } catch (err) {
+        probeBadge.style.color = "#dc2626";
+        probeBadge.textContent = "❌ Fejl";
+        if (probeDetail) probeDetail.textContent = err.message;
+      } finally {
+        probeBtn.disabled = false;
+        probeBtn.textContent = "Test MnT igen";
+      }
+    });
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   const form              = card.querySelector("#guest-reg-form");
   const enabledCb         = card.querySelector("#guest-reg-enabled");
   const groupSel          = card.querySelector("#guest-reg-group");

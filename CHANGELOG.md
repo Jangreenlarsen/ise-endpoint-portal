@@ -3,6 +3,22 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.14.0690] — 2026-06-15 — feat: MnT node status for guest-registrering
+
+**Feat: MnT-node latens-status**
+- Ny `GET /api/selfregister/mnt-probe` (admin) — prober ISE MnT med samme Session/IPAddress-endpoint som guest-registrering; returnerer latens, HTTP-status og note
+- `diagnostics_service._check_mnt_connectivity()` tilføjet til `run_quick()` og `run_all()` — vises automatisk i Dashboard og Diagnostics-tab
+- Admin-panel: MnT-probe widget i Guest Registration-indstillingskortet med "Test MnT"-knap og farvekodet latens (grøn/gul/rød)
+- Guest-siden: `renderLookingUp()` viser per-forsøg svar-tid fra 2. forsøg + "⚠️ MnT-node svarer langsomt" ved > 4s; `renderSessionNotFound()` viser samlet søgetid i sekunder
+
+**Berørte filer:**
+- `backend/app/api/selfregister.py` — MntProbeResponse schema + GET /selfregister/mnt-probe endpoint
+- `backend/app/services/diagnostics_service.py` — _check_mnt_connectivity() i run_quick + run_all
+- `frontend/js/api.js` — selfregisterMntProbe()
+- `frontend/js/views/settings.js` — MnT-probe widget HTML i guest-reg-card
+- `frontend/js/views/settings/section-update.js` — initGuestRegSection wire probe-knap
+- `frontend/js/selfregister.js` — per-forsøg timing i lookupSession + renderLookingUp/SessionNotFound
+
 ## [6.14.0689] — 2026-06-15 — fix: korrekt cache/ISE badge i Endpoint Details + SWR for details
 
 **Fix: Timing-badge viste "Cache" selvom ISE blev kaldt**

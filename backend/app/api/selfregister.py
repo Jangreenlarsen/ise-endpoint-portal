@@ -17,12 +17,14 @@ Endpoints (alle public — ingen auth):
 """
 import logging
 import re
+import time
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, HTTPException, Request, status
+import httpx
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
-from app.api.deps import get_endpoint_service
+from app.api.deps import get_endpoint_service, require_admin
 from app.core import config
 from app.core.exceptions import IseApiError
 from app.ise import mnt_sessions
@@ -90,7 +92,60 @@ class SelfRegisterResponse(BaseModel):
     coa_sent: bool = False
 
 
+class MntProbeResponse(BaseModel):
+    ok: bool
+    latency_ms: int
+    http_status: int = 0
+    note: str = ""
+    error: str = ""
+
+
 # ── Endpoints ─────────────────────────────────────────────────────────────────
+
+@router.get("/mnt-probe", response_model=MntProbeResponse, dependencies=[Depends(require_admin)])
+async def probe_mnt() -> MntProbeResponse:
+    """Test MnT-forbindelsen og returnér latens — bruges i admin-panelet.
+
+    Kalder det samme endpoint som guest-selvregistrering:
+    GET /admin/API/mnt/Session/IPAddress/{probe_ip}
+    404 er forventet (ingen session for probe-IP) og tæller som OK.
+    """
+    s = config.settings
+    probe_ip = "10.0.0.1"
+    path = f"/admin/API/mnt/Session/IPAddress/{probe_ip}"
+    try:
+        start = time.perf_counter()
+        async with httpx.AsyncClient(
+            base_url=s.ise_base_url.rstrip("/"),
+            auth=(s.ise_username, s.ise_password),
+            verify=s.ise_verify_tls,
+            timeout=httpx.Timeout(connect=5.0, read=15.0, write=5.0, pool=2.0),
+            headers={"Accept": "application/xml"},
+            follow_redirects=False,
+        ) as client:
+            resp = await client.get(path)
+        ms = round((time.perf_counter() - start) * 1000)
+        ok = resp.status_code in (200, 404)
+        if not ok:
+            note = f"Uventet HTTP {resp.status_code}"
+        elif ms > 5000:
+            note = f"Svarer men meget langsomt ({ms} ms) — guest-registrering kan time out"
+        elif ms > 2000:
+            note = f"Noget langsomt ({ms} ms) — overvej ISE MnT load"
+        else:
+            note = f"OK ({ms} ms)"
+        logger.info("mnt-probe: status=%d latency=%d ms", resp.status_code, ms)
+        return MntProbeResponse(ok=ok, latency_ms=ms, http_status=resp.status_code, note=note)
+    except httpx.TimeoutException:
+        logger.warning("mnt-probe: timeout")
+        return MntProbeResponse(ok=False, latency_ms=-1, note="Timeout (>15 s)", error="Timeout")
+    except httpx.ConnectError as exc:
+        logger.warning("mnt-probe: connect error: %s", exc)
+        return MntProbeResponse(ok=False, latency_ms=-1, note="Forbindelsesfejl", error=str(exc)[:120])
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("mnt-probe: fejl: %s", exc)
+        return MntProbeResponse(ok=False, latency_ms=-1, note="Fejl", error=str(exc)[:120])
+
 
 @router.get("/config", response_model=SelfRegisterConfig)
 async def get_selfregister_config() -> SelfRegisterConfig:

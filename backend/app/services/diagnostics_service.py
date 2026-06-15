@@ -63,6 +63,7 @@ async def run_quick() -> dict[str, Any]:
         _check_nmap(),
         _check_disk_space(),
         _check_ise_config(),
+        _check_mnt_connectivity(),
         _check_cache_status(),
         _check_circuit_breaker(),
         _check_pxgrid(),
@@ -90,6 +91,7 @@ async def run_all() -> dict[str, Any]:
         _check_disk_space(),
         _check_ise_config(),
         _check_ise_connectivity(),
+        _check_mnt_connectivity(),
         _check_cache_status(),
         _check_circuit_breaker(),
         _check_pxgrid(),
@@ -320,6 +322,58 @@ async def _check_circuit_breaker() -> CheckResult:
     except Exception as exc:  # noqa: BLE001
         return CheckResult("circuit_breaker", "Circuit breaker", "warning",
                            f"Kunne ikke læse circuit breaker: {str(exc)[:80]}")
+
+
+async def _check_mnt_connectivity() -> CheckResult:
+    """Test MnT-forbindelsen ved at sende en session-IP-probe og måle latens.
+
+    Kalder det præcise endpoint som guest-selvregistrering bruger
+    (GET /admin/API/mnt/Session/IPAddress/{ip}). 404 er forventet og OK —
+    vi måler latensen for svaret, ikke session-indholdet.
+    """
+    try:
+        url      = getattr(settings, "ise_base_url", "") or ""
+        username = getattr(settings, "ise_username", "") or ""
+        password = getattr(settings, "ise_password", "") or ""
+        if not url or not username or not password:
+            return CheckResult("mnt_connectivity", "MnT forbindelse (guest MAC-opslag)", "warning",
+                               "ISE ikke konfigureret — spring over")
+        probe_ip = "10.0.0.1"
+        path = f"/admin/API/mnt/Session/IPAddress/{probe_ip}"
+        start = time.perf_counter()
+        async with httpx.AsyncClient(
+            base_url=url.rstrip("/"),
+            auth=(username, password),
+            verify=getattr(settings, "ise_ca_bundle", None) or getattr(settings, "ise_verify_tls", False),
+            timeout=httpx.Timeout(connect=5.0, read=15.0, write=5.0, pool=2.0),
+            headers={"Accept": "application/xml"},
+            follow_redirects=False,
+        ) as client:
+            resp = await client.get(path)
+        ms = round((time.perf_counter() - start) * 1000)
+
+        if resp.status_code in (200, 404):
+            if ms > 5000:
+                level, note = "warning", f"Svarer men langsomt ({ms} ms) — kan forsinke guest-registrering"
+            elif ms > 2000:
+                level, note = "warning", f"Svarer OK men noget langsomt ({ms} ms)"
+            else:
+                level, note = "ok", f"OK — {ms} ms"
+            return CheckResult("mnt_connectivity", "MnT forbindelse (guest MAC-opslag)", level, note,
+                               {"latency_ms": ms, "http_status": resp.status_code, "probe_ip": probe_ip})
+
+        return CheckResult("mnt_connectivity", "MnT forbindelse (guest MAC-opslag)", "warning",
+                           f"Uventet svar: HTTP {resp.status_code} — {ms} ms",
+                           {"latency_ms": ms, "http_status": resp.status_code})
+    except httpx.TimeoutException:
+        return CheckResult("mnt_connectivity", "MnT forbindelse (guest MAC-opslag)", "error",
+                           "Timeout (>15 s) — MnT ikke tilgængeligt, guest-registrering vil fejle")
+    except httpx.ConnectError as exc:
+        return CheckResult("mnt_connectivity", "MnT forbindelse (guest MAC-opslag)", "error",
+                           f"Forbindelsesfejl: {str(exc)[:100]}")
+    except Exception as exc:  # noqa: BLE001
+        return CheckResult("mnt_connectivity", "MnT forbindelse (guest MAC-opslag)", "warning",
+                           f"Fejl: {str(exc)[:100]}")
 
 
 async def _check_pxgrid() -> CheckResult:

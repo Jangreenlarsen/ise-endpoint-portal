@@ -4,6 +4,21 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.14.0690] — 2026-06-15 — MnT node status for guest-registrering
+
+> **Build:** 0690
+
+### Feature: MnT node latens-monitor
+
+**Problemet:** Guest-registrering tog 30-45 sekunder og slog fejl efter 5 forsøg — årsagen var at ISE MnT-noden var langsom (3-10s per svar), og med 3s ventetid mellem hvert forsøg løb man nemt over grænsen.
+
+**Løsning:**
+- **Admin "Test MnT"-knap** i Indstillinger > Guest Registration — viser latens for MnT session-opslag med samme API-kald som det rigtige flow. Farvekodet: grøn (< 2s), gul (2-5s), rød (> 5s / fejl).
+- **Diagnostik** viser nu "MnT forbindelse (guest MAC-opslag)" i både hurtig-status (Dashboard) og fuld diagnostik (Settings > Diagnostics). Inklusive latens og råt HTTP-statuskode.
+- **Guest-siden** viser nu svar-tid per forsøg fra 2. forsøg og advarer med "⚠️ MnT-node svarer langsomt" hvis et svar tager > 4s. Når alle 5 forsøg er brugt, vises samlet søgetid i sekunder.
+
+---
+
 ## [6.14.0689] — 2026-06-15 — Hurtigere Endpoint Details + korrekt timing-badge
 
 > **Build:** 0689

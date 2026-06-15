@@ -348,6 +348,7 @@ export const api = {
   restartServer: () => request("/update/restart", { method: "POST" }),
   diagnostics:        () => request("/diagnostics",          { _timeout: 30_000 }),
   diagnosticsQuick:   () => request("/diagnostics/quick",    { _timeout: 10_000 }),
+  selfregisterMntProbe: () => request("/selfregister/mnt-probe", { _timeout: 20_000 }),
   featureCheckPhase1: () => request("/feature-check/phase1", { _timeout: 10_000 }),
   featureCheckPhase2: () => request("/feature-check/phase2", { _timeout: 30_000 }),
   sysinfo:            () => request("/sysinfo",              { _timeout:  5_000 }),
