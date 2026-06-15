@@ -69,11 +69,12 @@ export function initDetail(container, state, api, cb) {
       // Only fetch the endpoint detail — CA values and DACLs are already loaded
       // in state.caValues by the browse table's initial load() call and do not
       // need to be re-fetched on every detail open (saves 5-30 s of ISE calls).
-      const { data: d, totalMs, fromCache } = await api.getEndpoint(id);
+      const { data: d, totalMs, fromCache, cacheAge } = await api.getEndpoint(id);
 
       // Show timing badge so operator can see portal vs ISE latency.
+      const _ageStr = fromCache && cacheAge >= 0 ? ` (${Math.round(cacheAge)}s)` : "";
       const _srcLabel = fromCache
-        ? `⚡ ${t("detail.timing_cache")} ${totalMs}ms`
+        ? `⚡ ${t("detail.timing_cache")}${_ageStr} ${totalMs}ms`
         : `⏱ ISE ${totalMs}ms`;
       detailMsg.innerHTML = `<span class="detail-timing-badge">${_srcLabel}</span>`;
 

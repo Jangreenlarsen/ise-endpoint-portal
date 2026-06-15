@@ -4,6 +4,17 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.14.0689] — 2026-06-15 — Hurtigere Endpoint Details + korrekt timing-badge
+
+> **Build:** 0689
+
+### Bugfix: Endpoint Details var langsom og timing-badge var forkert
+Endpoint Details åbner nu markant hurtigere: backend bruger nu cache (SWR) til at returnere detail-data når cachen er varm, i stedet for altid at hente fra ISE. Cachen invalideres automatisk ved hvert Gem, så du ser altid opdaterede data efter en ændring.
+
+Timing-badge-logikken var fejlagtig: den viste "Cache" selvom ISE faktisk blev kaldt (fordi `X-Cache-Age-Seconds` var ~0 lige efter en ISE-fetch). Backend sender nu en præcis `X-From-Cache: true/false` header, og badge viser desuden cache-alder i sekunder: f.eks. `⚡ Cache (42s) 3ms`.
+
+---
+
 ## [6.13.0685] — 2026-06-14 — Aktiv/Inaktiv i form · System adm dropdown · Hurtigere filter
 
 > **Build:** 0685

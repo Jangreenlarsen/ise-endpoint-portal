@@ -33,7 +33,8 @@ async function requestTimed(path, options = {}) {
   }
   const data = res.status === 204 ? null : await res.json();
   const cacheAge = parseFloat(res.headers.get("X-Cache-Age-Seconds") ?? "-1");
-  const fromCache = cacheAge >= 0 && cacheAge < 5;
+  const fromCacheHdr = res.headers.get("X-From-Cache");
+  const fromCache = fromCacheHdr !== null ? fromCacheHdr === "true" : (cacheAge >= 0 && cacheAge < 5);
   return { data, totalMs, fromCache, cacheAge };
 }
 

@@ -223,25 +223,28 @@ async def get_endpoint(
     service: EndpointService = Depends(get_endpoint_service),
 ) -> EndpointDetail:
     cache = get_cache()
-    # Edit-modal skal altid vise aktuelle ISE-data. Concurrent requests
-    # (pre-warm hot-queue, to browsere) koalescerer til ét ISE-kald via
-    # _inflight_detail i cache i stedet for at ramme ISE selvstændigt.
+    # Tjek FØR service-kald: havde vi et cache-entry? SWR serverer herfra.
+    # Cachen invalideres ved ethvert save/update, så stale-risiko er minimal.
+    age_before = cache.detail_age(endpoint_id) if cache.enabled() else None
+    was_cached = age_before is not None
     try:
         detail = await service.get_endpoint(
             endpoint_id,
             effective_roles=_scope_for(user),
             is_psk_editor=_is_psk_editor_for(user),
-            force_fresh=True,
+            force_fresh=False,
         )
     except IseApiError as exc:
         raise _ise_http_error(exc) from exc
     if cache.enabled():
         age = cache.detail_age(endpoint_id)
         response.headers["X-Cache-Enabled"] = "true"
+        response.headers["X-From-Cache"] = "true" if was_cached else "false"
         if age is not None:
             response.headers["X-Cache-Age-Seconds"] = f"{age:.2f}"
     else:
         response.headers["X-Cache-Enabled"] = "false"
+        response.headers["X-From-Cache"] = "false"
     return detail
 
 

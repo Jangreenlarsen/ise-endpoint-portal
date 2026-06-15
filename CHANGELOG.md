@@ -3,6 +3,19 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.14.0689] — 2026-06-15 — fix: korrekt cache/ISE badge i Endpoint Details + SWR for details
+
+**Fix: Timing-badge viste "Cache" selvom ISE blev kaldt**
+- `force_fresh=True` → `force_fresh=False` i backend `GET /endpoints/{id}` — detaljer serveres nu fra cache (SWR) når cache er varm; invalideres stadig ved save
+- Backend tilføjer `X-From-Cache: true/false` header baseret på om der var et cache-entry FØR service-kaldet (nøjagtig kilde-indikator)
+- Frontend `requestTimed()` læser `X-From-Cache`-headeren i stedet for den fejlagtige `cacheAge < 5`-heuristik
+- Timing-badge viser nu cache-alder når data kommer fra cache: `⚡ Cache (42s) 3ms`
+
+**Berørte filer:**
+- `backend/app/api/endpoints.py` — `force_fresh=False`, ny `X-From-Cache` header + `age_before` check
+- `frontend/js/api.js` — `fromCache` bruger `X-From-Cache`-header
+- `frontend/js/views/browse-detail.js` — badge inkluderer cache-alder i sekunder
+
 ## [6.13.0685] — 2026-06-14 — fix+feat: Aktiv/Inaktiv i form + System adm dropdown + cache-filter
 
 **Fix: Aktiv/Inaktiv-felt manglede i Endpoint Details form**
