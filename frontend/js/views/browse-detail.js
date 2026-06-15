@@ -66,22 +66,16 @@ export function initDetail(container, state, api, cb) {
     detailMsg.innerHTML   = `<div class="alert info">${t("alert.loading")}</div>`;
     detailOverlay.classList.remove("hidden");
     try {
-      // Fire all three requests in parallel — endpoint detail, CA list, DACL list.
-      // listCustomAttributes + listDacls are served from backend cache and complete
-      // fast; running them alongside getEndpoint saves ~1-2 s on cold starts.
-      const [d, caData, freshDacls] = await Promise.all([
-        api.getEndpoint(id),
-        api.listCustomAttributes().catch(() => null),
-        api.listDacls().catch(() => null),
-      ]);
-      if (caData && Array.isArray(caData.attributes)) {
-        for (const a of caData.attributes) {
-          if (a.name in state.caValues) state.caValues[a.name] = a.values;
-        }
-      }
-      if (freshDacls && Array.isArray(freshDacls)) {
-        state.caValues.AuthzACL = freshDacls.map((d) => d.name).filter(Boolean).sort();
-      }
+      // Only fetch the endpoint detail — CA values and DACLs are already loaded
+      // in state.caValues by the browse table's initial load() call and do not
+      // need to be re-fetched on every detail open (saves 5-30 s of ISE calls).
+      const { data: d, totalMs, fromCache } = await api.getEndpoint(id);
+
+      // Show timing badge so operator can see portal vs ISE latency.
+      const _srcLabel = fromCache
+        ? `⚡ ${t("detail.timing_cache")} ${totalMs}ms`
+        : `⏱ ISE ${totalMs}ms`;
+      detailMsg.innerHTML = `<span class="detail-timing-badge">${_srcLabel}</span>`;
 
       state.detailOriginalGroupId = d.group_id || "";
       container.querySelector("#d-mac").textContent    = d.mac || d.name || "";
@@ -209,8 +203,6 @@ export function initDetail(container, state, api, cb) {
         if (setAktivBtn)   setAktivBtn.style.display   = auth.isEditor() && !isDecomm && !isAktiv ? "" : "none";
         if (setInaktivBtn) setInaktivBtn.style.display = auth.isEditor() && !isDecomm && isAktiv  ? "" : "none";
       }
-
-      detailMsg.innerHTML = "";
 
       // Populate template apply dropdown
       const tplSelect = container.querySelector("#d-tpl-select");
