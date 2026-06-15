@@ -3,6 +3,11 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.14.0691] — 2026-06-15 — fix: MnT-probe accepterer HTTP 500 (known ISE 3.4 bug)
+
+- `probe_mnt()` og `_check_mnt_connectivity()`: HTTP 500 fra `Session/IPAddress` er en known ISE 3.4 bug — accepteres nu som OK med note "(ISE 3.4 bug — ActiveList fallback bruges automatisk)"
+- Berørte filer: `backend/app/api/selfregister.py`, `backend/app/services/diagnostics_service.py`
+
 ## [6.14.0690] — 2026-06-15 — feat: MnT node status for guest-registrering
 
 **Feat: MnT-node latens-status**

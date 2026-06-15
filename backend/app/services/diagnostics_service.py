@@ -352,13 +352,16 @@ async def _check_mnt_connectivity() -> CheckResult:
             resp = await client.get(path)
         ms = round((time.perf_counter() - start) * 1000)
 
-        if resp.status_code in (200, 404):
+        # HTTP 500 på Session/IPAddress er en known ISE 3.4 bug —
+        # portalen bruger ActiveList-fallback automatisk.
+        if resp.status_code in (200, 404, 500):
+            ise_bug = " (ISE 3.4 bug — ActiveList fallback)" if resp.status_code == 500 else ""
             if ms > 5000:
-                level, note = "warning", f"Svarer men langsomt ({ms} ms) — kan forsinke guest-registrering"
+                level, note = "warning", f"Svarer men langsomt ({ms} ms) — kan forsinke guest-registrering{ise_bug}"
             elif ms > 2000:
-                level, note = "warning", f"Svarer OK men noget langsomt ({ms} ms)"
+                level, note = "warning", f"Svarer OK men noget langsomt ({ms} ms){ise_bug}"
             else:
-                level, note = "ok", f"OK — {ms} ms"
+                level, note = "ok", f"OK — {ms} ms{ise_bug}"
             return CheckResult("mnt_connectivity", "MnT forbindelse (guest MAC-opslag)", level, note,
                                {"latency_ms": ms, "http_status": resp.status_code, "probe_ip": probe_ip})
 

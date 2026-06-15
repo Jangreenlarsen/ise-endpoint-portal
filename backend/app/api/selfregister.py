@@ -125,15 +125,21 @@ async def probe_mnt() -> MntProbeResponse:
         ) as client:
             resp = await client.get(path)
         ms = round((time.perf_counter() - start) * 1000)
-        ok = resp.status_code in (200, 404)
+        # HTTP 500 på Session/IPAddress er en known ISE 3.4 bug —
+        # portalen bruger ActiveList-fallback automatisk, så MnT ER tilgængeligt.
+        ok = resp.status_code in (200, 404, 500)
+        if resp.status_code == 500:
+            ise_bug = " (ISE 3.4 bug på IPAddress — ActiveList fallback bruges)"
+        else:
+            ise_bug = ""
         if not ok:
             note = f"Uventet HTTP {resp.status_code}"
         elif ms > 5000:
-            note = f"Svarer men meget langsomt ({ms} ms) — guest-registrering kan time out"
+            note = f"Svarer men meget langsomt ({ms} ms) — guest-registrering kan time out{ise_bug}"
         elif ms > 2000:
-            note = f"Noget langsomt ({ms} ms) — overvej ISE MnT load"
+            note = f"Noget langsomt ({ms} ms) — overvej ISE MnT load{ise_bug}"
         else:
-            note = f"OK ({ms} ms)"
+            note = f"OK ({ms} ms){ise_bug}"
         logger.info("mnt-probe: status=%d latency=%d ms", resp.status_code, ms)
         return MntProbeResponse(ok=ok, latency_ms=ms, http_status=resp.status_code, note=note)
     except httpx.TimeoutException:
