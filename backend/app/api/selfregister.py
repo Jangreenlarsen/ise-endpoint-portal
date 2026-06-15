@@ -273,11 +273,13 @@ async def selfregister(req: SelfRegisterRequest) -> SelfRegisterResponse:
         existing = None
 
     if existing:
-        # Opdater eksisterende endpoint
+        # Opdater eksisterende endpoint — sæt også group_id så MAC flyttes til
+        # den konfigurerede guest-gruppe selv ved gen-registrering.
         endpoint_id = existing.get("id", "")
         try:
             update = EndpointUpdate(
                 description=f"Selvregistreret af {registrant}",
+                group_id=s.selfregister_group_id or None,
                 custom_attributes=ca,
             )
             await service.update_endpoint(endpoint_id, update)

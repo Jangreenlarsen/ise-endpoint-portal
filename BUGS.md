@@ -4,6 +4,13 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 6.14.0693] 2026-06-15 — Guest selvregistrering satte ikke endpoint-gruppen ved gen-registrering
+
+- **Symptom:** En guest der registrerede sig (første gang) blev placeret korrekt i den konfigurerede endpoint identity group. Men hvis samme MAC registrerede sig igen (gen-registrering), forblev gruppen uændret — gæsten kunne ende i en anden gruppe end den der er valgt i indstillingerne.
+- **Root cause:** I upsert-logikken i `selfregister.py`: ved `update` (eksisterende endpoint) manglede `group_id` i `EndpointUpdate`. `None` → `endpoints.update()` spring `groupId` i ISE over (korrekt adfærd for admin-edit, forkert for selfregister).
+- **Fix:** `group_id=s.selfregister_group_id or None` tilføjet til `EndpointUpdate` i update-stien i `selfregister.py`.
+- **Berørte filer:** `backend/app/api/selfregister.py`
+
 ## [FIXED 6.13.0685] 2026-06-14 — Aktiv/Inaktiv-knapper mangler i Endpoint Details
 
 - **Symptom:** I Endpoint Details modal var der ingen tydelig/synlig måde at sætte aktiv/inaktiv-status. Knapperne "Sæt Aktiv"/"Sæt Inaktiv" var gemt i bunden af modalens footer og kun vist konditionelt — svære at finde.

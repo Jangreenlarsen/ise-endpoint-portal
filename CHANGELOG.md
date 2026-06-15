@@ -3,6 +3,11 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.14.0693] — 2026-06-15 — fix: guest group sættes ikke ved gen-registrering
+
+- `selfregister.py` update-sti: `group_id=s.selfregister_group_id or None` tilføjet til `EndpointUpdate` — eksisterende endpoints flyttes nu til den konfigurerede guest-gruppe ved gen-registrering (var tidligere None → ISE rørte ikke groupId)
+- Berørte filer: `backend/app/api/selfregister.py`
+
 ## [6.14.0692] — 2026-06-15 — feat: CoA ved manuel GuestAccessExpire=true i Browse
 
 - `PUT /endpoints/{id}`: hvis `custom_attributes.GuestAccessExpire = "true"` og `selfregister_expiry_coa_enabled = true` i settings, sendes der automatisk en CoA (reauth eller disconnect afhængig af `selfregister_expiry_coa_type`) til endpointets MAC
