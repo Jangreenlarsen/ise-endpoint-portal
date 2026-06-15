@@ -4,6 +4,13 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 6.14.0695] 2026-06-15 — VLAN (og andre CA-felter) opdateres ikke i tabellen efter save
+
+- **Symptom:** Efter at have gemt et endpoint i Endpoint Details syntes VLAN-værdien (og andre custom attributes) at forblive på den gamle værdi i Browse-tabellen.
+- **Root cause:** `api.getEndpoint()` returnerer nu `{ data, totalMs, fromCache, cacheAge }` (ændret til `requestTimed` i v6.14.0689). Men `refreshRows()` i `browse-table.js` behandlede returværdien direkte som et `EndpointDetail`-objekt. `r.id` var `undefined` → rækker i `state.allRows` blev aldrig opdateret → tabel viste gamle værdier.
+- **Fix:** `api.getEndpoint(id).then((r) => r?.data ?? r)` — udpakker `.data` fra wrapper-objektet, med fallback for backward-compat.
+- **Berørte filer:** `frontend/js/views/browse-table.js`
+
 ## [FIXED 6.14.0694] 2026-06-15 — Send CoA on expiry gemmes ikke i Settings
 
 - **Symptom:** "Send CoA on expiry" og CoA-type-valget i Guest Registration-indstillingerne blev ikke gemt — checkbox forblev altid `false` og indstillingen virkede ikke ved guest-udløb.

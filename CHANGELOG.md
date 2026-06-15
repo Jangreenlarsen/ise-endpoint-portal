@@ -3,6 +3,11 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.14.0695] — 2026-06-15 — fix: VLAN/CA-værdier opdateres ikke i tabel efter Endpoint Details-save
+
+- `browse-table.js refreshRows()`: `api.getEndpoint()` returnerer `{data, totalMs, ...}` (requestTimed-wrapper) — udpak `.data` så `r.id` er korrekt og tabelrækker faktisk opdateres
+- Berørte filer: `frontend/js/views/browse-table.js`
+
 ## [6.14.0694] — 2026-06-15 — fix: Send CoA on expiry gemmes ikke i Settings
 
 - `settings_service.get_backend_settings()`: tilføjet `selfregister_expiry_coa_enabled` og `selfregister_expiry_coa_type` til `BackendSettingsResponse`

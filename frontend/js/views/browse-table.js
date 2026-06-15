@@ -340,7 +340,7 @@ export function initTable(container, state, api, cb) {
 
   async function refreshRows(ids) {
     if (!ids || !ids.length) return;
-    const fresh = await Promise.all(ids.map((id) => api.getEndpoint(id).catch(() => null)));
+    const fresh = await Promise.all(ids.map((id) => api.getEndpoint(id).then((r) => r?.data ?? r).catch(() => null)));
     const byId  = new Map();
     for (const r of fresh) if (r && r.id) byId.set(r.id, r);
     if (!byId.size) return;
