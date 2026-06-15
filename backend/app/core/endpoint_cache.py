@@ -172,7 +172,7 @@ class EndpointCache:
 
     def get_all_details(self) -> list[Any]:
         """Return a snapshot of all cached EndpointDetail objects (unmasked)."""
-        return list(self._details.values())
+        return [e.value for e in self._details.values()]
 
     def get_oldest_id(self) -> str | None:
         """Returnér ID på den cachede entry med den ældste fetched_at-timestamp.
