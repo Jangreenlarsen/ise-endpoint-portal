@@ -76,6 +76,8 @@ def get_backend_settings() -> BackendSettingsResponse:
         selfregister_expiry_days=s.selfregister_expiry_days,
         selfregister_expiry_date=s.selfregister_expiry_date,
         selfregister_expiry_time=s.selfregister_expiry_time,
+        selfregister_expiry_coa_enabled=s.selfregister_expiry_coa_enabled,
+        selfregister_expiry_coa_type=s.selfregister_expiry_coa_type,
         guest_expiry_check_interval_seconds=s.guest_expiry_check_interval_seconds,
     )
 
@@ -115,11 +117,13 @@ async def update_backend_settings(
             "selfregister_authz_vlan": new.selfregister_authz_vlan,
             "selfregister_authz_acl": new.selfregister_authz_acl,
             "selfregister_ipsk_enabled":     new.selfregister_ipsk_enabled,
-            "selfregister_expiry_enabled":    new.selfregister_expiry_enabled,
-            "selfregister_expiry_mode":       new.selfregister_expiry_mode,
-            "selfregister_expiry_days":       new.selfregister_expiry_days,
+            "selfregister_expiry_enabled":              new.selfregister_expiry_enabled,
+            "selfregister_expiry_mode":                 new.selfregister_expiry_mode,
+            "selfregister_expiry_days":                 new.selfregister_expiry_days,
             "selfregister_expiry_date":                 new.selfregister_expiry_date,
             "selfregister_expiry_time":                 new.selfregister_expiry_time,
+            "selfregister_expiry_coa_enabled":          new.selfregister_expiry_coa_enabled,
+            "selfregister_expiry_coa_type":             new.selfregister_expiry_coa_type,
             "guest_expiry_check_interval_seconds":      new.guest_expiry_check_interval_seconds,
         }
     )

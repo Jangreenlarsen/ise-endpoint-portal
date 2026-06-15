@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.14.0694] — 2026-06-15 — fix: Send CoA on expiry gemmes ikke i Settings
+
+- `settings_service.get_backend_settings()`: tilføjet `selfregister_expiry_coa_enabled` og `selfregister_expiry_coa_type` til `BackendSettingsResponse`
+- `settings_service.update_backend_settings()`: tilføjet begge felter til `overrides.update()`-dict så de faktisk persisteres
+- Berørte filer: `backend/app/services/settings_service.py`
+
 ## [6.14.0693] — 2026-06-15 — fix: guest group sættes ikke ved gen-registrering
 
 - `selfregister.py` update-sti: `group_id=s.selfregister_group_id or None` tilføjet til `EndpointUpdate` — eksisterende endpoints flyttes nu til den konfigurerede guest-gruppe ved gen-registrering (var tidligere None → ISE rørte ikke groupId)

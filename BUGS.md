@@ -4,6 +4,13 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 6.14.0694] 2026-06-15 — Send CoA on expiry gemmes ikke i Settings
+
+- **Symptom:** "Send CoA on expiry" og CoA-type-valget i Guest Registration-indstillingerne blev ikke gemt — checkbox forblev altid `false` og indstillingen virkede ikke ved guest-udløb.
+- **Root cause:** `settings_service.py` — `get_backend_settings()` inkluderede ikke `selfregister_expiry_coa_enabled`/`selfregister_expiry_coa_type` i `BackendSettingsResponse`. `update_backend_settings()` inkluderede dem heller ikke i `overrides.update()`-dict'en. Felterne eksisterede i schema og config men var aldrig koblet til læse/skrive-flowet.
+- **Fix:** Begge felter tilføjet til `get_backend_settings()` og `update_backend_settings()`.
+- **Berørte filer:** `backend/app/services/settings_service.py`
+
 ## [FIXED 6.14.0693] 2026-06-15 — Guest selvregistrering satte ikke endpoint-gruppen ved gen-registrering
 
 - **Symptom:** En guest der registrerede sig (første gang) blev placeret korrekt i den konfigurerede endpoint identity group. Men hvis samme MAC registrerede sig igen (gen-registrering), forblev gruppen uændret — gæsten kunne ende i en anden gruppe end den der er valgt i indstillingerne.
