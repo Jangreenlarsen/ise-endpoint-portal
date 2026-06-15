@@ -4,6 +4,16 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.14.0692] — 2026-06-15 — CoA ved manuel GuestAccessExpire=true
+
+> **Build:** 0692
+
+### Feature: Automatisk CoA når admin sætter GuestAccessExpire til true
+
+Når en admin redigerer et endpoint i Browse og sætter `GuestAccessExpire = true`, sendes der nu automatisk en CoA (Reauth eller Disconnect) til enhedens MAC — forudsat at "CoA ved guest-udløb" er slået til i Indstillinger → Guest Registration. CoA-typen følger den eksisterende `selfregister_expiry_coa_type`-indstilling. CoA-fejl logges men blokerer ikke selve gem-operationen.
+
+---
+
 ## [6.14.0690] — 2026-06-15 — MnT node status for guest-registrering
 
 > **Build:** 0690

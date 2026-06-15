@@ -28,6 +28,7 @@ from app.schemas.endpoint import (
     EndpointUpdate,
     PaginatedEndpointDetails,
 )
+from app.core import config as _config
 from app.schemas.user import User
 from app.services.endpoint_service import EndpointService
 
@@ -282,6 +283,11 @@ async def update_endpoint(
     user: User = Depends(require_edit_endpoint),
     service: EndpointService = Depends(get_endpoint_service),
 ) -> dict[str, str]:
+    # Tjek om GuestAccessExpire sættes til true FØR selve opdateringen,
+    # så vi kan sende CoA bagefter hvis det er slået til i settings.
+    ca = req.custom_attributes
+    guest_expire_set = ca is not None and (ca.GuestAccessExpire or "").lower() == "true"
+
     try:
         await service.update_endpoint(
             endpoint_id, req, auto_tag_username=_autotag_for(user)
@@ -290,6 +296,34 @@ async def update_endpoint(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except IseApiError as exc:
         raise _ise_http_error(exc) from exc
+
+    if guest_expire_set and _config.settings.selfregister_expiry_coa_enabled:
+        import logging as _log
+        _logger = _log.getLogger(__name__)
+        try:
+            detail = await service.get_endpoint(
+                endpoint_id,
+                effective_roles=_scope_for(user),
+                is_psk_editor=_is_psk_editor_for(user),
+            )
+            mac = detail.mac or detail.name or ""
+            if mac:
+                from app.ise import coa as _coa
+                coa_type = _config.settings.selfregister_expiry_coa_type
+                if coa_type == "disconnect":
+                    ok, msg = await _coa.disconnect(mac)
+                else:
+                    ok, msg = await _coa.reauth(mac)
+                _logger.info(
+                    "update_endpoint: GuestAccessExpire=true → CoA %s mac=%s → %s: %s",
+                    coa_type, mac, "ok" if ok else "fejl", msg,
+                )
+        except Exception as exc:  # noqa: BLE001
+            import logging as _log2
+            _log2.getLogger(__name__).warning(
+                "update_endpoint: CoA fejlede for %s: %s", endpoint_id, exc
+            )
+
     return {"status": "updated"}
 
 

@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.14.0692] — 2026-06-15 — feat: CoA ved manuel GuestAccessExpire=true i Browse
+
+- `PUT /endpoints/{id}`: hvis `custom_attributes.GuestAccessExpire = "true"` og `selfregister_expiry_coa_enabled = true` i settings, sendes der automatisk en CoA (reauth eller disconnect afhængig af `selfregister_expiry_coa_type`) til endpointets MAC
+- MAC hentes via `service.get_endpoint()` efter opdateringen (cache er varm)
+- CoA-fejl logges som warning men blokerer ikke update-svaret
+- Berørte filer: `backend/app/api/endpoints.py`
+
 ## [6.14.0691] — 2026-06-15 — fix: MnT-probe accepterer HTTP 500 (known ISE 3.4 bug)
 
 - `probe_mnt()` og `_check_mnt_connectivity()`: HTTP 500 fra `Session/IPAddress` er en known ISE 3.4 bug — accepteres nu som OK med note "(ISE 3.4 bug — ActiveList fallback bruges automatisk)"
