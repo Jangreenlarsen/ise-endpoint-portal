@@ -788,7 +788,7 @@ export function initTable(container, state, api, cb) {
     localRefreshBtn.disabled    = true;
     localRefreshBtn.textContent = t("browse.local_refreshing");
     try {
-      await load(false);
+      await load(false, { silent: true });
     } finally {
       localRefreshBtn.disabled    = false;
       localRefreshBtn.textContent = `↻ ${t("browse.btn_local_refresh")}`;

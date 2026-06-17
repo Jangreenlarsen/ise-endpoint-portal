@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.14.0698] — 2026-06-17 — fix: Genindlæs rydder ikke tabel + forkert ISE-tekst
+
+- `browse-table.js localRefreshBtn`: `load(false)` → `load(false, { silent: true })` — eksisterende rækker forbliver synlige mens ny data hentes (data vises ikke "øjeblikkeligt" fordi tabellen blev ryddet og "Henter fra ISE…" vist selv når cache svarer)
+- `i18n.js browse.fetching_ise`: "Henter detaljer fra ISE..." → "Henter endpoints…" (DA) / "Loading endpoints…" (EN) — teksten vises ved initial load som kan komme fra cache, ikke ISE
+- Berørte filer: `frontend/js/views/browse-table.js`, `frontend/js/i18n.js`
+
 ## [6.14.0697] — 2026-06-17 — fix: Browse tom efter genstart — disk-entries blokerede list-view
 
 - `endpoint_cache.get_detail()`: disk-loaded entries gik igennem `_stale_servable()` som returnerede False for entries ældre end `ttl*30` (2,5t med default) → synkron ISE-fetch for alle entries i list-view → 15-30s ventetid i Browse
