@@ -4,6 +4,13 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 6.14.0699] 2026-06-17 — Browse reload langsom + "operation timed out" fejl
+
+- **Symptom:** Efter at cachen er populeret er reload hurtigt. Så snart ét endpoint gemmes (eller entries bliver stale efter TTL), er næste reload langsom igen. Hyppige "The operation timed out" fejl i Browse/Edit.
+- **Root cause:** `_list_all_from_cache()` og `_list_from_roles_index()` kaldte `asyncio.gather()` med `get_endpoint()` for hvert cachet endpoint (N=500+). For stale entries (age > TTL = 5 min) spawner `get_detail()` én ISE-baggrundstask per entry via `_get_or_create_inflight`. Resultatet: op til N simultane ISE-requests fra list-view alene, på toppen af pre-warm-drip. ISE overbelastes → timeout-fejl. Ét save → ét invalideret entry → resten af entries er stadig stale → næste reload spawner N-1 ISE-tasks igen.
+- **Fix:** `_list_all_from_cache` og `_list_from_roles_index` bruger nu `cache.snapshot_all_details()` / `cache.snapshot_details_for_roles()` — ren synkron O(N) dict-read, ingen asyncio.gather, ingen ISE-kald, ingen baggrundstasks. Pre-warm drip-loop håndterer gradvis refresh. Ny helper `_build_detail_page()` anvender PSK-masking og stale-flag.
+- **Berørte filer:** `backend/app/core/endpoint_cache.py`, `backend/app/services/endpoint_service.py`
+
 ## [FIXED 6.14.0697] 2026-06-17 — Browse viser tom liste efter portal-genstart (disk cache ikke vist øjeblikkeligt)
 
 - **Symptom:** Browse/Edit viser ingen endpoints i op til 15-30 sekunder efter portal-genstart (eller lang tids fravær). Derefter dukker alle endpoints op på én gang.

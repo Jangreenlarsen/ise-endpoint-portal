@@ -386,44 +386,19 @@ class EndpointService:
         is_psk_editor: bool,
         search: str | None = None,
     ) -> PaginatedEndpointDetails:
-        """Hurtig sti for non-admin Browse: brug roles-indeks i stedet for at
-        hente alle ISE-endpoints og post-filtrere.
+        """Non-admin Browse: synkron snapshot fra cache, filtreret på roller.
 
-        Alle IDs hentes fra cache-indekset (O(1) per rolle).  Details fetches
-        fra cache (typisk sub-ms hit).  Søg filtreres i Python på MAC + beskrivelse.
-        Resultat sorteres på MAC for konsistent visning.
+        Bruger cache.snapshot_details_for_roles() — ingen asyncio.gather,
+        ingen ISE-kald, ingen baggrundstasks. Pre-warm håndterer refresh.
         """
         cache = get_cache()
-        all_ids = list(cache.get_ids_for_roles(effective_roles))
-
-        sem = asyncio.Semaphore(8)
-
-        async def fetch_one(ep_id: str) -> EndpointDetail | None:
-            async with sem:
-                try:
-                    return await self.get_endpoint(ep_id, is_psk_editor=is_psk_editor)
-                except IseApiError:
-                    return None
-
-        results = await asyncio.gather(*(fetch_one(i) for i in all_ids))
-        items: list[EndpointDetail] = [r for r in results if r is not None]
-
-        if search:
-            low = search.strip().lower()
-            items = [
-                d for d in items
-                if low in d.mac.lower() or low in (d.description or "").lower()
-            ]
-
-        items.sort(key=lambda d: d.mac or d.name)
-        total = len(items)
-        start = (page - 1) * size
-        page_items = items[start:start + size]
+        raw = cache.snapshot_details_for_roles(effective_roles)
+        result = self._build_detail_page(raw, page, size, is_psk_editor, search)
         logger.info(
-            "roles-index list: %d total visible, page=%d → %d items (effective_roles=%s)",
-            total, page, len(page_items), effective_roles,
+            "roles-index list (snapshot): %d total visible, page=%d → %d items (effective_roles=%s)",
+            result.total, page, len(result.items), effective_roles,
         )
-        return PaginatedEndpointDetails(items=page_items, total=total, page=page, size=size)
+        return result
 
     async def _list_all_from_cache(
         self,
@@ -432,42 +407,55 @@ class EndpointService:
         is_psk_editor: bool,
         search: str | None = None,
     ) -> PaginatedEndpointDetails:
-        """Admin-sti: server alle endpoints fra varm cache uden ISE-kald.
+        """Admin Browse: synkron snapshot af alle cachede endpoints — ingen ISE-kald.
 
-        Bruges når cache er varm og bruger er admin (ingen role-restriction).
-        Undgår ISE ERS size-begrænsning på 100 per side.
+        Bruger cache.snapshot_all_details() i stedet for asyncio.gather() +
+        get_endpoint() per entry. Den gamle impl. spawner N baggrundstasks for
+        stale entries (N up to 1000+) som rammer ISE simultant → timeout-fejl
+        og langsom reload. Synkron læsning er O(N) dict-lookup, typisk < 5ms.
+        Pre-warm drip-loop håndterer gradvis refresh af stale entries.
         """
         cache = get_cache()
-        all_ids = list(cache._details.keys())
+        raw = cache.snapshot_all_details()
+        result = self._build_detail_page(raw, page, size, is_psk_editor, search)
+        logger.info(
+            "cache-all list (snapshot, admin): %d total, page=%d → %d items",
+            result.total, page, len(result.items),
+        )
+        return result
 
-        sem = asyncio.Semaphore(8)
+    def _build_detail_page(
+        self,
+        raw: list[tuple[str, Any, bool]],
+        page: int,
+        size: int,
+        is_psk_editor: bool,
+        search: str | None,
+    ) -> PaginatedEndpointDetails:
+        """Byg en PaginatedEndpointDetails fra (ep_id, value, is_stale) tuples.
 
-        async def fetch_one(ep_id: str) -> EndpointDetail | None:
-            async with sem:
-                try:
-                    return await self.get_endpoint(ep_id, is_psk_editor=is_psk_editor)
-                except IseApiError:
-                    return None
-
-        results = await asyncio.gather(*(fetch_one(i) for i in all_ids))
-        items: list[EndpointDetail] = [r for r in results if r is not None]
-
+        Anvender PSK-masking og cache_stale-flag. Ingen async/ISE-kald.
+        """
+        items: list[EndpointDetail] = []
+        for _ep_id, val, is_stale in raw:
+            if is_stale:
+                if hasattr(val, "model_copy"):
+                    val = val.model_copy(update={"cache_stale": True})
+            elif getattr(val, "cache_stale", False):
+                val = val.model_copy(update={"cache_stale": False})
+            if not is_psk_editor:
+                val = _mask_psk(val)
+            items.append(val)
         if search:
             low = search.strip().lower()
             items = [
                 d for d in items
-                if low in d.mac.lower() or low in (d.description or "").lower()
+                if low in (d.mac or "").lower() or low in (d.description or "").lower()
             ]
-
         items.sort(key=lambda d: d.mac or d.name)
         total = len(items)
         start = (page - 1) * size
-        page_items = items[start:start + size]
-        logger.info(
-            "cache-all list (admin): %d total, page=%d → %d items",
-            total, page, len(page_items),
-        )
-        return PaginatedEndpointDetails(items=page_items, total=total, page=page, size=size)
+        return PaginatedEndpointDetails(items=items[start : start + size], total=total, page=page, size=size)
 
     async def list_all_endpoint_details(
         self,

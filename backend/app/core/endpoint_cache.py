@@ -174,6 +174,33 @@ class EndpointCache:
         """Return a snapshot of all cached EndpointDetail objects (unmasked)."""
         return [e.value for e in self._details.values()]
 
+    def snapshot_all_details(self) -> list[tuple[str, Any, bool]]:
+        """Synchronous snapshot for list views. Returns (ep_id, value, is_stale) tuples.
+
+        Does NOT trigger background ISE refreshes — list views must not spawn N concurrent
+        fetch-tasks (causes ISE timeout/hammering). The pre-warm drip-loop handles refresh.
+        """
+        now = self._now()
+        ttl = self._ttl()
+        return [
+            (ep_id, entry.value, entry.from_disk or (now - entry.fetched_at) > ttl)
+            for ep_id, entry in list(self._details.items())
+            if entry.value is not None
+        ]
+
+    def snapshot_details_for_roles(self, effective_roles: list[str]) -> list[tuple[str, Any, bool]]:
+        """Like snapshot_all_details but filtered to IDs visible for the given roles."""
+        visible_ids = self.get_ids_for_roles(effective_roles)
+        now = self._now()
+        ttl = self._ttl()
+        result: list[tuple[str, Any, bool]] = []
+        for ep_id in visible_ids:
+            entry = self._details.get(ep_id)
+            if entry is None or entry.value is None:
+                continue
+            result.append((ep_id, entry.value, entry.from_disk or (now - entry.fetched_at) > ttl))
+        return result
+
     def get_oldest_id(self) -> str | None:
         """Returnér ID på den cachede entry med den ældste fetched_at-timestamp.
 

@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.14.0699] — 2026-06-17 — fix: Browse reload langsom + ISE timeout-fejl fra list-view
+
+- `_list_all_from_cache` + `_list_from_roles_index`: fjernet asyncio.gather()+Semaphore(8) der kaldte get_endpoint() for N entries. For stale entries spawner get_detail()._get_or_create_inflight() én ISE-baggrundstask per entry → N simultane ISE-requests fra list-view → ISE overbelastning → "operation timed out"
+- Fix: ny `cache.snapshot_all_details()` + `cache.snapshot_details_for_roles()` — synkron O(N) dict-read, ingen ISE-kald, ingen baggrundstasks fra list-view. Ny `_build_detail_page()` helper anvender PSK-masking + stale-flag
+- Pre-warm drip-loop er den eneste der spawner ISE-refresh-tasks (kontrolleret, én ad gangen)
+- Berørte filer: `backend/app/core/endpoint_cache.py`, `backend/app/services/endpoint_service.py`
+
 ## [6.14.0698] — 2026-06-17 — fix: Genindlæs rydder ikke tabel + forkert ISE-tekst
 
 - `browse-table.js localRefreshBtn`: `load(false)` → `load(false, { silent: true })` — eksisterende rækker forbliver synlige mens ny data hentes (data vises ikke "øjeblikkeligt" fordi tabellen blev ryddet og "Henter fra ISE…" vist selv når cache svarer)
