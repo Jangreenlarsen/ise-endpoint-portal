@@ -183,12 +183,12 @@ class Settings(BaseSettings):
         ),
     )
     cache_prewarm_skip_fresh_s: float = Field(
-        default=1800.0,
+        default=900.0,
         description=(
             "Inkrementel pre-warm: spring detail-fetch over for entries der er "
-            "friskere end denne grænse (sekunder). Default 1800 = samme som "
-            "interval — kun endpoints ikke berørt siden sidst scan hentes. "
-            "0 = deaktiveret (klassisk fuld-scan adfærd)."
+            "friskere end denne grænse (sekunder). Default 900 = 3× TTL — "
+            "fuld-scan refresher som safety-net alt hvad drip-loopen har misset "
+            "i de seneste 15 min. 0 = deaktiveret (klassisk fuld-scan adfærd)."
         ),
     )
 

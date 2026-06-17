@@ -177,12 +177,13 @@ class PrewarmWorker:
         self.status.running = False
 
     async def _drip_loop(self) -> None:
-        """Kontinuerlig baggrunds-drip: refresh ældste cachede endpoint løbende.
+        """Kontinuerlig baggrunds-drip: refresh stale endpoints løbende.
 
-        Spreder opdateringer jævnt over pre-warm-intervallet i stedet for én
-        burst hvert 30. minut. Rate: prewarm_interval / antal_endpoints sekunder
-        pr. refresh (fx 1000 endpoints / 1800s = ét refresh hvert 1.8s).
-        Kun entries ældre end cache_ttl_seconds refreshes — friske springes over.
+        Sprint-mode (> 25% stale): batch_size=3 parallelle fetches per iteration,
+        drip_sleep = ttl/total/2 — design-mål: fuld cycle < TTL.
+        Normal mode: 1 fetch per iteration, spredt jævnt over intervallet.
+        Fejlende endpoints back-off'es 60s (fetched_at rykkes frem) så loopen
+        aldrig låser på samme endpoint og alle andre entries holdes friske.
         """
         from app.services.endpoint_service import EndpointService
         cache = get_cache()
@@ -198,49 +199,55 @@ class PrewarmWorker:
 
             interval = float(getattr(config.settings, "cache_prewarm_interval_s", 1800.0))
             ttl = float(getattr(config.settings, "cache_ttl_seconds", 300.0))
-            # Adaptiv drip-sleep: ved mange stale entries (fx efter server-genstart)
-            # refreshes hurtigere — mål: alle stale entries inden interval/4.
             now_ts = time.time()
             stale_count = sum(
                 1 for e in cache._details.values() if (now_ts - e.fetched_at) > ttl
             )
             if stale_count > total // 4:
-                # Sprint: mål at gennemføre én fuld runde inden næste TTL-udløb.
-                # Formel: drip_sleep = ttl / total / 2 → cycle ≈ ttl / 2 < ttl.
-                # Giver 2× buffer mod ISE-latens, så alle entries holdes friske.
+                # Sprint: 3 parallelle fetches — fuld cycle ≈ ttl/2 < ttl.
+                batch_size = min(3, stale_count)
                 drip_sleep = max(0.5, ttl / total / 2)
             else:
-                # Normal drift: jævn spredning over intervallet
+                # Normal: 1 fetch spredt jævnt over intervallet.
+                batch_size = 1
                 drip_sleep = max(0.5, interval / total)
             self.status.drip_current_sleep_s = drip_sleep
-            self.status.drip_estimated_full_cycle_s = drip_sleep * total
+            cycle_s = drip_sleep * total / batch_size
+            self.status.drip_estimated_full_cycle_s = cycle_s
             CACHE_DRIP_SLEEP_S.set(drip_sleep)
-            CACHE_DRIP_CYCLE_S.set(drip_sleep * total)
+            CACHE_DRIP_CYCLE_S.set(cycle_s)
 
-            oldest_id = cache.get_oldest_id()
-            if oldest_id:
-                age = cache.detail_age(oldest_id)
-                # Kun refresh entries der er stale (ældre end TTL) og ikke inflight
-                if age is not None and age > ttl and oldest_id not in cache._inflight_detail:
+            # Find de batch_size ældste stale entries der ikke allerede er inflight
+            stale_sorted = sorted(
+                [ep_id for ep_id, e in list(cache._details.items())
+                 if (now_ts - e.fetched_at) > ttl and ep_id not in cache._inflight_detail],
+                key=lambda k: cache._details[k].fetched_at if k in cache._details else 0.0,
+            )
+            to_fetch = stale_sorted[:batch_size]
+
+            if to_fetch:
+                service = EndpointService(get_ise_client())
+
+                async def _drip_one(ep_id: str, _ttl: float = ttl) -> None:
                     try:
-                        service = EndpointService(get_ise_client())
-                        detail = await service._fetch_endpoint_detail(oldest_id)
+                        detail = await service._fetch_endpoint_detail(ep_id)
                         detail.cache_stale = False
-                        cache.put_detail(oldest_id, detail, from_disk=False)
+                        cache.put_detail(ep_id, detail, from_disk=False)
                         self.status.drip_refreshed_total += 1
                         CACHE_DRIP_REFRESHED.inc()
-                        logger.debug("drip: refreshed %s (age=%.0fs)", oldest_id, age)
+                        logger.debug("drip: refreshed %s", ep_id)
                     except Exception as exc:  # noqa: BLE001
-                        logger.warning("drip: fetch fejlede id=%s: %s", oldest_id, exc)
-                        # Ryk fetched_at frem så get_oldest_id() vælger et andet
-                        # endpoint næste iteration. Uden dette låser drip-loopen
-                        # permanent på det fejlende endpoint og refresher aldrig andre.
-                        entry = cache._details.get(oldest_id)
+                        logger.warning("drip: fetch fejlede id=%s: %s", ep_id, exc)
+                        # Back-off: ryk fetched_at frem så loopen vælger et andet
+                        # endpoint næste iteration i stedet for at låse på dette.
+                        entry = cache._details.get(ep_id)
                         if entry is not None:
-                            entry.fetched_at = time.time() - ttl + 60
-                else:
-                    self.status.drip_skipped_total += 1
-                    CACHE_DRIP_SKIPPED.inc()
+                            entry.fetched_at = time.time() - _ttl + 60
+
+                await asyncio.gather(*[_drip_one(ep_id) for ep_id in to_fetch])
+            else:
+                self.status.drip_skipped_total += 1
+                CACHE_DRIP_SKIPPED.inc()
 
             # Opdater staleness-gauges efter hver iteration
             now = time.time()

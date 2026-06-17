@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.15.0703] — 2026-06-17 — fix: Drip batch-parallelitet + skip_fresh_s trimmet
+
+- `_drip_loop()`: sprint-mode fetcher nu **3 endpoints parallelt** (batch_size=3) pr. iteration via `asyncio.gather()`. Fuld cycle for 100 endpoints: ~(1.5s sleep + 2s fetch) × 100/3 ≈ 117s << TTL=300s — alle entries holdes komfortabelt friske uden at ligge i kanten
+- `drip_estimated_full_cycle_s` korrigeret til `drip_sleep × total / batch_size` (afspejler nu den reelle cycle-tid med parallelitet)
+- `cache_prewarm_skip_fresh_s` default: 1800s → **900s** (3× TTL). Fuld-scan fungerer nu som safety-net: refresher alt hvad drip-loopen har misset inden for 15 min, i stedet for 30 min. Reducerer max-alder på data i cache markant ved transient drip-fejl
+- Berørte filer: `backend/app/services/cache_prewarm.py`, `backend/app/core/config.py`
+
 ## [6.15.0702] — 2026-06-17 — fix: Cache drip-loop fastlåst på fejlende endpoint + sprint for langsom
 
 - `_drip_loop()` i `cache_prewarm.py`: når `_fetch_endpoint_detail()` fejler, sættes nu `entry.fetched_at = time.time() - ttl + 60` (60s back-off) så loopen bevæger sig videre til næste endpoint. Uden fix: drip-loopen spandt permanent på ét fejlende endpoint — alle andre entries forblev stale og opdateredes kun af `_full_scan()` hvert 30. min (skip_threshold=1800s)

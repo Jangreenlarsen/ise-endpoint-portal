@@ -4,6 +4,20 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.15.0703] — 2026-06-17 — fix: Cache drip 3× hurtigere + safety-net strammere
+
+> **Build:** 0703
+
+### Parameter-trim: drip-parallelitet og fuld-scan safety-net
+
+**Drip batch-parallelitet (x3):**
+Sprint-mode fetcher nu 3 endpoints parallelt per iteration i stedet for 1. For 100 endpoints giver det en fuld cache-runde på ~117s, godt inden for TTL=300s. Alle endpoints i en portal af den størrelse holdes nu friske løbende.
+
+**Fuld-scan safety-net strammet:**
+`cache_prewarm_skip_fresh_s` ændret fra 1800s (30 min) til 900s (15 min). Den periodiske fuld-scan (hvert 30. min) opsamler nu alt hvad drip-loopen har misset inden for de seneste 15 min, i stedet for 30 min. Maksimal cache-dataalder ved transient ISE-fejl er nu 15 min i stedet for 30 min.
+
+---
+
 ## [6.15.0702] — 2026-06-17 — fix: Cache data bliver gammel efter noget tid
 
 > **Build:** 0702
