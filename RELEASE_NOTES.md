@@ -4,6 +4,25 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.14.0697] — 2026-06-17 — fix: Browse viser endpoints øjeblikkeligt efter genstart
+
+> **Build:** 0697
+
+### Bugfix: Disk-cache-entries blokerede Browse-listen i 15-30 sekunder
+
+**Problem:** Efter en portal-genstart (eller lang tids fravær) viste Browse/Edit ingen endpoints i op til 15-30 sekunder, hvorefter alle dukker op på én gang.
+
+**Root cause:** Disk-cachen indlæses korrekt ved opstart — men entries ældre end `ttl × 30` (2,5 timer med standard TTL=5 min) var ikke SWR-kandidater. De faldt igennem til en **synkron ISE-fetch** i `get_detail()`. Da `_list_all_from_cache` awaiter alle N fetches med concurrency=8, betød det 500 endpoints × 300ms / 8 ≈ 18 sekunder inden Browse kunne svare.
+
+**Fix:** Disk-loaded entries har nu et dedikeret branch i `get_detail()` der:
+- Altid returnerer disk-værdien øjeblikkeligt (markeret stale, `⏱ ISE …ms` badge)
+- Starter en background-refresh (som pre-warm-workeren alligevel er ved at lave)
+- Aldrig blokerer list-view-kald — uanset hvor gammel disk-entry er
+
+**Effekt:** Browse åbner med det samme efter genstart og viser disk-cachen. Entries opdateres til live ISE-data i baggrunden inden for de næste par minutter, og badge-indikatoren (`⏱`) viser at data er stale.
+
+---
+
 ## [6.14.0696] — 2026-06-17 — fix: ISE REST API-konto låses ikke længere af portalen
 
 > **Build:** 0696

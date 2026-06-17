@@ -237,12 +237,24 @@ class EndpointCache:
         if not self.enabled():
             return await fetch_fn()
         entry = self._details.get(endpoint_id)
-        # Disk-loaded entries are always treated as misses so live ISE data
-        # can replace them. They are still *served* from memory for list views.
         if entry and self._fresh(entry) and not entry.from_disk and not force_fresh:
             self._stats["hits"] += 1
             CACHE_HITS.inc()
             return entry.value
+        if entry and entry.from_disk and not force_fresh:
+            # Disk-loaded entries are served immediately (stale) regardless of age,
+            # and a background refresh is queued. Without this, very old disk entries
+            # (> ttl*30, e.g. saved yesterday) would fall through to a blocking ISE
+            # fetch in the list view — causing Browse to take 15-30s to load after
+            # a portal restart, because _list_all_from_cache awaits all N fetches.
+            # The pre-warm worker refreshes all disk entries in the background anyway.
+            self._stats["stale_serves"] += 1
+            CACHE_STALE_SERVES.inc()
+            self._get_or_create_inflight(endpoint_id, fetch_fn)
+            val = entry.value
+            if hasattr(val, "model_copy"):
+                val = val.model_copy(update={"cache_stale": True})
+            return val
         if entry and self._swr() and self._stale_servable(entry) and not force_fresh:
             self._stats["stale_serves"] += 1
             CACHE_STALE_SERVES.inc()

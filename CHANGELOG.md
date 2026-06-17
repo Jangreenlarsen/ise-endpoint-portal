@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.14.0697] — 2026-06-17 — fix: Browse tom efter genstart — disk-entries blokerede list-view
+
+- `endpoint_cache.get_detail()`: disk-loaded entries gik igennem `_stale_servable()` som returnerede False for entries ældre end `ttl*30` (2,5t med default) → synkron ISE-fetch for alle entries i list-view → 15-30s ventetid i Browse
+- Fix: nyt branch for `entry.from_disk` der altid returnerer disk-værdien øjeblikkeligt (stale, `cache_stale=True`) og starter background-refresh — uanset alder. Pre-warm-workeren refresher disk-entries i baggrunden alligevel
+- Berørte filer: `backend/app/core/endpoint_cache.py`
+
 ## [6.14.0696] — 2026-06-17 — fix: ISE låser REST API-konto — circuit breaker blind for 401
 
 - `client.py request()`: `record_success()` blev kaldt for ALLE HTTP-responses inkl. 401 → circuit breaker nulstillede failure-count ved hver 401, og pre-warmen fortsatte med at sende requests med fejlagtige credentials → ISE's "disable after N failed logins"-policy låste kontoen

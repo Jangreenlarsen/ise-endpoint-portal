@@ -4,6 +4,13 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 6.14.0697] 2026-06-17 — Browse viser tom liste efter portal-genstart (disk cache ikke vist øjeblikkeligt)
+
+- **Symptom:** Browse/Edit viser ingen endpoints i op til 15-30 sekunder efter portal-genstart (eller lang tids fravær). Derefter dukker alle endpoints op på én gang.
+- **Root cause:** `endpoint_cache.get_detail()`: disk-loaded entries (loaded fra disk ved opstart) gennemgår SWR-tjekket `_stale_servable()` som returnerer `age <= ttl * 30`. Hvis disk-cachen er gemt natten før er entries 8+ timer gamle → `age > ttl * 30` (2,5 timer med default ttl=300s) → ikke SWR-kandidater → falder igennem til **synkron ISE-fetch**. `_list_all_from_cache` awaiter alle N fetches med concurrency=8 → 500 endpoints * 300ms / 8 = 18+ sekunder inden Browse svarer.
+- **Fix:** Disk-loaded entries har et dedikeret branch i `get_detail()` der altid serverer disk-værdien øjeblikkeligt (stale, `cache_stale=True`) og starter en background-refresh — uanset alder. Pre-warm-workeren opdaterer alle disk-entries i baggrunden alligevel.
+- **Berørte filer:** `backend/app/core/endpoint_cache.py`
+
 ## [FIXED 6.14.0696] 2026-06-17 — ISE låser REST API-kontoen ved gentagne auth-fejl
 
 - **Symptom:** ISE deaktiverer REST API-brugerkontoen — portal viser 401 Auth-fejl i diagnostics. Efter lang tids fravær vises Browse tom i op til 1-2 minutter (cache pre-warm kørende).
