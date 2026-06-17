@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.15.0701] — 2026-06-17 — feat: Cache health widget i Browse-toolbar
+
+- Farvet dot-knap i Browse-toolbar (kun admin): grøn < 5% very_stale, gul < 20%, orange < 50%, rød ≥ 50%
+- Klik åbner dropdown-panel med fuld cache-diagnostik: entries-count, fresh/stale/very-stale fordeling med mini progress-bar, avg age, drip-interval + cycle-estimat, last scan age + scanning-badge, hit rate + SWR-serves, last error
+- Auto-opdatering af dot-farve hvert 60s (silent, ingen panel-re-render hvis lukket)
+- Admin-only: vises ikke for ikke-admin brugere
+- Berørte filer: `frontend/js/views/browse.js`, `frontend/css/styles.css`, `frontend/js/i18n.js`
+
 ## [6.14.0700] — 2026-06-17 — fix: Browse reload ~30 sek efter fravær (DACL-liste ikke cachet)
 
 - `DaclService.list_summaries()`: tilfojet SWR-cache (TTL=5 min, SWR-vindue=150 min). Før: ISE-kald ved hvert eneste reload. Efter: <5ms fra cache i normal drift

@@ -4,6 +4,32 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.15.0701] — 2026-06-17 — feat: Cache health widget i Browse
+
+> **Build:** 0701
+
+### Ny: Cache sundhedsmonitor i Browse-toolbar
+
+Admins kan nu se cache-sundhed direkte i Browse-tabellens toolbar via en farvet dot-knap ved siden af Reload-knappen.
+
+**Farver:**
+- Grøn — cache er i god stand (< 5% very stale)
+- Gul — let stale (< 20% very stale)
+- Orange — moderat stale (< 50% very stale)
+- Rød — kritisk / cache tom
+
+**Dropdown-panel viser:**
+- Antal cachede endpoints vs. ISE-total
+- Fordeling: fresh / stale / very-stale med mini progress-bar og gennemsnitlig alder
+- Drip-prewarm: interval + estimeret fuld cycle-tid
+- Seneste full scan: alder + "scanning"-badge hvis aktiv
+- Hit rate og antal SWR-serves (hurtige svar fra stale cache)
+- Seneste fejlbesked fra cache-lag
+
+Dot-farven opdateres automatisk hvert 60 sekunder i baggrunden. Panelet hentes on-demand. Kræver admin-rolle.
+
+---
+
 ## [6.14.0700] — 2026-06-17 — fix: Browse reload hurtig igen efter fravær
 
 > **Build:** 0700
