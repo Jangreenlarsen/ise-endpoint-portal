@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.15.0702] — 2026-06-17 — fix: Cache drip-loop fastlåst på fejlende endpoint + sprint for langsom
+
+- `_drip_loop()` i `cache_prewarm.py`: når `_fetch_endpoint_detail()` fejler, sættes nu `entry.fetched_at = time.time() - ttl + 60` (60s back-off) så loopen bevæger sig videre til næste endpoint. Uden fix: drip-loopen spandt permanent på ét fejlende endpoint — alle andre entries forblev stale og opdateredes kun af `_full_scan()` hvert 30. min (skip_threshold=1800s)
+- Log-niveau for drip-fejl hævet fra DEBUG til WARNING (synlig i app.log uden ekstra konfiguration)
+- Sprint-formel ændret fra `(interval/4)/stale_count` til `ttl/total/2`: for 100 endpoints og TTL=300s giver det `drip_sleep=1.5s` → fuld runde ≈ 250s < TTL → alle entries holdes friske. Gammel formel gav 4.5s sleep → 550s/runde >> TTL → cachen altid kronisk stale
+- Berørt fil: `backend/app/services/cache_prewarm.py`
+
 ## [6.15.0701] — 2026-06-17 — feat: Cache health widget i Browse-toolbar
 
 - Farvet dot-knap i Browse-toolbar (kun admin): grøn < 5% very_stale, gul < 20%, orange < 50%, rød ≥ 50%

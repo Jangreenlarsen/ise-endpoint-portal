@@ -205,8 +205,10 @@ class PrewarmWorker:
                 1 for e in cache._details.values() if (now_ts - e.fetched_at) > ttl
             )
             if stale_count > total // 4:
-                # Mange stale → sprint: refresh alle stale på interval/4
-                drip_sleep = max(0.5, (interval / 4) / stale_count)
+                # Sprint: mål at gennemføre én fuld runde inden næste TTL-udløb.
+                # Formel: drip_sleep = ttl / total / 2 → cycle ≈ ttl / 2 < ttl.
+                # Giver 2× buffer mod ISE-latens, så alle entries holdes friske.
+                drip_sleep = max(0.5, ttl / total / 2)
             else:
                 # Normal drift: jævn spredning over intervallet
                 drip_sleep = max(0.5, interval / total)
@@ -229,7 +231,13 @@ class PrewarmWorker:
                         CACHE_DRIP_REFRESHED.inc()
                         logger.debug("drip: refreshed %s (age=%.0fs)", oldest_id, age)
                     except Exception as exc:  # noqa: BLE001
-                        logger.debug("drip: fetch fejlede id=%s: %s", oldest_id, exc)
+                        logger.warning("drip: fetch fejlede id=%s: %s", oldest_id, exc)
+                        # Ryk fetched_at frem så get_oldest_id() vælger et andet
+                        # endpoint næste iteration. Uden dette låser drip-loopen
+                        # permanent på det fejlende endpoint og refresher aldrig andre.
+                        entry = cache._details.get(oldest_id)
+                        if entry is not None:
+                            entry.fetched_at = time.time() - ttl + 60
                 else:
                     self.status.drip_skipped_total += 1
                     CACHE_DRIP_SKIPPED.inc()

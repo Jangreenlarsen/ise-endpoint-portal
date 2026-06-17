@@ -4,6 +4,26 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.15.0702] — 2026-06-17 — fix: Cache data bliver gammel efter noget tid
+
+> **Build:** 0702
+
+### Bugfix: Cache holdt gammel data — kun "Refresh from ISE" hjalp
+
+**Problem:** Efter noget tid indeholdt cachen forældet ISE-data. Data opdateredes ikke automatisk og forblev gammel indtil brugeren trykkede "Refresh from ISE".
+
+**Root cause 1 — drip-loop fastlåst:**
+Drip-loopen vælger altid det endpoint med den ældste `fetched_at`-timestamp. Hvis ISE-kald fejler for dette endpoint, fanges fejlen, men `fetched_at` opdateres aldrig → loopen henter præcis samme endpoint igen næste iteration → permanent fastlåst på ét fejlende endpoint. Alle 99 øvrige entries refreshes ikke — kun af `_full_scan()` hvert 30. minut.
+
+**Root cause 2 — sprint-formel for langsom:**
+Sprint-søvnen `(interval/4)/stale_count` gav 4.5s for 100 endpoints. Inkl. ISE-fetch ≈ 5.5s/endpoint → fuld runde 550s >> TTL=300s. Drip-loopen kunne aldrig nå at holde alle entries friske inden de igen blev stale.
+
+**Fix:**
+- Fastlåst drip: ved fejl sættes `entry.fetched_at = now - ttl + 60` (60s back-off) → drip-loopen vælger et andet endpoint i næste iteration
+- Sprint-formel: `ttl / total / 2` giver 1.5s sleep for 100 endpoints → fuld runde ≈ 250s < TTL=300s → cache holdes frisk
+
+---
+
 ## [6.15.0701] — 2026-06-17 — feat: Cache health widget i Browse
 
 > **Build:** 0701

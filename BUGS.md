@@ -4,6 +4,15 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 6.15.0702] 2026-06-17 — Cache drip-loop låser på fejlende endpoint + for langsom sprint
+
+- **Symptom:** Efter noget tid indeholder cachen kun gammel data (stale entries med forældet ISE-info) — selv om portalen er i drift og cache-health-dot viser aktivitet. Data opdateres kun når bruger trykker "Refresh from ISE".
+- **Root cause 1 (primær — drip-loop fastlåst):** `_drip_loop()` vælger altid `get_oldest_id()` (entry med ældst `fetched_at`). Hvis `_fetch_endpoint_detail()` fejler for dette endpoint, fanges exception'en, men `fetched_at` opdateres **aldrig** → næste iteration returnerer præcis samme endpoint → permanent loop over ét endpoint, alle andre refreshes aldrig. Alle 99 øvrige entries forbliver stale indtil `_full_scan()` kører om 30 min (skip_threshold=1800s).
+- **Root cause 2 (sekundær — sprint for langsom):** Sprint-formlen `(interval/4)/stale_count` giver `drip_sleep=4.5s` for 100 endpoints. Inkl. ISE fetch (~1s) = 5.5s/endpoint → fuld runde = 550s >> TTL=300s. Drip-loopen kan aldrig holde alle entries friske — der vil altid være store dele af cachen stale.
+- **Fix 1:** I exception-handler: sæt `entry.fetched_at = time.time() - ttl + 60` (back-off 60s). Drip-loopen vælger nu et andet endpoint næste iteration. Log-niveau hævet fra DEBUG til WARNING.
+- **Fix 2:** Sprint-formel ændret til `ttl / total / 2`: giver `drip_sleep=1.5s` for 100 endpoints, cycle ≈ 250s < TTL=300s → alle entries holdes friske.
+- **Berørt fil:** `backend/app/services/cache_prewarm.py`
+
 ## [FIXED 6.14.0700] 2026-06-17 — Browse reload tager ~30 sek efter 30 min fravær
 
 - **Symptom:** "Reload"-knap i Browse/Edit tager ca. 30 sekunder efter 30 minutters fravær. Normalt bør reload være <200ms da data serveres fra cache.
