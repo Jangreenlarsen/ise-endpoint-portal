@@ -4,6 +4,23 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.15.0704] — 2026-06-17 — fix: Cache-tuning — færre ⏱-badges, hurtigere fejlhåndtering
+
+> **Build:** 0704
+
+### Parameter-trim: TTL 900s + ISE timeout 10s
+
+**`CACHE_TTL_SECONDS=900` (15 min, var 5 min):**
+Med drip-batch (3 parallel, cycle ~150s) refreshes alle 100 endpoints hvert 2.5 min. Med TTL=15 min er entries altid friske — ingen ⏱-badges i normal drift. Kun hvis ISE er nede i > 15 min vil badges dukke op.
+
+**`ISE_TIMEOUT=10` (var 30s):**
+På LAN svarer ISE normalt < 2s. 30s timeout var unødigt lang og betød at én hængende ISE-forbindelse blokerede drip-loopen i op til 90s (30s × 3 retry). Nu: max 30s (10s × 3 retry).
+
+**`CACHE_PREWARM_SKIP_FRESH_S=900` (synkroniseret med TTL):**
+Fuld-scan (hvert 30 min) refresher nu præcis de entries der er > 15 min gamle — samme tærskel som TTL.
+
+---
+
 ## [6.15.0703] — 2026-06-17 — fix: Cache drip 3× hurtigere + safety-net strammere
 
 > **Build:** 0703

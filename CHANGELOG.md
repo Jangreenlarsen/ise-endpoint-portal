@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.15.0704] — 2026-06-17 — fix: .env cache-tuning — TTL 900s + ISE_TIMEOUT 10s
+
+- `CACHE_TTL_SECONDS=900` (15 min, var 300s/5 min): entries vises nu som friske i 15 min. Med drip-batch (3 parallel, cycle ~150s) refreshes alle 100 endpoints komfortabelt inden TTL udløber — ingen ⏱-badges i normal drift
+- `CACHE_PREWARM_SKIP_FRESH_S=900` (matcher TTL): fuld-scan og TTL er nu synkroniserede — fuld-scan refresher præcis det drip-loopen måske har misset
+- `ISE_TIMEOUT=10` (var 30s): på LAN < 2s svartid — 30s var unødigt. Reducerer max ventetid ved ISE-fejl fra 90s (30s × 3 retry) til 30s (10s × 3 retry)
+- Berørt fil: `backend/.env`
+
 ## [6.15.0703] — 2026-06-17 — fix: Drip batch-parallelitet + skip_fresh_s trimmet
 
 - `_drip_loop()`: sprint-mode fetcher nu **3 endpoints parallelt** (batch_size=3) pr. iteration via `asyncio.gather()`. Fuld cycle for 100 endpoints: ~(1.5s sleep + 2s fetch) × 100/3 ≈ 117s << TTL=300s — alle entries holdes komfortabelt friske uden at ligge i kanten
