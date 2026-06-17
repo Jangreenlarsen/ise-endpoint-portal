@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.14.0696] — 2026-06-17 — fix: ISE låser REST API-konto — circuit breaker blind for 401
+
+- `client.py request()`: `record_success()` blev kaldt for ALLE HTTP-responses inkl. 401 → circuit breaker nulstillede failure-count ved hver 401, og pre-warmen fortsatte med at sende requests med fejlagtige credentials → ISE's "disable after N failed logins"-policy låste kontoen
+- Fix: 401 kalder nu `record_failure()` og tæller `_consecutive_401s`. 1. fejl: WARNING. 2.+ fejl: ERROR med instruktion om ISE kontolås. Succesfulde requests + andre 4xx/5xx nulstiller tæller og kalder `record_success()` som normalt. Efter CB's `failure_threshold` 401er åbner circuit og stopper yderligere ISE-kald i `recovery_timeout` sekunder
+- Berørte filer: `backend/app/ise/client.py`
+
 ## [6.14.0695] — 2026-06-15 — fix: VLAN/CA-værdier opdateres ikke i tabel efter Endpoint Details-save
 
 - `browse-table.js refreshRows()`: `api.getEndpoint()` returnerer `{data, totalMs, ...}` (requestTimed-wrapper) — udpak `.data` så `r.id` er korrekt og tabelrækker faktisk opdateres

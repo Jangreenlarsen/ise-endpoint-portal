@@ -4,6 +4,26 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.14.0696] — 2026-06-17 — fix: ISE REST API-konto låses ikke længere af portalen
+
+> **Build:** 0696
+
+### Bugfix: Circuit breaker var blind for ISE auth-fejl (401)
+
+**Problem:** ISE deaktiverede REST API-brugerkontoen på grund af for mange fejlede login-forsøg. Portalens circuit breaker kaldte `record_success()` på **alle** HTTP-responses — inkl. 401 Auth-fejl. Det betød at circuit breakeren aldrig åbnede, og pre-warm-workeren fortsatte med at sende hundredvis af ISE-requests med forkerte credentials. ISE's interne "disable account after N consecutive failed logins"-politik (typisk 3-5 forsøg) aktiverede sig og låste kontoen.
+
+**Fix:** 401-responses behandles nu korrekt:
+- Kalder `record_failure()` (ikke `record_success()`) — gentagne 401er tæller som CB-fejl
+- Separat tæller (`_consecutive_401s`) registrerer på hinanden følgende auth-fejl
+- 1. fejl: WARNING i log med besked om at kontrollere credentials
+- 2.+ fejl: ERROR med klar instruktion: *"Tjek ISE > Administration > Admin Access > Authentication og genaktiver kontoen"*
+- Efter `failure_threshold` (default 5) 401er åbner circuit breakeren og blokerer yderligere ISE-kald i `recovery_timeout` (default 60s) — ISE kontoen kan dermed ikke nå lockout-grænsen
+- Andre HTTP-fejl (404, 500 etc.) og succesfulde requests nulstiller 401-tælleren som normalt
+
+**Hvad du skal gøre hvis kontoen allerede er låst:** Log ind i ISE → Administration → Admin Access → Authentication → Account Disable Policy og genaktiver kontoen. Ret credentials i portal Settings hvis de er forkerte.
+
+---
+
 ## [6.14.0692] — 2026-06-15 — CoA ved manuel GuestAccessExpire=true
 
 > **Build:** 0692

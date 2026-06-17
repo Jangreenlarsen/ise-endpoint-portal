@@ -76,6 +76,7 @@ class IseClient:
             failure_threshold=int(getattr(s, "ise_cb_failure_threshold", 5)),
             recovery_timeout=float(getattr(s, "ise_cb_recovery_timeout_s", 60.0)),
         )
+        self._consecutive_401s = 0
         CIRCUIT_STATE.set(0)  # start closed
 
     async def close(self) -> None:
@@ -149,18 +150,11 @@ class IseClient:
             raise IseApiError(0, f"transport error: {exc}") from exc
 
         ISE_REQUEST_DURATION.observe(time.perf_counter() - _t0)
-        _prev_cb_state = self._cb.state
-        self._cb.record_success()
-        if _prev_cb_state != "closed":
-            audit_store.record_sync(
-                "ise_circuit_closed", "system", None,
-                after={"recovered_from": _prev_cb_state},
-            )
-        CIRCUIT_STATE.set(0)
 
+        # Parse error body before branching so it's available in all paths.
+        message = response.text
+        payload: Any = response.text
         if response.status_code >= 400:
-            message = response.text
-            payload: Any = response.text
             try:
                 payload = response.json()
                 # ERS format: {"ERSResponse": {"messages": [{"title": "..."}]}}
@@ -174,6 +168,47 @@ class IseClient:
                 message = ers_title or open_api_msg or message
             except Exception:
                 pass
+
+        if response.status_code == 401:
+            # Auth failure — treat as circuit-breaker failure so repeated 401s
+            # eventually open the circuit and stop hammering ISE with bad credentials.
+            # ISE disables accounts after N consecutive failed logins (default 3-5)
+            # and a blind CB that resets on any HTTP response would let the pre-warm
+            # send hundreds of auth failures before the account gets locked out.
+            self._consecutive_401s += 1
+            self._cb.record_failure()
+            _cb_state_map = {"closed": 0, "half_open": 1, "open": 2}
+            CIRCUIT_STATE.set(_cb_state_map.get(self._cb.state, 0))
+            if self._consecutive_401s == 1:
+                logger.warning(
+                    "ISE auth fejl (401) på %s %s — kontroller brugernavn/password i portal settings",
+                    method, path,
+                )
+            else:
+                logger.error(
+                    "ISE auth fejl (401) %d gange i træk — ISE-kontoen kan være LÅST. "
+                    "Tjek ISE > Administration > Admin Access > Authentication og "
+                    "genaktiver kontoen hvis den er deaktiveret. "
+                    "Circuit breaker failures: %d/%d",
+                    self._consecutive_401s,
+                    self._cb.stats()["failure_count"],
+                    self._cb.stats()["failure_threshold"],
+                )
+            ISE_REQUESTS.labels(method=method, outcome="4xx").inc()
+            raise IseApiError(response.status_code, message, payload)
+
+        # Non-401 response (2xx, other 4xx, 5xx) — mark CB success and reset 401 counter.
+        _prev_cb_state = self._cb.state
+        self._cb.record_success()
+        self._consecutive_401s = 0
+        if _prev_cb_state != "closed":
+            audit_store.record_sync(
+                "ise_circuit_closed", "system", None,
+                after={"recovered_from": _prev_cb_state},
+            )
+        CIRCUIT_STATE.set(0)
+
+        if response.status_code >= 400:
             logger.warning(
                 "ISE %s %s -> %s: %s", method, path, response.status_code, message
             )

@@ -4,6 +4,13 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 6.14.0696] 2026-06-17 — ISE låser REST API-kontoen ved gentagne auth-fejl
+
+- **Symptom:** ISE deaktiverer REST API-brugerkontoen — portal viser 401 Auth-fejl i diagnostics. Efter lang tids fravær vises Browse tom i op til 1-2 minutter (cache pre-warm kørende).
+- **Root cause:** I `client.py` kaldes `self._cb.record_success()` for **alle** HTTP-responses — inkl. 401. Det betyder at repeated 401-fejl aldrig åbner circuit breakeren, og pre-warmen fortsætter med at sende ISE-requests med fejlagtige credentials. ISE's "Disable account after N consecutive failed logins" policy (typisk 3-5) aktiveres og låser kontoen. Circuit breakeren er fuldstændig blind for auth-fejl.
+- **Fix:** 401-responses kalder nu `record_failure()` i stedet for `record_success()`. En separat tæller (`_consecutive_401s`) spoer på hinanden følgende auth-fejl. 1. fejl: WARNING i log. 2.+ fejl: ERROR med instruktion om at tjekke ISE kontolås. Succesfulde requests (og andre 4xx/5xx) nulstiller tælleren. Efter `failure_threshold` (default 5) på hinanden følgende 401er åbner circuit breakeren og blokerer yderligere ISE-kald i `recovery_timeout` sekunder — ISE kontoen kan dermed ikke nå lockout-grænsen.
+- **Berørte filer:** `backend/app/ise/client.py`
+
 ## [FIXED 6.14.0695] 2026-06-15 — VLAN (og andre CA-felter) opdateres ikke i tabellen efter save
 
 - **Symptom:** Efter at have gemt et endpoint i Endpoint Details syntes VLAN-værdien (og andre custom attributes) at forblive på den gamle værdi i Browse-tabellen.
