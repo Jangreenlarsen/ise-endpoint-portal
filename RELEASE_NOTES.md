@@ -4,6 +4,20 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.14.0700] — 2026-06-17 — fix: Browse reload hurtig igen efter fravær
+
+> **Build:** 0700
+
+### Bugfix: Reload tog ~30 sekunder efter 30+ minutters fravær
+
+**Problem:** "Reload"-knappen i Browse/Edit var meget langsom (~30 sek) når portalen ikke havde vaeret i brug i 30+ minutter. Siden stod og viste "Loading endpoints..." mens den ventede.
+
+**Root cause:** Hver gang Browse-tabellen indlaeses (inkl. ved Reload), hentes DACLs (downloadable ACLs) fra ISE for at populere dropdown-menuen i edit-modal. `DaclService.list_summaries()` havde ingen cache — hvert kald ramte ISE REST API direkte. Efter 30 minutters idle er ISE-forbindelsen tvaeret (TCP re-establish + SSL handshake) og ISE kan vaere langsom, hvilket gav 5-30 sekunders forsinkelse. Da frontend venter pa det langsomste svar inden tabellen vises, blokerede DACL-kaldet hele Browse-indlaesningen.
+
+**Fix:** SWR-cache i backend: DACL-listen caches i 5 minutter (fresh) og serveres stale i op til 150 minutter med baggrunds-refresh. Reload er nu <200ms i normal drift. Cache invalideres automatisk nar en DACL oprettes, aendres eller slettes.
+
+---
+
 ## [6.14.0697] — 2026-06-17 — fix: Browse viser endpoints øjeblikkeligt efter genstart
 
 > **Build:** 0697

@@ -4,6 +4,13 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 6.14.0700] 2026-06-17 — Browse reload tager ~30 sek efter 30 min fravær
+
+- **Symptom:** "Reload"-knap i Browse/Edit tager ca. 30 sekunder efter 30 minutters fravær. Normalt bør reload være <200ms da data serveres fra cache.
+- **Root cause:** `load()` i `browse-table.js` kalder `Promise.all()` med 9 parallelle API-kald — herunder `api.listDacls()`. `DaclService.list_summaries()` havde **ingen cache** og ramte ISE ERS/Open API direkte ved hvert kald. Med `cache_ttl_seconds=300s` er entries stale efter 5 min, og ISE kan være langsom (idle connection re-establish + SSL handshake + rate limiting) — typisk 5-30s. `Promise.all()` venter på det langsomste kald inden browse-tabellen renderes.
+- **Fix:** SWR-cache i `dacl_service.py`: første kald fetcher fra ISE og cacher 5 min (fresh), herefter serveres fra cache med SWR-baggrunds-refresh op til 150 min. Cache invalideres ved create/update/delete. Concurrent fetches coalesces via inflight asyncio.Task.
+- **Berørte filer:** `backend/app/services/dacl_service.py`
+
 ## [FIXED 6.14.0699] 2026-06-17 — Browse reload langsom + "operation timed out" fejl
 
 - **Symptom:** Efter at cachen er populeret er reload hurtigt. Så snart ét endpoint gemmes (eller entries bliver stale efter TTL), er næste reload langsom igen. Hyppige "The operation timed out" fejl i Browse/Edit.

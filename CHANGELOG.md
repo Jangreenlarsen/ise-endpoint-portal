@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.14.0700] — 2026-06-17 — fix: Browse reload ~30 sek efter fravær (DACL-liste ikke cachet)
+
+- `DaclService.list_summaries()`: tilfojet SWR-cache (TTL=5 min, SWR-vindue=150 min). Før: ISE-kald ved hvert eneste reload. Efter: <5ms fra cache i normal drift
+- Cache invalideres straks ved create/update/delete — liste aldrig stale efter mutationer
+- Concurrent requests coalesces via module-level asyncio.Task — ingen ISE-hammering
+- Berort fil: `backend/app/services/dacl_service.py`
+
 ## [6.14.0699] — 2026-06-17 — fix: Browse reload langsom + ISE timeout-fejl fra list-view
 
 - `_list_all_from_cache` + `_list_from_roles_index`: fjernet asyncio.gather()+Semaphore(8) der kaldte get_endpoint() for N entries. For stale entries spawner get_detail()._get_or_create_inflight() én ISE-baggrundstask per entry → N simultane ISE-requests fra list-view → ISE overbelastning → "operation timed out"
