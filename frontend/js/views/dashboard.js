@@ -209,6 +209,111 @@ function renderLogsTable(entries) {
   </div>`;
 }
 
+// ── Cache kvalitetsmetrics ────────────────────────────────────────────────────
+
+function cacheQualityCard(cache, prewarm) {
+  const n        = cache.detail_entries ?? 0;
+  const tiers    = cache.tiers    || {};
+  const stale    = cache.staleness || {};
+  const ttl      = cache.ttl_seconds ?? 0;
+
+  // Tier-fordeling
+  const hot  = tiers.hot  ?? 0;
+  const warm = tiers.warm ?? 0;
+  const cold = tiers.cold ?? 0;
+  const tierTotal = hot + warm + cold || 1;
+  function tierPct(v) { return Math.round(v / tierTotal * 100); }
+
+  const tierBar = `
+    <div style="display:flex;height:8px;border-radius:4px;overflow:hidden;gap:1px;margin:.3rem 0 .2rem;">
+      ${hot  ? `<div style="flex:${hot};background:#dc2626;" title="Hot ${hot}"></div>`  : ""}
+      ${warm ? `<div style="flex:${warm};background:#d97706;" title="Warm ${warm}"></div>` : ""}
+      ${cold ? `<div style="flex:${cold};background:#2563eb;" title="Cold ${cold}"></div>` : ""}
+    </div>
+    <div style="display:flex;gap:.8rem;font-size:.76rem;color:#6b7280;margin-bottom:.5rem;">
+      <span><span style="color:#dc2626;font-weight:600;">🔥 ${hot}</span> hot (${tierPct(hot)}%)</span>
+      <span><span style="color:#d97706;font-weight:600;">~ ${warm}</span> warm (${tierPct(warm)}%)</span>
+      <span><span style="color:#2563eb;font-weight:600;">❄ ${cold}</span> cold (${tierPct(cold)}%)</span>
+    </div>`;
+
+  // Staleness-fordeling
+  const fresh     = stale.fresh_count     ?? 0;
+  const staleC    = stale.stale_count     ?? 0;
+  const veryStale = stale.very_stale_count ?? 0;
+  const sTotal    = fresh + staleC + veryStale || 1;
+  const stalePct  = stale.stale_pct ?? 0;
+  const vsColor   = (stale.very_stale_pct ?? 0) > 5 ? "#dc2626" : stalePct > 40 ? "#d97706" : "#16a34a";
+
+  const stalenessBar = `
+    <div style="display:flex;height:6px;border-radius:3px;overflow:hidden;gap:1px;margin:.3rem 0 .2rem;">
+      ${fresh     ? `<div style="flex:${fresh};background:#16a34a;" title="Fresh ${fresh}"></div>`         : ""}
+      ${staleC    ? `<div style="flex:${staleC};background:#d97706;" title="Stale ${staleC}"></div>`       : ""}
+      ${veryStale ? `<div style="flex:${veryStale};background:#dc2626;" title="Very stale ${veryStale}"></div>` : ""}
+    </div>
+    <div style="display:flex;gap:.8rem;font-size:.76rem;color:#6b7280;margin-bottom:.3rem;">
+      <span style="color:#16a34a;font-weight:600;">${fresh} fresh</span>
+      <span style="color:#d97706;font-weight:600;">${staleC} stale</span>
+      ${veryStale ? `<span style="color:#dc2626;font-weight:600;">${veryStale} meget stale</span>` : ""}
+      <span style="margin-left:auto;color:${vsColor};font-weight:600;">${stalePct}% stale</span>
+    </div>`;
+
+  // Alder-rækker
+  const avgAge    = stale.average_entry_age_s;
+  const oldestAge = stale.oldest_entry_age_s;
+  const ageRows   = (avgAge != null || oldestAge != null) ? `
+    ${avgAge    != null ? statRow("Gns. entry-alder", fmtAge(avgAge)) : ""}
+    ${oldestAge != null ? statRow("Ældste entry",     fmtAge(oldestAge)) : ""}` : "";
+
+  // Hukommelse
+  const totalMB  = cache.total_bytes > 0 ? (cache.total_bytes / 1048576).toFixed(1) : null;
+  const maxMB    = cache.max_memory_bytes > 0 ? (cache.max_memory_bytes / 1048576).toFixed(0) : null;
+  const memPct   = totalMB && maxMB ? Math.round(cache.total_bytes / cache.max_memory_bytes * 100) : null;
+  const memRow   = totalMB ? resBar(
+    "Cache RAM",
+    memPct ?? (totalMB > 0 ? 5 : 0),
+    maxMB ? `${totalMB} / ${maxMB} MB` : `${totalMB} MB`
+  ) : "";
+
+  // Drip-effektivitet
+  const dripRef  = prewarm.drip_refreshed_total ?? 0;
+  const dripSkip = prewarm.drip_skipped_total   ?? 0;
+  const dripEff  = dripRef + dripSkip > 0
+    ? Math.round(dripRef / (dripRef + dripSkip) * 100) + "%"
+    : "—";
+  const hotQ     = prewarm.hot_queue_size ?? 0;
+  const inflight = cache.inflight ?? 0;
+
+  const accentColor = (stale.very_stale_pct ?? 0) > 10 ? "#dc2626"
+    : stalePct > 50 ? "#d97706" : "#0891b2";
+
+  return `<div style="background:#fff;border-radius:12px;padding:1rem 1.25rem;
+    box-shadow:0 1px 4px rgba(0,0,0,.07);border-top:3px solid ${accentColor};">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;">
+      <h3 style="margin:0;font-size:.92rem;color:#374151;font-weight:600;">Cache kvalitet</h3>
+      <span style="font-size:.78rem;color:#9ca3af;">${n.toLocaleString()} entries · TTL ${ttl}s</span>
+    </div>
+
+    <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;
+      color:#9ca3af;margin:.4rem 0 .1rem;">Tier-fordeling (EMA)</div>
+    ${tierBar}
+
+    <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;
+      color:#9ca3af;margin:.5rem 0 .1rem;">Staleness</div>
+    ${stalenessBar}
+
+    ${ageRows}
+    ${memRow}
+
+    <div style="margin-top:.5rem;padding-top:.5rem;border-top:1px solid #f3f4f6;
+      display:flex;gap:1rem;flex-wrap:wrap;font-size:.8rem;">
+      <span style="color:#6b7280;">Drip-effektivitet <strong style="color:#374151;">${dripEff}</strong></span>
+      ${inflight > 0 ? `<span style="color:#6b7280;">Inflight <strong style="color:#2563eb;">${inflight}</strong></span>` : ""}
+      ${hotQ > 0 ? `<span style="color:#6b7280;">Hot-queue <strong style="color:#d97706;">${hotQ}</strong></span>` : ""}
+      ${cache.evictions > 0 ? `<span style="color:#6b7280;">Evictions <strong style="color:#9ca3af;">${cache.evictions}</strong></span>` : ""}
+    </div>
+  </div>`;
+}
+
 // ── Compose dashboard HTML ─────────────────────────────────────────────────────
 
 function iseAuthBanner(iseAuth) {
@@ -417,8 +522,13 @@ function compose(dash, trends, lifecycle, isAdmin, diagQuick, sysinfo) {
   // ── Samlet layout ─────────────────────────────────────────────────────────
   const hCard = healthCard(diagQuick, isAdmin);
 
-  // Bundlinje: system stats + lifecycle + audit events side om side
-  const bottomItems = [sysCard, lcCard, eventsCard].filter(Boolean);
+  // Cache kvalitetsmetrics — vises kun når cache har entries
+  const cqCard = cache.detail_entries > 0
+    ? cacheQualityCard(cache, prewarm)
+    : "";
+
+  // Bundlinje: system stats + cache kvalitet + lifecycle + audit events side om side
+  const bottomItems = [sysCard, cqCard, lcCard, eventsCard].filter(Boolean);
   const bottomRow = bottomItems.length
     ? `<div style="display:flex;gap:.75rem;align-items:flex-start;flex-wrap:wrap;margin-top:.75rem;">
         ${bottomItems.map(c => `<div style="flex:1;min-width:240px;">${c}</div>`).join("")}

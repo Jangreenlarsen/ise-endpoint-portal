@@ -4,6 +4,26 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.18.0709] — 2026-07-01 — feat: Cache kvalitetsmetrics i Dashboard
+
+> **Build:** 0709
+
+### Nyt: Cache kvalitet-kort i Dashboard
+
+Dashboardet viser nu et dedikeret **Cache kvalitet**-kort med:
+
+| Metric | Hvad det viser |
+|---|---|
+| **Tier-fordeling (EMA)** | Stacked bar: 🔥 hot / warm / ❄ cold — med antal og % |
+| **Staleness-bar** | Fresh (grøn) / Stale (gul) / Meget stale (rød) + samlet stale-% |
+| **Entry-aldre** | Gennemsnitlig og ældste entry-alder |
+| **Cache RAM** | Progressbar med forbrug vs. max (vises kun hvis `cache_max_memory_mb` er sat) |
+| **Drip-effektivitet** | % af drip-iterationer der resulterede i et refresh (refreshed / refreshed+skipped) |
+| **Inflight / Hot-queue** | Antal igangværende ISE-fetches og ventende prioriterede endpoints |
+| **Evictions** | Samlet antal entries tvangsfjernel pga. memory/entry-limit |
+
+Kortets accent-farve afspejler cache-sundhed: blå (OK) → orange (>40% stale) → rød (>10% meget stale). Skjules automatisk når cachen er tom (f.eks. ved opstart inden første scan).
+
 ## [6.17.0708] — 2026-07-01 — fix: 2 cache-bugs fundet i to-fase test
 
 > **Build:** 0708

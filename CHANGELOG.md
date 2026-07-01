@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.18.0709] — 2026-07-01 — feat: Cache kvalitetsmetrics i Dashboard
+
+- `backend/app/api/dashboard.py`: `cache`-blokken udvides med `detail_entries`, `tiers` (hot/warm/cold fordeling), `staleness` (fresh/stale/very-stale + pct + gns./ældste alder), `total_bytes`, `max_memory_bytes`, `inflight`, `evictions`, `ttl_seconds`. `prewarm`-blokken tilføjer `drip_skipped_total` og `hot_queue_size`.
+- `frontend/js/views/dashboard.js`: Ny `cacheQualityCard(cache, prewarm)` funktion — viser tier-fordeling som farvet stacked bar (🔥 hot / warm / ❄ cold) med procenter, staleness-bar (fresh/stale/very-stale), gennemsnits- og ældste entry-alder, RAM-bar (hvis konfigureret), drip-effektivitet (refreshed / skipped) og inflight/hot-queue/eviction tæller. Kortet vises i bundlinjen ved siden af systemstats-kortet. Skjules når cachen er tom (0 entries).
+- Berørte filer: `backend/app/api/dashboard.py`, `frontend/js/views/dashboard.js`
+
 ## [6.17.0708] — 2026-07-01 — fix: Cache to-fase test — 2 bugs fundet og rettet
 
 **Fund fra gennemgribende to-fase analyse (statisk + scenarie-sporing):**
