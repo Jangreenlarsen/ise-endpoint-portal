@@ -9,6 +9,8 @@ Alle nye features registreres her FØR implementering påbegyndes.
 
 ## Planlagt / Under implementering
 
+- `[done 6.18.0710] 2026-07-01 — Lifecycle: søg og sortér efter first seen` — Klikbare kolonneheadere (MAC, gruppe, profil, ejer, first seen, cache-alder) med ↑↓↕-indikatorer. Søgefelt filtrerer på tværs af MAC/gruppe/profil/ejer. Alt client-side — ingen re-fetch. **Berørte lag:** `frontend/js/views/lifecycle.js`, `frontend/js/i18n.js`.
+
 - `[done 6.18.0709] 2026-07-01 — Cache kvalitetsmetrics i Dashboard` — Ny "Cache kvalitet"-sektion i Dashboard med tier-fordeling (hot/warm/cold), staleness-bar (fresh/stale/very-stale), hukommelsesbar, inflight-fetches og drip-effektivitet. **Berørte lag:** `backend/app/api/dashboard.py`, `frontend/js/views/dashboard.js`.
 
 - `[done 6.17.0707] 2026-07-01 — Cache-motor refaktorering: 13 korrekthed- og ydelsesforbedringer` — To-fase analyse identificerede 13 forbedringer: thread-safety i disk-save, hukommelseslækage i tier_emas, forkert eviction-strategi, O(n²) hot-queue, sprint skalerer ikke til 10K+ endpoints, dead import, 3 separate O(n) passes i stats(), tier-aware freshness i get_detail(), tier-adjusted skip_threshold i full_scan, disk-persistens af tier_emas, cleanup af done inflight-tasks, encapsulation-brud (private adgange fra prewarm), hot-queue deduplication. **Berørte lag:** `backend/app/core/endpoint_cache.py`, `backend/app/services/cache_prewarm.py`.

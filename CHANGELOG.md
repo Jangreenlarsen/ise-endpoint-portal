@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.18.0710] — 2026-07-01 — feat: Lifecycle søg + sortér alle kolonner
+
+- `frontend/js/views/lifecycle.js`: Refaktoreret til at skille data-fetch fra rendering. `_stale`-arrayet caches lokalt; sort og søgning arbejder client-side uden re-fetch. Ny `reRenderTbody()` opdaterer kun `<tbody>` og genvedhæfter row-listeners. Alle kolonner (MAC, gruppe, profil, ejer, first seen, cache-alder) er nu klikbare med ↑↓↕-indikatorer. Default: datokolonner sorteres descending (nyeste først) ved første klik; tekstkolonner ascending. Søgefelt filtrerer live (250ms debounce) på MAC, gruppe, profil og ejer med aktiv tæller `n / total`. Export-CSV bruger nu den fulde ufiltrerede liste.
+- `frontend/js/i18n.js`: Tilføjet `lc.search_ph` og `lc.sort_title` (DA + EN).
+- Berørte filer: `frontend/js/views/lifecycle.js`, `frontend/js/i18n.js`
+
 ## [6.18.0709] — 2026-07-01 — feat: Cache kvalitetsmetrics i Dashboard
 
 - `backend/app/api/dashboard.py`: `cache`-blokken udvides med `detail_entries`, `tiers` (hot/warm/cold fordeling), `staleness` (fresh/stale/very-stale + pct + gns./ældste alder), `total_bytes`, `max_memory_bytes`, `inflight`, `evictions`, `ttl_seconds`. `prewarm`-blokken tilføjer `drip_skipped_total` og `hot_queue_size`.

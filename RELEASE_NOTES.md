@@ -4,6 +4,29 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.18.0710] — 2026-07-01 — feat: Lifecycle — søg og sortér alle kolonner
+
+> **Build:** 0710
+
+### Nyt: Søgning og sortering i Lifecycle-tabellen
+
+**Søgefelt** filtrerer live på tværs af MAC-adresse, endpoint-gruppe, profil og ejer med 250ms debounce. Aktiv filtrering viser `n / total`-tæller i controls-linjen.
+
+**Alle kolonner er nu klikbare** med tydelige sorterings-indikatorer:
+
+| Kolonne | Default ved første klik |
+|---|---|
+| MAC-adresse | A → Z |
+| Endpoint-gruppe | A → Z |
+| Profil | A → Z |
+| Ejer | A → Z |
+| **Første gang set** | Nyeste først (↓) |
+| Cache-alder | Yngste først (↓) |
+
+Klik igen på aktiv kolonne for at vende retning (↑/↓). Inaktive kolonner viser ↕.
+
+Implementeret client-side: data hentes én gang; sort og søgning opdaterer kun `<tbody>` — ingen re-fetch mod ISE.
+
 ## [6.18.0709] — 2026-07-01 — feat: Cache kvalitetsmetrics i Dashboard
 
 > **Build:** 0709
