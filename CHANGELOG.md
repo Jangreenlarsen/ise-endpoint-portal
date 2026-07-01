@@ -3,6 +3,37 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.17.0707] — 2026-07-01 — feat: Cache-motor refaktorering (13 forbedringer)
+
+**Baggrund:** To-fase analyse af `endpoint_cache.py` og `cache_prewarm.py` identificerede 13 bugs og ydelsesproblemer.
+
+**Rettelser i `backend/app/core/endpoint_cache.py`:**
+- `DISK_CACHE_VERSION` bumped 3→4 (tier_emas persisteres nu til disk)
+- `_evict_oldest()`: FIFO → LRU via `fetched_at` (korrekt eviction-strategi)
+- `get_detail()`: tier-aware freshness — hot entries ser lavere effective_ttl og refreshes hurtigere
+- Ny `forget_tier_ema(ep_id)`: rydder EMA-historik for slettede endpoints (forhindrer hukommelseslækage)
+- Ny `stale_count_for_ttl(ttl)`: beregner stale-count med eksplicit TTL (bruges af drip-loop)
+- Ny `inflight_ids()`: returnerer set af endpoint IDs med igangværende fetch
+- Ny `effective_skip_threshold(ep_id, base)`: tier-justeret skip-tærskel (hot endpoints refreshes oftere)
+- Ny `set_fetch_backoff(ep_id)`: backoff ved fejlende endpoint (60s frem for straks retry)
+- Ny `ages_seconds()`: returnerer dict `{ep_id: age_s}` for alle cached entries
+- `_save_snapshot()`: ny metode — snapshotter data på event-loop, serialiserer i thread-pool (thread-safety)
+- `save_to_disk()` + `save_to_disk_async()`: bruger `_save_snapshot()` — ingen race conditions
+- `load_from_disk()`: indlæser `tier_emas`-sektion fra disk JSON
+- `stats()`: single O(n) pass (var 3 separate), cleanup af done inflight-tasks ved start
+
+**Rettelser i `backend/app/services/cache_prewarm.py`:**
+- `__init__` + `start()`: `_hot_set: set[str]` tilføjet til deduplication
+- `prioritize()`: tjekker `_hot_set` før enqueue — forhindrer dubletter
+- `_drip_loop()`: config caches per 10 iterationer (undgår settings-opslag i hot-path); sprint batch_size skalerer som `min(max(3, total//200), 20)`; bruger public cache-metoder
+- `_fetch_all_ids()`: fjernet dead import af `get_ise_client` + ubrugt `client`-variabel
+- `_drain_hot_queue()`: `self._hot_set -= set(hot_ids)` rydder dedup-sæt efter drain
+- `_full_scan()` hot-queue drain: `self._hot_set -= set(hot_first)` + set-subtraktion O(n) frem for `list.remove()` O(n²)
+- `_full_scan()` deleted_ids loop: `cache.forget_tier_ema(ep_id)` rydder EMA for permanent slettede endpoints
+- `_full_scan()` `should_fetch()`: `cache.effective_skip_threshold()` → tier-justeret skip (hot endpoints springes sjældnere over)
+
+**Berørte filer:** `backend/app/core/endpoint_cache.py`, `backend/app/services/cache_prewarm.py`
+
 ## [6.16.0706] — 2026-07-01 — fix: ISE API-bruger lockout-detektion + dashboard-alarm
 
 **Problem:** ISE's Account Disable Policy deaktiverer API-brugeren periodisk (inaktivitets-regel tæller ikke API-kald). Portalen mister ISE-forbindelsen uden forklaring — brugerne ser blot at data er stale.

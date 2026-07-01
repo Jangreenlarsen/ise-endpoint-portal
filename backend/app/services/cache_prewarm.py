@@ -72,6 +72,7 @@ class PrewarmWorker:
         self._task: asyncio.Task[None] | None = None
         self._stop = asyncio.Event()
         self._hot: asyncio.Queue[str] = asyncio.Queue()
+        self._hot_set: set[str] = set()  # dedup-sæt: forhindrer samme ID i køen to gange
         self.status = PrewarmStatus()
 
     @property
@@ -89,6 +90,7 @@ class PrewarmWorker:
             return
         self._stop = asyncio.Event()
         self._hot = asyncio.Queue()
+        self._hot_set = set()
         self.status = PrewarmStatus(
             running=True,
             started_at=time.time(),
@@ -140,8 +142,12 @@ class PrewarmWorker:
             self.status.running = False
 
     def prioritize(self, endpoint_id: str) -> None:
-        """Sæt et endpoint forrest i pre-warm køen (edit-modal trigger)."""
-        self._hot.put_nowait(endpoint_id)
+        """Sæt et endpoint forrest i pre-warm køen (edit-modal trigger).
+        Deduplicerer via _hot_set: samme ID kan ikke stå i køen to gange.
+        """
+        if endpoint_id not in self._hot_set:
+            self._hot.put_nowait(endpoint_id)
+            self._hot_set.add(endpoint_id)
         self.status.hot_queue_size = self._hot.qsize()
 
     async def _run(self) -> None:
@@ -179,16 +185,27 @@ class PrewarmWorker:
     async def _drip_loop(self) -> None:
         """Kontinuerlig baggrunds-drip: refresh stale endpoints løbende.
 
-        Sprint-mode (> 25% stale): batch_size=3 parallelle fetches per iteration,
-        drip_sleep = ttl/total/2 — design-mål: fuld cycle < TTL.
-        Normal mode: 1 fetch per iteration, spredt jævnt over intervallet.
-        Fejlende endpoints back-off'es 60s (fetched_at rykkes frem) så loopen
-        aldrig låser på samme endpoint og alle andre entries holdes friske.
+        Sprint-mode (> 25% stale): batch_size skalerer med antal endpoints
+        (max(3, total//200), cap 20) — design-mål: fuld cycle < TTL uanset deployment-størrelse.
+        Normal mode: 1 fetch spredt jævnt over intervallet.
+        Config re-læses hvert 10. iteration for hot-reload uden per-iteration overhead.
+        Bruger public cache-metoder (stale_count_for_ttl, inflight_ids, set_fetch_backoff,
+        ages_seconds) for at undgå direkte adgang til private _details/_inflight_detail.
         """
         from app.services.endpoint_service import EndpointService
         cache = get_cache()
 
+        # Config læses én gang og genopfriskes hvert 10. iteration.
+        _iter = 0
+        interval = float(getattr(config.settings, "cache_prewarm_interval_s", 1800.0))
+        ttl = float(getattr(config.settings, "cache_ttl_seconds", 300.0))
+
         while not self._stop.is_set():
+            _iter += 1
+            if _iter % 10 == 0:
+                interval = float(getattr(config.settings, "cache_prewarm_interval_s", 1800.0))
+                ttl = float(getattr(config.settings, "cache_ttl_seconds", 300.0))
+
             total = cache.detail_count()
             if total == 0:
                 try:
@@ -197,15 +214,12 @@ class PrewarmWorker:
                     pass
                 continue
 
-            interval = float(getattr(config.settings, "cache_prewarm_interval_s", 1800.0))
-            ttl = float(getattr(config.settings, "cache_ttl_seconds", 300.0))
-            now_ts = time.time()
-            stale_count = sum(
-                1 for e in cache._details.values() if (now_ts - e.fetched_at) > ttl
-            )
+            stale_count = cache.stale_count_for_ttl(ttl)
             if stale_count > total // 4:
-                # Sprint: 3 parallelle fetches — fuld cycle ≈ ttl/2 < ttl.
-                batch_size = min(3, stale_count)
+                # Sprint: batch_size skalerer med deployment-størrelse.
+                # max(3, total//200) → 3 @ 100, 5 @ 1000, 10 @ 2000, 20 @ 4000+
+                # Sikrer at cycle < TTL også ved 10K+ endpoints.
+                batch_size = min(max(3, total // 200), 20)
                 drip_sleep = max(0.5, ttl / total / 2)
             else:
                 # Normal: 1 fetch spredt jævnt over intervallet.
@@ -217,15 +231,14 @@ class PrewarmWorker:
             CACHE_DRIP_SLEEP_S.set(drip_sleep)
             CACHE_DRIP_CYCLE_S.set(cycle_s)
 
-            # 3-tier prioriteret kø: hot endpoints (høj change_ema) har lavere
-            # effective_ttl og optræder tidligere i køen ved samme absolutte alder.
-            priority_ids = cache.get_priority_stale_ids(ttl, set(cache._inflight_detail.keys()))
+            # 3-tier prioriteret kø via public API (undgår direkte _inflight_detail-adgang).
+            priority_ids = cache.get_priority_stale_ids(ttl, cache.inflight_ids())
             to_fetch = priority_ids[:batch_size]
 
             if to_fetch:
                 service = EndpointService(get_ise_client())
 
-                async def _drip_one(ep_id: str, _ttl: float = ttl) -> None:
+                async def _drip_one(ep_id: str) -> None:
                     try:
                         detail = await service._fetch_endpoint_detail(ep_id)
                         detail.cache_stale = False
@@ -235,26 +248,23 @@ class PrewarmWorker:
                         logger.debug("drip: refreshed %s", ep_id)
                     except Exception as exc:  # noqa: BLE001
                         logger.warning("drip: fetch fejlede id=%s: %s", ep_id, exc)
-                        # Back-off: ryk fetched_at frem så loopen vælger et andet
-                        # endpoint næste iteration i stedet for at låse på dette.
-                        entry = cache._details.get(ep_id)
-                        if entry is not None:
-                            entry.fetched_at = time.time() - _ttl + 60
+                        # Back-off via public API: undgår direkte fetched_at-manipulation.
+                        cache.set_fetch_backoff(ep_id)
 
                 await asyncio.gather(*[_drip_one(ep_id) for ep_id in to_fetch])
             else:
                 self.status.drip_skipped_total += 1
                 CACHE_DRIP_SKIPPED.inc()
 
-            # Opdater staleness-gauges efter hver iteration
-            now = time.time()
-            ages = [now - e.fetched_at for e in cache._details.values()]
+            # Opdater staleness-gauges via public ages_seconds() i stedet for _details-adgang.
+            ages = cache.ages_seconds()
             if ages:
+                n_ages = len(ages)
                 CACHE_OLDEST_AGE_S.set(max(ages))
-                CACHE_AVG_AGE_S.set(sum(ages) / len(ages))
+                CACHE_AVG_AGE_S.set(sum(ages) / n_ages)
                 stale = sum(1 for a in ages if a > ttl)
                 CACHE_STALE_COUNT.set(stale)
-                CACHE_STALE_PCT.set(stale / len(ages) * 100)
+                CACHE_STALE_PCT.set(stale / n_ages * 100)
 
             try:
                 await asyncio.wait_for(self._stop.wait(), timeout=drip_sleep)
@@ -295,7 +305,8 @@ class PrewarmWorker:
 
             cache = get_cache()
 
-            # Invalider endpoints slettet fra ISE siden sidst scan
+            # Invalider endpoints slettet fra ISE siden sidst scan.
+            # Ryd også _tier_emas for at forhindre ubegrænset hukommelsesvækst.
             from app.core import first_seen_store
             ise_ids_set = set(all_ids)
             cached_ids_set = set(cache.detail_ids())
@@ -307,6 +318,7 @@ class PrewarmWorker:
                     if mac:
                         first_seen_store.delete(mac)
                 cache.invalidate_detail(ep_id)
+                cache.forget_tier_ema(ep_id)  # ryd EMA-historik for permanent slettede endpoints
             self.status.deleted = len(deleted_ids)
             if deleted_ids:
                 logger.info(
@@ -314,29 +326,29 @@ class PrewarmWorker:
                     len(deleted_ids),
                 )
 
-            # Sæt hot-queue IDs forrest og markér dem til force-fetch
-            hot_set: set[str] = set()
+            # Sæt hot-queue IDs forrest. Brug set-subtraktion (O(n)) frem for
+            # list.remove() (O(n²)) til at fjerne hot-IDs fra remaining.
             hot_first: list[str] = []
-            remaining: list[str] = list(all_ids)
             while not self._hot.empty():
                 try:
-                    h = self._hot.get_nowait()
-                    if h in remaining:
-                        remaining.remove(h)
-                    hot_first.append(h)
-                    hot_set.add(h)
+                    hot_first.append(self._hot.get_nowait())
                 except asyncio.QueueEmpty:
                     break
+            self._hot_set -= set(hot_first)  # ryd dedup-sæt for drænede IDs
+            hot_set_local: set[str] = set(hot_first)
+            # O(n) set-opslag i stedet for O(n²) list.remove() per hot-element
+            remaining: list[str] = [ep_id for ep_id in all_ids if ep_id not in hot_set_local]
             ordered = hot_first + remaining
 
-            # Inkrementel filtrering: spring over entries der er friske nok.
-            # Hot-queue IDs fetchets altid. 0 = klassisk fuld-scan.
+            # Inkrementel filtrering med tier-justeret skip_threshold.
+            # Hot endpoints (lav effective_skip) springes sjældnere over ved fuld-scan.
+            # Hot-queue IDs fetches altid. skip_threshold=0 → klassisk fuld-scan.
             skip_threshold = float(
                 getattr(config.settings, "cache_prewarm_skip_fresh_s", 1800.0)
             )
 
             def should_fetch(ep_id: str) -> bool:
-                if ep_id in hot_set:
+                if ep_id in hot_set_local:
                     return True
                 if skip_threshold <= 0:
                     return True
@@ -345,7 +357,9 @@ class PrewarmWorker:
                     return True  # ikke i cache — altid fetch
                 if cache.is_from_disk(ep_id):
                     return True  # disk-loaded entries er stale
-                return age > skip_threshold
+                # Tier-justeret skip: hot endpoints har lavere eff_skip → refreshes oftere
+                eff_skip = cache.effective_skip_threshold(ep_id, skip_threshold)
+                return age > eff_skip
 
             to_fetch = [ep_id for ep_id in ordered if should_fetch(ep_id)]
             self.status.skipped = len(ordered) - len(to_fetch)
@@ -428,8 +442,6 @@ class PrewarmWorker:
 
     async def _fetch_all_ids(self, service: Any) -> list[str]:
         """Hent alle endpoint IDs fra ISE (pagineret liste, kun ID)."""
-        from app.ise.client import get_ise_client
-        client = get_ise_client()
         all_ids: list[str] = []
         page = 1
         while True:

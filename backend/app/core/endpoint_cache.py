@@ -56,7 +56,7 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T")
 
 STALE_MAX_FACTOR = 30.0
-DISK_CACHE_VERSION = 3
+DISK_CACHE_VERSION = 4  # v4: tier_emas sektion tilføjet til disk-payload
 
 # 3-tier change-frequency constants.
 # change_ema tracks EMA of "did value change?" per drip refresh (0.0–1.0).
@@ -219,6 +219,47 @@ class EndpointCache:
         if entry is not None:
             entry.change_ema = new_ema
 
+    def forget_tier_ema(self, endpoint_id: str) -> None:
+        """Fjern EMA-historik for endpoint slettet permanent fra ISE.
+        Forhindrer ubegrænset vækst af _tier_emas over lange driftsperioder.
+        """
+        self._tier_emas.pop(endpoint_id, None)
+
+    def stale_count_for_ttl(self, ttl: float) -> int:
+        """Antal detail-entries ældre end ttl sekunder.
+        Public API der erstatter direkte _details-adgang fra cache_prewarm.
+        """
+        now = self._now()
+        return sum(1 for e in self._details.values() if (now - e.fetched_at) > ttl)
+
+    def inflight_ids(self) -> set[str]:
+        """Set af endpoint IDs med aktiv ISE-fetch.
+        Public API der erstatter direkte _inflight_detail-adgang fra cache_prewarm.
+        """
+        return {eid for eid, t in self._inflight_detail.items() if not t.done()}
+
+    def effective_skip_threshold(self, endpoint_id: str, base_threshold: float) -> float:
+        """Tier-justeret skip_threshold til brug i _full_scan().
+        Hot endpoints springes ikke over så nemt (lavere threshold → refreshes oftere).
+        """
+        entry = self._details.get(endpoint_id)
+        if entry is None:
+            return base_threshold
+        return self._effective_ttl_for_entry(entry, base_threshold)
+
+    def set_fetch_backoff(self, endpoint_id: str) -> None:
+        """Back-off ved drip-fetch-fejl: ryk fetched_at frem 60s bag TTL-grænsen
+        så loopen vælger et andet endpoint næste iteration i stedet for at låse på dette.
+        """
+        entry = self._details.get(endpoint_id)
+        if entry is not None:
+            entry.fetched_at = time.time() - self._ttl() + 60
+
+    def ages_seconds(self) -> list[float]:
+        """Liste af alle entry-aldre i sekunder. Bruges til metrics-gauges."""
+        now = self._now()
+        return [now - e.fetched_at for e in self._details.values()]
+
     def is_from_disk(self, endpoint_id: str) -> bool:
         entry = self._details.get(endpoint_id)
         return entry is not None and entry.from_disk
@@ -368,7 +409,11 @@ class EndpointCache:
         if not self.enabled():
             return await fetch_fn()
         entry = self._details.get(endpoint_id)
-        if entry and self._fresh(entry) and not entry.from_disk and not force_fresh:
+        # Tier-justeret freshness: hot entries (eff_ttl = TTL×0.5) trigges til
+        # SWR-refresh dobbelt så hurtigt som warm entries ved direkte get_detail-kald.
+        # Gør cache-hit/miss konsistent med UI-staleness-badge i snapshot_all_details().
+        if entry and not entry.from_disk and not force_fresh and \
+                self._age(entry) <= self._effective_ttl_for_entry(entry, self._ttl()):
             self._stats["hits"] += 1
             CACHE_HITS.inc()
             return entry.value
@@ -443,13 +488,16 @@ class EndpointCache:
             return 8192  # fallback ~8 KB
 
     def _evict_oldest(self) -> None:
-        """Evict the oldest (first-inserted) entry. FIFO — O(1) with ordered dict."""
-        oldest_id, oldest_entry = next(iter(self._details.items()))
+        """Evict entry med ældst fetched_at (mindst nyligt refreshed). O(n).
+        Korrekt LRU-adfærd: en hot entry der refreshes hyppigt evictes ikke
+        frem for en kold entry der sidst blev hentet for længe siden.
+        """
+        oldest_id = min(self._details, key=lambda k: self._details[k].fetched_at)
+        oldest_entry = self._details.pop(oldest_id)
         self._remove_from_roles_index(oldest_id, oldest_entry.value)
         if oldest_entry.from_disk:
             self._disk_stale_count -= 1
         self._total_bytes -= oldest_entry.size_bytes
-        del self._details[oldest_id]
         self._stats["evictions"] += 1
         CACHE_EVICTIONS.inc()
 
@@ -597,16 +645,23 @@ class EndpointCache:
     # Disk persistence                                                     #
     # ------------------------------------------------------------------ #
 
-    def save_to_disk(self, path: Path) -> int:
-        """Serialise all detail entries to a JSON file. Returns entry count."""
+    def _save_snapshot(
+        self,
+        path: Path,
+        snapshot: dict[str, "CachedEntry[Any]"],
+        tier_emas_snap: dict[str, float],
+    ) -> int:
+        """Serialisér pre-taget snapshot til JSON. Kaldt fra event-loop (sync)
+        eller thread-pool (async). Parametrene er snapshot-kopier taget på
+        event-loop-tråden, så dict-iteration her er thread-safe.
+        """
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
             entries: dict[str, Any] = {}
-            for ep_id, entry in self._details.items():
+            for ep_id, entry in snapshot.items():
                 if entry.from_disk:
                     continue  # don't re-persist disk-loaded stale data
                 try:
-                    # value may be a Pydantic model or plain dict
                     value_dict = (
                         entry.value.model_dump()
                         if hasattr(entry.value, "model_dump")
@@ -625,6 +680,7 @@ class EndpointCache:
                 "saved_at": self._now(),
                 "count": len(entries),
                 "entries": entries,
+                "tier_emas": tier_emas_snap,
             }
             path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
             logger.info("disk cache: saved %d entries to %s", len(entries), path)
@@ -633,12 +689,26 @@ class EndpointCache:
             logger.warning("disk cache: save failed: %s", exc)
             return 0
 
+    def save_to_disk(self, path: Path) -> int:
+        """Serialisér alle detail-entries til JSON-fil. Returnerer antal entries.
+        Tag snapshot på den kaldende tråd (altid event-loop ved synkron brug).
+        """
+        snapshot = dict(self._details)
+        tier_emas_snap = dict(self._tier_emas)
+        return self._save_snapshot(path, snapshot, tier_emas_snap)
+
     async def save_to_disk_async(self, path: Path) -> int:
-        """Non-blocking variant: offload save_to_disk to a thread-pool executor
-        so the event loop is not held while json.dumps + file write run (can
-        take 300–700 ms at 10K endpoints)."""
+        """Non-blocking: snapshot på event-loop-tråden, serialisering i thread-pool.
+        Snapshot tages HER så thread-pool ikke itererer det delte _details-dict
+        mens event-loopen kan kalde put_detail/invalidate_detail concurrently.
+        (300–700 ms ved 10K endpoints — blokerer event-loopen uden executor.)
+        """
+        snapshot = dict(self._details)
+        tier_emas_snap = dict(self._tier_emas)
         loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(None, self.save_to_disk, path)
+        return await loop.run_in_executor(
+            None, self._save_snapshot, path, snapshot, tier_emas_snap
+        )
 
     def load_from_disk(self, path: Path) -> int:
         """Load detail entries from a JSON file, flagged as from_disk=True.
@@ -651,6 +721,13 @@ class EndpointCache:
             if payload.get("version") != DISK_CACHE_VERSION:
                 logger.info("disk cache: version mismatch, skipping %s", path)
                 return 0
+            # Gendan tier EMA-historik for endpoints der ikke allerede er i _tier_emas.
+            # Disse værdier gælder for endpoints der var invaliderede ved shutdown.
+            saved_emas: dict[str, float] = payload.get("tier_emas", {})
+            for ep_id, ema in saved_emas.items():
+                if ep_id not in self._tier_emas:
+                    self._tier_emas[ep_id] = float(ema)
+
             entries = payload.get("entries", {})
             loaded = 0
             for ep_id, raw in entries.items():
@@ -691,25 +768,48 @@ class EndpointCache:
         self._last_sync_error = err
 
     def stats(self) -> dict[str, Any]:
+        # Ryd afsluttede inflight-tasks for at undgå gradvis hukommelseslækage.
+        done_keys = [k for k, t in self._inflight_detail.items() if t.done()]
+        for k in done_keys:
+            del self._inflight_detail[k]
+
         max_entries = self._max_entries()
         max_bytes = self._max_memory_bytes()
 
-        # Staleness distribution
+        # Enkelt O(n) pass: alder, staleness-distribution og tier-fordeling.
+        # Erstatter tidligere 3 separate list-comprehensions + max/sum-kald.
         now = self._now()
         ttl = self._ttl()
         stale_max = ttl * STALE_MAX_FACTOR
-        ages = [now - e.fetched_at for e in self._details.values()] if self._details else []
-        fresh_count = sum(1 for a in ages if a <= ttl)
-        stale_count = sum(1 for a in ages if ttl < a <= stale_max)
-        very_stale_count = sum(1 for a in ages if a > stale_max)
-        oldest_age = max(ages) if ages else None
-        avg_age = (sum(ages) / len(ages)) if ages else None
+        fresh_count = stale_count = very_stale_count = 0
+        tier_hot = tier_warm = tier_cold = 0
+        oldest_age = 0.0
+        total_age = 0.0
+        n = len(self._details)
+        for entry in self._details.values():
+            age = now - entry.fetched_at
+            total_age += age
+            if age > oldest_age:
+                oldest_age = age
+            if age <= ttl:
+                fresh_count += 1
+            elif age <= stale_max:
+                stale_count += 1
+            else:
+                very_stale_count += 1
+            ema = entry.change_ema
+            if ema >= TIER_HOT_EMA:
+                tier_hot += 1
+            elif ema < TIER_COLD_EMA:
+                tier_cold += 1
+            else:
+                tier_warm += 1
 
         return {
             "enabled": self.enabled(),
             "ttl_seconds": ttl,
             "stale_while_revalidate": self._swr(),
-            "detail_entries": len(self._details),
+            "detail_entries": n,
             "max_entries": max_entries if max_entries > 0 else "unlimited",
             "total_bytes": self._total_bytes,
             "max_memory_bytes": max_bytes if max_bytes > 0 else "unlimited",
@@ -725,29 +825,24 @@ class EndpointCache:
             "last_sync_at": self._last_sync_at,
             "last_sync_error": self._last_sync_error,
             "roles_index_roles": len(self._roles_index),
-            "inflight_detail_refreshes": sum(
-                1 for t in self._inflight_detail.values() if not t.done()
-            ),
+            "inflight_detail_refreshes": len(self._inflight_detail),  # done-tasks allerede renset ovenfor
             "inflight_groups_refresh": bool(
                 self._inflight_groups and not self._inflight_groups.done()
             ),
-            # Tier distribution
             "tiers": {
-                "hot":  sum(1 for e in self._details.values() if e.change_ema >= TIER_HOT_EMA),
-                "warm": sum(1 for e in self._details.values() if TIER_COLD_EMA <= e.change_ema < TIER_HOT_EMA),
-                "cold": sum(1 for e in self._details.values() if e.change_ema < TIER_COLD_EMA),
+                "hot":  tier_hot,
+                "warm": tier_warm,
+                "cold": tier_cold,
             },
-            # Staleness metrics
             "staleness": {
                 "fresh_count": fresh_count,
                 "stale_count": stale_count,
                 "very_stale_count": very_stale_count,
-                "stale_pct": round((stale_count + very_stale_count) / len(ages) * 100, 1) if ages else 0.0,
-                # very_stale_pct: andel der er UDENFOR SWR-vinduet (age > TTL × STALE_MAX_FACTOR).
-                # Disse entries kan ikke serves fra cache og er reelt miste. I normal drift = 0.
-                "very_stale_pct": round(very_stale_count / len(ages) * 100, 1) if ages else 0.0,
-                "oldest_entry_age_s": round(oldest_age, 1) if oldest_age is not None else None,
-                "average_entry_age_s": round(avg_age, 1) if avg_age is not None else None,
+                "stale_pct": round((stale_count + very_stale_count) / n * 100, 1) if n else 0.0,
+                # very_stale_pct: andel UDENFOR SWR-vinduet (age > TTL × 30). I normal drift = 0.
+                "very_stale_pct": round(very_stale_count / n * 100, 1) if n else 0.0,
+                "oldest_entry_age_s": round(oldest_age, 1) if n else None,
+                "average_entry_age_s": round(total_age / n, 1) if n else None,
             },
         }
 

@@ -4,6 +4,29 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.17.0707] — 2026-07-01 — feat: Cache-motor refaktorering (13 forbedringer)
+
+> **Build:** 0707
+
+### 13 korrekthed- og ydelsesforbedringer i cache-motoren
+
+To-fase analyse af cache-infrastrukturen (`endpoint_cache.py` + `cache_prewarm.py`) afslørede 13 bugs og ydelsesproblemer — alle er nu rettet.
+
+**Vigtigste forbedringer:**
+
+- **Hukommelseslækage elimineret:** `_tier_emas`-dict voksede ubegrænset ved endpoint-slettning. `forget_tier_ema()` rydder nu EMA-historik for permanent slettede endpoints.
+- **Thread-safety i disk-save:** `save_to_disk_async()` snapshottede dict under serialisering — risiko for race condition. Ny `_save_snapshot()` metode snapper data på event-loop, serialiserer i thread-pool.
+- **Korrekt eviction-strategi:** `_evict_oldest()` brugte FIFO (insertion order). Rettede til LRU via `fetched_at`.
+- **Tier-aware freshness:** `get_detail()` returnerer nu stale-status baseret på `effective_ttl` (hot endpoints er stale hurtigere og refreshes hurtigere).
+- **O(n²) → O(n) hot-queue drain:** `list.remove()` per hot-element → set-subtraktion.
+- **Tier-justeret full-scan skip:** Hot endpoints springes sjældnere over i fuld-scan (lavere `effective_skip_threshold`).
+- **Sprint skalerer til 10K+ endpoints:** `batch_size = min(max(3, total//200), 20)` frem for hardkodet 3.
+- **tier_emas persisteres til disk:** Overlever server-genstart (DISK_CACHE_VERSION 3→4).
+- **Dead code fjernet:** `_fetch_all_ids()` importerede `get_ise_client` uden at bruge den.
+- **`stats()` single O(n) pass:** Var 3 separate traversals.
+
+---
+
 ## [6.16.0706] — 2026-07-01 — fix: ISE API-bruger lockout-detektion
 
 > **Build:** 0706
