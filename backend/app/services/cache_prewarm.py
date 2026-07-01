@@ -438,6 +438,7 @@ class PrewarmWorker:
         if hot_ids:
             logger.info("prewarm: hot-queue flush — %d endpoints", len(hot_ids))
             await asyncio.gather(*(fetch_hot(i) for i in hot_ids))
+        self._hot_set -= set(hot_ids)  # ryd dedup-sæt så samme IDs kan re-prioriteres
         self.status.hot_queue_size = self._hot.qsize()
 
     async def _fetch_all_ids(self, service: Any) -> list[str]:

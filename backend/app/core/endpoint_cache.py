@@ -624,6 +624,10 @@ class EndpointCache:
 
     def invalidate_all(self) -> None:
         if self._details or self._groups:
+            # Gem EMA-drift til _tier_emas FØR clear så næste put_detail arver korrekte værdier.
+            # invalidate_detail() gør dette per-entry, men vi bypasser den her for performance.
+            for ep_id, entry in self._details.items():
+                self._tier_emas[ep_id] = entry.change_ema
             self._details.clear()
             self._groups = None
             self._roles_index.clear()

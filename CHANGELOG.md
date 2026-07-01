@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.17.0708] — 2026-07-01 — fix: Cache to-fase test — 2 bugs fundet og rettet
+
+**Fund fra gennemgribende to-fase analyse (statisk + scenarie-sporing):**
+
+- `backend/app/services/cache_prewarm.py`: `_drain_hot_queue()` ryddede ikke `_hot_set` efter drain — IDs sad fast i dedup-sættet, så alle efterfølgende `prioritize(id)`-kald for de samme IDs blev ignoreret stille. Tilføjet `self._hot_set -= set(hot_ids)` efter gather.
+- `backend/app/core/endpoint_cache.py`: `invalidate_all()` kaldte `self._details.clear()` uden at gemme `entry.change_ema` til `_tier_emas` først — EMA-drift siden sidst `invalidate_detail()`/`mark_changed()` gik tabt, og 3-tier-systemet reset effektivt til "alle warm" efter fuld invalidation. Tilføjet loop der gemmer EMA for alle entries til `_tier_emas` før clear.
+
 ## [6.17.0707] — 2026-07-01 — feat: Cache-motor refaktorering (13 forbedringer)
 
 **Baggrund:** To-fase analyse af `endpoint_cache.py` og `cache_prewarm.py` identificerede 13 bugs og ydelsesproblemer.

@@ -4,6 +4,18 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.17.0708] — 2026-07-01 — fix: 2 cache-bugs fundet i to-fase test
+
+> **Build:** 0708
+
+Gennemgribende to-fase analyse (statisk + scenarie-sporing) af cache-motoren afslørede 2 bugs:
+
+**Bug 1 — Hot-queue dedup låste sig selv fast (`_drain_hot_queue`)**  
+Efter en hot-queue flush blev IDs ikke fjernet fra `_hot_set`. Resultat: alle efterfølgende `prioritize(id)`-kald for de drænede IDs blev stiltiende ignoreret — brugere der åbner edit-modal to gange for samme endpoint efter en full-scan fik ikke prioriteret refresh den anden gang.
+
+**Bug 2 — `invalidate_all()` mistede EMA-historik**  
+`invalidate_all()` kaldte `dict.clear()` uden at gemme `entry.change_ema` til `_tier_emas` først. Konsekvens: 3-tier-systemet reset til "alle warm" efter enhver fuld cache-invalidation (f.eks. settings-reload), og hot/cold-klassificeringer måtte akkumuleres fra nul igen.
+
 ## [6.17.0707] — 2026-07-01 — feat: Cache-motor refaktorering (13 forbedringer)
 
 > **Build:** 0707
