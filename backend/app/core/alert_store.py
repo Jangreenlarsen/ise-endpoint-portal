@@ -49,6 +49,7 @@ def check_conditions() -> None:
     _check_circuit_breaker()
     _check_cache_drip()
     _check_stale_pct()
+    _check_ise_auth()
 
 
 def _check_circuit_breaker() -> None:
@@ -120,5 +121,37 @@ def _check_stale_pct() -> None:
             )
         else:
             clear_alert("high_stale")
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _check_ise_auth() -> None:
+    try:
+        from app.ise.client import get_ise_client
+        status = get_ise_client().auth_status()
+        s = status["status"]
+        n = status["consecutive_401s"]
+        if s == "locked":
+            set_alert(
+                "ise_auth_locked",
+                "error",
+                "ISE API-bruger låst ude",
+                f"ISE returnerer 401 Unauthorized {n} gange i træk — API-brugeren er sandsynligvis "
+                "disabled i ISE. "
+                "Gå til ISE: Administration → System → Admin Access → Administrators → Admin Users "
+                "→ find brugeren → sæt Enabled = Yes. "
+                "Kontrollér også Account Disable Policy: "
+                "Administration → System → Admin Access → Authentication → Account Disable Policy.",
+            )
+        elif s == "warning":
+            set_alert(
+                "ise_auth_locked",
+                "warning",
+                "ISE authentication fejler",
+                f"ISE returnerer 401 Unauthorized ({n} gange). "
+                "Kontrollér brugernavn/password i Settings → ISE-forbindelse.",
+            )
+        else:
+            clear_alert("ise_auth_locked")
     except Exception:  # noqa: BLE001
         pass

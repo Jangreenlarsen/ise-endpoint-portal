@@ -3,6 +3,19 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.16.0706] — 2026-07-01 — fix: ISE API-bruger lockout-detektion + dashboard-alarm
+
+**Problem:** ISE's Account Disable Policy deaktiverer API-brugeren periodisk (inaktivitets-regel tæller ikke API-kald). Portalen mister ISE-forbindelsen uden forklaring — brugerne ser blot at data er stale.
+
+**Løsning:** Lockout-detektion med automatisk alarm i Dashboard:
+- `backend/app/ise/client.py`: Ny `_auth_locked_since: float | None` — registrerer tidspunkt for første 401 i en sekvens. Ny `auth_status()` metode: returnerer `{status: "ok"|"warning"|"locked", consecutive_401s, locked_since}`. "warning" ved 1-2 × 401, "locked" ved 3+ × 401 i træk. Nulstilles automatisk ved første succesfulde ISE-svar.
+- `backend/app/core/alert_store.py`: Ny `_check_ise_auth()` tjekkes i `check_conditions()` (periodisk). Sætter alert `ise_auth_locked` med severity "error" (locked) eller "warning" (warning) inkl. præcise trin til genaktivering i ISE GUI.
+- `backend/app/api/dashboard.py`: `GET /api/dashboard` returnerer nu `ise_auth`-blok med status, tæller og timestamp.
+- `frontend/js/views/dashboard.js`: Ny `iseAuthBanner()` funktion — vises øverst i dashboard-body ved "warning"/"locked". Locked-banner viser trin-for-trin instruktioner til at genaktivere ISE API-brugeren og justere Account Disable Policy.
+- `frontend/js/i18n.js`: Nye strings `dash.ise_auth_locked_title`, `dash.ise_auth_warn_title` (DA + EN).
+- `BUGS.md`: Bug registreret som `[OPEN → MONITORED]`.
+- Berørte filer: `ise/client.py`, `core/alert_store.py`, `api/dashboard.py`, `views/dashboard.js`, `i18n.js`
+
 ## [6.16.0705] — 2026-07-01 — feat: Intelligent 3-tier cache prioritering
 
 **Problem:** ISE REST API-brugeren blev løbende disabled pga. for mange API-kald, fordi drip-loopen behandlede alle endpoints ens — uanset om de ændrede sig hyppigt eller slet ikke.

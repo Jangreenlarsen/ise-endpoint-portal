@@ -4,6 +4,28 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.16.0706] — 2026-07-01 — fix: ISE API-bruger lockout-detektion
+
+> **Build:** 0706
+
+### Problem: ISE API-brugeren disabled uden advarsel
+
+ISE's "Account Disable Policy" deaktiverer konti efter N dages inaktivitet. ISE tæller kun GUI-logins — ikke API Basic Auth-kald — som aktivitet. Portalen laver hundredvis af API-kald dagligt, men API-brugeren ses som "inaktiv" og disables automatisk.
+
+### Løsning: Lockout-alarm i Dashboard
+
+Portalen registrerer nu 401 Unauthorized-sekvenser fra ISE og viser en rød alarm:
+
+**Nivauer:**
+- 1-2 × 401 i træk → gul advarsel: "ISE authentication fejler"
+- 3+ × 401 i træk → rød alarm: "ISE API-bruger låst ude" med trin-for-trin vejledning
+
+**Alarm viser præcis hvad man skal gøre:**
+1. ISE GUI → Administration → System → Admin Access → Administrators → Admin Users → genaktivér brugeren
+2. ISE GUI → Authentication → Account Disable Policy → sæt "inactivity disable" til 0 (aldrig)
+
+Alarmen forsvinder automatisk når ISE godkender igen (ingen manuel dismiss nødvendig).
+
 ## [6.16.0705] — 2026-07-01 — feat: Intelligent 3-tier cache prioritering
 
 > **Build:** 0705

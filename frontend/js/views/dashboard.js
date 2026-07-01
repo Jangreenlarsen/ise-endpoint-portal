@@ -211,6 +211,42 @@ function renderLogsTable(entries) {
 
 // ── Compose dashboard HTML ─────────────────────────────────────────────────────
 
+function iseAuthBanner(iseAuth) {
+  const s = iseAuth?.status;
+  if (!s || s === "ok") return "";
+  const locked = s === "locked";
+  const bg     = locked ? "#fef2f2" : "#fffbeb";
+  const border = locked ? "#dc2626" : "#d97706";
+  const icon   = locked ? "🔒" : "⚠️";
+  const n      = iseAuth.consecutive_401s ?? 0;
+  const since  = iseAuth.locked_since
+    ? new Date(iseAuth.locked_since * 1000).toLocaleTimeString()
+    : null;
+  const title  = locked
+    ? t("dash.ise_auth_locked_title") || "ISE API-bruger låst ude"
+    : t("dash.ise_auth_warn_title")   || "ISE authentication fejler";
+  const steps  = locked ? `
+    <ol style="margin:.5rem 0 0 1.2rem;padding:0;font-size:.85rem;color:#374151;line-height:1.7;">
+      <li>Åbn ISE GUI og gå til <strong>Administration → System → Admin Access → Administrators → Admin Users</strong></li>
+      <li>Find API-brugeren (typisk <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">${esc(t("dash.ise_api_user") || "ers-admin")}</code>) og sæt <strong>Enabled = Yes</strong></li>
+      <li>Kontrollér <strong>Administration → System → Admin Access → Authentication → Account Disable Policy</strong> — overvej at sætte "Disable after X days inactivity" til 0 (aldrig)</li>
+      <li>Portalen genopretter forbindelsen automatisk når ISE godkender</li>
+    </ol>` : `<p style="margin:.4rem 0 0;font-size:.85rem;color:#374151;">
+      Kontrollér brugernavn/password: <a href="#/settings" style="color:#2563eb;">${t("dash.ise_auth_settings_link") || "Settings → ISE-forbindelse"}</a>
+    </p>`;
+  return `<div style="background:${bg};border-left:4px solid ${border};border-radius:8px;
+    padding:.85rem 1rem;margin-bottom:.75rem;">
+    <div style="display:flex;align-items:baseline;gap:.5rem;">
+      <span style="font-size:1.05rem;">${icon}</span>
+      <strong style="color:${border};font-size:.92rem;">${esc(title)}</strong>
+      <span style="font-size:.8rem;color:#9ca3af;margin-left:auto;">
+        401 × ${n}${since ? ` — siden ${since}` : ""}
+      </span>
+    </div>
+    ${steps}
+  </div>`;
+}
+
 function compose(dash, trends, lifecycle, isAdmin, diagQuick, sysinfo) {
   const cb      = dash.circuit_breaker || {};
   const ep      = dash.endpoints       || {};
@@ -390,6 +426,7 @@ function compose(dash, trends, lifecycle, isAdmin, diagQuick, sysinfo) {
     : "";
 
   return `
+    ${iseAuthBanner(dash.ise_auth)}
     ${kpiRow}
     <div style="display:flex;gap:.75rem;align-items:flex-start;flex-wrap:wrap;">
       <div style="flex:2;min-width:320px;">${trendCard}</div>

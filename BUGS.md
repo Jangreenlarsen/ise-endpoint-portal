@@ -4,6 +4,13 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [OPEN → MONITORED 6.16.0706] 2026-07-01 — ISE REST API-bruger bliver disabled
+
+- **Symptom:** Portalen mister ISE-forbindelsen periodisk — alle ISE-kald returnerer 401. ISE-admin kan se at API-brugerkontoen er disabled.
+- **Root cause:** ISE's "Account Disable Policy" deaktiverer konti efter N dages inaktivitet — ISE tæller sandsynligvis kun GUI-logins som "aktivitet", ikke API Basic Auth-kald. Dermed ses API-brugeren som "inaktiv" selv om portalen kalder ISE hundredvis af gange dagligt.
+- **Status:** Monitorering implementeret (v6.16.0706). Portal viser nu rød alarm i Dashboard ved 3+ consecutive 401s med præcise trin til genaktivering. Langsigtet løsning er at slå Account Disable Policy fra for API-brugeren i ISE GUI.
+- **Berørte filer (monitoring):** `backend/app/ise/client.py`, `backend/app/core/alert_store.py`, `backend/app/api/dashboard.py`, `frontend/js/views/dashboard.js`, `frontend/js/i18n.js`
+
 ## [FIXED 6.15.0702] 2026-06-17 — Cache drip-loop låser på fejlende endpoint + for langsom sprint
 
 - **Symptom:** Efter noget tid indeholder cachen kun gammel data (stale entries med forældet ISE-info) — selv om portalen er i drift og cache-health-dot viser aktivitet. Data opdateres kun når bruger trykker "Refresh from ISE".

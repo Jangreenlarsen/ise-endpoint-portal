@@ -77,6 +77,7 @@ class IseClient:
             recovery_timeout=float(getattr(s, "ise_cb_recovery_timeout_s", 60.0)),
         )
         self._consecutive_401s = 0
+        self._auth_locked_since: float | None = None  # tid for første 401 i nuværende sekvens
         CIRCUIT_STATE.set(0)  # start closed
 
     async def close(self) -> None:
@@ -176,6 +177,8 @@ class IseClient:
             # and a blind CB that resets on any HTTP response would let the pre-warm
             # send hundreds of auth failures before the account gets locked out.
             self._consecutive_401s += 1
+            if self._auth_locked_since is None:
+                self._auth_locked_since = time.time()
             self._cb.record_failure()
             _cb_state_map = {"closed": 0, "half_open": 1, "open": 2}
             CIRCUIT_STATE.set(_cb_state_map.get(self._cb.state, 0))
@@ -201,6 +204,7 @@ class IseClient:
         _prev_cb_state = self._cb.state
         self._cb.record_success()
         self._consecutive_401s = 0
+        self._auth_locked_since = None
         if _prev_cb_state != "closed":
             audit_store.record_sync(
                 "ise_circuit_closed", "system", None,
@@ -233,6 +237,19 @@ class IseClient:
 
     async def delete(self, path: str, **kwargs: Any) -> Any:
         return await self.request("DELETE", path, **kwargs)
+
+    def auth_status(self) -> dict:
+        """Returnér ISE auth-status baseret på seneste 401-sekvens.
+
+        status: "ok" | "warning" (1-2 401s) | "locked" (3+ 401s i træk)
+        """
+        n = self._consecutive_401s
+        since = self._auth_locked_since
+        if n == 0:
+            return {"status": "ok", "consecutive_401s": 0, "locked_since": None}
+        if n < 3:
+            return {"status": "warning", "consecutive_401s": n, "locked_since": since}
+        return {"status": "locked", "consecutive_401s": n, "locked_since": since}
 
 
 _client: IseClient | None = None

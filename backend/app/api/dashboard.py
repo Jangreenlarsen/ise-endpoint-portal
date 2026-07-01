@@ -58,6 +58,14 @@ async def get_dashboard() -> dict:
     except Exception:  # noqa: BLE001
         pass
 
+    # ISE auth status — eksponerer consecutive 401-tæller og lockout-tidspunkt
+    ise_auth: dict = {"status": "ok", "consecutive_401s": 0, "locked_since": None}
+    try:
+        from app.ise.client import get_ise_client
+        ise_auth = get_ise_client().auth_status()
+    except Exception:  # noqa: BLE001
+        pass
+
     # Hit rate
     hits = stats.get("hits", 0)
     misses = stats.get("misses", 0)
@@ -101,4 +109,5 @@ async def get_dashboard() -> dict:
         },
         "prewarm": prewarm_data,
         "recent_events": recent_events,
+        "ise_auth": ise_auth,
     }
