@@ -217,13 +217,10 @@ class PrewarmWorker:
             CACHE_DRIP_SLEEP_S.set(drip_sleep)
             CACHE_DRIP_CYCLE_S.set(cycle_s)
 
-            # Find de batch_size ældste stale entries der ikke allerede er inflight
-            stale_sorted = sorted(
-                [ep_id for ep_id, e in list(cache._details.items())
-                 if (now_ts - e.fetched_at) > ttl and ep_id not in cache._inflight_detail],
-                key=lambda k: cache._details[k].fetched_at if k in cache._details else 0.0,
-            )
-            to_fetch = stale_sorted[:batch_size]
+            # 3-tier prioriteret kø: hot endpoints (høj change_ema) har lavere
+            # effective_ttl og optræder tidligere i køen ved samme absolutte alder.
+            priority_ids = cache.get_priority_stale_ids(ttl, set(cache._inflight_detail.keys()))
+            to_fetch = priority_ids[:batch_size]
 
             if to_fetch:
                 service = EndpointService(get_ise_client())

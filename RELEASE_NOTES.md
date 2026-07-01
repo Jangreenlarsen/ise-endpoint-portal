@@ -4,6 +4,34 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.16.0705] — 2026-07-01 — feat: Intelligent 3-tier cache prioritering
+
+> **Build:** 0705
+
+### Problem: ISE API-bruger disabled af for mange kald
+
+ISE REST API-brugeren blev løbende låst ude fordi drip-loopen behandlede alle endpoints ens — et endpoint med daglige registreringsændringer fik nøjagtig samme antal ISE-kald som et endpoint der aldrig ændres.
+
+### Løsning: EMA-baseret tier-system
+
+Hvert endpoint tildeles nu automatisk et tier baseret på historisk ændringsfrekvens (Exponential Moving Average med alpha=0.20, dvs. ~5 refreshes til konvergens):
+
+| Tier | EMA-grænse | Effective TTL | Konsekvens |
+|------|-----------|---------------|------------|
+| 🔴 Hot | ≥ 0.30 | × 0.5 | Refreshes dobbelt så hyppigt |
+| 🟡 Warm | 0.05–0.30 | × 1.0 | Normal drip-frekvens |
+| 🔵 Cold | < 0.05 | × 3.0 | Refreshes 3× sjældnere |
+
+Et ISE-netværk med typisk 80% stabile endpoints vil reducere total ISE API-kald med op til **60%** sammenlignet med at behandle alle endpoints ens.
+
+### Auto-fresh ved detail-view
+
+Endpoint markeret som ⏱ stale i Browse-tabellen → klik på det → portalen henter automatisk friske data fra ISE (bypass cache) i stedet for at vise forældet information.
+
+### Mutationer booster tier
+
+Når du redigerer, sletter eller decommissioner et endpoint via portalen, boostes dets EMA — samme effekt som pxGrid-events. EMA-historik bevares på tværs af cache-invalidations.
+
 ## [6.15.0704] — 2026-06-17 — fix: Cache-tuning — færre ⏱-badges, hurtigere fejlhåndtering
 
 > **Build:** 0704

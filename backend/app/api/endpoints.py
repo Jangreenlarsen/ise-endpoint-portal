@@ -220,12 +220,11 @@ async def get_endpoint_profiling_data(
 async def get_endpoint(
     endpoint_id: str,
     response: Response,
+    fresh: bool = Query(False, description="True = tving ISE-fetch uanset cache-alder (bruges ved detail-view af stale entries)."),
     user: User = Depends(require_any),
     service: EndpointService = Depends(get_endpoint_service),
 ) -> EndpointDetail:
     cache = get_cache()
-    # Tjek FØR service-kald: havde vi et cache-entry? SWR serverer herfra.
-    # Cachen invalideres ved ethvert save/update, så stale-risiko er minimal.
     age_before = cache.detail_age(endpoint_id) if cache.enabled() else None
     was_cached = age_before is not None
     try:
@@ -233,7 +232,7 @@ async def get_endpoint(
             endpoint_id,
             effective_roles=_scope_for(user),
             is_psk_editor=_is_psk_editor_for(user),
-            force_fresh=False,
+            force_fresh=fresh,
         )
     except IseApiError as exc:
         raise _ise_http_error(exc) from exc

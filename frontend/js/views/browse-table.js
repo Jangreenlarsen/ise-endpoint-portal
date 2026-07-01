@@ -636,6 +636,8 @@ export function initTable(container, state, api, cb) {
       );
       state.allRows        = result.items;
       state.totalEndpoints = result.total;
+      // 3-tier: hold Set af stale endpoint-IDs så detail-view kan auto-refresh
+      state.staleIds = new Set(result.items.filter((r) => r.cache_stale).map((r) => r.id));
       state.laaTotal       = epStats ? epStats.laa_count : null;
       if (cb.needsFilterMode()) await cb.enterFilterMode();
       await cb.refreshActiveSessionMacs(force);

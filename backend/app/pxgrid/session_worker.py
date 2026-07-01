@@ -483,6 +483,8 @@ async def _handle_endpoint_body(body: bytes, cache) -> None:  # type: ignore[no-
         ).upper()
         if ep_id:
             ep_cache.invalidate_detail(str(ep_id))
+            # 3-tier: boost change_ema så drip-loopen prioriterer dette endpoint højere.
+            ep_cache.mark_changed(str(ep_id))
         else:
             ep_cache.invalidate_all()
         # Genbrug session-cachens broadcaster — alle SSE-subscribere får

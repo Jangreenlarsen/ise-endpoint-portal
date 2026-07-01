@@ -93,7 +93,7 @@ export const api = {
     const qs = parts.length ? `?${parts.join("&")}` : "";
     return request(`/endpoints/details/all${qs}`);
   },
-  getEndpoint: (id) => requestTimed(`/endpoints/${encodeURIComponent(id)}`),
+  getEndpoint: (id, fresh = false) => requestTimed(`/endpoints/${encodeURIComponent(id)}${fresh ? "?fresh=true" : ""}`),
   getProfilingData: (id) => request(`/endpoints/${encodeURIComponent(id)}/profiling-data`),
   getProfilerProfile: (id) => request(`/endpoints/${encodeURIComponent(id)}/profiler-profile`),
   prioritizeEndpoint: (id) => request(`/endpoints/${encodeURIComponent(id)}/prioritize`, { method: "POST" }),

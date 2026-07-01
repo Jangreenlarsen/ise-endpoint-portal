@@ -3,6 +3,29 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.16.0705] — 2026-07-01 — feat: Intelligent 3-tier cache prioritering
+
+**Problem:** ISE REST API-brugeren blev løbende disabled pga. for mange API-kald, fordi drip-loopen behandlede alle endpoints ens — uanset om de ændrede sig hyppigt eller slet ikke.
+
+**Løsning:** EMA-baseret (Exponential Moving Average) 3-tier prioriteringssystem der fordeler ISE-kald intelligent baseret på historisk ændringsfrekvens:
+
+- **Hot** (EMA ≥ 0.30): endpoint ændres ofte → effective TTL × 0.5 (refreshes dobbelt så hyppigt)
+- **Warm** (0.05–0.30): normal frekvens → effective TTL × 1.0
+- **Cold** (EMA < 0.05): endpoint sjældent ændret → effective TTL × 3.0 (refreshes 3× sjældnere)
+
+**EMA-formel:** `new_ema = 0.20 × (1 if changed else 0) + 0.80 × old_ema` (alpha=0.20, konvergerer ~5 refreshes)
+
+**Ændringer:**
+- `endpoint_cache.py`: `CachedEntry` → ny `change_ema` + `value_hash`-felter. `_hash_value()` beregner SHA-256 (16 hex) af endpoint-data. `_tier_emas`-dict bevarer EMA på tværs af cache-invalidations. `get_priority_stale_ids()` sorterer stale entries efter `age/effective_ttl` (hot-entries med samme alder sorteres forrest). `mark_changed()` booster EMA + opdaterer `_tier_emas`. `invalidate_detail()` gemmer EMA i `_tier_emas` inden entry slettes. `put_detail()` læser `_tier_emas` når entry er ny (fx efter invalidation). Disk-persistence af EMA-værdier via `save_to_disk()`/`load_from_disk()`. `stats()` inkluderer `tiers: {hot, warm, cold}`.
+- `cache_prewarm.py`: `_drip_loop()` bruger nu `cache.get_priority_stale_ids()` i stedet for `get_oldest_id()` — prioritetskøen håndterer både tier-prioritering og sprint-logik.
+- `endpoint_service.py`: `mark_changed()` + `invalidate_detail()` kaldes ved delete, edit-save og decommission — portal-mutations booster EMA som pxGrid-events.
+- `api/endpoints.py`: ny `?fresh=true` query-param tvinger ISE-fetch og bypass cache.
+- `pxgrid/session_worker.py`: `mark_changed()` kaldes ved pxGrid-endpoint-events.
+- `frontend/js/api.js`: `getEndpoint(id, fresh)` — sender `?fresh=true` ved behov.
+- `frontend/js/views/browse-table.js`: `state.staleIds` populeres fra `cache_stale`-flag i list-response.
+- `frontend/js/views/browse-detail.js`: åbning af stale endpoint → automatisk `fresh=true` fetch fra ISE.
+- Berørte filer: `endpoint_cache.py`, `cache_prewarm.py`, `endpoint_service.py`, `api/endpoints.py`, `pxgrid/session_worker.py`, `api.js`, `browse-detail.js`, `browse-table.js`
+
 ## [6.15.0704] — 2026-06-17 — fix: .env cache-tuning — TTL 900s + ISE_TIMEOUT 10s
 
 - `CACHE_TTL_SECONDS=900` (15 min, var 300s/5 min): entries vises nu som friske i 15 min. Med drip-batch (3 parallel, cycle ~150s) refreshes alle 100 endpoints komfortabelt inden TTL udløber — ingen ⏱-badges i normal drift

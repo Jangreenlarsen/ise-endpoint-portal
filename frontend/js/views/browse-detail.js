@@ -69,7 +69,10 @@ export function initDetail(container, state, api, cb) {
       // Only fetch the endpoint detail — CA values and DACLs are already loaded
       // in state.caValues by the browse table's initial load() call and do not
       // need to be re-fetched on every detail open (saves 5-30 s of ISE calls).
-      const { data: d, totalMs, fromCache, cacheAge } = await api.getEndpoint(id);
+      // fresh=true kun hvis table-rækken var markeret stale da den blev valgt,
+      // så vi ikke hitter ISE unødigt for entries der allerede er friske.
+      const rowWasStale = state.staleIds?.has(id) ?? false;
+      const { data: d, totalMs, fromCache, cacheAge } = await api.getEndpoint(id, rowWasStale);
 
       // Show timing badge so operator can see portal vs ISE latency.
       const _ageStr = fromCache && cacheAge >= 0 ? ` (${Math.round(cacheAge)}s)` : "";

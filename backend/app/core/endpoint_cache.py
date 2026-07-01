@@ -32,6 +32,7 @@ without waiting for the TTL to expire.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import logging
 import time
@@ -57,6 +58,29 @@ T = TypeVar("T")
 STALE_MAX_FACTOR = 30.0
 DISK_CACHE_VERSION = 3
 
+# 3-tier change-frequency constants.
+# change_ema tracks EMA of "did value change?" per drip refresh (0.0–1.0).
+TIER_HOT_EMA   = 0.30   # > 30 % af refreshes medførte ændring → hot
+TIER_COLD_EMA  = 0.05   # <  5 % af refreshes medførte ændring → cold
+TIER_HOT_FACTOR  = 0.5  # hot entries refreshes ved TTL × 0.5
+TIER_COLD_FACTOR = 3.0  # cold entries refreshes ved TTL × 3.0
+EMA_ALPHA = 0.20         # smoothing; ~5 refreshes halverer/fordob. signalet
+
+
+def _hash_value(val: Any) -> str:
+    """SHA-256 (første 16 hex) af endpoint-data ekskl. cache_stale-flag."""
+    try:
+        if hasattr(val, "model_dump"):
+            raw = json.dumps(
+                val.model_dump(exclude={"cache_stale"}),
+                default=str, sort_keys=True,
+            )
+        else:
+            raw = json.dumps(val, default=str, sort_keys=True)
+        return hashlib.sha256(raw.encode()).hexdigest()[:16]
+    except Exception:  # noqa: BLE001
+        return ""
+
 
 @dataclass
 class CachedEntry(Generic[T]):
@@ -64,6 +88,9 @@ class CachedEntry(Generic[T]):
     fetched_at: float
     from_disk: bool = False
     size_bytes: int = 0
+    # 3-tier change tracking
+    change_ema: float = 0.0   # EMA af ændrings-sandsynlighed (0=cold, 1=hot)
+    value_hash: str = ""      # hash til change-detection på næste refresh
 
 
 class EndpointCache:
@@ -90,6 +117,10 @@ class EndpointCache:
         # put_detail / invalidate_detail / invalidate_all / load_from_disk so
         # non-admin Browse can skip fetching all 10K endpoints just to post-filter.
         self._roles_index: dict[str, set[str]] = {}
+        # Tier EMA-værdier der overlever cache-invalidations (portal-saves, deletes).
+        # Historisk ændringsfrekvens pr. endpoint_id bevares på tværs af invalidations
+        # og konsulteres af put_detail() når en ny entry oprettes efter invalidation.
+        self._tier_emas: dict[str, float] = {}
         # O(1) counter so disk_stale_count() avoids iterating _details.
         self._disk_stale_count: int = 0
         self._total_bytes: int = 0
@@ -120,6 +151,73 @@ class EndpointCache:
 
     def _stale_servable(self, entry: CachedEntry[Any]) -> bool:
         return self._age(entry) <= self._ttl() * STALE_MAX_FACTOR
+
+    # ------------------------------------------------------------------ #
+    # 3-tier change-frequency helpers                                      #
+    # ------------------------------------------------------------------ #
+
+    def _effective_ttl_for_entry(self, entry: CachedEntry[Any], base_ttl: float) -> float:
+        """Tier-justeret TTL baseret på historisk ændringsfrekvens (EMA).
+
+        Hot  (EMA > 0.30): base_ttl × 0.5  — refreshes hyppigere
+        Warm (0.05–0.30):  base_ttl × 1.0  — normal rate
+        Cold (EMA < 0.05): base_ttl × 3.0  — refreshes sjældnere
+        """
+        ema = entry.change_ema
+        if ema >= TIER_HOT_EMA:
+            return base_ttl * TIER_HOT_FACTOR
+        if ema < TIER_COLD_EMA:
+            return base_ttl * TIER_COLD_FACTOR
+        return base_ttl
+
+    def endpoint_tier(self, endpoint_id: str) -> str:
+        """Returnér 'hot' / 'warm' / 'cold' for et endpoint."""
+        entry = self._details.get(endpoint_id)
+        if entry is None:
+            return "warm"
+        ema = entry.change_ema
+        if ema >= TIER_HOT_EMA:
+            return "hot"
+        if ema < TIER_COLD_EMA:
+            return "cold"
+        return "warm"
+
+    def get_priority_stale_ids(
+        self,
+        base_ttl: float,
+        exclude_inflight: set[str],
+    ) -> list[str]:
+        """Returnér endpoint IDs sorteret efter refresh-prioritet (mest overdue først).
+
+        Prioritet = age / effective_ttl_for_entry.  > 1.0 = due for refresh.
+        Hot entries har lavere effective_ttl og optræder derfor tidligere i køen
+        ved samme absolutte alder. Cold entries udskydes automatisk.
+        """
+        now = self._now()
+        candidates: list[tuple[str, float]] = []
+        for ep_id, entry in self._details.items():
+            if ep_id in exclude_inflight:
+                continue
+            eff_ttl = self._effective_ttl_for_entry(entry, base_ttl)
+            age = now - entry.fetched_at
+            priority = age / eff_ttl  # > 1.0 → overdue
+            if priority > 1.0:
+                candidates.append((ep_id, priority))
+        candidates.sort(key=lambda x: x[1], reverse=True)
+        return [ep_id for ep_id, _ in candidates]
+
+    def mark_changed(self, endpoint_id: str) -> None:
+        """Boost change_ema som om endpoint netop skiftede (pxGrid / mutation hook).
+
+        Bruges af pxGrid-handleren og write-paths til at markere et endpoint
+        som 'hot' så drip-loopen prioriterer det højere fremover.
+        """
+        entry = self._details.get(endpoint_id)
+        old_ema = entry.change_ema if entry is not None else self._tier_emas.get(endpoint_id, 0.0)
+        new_ema = EMA_ALPHA * 1.0 + (1 - EMA_ALPHA) * old_ema
+        self._tier_emas[endpoint_id] = new_ema
+        if entry is not None:
+            entry.change_ema = new_ema
 
     def is_from_disk(self, endpoint_id: str) -> bool:
         entry = self._details.get(endpoint_id)
@@ -177,13 +275,16 @@ class EndpointCache:
     def snapshot_all_details(self) -> list[tuple[str, Any, bool]]:
         """Synchronous snapshot for list views. Returns (ep_id, value, is_stale) tuples.
 
+        Bruger tier-justeret effective_ttl: cold entries vises som friske i op til
+        3× TTL, hot entries vises som stale allerede ved 0.5× TTL.
         Does NOT trigger background ISE refreshes — list views must not spawn N concurrent
-        fetch-tasks (causes ISE timeout/hammering). The pre-warm drip-loop handles refresh.
+        fetch-tasks. The pre-warm drip-loop handles refresh.
         """
         now = self._now()
         ttl = self._ttl()
         return [
-            (ep_id, entry.value, entry.from_disk or (now - entry.fetched_at) > ttl)
+            (ep_id, entry.value,
+             entry.from_disk or (now - entry.fetched_at) > self._effective_ttl_for_entry(entry, ttl))
             for ep_id, entry in list(self._details.items())
             if entry.value is not None
         ]
@@ -198,7 +299,10 @@ class EndpointCache:
             entry = self._details.get(ep_id)
             if entry is None or entry.value is None:
                 continue
-            result.append((ep_id, entry.value, entry.from_disk or (now - entry.fetched_at) > ttl))
+            result.append((
+                ep_id, entry.value,
+                entry.from_disk or (now - entry.fetched_at) > self._effective_ttl_for_entry(entry, ttl),
+            ))
         return result
 
     def get_oldest_id(self) -> str | None:
@@ -354,6 +458,19 @@ class EndpointCache:
             return
         size_bytes = self._estimate_size(value)
         old = self._details.get(endpoint_id)
+
+        # 3-tier: beregn nyt change_ema baseret på om værdien rent faktisk ændrede sig.
+        new_hash = _hash_value(value) if not from_disk else ""
+        if old is not None and not from_disk and old.value_hash and new_hash:
+            changed = old.value_hash != new_hash
+            new_ema = EMA_ALPHA * (1.0 if changed else 0.0) + (1 - EMA_ALPHA) * old.change_ema
+        else:
+            # Ny entry eller disk-load: arv EMA fra entry, _tier_emas (overlever invalidation), eller 0.
+            if old is not None:
+                new_ema = old.change_ema
+            else:
+                new_ema = self._tier_emas.get(endpoint_id, 0.0)
+
         if old is not None:
             self._remove_from_roles_index(endpoint_id, old.value)
             if old.from_disk:
@@ -371,7 +488,8 @@ class EndpointCache:
         if from_disk:
             self._disk_stale_count += 1
         self._details[endpoint_id] = CachedEntry(
-            value, self._now(), from_disk=from_disk, size_bytes=size_bytes
+            value, self._now(), from_disk=from_disk, size_bytes=size_bytes,
+            change_ema=new_ema, value_hash=new_hash,
         )
         self._total_bytes += size_bytes
         self._add_to_roles_index(endpoint_id, value)
@@ -382,6 +500,8 @@ class EndpointCache:
     def invalidate_detail(self, endpoint_id: str) -> None:
         entry = self._details.pop(endpoint_id, None)
         if entry is not None:
+            # Gem EMA i _tier_emas så den overlever invalidation og bruges ved næste put_detail.
+            self._tier_emas[endpoint_id] = entry.change_ema
             self._remove_from_roles_index(endpoint_id, entry.value)
             if entry.from_disk:
                 self._disk_stale_count -= 1
@@ -494,6 +614,8 @@ class EndpointCache:
                     )
                     entries[ep_id] = {
                         "fetched_at": entry.fetched_at,
+                        "change_ema": entry.change_ema,
+                        "value_hash": entry.value_hash,
                         "value": value_dict,
                     }
                 except Exception:  # noqa: BLE001
@@ -540,11 +662,12 @@ class EndpointCache:
                     value.cache_stale = True
                     fetched_at = float(raw.get("fetched_at", 0.0))
                     self.put_detail(ep_id, value, from_disk=True)
-                    # Preserve original timestamp so TTL is relative to when ISE
-                    # data was actually fetched, not when we loaded from disk.
+                    # Preserve original timestamp + tier data from disk.
                     entry = self._details.get(ep_id)
                     if entry is not None:
                         entry.fetched_at = fetched_at
+                        entry.change_ema = float(raw.get("change_ema", 0.0))
+                        entry.value_hash = raw.get("value_hash", "")
                     loaded += 1
                 except Exception:  # noqa: BLE001
                     pass
@@ -608,6 +731,12 @@ class EndpointCache:
             "inflight_groups_refresh": bool(
                 self._inflight_groups and not self._inflight_groups.done()
             ),
+            # Tier distribution
+            "tiers": {
+                "hot":  sum(1 for e in self._details.values() if e.change_ema >= TIER_HOT_EMA),
+                "warm": sum(1 for e in self._details.values() if TIER_COLD_EMA <= e.change_ema < TIER_HOT_EMA),
+                "cold": sum(1 for e in self._details.values() if e.change_ema < TIER_COLD_EMA),
+            },
             # Staleness metrics
             "staleness": {
                 "fresh_count": fresh_count,

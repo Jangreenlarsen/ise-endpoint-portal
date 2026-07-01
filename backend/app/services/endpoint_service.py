@@ -651,6 +651,7 @@ class EndpointService:
             logger.warning("audit: could not snapshot endpoint %s before delete: %s",
                            endpoint_id, exc)
         await self.endpoints.delete(endpoint_id)
+        get_cache().mark_changed(endpoint_id)
         get_cache().invalidate_detail(endpoint_id)
         guest_expiry_store.remove(endpoint_id)
         if before:
@@ -807,6 +808,7 @@ class EndpointService:
             custom_attributes=ca,
         )
         # Invalidate cache so the next read reflects the new ISE state.
+        get_cache().mark_changed(endpoint_id)
         get_cache().invalidate_detail(endpoint_id)
 
         # Opdatér guest expiry tracking baseret på de nye CA-værdier.
@@ -976,6 +978,7 @@ class EndpointService:
         except IseApiError as exc:
             logger.warning("audit: could not snapshot %s before decommission: %s", endpoint_id, exc)
         await self.endpoints.update(endpoint_id, custom_attributes=ca)
+        get_cache().mark_changed(endpoint_id)
         get_cache().invalidate_detail(endpoint_id)
         await audit_store.record(
             "decommissioned",
