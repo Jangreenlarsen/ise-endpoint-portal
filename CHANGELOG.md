@@ -3,6 +3,25 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.19.0712] — 2026-07-02 — feat: Cache/connection robusthed — 5 forbedringer A–E
+
+**A — CB-aware drip-pause** (`backend/app/services/cache_prewarm.py`):
+Drip-loop checker nu CB-state øverst i hvert iteration. Hvis CB er OPEN: logger én gang og sover `recovery_remaining_s` sekunder frem for at sende én WARNING per iteration → eliminerer ~36.000 WARNING-logs/time ved ISE-nedetid.
+
+**B — Alert: cache_refresh_stale** (`backend/app/core/alert_store.py`):
+Ny `_check_cache_refresh_stale()` i `check_conditions()`: hvis ingen ISE-sync i >1 time sættes en "warning"-alert i alert-store. Alerten ryddes automatisk ved næste sync.
+
+**C — Sidst ISE-sync i Dashboard** (`backend/app/api/dashboard.py`, `frontend/js/views/dashboard.js`):
+Dashboard-API eksponerer nu `last_sync_at` og `last_sync_age_s` i cache-blokken. Cache-kvalitetskort viser "Sidst ISE-sync: X siden" med farvet indikator (grøn <30m, orange <1h, rød >1h).
+
+**D — Billig ISE-probe** (`backend/app/ise/client.py`):
+Ny `ping()` metode på `IseClient`: `GET /ers/config/endpointgroup?size=1&page=1` — let kald frem for tung endpoint-detail-fetch. Drip-loop kalder `ping()` når CB vågner fra sleep frem for at bruge en endpoint-detail som probe. Nye hjælpemetoder: `cb_is_open()` (læser CB-state uden sideeffekt) og `cb_recovery_remaining_s()`.
+
+**E — pxGrid STOMP recv-timeout** (`backend/app/core/config.py`):
+`pxgrid_stomp_recv_timeout_s` default øget fra 600s til 3600s. ISE pxGrid broker kan have >120s stille perioder; 600s var for konservativ og kunne forårsage falske disconnects.
+
+**Berørte filer:** `backend/app/ise/client.py`, `backend/app/services/cache_prewarm.py`, `backend/app/core/alert_store.py`, `backend/app/api/dashboard.py`, `backend/app/core/config.py`, `frontend/js/views/dashboard.js`.
+
 ## [6.18.0711] — 2026-07-02 — fix: Stale idle-forbindelser → circuit breaker låser ved inaktivitet
 
 **Root cause:** `httpx.AsyncClient` havde ingen `keepalive_expiry` sat. ISE (ERS/Tomcat) lukker idle TCP-forbindelser internt efter ~25-30 min. Portalen vidste det ikke og forsøgte at genbruge lukkede forbindelser ved næste prewarm-scan → tom transport error (`RemoteProtocolError` med tomt `str(exc)`) → circuit breaker åbnede → half-open proben fejlede på samme stale forbindelser → CB forblev OPEN indtil portalen restartes.

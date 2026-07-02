@@ -257,6 +257,15 @@ function cacheQualityCard(cache, prewarm) {
       <span style="margin-left:auto;color:${vsColor};font-weight:600;">${stalePct}% stale</span>
     </div>`;
 
+  // Sidst ISE-sync (C)
+  const syncAge    = cache.last_sync_age_s;
+  const syncColor  = syncAge == null ? "#9ca3af" : syncAge > 3600 ? "#dc2626" : syncAge > 1800 ? "#d97706" : "#16a34a";
+  const syncLabel  = syncAge == null ? "ikke sket endnu" : fmtAge(syncAge) + " siden";
+  const syncRow    = `<div style="display:flex;justify-content:space-between;align-items:baseline;padding:4px 0;border-bottom:1px solid #f9fafb;">
+    <span style="color:#6b7280;font-size:.85em;">Sidst ISE-sync</span>
+    <span style="font-weight:500;font-size:.88em;color:${syncColor};">${syncLabel}</span>
+  </div>`;
+
   // Alder-rækker
   const avgAge    = stale.average_entry_age_s;
   const oldestAge = stale.oldest_entry_age_s;
@@ -301,6 +310,7 @@ function cacheQualityCard(cache, prewarm) {
       color:#9ca3af;margin:.5rem 0 .1rem;">Staleness</div>
     ${stalenessBar}
 
+    ${syncRow}
     ${ageRows}
     ${memRow}
 

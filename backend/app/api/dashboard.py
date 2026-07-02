@@ -116,6 +116,8 @@ async def get_dashboard() -> dict:
             "inflight": stats.get("inflight_detail_refreshes", 0),
             "evictions": stats.get("evictions", 0),
             "ttl_seconds": stats.get("ttl_seconds", 0),
+            "last_sync_at": stats.get("last_sync_at"),
+            "last_sync_age_s": round(time.time() - stats["last_sync_at"], 0) if stats.get("last_sync_at") else None,
         },
         "prewarm": prewarm_data,
         "recent_events": recent_events,

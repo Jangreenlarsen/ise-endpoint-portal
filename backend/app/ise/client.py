@@ -265,6 +265,23 @@ class IseClient:
     async def delete(self, path: str, **kwargs: Any) -> Any:
         return await self.request("DELETE", path, **kwargs)
 
+    def cb_is_open(self) -> bool:
+        """True hvis CB er OPEN. Ingen sideeffekt — trigrer ikke OPEN→HALF_OPEN."""
+        return self._cb.state == "open"
+
+    def cb_recovery_remaining_s(self) -> float:
+        """Sekunder til CB er klar til probe. 0.0 hvis ikke OPEN."""
+        return float(self._cb.stats()["recovery_remaining_s"])
+
+    async def ping(self) -> bool:
+        """Billig ISE-probe: GET /ers/config/endpointgroup?size=1.
+        Opdaterer CB-state som sideeffekt. Returnerer True hvis ISE svarer."""
+        try:
+            await self.get("/ers/config/endpointgroup", params={"size": "1", "page": "1"})
+            return True
+        except Exception:
+            return False
+
     def auth_status(self) -> dict:
         """Returnér ISE auth-status baseret på seneste 401-sekvens.
 

@@ -4,6 +4,29 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.19.0712] — 2026-07-02 — feat: Cache/connection robusthed — 5 forbedringer
+
+> **Build:** 0712
+
+### Forbedringer
+
+**A — Drip-loop er nu CB-aware:**
+Drip-loop pauser automatisk når circuit breaker er OPEN i stedet for at sende én WARNING per iteration. Eliminerer ~36.000 overflødige WARNING-logs/time ved ISE-nedetid. Logger én gang ved åbning og én gang ved genoprettelse.
+
+**B — Alert ved manglende ISE-sync:**
+Portalen advarer nu aktivt (orange alert i øverste banner) hvis den ikke har synkroniseret med ISE i over 1 time. Alerten ryddes automatisk ved næste vellykkede sync.
+
+**C — ISE-sync-alder i Dashboard:**
+Cache-kvalitetskortet viser nu "Sidst ISE-sync: X siden" med farvet indikator — grøn (<30 min), orange (<1 time), rød (>1 time).
+
+**D — Billig ISE-probe:**
+Når drip-loop vågner efter CB-pause, sendes nu et let `GET /ers/config/endpointgroup?size=1` som probe frem for en tung endpoint-detail-fetch. Reducerer belastning på ISE ved CB-genoprettelse.
+
+**E — pxGrid STOMP timeout øget:**
+Default recv-timeout øget fra 600s til 3600s. Forhindrer falske disconnects i miljøer med lange rolige perioder på pxGrid-topic'et.
+
+---
+
 ## [6.18.0711] — 2026-07-02 — fix: Circuit breaker låser ved portal-inaktivitet
 
 > **Build:** 0711

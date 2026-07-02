@@ -287,13 +287,14 @@ class Settings(BaseSettings):
         ),
     )
     pxgrid_stomp_recv_timeout_s: float = Field(
-        default=600.0,
+        default=3600.0,
         description=(
             "Maks ventetid i sekunder på en STOMP-frame (MESSAGE, heartbeat o.l.). "
             "WebSocket ping/pong (ping_interval=20, ping_timeout=10) detekterer "
             "dead TCP inden for 30s — denne timeout er kun backstop mod en broker "
             "der er alive på TCP-niveau men sender ingenting. ISE pxGrid broker "
-            "kan sagtens have >120s stille perioder, så default er 600s."
+            "kan sagtens have >120s stille perioder; default er 3600s (1 time) "
+            "for at undgå falsk disconnect ved lange rolige perioder."
         ),
     )
     pxgrid_stomp_reconnect_min_s: float = Field(

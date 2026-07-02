@@ -49,6 +49,7 @@ def check_conditions() -> None:
     _check_circuit_breaker()
     _check_cache_drip()
     _check_stale_pct()
+    _check_cache_refresh_stale()
     _check_ise_auth()
 
 
@@ -121,6 +122,27 @@ def _check_stale_pct() -> None:
             )
         else:
             clear_alert("high_stale")
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _check_cache_refresh_stale() -> None:
+    try:
+        from app.core.endpoint_cache import get_cache
+        last_sync = get_cache().stats().get("last_sync_at")
+        if last_sync is None:
+            return  # endnu ikke synkroniseret — ingen alarm
+        age_s = time.time() - last_sync
+        if age_s > 3600:
+            set_alert(
+                "cache_refresh_stale",
+                "warning",
+                "Cache ikke synkroniseret med ISE i over 1 time",
+                f"Seneste ISE-sync var for {age_s / 3600:.1f} timer siden. "
+                "Drip-refresh eller ISE-forbindelsen kan have problemer.",
+            )
+        else:
+            clear_alert("cache_refresh_stale")
     except Exception:  # noqa: BLE001
         pass
 

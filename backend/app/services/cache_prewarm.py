@@ -199,8 +199,32 @@ class PrewarmWorker:
         _iter = 0
         interval = float(getattr(config.settings, "cache_prewarm_interval_s", 1800.0))
         ttl = float(getattr(config.settings, "cache_ttl_seconds", 300.0))
+        _cb_logged = False  # undgå gentagne WARNING-logs når CB er OPEN (A)
 
         while not self._stop.is_set():
+            # A: CB-aware pause — forhindrer 36K WARNING-logs/t ved CB OPEN.
+            # D: billig endpoint-gruppe probe frem for tung endpoint-detail-fetch.
+            client = get_ise_client()
+            if client.cb_is_open():
+                remaining = max(5.0, client.cb_recovery_remaining_s())
+                if not _cb_logged:
+                    logger.warning(
+                        "drip: circuit breaker OPEN — pauser %.0fs derefter billig ISE-probe",
+                        remaining,
+                    )
+                    _cb_logged = True
+                try:
+                    await asyncio.wait_for(self._stop.wait(), timeout=remaining)
+                    break  # stop-signal
+                except asyncio.TimeoutError:
+                    pass
+                logger.info("drip: sender billig ISE-probe (endpoint-gruppe liste)")
+                await client.ping()
+                continue
+            if _cb_logged:
+                logger.info("drip: circuit breaker genåbnet — genoptager drip")
+                _cb_logged = False
+
             _iter += 1
             if _iter % 10 == 0:
                 interval = float(getattr(config.settings, "cache_prewarm_interval_s", 1800.0))
