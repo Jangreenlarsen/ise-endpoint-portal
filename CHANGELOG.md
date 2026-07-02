@@ -3,6 +3,18 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.18.0711] — 2026-07-02 — fix: Stale idle-forbindelser → circuit breaker låser ved inaktivitet
+
+**Root cause:** `httpx.AsyncClient` havde ingen `keepalive_expiry` sat. ISE (ERS/Tomcat) lukker idle TCP-forbindelser internt efter ~25-30 min. Portalen vidste det ikke og forsøgte at genbruge lukkede forbindelser ved næste prewarm-scan → tom transport error (`RemoteProtocolError` med tomt `str(exc)`) → circuit breaker åbnede → half-open proben fejlede på samme stale forbindelser → CB forblev OPEN indtil portalen restartes.
+
+**Rettelser i `backend/app/ise/client.py`:**
+- Tilføjet `keepalive_expiry=30.0` (konfigurerbar via `ise_keepalive_expiry_s`) til `httpx.Limits` — portalen lukker idle-forbindelser inden ISE gør det (30s < ISE's ~25-30 min timeout). Logges ved startup.
+- `_last_request_at: float` tracker tidspunkt for seneste succesfulde ISE-request.
+- Ny log-linje ved >300s inaktivitet: `"ISE klient: første request efter Xs inaktivitet"` — gør det tydeligt i loggen hvornår idle-pauser forekommer.
+- Transport-fejl logger nu `type(exc).__name__` og `idle_before=Xs` — `str(RemoteProtocolError)` er tom, men klassen afslører fejltypen.
+- `IseApiError` besked inkluderer nu exception-type: `transport error: RemoteProtocolError: `.
+- Berørte filer: `backend/app/ise/client.py`, `BUGS.md`
+
 ## [6.18.0710] — 2026-07-01 — feat: Lifecycle søg + sortér alle kolonner
 
 - `frontend/js/views/lifecycle.js`: Refaktoreret til at skille data-fetch fra rendering. `_stale`-arrayet caches lokalt; sort og søgning arbejder client-side uden re-fetch. Ny `reRenderTbody()` opdaterer kun `<tbody>` og genvedhæfter row-listeners. Alle kolonner (MAC, gruppe, profil, ejer, first seen, cache-alder) er nu klikbare med ↑↓↕-indikatorer. Default: datokolonner sorteres descending (nyeste først) ved første klik; tekstkolonner ascending. Søgefelt filtrerer live (250ms debounce) på MAC, gruppe, profil og ejer med aktiv tæller `n / total`. Export-CSV bruger nu den fulde ufiltrerede liste.

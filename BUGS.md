@@ -4,6 +4,13 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 6.18.0711] 2026-07-02 — Stale idle-forbindelser → circuit breaker låser ved portal-inaktivitet
+
+- **Symptom:** Når ingen brugere er logget ind på portalen i >30 min (f.eks. om natten), fejler alle ISE-kald med `ISE API 0: transport error: ` (tom fejlbesked) og circuit breakeren åbner. Half-open proben genbruger samme stale forbindelser og fejler → CB forbliver OPEN.
+- **Root cause:** `httpx.AsyncClient` har ingen `keepalive_expiry` konfigureret. ISE (ERS/Tomcat) lukker idle TCP-forbindelser efter ~25-30 min. httpx ved det ikke og forsøger at genbruge lukkede forbindelser ved næste request. Tom fejlbesked skyldes at `str(httpx.RemoteProtocolError)` kan være tom — type + idle-tid loggedes ikke.
+- **Løsning (v6.18.0711):** Sat `keepalive_expiry=30.0` (konfigurerbar via `ise_keepalive_expiry_s`) på `httpx.Limits` — portalen lukker idle-forbindelser inden ISE gør det. Udvidet logning: idle-tid pr. request, exception-type ved transport-fejl, advarsel ved lange idle-pauser.
+- **Berørte filer:** `backend/app/ise/client.py`
+
 ## [OPEN → MONITORED 6.16.0706] 2026-07-01 — ISE REST API-bruger bliver disabled
 
 - **Symptom:** Portalen mister ISE-forbindelsen periodisk — alle ISE-kald returnerer 401. ISE-admin kan se at API-brugerkontoen er disabled.

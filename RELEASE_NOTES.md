@@ -4,6 +4,29 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.18.0711] — 2026-07-02 — fix: Circuit breaker låser ved portal-inaktivitet
+
+> **Build:** 0711
+
+### Problem: Portal kom tilbage med åben circuit breaker efter idle-periode
+
+ISE (ERS/Tomcat) lukker idle TCP-forbindelser internt. Portalen vidste ikke om dette og forsøgte at genbruge lukkede forbindelser ved næste prewarm-scan → transport error (tom fejlbesked) → circuit breaker åbnede → halvt-åbne probes fejlede på samme stale forbindelser → portalen forblev afskåret fra ISE indtil manuel genstart.
+
+**Symptom i loggen:** `ISE API 0: transport error: ` (tom), efterfulgt af `circuit breaker: OPEN (half-open probe failed)` hvert 30. minut.
+
+### Løsning
+
+`keepalive_expiry=30s` sat på httpx's connection pool: portalen lukker idle-forbindelser FØR ISE gør det. Ny prewarm-scan åbner altid friske forbindelser.
+
+Konfigurerbar via `ise_keepalive_expiry_s` i `.env` (default 30s).
+
+### Bedre logning
+
+Fremover vises:
+- `ISE klient: første request efter Xs inaktivitet` — tydeligt hvornår en lang idle-pause bryder mønsteret
+- `transport error: RemoteProtocolError: ...` i stedet for tom fejlbesked
+- `[idle_before=Xs]` på alle transport-fejl
+
 ## [6.18.0710] — 2026-07-01 — feat: Lifecycle — søg og sortér alle kolonner
 
 > **Build:** 0710
