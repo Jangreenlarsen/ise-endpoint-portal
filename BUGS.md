@@ -4,6 +4,17 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 6.20.0717] 2026-07-02 — Log-analyse: 5 bugs opdaget via condensed-eksport
+
+- **Bug A** `time_range.first > time_range.last`: `_all_log_files()` returnerede nyeste-fil-først grundet fejlagtig `.reverse()` → `first_ts`/`last_ts` var byttet om.
+- **Bug B** `notable_entries` viste de ældste 300 entries i stedet for nyeste: samme forkerte fil-rækkefølge, `[-300:]` gav oldest file's tail.
+- **Bug C** `ise_requests.outcomes` manglede 2xx: succesfulde ISE-kald loggedes aldrig med statuskode → regex matchede ingenting. Fix: tilføj `logger.info("ISE %s %s -> %d")` i `client.py`.
+- **Bug D** `UnboundLocalError: cannot access local variable 'loaded'` i `session_cache.load_from_disk`: `loaded` aldrig initialiseret til 0 inden loop.
+- **Bug E** `drip_refresh: 0/0`: drip-success loggedes på DEBUG-niveau (usynligt) og skip loggedes slet ikke. Fix: periodisk INFO-statuslog i drip-loop + ny regex.
+- **Bug F** `ancendpoint 400: The filter field 'macAddress' is not supported`: ISE ERS `/ancendpoint` understøtter ikke `macAddress` som filter-parameter. Fix: paginér client-side i stedet.
+- **Løsning (v6.20.0717):** Alle 6 bugs fixet — se CHANGELOG.
+- **Berørte filer:** `backend/app/api/logs.py`, `backend/app/ise/client.py`, `backend/app/pxgrid/session_cache.py`, `backend/app/services/cache_prewarm.py`, `backend/app/ise/anc.py`
+
 ## [FIXED 6.18.0711] 2026-07-02 — Stale idle-forbindelser → circuit breaker låser ved portal-inaktivitet
 
 - **Symptom:** Når ingen brugere er logget ind på portalen i >30 min (f.eks. om natten), fejler alle ISE-kald med `ISE API 0: transport error: ` (tom fejlbesked) og circuit breakeren åbner. Half-open proben genbruger samme stale forbindelser og fejler → CB forbliver OPEN.

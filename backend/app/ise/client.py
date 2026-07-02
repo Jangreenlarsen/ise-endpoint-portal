@@ -248,6 +248,7 @@ class IseClient:
             raise IseApiError(response.status_code, message, payload)
 
         ISE_REQUESTS.labels(method=method, outcome="2xx").inc()
+        logger.info("ISE %s %s -> %d", method, path, response.status_code)
         data = None if response.status_code == 204 or not response.content else response.json()
         if return_response:
             return data, response

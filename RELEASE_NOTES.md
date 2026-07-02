@@ -4,6 +4,18 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.20.0717] — 2026-07-02 — fix: 6 bugs i log-analyse, session cache og ANC
+
+> **Build:** 0717
+
+- **Log-analyse** (`time_range` og `notable_entries`): Filrækkefølge var inverteret → `first > last` og condensed-eksport viste ældste entries. Nu kronologisk.
+- **ISE 2xx i log**: Succesfulde ISE-kald logges nu med statuskode → `ise_requests.outcomes.2xx` viser korrekt antal.
+- **Session cache startup-crash** (`UnboundLocalError: loaded`): Python-exception ved boot med disk-cache er elimineret.
+- **Drip-statistik 0/0**: Periodeisk status-log viser nu akkumulerede refreshed/skipped i logfilen.
+- **ANC endpoint 400**: `macAddress`-filter er fjernet; paginerer nu client-side.
+
+---
+
 ## [6.20.0716] — 2026-07-02 — feat: Log — Claude-analyse eksport og .json download
 
 > **Build:** 0716

@@ -290,6 +290,18 @@ class PrewarmWorker:
                 CACHE_STALE_COUNT.set(stale)
                 CACHE_STALE_PCT.set(stale / n_ages * 100)
 
+            # Periodisk INFO-status så drip-metrics er synlige i logfilen.
+            # Hvert 100. iteration (≈ 90s ved 1 endpoint/s) skrives en linje
+            # der kan matches af log-analysen uden at give per-endpoint log-støj.
+            if _iter % 100 == 0:
+                logger.info(
+                    "drip: status — refreshed=%d skipped=%d sleep=%.1fs cycle=%.0fs",
+                    self.status.drip_refreshed_total,
+                    self.status.drip_skipped_total,
+                    drip_sleep,
+                    cycle_s,
+                )
+
             try:
                 await asyncio.wait_for(self._stop.wait(), timeout=drip_sleep)
                 break

@@ -3,6 +3,18 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.20.0717] — 2026-07-02 — fix: 6 bugs i log-analyse, session cache og ANC-endpoint
+
+Bugs opdaget via condensed log-eksport:
+
+- **Bug A+B `_all_log_files` rækkefølge** (`logs.py`): Fjernet fejlagtigt `.reverse()` kald — filer processeres nu korrekt ældste-til-nyeste (`.3 → .log`). Rettede `time_range.first > last` og at `notable_entries[-300:]` gav de ældste i stedet for de nyeste entries.
+- **Bug C ISE 2xx ikke logget** (`client.py`): Tilføjet `logger.info("ISE %s %s -> %d")` for 2xx-responses — `ise_requests.outcomes` viser nu korrekte 2xx-counts i log-analyse.
+- **Bug D `UnboundLocalError: loaded`** (`session_cache.py`): Variablen `loaded` initialiseres nu til 0 inden loop i `load_from_disk` — eliminerer Python-exception ved startup med disk-cache.
+- **Bug E drip-metrics 0/0** (`cache_prewarm.py` + `logs.py`): Drip-success loggedes på DEBUG-niveau; drip-skip loggedes slet ikke. Tilføjet periodisk INFO-statuslog (`drip: status — refreshed=N skipped=N`) hvert 100. iteration. Log-analyse matcher nu denne linje og rapporterer korrekte kumulative totaler.
+- **Bug F ANC macAddress-filter 400** (`anc.py`): ISE ERS `/ancendpoint` understøtter ikke `macAddress` som filter. Ændret `get_endpoint_status` til at paginere over alle ANC-assignments og matche client-side (ANC-assignments er typisk meget få → effektivt i praksis).
+
+**Berørte filer:** `backend/app/api/logs.py`, `backend/app/ise/client.py`, `backend/app/pxgrid/session_cache.py`, `backend/app/services/cache_prewarm.py`, `backend/app/ise/anc.py`, `version.json`
+
 ## [6.20.0716] — 2026-07-02 — feat: Log — kondenseret Claude-analyse eksport og .json download
 
 Tilføjer to forbedringer til Settings → Log eksport-toolbar:

@@ -247,6 +247,7 @@ class SessionCache:
             with open(path, encoding="utf-8") as f:
                 data = json.load(f)
             now = time.time()
+            loaded = 0
             skipped = 0
             for item in data.get("sessions", []):
                 mac = self._norm(item.get("mac", ""))
