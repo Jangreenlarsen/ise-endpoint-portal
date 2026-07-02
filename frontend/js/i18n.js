@@ -132,7 +132,8 @@ const TRANSLATIONS = {
     // Browse — toolbar
     "browse.title":              "Gennemse / Rediger endpoints",
     "browse.btn_refresh":             "Opdater fra ISE",
-    "browse.btn_refresh_title":       "Ryd cache og hent alle endpoints direkte fra ISE — kan tage 5-30 sek.",
+    "browse.btn_refresh_title":       "Trigger fuld ISE-scan i baggrunden — viser eksisterende cache straks og opdaterer gradvist.",
+    "browse.rescan_background":       "ISE-scan kører i baggrunden. Tryk ↻ Genindlæs for at se opdateringer.",
     "browse.btn_local_refresh":       "Genindlæs",
     "browse.btn_local_refresh_title": "Genindlæs den aktuelle side fra backend-cache — hurtigt, uden ISE-kald.",
     "browse.local_refreshing":        "Genindlæser…",
@@ -1656,7 +1657,8 @@ const TRANSLATIONS = {
     // Browse — toolbar
     "browse.title":              "Browse / Edit endpoints",
     "browse.btn_refresh":             "Refresh from ISE",
-    "browse.btn_refresh_title":       "Clear cache and fetch all endpoints directly from ISE — may take 5-30 sec.",
+    "browse.btn_refresh_title":       "Trigger a full ISE scan in the background — shows existing cache immediately and updates gradually.",
+    "browse.rescan_background":       "ISE scan running in background. Press ↻ Reload to see updates.",
     "browse.btn_local_refresh":       "Reload",
     "browse.btn_local_refresh_title": "Reload the current view from backend cache — fast, no ISE call.",
     "browse.local_refreshing":        "Reloading…",

@@ -205,6 +205,7 @@ export const api = {
     }),
   getCacheStats: () => request("/cache/stats"),
   invalidateCache: () => request("/cache/invalidate", { method: "POST" }),
+  rescanCache: () => request("/cache/rescan", { method: "POST" }),
   getPxGridSettings: () => request("/settings/pxgrid"),
   updatePxGridSettings: (payload) =>
     request("/settings/pxgrid", { method: "PUT", body: JSON.stringify(payload) }),

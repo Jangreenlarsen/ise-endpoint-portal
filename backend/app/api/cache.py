@@ -52,3 +52,24 @@ async def cache_stats() -> dict:
 async def cache_invalidate() -> dict:
     get_cache().invalidate_all()
     return {"status": "cleared"}
+
+
+@router.post("/rescan", dependencies=[Depends(require_admin)])
+async def cache_rescan() -> dict:
+    """Trigger øjeblikkelig fuld ISE-scan i baggrunden uden at tømme cachen.
+
+    Returnerer straks — workeren vågner fra sin interval-søvn og kører
+    en fuld prewarm-scan. Eksisterende cache-entries forbliver tilgængelige
+    (med stale-markering) mens scan kører. Brug GET /cache/stats for at
+    følge scan-fremgangen (prewarm.scanning, prewarm.scanned).
+    """
+    from app.services.cache_prewarm import get_worker
+    worker = get_worker()
+    if not worker.status.running:
+        return {"status": "not_running", "message": "Prewarm worker er ikke aktiv — kan ikke triggere scan"}
+    worker.trigger_rescan()
+    return {
+        "status": "triggered",
+        "scan_number": worker.status.scan_number,
+        "message": "Fuld ISE-scan starter nu i baggrunden — cache er tilgængelig under scan",
+    }

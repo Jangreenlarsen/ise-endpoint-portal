@@ -4,6 +4,14 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.21.0719] — 2026-07-02 — feat: Refresh fra ISE ikke-blokerende
+
+> **Build:** 0719
+
+- **"Opdater fra ISE"-knap** er nu ikke-blokerende: trigger en fuld ISE-scan i baggrunden og viser eksisterende data øjeblikkeligt. Scan og UI kører uafhængigt — ingen 15-20s ventetid.
+- Infobanner vises med tekst: *"ISE-scan kører i baggrunden — tryk ↻ Genindlæs for at se opdateringer."*
+- Ny backend `POST /cache/rescan`: signalerer prewarm-workeren via `asyncio.Event` til at starte scan straks uden at afvente 30-min interval.
+
 ## [6.21.0718] — 2026-07-02 — fix: CB-metrik, drip client.closed + Browse-reload latens
 
 > **Build:** 0718

@@ -775,13 +775,17 @@ export function initTable(container, state, api, cb) {
     bulkSaveBtn.disabled = false;
   });
 
-  // Refresh button — invaliderer ISE-cache og henter alt forfra
+  // Refresh button — trigger baggrunds-scan i ISE, render fra eksisterende cache straks.
+  // Scan og UI er nu uafhængige processer: cache er tilgængelig hele vejen igennem.
   refreshBtn.addEventListener("click", async () => {
     refreshBtn.disabled    = true;
     refreshBtn.textContent = t("browse.refreshing");
     try {
-      await api.invalidateCache().catch(() => {});
-      await load(true);
+      // 1. Trigger ISE-scan i baggrunden (returnerer øjeblikkeligt)
+      await api.rescanCache().catch(() => {});
+      // 2. Render fra eksisterende cache — stale entries vises med markering
+      await load(false, { silent: true });
+      msg.innerHTML = `<div class="alert info">${t("browse.rescan_background")}</div>`;
     } finally {
       refreshBtn.disabled    = false;
       refreshBtn.textContent = t("browse.btn_refresh");

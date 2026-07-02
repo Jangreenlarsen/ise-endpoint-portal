@@ -9,6 +9,8 @@ Alle nye features registreres her FØR implementering påbegyndes.
 
 ## Planlagt / Under implementering
 
+- `[done 6.21.0719] 2026-07-02 — Browse: Refresh fra ISE ikke-blokerende` — Refresh-knappen triggede tidligere `invalidateCache()` + blokerende ISE-fetch (15-20s). Nu: (1) backend `POST /cache/rescan` signalerer prewarm-workeren via `asyncio.Event` til at starte øjeblikkelig fuld scan uden at tømme cachen; (2) frontend renderer øjeblikkeligt fra eksisterende cache (stale entries markeret); (3) scan og UI kører uafhængigt. **Berørte lag:** `backend/app/services/cache_prewarm.py`, `backend/app/api/cache.py`, `frontend/js/api.js`, `frontend/js/views/browse-table.js`, `frontend/js/i18n.js`.
+
 - `[done 6.20.0716] 2026-07-02 — Log: kondenseret Claude-analyse eksport + .json download` — (A) Nyt "Claude-analyse" eksport-format: kondenseret JSON med summary-statistik + de seneste 300 notable entries (WARNING/ERROR/CRITICAL) til direkte upload på claude.ai. (B) Omdøb `.ndjson`-download til `.json` med proper JSON-array-format (ikke NDJSON). **Berørte lag:** `backend/app/api/logs.py`, `frontend/js/views/logs.js`, `frontend/js/api.js`, `frontend/js/i18n.js`.
 
 - `[done 6.19.0715] 2026-07-02 — Settings/Endpoint cache: tier-fordeling og evictions i live stats` — Tier-bar (hot/warm/cold fra `stats.tiers`) og evictions-tæller i Settings → Endpoint cache statistik-panel. Rewrite af brudt `renderCacheStats()`-funktion. **Berørte lag:** `frontend/js/views/settings/section-cache.js`.

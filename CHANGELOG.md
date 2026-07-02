@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.21.0719] — 2026-07-02 — feat: Refresh fra ISE ikke-blokerende (scan + UI uafhængige processer)
+
+- **`cache_prewarm.py`**: `PrewarmWorker` får `_rescan_event: asyncio.Event` og `trigger_rescan()`. `_list_scan_loop()` bruger `asyncio.wait({stop_t, rescan_t}, timeout=interval)` i stedet for `asyncio.wait_for(stop.wait(), timeout=interval)` — vågner øjeblikkeligt ved manuel trigger uden at afvente 30-min interval.
+- **`cache.py`**: Ny `POST /cache/rescan` — kalder `worker.trigger_rescan()` og returnerer straks med `{"status": "triggered"}`. Cache tømmes ikke; alle entries forbliver tilgængelige (stale) under scan.
+- **`api.js`**: `rescanCache()` — kalder `POST /cache/rescan`.
+- **`browse-table.js`**: Refresh-knap: `invalidateCache()` + blokerende `load(true)` erstattet af `rescanCache()` + `load(false, { silent: true })`. ISE-scan og UI er nu uafhængige — tabel vises øjeblikkeligt.
+- **`i18n.js`**: DA/EN `browse.rescan_background` besked + opdateret `browse.btn_refresh_title`.
+
 ## [6.21.0718] — 2026-07-02 — fix: CB-metrik-fejl, drip client.closed og Browse-reload latens
 
 - **Bug A CB `open_count` oppustet af drip-log** (`logs.py`): `"drip: circuit breaker OPEN — pauser…"` matchede `_CB_OPEN`-regex → tæltes som CB-tilstandsændring. Tilføjet `not low.startswith("drip:")` guard i CB-event-detektion.

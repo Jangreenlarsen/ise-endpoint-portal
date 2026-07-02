@@ -73,6 +73,7 @@ class PrewarmWorker:
         self._stop = asyncio.Event()
         self._hot: asyncio.Queue[str] = asyncio.Queue()
         self._hot_set: set[str] = set()  # dedup-sæt: forhindrer samme ID i køen to gange
+        self._rescan_event = asyncio.Event()  # trigger-signal til _list_scan_loop
         self.status = PrewarmStatus()
 
     @property
@@ -85,10 +86,22 @@ class PrewarmWorker:
         alle entries er tilgængelige fra første HTTP-request."""
         self._load_from_disk()
 
+    def trigger_rescan(self) -> None:
+        """Signalér workeren om at køre en fuld ISE-scan øjeblikkeligt.
+
+        Returnerer straks — scan kører i baggrunden. Kalder _list_scan_loop
+        ud af sin interval-søvn via _rescan_event så den starter næste
+        _full_scan() uden at afvente det normale interval (default 30 min).
+        """
+        if self.status.running:
+            self._rescan_event.set()
+            logger.info("prewarm: øjeblikkelig rescan signaleret af bruger")
+
     def start(self) -> None:
         if self._task and not self._task.done():
             return
         self._stop = asyncio.Event()
+        self._rescan_event = asyncio.Event()
         self._hot = asyncio.Queue()
         self._hot_set = set()
         self.status = PrewarmStatus(
@@ -162,15 +175,28 @@ class PrewarmWorker:
         interval = float(getattr(config.settings, "cache_prewarm_interval_s", 1800.0))
 
         async def _list_scan_loop() -> None:
-            """Periodisk: hent ISE-liste og invalider slettede endpoints."""
+            """Periodisk: hent ISE-liste og invalider slettede endpoints.
+
+            Venter normalt `interval` sekunder (default 30 min), men vågner
+            straks hvis trigger_rescan() sætter _rescan_event — bruges af
+            Refresh-knappen i Browse-view så brugeren ikke skal vente.
+            """
             while not self._stop.is_set():
                 if interval <= 0:
                     return
+                # Vent på timeout, stop-signal eller manuelt rescan-trigger
+                stop_t   = asyncio.ensure_future(self._stop.wait())
+                rescan_t = asyncio.ensure_future(self._rescan_event.wait())
                 try:
-                    await asyncio.wait_for(self._stop.wait(), timeout=interval)
-                    return
-                except asyncio.TimeoutError:
-                    pass
+                    await asyncio.wait(
+                        {stop_t, rescan_t},
+                        timeout=interval,
+                        return_when=asyncio.FIRST_COMPLETED,
+                    )
+                finally:
+                    stop_t.cancel()
+                    rescan_t.cancel()
+                self._rescan_event.clear()
                 if self._stop.is_set():
                     return
                 await self._drain_hot_queue()
