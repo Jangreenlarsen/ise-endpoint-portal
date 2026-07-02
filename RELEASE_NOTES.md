@@ -4,6 +4,12 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.21.0720] — 2026-07-02 — fix: Stale ISE-connections → fresh% falder til 0%
+
+> **Build:** 0720
+
+- **Circuit breaker recovery**: `keepalive_expiry` reduceret fra 30s til 10s. ISE Tomcat lukker ERS-forbindelser efter ~12-15s inaktivitet (ikke ~25-30 min som tidligere antaget). Med 30s keepalive genbrugte httpx lukkede forbindelser → `ReadTimeout` → CB åbnede og nåede aldrig at recover. Med 10s keepalive lukkes forbindelser INDEN ISE gør det — alle requests bruger nu altid friske TCP-forbindelser.
+
 ## [6.21.0719] — 2026-07-02 — feat: Refresh fra ISE ikke-blokerende
 
 > **Build:** 0719

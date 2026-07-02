@@ -33,10 +33,12 @@ class IseClient:
         s = config.settings
         max_conn = int(getattr(s, "ise_max_connections", 15))
         use_http2 = getattr(s, "ise_http2", True)
-        # ISE (ERS/Tomcat) lukker idle TCP-forbindelser efter ~25-30 min.
-        # keepalive_expiry sikrer at portalen lukker forbindelser FØR ISE gør det,
-        # så stale connections aldrig genbruges ved lange idle-perioder (f.eks. om natten).
-        keepalive_expiry_s = float(getattr(s, "ise_keepalive_expiry_s", 30.0))
+        # ISE ERS (Tomcat) lukker idle HTTP-forbindelser typisk efter ~12-15s —
+        # observeret ved ReadTimeout-fejl med idle_before≈18s i log (drip_sleep=18s
+        # → ISE lukker forbindelsen i mellemtiden). keepalive_expiry=10s sikrer at
+        # httpx lukker forbindelser FØR ISE gør det, så stale connections aldrig
+        # genbruges og forveksles med ReadTimeout/CB-fejl.
+        keepalive_expiry_s = float(getattr(s, "ise_keepalive_expiry_s", 10.0))
 
         def _make_client(http2: bool) -> httpx.AsyncClient:
             return httpx.AsyncClient(

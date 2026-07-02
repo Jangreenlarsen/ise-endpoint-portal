@@ -3,6 +3,10 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.21.0720] — 2026-07-02 — fix: keepalive_expiry 30s → 10s — stale connections → CB-lock
+
+- **`client.py`**: `keepalive_expiry_s` default sænket fra 30.0 til 10.0. ISE ERS (Tomcat) lukker idle TCP-forbindelser efter ~12-15s (observeret via `[idle_before=18s]` i log = drip_sleep 18s = ISE lukker i mellemtiden). 30s keepalive > ISE's ~12-15s idle timeout → httpx genbruger stale connections → ReadTimeout → CB åbner → fresh% falder til 0% og recovery-probe fejler på samme stale connections. Med 10s keepalive lukker httpx forbindelser INDEN ISE gør det — alle requests (drip, probe, scan) starter med friske TCP-forbindelser. Opdateret comment med korrekt forklaring.
+
 ## [6.21.0719] — 2026-07-02 — feat: Refresh fra ISE ikke-blokerende (scan + UI uafhængige processer)
 
 - **`cache_prewarm.py`**: `PrewarmWorker` får `_rescan_event: asyncio.Event` og `trigger_rescan()`. `_list_scan_loop()` bruger `asyncio.wait({stop_t, rescan_t}, timeout=interval)` i stedet for `asyncio.wait_for(stop.wait(), timeout=interval)` — vågner øjeblikkeligt ved manuel trigger uden at afvente 30-min interval.

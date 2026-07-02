@@ -4,6 +4,13 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 6.21.0720] 2026-07-02 — Stale connections ved korte idle-pauser → CB låser, fresh% → 0%
+
+- **Symptom:** Efter en "Opdater fra ISE"-scan faldt fresh endpoint % gradvist fra 100% til 0% og blev der. Log viste `ReadTimeout` på `GET /ers/config/endpointgroup` med `[idle_before=18s]` — efterfulgt af CB-åbning og ingen recovery.
+- **Root cause:** ISE ERS (Tomcat) lukker idle TCP-forbindelser efter ~12-15s — ikke ~25-30 min som den tidligere kommentar antog. Drip-loopets søvn i normal mode er `max(0.5, 1800/100) = 18s`. I de 18s lukker ISE forbindelserne. httpx forsøger at genbruge dem (keepalive_expiry=30s >> 18s idle) og får ReadTimeout. CB åbner efter 5 failures. CB's recovery-probe (60s) bruger samme stale connections → probe fejler → CB reset til OPEN. Endless loop.
+- **Løsning (v6.21.0720):** Reduceret `keepalive_expiry_s` default fra 30s til 10s. httpx lukker nu idle forbindelser efter 10s — FØR ISE lukker dem ved ~12-15s. Drips 18s søvn og CB's 60s probe resulterer altid i en frisk TCP-forbindelse.
+- **Berørte filer:** `backend/app/ise/client.py`
+
 ## [FIXED 6.21.0718] 2026-07-02 — 4 bugs opdaget via v6.20.0717 condensed-eksport + reload-analyse
 
 - **Bug A** `circuit_breaker.open_count` for høj: drip-loglinjen `"drip: circuit breaker OPEN — pauser…"` matchede `_CB_OPEN`-regex og tæltes som en CB-tilstandsændring. Root cause: regex `r"circuit.?breaker[:\s]+OPEN"` er for bred. Fix: ekskludér linjer der starter med `"drip:"` i CB-event-detektion.
