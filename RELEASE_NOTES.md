@@ -4,6 +4,39 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.19.0713] — 2026-07-02 — feat: Log-eksport og baseline-analyse
+
+> **Build:** 0713
+
+### Nye funktioner
+
+**Udvidet startup-log:**
+Portalen logger nu en struktureret banner ved hver opstart:
+```
+=== HyperVision ISE Portal v6.19.0713 START | url=https://hypervision.ll.lan | python=3.12.x | pid=1234 ===
+```
+Gør det trivielt at identificere version og system i log-eksporter, selv når flere portaler kører i samme analyse.
+
+**GET /api/logs/export** (kun admin):
+Download alle 4 roterede logfiler kombineret som ét fil. Understøtter to formater:
+- `?format=text` — rå loglinjer med version/URL-header øverst (standard)
+- `?format=ndjson` — én JSON-objekt per linje, inkl. metadata-record (egnet til maskinlæsning og AI-analyse)
+
+Filnavn: `hypervision-6.19.0713-20260702-1200.log`
+
+**GET /api/logs/summary** (kun admin):
+Aggregeret JSON-rapport til baseline-analyse og kvalitetsvurdering. Inkluderer:
+- Level-fordeling og tidsspænd på tværs af alle filer
+- Top-30 normaliserede fejlbeskeder (UUIDs/IPs abstraheret)
+- Circuit breaker events med tidsstempler
+- Transport-fejl-statistik: exception-type, idle-tid (min/max/avg + over-300s/1800s)
+- ISE request outcomes (2xx/4xx/5xx/error)
+- Drip-effektivitet (refreshed vs. skipped)
+- Startup-events med version (versionhistorik direkte fra loggen)
+- Per-time breakdown (seneste 48 timer)
+
+---
+
 ## [6.19.0712] — 2026-07-02 — feat: Cache/connection robusthed — 5 forbedringer
 
 > **Build:** 0712

@@ -3,6 +3,29 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.19.0713] — 2026-07-02 — feat: Log-eksport og baseline-analyse
+
+**A — Udvidet startup-banner** (`backend/app/main.py`):
+Startup-log viser nu `=== HyperVision ISE Portal vX.Y.ZZZZ START | url=https://hypervision.ll.lan | python=X.Y.Z | pid=NNNN ===` — gør det trivielt at identificere version og system i log-eksporter og ved analyse.
+
+**B — GET /api/logs/export** (`backend/app/api/logs.py`):
+Downloader alle 4 roterede logfiler (`.log.3` → `.log.2` → `.log.1` → `.log`) kombineret i kronologisk rækkefølge som ét downloadbart fil. Understøtter `format=text` (rå loglinjer med version/URL-header) og `format=ndjson` (én JSON-objekt per linje). Filnavn inkluderer version og eksporttidspunkt: `hypervision-6.19.0713-20260702-1200.log`.
+
+**C — GET /api/logs/summary** (`backend/app/api/logs.py`):
+Aggregeret JSON-analyse på tværs af alle roterede logfiler:
+- `meta`: version, URL, tidsspænd, filer og størrelse, antal analyserede linjer
+- `level_counts`: DEBUG/INFO/WARNING/ERROR/CRITICAL-fordeling
+- `top_loggers_by_issues`: top-20 loggers sorteret efter warning+error-antal
+- `top_issue_messages`: top-30 normaliserede fejlbeskeder (UUID/IP/N erstattet) med antal
+- `circuit_breaker`: total antal CB-events, open/close-tæller, seneste 20 events med tidsstempel
+- `transport_errors`: total, by_exception_type, idle_before_s (min/max/avg/over-300s/over-1800s), seneste 15
+- `ise_requests.outcomes`: 2xx/4xx/5xx/error-tæller
+- `drip_refresh`: refreshed/skipped/efficiency_pct
+- `startup_events`: alle startup-linjer med version (versionhistorik i loggen)
+- `hourly_timeline`: fejl+advarsel+info per time (seneste 48 timers data)
+
+**Berørte filer:** `backend/app/api/logs.py`, `backend/app/main.py`, `version.json`.
+
 ## [6.19.0712] — 2026-07-02 — feat: Cache/connection robusthed — 5 forbedringer A–E
 
 **A — CB-aware drip-pause** (`backend/app/services/cache_prewarm.py`):

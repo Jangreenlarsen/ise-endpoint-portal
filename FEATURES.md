@@ -9,6 +9,8 @@ Alle nye features registreres her FØR implementering påbegyndes.
 
 ## Planlagt / Under implementering
 
+- `[done 6.19.0713] 2026-07-02 — Log-eksport og baseline-analyse` — (A) Udvidet startup-banner i loggen med version+build+python+PID+URL. (B) GET /api/logs/export: downloader alle 4 roterede logfiler kombineret som .log eller .ndjson med version-header. (C) GET /api/logs/summary: aggregeret analyse på tværs af alle filer — level-fordeling, top fejl-beskeder, CB-events-tidslinje, transport-fejl-statistik (idle-tid, exc-type), startup-events (versionhistorik), per-time breakdown. **Berørte lag:** `backend/app/api/logs.py`, `backend/app/main.py`.
+
 - `[done 6.19.0712] 2026-07-02 — Cache/connection robusthed: 5 forbedringer A–E` — (A) CB-aware drip-pause: drip-loop pauser når CB er OPEN → eliminerer 36K WARNING/t. (B) Alert ved cache_refresh_stale: alert sættes hvis ingen ISE-sync i >1 time. (C) Sidst ISE-sync i Dashboard: cache-kort viser alder på seneste ISE-sync. (D) Billig ISE-probe: drip kalder GET /ers/config/endpointgroup?size=1 som probe frem for tung endpoint-detail. (E) pxGrid STOMP recv-timeout 600→3600s. **Berørte lag:** `backend/app/services/cache_prewarm.py`, `backend/app/ise/client.py`, `backend/app/core/alert_store.py`, `backend/app/api/dashboard.py`, `backend/app/core/config.py`, `frontend/js/views/dashboard.js`.
 
 - `[done 6.18.0710] 2026-07-01 — Lifecycle: søg og sortér efter first seen` — Klikbare kolonneheadere (MAC, gruppe, profil, ejer, first seen, cache-alder) med ↑↓↕-indikatorer. Søgefelt filtrerer på tværs af MAC/gruppe/profil/ejer. Alt client-side — ingen re-fetch. **Berørte lag:** `frontend/js/views/lifecycle.js`, `frontend/js/i18n.js`.

@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 import asyncio
+import os as _os
+import sys as _sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -40,7 +42,7 @@ from app.core.metrics_store import init_db as init_metrics_db
 from app.core.config import settings
 from app.core.logging import setup_logging
 from app.core.watchdog import beat as watchdog_beat, start_watchdog
-from app.core.version import FULL as APP_VERSION, VERSION
+from app.core.version import BUILD, FULL as APP_VERSION, VERSION
 from app.ise.client import close_ise_client
 from app.pxgrid.session_cache import get_cache as get_session_cache
 from app.pxgrid.session_worker import _enrich_sessions_from_mnt, reconcile_stale_sessions, get_worker as get_pxgrid_worker
@@ -98,7 +100,12 @@ async def lifespan(_: FastAPI):
     setup_logging()
     import logging
     logger = logging.getLogger(__name__)
-    logger.info("HyperVision ISE Portal %s starting", APP_VERSION)
+    logger.info(
+        "=== HyperVision ISE Portal v%s (build %s) START"
+        " | url=https://hypervision.ll.lan"
+        " | python=%s | pid=%d ===",
+        VERSION, BUILD, _sys.version.split()[0], _os.getpid(),
+    )
 
     # ── Sikkerheds-tjek ved opstart ──────────────────────────────────────────
     _ca_bundle = getattr(settings, "ise_ca_bundle", None)
