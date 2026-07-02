@@ -181,6 +181,8 @@ export const api = {
     if (search) parts.push(`search=${encodeURIComponent(search)}`);
     return request(`/logs?${parts.join("&")}`);
   },
+  getLogsSummary: () => request("/logs/summary"),
+  getLogsExportUrl: (format = "text") => `/api/logs/export?format=${format}`,
   authStatus: () => request("/auth/status"),
   login: (username, password) =>
     request("/auth/login", {

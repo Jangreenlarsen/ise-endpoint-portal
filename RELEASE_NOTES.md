@@ -4,6 +4,26 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.19.0714] — 2026-07-02 — feat: Log-GUI — eksport og analyse-rapport
+
+> **Build:** 0714
+
+Log-sektionen (kun admin) har nu tre nye knapper under toolbar:
+
+**⬇ Download .log** / **⬇ Download .ndjson**
+Downloader alle 4 roterede logfiler kombineret i kronologisk rækkefølge. `.log` har en læsbar header med version og URL; `.ndjson` er JSON-per-linje til maskinlæsning og AI-analyse. Download bruger browser-cookie automatisk — ingen manuel token-håndtering.
+
+**📊 Analyse-rapport**
+Toggle-knap der henter og viser en aggregeret baseline-rapport direkte i log-sektionen:
+- Version, URL, tidsspænd og filer analyseret
+- Level-fordeling (DEBUG/INFO/WARNING/ERROR/CRITICAL) med farvede pills
+- Circuit breaker: antal OPEN/CLOSE-events med tæller
+- Transport-fejl: exception-type, idle-tid (avg/max), antal over 300s og 1800s
+- Top-10 hyppigste normaliserede fejlbeskeder med antal
+- Startup-events: versionhistorik direkte fra loggen
+
+---
+
 ## [6.19.0713] — 2026-07-02 — feat: Log-eksport og baseline-analyse
 
 > **Build:** 0713

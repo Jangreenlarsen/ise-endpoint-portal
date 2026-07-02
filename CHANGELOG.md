@@ -3,6 +3,16 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.19.0714] — 2026-07-02 — feat: Log-GUI — eksport og analyse-rapport i log-sektionen
+
+Tre nye elementer i Log-sektionen i GUI (kun synlige for admin):
+
+- **"⬇ Download .log"** — downloader alle 4 roterede logfiler kombineret som ét `.log`-fil med version/URL-header øverst. Trigres via skjult `<a>`-element så browser-autentisering (httpOnly cookie) følger med automatisk.
+- **"⬇ Download .ndjson"** — samme download i NDJSON-format (én JSON-objekt per linje), egnet til maskinlæsning og AI-analyse.
+- **"📊 Analyse-rapport"** — toggle-knap der henter og viser aggregeret baseline-rapport inline under toolbar: meta (version, URL, tidsspænd, linjer, filer), level-fordeling med farvede pills, CB-events (open/close-tæller), transport-fejl (exc-type, idle-tid stats), top-10 normaliserede fejlbeskeder, startup-events (versionhistorik).
+
+**Berørte filer:** `frontend/js/views/logs.js`, `frontend/js/api.js`, `frontend/js/i18n.js`.
+
 ## [6.19.0713] — 2026-07-02 — feat: Log-eksport og baseline-analyse
 
 **A — Udvidet startup-banner** (`backend/app/main.py`):
