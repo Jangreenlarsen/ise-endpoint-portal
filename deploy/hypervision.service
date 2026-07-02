@@ -14,22 +14,29 @@ Documentation=https://github.com/Jangreenlarsen/ise-endpoint-portal
 Type=simple
 User=hypervision
 Group=hypervision
-WorkingDirectory=/opt/hypervision
-ExecStart=/opt/hypervision/backend/.venv/bin/python \
+WorkingDirectory=/opt/hypervision/backend
+
+ExecStart=/opt/hypervision/venv/bin/python \
     -m uvicorn app.main:app \
     --host 0.0.0.0 \
     --port 8000 \
-    --app-dir backend \
     --log-level warning
+
+# Genstart altid — dækker OTA-opdaterings-genstart (pkill / os._exit)
 Restart=always
 RestartSec=3
-TimeoutStopSec=10
+TimeoutStopSec=15
+
+# Ingen burst-limit: lad systemd forsøge ubegrænset antal genstarter.
+# Uden dette giver systemd op efter 5 crash i 10s (default) og portalen
+# forbliver nede. Overvåg i stedet med: journalctl -u hypervision -f
+StartLimitBurst=0
 
 # Sikkerhed
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=full
-ReadWritePaths=/opt/hypervision/backend
+ReadWritePaths=/opt/hypervision
 
 # Logging til systemd journal
 StandardOutput=journal

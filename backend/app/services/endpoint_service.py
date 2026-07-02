@@ -386,44 +386,19 @@ class EndpointService:
         is_psk_editor: bool,
         search: str | None = None,
     ) -> PaginatedEndpointDetails:
-        """Hurtig sti for non-admin Browse: brug roles-indeks i stedet for at
-        hente alle ISE-endpoints og post-filtrere.
+        """Non-admin Browse: synkron snapshot fra cache, filtreret på roller.
 
-        Alle IDs hentes fra cache-indekset (O(1) per rolle).  Details fetches
-        fra cache (typisk sub-ms hit).  Søg filtreres i Python på MAC + beskrivelse.
-        Resultat sorteres på MAC for konsistent visning.
+        Bruger cache.snapshot_details_for_roles() — ingen asyncio.gather,
+        ingen ISE-kald, ingen baggrundstasks. Pre-warm håndterer refresh.
         """
         cache = get_cache()
-        all_ids = list(cache.get_ids_for_roles(effective_roles))
-
-        sem = asyncio.Semaphore(8)
-
-        async def fetch_one(ep_id: str) -> EndpointDetail | None:
-            async with sem:
-                try:
-                    return await self.get_endpoint(ep_id, is_psk_editor=is_psk_editor)
-                except IseApiError:
-                    return None
-
-        results = await asyncio.gather(*(fetch_one(i) for i in all_ids))
-        items: list[EndpointDetail] = [r for r in results if r is not None]
-
-        if search:
-            low = search.strip().lower()
-            items = [
-                d for d in items
-                if low in d.mac.lower() or low in (d.description or "").lower()
-            ]
-
-        items.sort(key=lambda d: d.mac or d.name)
-        total = len(items)
-        start = (page - 1) * size
-        page_items = items[start:start + size]
+        raw = cache.snapshot_details_for_roles(effective_roles)
+        result = self._build_detail_page(raw, page, size, is_psk_editor, search)
         logger.info(
-            "roles-index list: %d total visible, page=%d → %d items (effective_roles=%s)",
-            total, page, len(page_items), effective_roles,
+            "roles-index list (snapshot): %d total visible, page=%d → %d items (effective_roles=%s)",
+            result.total, page, len(result.items), effective_roles,
         )
-        return PaginatedEndpointDetails(items=page_items, total=total, page=page, size=size)
+        return result
 
     async def _list_all_from_cache(
         self,
@@ -432,42 +407,55 @@ class EndpointService:
         is_psk_editor: bool,
         search: str | None = None,
     ) -> PaginatedEndpointDetails:
-        """Admin-sti: server alle endpoints fra varm cache uden ISE-kald.
+        """Admin Browse: synkron snapshot af alle cachede endpoints — ingen ISE-kald.
 
-        Bruges når cache er varm og bruger er admin (ingen role-restriction).
-        Undgår ISE ERS size-begrænsning på 100 per side.
+        Bruger cache.snapshot_all_details() i stedet for asyncio.gather() +
+        get_endpoint() per entry. Den gamle impl. spawner N baggrundstasks for
+        stale entries (N up to 1000+) som rammer ISE simultant → timeout-fejl
+        og langsom reload. Synkron læsning er O(N) dict-lookup, typisk < 5ms.
+        Pre-warm drip-loop håndterer gradvis refresh af stale entries.
         """
         cache = get_cache()
-        all_ids = list(cache._details.keys())
+        raw = cache.snapshot_all_details()
+        result = self._build_detail_page(raw, page, size, is_psk_editor, search)
+        logger.info(
+            "cache-all list (snapshot, admin): %d total, page=%d → %d items",
+            result.total, page, len(result.items),
+        )
+        return result
 
-        sem = asyncio.Semaphore(8)
+    def _build_detail_page(
+        self,
+        raw: list[tuple[str, Any, bool]],
+        page: int,
+        size: int,
+        is_psk_editor: bool,
+        search: str | None,
+    ) -> PaginatedEndpointDetails:
+        """Byg en PaginatedEndpointDetails fra (ep_id, value, is_stale) tuples.
 
-        async def fetch_one(ep_id: str) -> EndpointDetail | None:
-            async with sem:
-                try:
-                    return await self.get_endpoint(ep_id, is_psk_editor=is_psk_editor)
-                except IseApiError:
-                    return None
-
-        results = await asyncio.gather(*(fetch_one(i) for i in all_ids))
-        items: list[EndpointDetail] = [r for r in results if r is not None]
-
+        Anvender PSK-masking og cache_stale-flag. Ingen async/ISE-kald.
+        """
+        items: list[EndpointDetail] = []
+        for _ep_id, val, is_stale in raw:
+            if is_stale:
+                if hasattr(val, "model_copy"):
+                    val = val.model_copy(update={"cache_stale": True})
+            elif getattr(val, "cache_stale", False):
+                val = val.model_copy(update={"cache_stale": False})
+            if not is_psk_editor:
+                val = _mask_psk(val)
+            items.append(val)
         if search:
             low = search.strip().lower()
             items = [
                 d for d in items
-                if low in d.mac.lower() or low in (d.description or "").lower()
+                if low in (d.mac or "").lower() or low in (d.description or "").lower()
             ]
-
         items.sort(key=lambda d: d.mac or d.name)
         total = len(items)
         start = (page - 1) * size
-        page_items = items[start:start + size]
-        logger.info(
-            "cache-all list (admin): %d total, page=%d → %d items",
-            total, page, len(page_items),
-        )
-        return PaginatedEndpointDetails(items=page_items, total=total, page=page, size=size)
+        return PaginatedEndpointDetails(items=items[start : start + size], total=total, page=page, size=size)
 
     async def list_all_endpoint_details(
         self,
@@ -482,8 +470,31 @@ class EndpointService:
         Hvis ``effective_roles`` er sat (non-admin) og cachen er varm, bruges
         roles-indekset til at returnere kun brugerens endpoints uden ISE-scan.
         Kold cache falder tilbage til fuld ISE list_all + post-filter.
+
+        Admin fast-path: hvis cachen er varm og ingen ISE ERS-filtre er sat,
+        serveres alle endpoints direkte fra cache — ingen ISE round-trip.
         """
-        if effective_roles is not None and get_cache().detail_count() > 0:
+        cache = get_cache()
+
+        # Admin fast-path: serve from cache when no ERS column-filters force an ISE scan.
+        # Avoids list_all() + N individual fetches when chips/filter-mode triggers this call.
+        if effective_roles is None and not filters and cache.detail_count() > 0:
+            items: list[EndpointDetail] = cache.get_all_details()
+            if not is_psk_editor:
+                items = [_mask_psk(d) for d in items]
+            if search:
+                low = search.strip().lower()
+                items = [
+                    d for d in items
+                    if low in (d.mac or "").lower() or low in (d.description or "").lower()
+                ]
+            if full_text_q:
+                items = _full_text_filter(items, full_text_q)
+            items.sort(key=lambda d: d.mac or d.name)
+            logger.info("admin list_all cache fast-path: %d endpoints from cache", len(items))
+            return items
+
+        if effective_roles is not None and cache.detail_count() > 0:
             cache = get_cache()
             all_ids = list(cache.get_ids_for_roles(effective_roles))
             sem = asyncio.Semaphore(8)
@@ -640,6 +651,7 @@ class EndpointService:
             logger.warning("audit: could not snapshot endpoint %s before delete: %s",
                            endpoint_id, exc)
         await self.endpoints.delete(endpoint_id)
+        get_cache().mark_changed(endpoint_id)
         get_cache().invalidate_detail(endpoint_id)
         guest_expiry_store.remove(endpoint_id)
         if before:
@@ -796,6 +808,7 @@ class EndpointService:
             custom_attributes=ca,
         )
         # Invalidate cache so the next read reflects the new ISE state.
+        get_cache().mark_changed(endpoint_id)
         get_cache().invalidate_detail(endpoint_id)
 
         # Opdatér guest expiry tracking baseret på de nye CA-værdier.
@@ -945,15 +958,19 @@ class EndpointService:
         Kun custom-attribute-feltet opdateres — gruppe, beskrivelse og øvrige
         felter bevares. Cachen invalideres og handlingen auditeres.
         """
-        authz_vlan = config.settings.decomm_authz_vlan
-        authz_acl = config.settings.decomm_authz_acl
         ca: dict[str, Any] = {
             STATUS_ATTR: "Decommissioned",
             ACTIVE_ATTR: "Inaktiv",
             HIDDEN_ATTR: "true",
-            "AuthzVlan": authz_vlan,
-            "AuthzACL": authz_acl,
         }
+        audit_after: dict[str, Any] = {"status": "Decommissioned", "active_status": "Inaktiv"}
+        if config.settings.decomm_set_authz:
+            authz_vlan = config.settings.decomm_authz_vlan
+            authz_acl  = config.settings.decomm_authz_acl
+            ca["AuthzVlan"] = authz_vlan
+            ca["AuthzACL"]  = authz_acl
+            audit_after["authz_vlan"] = authz_vlan
+            audit_after["authz_acl"]  = authz_acl
         await self._ensure_ca_definitions()
         before: dict[str, Any] | None = None
         try:
@@ -961,13 +978,14 @@ class EndpointService:
         except IseApiError as exc:
             logger.warning("audit: could not snapshot %s before decommission: %s", endpoint_id, exc)
         await self.endpoints.update(endpoint_id, custom_attributes=ca)
+        get_cache().mark_changed(endpoint_id)
         get_cache().invalidate_detail(endpoint_id)
         await audit_store.record(
             "decommissioned",
             "endpoint",
             endpoint_id,
             before=before,
-            after={"status": "Decommissioned", "active_status": "Inaktiv", "authz_vlan": authz_vlan, "authz_acl": authz_acl},
+            after=audit_after,
         )
         logger.info("decommissioned endpoint id=%s", endpoint_id)
 

@@ -66,23 +66,20 @@ export function initDetail(container, state, api, cb) {
     detailMsg.innerHTML   = `<div class="alert info">${t("alert.loading")}</div>`;
     detailOverlay.classList.remove("hidden");
     try {
-      const d = await api.getEndpoint(id);
+      // Only fetch the endpoint detail — CA values and DACLs are already loaded
+      // in state.caValues by the browse table's initial load() call and do not
+      // need to be re-fetched on every detail open (saves 5-30 s of ISE calls).
+      // fresh=true kun hvis table-rækken var markeret stale da den blev valgt,
+      // så vi ikke hitter ISE unødigt for entries der allerede er friske.
+      const rowWasStale = state.staleIds?.has(id) ?? false;
+      const { data: d, totalMs, fromCache, cacheAge } = await api.getEndpoint(id, rowWasStale);
 
-      // Refresh caValues + DACL list after the detail fetch so the dropdowns
-      // always reflect the current ISE state (auto_discover may have written
-      // new attribute values; DACLs may have been added/removed in ISE).
-      const [caData, freshDacls] = await Promise.all([
-        api.listCustomAttributes().catch(() => null),
-        api.listDacls().catch(() => null),
-      ]);
-      if (caData && Array.isArray(caData.attributes)) {
-        for (const a of caData.attributes) {
-          if (a.name in state.caValues) state.caValues[a.name] = a.values;
-        }
-      }
-      if (freshDacls && Array.isArray(freshDacls)) {
-        state.caValues.AuthzACL = freshDacls.map((d) => d.name).filter(Boolean).sort();
-      }
+      // Show timing badge so operator can see portal vs ISE latency.
+      const _ageStr = fromCache && cacheAge >= 0 ? ` (${Math.round(cacheAge)}s)` : "";
+      const _srcLabel = fromCache
+        ? `⚡ ${t("detail.timing_cache")}${_ageStr} ${totalMs}ms`
+        : `⏱ ISE ${totalMs}ms`;
+      detailMsg.innerHTML = `<span class="detail-timing-badge">${_srcLabel}</span>`;
 
       state.detailOriginalGroupId = d.group_id || "";
       container.querySelector("#d-mac").textContent    = d.mac || d.name || "";
@@ -95,6 +92,8 @@ export function initDetail(container, state, api, cb) {
       dGroupEl.onchange = () => updateGroupPath(dGroupEl.value);
       container.querySelector("#d-static-group").checked  = !!d.static_group;
       container.querySelector("#d-description").value     = d.description || "";
+      const activeStatusSel = container.querySelector("#d-active-status-sel");
+      if (activeStatusSel) activeStatusSel.value = d.active_status || "";
       container.querySelector("#d-type").innerHTML        = optionsHtml(state.caValues.Type, d.endpoint_type);
       container.querySelector("#d-owner").innerHTML       = optionsHtml(state.caValues.Owner, d.owner);
       container.querySelector("#d-lokation").innerHTML    = optionsHtml(state.caValues.Lokation, d.lokation);
@@ -157,9 +156,16 @@ export function initDetail(container, state, api, cb) {
       container.querySelector("#d-psk-show").classList.toggle("hidden", !state.isPskEditor);
       container.querySelector("#d-psk-gen").classList.toggle("hidden",  !state.isPskEditor);
 
-      const rolesEl = container.querySelector("#d-roles");
-      rolesEl.innerHTML       = cb.rolesChipsHtml(d.roles);
-      rolesEl.dataset.original = JSON.stringify(d.roles || []);
+      const rolesSel = container.querySelector("#d-roles-sel");
+      if (rolesSel) {
+        const selLower = new Set((d.roles || []).map((r) => (r || "").toLowerCase()));
+        rolesSel.innerHTML = state.roleCatalog.map((r) =>
+          `<option value="${esc(r.name)}" title="${esc(r.description || r.name)}"${
+            selLower.has(r.name.toLowerCase()) ? " selected" : ""
+          }>${esc(r.name)}</option>`
+        ).join("");
+        rolesSel.dataset.original = JSON.stringify(d.roles || []);
+      }
 
       container.querySelector("#d-hypervision").textContent  = d.hypervision || "—";
       container.querySelector("#d-profile-id").textContent   = d.profile_id || "—";
@@ -201,8 +207,6 @@ export function initDetail(container, state, api, cb) {
         if (setAktivBtn)   setAktivBtn.style.display   = auth.isEditor() && !isDecomm && !isAktiv ? "" : "none";
         if (setInaktivBtn) setInaktivBtn.style.display = auth.isEditor() && !isDecomm && isAktiv  ? "" : "none";
       }
-
-      detailMsg.innerHTML = "";
 
       // Populate template apply dropdown
       const tplSelect = container.querySelector("#d-tpl-select");
@@ -1205,19 +1209,22 @@ export function initDetail(container, state, api, cb) {
       static_group_assignment = staticGroup;
     }
 
-    const dRolesEl = container.querySelector("#d-roles");
-    const checkedChips = dRolesEl.querySelectorAll(".row-role-chip:checked");
-    const selectedCatalogRoles = Array.from(checkedChips).map((cbEl) => cbEl.dataset.role);
+    const rolesSel_ = container.querySelector("#d-roles-sel");
+    const selectedCatalogRoles = rolesSel_
+      ? Array.from(rolesSel_.selectedOptions).map((o) => o.value)
+      : [];
     let originalRoles = [];
-    try { originalRoles = JSON.parse(dRolesEl.dataset.original || "[]"); } catch { /* ignore */ }
+    try { originalRoles = JSON.parse((rolesSel_?.dataset.original) || "[]"); } catch { /* ignore */ }
     const catalogLower  = new Set(state.roleCatalog.map((c) => c.name.toLowerCase()));
     const externalRoles = originalRoles.filter((r) => !catalogLower.has((r || "").toLowerCase()));
     const hypervisionRoles = [...externalRoles, ...selectedCatalogRoles].join(",");
 
+    const _activeStatusVal = container.querySelector("#d-active-status-sel")?.value || "";
     const customAttrs = {
       Type: container.querySelector("#d-type").value,
       Owner: container.querySelector("#d-owner").value,
       Lokation: container.querySelector("#d-lokation").value,
+      ...(_activeStatusVal ? { HypervisionActive: _activeStatusVal } : {}),
       RegistretBy: container.querySelector("#d-registretby")?.value || "",
       GuestRegistration: container.querySelector("#d-guestreg")?.value || "",
       GuestExperyDate: (() => {

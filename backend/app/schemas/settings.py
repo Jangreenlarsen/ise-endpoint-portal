@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: AGPL-3.0-or-later
+﻿# SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 from typing import Literal
 
@@ -29,8 +29,12 @@ class BackendSettingsUpdate(BaseModel):
     cache_disk_path: str = "cache/endpoints.json"
     cache_prewarm_concurrency: int = 5
     cache_prewarm_interval_s: float = 1800.0
+    cache_prewarm_skip_fresh_s: float = 900.0
+    cache_max_entries: int = 5000
+    cache_max_memory_mb: int = 300
     debug_pxgrid_sessions: bool = False
     github_branch: str = "main"
+    decomm_set_authz: bool = True
     decomm_authz_vlan: str = "999"
     decomm_authz_acl: str = "deny_all_ipv4_traffic"
     selfregister_enabled: bool = True
@@ -47,6 +51,8 @@ class BackendSettingsUpdate(BaseModel):
     selfregister_expiry_days: int = 30
     selfregister_expiry_date: str = ""
     selfregister_expiry_time: str = "23:59"
+    selfregister_expiry_coa_enabled: bool = False
+    selfregister_expiry_coa_type: str = "reauth"
     guest_expiry_check_interval_seconds: float = 60.0
 
 
@@ -69,8 +75,12 @@ class BackendSettingsResponse(BaseModel):
     cache_disk_path: str = "cache/endpoints.json"
     cache_prewarm_concurrency: int = 5
     cache_prewarm_interval_s: float = 1800.0
+    cache_prewarm_skip_fresh_s: float = 900.0
+    cache_max_entries: int = 5000
+    cache_max_memory_mb: int = 300
     debug_pxgrid_sessions: bool = False
     github_branch: str = "main"
+    decomm_set_authz: bool = True
     decomm_authz_vlan: str = "999"
     decomm_authz_acl: str = "deny_all_ipv4_traffic"
     selfregister_enabled: bool = True
@@ -87,6 +97,8 @@ class BackendSettingsResponse(BaseModel):
     selfregister_expiry_days: int = 30
     selfregister_expiry_date: str = ""
     selfregister_expiry_time: str = "23:59"
+    selfregister_expiry_coa_enabled: bool = False
+    selfregister_expiry_coa_type: str = "reauth"
     guest_expiry_check_interval_seconds: float = 60.0
 
 

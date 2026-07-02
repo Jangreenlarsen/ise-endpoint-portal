@@ -183,12 +183,12 @@ class Settings(BaseSettings):
         ),
     )
     cache_prewarm_skip_fresh_s: float = Field(
-        default=1800.0,
+        default=900.0,
         description=(
             "Inkrementel pre-warm: spring detail-fetch over for entries der er "
-            "friskere end denne grænse (sekunder). Default 1800 = samme som "
-            "interval — kun endpoints ikke berørt siden sidst scan hentes. "
-            "0 = deaktiveret (klassisk fuld-scan adfærd)."
+            "friskere end denne grænse (sekunder). Default 900 = 3× TTL — "
+            "fuld-scan refresher som safety-net alt hvad drip-loopen har misset "
+            "i de seneste 15 min. 0 = deaktiveret (klassisk fuld-scan adfærd)."
         ),
     )
 
@@ -287,13 +287,14 @@ class Settings(BaseSettings):
         ),
     )
     pxgrid_stomp_recv_timeout_s: float = Field(
-        default=600.0,
+        default=3600.0,
         description=(
             "Maks ventetid i sekunder på en STOMP-frame (MESSAGE, heartbeat o.l.). "
             "WebSocket ping/pong (ping_interval=20, ping_timeout=10) detekterer "
             "dead TCP inden for 30s — denne timeout er kun backstop mod en broker "
             "der er alive på TCP-niveau men sender ingenting. ISE pxGrid broker "
-            "kan sagtens have >120s stille perioder, så default er 600s."
+            "kan sagtens have >120s stille perioder; default er 3600s (1 time) "
+            "for at undgå falsk disconnect ved lange rolige perioder."
         ),
     )
     pxgrid_stomp_reconnect_min_s: float = Field(
@@ -379,8 +380,16 @@ class Settings(BaseSettings):
     log_file: str = "logs/app.log"
     debug_pxgrid_sessions: bool = False
     github_branch: str = Field(default="main", description="GitHub-branch til opdateringscheck og git pull. 'main' = stabil release, 'dev' = udviklingsversion.")
-    decomm_authz_vlan: str = Field(default="999", description="AuthzVlan der sættes på et endpoint ved dekommissionering.")
-    decomm_authz_acl: str = Field(default="deny_all_ipv4_traffic", description="AuthzACL (DACL) der sættes på et endpoint ved dekommissionering.")
+    decomm_set_authz: bool = Field(
+        default=True,
+        description=(
+            "Ændre AuthzVlan og AuthzACL ved dekommissionering. "
+            "True = sæt decomm_authz_vlan + decomm_authz_acl på endpoint. "
+            "False = kun HypervisionStatus/ActiveStatus/Hidden sættes — eksisterende VLAN/ACL bevares."
+        ),
+    )
+    decomm_authz_vlan: str = Field(default="999", description="AuthzVlan der sættes på et endpoint ved dekommissionering (kun hvis decomm_set_authz=True).")
+    decomm_authz_acl: str = Field(default="deny_all_ipv4_traffic", description="AuthzACL (DACL) der sættes på et endpoint ved dekommissionering (kun hvis decomm_set_authz=True).")
     selfregister_enabled: bool = Field(default=True, description="Aktivér public selvregistrerings-side (/selfregister).")
     selfregister_group_id: str = Field(default="", description="ISE endpoint group ID som selvregistrerede endpoints placeres i. Tom = standard gruppe.")
     selfregister_redirect_url: str = Field(default="", description="URL brugeren sendes til efter succesfuld registrering (fx https://company.com). Tom = vis success-besked.")
@@ -395,6 +404,14 @@ class Settings(BaseSettings):
     selfregister_expiry_days: int = Field(default=30, description="Antal dage gæsteadgang er gyldig (bruges ved mode='period').")
     selfregister_expiry_date: str = Field(default="", description="Bestemt udløbsdato YYYY-MM-DD (bruges ved mode='date').")
     selfregister_expiry_time: str = Field(default="23:59", description="Klokkeslæt for udløb HH:MM.")
+    selfregister_expiry_coa_enabled: bool = Field(
+        default=False,
+        description="Send CoA (Re-Auth/Disconnect) til gæstens MAC-adresse når udløbstidspunktet er nået, så gæsten omdirigeres til registreringsportalen automatisk.",
+    )
+    selfregister_expiry_coa_type: str = Field(
+        default="reauth",
+        description="CoA-type ved udløb: 'reauth' (re-autoriser — gæsten omdirigeres til portal) eller 'disconnect' (afbryd session — gæsten skal forbinde igen).",
+    )
 
     guest_expiry_check_interval_seconds: float = Field(
         default=60.0,

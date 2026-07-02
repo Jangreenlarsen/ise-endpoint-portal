@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 import asyncio
+import os as _os
+import sys as _sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -32,12 +34,15 @@ from app.api import update as update_api
 from app.api import trends as trends_api
 from app.api import selfregister as selfregister_api
 from app.api import nmap as nmap_api
+from app.api import diagnostics as diagnostics_api
+from app.api import feature_check as feature_check_api
+from app.api import sysinfo as sysinfo_api
 from app.core.audit_store import init_db as init_audit_db
 from app.core.metrics_store import init_db as init_metrics_db
 from app.core.config import settings
 from app.core.logging import setup_logging
 from app.core.watchdog import beat as watchdog_beat, start_watchdog
-from app.core.version import FULL as APP_VERSION, VERSION
+from app.core.version import BUILD, FULL as APP_VERSION, VERSION
 from app.ise.client import close_ise_client
 from app.pxgrid.session_cache import get_cache as get_session_cache
 from app.pxgrid.session_worker import _enrich_sessions_from_mnt, reconcile_stale_sessions, get_worker as get_pxgrid_worker
@@ -95,7 +100,12 @@ async def lifespan(_: FastAPI):
     setup_logging()
     import logging
     logger = logging.getLogger(__name__)
-    logger.info("HyperVision ISE Portal %s starting", APP_VERSION)
+    logger.info(
+        "=== HyperVision ISE Portal v%s (build %s) START"
+        " | url=https://hypervision.ll.lan"
+        " | python=%s | pid=%d ===",
+        VERSION, BUILD, _sys.version.split()[0], _os.getpid(),
+    )
 
     # ── Sikkerheds-tjek ved opstart ──────────────────────────────────────────
     _ca_bundle = getattr(settings, "ise_ca_bundle", None)
@@ -396,6 +406,9 @@ app.include_router(trends_api.router, prefix="/api")
 app.include_router(ise_nodes_api.router, prefix="/api")
 app.include_router(selfregister_api.router, prefix="/api")  # Public — ingen auth
 app.include_router(nmap_api.router, prefix="/api")
+app.include_router(diagnostics_api.router, prefix="/api")
+app.include_router(feature_check_api.router, prefix="/api")
+app.include_router(sysinfo_api.router, prefix="/api")
 app.include_router(metrics_api.router)
 
 frontend_dir = Path(__file__).resolve().parents[2] / "frontend"

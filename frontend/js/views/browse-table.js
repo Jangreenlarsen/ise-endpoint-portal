@@ -37,34 +37,30 @@ export function initTable(container, state, api, cb) {
   const pageSizeSelect = container.querySelector("#page-size-select");
   const colVisBtn      = container.querySelector("#col-vis-btn");
   const colVisMenu     = container.querySelector("#col-vis-menu");
-  const exportBtn      = container.querySelector("#export-btn");
-  const exportJsonBtn  = container.querySelector("#export-json-btn");
-  const refreshBtn     = container.querySelector("#refresh-btn");
+  const exportBtn        = container.querySelector("#export-btn");
+  const exportJsonBtn    = container.querySelector("#export-json-btn");
+  const refreshBtn       = container.querySelector("#refresh-btn");
+  const localRefreshBtn  = container.querySelector("#local-refresh-btn");
 
   // ── Render helpers (need state.groups / state.roleCatalog) ───────────────
   function groupOptionsHtml(selectedId) {
     return groupHierarchyOptionsHtml(state.groups, selectedId);
   }
 
-  function rolesChipsHtml(selected, opts = {}) {
-    const editable   = opts.editable !== false && state.canEditRoles;
+  function rolesChipsHtml(selected) {
     const sel        = (selected || []).filter((r) => r.toLowerCase() !== "admin");
     const selLower   = new Set(sel.map((s) => (s || "").toLowerCase()));
     const catalogLow = new Set(state.roleCatalog.map((r) => r.name.toLowerCase()));
     const items      = [];
     for (const r of state.roleCatalog) {
-      const checked = selLower.has(r.name.toLowerCase()) ? "checked" : "";
-      const dis     = editable ? "" : "disabled";
-      items.push(
-        `<label class="role-chip" title="${esc(r.description || r.name)}">` +
-        `<input type="checkbox" class="row-role-chip" data-role="${esc(r.name)}" ${checked} ${dis} />` +
-        `<span>${esc(r.name)}</span></label>`,
-      );
+      if (selLower.has(r.name.toLowerCase())) {
+        items.push(`<span class="role-tag" title="${esc(r.description || r.name)}">${esc(r.name)}</span>`);
+      }
     }
     for (const r of sel) {
       if (!catalogLow.has(r.toLowerCase())) {
         items.push(
-          `<span class="role-chip role-chip-extern" title="${t("browse.extern_role_title")}">` +
+          `<span class="role-tag role-chip-extern" title="${t("browse.extern_role_title")}">` +
           `${esc(r)}</span>`,
         );
       }
@@ -344,7 +340,7 @@ export function initTable(container, state, api, cb) {
 
   async function refreshRows(ids) {
     if (!ids || !ids.length) return;
-    const fresh = await Promise.all(ids.map((id) => api.getEndpoint(id).catch(() => null)));
+    const fresh = await Promise.all(ids.map((id) => api.getEndpoint(id).then((r) => r?.data ?? r).catch(() => null)));
     const byId  = new Map();
     for (const r of fresh) if (r && r.id) byId.set(r.id, r);
     if (!byId.size) return;
@@ -507,13 +503,7 @@ export function initTable(container, state, api, cb) {
     const originalGroupId = row ? (row.group_id || "") : "";
     const groupChanged    = selectedGroupId !== originalGroupId;
 
-    const checkedChips        = tr.querySelectorAll(".row-role-chip:checked");
-    const selectedCatalogRoles = Array.from(checkedChips).map((cb) => cb.dataset.role);
-    const catalogLower         = new Set(state.roleCatalog.map((c) => c.name.toLowerCase()));
-    const externalRoles        = ((row && row.roles) || []).filter(
-      (r) => !catalogLower.has((r || "").toLowerCase()),
-    );
-    const hypervisionRoles = [...externalRoles, ...selectedCatalogRoles].join(",");
+    const hypervisionRoles = ((row && row.roles) || []).join(",");
 
     let group_id = null, static_group_assignment = null;
     if (groupChanged) {
@@ -646,6 +636,8 @@ export function initTable(container, state, api, cb) {
       );
       state.allRows        = result.items;
       state.totalEndpoints = result.total;
+      // 3-tier: hold Set af stale endpoint-IDs så detail-view kan auto-refresh
+      state.staleIds = new Set(result.items.filter((r) => r.cache_stale).map((r) => r.id));
       state.laaTotal       = epStats ? epStats.laa_count : null;
       if (cb.needsFilterMode()) await cb.enterFilterMode();
       await cb.refreshActiveSessionMacs(force);
@@ -779,7 +771,7 @@ export function initTable(container, state, api, cb) {
     bulkSaveBtn.disabled = false;
   });
 
-  // Refresh button
+  // Refresh button — invaliderer ISE-cache og henter alt forfra
   refreshBtn.addEventListener("click", async () => {
     refreshBtn.disabled    = true;
     refreshBtn.textContent = t("browse.refreshing");
@@ -789,6 +781,19 @@ export function initTable(container, state, api, cb) {
     } finally {
       refreshBtn.disabled    = false;
       refreshBtn.textContent = t("browse.btn_refresh");
+    }
+  });
+
+  // Local refresh — genindlæser fra backend-cache uden at røre ISE
+  localRefreshBtn?.addEventListener("click", async () => {
+    if (!localRefreshBtn) return;
+    localRefreshBtn.disabled    = true;
+    localRefreshBtn.textContent = t("browse.local_refreshing");
+    try {
+      await load(false, { silent: true });
+    } finally {
+      localRefreshBtn.disabled    = false;
+      localRefreshBtn.textContent = `↻ ${t("browse.btn_local_refresh")}`;
     }
   });
 

@@ -1592,6 +1592,33 @@ body.auth-mode .content {
   cursor: default;
 }
 .roles-cell .role-chips { max-width: 18rem; gap: 0.2rem 0.3rem; }
+.detail-timing-badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  color: #6b7280;
+  padding: 0.1rem 0.35rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  background: #f9fafb;
+}
+[data-theme="dark"] .detail-timing-badge { background: #1a1a2e; border-color: #3a3a5c; color: #9ca3af; }
+.role-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.12rem 0.4rem;
+  border: 1px solid #3b82f6;
+  border-radius: 999px;
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+.roles-multiselect {
+  min-height: 6rem;
+  max-height: 10rem;
+  width: 100%;
+  font-size: 0.88rem;
+}
 td.psk-key-cell {
   font-family: ui-monospace, "Cascadia Mono", Menlo, monospace;
   font-size: 0.8rem;
@@ -1981,6 +2008,7 @@ td.psk-key-cell {
   color: #e0e0e0;
   border-color: #3a3a5c;
 }
+[data-theme="dark"] .role-tag { background: #1e3a8a; border-color: #3b82f6; color: #93c5fd; }
 [data-theme="dark"] .role-chip {
   background: #1a1a2e;
   border-color: #3a3a5c;
@@ -2288,6 +2316,51 @@ th.col-drag-over {
   background: #eff6ff;
 }
 [data-theme="dark"] th.col-drag-over { background: #1e3a5f; outline-color: #60a5fa; }
+
+/* ── Cache health widget ─────────────────────────────────────────────────── */
+.ch-wrap { position: relative; display: inline-block; }
+.ch-btn  { display: inline-flex; align-items: center; gap: 4px; }
+.ch-dot  { font-size: 0.85em; line-height: 1; }
+.ch-ok      { color: #16a34a; }
+.ch-warn    { color: #ca8a04; }
+.ch-bad     { color: #ea580c; }
+.ch-crit    { color: #dc2626; }
+.ch-unknown { color: #9ca3af; }
+.ch-panel {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 200;
+  width: 360px; background: #fff; border: 1px solid #d1d5db;
+  border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); font-size: 0.82rem;
+}
+.ch-inner  { padding: 10px 12px; display: flex; flex-direction: column; gap: 5px; }
+.ch-head   { display: flex; justify-content: space-between; align-items: center;
+             font-weight: 600; font-size: 0.84rem; color: #374151;
+             padding-bottom: 6px; border-bottom: 1px solid #e5e7eb; margin-bottom: 2px; }
+.ch-close  { background: none; border: none; cursor: pointer; font-size: 1.1rem;
+             color: #9ca3af; padding: 0 2px; line-height: 1; }
+.ch-close:hover { color: #374151; }
+.ch-row    { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.ch-label  { color: #6b7280; white-space: nowrap; flex-shrink: 0; }
+.ch-val    { color: #111827; text-align: right; word-break: break-all; }
+.ch-errval { color: #dc2626; font-size: 0.78rem; }
+.ch-dist   { display: flex; gap: 10px; flex-wrap: wrap; padding: 4px 0; font-size: 0.79rem; }
+.ch-f      { color: #15803d; }
+.ch-sv     { color: #b45309; }
+.ch-vs-ok    { color: #9ca3af; }
+.ch-vs-alert { color: #dc2626; font-weight: 600; }
+.ch-barwrap { display: flex; align-items: center; gap: 8px; margin: 2px 0; }
+.ch-bar    { display: inline-flex; height: 8px; border-radius: 4px; overflow: hidden;
+             background: #e5e7eb; flex-shrink: 0; }
+.ch-bar-f  { background: #16a34a; height: 8px; min-width: 0; }
+.ch-bar-s  { background: #f59e0b; height: 8px; min-width: 0; }
+.ch-bar-v  { background: #ef4444; height: 8px; min-width: 0; }
+.ch-avgage { color: #6b7280; font-size: 0.78rem; white-space: nowrap; }
+.ch-scanning { background: #dbeafe; color: #1d4ed8; padding: 1px 6px;
+               border-radius: 10px; font-size: 0.75rem; margin-left: 4px; }
+[data-theme="dark"] .ch-panel  { background: #1e2130; border-color: #374151; box-shadow: 0 4px 16px rgba(0,0,0,0.5); }
+[data-theme="dark"] .ch-head   { color: #e5e7eb; border-color: #374151; }
+[data-theme="dark"] .ch-label  { color: #9ca3af; }
+[data-theme="dark"] .ch-val    { color: #f3f4f6; }
+[data-theme="dark"] .ch-bar    { background: #374151; }
 
 /* Column visibility menu (Browse/Edit) */
 .col-vis-wrap { position: relative; display: inline-block; }

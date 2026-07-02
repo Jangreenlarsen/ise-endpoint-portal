@@ -11,6 +11,33 @@ export function setUnauthorizedHandler(fn) {
   onUnauthorized = fn;
 }
 
+async function requestTimed(path, options = {}) {
+  const { _noContentType, _timeout, ...fetchOpts } = options;
+  const headers = _noContentType
+    ? { ...(options.headers || {}) }
+    : { "Content-Type": "application/json", ...(options.headers || {}) };
+  const timeoutMs = _timeout ?? 30_000;
+  const signal = AbortSignal.timeout ? AbortSignal.timeout(timeoutMs) : undefined;
+  const t0 = performance.now();
+  const res = await fetch(`${BASE}/api${path}`, { ...fetchOpts, headers, signal, credentials: "include" });
+  const totalMs = Math.round(performance.now() - t0);
+  if (res.status === 401) {
+    auth.clear();
+    if (onUnauthorized) onUnauthorized();
+    throw new Error("401: ikke logget ind");
+  }
+  if (!res.ok) {
+    let detail = await res.text();
+    try { const p = JSON.parse(detail); detail = p.detail || detail; } catch {}
+    throw new Error(`${res.status}: ${detail}`);
+  }
+  const data = res.status === 204 ? null : await res.json();
+  const cacheAge = parseFloat(res.headers.get("X-Cache-Age-Seconds") ?? "-1");
+  const fromCacheHdr = res.headers.get("X-From-Cache");
+  const fromCache = fromCacheHdr !== null ? fromCacheHdr === "true" : (cacheAge >= 0 && cacheAge < 5);
+  return { data, totalMs, fromCache, cacheAge };
+}
+
 async function request(path, options = {}) {
   // _noContentType: true bruges ved FormData-uploads (browser sætter selv boundary)
   const { _noContentType, _timeout, ...fetchOpts } = options;
@@ -66,7 +93,7 @@ export const api = {
     const qs = parts.length ? `?${parts.join("&")}` : "";
     return request(`/endpoints/details/all${qs}`);
   },
-  getEndpoint: (id) => request(`/endpoints/${encodeURIComponent(id)}`),
+  getEndpoint: (id, fresh = false) => requestTimed(`/endpoints/${encodeURIComponent(id)}${fresh ? "?fresh=true" : ""}`),
   getProfilingData: (id) => request(`/endpoints/${encodeURIComponent(id)}/profiling-data`),
   getProfilerProfile: (id) => request(`/endpoints/${encodeURIComponent(id)}/profiler-profile`),
   prioritizeEndpoint: (id) => request(`/endpoints/${encodeURIComponent(id)}/prioritize`, { method: "POST" }),
@@ -154,6 +181,8 @@ export const api = {
     if (search) parts.push(`search=${encodeURIComponent(search)}`);
     return request(`/logs?${parts.join("&")}`);
   },
+  getLogsSummary: () => request("/logs/summary"),
+  getLogsExportUrl: (format = "text") => `/api/logs/export?format=${format}`,
   authStatus: () => request("/auth/status"),
   login: (username, password) =>
     request("/auth/login", {
@@ -319,6 +348,12 @@ export const api = {
     return request("/update/apply", { method: "POST", body: fd, _noContentType: true });
   },
   restartServer: () => request("/update/restart", { method: "POST" }),
+  diagnostics:        () => request("/diagnostics",          { _timeout: 30_000 }),
+  diagnosticsQuick:   () => request("/diagnostics/quick",    { _timeout: 10_000 }),
+  selfregisterMntProbe: () => request("/selfregister/mnt-probe", { _timeout: 20_000 }),
+  featureCheckPhase1: () => request("/feature-check/phase1", { _timeout: 10_000 }),
+  featureCheckPhase2: () => request("/feature-check/phase2", { _timeout: 30_000 }),
+  sysinfo:            () => request("/sysinfo",              { _timeout:  5_000 }),
   listAncPolicies: () => request("/endpoints/anc-policies"),
   ancStatus: (id) => request(`/endpoints/${encodeURIComponent(id)}/anc-status`),
   ancQuarantine: (id, policyName) =>

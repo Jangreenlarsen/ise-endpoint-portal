@@ -17,6 +17,8 @@ import { initPortalAuthConfigSection, initLocaleSection } from "./settings/secti
 import { initSystemUpdateSection, initAdvancedSection, initGithubUpdateSection, initGuestRegSection } from "./settings/section-update.js";
 import { initAuthzProfilesSection } from "./settings/section-authz-profiles.js";
 import { initBackupSection } from "./settings/section-backup.js";
+import { initDiagnosticsSection } from "./settings/section-diagnostics.js";
+import { initFeatureCheckSection } from "./settings/section-feature-check.js";
 
 export async function renderSettings(container) {
   const isAdmin = auth.isAdmin();
@@ -152,12 +154,27 @@ export async function renderSettings(container) {
           <input type="number" id="cache_sync_interval_seconds" min="0" max="3600" step="30" />
           <div class="hint">0 = deaktiveret. Supplerer pre-warm: refresh'er entries der er ældre end halv TTL ud over den planlagte scanning.</div>
         </div>
+        <div class="field">
+          <label for="cache_max_entries" id="cache-max-entries-lbl">Maks entries</label>
+          <input type="number" id="cache_max_entries" min="100" max="100000" step="100" />
+          <div class="hint">Maks antal endpoints i detail-cachen. Ældste entries eviktes ved overskridelse. 0 = ubegrænset. (default: 5000)</div>
+        </div>
+        <div class="field">
+          <label for="cache_max_memory_mb" id="cache-max-memory-lbl">Maks hukommelse (MB)</label>
+          <input type="number" id="cache_max_memory_mb" min="0" max="4096" step="50" />
+          <div class="hint">Eviction sker når estimeret JSON-størrelse overstiger grænsen. 0 = ubegrænset. (default: 300 MB)</div>
+        </div>
 
         <h4 style="margin-top:1.2rem;margin-bottom:0.6rem;" id="cache-prewarm-h4"></h4>
         <div class="field">
           <label for="cache_prewarm_interval_s" id="cache-scan-interval-lbl"></label>
           <input type="number" id="cache_prewarm_interval_s" min="60" max="86400" step="60" />
           <div class="hint">Hvor ofte workeren scanner <em>alle</em> ISE-endpoints (default: 1800 = 30 min).</div>
+        </div>
+        <div class="field">
+          <label for="cache_prewarm_skip_fresh_s" id="cache-skip-fresh-lbl">Spring friske entries over (sek)</label>
+          <input type="number" id="cache_prewarm_skip_fresh_s" min="0" max="86400" step="60" />
+          <div class="hint">Pre-warm scanner springer entries over der er yngre end denne tærskel. 0 = aldrig spring over. (default: 900 = 15 min)</div>
         </div>
         <div class="field">
           <label for="cache_prewarm_concurrency" id="cache-concurrency-lbl"></label>
@@ -184,6 +201,7 @@ export async function renderSettings(container) {
         <button type="button" id="cache-invalidate-btn" class="danger"></button>
       </div>
     </div>
+
     ` : ""}
 
     ${isAdmin ? `
@@ -793,6 +811,35 @@ export async function renderSettings(container) {
         <div id="gh-dev-branch-result" style="margin-top:0.25rem;margin-left:1.5rem;"></div>
       </div>
     </div>
+
+    <div class="card" data-tab="portal-config" data-subtab="pc-update">
+      <h3>Systemdiagnostik</h3>
+      <p class="hint">
+        Komplet sundhedstjek af alle backend-afhængigheder og -tjenester:
+        Python-pakker, HTTP/2, ISE-forbindelse med latens, disk plads,
+        cache, circuit breaker, pxGrid-worker og git-status.
+      </p>
+      <div id="diag-result"></div>
+      <div class="actions">
+        <button type="button" id="diag-run-btn" class="secondary">Kør diagnostik</button>
+      </div>
+    </div>
+
+    <div class="card" data-tab="portal-config" data-subtab="pc-update">
+      <h3>Funktionsgennemgang</h3>
+      <p class="hint">
+        To-faset gennemgang af alle portal-funktioner.<br>
+        <strong>Fase 1</strong> (statisk, &lt; 1 s): config, databaser, certifikater, mappestruktur.<br>
+        <strong>Fase 2</strong> (live, 5-15 s): ERS endpoint-liste, grupper, custom attributes,
+        MnT-sessioner, OpenAPI, nmap, GitHub-forbindelse, cache og pxGrid.
+      </p>
+      <div id="fc-phase1-result"></div>
+      <div id="fc-phase2-result"></div>
+      <div class="actions" style="gap:.5rem">
+        <button type="button" id="fc-phase1-btn" class="secondary">Kør fase 1 (statisk)</button>
+        <button type="button" id="fc-phase2-btn" class="secondary" disabled>Kør fase 2 (live ISE)</button>
+      </div>
+    </div>
     ` : ""}
 
     ${isAdmin ? `
@@ -851,18 +898,27 @@ export async function renderSettings(container) {
       <p class="hint" id="adv-decomm-hint"></p>
       <form id="adv-decomm-form" onsubmit="return false;">
         <div class="field">
-          <label for="adv-decomm-vlan" id="adv-decomm-vlan-lbl"></label>
-          <select id="adv-decomm-vlan" style="max-width:14rem;">
-            <option value="" id="adv-decomm-vlan-loading">…</option>
-          </select>
-          <div class="hint" id="adv-decomm-vlan-hint"></div>
+          <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;">
+            <input type="checkbox" id="adv-decomm-set-authz">
+            <span id="adv-decomm-set-authz-lbl"></span>
+          </label>
+          <div class="hint" id="adv-decomm-set-authz-hint"></div>
         </div>
-        <div class="field">
-          <label for="adv-decomm-acl" id="adv-decomm-acl-lbl"></label>
-          <select id="adv-decomm-acl" style="max-width:28rem;">
-            <option value="" id="adv-decomm-acl-loading">…</option>
-          </select>
-          <div class="hint" id="adv-decomm-acl-hint"></div>
+        <div id="adv-decomm-authz-fields">
+          <div class="field">
+            <label for="adv-decomm-vlan" id="adv-decomm-vlan-lbl"></label>
+            <select id="adv-decomm-vlan" style="max-width:14rem;">
+              <option value="" id="adv-decomm-vlan-loading">…</option>
+            </select>
+            <div class="hint" id="adv-decomm-vlan-hint"></div>
+          </div>
+          <div class="field">
+            <label for="adv-decomm-acl" id="adv-decomm-acl-lbl"></label>
+            <select id="adv-decomm-acl" style="max-width:28rem;">
+              <option value="" id="adv-decomm-acl-loading">…</option>
+            </select>
+            <div class="hint" id="adv-decomm-acl-hint"></div>
+          </div>
         </div>
         <div class="actions">
           <button type="submit" id="adv-decomm-save-btn"></button>
@@ -876,6 +932,16 @@ export async function renderSettings(container) {
     <div class="card" data-tab="portal-config" data-subtab="pc-advanced" id="guest-reg-card">
       <h3 id="guest-reg-h3"></h3>
       <p class="hint" id="guest-reg-hint"></p>
+
+      <div id="mnt-probe-widget" style="margin-bottom:1.25rem;padding:0.75rem 1rem;border-radius:8px;background:var(--bg-card,#f8fafc);border:1px solid var(--border,#e2e8f0);">
+        <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+          <strong style="white-space:nowrap;">MnT node status</strong>
+          <span id="mnt-probe-badge" style="font-size:0.82rem;color:#64748b;">Ikke testet endnu</span>
+          <button type="button" id="mnt-probe-btn" class="secondary" style="margin-left:auto;padding:0.3rem 0.85rem;font-size:0.85rem;">Test MnT</button>
+        </div>
+        <div id="mnt-probe-detail" style="font-size:0.8rem;color:#64748b;margin-top:0.3rem;"></div>
+      </div>
+
       <form id="guest-reg-form" onsubmit="return false;">
         <div class="field">
           <label>
@@ -962,6 +1028,23 @@ export async function renderSettings(container) {
             <input type="number" id="guest-reg-expiry-check-interval" min="0" max="86400" step="10" style="max-width:8rem;" />
             <div class="hint" id="guest-reg-expiry-check-interval-hint"></div>
           </div>
+          <div class="field">
+            <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;">
+              <input type="checkbox" id="guest-reg-expiry-coa-enabled">
+              <span id="guest-reg-expiry-coa-enabled-lbl" style="font-weight:500;"></span>
+            </label>
+            <div class="hint" id="guest-reg-expiry-coa-enabled-hint"></div>
+          </div>
+          <div id="guest-reg-expiry-coa-options" style="display:none;padding-left:1.2rem;border-left:2px solid var(--border);margin-bottom:0.5rem;">
+            <div class="field">
+              <label for="guest-reg-expiry-coa-type" id="guest-reg-expiry-coa-type-lbl"></label>
+              <select id="guest-reg-expiry-coa-type" style="max-width:16rem;">
+                <option value="reauth" id="guest-reg-expiry-coa-opt-reauth"></option>
+                <option value="disconnect" id="guest-reg-expiry-coa-opt-disconnect"></option>
+              </select>
+              <div class="hint" id="guest-reg-expiry-coa-type-hint"></div>
+            </div>
+          </div>
         </div>
         <div class="field">
           <label for="guest-reg-redirect" id="guest-reg-redirect-lbl"></label>
@@ -1018,6 +1101,8 @@ export async function renderSettings(container) {
   if (isAdmin) {
     await initBackendSection(container);
     await initCacheSection(container);
+    initDiagnosticsSection(container);
+    initFeatureCheckSection(container);
     await initPxGridSection(container);
     await initPurgeProtectSection(container);
     const rolesState = await initRolesSection(container);

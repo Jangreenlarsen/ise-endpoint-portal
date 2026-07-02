@@ -43,7 +43,16 @@ export async function renderBrowse(container) {
       <div class="toolbar">
 
         <div class="toolbar-group" title="${t("browse.tooltip_data")}">
-          <button id="refresh-btn" class="secondary small">${t("browse.btn_refresh")}</button>
+          <button id="refresh-btn" class="secondary small"
+                  title="${t("browse.btn_refresh_title")}">${t("browse.btn_refresh")}</button>
+          <button id="local-refresh-btn" class="secondary small"
+                  title="${t("browse.btn_local_refresh_title")}">↻ ${t("browse.btn_local_refresh")}</button>
+          ${auth.isAdmin() ? `<div class="ch-wrap" id="ch-wrap">
+            <button id="ch-btn" class="secondary small ch-btn" title="${t("browse.ch_title")}">
+              <span id="ch-dot" class="ch-dot ch-unknown">●</span> Cache
+            </button>
+            <div id="ch-panel" class="ch-panel hidden"></div>
+          </div>` : ""}
           <button id="export-btn" class="secondary small">${t("browse.btn_export")}</button>
           <button id="export-json-btn" class="secondary small">${t("browse.btn_export_json")}</button>
           <button id="new-group-btn" class="secondary small hidden" title="${t("browse.new_group_title")}">${t("browse.new_group_btn")}</button>
@@ -192,6 +201,12 @@ export async function renderBrowse(container) {
               <label class="inline-cb"><input type="checkbox" id="d-static-group" /> ${t("detail.static_assign")}</label>
               <label>Description</label>
               <input type="text" id="d-description" />
+              <label>${t("detail.active_status_lbl")}</label>
+              <select id="d-active-status-sel">
+                <option value="">— ${t("detail.active_status_auto")}</option>
+                <option value="Aktiv">${t("detail.active_status_aktiv")}</option>
+                <option value="Inaktiv">${t("detail.active_status_inaktiv")}</option>
+              </select>
               <label>Type</label>
               <select id="d-type"></select>
               <label>Owner</label>
@@ -234,7 +249,7 @@ export async function renderBrowse(container) {
                 <button type="button" id="d-psk-gen" class="secondary small">${t("detail.btn_generate")}</button>
               </div>
               <label>${t("col.roles")}</label>
-              <div id="d-roles"></div>
+              <select id="d-roles-sel" multiple size="5" class="roles-multiselect"></select>
             </div>
             <details class="detail-meta-details">
               <summary>ISE Metadata ▾</summary>
@@ -928,6 +943,113 @@ export async function renderBrowse(container) {
 
   tableAPI.applyColVis();
 
+  // ── Cache health widget (admin only) ─────────────────────────────────────
+  let cacheHealthTimer = null;
+  if (auth.isAdmin()) {
+    const chBtn   = container.querySelector("#ch-btn");
+    const chDot   = container.querySelector("#ch-dot");
+    const chPanel = container.querySelector("#ch-panel");
+
+    function _chColor(vstPct, entries) {
+      if (!entries) return "ch-crit";
+      if (vstPct < 5)  return "ch-ok";
+      if (vstPct < 20) return "ch-warn";
+      if (vstPct < 50) return "ch-bad";
+      return "ch-crit";
+    }
+
+    function _fmtAge(s) {
+      if (s == null) return "—";
+      if (s < 60)   return `${Math.round(s)}s`;
+      if (s < 3600) return `${Math.round(s / 60)} min`;
+      return `${(s / 3600).toFixed(1)} t`;
+    }
+
+    function _bar(freshPct, stalePct, vstPct) {
+      const w = 120;
+      const f = Math.round(freshPct / 100 * w);
+      const sv = Math.round(stalePct / 100 * w);
+      const vs = Math.max(0, w - f - sv);
+      return `<span class="ch-bar">` +
+        `<span class="ch-bar-f" style="width:${f}px" title="Frisk ${Math.round(freshPct)}%"></span>` +
+        `<span class="ch-bar-s" style="width:${sv}px" title="Stale ${Math.round(stalePct)}%"></span>` +
+        `<span class="ch-bar-v" style="width:${vs}px" title="Meget stale ${Math.round(vstPct)}%"></span>` +
+        `</span>`;
+    }
+
+    async function _updateCacheHealth(silent = false) {
+      if (!viewActive) return;
+      try {
+        const s = await api.getCacheStats();
+        const n   = s.detail_entries || 0;
+        const sl  = s.staleness || {};
+        const pw  = s.prewarm  || {};
+        const freshPct = n ? (sl.fresh_count / n * 100) : 0;
+        const stalePct = n ? (sl.stale_count / n * 100) : 0;
+        const vstPct   = n ? (sl.very_stale_count / n * 100) : 0;
+        const hits     = s.hits || 0;
+        const misses   = s.misses || 0;
+        const hitRate  = (hits + misses) ? Math.round(hits / (hits + misses) * 100) : null;
+
+        // Update dot color
+        const colorCls = _chColor(vstPct, n);
+        chDot.className = `ch-dot ${colorCls}`;
+
+        if (!chPanel.classList.contains("hidden") || silent) {
+          const cycleMin = pw.drip_estimated_full_cycle_s ? Math.round(pw.drip_estimated_full_cycle_s / 60) : null;
+          const scanAgo  = pw.last_full_scan_age_s != null ? _fmtAge(pw.last_full_scan_age_s) : "—";
+          const avgAge   = _fmtAge(sl.average_entry_age_s);
+          const bar      = _bar(freshPct, stalePct, vstPct);
+
+          chPanel.innerHTML = `<div class="ch-inner">
+            <div class="ch-row ch-head">
+              <span>${t("browse.ch_heading")}</span>
+              <button class="ch-close" type="button" title="${t("browse.ch_close")}">×</button>
+            </div>
+            <div class="ch-row">
+              <span class="ch-label">${t("browse.ch_entries")}</span>
+              <span class="ch-val">${n}${pw.total_endpoints ? ` / ${pw.total_endpoints} ISE` : ""}</span>
+            </div>
+            <div class="ch-dist">
+              <span class="ch-f">⚡ ${t("browse.ch_fresh")} <strong>${sl.fresh_count ?? "—"}</strong> <small>(${Math.round(freshPct)}%)</small></span>
+              <span class="ch-sv">↻ ${t("browse.ch_stale")} <strong>${sl.stale_count ?? "—"}</strong> <small>(${Math.round(stalePct)}%)</small></span>
+              <span class="ch-vs ch-vs-${colorCls === "ch-crit" || colorCls === "ch-bad" ? "alert" : "ok"}">⚠ ${t("browse.ch_verystale")} <strong>${sl.very_stale_count ?? "—"}</strong> <small>(${Math.round(vstPct)}%)</small></span>
+            </div>
+            <div class="ch-barwrap">${bar}<span class="ch-avgage">${t("browse.ch_avgage")} ${avgAge}</span></div>
+            <div class="ch-row">
+              <span class="ch-label">Drip</span>
+              <span class="ch-val">${pw.drip_current_sleep_s != null ? `${pw.drip_current_sleep_s}s/entry` : "—"}${cycleMin != null ? ` · cyklus ~${cycleMin} min` : ""}</span>
+            </div>
+            <div class="ch-row">
+              <span class="ch-label">${t("browse.ch_lastscan")}</span>
+              <span class="ch-val">${scanAgo}${pw.scanning ? ` <span class="ch-scanning">${t("browse.ch_scanning")}</span>` : ""}</span>
+            </div>
+            <div class="ch-row">
+              <span class="ch-label">${t("browse.ch_hitrate")}</span>
+              <span class="ch-val">${hitRate != null ? `${hitRate}%` : "—"} · ${t("browse.ch_hits")} ${hits.toLocaleString()} · miss ${misses} · SWR ${s.stale_serves ?? 0}</span>
+            </div>
+            ${pw.last_error ? `<div class="ch-row ch-err"><span class="ch-label">${t("browse.ch_lasterr")}</span><span class="ch-val ch-errval">${esc(pw.last_error)}</span></div>` : ""}
+          </div>`;
+
+          // Close button
+          chPanel.querySelector(".ch-close")?.addEventListener("click", () => {
+            chPanel.classList.add("hidden");
+          });
+        }
+      } catch { /* ignore — admin may have lost session */ }
+    }
+
+    chBtn.addEventListener("click", () => {
+      const wasHidden = chPanel.classList.contains("hidden");
+      chPanel.classList.toggle("hidden");
+      if (wasHidden) _updateCacheHealth();
+    });
+
+    // Initial update (dot color only, panel closed)
+    _updateCacheHealth(true);
+    cacheHealthTimer = setInterval(() => _updateCacheHealth(true), 60_000);
+  }
+
   startPxGridStream();
   updatePxGridSourceBadge();
 
@@ -996,6 +1118,7 @@ export async function renderBrowse(container) {
     clearInterval(badgeTickTimer);
     clearInterval(sessionRefreshTimer);
     clearInterval(anomalyPollTimer);
+    if (cacheHealthTimer) clearInterval(cacheHealthTimer);
     window.removeEventListener("resize", fitStickyTable);
   };
 }

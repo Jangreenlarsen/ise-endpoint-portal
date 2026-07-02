@@ -33,6 +33,10 @@ class IseClient:
         s = config.settings
         max_conn = int(getattr(s, "ise_max_connections", 15))
         use_http2 = getattr(s, "ise_http2", True)
+        # ISE (ERS/Tomcat) lukker idle TCP-forbindelser efter ~25-30 min.
+        # keepalive_expiry sikrer at portalen lukker forbindelser FØR ISE gør det,
+        # så stale connections aldrig genbruges ved lange idle-perioder (f.eks. om natten).
+        keepalive_expiry_s = float(getattr(s, "ise_keepalive_expiry_s", 30.0))
 
         def _make_client(http2: bool) -> httpx.AsyncClient:
             return httpx.AsyncClient(
@@ -41,12 +45,10 @@ class IseClient:
                 verify=s.ise_ca_bundle or s.ise_verify_tls,
                 timeout=s.ise_timeout,
                 http2=http2,
-                # Explicit connection limits prevent ISE connection-reset errors under load.
-                # With HTTP/2, a single connection multiplexes many requests, so the pool
-                # needs fewer entries. HTTP/1.1 fallback still benefits from a larger pool.
                 limits=httpx.Limits(
                     max_connections=max_conn,
                     max_keepalive_connections=max(1, max_conn // 2),
+                    keepalive_expiry=keepalive_expiry_s,
                 ),
                 headers={
                     "Accept": "application/json",
@@ -58,10 +60,12 @@ class IseClient:
         if use_http2:
             try:
                 self._http = _make_client(http2=True)
-                logger.info("ISE HTTP klient initialiseret med HTTP/2 (max_connections=%d)", max_conn)
+                logger.info(
+                    "ISE HTTP klient initialiseret med HTTP/2 "
+                    "(max_connections=%d, keepalive_expiry=%.0fs)",
+                    max_conn, keepalive_expiry_s,
+                )
             except ImportError:
-                # h2-pakken er ikke installeret endnu — fald tilbage til HTTP/1.1.
-                # Installeres automatisk ved næste OTA-pull (pip install -e .).
                 self._http = _make_client(http2=False)
                 logger.warning(
                     "h2-pakken mangler — HTTP/2 deaktiveret, kører HTTP/1.1. "
@@ -70,12 +74,19 @@ class IseClient:
                 )
         else:
             self._http = _make_client(http2=False)
-            logger.info("ISE HTTP klient initialiseret med HTTP/1.1 (max_connections=%d)", max_conn)
+            logger.info(
+                "ISE HTTP klient initialiseret med HTTP/1.1 "
+                "(max_connections=%d, keepalive_expiry=%.0fs)",
+                max_conn, keepalive_expiry_s,
+            )
         self._retry_attempts = int(getattr(s, "ise_retry_attempts", 3))
         self._cb = CircuitBreaker(
             failure_threshold=int(getattr(s, "ise_cb_failure_threshold", 5)),
             recovery_timeout=float(getattr(s, "ise_cb_recovery_timeout_s", 60.0)),
         )
+        self._consecutive_401s = 0
+        self._auth_locked_since: float | None = None  # tid for første 401 i nuværende sekvens
+        self._last_request_at: float = 0.0  # til idle-tid-logning
         CIRCUIT_STATE.set(0)  # start closed
 
     async def close(self) -> None:
@@ -96,7 +107,18 @@ class IseClient:
         `ise_retry_attempts` times with exponential back-off (1s → 8s).
         HTTP 4xx/5xx are NOT retried — they are passed through as IseApiError.
         """
-        logger.info("ISE %s %s params=%s", method, path, params)
+        # Mål idle-tid siden sidst succesfulde request — nyttigt til diagnose af
+        # stale-connection-fejl: lange idle-pauser efterfulgt af transport-fejl
+        # indikerer at ISE har lukket forbindelsen i mellemtiden.
+        _now = time.time()
+        _idle_s = _now - self._last_request_at if self._last_request_at > 0 else 0.0
+        if _idle_s > 300:
+            logger.info(
+                "ISE klient: første request efter %.0fs inaktivitet (%s %s)",
+                _idle_s, method, path,
+            )
+        else:
+            logger.info("ISE %s %s params=%s", method, path, params)
 
         if self._cb.is_open():
             CIRCUIT_STATE.set(2)
@@ -145,22 +167,21 @@ class IseClient:
                            "recovery_timeout_s": self._cb.stats()["recovery_timeout_s"],
                            "last_error": str(exc)[:200]},
                 )
-            logger.error("ISE transport error on %s %s: %s", method, path, exc)
-            raise IseApiError(0, f"transport error: {exc}") from exc
+            # Inkluder exception-type i logning — str(exc) kan være tom for
+            # RemoteProtocolError/ConnectionResetError ved server-side close.
+            # Idle-tid afslører om fejlen skyldes stale forbindelser.
+            logger.error(
+                "ISE transport error on %s %s: %s (%s) [idle_before=%.0fs]",
+                method, path, exc or "(ingen besked)", type(exc).__name__, _idle_s,
+            )
+            raise IseApiError(0, f"transport error: {type(exc).__name__}: {exc}") from exc
 
         ISE_REQUEST_DURATION.observe(time.perf_counter() - _t0)
-        _prev_cb_state = self._cb.state
-        self._cb.record_success()
-        if _prev_cb_state != "closed":
-            audit_store.record_sync(
-                "ise_circuit_closed", "system", None,
-                after={"recovered_from": _prev_cb_state},
-            )
-        CIRCUIT_STATE.set(0)
 
+        # Parse error body before branching so it's available in all paths.
+        message = response.text
+        payload: Any = response.text
         if response.status_code >= 400:
-            message = response.text
-            payload: Any = response.text
             try:
                 payload = response.json()
                 # ERS format: {"ERSResponse": {"messages": [{"title": "..."}]}}
@@ -174,6 +195,51 @@ class IseClient:
                 message = ers_title or open_api_msg or message
             except Exception:
                 pass
+
+        if response.status_code == 401:
+            # Auth failure — treat as circuit-breaker failure so repeated 401s
+            # eventually open the circuit and stop hammering ISE with bad credentials.
+            # ISE disables accounts after N consecutive failed logins (default 3-5)
+            # and a blind CB that resets on any HTTP response would let the pre-warm
+            # send hundreds of auth failures before the account gets locked out.
+            self._consecutive_401s += 1
+            if self._auth_locked_since is None:
+                self._auth_locked_since = time.time()
+            self._cb.record_failure()
+            _cb_state_map = {"closed": 0, "half_open": 1, "open": 2}
+            CIRCUIT_STATE.set(_cb_state_map.get(self._cb.state, 0))
+            if self._consecutive_401s == 1:
+                logger.warning(
+                    "ISE auth fejl (401) på %s %s — kontroller brugernavn/password i portal settings",
+                    method, path,
+                )
+            else:
+                logger.error(
+                    "ISE auth fejl (401) %d gange i træk — ISE-kontoen kan være LÅST. "
+                    "Tjek ISE > Administration > Admin Access > Authentication og "
+                    "genaktiver kontoen hvis den er deaktiveret. "
+                    "Circuit breaker failures: %d/%d",
+                    self._consecutive_401s,
+                    self._cb.stats()["failure_count"],
+                    self._cb.stats()["failure_threshold"],
+                )
+            ISE_REQUESTS.labels(method=method, outcome="4xx").inc()
+            raise IseApiError(response.status_code, message, payload)
+
+        # Non-401 response (2xx, other 4xx, 5xx) — mark CB success and reset 401 counter.
+        self._last_request_at = time.time()
+        _prev_cb_state = self._cb.state
+        self._cb.record_success()
+        self._consecutive_401s = 0
+        self._auth_locked_since = None
+        if _prev_cb_state != "closed":
+            audit_store.record_sync(
+                "ise_circuit_closed", "system", None,
+                after={"recovered_from": _prev_cb_state},
+            )
+        CIRCUIT_STATE.set(0)
+
+        if response.status_code >= 400:
             logger.warning(
                 "ISE %s %s -> %s: %s", method, path, response.status_code, message
             )
@@ -198,6 +264,36 @@ class IseClient:
 
     async def delete(self, path: str, **kwargs: Any) -> Any:
         return await self.request("DELETE", path, **kwargs)
+
+    def cb_is_open(self) -> bool:
+        """True hvis CB er OPEN. Ingen sideeffekt — trigrer ikke OPEN→HALF_OPEN."""
+        return self._cb.state == "open"
+
+    def cb_recovery_remaining_s(self) -> float:
+        """Sekunder til CB er klar til probe. 0.0 hvis ikke OPEN."""
+        return float(self._cb.stats()["recovery_remaining_s"])
+
+    async def ping(self) -> bool:
+        """Billig ISE-probe: GET /ers/config/endpointgroup?size=1.
+        Opdaterer CB-state som sideeffekt. Returnerer True hvis ISE svarer."""
+        try:
+            await self.get("/ers/config/endpointgroup", params={"size": "1", "page": "1"})
+            return True
+        except Exception:
+            return False
+
+    def auth_status(self) -> dict:
+        """Returnér ISE auth-status baseret på seneste 401-sekvens.
+
+        status: "ok" | "warning" (1-2 401s) | "locked" (3+ 401s i træk)
+        """
+        n = self._consecutive_401s
+        since = self._auth_locked_since
+        if n == 0:
+            return {"status": "ok", "consecutive_401s": 0, "locked_since": None}
+        if n < 3:
+            return {"status": "warning", "consecutive_401s": n, "locked_since": since}
+        return {"status": "locked", "consecutive_401s": n, "locked_since": since}
 
 
 _client: IseClient | None = None

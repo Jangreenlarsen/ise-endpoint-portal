@@ -3,6 +3,506 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.20.0716] — 2026-07-02 — feat: Log — kondenseret Claude-analyse eksport og .json download
+
+Tilføjer to forbedringer til Settings → Log eksport-toolbar:
+
+- **Claude-analyse eksport** (`format=condensed`): ny "🤖 Claude-analyse (.json)"-knap downloader et kompakt JSON-dokument med den fulde analysestatistik (level-fordeling, top fejlbeskeder, CB-events, transport-fejl, startup-events, hourly timeline) plus de seneste 300 notable entries (WARNING/ERROR/CRITICAL). Designet til direkte upload på claude.ai til analyse uden at skulle sende GB-store rå logfiler.
+- **Download .json** (var `.ndjson`): omdøbt til proper JSON-format — et root JSON-objekt med `meta` og `entries`-array i stedet for NDJSON (én JSON per linje). Nemmere at åbne i alle JSON-redaktorer.
+- Backend: `_analyze_logs()`-helper refaktoreret ud af `get_logs_summary()` så logikken deles.
+- Export format-parameter ændret fra `^(text|ndjson)$` → `^(text|json|condensed)$`.
+
+**Berørte filer:** `backend/app/api/logs.py`, `frontend/js/views/logs.js`, `frontend/js/i18n.js`
+
+## [6.19.0715] — 2026-07-02 — feat: Settings/Endpoint cache — tier-fordeling og evictions i live stats
+
+Fuldender Settings → Endpoint cache-sektionens live statistik-panel så det reflekterer alle cache-modul kapabiliteter:
+
+- **Tier-fordeling (EMA)**: Horisontalt staplet bar (rød=hot / orange=warm / blå=cold) med procent og antal under. Vises kun hvis cache indeholder tier-data (`stats.tiers`).
+- **Evictions**: Vises som rød-fed tæller under tier-baren — kun hvis `stats.evictions > 0`.
+- **Syntaks-fix**: `renderCacheStats()` var brudt af en ufuldstændig Edit-operation (prematurt lukket template-literal, stray `}`, ubrugt variabel). Fuldstændig rewrite af funktionen med korrekt struktur.
+
+Eksisterende funktionalitet bevaret: staleness-bar, drip-kapacitetsbadge, cache-alder-rækker, pre-warm worker rækker.
+
+**Berørte filer:** `frontend/js/views/settings/section-cache.js`.
+
+## [6.19.0714] — 2026-07-02 — feat: Log-GUI — eksport og analyse-rapport i log-sektionen
+
+Tre nye elementer i Log-sektionen i GUI (kun synlige for admin):
+
+- **"⬇ Download .log"** — downloader alle 4 roterede logfiler kombineret som ét `.log`-fil med version/URL-header øverst. Trigres via skjult `<a>`-element så browser-autentisering (httpOnly cookie) følger med automatisk.
+- **"⬇ Download .ndjson"** — samme download i NDJSON-format (én JSON-objekt per linje), egnet til maskinlæsning og AI-analyse.
+- **"📊 Analyse-rapport"** — toggle-knap der henter og viser aggregeret baseline-rapport inline under toolbar: meta (version, URL, tidsspænd, linjer, filer), level-fordeling med farvede pills, CB-events (open/close-tæller), transport-fejl (exc-type, idle-tid stats), top-10 normaliserede fejlbeskeder, startup-events (versionhistorik).
+
+**Berørte filer:** `frontend/js/views/logs.js`, `frontend/js/api.js`, `frontend/js/i18n.js`.
+
+## [6.19.0713] — 2026-07-02 — feat: Log-eksport og baseline-analyse
+
+**A — Udvidet startup-banner** (`backend/app/main.py`):
+Startup-log viser nu `=== HyperVision ISE Portal vX.Y.ZZZZ START | url=https://hypervision.ll.lan | python=X.Y.Z | pid=NNNN ===` — gør det trivielt at identificere version og system i log-eksporter og ved analyse.
+
+**B — GET /api/logs/export** (`backend/app/api/logs.py`):
+Downloader alle 4 roterede logfiler (`.log.3` → `.log.2` → `.log.1` → `.log`) kombineret i kronologisk rækkefølge som ét downloadbart fil. Understøtter `format=text` (rå loglinjer med version/URL-header) og `format=ndjson` (én JSON-objekt per linje). Filnavn inkluderer version og eksporttidspunkt: `hypervision-6.19.0713-20260702-1200.log`.
+
+**C — GET /api/logs/summary** (`backend/app/api/logs.py`):
+Aggregeret JSON-analyse på tværs af alle roterede logfiler:
+- `meta`: version, URL, tidsspænd, filer og størrelse, antal analyserede linjer
+- `level_counts`: DEBUG/INFO/WARNING/ERROR/CRITICAL-fordeling
+- `top_loggers_by_issues`: top-20 loggers sorteret efter warning+error-antal
+- `top_issue_messages`: top-30 normaliserede fejlbeskeder (UUID/IP/N erstattet) med antal
+- `circuit_breaker`: total antal CB-events, open/close-tæller, seneste 20 events med tidsstempel
+- `transport_errors`: total, by_exception_type, idle_before_s (min/max/avg/over-300s/over-1800s), seneste 15
+- `ise_requests.outcomes`: 2xx/4xx/5xx/error-tæller
+- `drip_refresh`: refreshed/skipped/efficiency_pct
+- `startup_events`: alle startup-linjer med version (versionhistorik i loggen)
+- `hourly_timeline`: fejl+advarsel+info per time (seneste 48 timers data)
+
+**Berørte filer:** `backend/app/api/logs.py`, `backend/app/main.py`, `version.json`.
+
+## [6.19.0712] — 2026-07-02 — feat: Cache/connection robusthed — 5 forbedringer A–E
+
+**A — CB-aware drip-pause** (`backend/app/services/cache_prewarm.py`):
+Drip-loop checker nu CB-state øverst i hvert iteration. Hvis CB er OPEN: logger én gang og sover `recovery_remaining_s` sekunder frem for at sende én WARNING per iteration → eliminerer ~36.000 WARNING-logs/time ved ISE-nedetid.
+
+**B — Alert: cache_refresh_stale** (`backend/app/core/alert_store.py`):
+Ny `_check_cache_refresh_stale()` i `check_conditions()`: hvis ingen ISE-sync i >1 time sættes en "warning"-alert i alert-store. Alerten ryddes automatisk ved næste sync.
+
+**C — Sidst ISE-sync i Dashboard** (`backend/app/api/dashboard.py`, `frontend/js/views/dashboard.js`):
+Dashboard-API eksponerer nu `last_sync_at` og `last_sync_age_s` i cache-blokken. Cache-kvalitetskort viser "Sidst ISE-sync: X siden" med farvet indikator (grøn <30m, orange <1h, rød >1h).
+
+**D — Billig ISE-probe** (`backend/app/ise/client.py`):
+Ny `ping()` metode på `IseClient`: `GET /ers/config/endpointgroup?size=1&page=1` — let kald frem for tung endpoint-detail-fetch. Drip-loop kalder `ping()` når CB vågner fra sleep frem for at bruge en endpoint-detail som probe. Nye hjælpemetoder: `cb_is_open()` (læser CB-state uden sideeffekt) og `cb_recovery_remaining_s()`.
+
+**E — pxGrid STOMP recv-timeout** (`backend/app/core/config.py`):
+`pxgrid_stomp_recv_timeout_s` default øget fra 600s til 3600s. ISE pxGrid broker kan have >120s stille perioder; 600s var for konservativ og kunne forårsage falske disconnects.
+
+**Berørte filer:** `backend/app/ise/client.py`, `backend/app/services/cache_prewarm.py`, `backend/app/core/alert_store.py`, `backend/app/api/dashboard.py`, `backend/app/core/config.py`, `frontend/js/views/dashboard.js`.
+
+## [6.18.0711] — 2026-07-02 — fix: Stale idle-forbindelser → circuit breaker låser ved inaktivitet
+
+**Root cause:** `httpx.AsyncClient` havde ingen `keepalive_expiry` sat. ISE (ERS/Tomcat) lukker idle TCP-forbindelser internt efter ~25-30 min. Portalen vidste det ikke og forsøgte at genbruge lukkede forbindelser ved næste prewarm-scan → tom transport error (`RemoteProtocolError` med tomt `str(exc)`) → circuit breaker åbnede → half-open proben fejlede på samme stale forbindelser → CB forblev OPEN indtil portalen restartes.
+
+**Rettelser i `backend/app/ise/client.py`:**
+- Tilføjet `keepalive_expiry=30.0` (konfigurerbar via `ise_keepalive_expiry_s`) til `httpx.Limits` — portalen lukker idle-forbindelser inden ISE gør det (30s < ISE's ~25-30 min timeout). Logges ved startup.
+- `_last_request_at: float` tracker tidspunkt for seneste succesfulde ISE-request.
+- Ny log-linje ved >300s inaktivitet: `"ISE klient: første request efter Xs inaktivitet"` — gør det tydeligt i loggen hvornår idle-pauser forekommer.
+- Transport-fejl logger nu `type(exc).__name__` og `idle_before=Xs` — `str(RemoteProtocolError)` er tom, men klassen afslører fejltypen.
+- `IseApiError` besked inkluderer nu exception-type: `transport error: RemoteProtocolError: `.
+- Berørte filer: `backend/app/ise/client.py`, `BUGS.md`
+
+## [6.18.0710] — 2026-07-01 — feat: Lifecycle søg + sortér alle kolonner
+
+- `frontend/js/views/lifecycle.js`: Refaktoreret til at skille data-fetch fra rendering. `_stale`-arrayet caches lokalt; sort og søgning arbejder client-side uden re-fetch. Ny `reRenderTbody()` opdaterer kun `<tbody>` og genvedhæfter row-listeners. Alle kolonner (MAC, gruppe, profil, ejer, first seen, cache-alder) er nu klikbare med ↑↓↕-indikatorer. Default: datokolonner sorteres descending (nyeste først) ved første klik; tekstkolonner ascending. Søgefelt filtrerer live (250ms debounce) på MAC, gruppe, profil og ejer med aktiv tæller `n / total`. Export-CSV bruger nu den fulde ufiltrerede liste.
+- `frontend/js/i18n.js`: Tilføjet `lc.search_ph` og `lc.sort_title` (DA + EN).
+- Berørte filer: `frontend/js/views/lifecycle.js`, `frontend/js/i18n.js`
+
+## [6.18.0709] — 2026-07-01 — feat: Cache kvalitetsmetrics i Dashboard
+
+- `backend/app/api/dashboard.py`: `cache`-blokken udvides med `detail_entries`, `tiers` (hot/warm/cold fordeling), `staleness` (fresh/stale/very-stale + pct + gns./ældste alder), `total_bytes`, `max_memory_bytes`, `inflight`, `evictions`, `ttl_seconds`. `prewarm`-blokken tilføjer `drip_skipped_total` og `hot_queue_size`.
+- `frontend/js/views/dashboard.js`: Ny `cacheQualityCard(cache, prewarm)` funktion — viser tier-fordeling som farvet stacked bar (🔥 hot / warm / ❄ cold) med procenter, staleness-bar (fresh/stale/very-stale), gennemsnits- og ældste entry-alder, RAM-bar (hvis konfigureret), drip-effektivitet (refreshed / skipped) og inflight/hot-queue/eviction tæller. Kortet vises i bundlinjen ved siden af systemstats-kortet. Skjules når cachen er tom (0 entries).
+- Berørte filer: `backend/app/api/dashboard.py`, `frontend/js/views/dashboard.js`
+
+## [6.17.0708] — 2026-07-01 — fix: Cache to-fase test — 2 bugs fundet og rettet
+
+**Fund fra gennemgribende to-fase analyse (statisk + scenarie-sporing):**
+
+- `backend/app/services/cache_prewarm.py`: `_drain_hot_queue()` ryddede ikke `_hot_set` efter drain — IDs sad fast i dedup-sættet, så alle efterfølgende `prioritize(id)`-kald for de samme IDs blev ignoreret stille. Tilføjet `self._hot_set -= set(hot_ids)` efter gather.
+- `backend/app/core/endpoint_cache.py`: `invalidate_all()` kaldte `self._details.clear()` uden at gemme `entry.change_ema` til `_tier_emas` først — EMA-drift siden sidst `invalidate_detail()`/`mark_changed()` gik tabt, og 3-tier-systemet reset effektivt til "alle warm" efter fuld invalidation. Tilføjet loop der gemmer EMA for alle entries til `_tier_emas` før clear.
+
+## [6.17.0707] — 2026-07-01 — feat: Cache-motor refaktorering (13 forbedringer)
+
+**Baggrund:** To-fase analyse af `endpoint_cache.py` og `cache_prewarm.py` identificerede 13 bugs og ydelsesproblemer.
+
+**Rettelser i `backend/app/core/endpoint_cache.py`:**
+- `DISK_CACHE_VERSION` bumped 3→4 (tier_emas persisteres nu til disk)
+- `_evict_oldest()`: FIFO → LRU via `fetched_at` (korrekt eviction-strategi)
+- `get_detail()`: tier-aware freshness — hot entries ser lavere effective_ttl og refreshes hurtigere
+- Ny `forget_tier_ema(ep_id)`: rydder EMA-historik for slettede endpoints (forhindrer hukommelseslækage)
+- Ny `stale_count_for_ttl(ttl)`: beregner stale-count med eksplicit TTL (bruges af drip-loop)
+- Ny `inflight_ids()`: returnerer set af endpoint IDs med igangværende fetch
+- Ny `effective_skip_threshold(ep_id, base)`: tier-justeret skip-tærskel (hot endpoints refreshes oftere)
+- Ny `set_fetch_backoff(ep_id)`: backoff ved fejlende endpoint (60s frem for straks retry)
+- Ny `ages_seconds()`: returnerer dict `{ep_id: age_s}` for alle cached entries
+- `_save_snapshot()`: ny metode — snapshotter data på event-loop, serialiserer i thread-pool (thread-safety)
+- `save_to_disk()` + `save_to_disk_async()`: bruger `_save_snapshot()` — ingen race conditions
+- `load_from_disk()`: indlæser `tier_emas`-sektion fra disk JSON
+- `stats()`: single O(n) pass (var 3 separate), cleanup af done inflight-tasks ved start
+
+**Rettelser i `backend/app/services/cache_prewarm.py`:**
+- `__init__` + `start()`: `_hot_set: set[str]` tilføjet til deduplication
+- `prioritize()`: tjekker `_hot_set` før enqueue — forhindrer dubletter
+- `_drip_loop()`: config caches per 10 iterationer (undgår settings-opslag i hot-path); sprint batch_size skalerer som `min(max(3, total//200), 20)`; bruger public cache-metoder
+- `_fetch_all_ids()`: fjernet dead import af `get_ise_client` + ubrugt `client`-variabel
+- `_drain_hot_queue()`: `self._hot_set -= set(hot_ids)` rydder dedup-sæt efter drain
+- `_full_scan()` hot-queue drain: `self._hot_set -= set(hot_first)` + set-subtraktion O(n) frem for `list.remove()` O(n²)
+- `_full_scan()` deleted_ids loop: `cache.forget_tier_ema(ep_id)` rydder EMA for permanent slettede endpoints
+- `_full_scan()` `should_fetch()`: `cache.effective_skip_threshold()` → tier-justeret skip (hot endpoints springes sjældnere over)
+
+**Berørte filer:** `backend/app/core/endpoint_cache.py`, `backend/app/services/cache_prewarm.py`
+
+## [6.16.0706] — 2026-07-01 — fix: ISE API-bruger lockout-detektion + dashboard-alarm
+
+**Problem:** ISE's Account Disable Policy deaktiverer API-brugeren periodisk (inaktivitets-regel tæller ikke API-kald). Portalen mister ISE-forbindelsen uden forklaring — brugerne ser blot at data er stale.
+
+**Løsning:** Lockout-detektion med automatisk alarm i Dashboard:
+- `backend/app/ise/client.py`: Ny `_auth_locked_since: float | None` — registrerer tidspunkt for første 401 i en sekvens. Ny `auth_status()` metode: returnerer `{status: "ok"|"warning"|"locked", consecutive_401s, locked_since}`. "warning" ved 1-2 × 401, "locked" ved 3+ × 401 i træk. Nulstilles automatisk ved første succesfulde ISE-svar.
+- `backend/app/core/alert_store.py`: Ny `_check_ise_auth()` tjekkes i `check_conditions()` (periodisk). Sætter alert `ise_auth_locked` med severity "error" (locked) eller "warning" (warning) inkl. præcise trin til genaktivering i ISE GUI.
+- `backend/app/api/dashboard.py`: `GET /api/dashboard` returnerer nu `ise_auth`-blok med status, tæller og timestamp.
+- `frontend/js/views/dashboard.js`: Ny `iseAuthBanner()` funktion — vises øverst i dashboard-body ved "warning"/"locked". Locked-banner viser trin-for-trin instruktioner til at genaktivere ISE API-brugeren og justere Account Disable Policy.
+- `frontend/js/i18n.js`: Nye strings `dash.ise_auth_locked_title`, `dash.ise_auth_warn_title` (DA + EN).
+- `BUGS.md`: Bug registreret som `[OPEN → MONITORED]`.
+- Berørte filer: `ise/client.py`, `core/alert_store.py`, `api/dashboard.py`, `views/dashboard.js`, `i18n.js`
+
+## [6.16.0705] — 2026-07-01 — feat: Intelligent 3-tier cache prioritering
+
+**Problem:** ISE REST API-brugeren blev løbende disabled pga. for mange API-kald, fordi drip-loopen behandlede alle endpoints ens — uanset om de ændrede sig hyppigt eller slet ikke.
+
+**Løsning:** EMA-baseret (Exponential Moving Average) 3-tier prioriteringssystem der fordeler ISE-kald intelligent baseret på historisk ændringsfrekvens:
+
+- **Hot** (EMA ≥ 0.30): endpoint ændres ofte → effective TTL × 0.5 (refreshes dobbelt så hyppigt)
+- **Warm** (0.05–0.30): normal frekvens → effective TTL × 1.0
+- **Cold** (EMA < 0.05): endpoint sjældent ændret → effective TTL × 3.0 (refreshes 3× sjældnere)
+
+**EMA-formel:** `new_ema = 0.20 × (1 if changed else 0) + 0.80 × old_ema` (alpha=0.20, konvergerer ~5 refreshes)
+
+**Ændringer:**
+- `endpoint_cache.py`: `CachedEntry` → ny `change_ema` + `value_hash`-felter. `_hash_value()` beregner SHA-256 (16 hex) af endpoint-data. `_tier_emas`-dict bevarer EMA på tværs af cache-invalidations. `get_priority_stale_ids()` sorterer stale entries efter `age/effective_ttl` (hot-entries med samme alder sorteres forrest). `mark_changed()` booster EMA + opdaterer `_tier_emas`. `invalidate_detail()` gemmer EMA i `_tier_emas` inden entry slettes. `put_detail()` læser `_tier_emas` når entry er ny (fx efter invalidation). Disk-persistence af EMA-værdier via `save_to_disk()`/`load_from_disk()`. `stats()` inkluderer `tiers: {hot, warm, cold}`.
+- `cache_prewarm.py`: `_drip_loop()` bruger nu `cache.get_priority_stale_ids()` i stedet for `get_oldest_id()` — prioritetskøen håndterer både tier-prioritering og sprint-logik.
+- `endpoint_service.py`: `mark_changed()` + `invalidate_detail()` kaldes ved delete, edit-save og decommission — portal-mutations booster EMA som pxGrid-events.
+- `api/endpoints.py`: ny `?fresh=true` query-param tvinger ISE-fetch og bypass cache.
+- `pxgrid/session_worker.py`: `mark_changed()` kaldes ved pxGrid-endpoint-events.
+- `frontend/js/api.js`: `getEndpoint(id, fresh)` — sender `?fresh=true` ved behov.
+- `frontend/js/views/browse-table.js`: `state.staleIds` populeres fra `cache_stale`-flag i list-response.
+- `frontend/js/views/browse-detail.js`: åbning af stale endpoint → automatisk `fresh=true` fetch fra ISE.
+- Berørte filer: `endpoint_cache.py`, `cache_prewarm.py`, `endpoint_service.py`, `api/endpoints.py`, `pxgrid/session_worker.py`, `api.js`, `browse-detail.js`, `browse-table.js`
+
+## [6.15.0704] — 2026-06-17 — fix: .env cache-tuning — TTL 900s + ISE_TIMEOUT 10s
+
+- `CACHE_TTL_SECONDS=900` (15 min, var 300s/5 min): entries vises nu som friske i 15 min. Med drip-batch (3 parallel, cycle ~150s) refreshes alle 100 endpoints komfortabelt inden TTL udløber — ingen ⏱-badges i normal drift
+- `CACHE_PREWARM_SKIP_FRESH_S=900` (matcher TTL): fuld-scan og TTL er nu synkroniserede — fuld-scan refresher præcis det drip-loopen måske har misset
+- `ISE_TIMEOUT=10` (var 30s): på LAN < 2s svartid — 30s var unødigt. Reducerer max ventetid ved ISE-fejl fra 90s (30s × 3 retry) til 30s (10s × 3 retry)
+- Berørt fil: `backend/.env`
+
+## [6.15.0703] — 2026-06-17 — fix: Drip batch-parallelitet + skip_fresh_s trimmet
+
+- `_drip_loop()`: sprint-mode fetcher nu **3 endpoints parallelt** (batch_size=3) pr. iteration via `asyncio.gather()`. Fuld cycle for 100 endpoints: ~(1.5s sleep + 2s fetch) × 100/3 ≈ 117s << TTL=300s — alle entries holdes komfortabelt friske uden at ligge i kanten
+- `drip_estimated_full_cycle_s` korrigeret til `drip_sleep × total / batch_size` (afspejler nu den reelle cycle-tid med parallelitet)
+- `cache_prewarm_skip_fresh_s` default: 1800s → **900s** (3× TTL). Fuld-scan fungerer nu som safety-net: refresher alt hvad drip-loopen har misset inden for 15 min, i stedet for 30 min. Reducerer max-alder på data i cache markant ved transient drip-fejl
+- Berørte filer: `backend/app/services/cache_prewarm.py`, `backend/app/core/config.py`
+
+## [6.15.0702] — 2026-06-17 — fix: Cache drip-loop fastlåst på fejlende endpoint + sprint for langsom
+
+- `_drip_loop()` i `cache_prewarm.py`: når `_fetch_endpoint_detail()` fejler, sættes nu `entry.fetched_at = time.time() - ttl + 60` (60s back-off) så loopen bevæger sig videre til næste endpoint. Uden fix: drip-loopen spandt permanent på ét fejlende endpoint — alle andre entries forblev stale og opdateredes kun af `_full_scan()` hvert 30. min (skip_threshold=1800s)
+- Log-niveau for drip-fejl hævet fra DEBUG til WARNING (synlig i app.log uden ekstra konfiguration)
+- Sprint-formel ændret fra `(interval/4)/stale_count` til `ttl/total/2`: for 100 endpoints og TTL=300s giver det `drip_sleep=1.5s` → fuld runde ≈ 250s < TTL → alle entries holdes friske. Gammel formel gav 4.5s sleep → 550s/runde >> TTL → cachen altid kronisk stale
+- Berørt fil: `backend/app/services/cache_prewarm.py`
+
+## [6.15.0701] — 2026-06-17 — feat: Cache health widget i Browse-toolbar
+
+- Farvet dot-knap i Browse-toolbar (kun admin): grøn < 5% very_stale, gul < 20%, orange < 50%, rød ≥ 50%
+- Klik åbner dropdown-panel med fuld cache-diagnostik: entries-count, fresh/stale/very-stale fordeling med mini progress-bar, avg age, drip-interval + cycle-estimat, last scan age + scanning-badge, hit rate + SWR-serves, last error
+- Auto-opdatering af dot-farve hvert 60s (silent, ingen panel-re-render hvis lukket)
+- Admin-only: vises ikke for ikke-admin brugere
+- Berørte filer: `frontend/js/views/browse.js`, `frontend/css/styles.css`, `frontend/js/i18n.js`
+
+## [6.14.0700] — 2026-06-17 — fix: Browse reload ~30 sek efter fravær (DACL-liste ikke cachet)
+
+- `DaclService.list_summaries()`: tilfojet SWR-cache (TTL=5 min, SWR-vindue=150 min). Før: ISE-kald ved hvert eneste reload. Efter: <5ms fra cache i normal drift
+- Cache invalideres straks ved create/update/delete — liste aldrig stale efter mutationer
+- Concurrent requests coalesces via module-level asyncio.Task — ingen ISE-hammering
+- Berort fil: `backend/app/services/dacl_service.py`
+
+## [6.14.0699] — 2026-06-17 — fix: Browse reload langsom + ISE timeout-fejl fra list-view
+
+- `_list_all_from_cache` + `_list_from_roles_index`: fjernet asyncio.gather()+Semaphore(8) der kaldte get_endpoint() for N entries. For stale entries spawner get_detail()._get_or_create_inflight() én ISE-baggrundstask per entry → N simultane ISE-requests fra list-view → ISE overbelastning → "operation timed out"
+- Fix: ny `cache.snapshot_all_details()` + `cache.snapshot_details_for_roles()` — synkron O(N) dict-read, ingen ISE-kald, ingen baggrundstasks fra list-view. Ny `_build_detail_page()` helper anvender PSK-masking + stale-flag
+- Pre-warm drip-loop er den eneste der spawner ISE-refresh-tasks (kontrolleret, én ad gangen)
+- Berørte filer: `backend/app/core/endpoint_cache.py`, `backend/app/services/endpoint_service.py`
+
+## [6.14.0698] — 2026-06-17 — fix: Genindlæs rydder ikke tabel + forkert ISE-tekst
+
+- `browse-table.js localRefreshBtn`: `load(false)` → `load(false, { silent: true })` — eksisterende rækker forbliver synlige mens ny data hentes (data vises ikke "øjeblikkeligt" fordi tabellen blev ryddet og "Henter fra ISE…" vist selv når cache svarer)
+- `i18n.js browse.fetching_ise`: "Henter detaljer fra ISE..." → "Henter endpoints…" (DA) / "Loading endpoints…" (EN) — teksten vises ved initial load som kan komme fra cache, ikke ISE
+- Berørte filer: `frontend/js/views/browse-table.js`, `frontend/js/i18n.js`
+
+## [6.14.0697] — 2026-06-17 — fix: Browse tom efter genstart — disk-entries blokerede list-view
+
+- `endpoint_cache.get_detail()`: disk-loaded entries gik igennem `_stale_servable()` som returnerede False for entries ældre end `ttl*30` (2,5t med default) → synkron ISE-fetch for alle entries i list-view → 15-30s ventetid i Browse
+- Fix: nyt branch for `entry.from_disk` der altid returnerer disk-værdien øjeblikkeligt (stale, `cache_stale=True`) og starter background-refresh — uanset alder. Pre-warm-workeren refresher disk-entries i baggrunden alligevel
+- Berørte filer: `backend/app/core/endpoint_cache.py`
+
+## [6.14.0696] — 2026-06-17 — fix: ISE låser REST API-konto — circuit breaker blind for 401
+
+- `client.py request()`: `record_success()` blev kaldt for ALLE HTTP-responses inkl. 401 → circuit breaker nulstillede failure-count ved hver 401, og pre-warmen fortsatte med at sende requests med fejlagtige credentials → ISE's "disable after N failed logins"-policy låste kontoen
+- Fix: 401 kalder nu `record_failure()` og tæller `_consecutive_401s`. 1. fejl: WARNING. 2.+ fejl: ERROR med instruktion om ISE kontolås. Succesfulde requests + andre 4xx/5xx nulstiller tæller og kalder `record_success()` som normalt. Efter CB's `failure_threshold` 401er åbner circuit og stopper yderligere ISE-kald i `recovery_timeout` sekunder
+- Berørte filer: `backend/app/ise/client.py`
+
+## [6.14.0695] — 2026-06-15 — fix: VLAN/CA-værdier opdateres ikke i tabel efter Endpoint Details-save
+
+- `browse-table.js refreshRows()`: `api.getEndpoint()` returnerer `{data, totalMs, ...}` (requestTimed-wrapper) — udpak `.data` så `r.id` er korrekt og tabelrækker faktisk opdateres
+- Berørte filer: `frontend/js/views/browse-table.js`
+
+## [6.14.0694] — 2026-06-15 — fix: Send CoA on expiry gemmes ikke i Settings
+
+- `settings_service.get_backend_settings()`: tilføjet `selfregister_expiry_coa_enabled` og `selfregister_expiry_coa_type` til `BackendSettingsResponse`
+- `settings_service.update_backend_settings()`: tilføjet begge felter til `overrides.update()`-dict så de faktisk persisteres
+- Berørte filer: `backend/app/services/settings_service.py`
+
+## [6.14.0693] — 2026-06-15 — fix: guest group sættes ikke ved gen-registrering
+
+- `selfregister.py` update-sti: `group_id=s.selfregister_group_id or None` tilføjet til `EndpointUpdate` — eksisterende endpoints flyttes nu til den konfigurerede guest-gruppe ved gen-registrering (var tidligere None → ISE rørte ikke groupId)
+- Berørte filer: `backend/app/api/selfregister.py`
+
+## [6.14.0692] — 2026-06-15 — feat: CoA ved manuel GuestAccessExpire=true i Browse
+
+- `PUT /endpoints/{id}`: hvis `custom_attributes.GuestAccessExpire = "true"` og `selfregister_expiry_coa_enabled = true` i settings, sendes der automatisk en CoA (reauth eller disconnect afhængig af `selfregister_expiry_coa_type`) til endpointets MAC
+- MAC hentes via `service.get_endpoint()` efter opdateringen (cache er varm)
+- CoA-fejl logges som warning men blokerer ikke update-svaret
+- Berørte filer: `backend/app/api/endpoints.py`
+
+## [6.14.0691] — 2026-06-15 — fix: MnT-probe accepterer HTTP 500 (known ISE 3.4 bug)
+
+- `probe_mnt()` og `_check_mnt_connectivity()`: HTTP 500 fra `Session/IPAddress` er en known ISE 3.4 bug — accepteres nu som OK med note "(ISE 3.4 bug — ActiveList fallback bruges automatisk)"
+- Berørte filer: `backend/app/api/selfregister.py`, `backend/app/services/diagnostics_service.py`
+
+## [6.14.0690] — 2026-06-15 — feat: MnT node status for guest-registrering
+
+**Feat: MnT-node latens-status**
+- Ny `GET /api/selfregister/mnt-probe` (admin) — prober ISE MnT med samme Session/IPAddress-endpoint som guest-registrering; returnerer latens, HTTP-status og note
+- `diagnostics_service._check_mnt_connectivity()` tilføjet til `run_quick()` og `run_all()` — vises automatisk i Dashboard og Diagnostics-tab
+- Admin-panel: MnT-probe widget i Guest Registration-indstillingskortet med "Test MnT"-knap og farvekodet latens (grøn/gul/rød)
+- Guest-siden: `renderLookingUp()` viser per-forsøg svar-tid fra 2. forsøg + "⚠️ MnT-node svarer langsomt" ved > 4s; `renderSessionNotFound()` viser samlet søgetid i sekunder
+
+**Berørte filer:**
+- `backend/app/api/selfregister.py` — MntProbeResponse schema + GET /selfregister/mnt-probe endpoint
+- `backend/app/services/diagnostics_service.py` — _check_mnt_connectivity() i run_quick + run_all
+- `frontend/js/api.js` — selfregisterMntProbe()
+- `frontend/js/views/settings.js` — MnT-probe widget HTML i guest-reg-card
+- `frontend/js/views/settings/section-update.js` — initGuestRegSection wire probe-knap
+- `frontend/js/selfregister.js` — per-forsøg timing i lookupSession + renderLookingUp/SessionNotFound
+
+## [6.14.0689] — 2026-06-15 — fix: korrekt cache/ISE badge i Endpoint Details + SWR for details
+
+**Fix: Timing-badge viste "Cache" selvom ISE blev kaldt**
+- `force_fresh=True` → `force_fresh=False` i backend `GET /endpoints/{id}` — detaljer serveres nu fra cache (SWR) når cache er varm; invalideres stadig ved save
+- Backend tilføjer `X-From-Cache: true/false` header baseret på om der var et cache-entry FØR service-kaldet (nøjagtig kilde-indikator)
+- Frontend `requestTimed()` læser `X-From-Cache`-headeren i stedet for den fejlagtige `cacheAge < 5`-heuristik
+- Timing-badge viser nu cache-alder når data kommer fra cache: `⚡ Cache (42s) 3ms`
+
+**Berørte filer:**
+- `backend/app/api/endpoints.py` — `force_fresh=False`, ny `X-From-Cache` header + `age_before` check
+- `frontend/js/api.js` — `fromCache` bruger `X-From-Cache`-header
+- `frontend/js/views/browse-detail.js` — badge inkluderer cache-alder i sekunder
+
+## [6.13.0685] — 2026-06-14 — fix+feat: Aktiv/Inaktiv i form + System adm dropdown + cache-filter
+
+**Fix: Aktiv/Inaktiv-felt manglede i Endpoint Details form**
+- `HypervisionActive` tilføjet som `<select>` direkte i formular-griddet; gemmes via Gem-knappen
+- `openDetail` paralleliserer nu `getEndpoint`+`listCustomAttributes`+`listDacls` → hurtigere åbning
+
+**Feat: System adm — kompakt kolonne + multi-select i details**
+- Browse-tabelkolonnen viser kun valgte roller som kompakte badges (ikke hele katalog)
+- Endpoint Details bruger nu `<select multiple>` i stedet for checkboxes
+- Inline rolle-redigering i tabellrækker fjernet (brug detalje-modalen i stedet)
+- CSS: ny `.role-tag`-klasse + `.roles-multiselect`
+
+**Feat: Backend admin fast-path for filter-mode**
+- `endpoint_cache.get_all_details()` tilføjet
+- `list_all_endpoint_details` serverer nu fra cache for admin-brugere (ingen ISE-kald ved chip-klik)
+
+**Berørte filer:** `frontend/js/views/browse.js`, `frontend/js/views/browse-detail.js`, `frontend/js/views/browse-table.js`, `frontend/js/i18n.js`, `frontend/css/styles.css`, `backend/app/core/endpoint_cache.py`, `backend/app/services/endpoint_service.py`, `version.json`
+
+---
+
+## [6.12.0684] — 2026-06-14 — feat: Lokal genindlæsning i Browse
+
+Ny "↻ Genindlæs"-knap i Browse-toolbar ved siden af den eksisterende "Opdater fra ISE".
+- **↻ Genindlæs** — henter den aktuelle side fra backend-cache; ingen ISE-kald, ingen cache-invalidering. Hurtig (< 1 sek).
+- **Opdater fra ISE** (omdøbt fra "Opdater") — ryder cache og henter alle endpoints direkte fra ISE.
+
+**Berørte filer:** `frontend/js/views/browse.js`, `frontend/js/views/browse-table.js`, `frontend/js/i18n.js`, `version.json`
+
+---
+
+## [6.12.0683] — 2026-06-14 — feat: CoA ved guest-udløb
+
+Når guest-expiry-workeren registrerer et udløbet guest-endpoint, kan portalen nu automatisk sende en CoA (Change of Authorization) til gæstens MAC-adresse via ISE MnT API.
+
+- **Re-Auth (anbefalet):** Gæsten omdirigeres til registreringsportalen uden at miste netværksforbindelsen.
+- **Disconnect:** Gæstens session afbrydes; gæsten skal forbinde igen og omdirigeres derefter til portalen.
+
+Ny togglecheckbox "Send CoA ved udløb" + CoA-type-select i Settings → Guest Registration → Automatisk udløb.
+Kræver at ISE-brugeren har MnT Admin-rolle og at `coa_psn_name` er konfigureret.
+
+**Berørte filer:** `backend/app/core/config.py`, `backend/app/schemas/settings.py`, `backend/app/services/guest_expiry_worker.py`, `frontend/js/views/settings.js`, `frontend/js/views/settings/section-update.js`, `frontend/js/i18n.js`, `version.json`
+
+---
+
+## [6.11.0682] — 2026-06-14 — feat: Decommission VLAN/DACL-ændring kan slås fra
+
+Ny setting `decomm_set_authz` (bool, default True) under Settings → Advanced → Standard dekommissioneringsværdier.
+
+- **Til (default):** decommission sætter HypervisionStatus + AuthzVlan + AuthzACL som hidtil.
+- **Fra:** decommission sætter kun HypervisionStatus=Decommissioned, HypervisionActiveStatus=Inaktiv og HypervisionHidden=true — VLAN og DACL på endpointet bevares uændret.
+
+UI: checkbox øverst i decommission-sektionen; VLAN/DACL-dropdowns dimmes og deaktiveres når checkbox er slået fra.
+
+**Berørte filer:** `backend/app/core/config.py`, `backend/app/schemas/settings.py`, `backend/app/services/endpoint_service.py`, `frontend/js/views/settings.js`, `frontend/js/views/settings/section-update.js`, `frontend/js/i18n.js`, `version.json`
+
+## [6.11.0681] — 2026-06-14 — feat: CLI Recovery Tool (backend/recover.py)
+
+**Ny fil:** `backend/recover.py`
+- Standalone Python 3-script, ingen afhængigheder udover stdlib
+- Bruger samme PBKDF2-SHA256-format som `app/core/auth.py` (600k iterationer)
+- Arbejder direkte med `backend/users.json` og `backend/lockout.db`
+- Atomisk write via tmp-fil + rename for at undgå korrupt users.json
+- Interaktiv menu + argparse flags (--list, --reset, --unlock, --emergency)
+- Nulstilling bumper token_gen → invaliderer alle aktive sessioner
+- ANSI-farver (grøn/orange/rød) med fallback til no-color på ikke-TTY
+
+## [6.11.0680] — 2026-06-14 — feat: Dashboard CPU/RAM/disk ressource-bars
+
+**Nye filer:**
+- `backend/app/services/sysinfo_service.py` — henter cpu_pct, ram_pct, disk_pct via psutil (0.3s interval for reel CPU-måling); kører i executor; graceful fallback til shutil hvis psutil mangler
+- `backend/app/api/sysinfo.py` — GET /api/sysinfo (require_any)
+
+**Ændrede filer:**
+- `backend/app/main.py` — registrerer sysinfo_api router
+- `backend/pyproject.toml` — tilføjer `psutil>=5.9.0`
+- `backend/app/services/diagnostics_service.py` — psutil tilføjet til REQUIRED_DISTS
+- `frontend/js/api.js` — tilføjer `sysinfo()`
+- `frontend/js/views/dashboard.js` — `resBar()` hjælper, sysinfo i Promise.all, CPU/RAM/disk-bars i sysCard
+- `version.json` → 6.11.0680
+
+## [6.10.0679] — 2026-06-14 — fix: OpenAPI-tjek tager nu hensyn til ise_api_type
+
+OpenAPI endpoint-count (fase 2) vurderer nu resultatet ud fra portalens konfiguration:
+- `ise_api_type = "ers"` + HTTP 404 → **OK** ("OpenAPI ikke tilgængeligt — portal er konfigureret til ERS (forventet)")
+- `ise_api_type = "openapi"` + HTTP 404 → **Fejl** med hint om at aktivere OpenAPI på ISE
+- HTTP 200 → OK uanset api_type
+
+**Berørte filer:** `backend/app/services/feature_check_service.py`, `version.json`, `CHANGELOG.md`
+
+## [6.10.0678] — 2026-06-14 — fix: Tre fejl i feature_check_service rettet
+
+- **pxGrid certs**: Tjekker nu først om worker er forbundet — hvis ja → OK (certs virker åbenlyst). Undgår falsk fejl når cert-stier i settings er Windows-stier fra dev-maskine. Fallback: prøver sti direkte og relativ til BACKEND_ROOT.
+- **Custom attributes**: Stien var `/ers/config/customattribute` (eksisterer ikke). Rettet til `/api/v1/endpoint-custom-attribute` (OpenAPI, ISE 3.1+). HTTP 404 rapporteres nu som warning med hint om OpenAPI.
+- **Endpoint-cache**: Import var `from app.services.cache import get_cache` (forkert modul). Rettet til `from app.core.endpoint_cache import get_cache`.
+
+**Berørte filer:** `backend/app/services/feature_check_service.py`, `version.json`, `CHANGELOG.md`
+
+## [6.10.0677] — 2026-06-14 — feat: Funktionsgennemgang (to-faset portal-audit)
+
+**Nye filer:**
+- `backend/app/services/feature_check_service.py` — Fase 1 (9 statiske tjek) + Fase 2 (9 live ISE/nmap/GitHub-tjek)
+- `backend/app/api/feature_check.py` — GET /api/feature-check/phase1 + /phase2 (require_admin)
+- `frontend/js/views/settings/section-feature-check.js` — UI med to-faset knap + resultat-tabeller
+
+**Ændrede filer:**
+- `backend/app/main.py` — registrerer feature_check_api router
+- `frontend/js/api.js` — tilføjer featureCheckPhase1 + featureCheckPhase2
+- `frontend/js/views/settings.js` — importer initFeatureCheckSection, HTML-kort + init-kald
+- `version.json` — 6.9.0676 → 6.10.0677
+- `FEATURES.md`, `RELEASE_NOTES.md`, `CHANGELOG.md` opdateret
+
+## [6.9.0676] — 2026-06-14 — fix: Dashboard layout omstruktureret
+
+Ny layout:
+- Øverst: KPI-kort (endpoints, MACs, lifecycle, hit rate, circuit breaker)
+- Midterste række: Trend-chart (flex:2) + System sundhed-kort (flex:1) side om side
+- Bundlinje: System stats | Lifecycle | Audit events i tre kolonner
+- Log-sektion fuldt bredde nederst
+
+Tidligere: health-kortet var klemt i en 250px smal højre kolonne sammen med
+sysCard og lcCard. Audit events hang isoleret under alt andet.
+
+**Berørte filer:** `frontend/js/views/dashboard.js`, `version.json`
+
+## [6.9.0675] — 2026-06-14 — feat: System sundhed-kort på dashboard (fra diagnostics/quick)
+
+Ny `GET /api/diagnostics/quick` (alle brugere) kører 7 hurtige in-memory tjek
+(< 100 ms): HTTP/2, nmap, disk plads, ISE config, cache, circuit breaker, pxGrid.
+Udelukker live ISE-GET og git subprocess — egnet til dashboard 30s-refresh.
+
+Dashboard henter quick-status i samme Promise.all som øvrige data og viser
+et "System sundhed"-kort i højre kolonne med: farvet topbord (✅/⚠️/❌),
+kompakt status-linje pr. tjek og link til fuld diagnostik (kun admin).
+
+**Berørte filer:** `backend/app/services/diagnostics_service.py`, `backend/app/api/diagnostics.py`, `frontend/js/api.js`, `frontend/js/views/dashboard.js`, `version.json`
+
+## [6.8.0674] — 2026-06-14 — fix: NameError 'result' i git pull (500-fejl)
+
+`_git_pull_sync()` refererede til `result["preflight_ok"]` men `result` er ikke
+en variabel i den funktion — det er det returnerede dict. Linjerne fjernet;
+`preflight_ok` sendes allerede korrekt med i `return`-sætningen.
+
+**Berørte filer:** `backend/app/services/update_service.py`, `version.json`
+
+## [6.8.0673] — 2026-06-14 — fix: Diagnostik cache-tjek brugte forkert attribut (_entries → detail_count)
+
+`_check_cache_status()` tjekkede `cache._entries` som ikke eksisterer — det korrekte
+er `cache.detail_count()` (public metode) eller `cache._details`. Checket returnerede
+altid 0 og viste ⚠️ selvom cachen var fyldt med endpoints.
+
+**Berørte filer:** `backend/app/services/diagnostics_service.py`, `version.json`
+
+## [6.8.0672] — 2026-06-14 — fix: Systemdiagnostik flyttet til System Opdatering-modulet
+
+Diagnostik-kortet lå under Indstillinger → Performance. Flyttes til
+Indstillinger → Portal config → System opdatering (pc-update subtab) så
+det er samlet med OTA-opdatering og GitHub pull — logisk placering da
+diagnostik bruges netop til at verificere en opdatering.
+
+**Berørte filer:** `frontend/js/views/settings.js`, `version.json`
+
+## [6.8.0671] — 2026-06-14 — fix: ImportError i diagnostics.py (require_admin forkert sti)
+
+`from app.core.auth import require_admin` → `from app.api.deps import require_admin`.
+`require_admin` findes i `app.api.deps`, ikke `app.core.auth`. Fejlen forhindrede portalen i at starte.
+
+**Berørte filer:** `backend/app/api/diagnostics.py`, `version.json`
+
+## [6.8.0670] — 2026-06-14 — fix: Service-fil og venv-sti korrektioner (server starter ikke efter manuel opdatering)
+
+**Root causes:**
+1. `deploy/hypervision.service` brugte `/opt/hypervision/backend/.venv/bin/python` men det korrekte venv er `/opt/hypervision/venv/` — serveren startede aldrig fordi Python-stien ikke eksisterede.
+2. Ingen `StartLimitBurst=0` — systemd default er 5 crash i 10s → "gave up" → server forbliver nede selv efter `systemctl restart`.
+3. `ReadWritePaths=/opt/hypervision/backend` — service kunne ikke skrive til `/opt/hypervision/` (logs, cache der peger opad).
+4. `WorkingDirectory` retttet til `/opt/hypervision/backend` så uvicorn finder `app.main` uden `--app-dir`.
+
+**Rettelser i `deploy/hypervision.service`:**
+- `ExecStart`: `/opt/hypervision/backend/.venv/...` → `/opt/hypervision/venv/bin/python`
+- `WorkingDirectory`: `/opt/hypervision` → `/opt/hypervision/backend`
+- `StartLimitBurst=0` tilføjet
+- `ReadWritePaths`: `/opt/hypervision/backend` → `/opt/hypervision`
+- Fjernet `--app-dir backend` (WorkingDirectory er nu backend)
+
+**Berørte filer:** `deploy/hypervision.service`, `backend/app/services/update_service.py`, `version.json`
+
+## [6.8.0669] — 2026-06-14 — fix: Pre-flight tjek i OTA-opdatering forhindrer crash-loop
+
+`_preflight_check()` kører `python -c "from app.main import app"` som subprocess
+(venv-Python, cwd=backend) efter git pull + pip install. Verificerer at den nye kode
+kan importeres uden fejl inden genstart trigges.
+
+Flyet: pull OK + pre-flight OK → auto-genstart om 3s (ingen manuel "Restart"-knap).
+Pull OK + pre-flight fejl → INGEN genstart, fejl vises i UI — crashet er afværget.
+
+Frontend poller `/api/health` efter genstart og viser "Server er oppe igen ✅ — Genindlæs siden"
+med link til reload.
+
+**Berørte filer:** `backend/app/services/update_service.py`, `frontend/js/views/settings/section-update.js`, `version.json`
+
+## [6.8.0668] — 2026-06-14 — feat: Systemdiagnostik (sundhedstjek af alle afhængigheder)
+
+Ny backend-service `diagnostics_service.py` og API-endpoint `GET /api/diagnostics` (admin-only).
+Kører 12 tjek parallelt: Python-version, venv, Python-afhængigheder, HTTP/2 (h2), nmap, diskplads,
+ISE-konfiguration, ISE ERS-forbindelsestest med latens, endpoint-cache-status, circuit breaker,
+pxGrid-worker og git branch/commit. Frontend: ny sektion "Systemdiagnostik" under Indstillinger →
+Performance med "Kør diagnostik"-knap og resultat-tabel (✅/⚠️/❌ + samlet status-banner).
+
+**Berørte filer:** `backend/app/services/diagnostics_service.py` (ny), `backend/app/api/diagnostics.py` (ny), `backend/app/main.py`, `frontend/js/api.js`, `frontend/js/views/settings.js`, `frontend/js/views/settings/section-diagnostics.js` (ny), `version.json`
+
 ## [6.7.0667] — 2026-06-14 — feat: h2 installeres automatisk i baggrunden ved opstart hvis det mangler
 
 `_ensure_h2_installed()` startes som `asyncio.create_task` i lifespan når

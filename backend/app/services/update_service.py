@@ -436,6 +436,33 @@ def _ensure_git_shared_repo() -> None:
         pass
 
 
+def _preflight_check() -> tuple[bool, str]:
+    """Verificer at den nye kode kan importeres uden fejl.
+
+    Kører `python -c "from app.main import app"` som separat subprocess med
+    sys.executable (venv-Python) og cwd=backend.  Importerer den nye kode fra
+    disk — ikke den kørende kode i hukommelsen.
+
+    Returnerer (ok, log_besked).
+    """
+    try:
+        env = {**os.environ, "PYTHONPATH": str(PROJECT_ROOT / "backend")}
+        result = subprocess.run(
+            [sys.executable, "-c", "from app.main import app; print('OK')"],
+            cwd=str(PROJECT_ROOT / "backend"),
+            capture_output=True, text=True, timeout=30,
+            env=env,
+        )
+        if result.returncode == 0:
+            return True, "Pre-flight OK — ny kode kan importere uden fejl"
+        err = (result.stderr or result.stdout or "ingen output").strip()
+        return False, f"Pre-flight FEJLEDE — ny kode vil crashe:\n{err[:600]}"
+    except subprocess.TimeoutExpired:
+        return False, "Pre-flight timeout (30s) — import tog for lang tid"
+    except Exception as exc:  # noqa: BLE001
+        return False, f"Pre-flight fejl: {exc}"
+
+
 def _git_pull_sync() -> dict[str, Any]:
     """Hent og anvend seneste kode fra GitHub via fetch + reset --hard.
 
@@ -462,8 +489,8 @@ def _git_pull_sync() -> dict[str, Any]:
             "stderr": (
                 f"Portal-processen (bruger '{portal_user}') ejer ikke .git/objects/ og kan ikke skrive til det.\n"
                 f"Løs det med én kommando på serveren (som root):\n\n"
-                f"  chown -R {portal_user}:{portal_user} {PROJECT_ROOT}/.git\n\n"
-                "Herefter virker git pull automatisk uden yderligere indgreb."
+                f"  chown -R {portal_user}:{portal_user} {PROJECT_ROOT}\n\n"
+                "Herefter virker OTA-opdatering automatisk uden yderligere indgreb."
             ),
             "returncode": -1,
         }
@@ -526,8 +553,20 @@ def _git_pull_sync() -> dict[str, Any]:
                 stdout_parts.append(f"⚠ pip install fejl: {pip_exc}")
                 logger.warning("pip install fejl: %s", pip_exc)
 
+        # Trin 4: Pre-flight — verificer at ny kode kan importere inden genstart.
+        # Forhindrer crash-loop: hvis den nye kode har syntaksfejl eller manglende
+        # afhængigheder genstartes serveren IKKE automatisk.
+        preflight_ok = False
+        if ok:
+            stdout_parts.append("--- pre-flight import-tjek ---")
+            preflight_ok, preflight_msg = _preflight_check()
+            stdout_parts.append(preflight_msg)
+            if not preflight_ok:
+                logger.warning("pre-flight fejlede — auto-genstart afbrudt: %s", preflight_msg[:200])
+
         return {
             "ok": ok,
+            "preflight_ok": preflight_ok,
             "stdout": "\n".join(stdout_parts),
             "stderr": reset.stderr.strip() if not ok else "",
             "returncode": reset.returncode,
@@ -543,9 +582,24 @@ def _git_pull_sync() -> dict[str, Any]:
 async def git_pull() -> dict[str, Any]:
     from app.core import audit_store
     result = await asyncio.to_thread(_git_pull_sync)
+
+    # Auto-restart: kun hvis både pull OG pre-flight lykkedes.
+    # Genstart sker 3s efter response er sendt — klienten har tid til at modtage svaret.
+    will_restart = bool(result.get("ok") and result.get("preflight_ok"))
+    result["will_restart"] = will_restart
+    if will_restart:
+        logger.info("git pull + pre-flight OK — planlægger auto-genstart om 3s")
+        await schedule_restart(delay_s=3.0)
+
     await audit_store.record(
         "github_pull", "system",
-        after={"ok": result["ok"], "branch": _github_branch(), "returncode": result.get("returncode")},
+        after={
+            "ok": result["ok"],
+            "branch": _github_branch(),
+            "preflight_ok": result.get("preflight_ok"),
+            "will_restart": will_restart,
+            "returncode": result.get("returncode"),
+        },
     )
     return result
 

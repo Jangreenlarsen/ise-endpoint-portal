@@ -33,8 +33,10 @@ async def get_dashboard() -> dict:
             "drip_cycle_s": pw.drip_estimated_full_cycle_s,
             "drip_sleep_s": pw.drip_current_sleep_s,
             "drip_refreshed_total": pw.drip_refreshed_total,
+            "drip_skipped_total": pw.drip_skipped_total,
             "scanning": pw.scanning,
             "disk_loaded_at_startup": pw.disk_loaded,
+            "hot_queue_size": pw.hot_queue_size,
         }
     except Exception:  # noqa: BLE001
         pass
@@ -55,6 +57,14 @@ async def get_dashboard() -> dict:
         for mf in CIRCUIT_STATE.collect():
             for sample in mf.samples:
                 cb_state = int(sample.value)
+    except Exception:  # noqa: BLE001
+        pass
+
+    # ISE auth status — eksponerer consecutive 401-tæller og lockout-tidspunkt
+    ise_auth: dict = {"status": "ok", "consecutive_401s": 0, "locked_since": None}
+    try:
+        from app.ise.client import get_ise_client
+        ise_auth = get_ise_client().auth_status()
     except Exception:  # noqa: BLE001
         pass
 
@@ -98,7 +108,18 @@ async def get_dashboard() -> dict:
             "stale_serves": stale_serves,
             "disk_stale": stats.get("disk_stale_entries", 0),
             "disk_loaded_at_startup": prewarm_data.get("disk_loaded_at_startup", 0),
+            "detail_entries": stats.get("detail_entries", 0),
+            "tiers": stats.get("tiers", {}),
+            "staleness": stats.get("staleness", {}),
+            "total_bytes": stats.get("total_bytes", 0),
+            "max_memory_bytes": stats.get("max_memory_bytes", 0),
+            "inflight": stats.get("inflight_detail_refreshes", 0),
+            "evictions": stats.get("evictions", 0),
+            "ttl_seconds": stats.get("ttl_seconds", 0),
+            "last_sync_at": stats.get("last_sync_at"),
+            "last_sync_age_s": round(time.time() - stats["last_sync_at"], 0) if stats.get("last_sync_at") else None,
         },
         "prewarm": prewarm_data,
         "recent_events": recent_events,
+        "ise_auth": ise_auth,
     }

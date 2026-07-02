@@ -28,6 +28,7 @@ from app.schemas.endpoint import (
     EndpointUpdate,
     PaginatedEndpointDetails,
 )
+from app.core import config as _config
 from app.schemas.user import User
 from app.services.endpoint_service import EndpointService
 
@@ -219,29 +220,31 @@ async def get_endpoint_profiling_data(
 async def get_endpoint(
     endpoint_id: str,
     response: Response,
+    fresh: bool = Query(False, description="True = tving ISE-fetch uanset cache-alder (bruges ved detail-view af stale entries)."),
     user: User = Depends(require_any),
     service: EndpointService = Depends(get_endpoint_service),
 ) -> EndpointDetail:
     cache = get_cache()
-    # Edit-modal skal altid vise aktuelle ISE-data. Concurrent requests
-    # (pre-warm hot-queue, to browsere) koalescerer til ét ISE-kald via
-    # _inflight_detail i cache i stedet for at ramme ISE selvstændigt.
+    age_before = cache.detail_age(endpoint_id) if cache.enabled() else None
+    was_cached = age_before is not None
     try:
         detail = await service.get_endpoint(
             endpoint_id,
             effective_roles=_scope_for(user),
             is_psk_editor=_is_psk_editor_for(user),
-            force_fresh=True,
+            force_fresh=fresh,
         )
     except IseApiError as exc:
         raise _ise_http_error(exc) from exc
     if cache.enabled():
         age = cache.detail_age(endpoint_id)
         response.headers["X-Cache-Enabled"] = "true"
+        response.headers["X-From-Cache"] = "true" if was_cached else "false"
         if age is not None:
             response.headers["X-Cache-Age-Seconds"] = f"{age:.2f}"
     else:
         response.headers["X-Cache-Enabled"] = "false"
+        response.headers["X-From-Cache"] = "false"
     return detail
 
 
@@ -279,6 +282,11 @@ async def update_endpoint(
     user: User = Depends(require_edit_endpoint),
     service: EndpointService = Depends(get_endpoint_service),
 ) -> dict[str, str]:
+    # Tjek om GuestAccessExpire sættes til true FØR selve opdateringen,
+    # så vi kan sende CoA bagefter hvis det er slået til i settings.
+    ca = req.custom_attributes
+    guest_expire_set = ca is not None and (ca.GuestAccessExpire or "").lower() == "true"
+
     try:
         await service.update_endpoint(
             endpoint_id, req, auto_tag_username=_autotag_for(user)
@@ -287,6 +295,34 @@ async def update_endpoint(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except IseApiError as exc:
         raise _ise_http_error(exc) from exc
+
+    if guest_expire_set and _config.settings.selfregister_expiry_coa_enabled:
+        import logging as _log
+        _logger = _log.getLogger(__name__)
+        try:
+            detail = await service.get_endpoint(
+                endpoint_id,
+                effective_roles=_scope_for(user),
+                is_psk_editor=_is_psk_editor_for(user),
+            )
+            mac = detail.mac or detail.name or ""
+            if mac:
+                from app.ise import coa as _coa
+                coa_type = _config.settings.selfregister_expiry_coa_type
+                if coa_type == "disconnect":
+                    ok, msg = await _coa.disconnect(mac)
+                else:
+                    ok, msg = await _coa.reauth(mac)
+                _logger.info(
+                    "update_endpoint: GuestAccessExpire=true → CoA %s mac=%s → %s: %s",
+                    coa_type, mac, "ok" if ok else "fejl", msg,
+                )
+        except Exception as exc:  # noqa: BLE001
+            import logging as _log2
+            _log2.getLogger(__name__).warning(
+                "update_endpoint: CoA fejlede for %s: %s", endpoint_id, exc
+            )
+
     return {"status": "updated"}
 
 

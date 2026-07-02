@@ -392,6 +392,25 @@ export function initGithubUpdateSection(container) {
     }
   });
 
+  async function _pollUntilAlive(statusEl) {
+    const MAX_MS = 45_000;
+    const start  = Date.now();
+    while (Date.now() - start < MAX_MS) {
+      await new Promise(r => setTimeout(r, 1800));
+      try {
+        await api.health();
+        if (statusEl) statusEl.innerHTML =
+          `<div class="alert success">Server er oppe igen ✅ — <a href="/" style="font-weight:600;">Genindlæs siden</a></div>`;
+        return;
+      } catch {
+        const elapsed = Math.round((Date.now() - start) / 1000);
+        if (statusEl) statusEl.textContent = `Venter på server… (${elapsed}s)`;
+      }
+    }
+    if (statusEl) statusEl.innerHTML =
+      `<div class="alert warning">Server svarede ikke inden 45s — genindlæs siden manuelt.</div>`;
+  }
+
   pullBtn.addEventListener("click", async () => {
     if (!confirm(t("settings.gh_btn_pull") + "?")) return;
     pullBtn.disabled = true;
@@ -400,10 +419,24 @@ export function initGithubUpdateSection(container) {
     try {
       const res = await api.githubPull();
       const out = [res.stdout, res.stderr].filter(Boolean).join("\n");
-      msgEl.innerHTML = `
-        <div class="alert success">${t("settings.gh_pull_ok")}</div>
-        ${out ? `<pre class="gh-pull-output">${esc(out)}</pre>` : ""}`;
-      pullBtn.hidden = true;
+      if (res.will_restart) {
+        msgEl.innerHTML = `
+          <div class="alert success">Pull OK — pre-flight bestået — server genstarter om 3s…</div>
+          ${out ? `<pre class="gh-pull-output">${esc(out)}</pre>` : ""}
+          <div id="gh-restart-poll" style="margin-top:6px;">Venter på server…</div>`;
+        pullBtn.hidden = true;
+        _pollUntilAlive(msgEl.querySelector("#gh-restart-poll"));
+      } else if (res.ok && res.preflight_ok === false) {
+        msgEl.innerHTML = `
+          <div class="alert error">Pull OK, men pre-flight FEJLEDE — server genstartes IKKE (forhindrer crash). Se output nedenfor.</div>
+          ${out ? `<pre class="gh-pull-output">${esc(out)}</pre>` : ""}`;
+        pullBtn.hidden = true;
+      } else {
+        msgEl.innerHTML = `
+          <div class="alert success">${t("settings.gh_pull_ok")}</div>
+          ${out ? `<pre class="gh-pull-output">${esc(out)}</pre>` : ""}`;
+        pullBtn.hidden = true;
+      }
     } catch (err) {
       msgEl.innerHTML = `<div class="alert error">${t("settings.gh_pull_err").replace("{msg}", esc(err.message))}</div>`;
     } finally {
@@ -462,6 +495,10 @@ export function initAdvancedSection(container) {
   // Decommission defaults
   const decommH4   = container.querySelector("#adv-decomm-h4");
   const decommHint = container.querySelector("#adv-decomm-hint");
+  const decommSetAuthzCb    = container.querySelector("#adv-decomm-set-authz");
+  const decommSetAuthzLbl   = container.querySelector("#adv-decomm-set-authz-lbl");
+  const decommSetAuthzHint  = container.querySelector("#adv-decomm-set-authz-hint");
+  const decommAuthzFields   = container.querySelector("#adv-decomm-authz-fields");
   const decommVlanLbl  = container.querySelector("#adv-decomm-vlan-lbl");
   const decommVlanHint = container.querySelector("#adv-decomm-vlan-hint");
   const decommAclLbl   = container.querySelector("#adv-decomm-acl-lbl");
@@ -472,13 +509,22 @@ export function initAdvancedSection(container) {
   const decommMsg      = container.querySelector("#adv-decomm-msg");
   const decommForm     = container.querySelector("#adv-decomm-form");
 
-  if (decommH4)       decommH4.textContent       = t("settings.adv_decomm_h4");
-  if (decommHint)     decommHint.textContent      = t("settings.adv_decomm_hint");
-  if (decommVlanLbl)  decommVlanLbl.textContent   = t("settings.adv_decomm_vlan_lbl");
-  if (decommVlanHint) decommVlanHint.textContent  = t("settings.adv_decomm_vlan_hint");
-  if (decommAclLbl)   decommAclLbl.textContent    = t("settings.adv_decomm_acl_lbl");
-  if (decommAclHint)  decommAclHint.textContent   = t("settings.adv_decomm_acl_hint");
-  if (decommSaveBtn)  decommSaveBtn.textContent   = t("settings.adv_decomm_save_btn");
+  if (decommH4)            decommH4.textContent            = t("settings.adv_decomm_h4");
+  if (decommHint)          decommHint.textContent          = t("settings.adv_decomm_hint");
+  if (decommSetAuthzLbl)   decommSetAuthzLbl.textContent   = t("settings.adv_decomm_set_authz_lbl");
+  if (decommSetAuthzHint)  decommSetAuthzHint.textContent  = t("settings.adv_decomm_set_authz_hint");
+  if (decommVlanLbl)       decommVlanLbl.textContent       = t("settings.adv_decomm_vlan_lbl");
+  if (decommVlanHint)      decommVlanHint.textContent      = t("settings.adv_decomm_vlan_hint");
+  if (decommAclLbl)        decommAclLbl.textContent        = t("settings.adv_decomm_acl_lbl");
+  if (decommAclHint)       decommAclHint.textContent       = t("settings.adv_decomm_acl_hint");
+  if (decommSaveBtn)       decommSaveBtn.textContent       = t("settings.adv_decomm_save_btn");
+
+  function _syncAuthzFields() {
+    if (!decommAuthzFields) return;
+    const enabled = decommSetAuthzCb?.checked ?? true;
+    decommAuthzFields.style.opacity = enabled ? "1" : "0.4";
+    decommAuthzFields.style.pointerEvents = enabled ? "" : "none";
+  }
 
   // Populate a <select> with values; pre-select savedValue (add it if missing)
   function _populateSelect(sel, values, savedValue) {
@@ -517,6 +563,9 @@ export function initAdvancedSection(container) {
 
       if (debugCb) debugCb.checked = !!s.debug_pxgrid_sessions;
 
+      if (decommSetAuthzCb) decommSetAuthzCb.checked = s.decomm_set_authz !== false;
+      _syncAuthzFields();
+
       const savedVlan = s.decomm_authz_vlan ?? "999";
       const savedAcl  = s.decomm_authz_acl  ?? "deny_all_ipv4_traffic";
 
@@ -549,17 +598,23 @@ export function initAdvancedSection(container) {
     });
   }
 
+  // Toggle authz-felter ved checkbox-ændring
+  if (decommSetAuthzCb) {
+    decommSetAuthzCb.addEventListener("change", _syncAuthzFields);
+  }
+
   // Save decommission defaults
   if (decommForm) {
     decommForm.addEventListener("submit", async (e) => {
       e.preventDefault();
+      const setAuthz = decommSetAuthzCb?.checked ?? true;
       const vlan = (decommVlanEl?.value ?? "").trim();
       const acl  = (decommAclEl?.value ?? "").trim();
-      if (!vlan || !acl) return;
+      if (setAuthz && (!vlan || !acl)) return;
       decommSaveBtn.disabled = true;
       try {
         const current = await api.getBackendSettings();
-        await api.updateBackendSettings({ ...current, decomm_authz_vlan: vlan, decomm_authz_acl: acl });
+        await api.updateBackendSettings({ ...current, decomm_set_authz: setAuthz, decomm_authz_vlan: vlan, decomm_authz_acl: acl });
         decommMsg.innerHTML = `<span style="color:var(--success,#166534);font-size:0.82em;">${t("settings.adv_decomm_saved")}</span>`;
         setTimeout(() => { decommMsg.innerHTML = ""; }, 3000);
       } catch (err) {
@@ -575,6 +630,40 @@ export function initAdvancedSection(container) {
 export async function initGuestRegSection(container) {
   const card    = container.querySelector("#guest-reg-card");
   if (!card) return;
+
+  // ── MnT-probe widget ──────────────────────────────────────────────────────
+  const probeBtn    = card.querySelector("#mnt-probe-btn");
+  const probeBadge  = card.querySelector("#mnt-probe-badge");
+  const probeDetail = card.querySelector("#mnt-probe-detail");
+  if (probeBtn && probeBadge) {
+    probeBtn.addEventListener("click", async () => {
+      probeBtn.disabled = true;
+      probeBtn.textContent = "Tester…";
+      probeBadge.style.color = "#64748b";
+      probeBadge.textContent = "Kalder ISE MnT…";
+      if (probeDetail) probeDetail.textContent = "";
+      try {
+        const r = await api.selfregisterMntProbe();
+        if (r.ok) {
+          const color = r.latency_ms > 5000 ? "#d97706" : r.latency_ms > 2000 ? "#f59e0b" : "#16a34a";
+          probeBadge.style.color = color;
+          probeBadge.textContent = `${r.latency_ms > 5000 ? "⚠️" : r.latency_ms > 2000 ? "⚠️" : "✅"} ${r.latency_ms} ms`;
+        } else {
+          probeBadge.style.color = "#dc2626";
+          probeBadge.textContent = `❌ Fejl`;
+        }
+        if (probeDetail) probeDetail.textContent = r.note + (r.error ? ` — ${r.error}` : "");
+      } catch (err) {
+        probeBadge.style.color = "#dc2626";
+        probeBadge.textContent = "❌ Fejl";
+        if (probeDetail) probeDetail.textContent = err.message;
+      } finally {
+        probeBtn.disabled = false;
+        probeBtn.textContent = "Test MnT igen";
+      }
+    });
+  }
+  // ─────────────────────────────────────────────────────────────────────────
 
   const form              = card.querySelector("#guest-reg-form");
   const enabledCb         = card.querySelector("#guest-reg-enabled");
@@ -599,6 +688,9 @@ export async function initGuestRegSection(container) {
   const expiryHourSel     = card.querySelector("#guest-reg-expiry-hour");
   const expiryMinSel      = card.querySelector("#guest-reg-expiry-min");
   const expiryCheckIntEl  = card.querySelector("#guest-reg-expiry-check-interval");
+  const expiryCoaCb       = card.querySelector("#guest-reg-expiry-coa-enabled");
+  const expiryCoaOptions  = card.querySelector("#guest-reg-expiry-coa-options");
+  const expiryCoaTypeSel  = card.querySelector("#guest-reg-expiry-coa-type");
 
   // Populate 24h time selects
   if (expiryHourSel && !expiryHourSel.options.length) {
@@ -661,6 +753,18 @@ export async function initGuestRegSection(container) {
   if (expiryCheckIntLbl) expiryCheckIntLbl.textContent = t("settings.guest_reg_expiry_check_interval_lbl");
   const expiryCheckIntHint = card.querySelector("#guest-reg-expiry-check-interval-hint");
   if (expiryCheckIntHint) expiryCheckIntHint.textContent = t("settings.guest_reg_expiry_check_interval_hint");
+  const expiryCoaEnabledLbl = card.querySelector("#guest-reg-expiry-coa-enabled-lbl");
+  if (expiryCoaEnabledLbl) expiryCoaEnabledLbl.textContent = t("settings.guest_reg_expiry_coa_enabled_lbl");
+  const expiryCoaEnabledHint = card.querySelector("#guest-reg-expiry-coa-enabled-hint");
+  if (expiryCoaEnabledHint) expiryCoaEnabledHint.textContent = t("settings.guest_reg_expiry_coa_enabled_hint");
+  const expiryCoaTypeLbl = card.querySelector("#guest-reg-expiry-coa-type-lbl");
+  if (expiryCoaTypeLbl) expiryCoaTypeLbl.textContent = t("settings.guest_reg_expiry_coa_type_lbl");
+  const expiryCoaTypeHint = card.querySelector("#guest-reg-expiry-coa-type-hint");
+  if (expiryCoaTypeHint) expiryCoaTypeHint.textContent = t("settings.guest_reg_expiry_coa_type_hint");
+  const expiryCoaOptReauth = card.querySelector("#guest-reg-expiry-coa-opt-reauth");
+  if (expiryCoaOptReauth) expiryCoaOptReauth.textContent = t("settings.guest_reg_expiry_coa_opt_reauth");
+  const expiryCoaOptDisconnect = card.querySelector("#guest-reg-expiry-coa-opt-disconnect");
+  if (expiryCoaOptDisconnect) expiryCoaOptDisconnect.textContent = t("settings.guest_reg_expiry_coa_opt_disconnect");
   const groupLbl = card.querySelector("#guest-reg-group-lbl");
   if (groupLbl) groupLbl.textContent = t("settings.guest_reg_group_lbl");
   const groupHint = card.querySelector("#guest-reg-group-hint");
@@ -685,7 +789,13 @@ export async function initGuestRegSection(container) {
     }
   }
 
+  function _syncCoaOptions() {
+    if (!expiryCoaOptions) return;
+    expiryCoaOptions.style.display = expiryCoaCb?.checked ? "" : "none";
+  }
+
   if (expiryCb)      expiryCb.addEventListener("change", _updateExpiryVisibility);
+  if (expiryCoaCb)   expiryCoaCb.addEventListener("change", _syncCoaOptions);
   if (expiryModeSel) expiryModeSel.addEventListener("change", _updateExpiryVisibility);
 
   // Vis URL
@@ -728,7 +838,10 @@ export async function initGuestRegSection(container) {
     if (expiryHourSel) expiryHourSel.value = tHH || "23";
     if (expiryMinSel)  expiryMinSel.value  = tMM || "59";
     if (expiryCheckIntEl) expiryCheckIntEl.value = s.guest_expiry_check_interval_seconds ?? 60;
+    if (expiryCoaCb) expiryCoaCb.checked = !!s.selfregister_expiry_coa_enabled;
+    if (expiryCoaTypeSel) expiryCoaTypeSel.value = s.selfregister_expiry_coa_type || "reauth";
     _updateExpiryVisibility();
+    _syncCoaOptions();
     if (redirectEl) redirectEl.value = s.selfregister_redirect_url || "";
     if (termsEl) termsEl.value = s.selfregister_terms || "";
 
@@ -776,6 +889,8 @@ export async function initGuestRegSection(container) {
           selfregister_expiry_date:            expiryDateEl?.value || "",
           selfregister_expiry_time:            `${expiryHH}:${expiryMM}`,
           guest_expiry_check_interval_seconds: parseFloat(expiryCheckIntEl?.value) || 60,
+          selfregister_expiry_coa_enabled:     expiryCoaCb?.checked ?? false,
+          selfregister_expiry_coa_type:        expiryCoaTypeSel?.value || "reauth",
           selfregister_authz_vlan:             vlanSel?.value || "",
           selfregister_authz_acl:              aclSel?.value || "",
           selfregister_redirect_url:           redirectEl?.value?.trim() || "",

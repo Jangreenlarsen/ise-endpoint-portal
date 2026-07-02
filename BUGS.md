@@ -4,6 +4,92 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 6.18.0711] 2026-07-02 — Stale idle-forbindelser → circuit breaker låser ved portal-inaktivitet
+
+- **Symptom:** Når ingen brugere er logget ind på portalen i >30 min (f.eks. om natten), fejler alle ISE-kald med `ISE API 0: transport error: ` (tom fejlbesked) og circuit breakeren åbner. Half-open proben genbruger samme stale forbindelser og fejler → CB forbliver OPEN.
+- **Root cause:** `httpx.AsyncClient` har ingen `keepalive_expiry` konfigureret. ISE (ERS/Tomcat) lukker idle TCP-forbindelser efter ~25-30 min. httpx ved det ikke og forsøger at genbruge lukkede forbindelser ved næste request. Tom fejlbesked skyldes at `str(httpx.RemoteProtocolError)` kan være tom — type + idle-tid loggedes ikke.
+- **Løsning (v6.18.0711):** Sat `keepalive_expiry=30.0` (konfigurerbar via `ise_keepalive_expiry_s`) på `httpx.Limits` — portalen lukker idle-forbindelser inden ISE gør det. Udvidet logning: idle-tid pr. request, exception-type ved transport-fejl, advarsel ved lange idle-pauser.
+- **Berørte filer:** `backend/app/ise/client.py`
+
+## [OPEN → MONITORED 6.16.0706] 2026-07-01 — ISE REST API-bruger bliver disabled
+
+- **Symptom:** Portalen mister ISE-forbindelsen periodisk — alle ISE-kald returnerer 401. ISE-admin kan se at API-brugerkontoen er disabled.
+- **Root cause:** ISE's "Account Disable Policy" deaktiverer konti efter N dages inaktivitet — ISE tæller sandsynligvis kun GUI-logins som "aktivitet", ikke API Basic Auth-kald. Dermed ses API-brugeren som "inaktiv" selv om portalen kalder ISE hundredvis af gange dagligt.
+- **Status:** Monitorering implementeret (v6.16.0706). Portal viser nu rød alarm i Dashboard ved 3+ consecutive 401s med præcise trin til genaktivering. Langsigtet løsning er at slå Account Disable Policy fra for API-brugeren i ISE GUI.
+- **Berørte filer (monitoring):** `backend/app/ise/client.py`, `backend/app/core/alert_store.py`, `backend/app/api/dashboard.py`, `frontend/js/views/dashboard.js`, `frontend/js/i18n.js`
+
+## [FIXED 6.15.0702] 2026-06-17 — Cache drip-loop låser på fejlende endpoint + for langsom sprint
+
+- **Symptom:** Efter noget tid indeholder cachen kun gammel data (stale entries med forældet ISE-info) — selv om portalen er i drift og cache-health-dot viser aktivitet. Data opdateres kun når bruger trykker "Refresh from ISE".
+- **Root cause 1 (primær — drip-loop fastlåst):** `_drip_loop()` vælger altid `get_oldest_id()` (entry med ældst `fetched_at`). Hvis `_fetch_endpoint_detail()` fejler for dette endpoint, fanges exception'en, men `fetched_at` opdateres **aldrig** → næste iteration returnerer præcis samme endpoint → permanent loop over ét endpoint, alle andre refreshes aldrig. Alle 99 øvrige entries forbliver stale indtil `_full_scan()` kører om 30 min (skip_threshold=1800s).
+- **Root cause 2 (sekundær — sprint for langsom):** Sprint-formlen `(interval/4)/stale_count` giver `drip_sleep=4.5s` for 100 endpoints. Inkl. ISE fetch (~1s) = 5.5s/endpoint → fuld runde = 550s >> TTL=300s. Drip-loopen kan aldrig holde alle entries friske — der vil altid være store dele af cachen stale.
+- **Fix 1:** I exception-handler: sæt `entry.fetched_at = time.time() - ttl + 60` (back-off 60s). Drip-loopen vælger nu et andet endpoint næste iteration. Log-niveau hævet fra DEBUG til WARNING.
+- **Fix 2:** Sprint-formel ændret til `ttl / total / 2`: giver `drip_sleep=1.5s` for 100 endpoints, cycle ≈ 250s < TTL=300s → alle entries holdes friske.
+- **Berørt fil:** `backend/app/services/cache_prewarm.py`
+
+## [FIXED 6.14.0700] 2026-06-17 — Browse reload tager ~30 sek efter 30 min fravær
+
+- **Symptom:** "Reload"-knap i Browse/Edit tager ca. 30 sekunder efter 30 minutters fravær. Normalt bør reload være <200ms da data serveres fra cache.
+- **Root cause:** `load()` i `browse-table.js` kalder `Promise.all()` med 9 parallelle API-kald — herunder `api.listDacls()`. `DaclService.list_summaries()` havde **ingen cache** og ramte ISE ERS/Open API direkte ved hvert kald. Med `cache_ttl_seconds=300s` er entries stale efter 5 min, og ISE kan være langsom (idle connection re-establish + SSL handshake + rate limiting) — typisk 5-30s. `Promise.all()` venter på det langsomste kald inden browse-tabellen renderes.
+- **Fix:** SWR-cache i `dacl_service.py`: første kald fetcher fra ISE og cacher 5 min (fresh), herefter serveres fra cache med SWR-baggrunds-refresh op til 150 min. Cache invalideres ved create/update/delete. Concurrent fetches coalesces via inflight asyncio.Task.
+- **Berørte filer:** `backend/app/services/dacl_service.py`
+
+## [FIXED 6.14.0699] 2026-06-17 — Browse reload langsom + "operation timed out" fejl
+
+- **Symptom:** Efter at cachen er populeret er reload hurtigt. Så snart ét endpoint gemmes (eller entries bliver stale efter TTL), er næste reload langsom igen. Hyppige "The operation timed out" fejl i Browse/Edit.
+- **Root cause:** `_list_all_from_cache()` og `_list_from_roles_index()` kaldte `asyncio.gather()` med `get_endpoint()` for hvert cachet endpoint (N=500+). For stale entries (age > TTL = 5 min) spawner `get_detail()` én ISE-baggrundstask per entry via `_get_or_create_inflight`. Resultatet: op til N simultane ISE-requests fra list-view alene, på toppen af pre-warm-drip. ISE overbelastes → timeout-fejl. Ét save → ét invalideret entry → resten af entries er stadig stale → næste reload spawner N-1 ISE-tasks igen.
+- **Fix:** `_list_all_from_cache` og `_list_from_roles_index` bruger nu `cache.snapshot_all_details()` / `cache.snapshot_details_for_roles()` — ren synkron O(N) dict-read, ingen asyncio.gather, ingen ISE-kald, ingen baggrundstasks. Pre-warm drip-loop håndterer gradvis refresh. Ny helper `_build_detail_page()` anvender PSK-masking og stale-flag.
+- **Berørte filer:** `backend/app/core/endpoint_cache.py`, `backend/app/services/endpoint_service.py`
+
+## [FIXED 6.14.0697] 2026-06-17 — Browse viser tom liste efter portal-genstart (disk cache ikke vist øjeblikkeligt)
+
+- **Symptom:** Browse/Edit viser ingen endpoints i op til 15-30 sekunder efter portal-genstart (eller lang tids fravær). Derefter dukker alle endpoints op på én gang.
+- **Root cause:** `endpoint_cache.get_detail()`: disk-loaded entries (loaded fra disk ved opstart) gennemgår SWR-tjekket `_stale_servable()` som returnerer `age <= ttl * 30`. Hvis disk-cachen er gemt natten før er entries 8+ timer gamle → `age > ttl * 30` (2,5 timer med default ttl=300s) → ikke SWR-kandidater → falder igennem til **synkron ISE-fetch**. `_list_all_from_cache` awaiter alle N fetches med concurrency=8 → 500 endpoints * 300ms / 8 = 18+ sekunder inden Browse svarer.
+- **Fix:** Disk-loaded entries har et dedikeret branch i `get_detail()` der altid serverer disk-værdien øjeblikkeligt (stale, `cache_stale=True`) og starter en background-refresh — uanset alder. Pre-warm-workeren opdaterer alle disk-entries i baggrunden alligevel.
+- **Berørte filer:** `backend/app/core/endpoint_cache.py`
+
+## [FIXED 6.14.0696] 2026-06-17 — ISE låser REST API-kontoen ved gentagne auth-fejl
+
+- **Symptom:** ISE deaktiverer REST API-brugerkontoen — portal viser 401 Auth-fejl i diagnostics. Efter lang tids fravær vises Browse tom i op til 1-2 minutter (cache pre-warm kørende).
+- **Root cause:** I `client.py` kaldes `self._cb.record_success()` for **alle** HTTP-responses — inkl. 401. Det betyder at repeated 401-fejl aldrig åbner circuit breakeren, og pre-warmen fortsætter med at sende ISE-requests med fejlagtige credentials. ISE's "Disable account after N consecutive failed logins" policy (typisk 3-5) aktiveres og låser kontoen. Circuit breakeren er fuldstændig blind for auth-fejl.
+- **Fix:** 401-responses kalder nu `record_failure()` i stedet for `record_success()`. En separat tæller (`_consecutive_401s`) spoer på hinanden følgende auth-fejl. 1. fejl: WARNING i log. 2.+ fejl: ERROR med instruktion om at tjekke ISE kontolås. Succesfulde requests (og andre 4xx/5xx) nulstiller tælleren. Efter `failure_threshold` (default 5) på hinanden følgende 401er åbner circuit breakeren og blokerer yderligere ISE-kald i `recovery_timeout` sekunder — ISE kontoen kan dermed ikke nå lockout-grænsen.
+- **Berørte filer:** `backend/app/ise/client.py`
+
+## [FIXED 6.14.0695] 2026-06-15 — VLAN (og andre CA-felter) opdateres ikke i tabellen efter save
+
+- **Symptom:** Efter at have gemt et endpoint i Endpoint Details syntes VLAN-værdien (og andre custom attributes) at forblive på den gamle værdi i Browse-tabellen.
+- **Root cause:** `api.getEndpoint()` returnerer nu `{ data, totalMs, fromCache, cacheAge }` (ændret til `requestTimed` i v6.14.0689). Men `refreshRows()` i `browse-table.js` behandlede returværdien direkte som et `EndpointDetail`-objekt. `r.id` var `undefined` → rækker i `state.allRows` blev aldrig opdateret → tabel viste gamle værdier.
+- **Fix:** `api.getEndpoint(id).then((r) => r?.data ?? r)` — udpakker `.data` fra wrapper-objektet, med fallback for backward-compat.
+- **Berørte filer:** `frontend/js/views/browse-table.js`
+
+## [FIXED 6.14.0694] 2026-06-15 — Send CoA on expiry gemmes ikke i Settings
+
+- **Symptom:** "Send CoA on expiry" og CoA-type-valget i Guest Registration-indstillingerne blev ikke gemt — checkbox forblev altid `false` og indstillingen virkede ikke ved guest-udløb.
+- **Root cause:** `settings_service.py` — `get_backend_settings()` inkluderede ikke `selfregister_expiry_coa_enabled`/`selfregister_expiry_coa_type` i `BackendSettingsResponse`. `update_backend_settings()` inkluderede dem heller ikke i `overrides.update()`-dict'en. Felterne eksisterede i schema og config men var aldrig koblet til læse/skrive-flowet.
+- **Fix:** Begge felter tilføjet til `get_backend_settings()` og `update_backend_settings()`.
+- **Berørte filer:** `backend/app/services/settings_service.py`
+
+## [FIXED 6.14.0693] 2026-06-15 — Guest selvregistrering satte ikke endpoint-gruppen ved gen-registrering
+
+- **Symptom:** En guest der registrerede sig (første gang) blev placeret korrekt i den konfigurerede endpoint identity group. Men hvis samme MAC registrerede sig igen (gen-registrering), forblev gruppen uændret — gæsten kunne ende i en anden gruppe end den der er valgt i indstillingerne.
+- **Root cause:** I upsert-logikken i `selfregister.py`: ved `update` (eksisterende endpoint) manglede `group_id` i `EndpointUpdate`. `None` → `endpoints.update()` spring `groupId` i ISE over (korrekt adfærd for admin-edit, forkert for selfregister).
+- **Fix:** `group_id=s.selfregister_group_id or None` tilføjet til `EndpointUpdate` i update-stien i `selfregister.py`.
+- **Berørte filer:** `backend/app/api/selfregister.py`
+
+## [FIXED 6.13.0685] 2026-06-14 — Aktiv/Inaktiv-knapper mangler i Endpoint Details
+
+- **Symptom:** I Endpoint Details modal var der ingen tydelig/synlig måde at sætte aktiv/inaktiv-status. Knapperne "Sæt Aktiv"/"Sæt Inaktiv" var gemt i bunden af modalens footer og kun vist konditionelt — svære at finde.
+- **Root cause:** `HypervisionActive`-feltet var ikke en del af det redigerbare formular-grid — kun eksponeret via skjulte action-knapper i modal-actions-baren.
+- **Fix:** `HypervisionActive` tilføjet som synlig `<select>`-dropdown direkte i formular-griddet (efter Description, før Type). Dropdownen er altid synlig og gemmes via det normale Gem-flow. Derudover paralleliseret `getEndpoint`+`listCustomAttributes`+`listDacls` i `openDetail` for hurtigere indlæsning.
+- **Berørte filer:** `frontend/js/views/browse.js`, `frontend/js/views/browse-detail.js`, `frontend/js/i18n.js`
+
+## [FIXED 6.8.0669] 2026-06-14 — Portal kan crashe efter OTA-opdatering (ingen pre-flight tjek)
+
+- **Symptom:** Portal crasher (crash-loop) efter OTA git pull hvis ny kode har importfejl eller manglende afhængighed. Kræved desuden manuel klik på "Genstart server".
+- **Root cause:** `git_pull()` kørte ikke verificering af ny kode inden genstart — `os._exit(0)` med defekt kode → systemd genstarter → crash → loop.
+- **Fix:** `_preflight_check()` kører `python -c "from app.main import app"` som subprocess. Hvis tjek fejler → ingen genstart (fejl vises i UI). Hvis tjek OK → auto-genstart om 3s. Frontend poller `/api/health` og viser "Server oppe igen" med genindlæs-link.
+- **Berørte filer:** `backend/app/services/update_service.py`, `frontend/js/views/settings/section-update.js`
+
 ## [FIXED 6.7.0666] 2026-06-14 — Portal crasher ved opstart på frisk OVA-install (manglende h2-pakke)
 
 - **Symptom:** Portalen crashede ved opstart med `ImportError` fordi `httpx.AsyncClient(http2=True)` kræver h2-pakken, som ikke er installeret på friske OVA-installs.

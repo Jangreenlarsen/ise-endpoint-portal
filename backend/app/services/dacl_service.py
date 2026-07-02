@@ -13,8 +13,10 @@ Empty lines are ignored.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
+import time
 from typing import Iterable
 
 from app.core import audit_store, config
@@ -31,6 +33,26 @@ from app.schemas.dacl import (
 )
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Module-level DACL list cache (SWR — serve stale, refresh in background)
+# ---------------------------------------------------------------------------
+_DACL_TTL = 300.0           # 5 min fresh
+_DACL_SWR_MAX = 300.0 * 30  # 150 min SWR window
+
+_dacl_cache: list[DaclSummary] | None = None
+_dacl_cached_at: float = 0.0
+_dacl_inflight: asyncio.Task | None = None
+
+
+def _dacl_age() -> float:
+    return time.time() - _dacl_cached_at
+
+
+def invalidate_dacl_list_cache() -> None:
+    global _dacl_cache, _dacl_cached_at
+    _dacl_cache = None
+    _dacl_cached_at = 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -238,8 +260,34 @@ class DaclService:
             self.repo = IseDaclRepository(client)
 
     async def list_summaries(self) -> list[DaclSummary]:
+        global _dacl_cache, _dacl_cached_at, _dacl_inflight
+        age = _dacl_age()
+
+        if _dacl_cache is not None and age <= _DACL_TTL:
+            return _dacl_cache
+
+        if _dacl_cache is not None and age <= _DACL_SWR_MAX:
+            # SWR: serve stale immediately, refresh in background
+            if _dacl_inflight is None or _dacl_inflight.done():
+                _dacl_inflight = asyncio.create_task(self._fetch_and_cache_dacls())
+                _dacl_inflight.add_done_callback(
+                    lambda t: t.exception() if not t.cancelled() else None
+                )
+            return _dacl_cache
+
+        # Miss: coalesce concurrent requests
+        if _dacl_inflight is not None and not _dacl_inflight.done():
+            return await _dacl_inflight
+        _dacl_inflight = asyncio.create_task(self._fetch_and_cache_dacls())
+        _dacl_inflight.add_done_callback(
+            lambda t: t.exception() if not t.cancelled() else None
+        )
+        return await _dacl_inflight
+
+    async def _fetch_and_cache_dacls(self) -> list[DaclSummary]:
+        global _dacl_cache, _dacl_cached_at
         raw = await self.repo.list_all()
-        return [
+        result = [
             DaclSummary(
                 id=r.get("id", ""),
                 name=r.get("name", ""),
@@ -248,6 +296,10 @@ class DaclService:
             for r in raw
             if r.get("id")
         ]
+        _dacl_cache = result
+        _dacl_cached_at = time.time()
+        logger.debug("dacl cache: refreshed %d entries", len(result))
+        return result
 
     async def get(self, dacl_id: str) -> DaclDetail:
         raw = await self.repo.get(dacl_id)
@@ -261,6 +313,7 @@ class DaclService:
             dacl=req.dacl,
             dacl_type=req.dacl_type,
         )
+        invalidate_dacl_list_cache()
         after_payload = {
             "name": req.name,
             "description": req.description,
@@ -283,6 +336,7 @@ class DaclService:
     async def update(self, dacl_id: str, req: UpdateDaclRequest) -> DaclDetail:
         if req.dacl_type is not None:
             _check_type(req.dacl_type)
+        invalidate_dacl_list_cache()
         before_detail = await self.get(dacl_id)
         # ISE kræver Name i PUT-body som mandatory field, også selv om navnet
         # ikke ændres. Hent eksisterende navn hvis frontend ikke sendte et.
@@ -307,6 +361,7 @@ class DaclService:
         return after_detail
 
     async def delete(self, dacl_id: str) -> None:
+        invalidate_dacl_list_cache()
         before = None
         try:
             before = (await self.get(dacl_id)).model_dump()

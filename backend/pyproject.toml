@@ -16,6 +16,7 @@ dependencies = [
     "tenacity>=8.2.0",
     "prometheus-client>=0.20.0",
     "tacacs-plus>=2.6",
+    "psutil>=5.9.0",
 ]
 
 [project.optional-dependencies]

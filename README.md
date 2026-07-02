@@ -4,7 +4,7 @@
 
 Web-baseret administrationssystem til Cisco ISE 3.4 endpoint-management via REST API og pxGrid 2.0.
 
-**Version 5.11.6 build 0550** — [Fuld manual](docs/INDEX.md) — [Changelog](CHANGELOG.md) — [Release Notes](RELEASE_NOTES.md)
+**Version 6.11 build 0681** — [Fuld manual](docs/INDEX.md) — [Changelog](CHANGELOG.md) — [Release Notes](RELEASE_NOTES.md)
 
 Copyright (C) 2026 Jan Green Larsen — udgivet under [GNU Affero General Public License v3](LICENSE)
 
@@ -85,12 +85,19 @@ De to protokoller supplerer hinanden: REST til management, pxGrid til observabil
 - Tillidsproxy-liste — X-Forwarded-For til rate limiting kun fra konfigurerede proxy-IPs
 - ISE CA-bundle — mulighed for at angive eget root-CA PEM til TLS-verifikation mod ISE
 
+### Dashboard
+- **System sundhed** — kompakt sundhedskortet i højre kolonne opdateres hvert 30 s; 7 hurtige tjek (HTTP/2, nmap, disk, ISE-config, cache, circuit breaker, pxGrid) med farvekodning grøn/orange/rød; admin-link til fuld diagnostik
+- **CPU / RAM / Disk ressource-bars** — realtids system-ressource-forbrug som progress-bars i system-kortet; grøn < 75 %, orange 75-90 %, rød > 90 %; hentes via `psutil` hvert 30 s
+
 ### Administration
 - Downloadable ACL editor med live Cisco IOS ACL syntax-validering
 - Custom attribute administration — værdier, PlatformType-mapping, CoA-binding
 - Audit-log — alle ændringer logges med bruger, tidsstempel og felt-diff; FTS5 trigram-søgning
 - Portal system-opdatering — admin uploader ZIP-pakke direkte i portalen
-- **GitHub-opdateringscheck** — portalen tjekker automatisk GitHub for nye versioner og notificerer admin; git pull håndterer ejerskabs- og rettighedsproblemer automatisk
+- **GitHub OTA-opdatering** — git pull direkte fra portalen; **pre-flight import-tjek** verificerer at ny kode ikke crasher inden genstart; auto-genstart efter 3 s hvis pre-flight OK; browser poller og melder "Server er oppe igen ✅" ved genoprettelse
+- **Systemdiagnostik** — komplet sundhedstjek on-demand (12 tjek: Python-version, venv, afhængigheder, HTTP/2, nmap, diskplads, ISE ERS-forbindelses­test med latens, cache, circuit breaker, pxGrid-worker, git); resultater med ✅/⚠️/❌
+- **Funktionsgennemgang** — to-faset portal-audit under Indstillinger → System Opdatering: Fase 1 (statisk < 1 s): config, databaser, certifikater, log-mappe; Fase 2 (live 5-15 s): ERS, grupper, custom attributes, MnT-sessioner, OpenAPI, nmap-test, GitHub-forbindelse, cache og pxGrid
+- **CLI Recovery Tool** (`backend/recover.py`) — standalone Python-script til adgangskode­gendannelse via SSH uden kørende server (`python3 backend/recover.py`); nulstil password, lås konto op, opret nødadmin, skift rolle, aktivér/deaktivér konto
 - Brugervenlige fejlbeskeder — ISE-utilgængelighed vises med klar dansk tekst og Prøv igen-knap
 
 ---
@@ -149,5 +156,5 @@ python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --app-dir backend
 
 ## Teknologier
 
-Backend: Python 3.11+, FastAPI, httpx (async), Pydantic v2, PyJWT, bcrypt, tacacs-plus.
+Backend: Python 3.11+, FastAPI, httpx (async), Pydantic v2, tacacs-plus, psutil.
 Frontend: Vanilla HTML/CSS/JS — ingen build-trin, ingen eksterne afhængigheder.

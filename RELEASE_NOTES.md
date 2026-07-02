@@ -4,6 +4,589 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.20.0716] — 2026-07-02 — feat: Log — Claude-analyse eksport og .json download
+
+> **Build:** 0716
+
+Settings → Log eksport-toolbar har nu tre knapper:
+
+- **Download .log** — rå logfiler (uændret)
+- **Download .json** — alle log-entries som proper JSON-array (var `.ndjson`)
+- **🤖 Claude-analyse (.json)** — kondenseret JSON med statistik + seneste 300 WARNING/ERROR/CRITICAL entries — upload direkte på claude.ai for hurtigt overblik over systemets tilstand
+
+---
+
+## [6.19.0715] — 2026-07-02 — feat: Settings/Endpoint cache — tier-fordeling og evictions
+
+> **Build:** 0715
+
+Settings → Endpoint cache live-statistik viser nu:
+
+- **Tier-fordeling (EMA)**: Farvet bar og procentfordeling — 🔥 Hot / ~ Warm / ❄ Cold
+- **Evictions**: Rød tæller hvis cache har smidt entries ud p.g.a. pladsmangel
+
+Derudover er `renderCacheStats()`-funktionen rewritet korrekt efter en syntaksbrud fra ufuldstændig redigering.
+
+---
+
+## [6.19.0714] — 2026-07-02 — feat: Log-GUI — eksport og analyse-rapport
+
+> **Build:** 0714
+
+Log-sektionen (kun admin) har nu tre nye knapper under toolbar:
+
+**⬇ Download .log** / **⬇ Download .ndjson**
+Downloader alle 4 roterede logfiler kombineret i kronologisk rækkefølge. `.log` har en læsbar header med version og URL; `.ndjson` er JSON-per-linje til maskinlæsning og AI-analyse. Download bruger browser-cookie automatisk — ingen manuel token-håndtering.
+
+**📊 Analyse-rapport**
+Toggle-knap der henter og viser en aggregeret baseline-rapport direkte i log-sektionen:
+- Version, URL, tidsspænd og filer analyseret
+- Level-fordeling (DEBUG/INFO/WARNING/ERROR/CRITICAL) med farvede pills
+- Circuit breaker: antal OPEN/CLOSE-events med tæller
+- Transport-fejl: exception-type, idle-tid (avg/max), antal over 300s og 1800s
+- Top-10 hyppigste normaliserede fejlbeskeder med antal
+- Startup-events: versionhistorik direkte fra loggen
+
+---
+
+## [6.19.0713] — 2026-07-02 — feat: Log-eksport og baseline-analyse
+
+> **Build:** 0713
+
+### Nye funktioner
+
+**Udvidet startup-log:**
+Portalen logger nu en struktureret banner ved hver opstart:
+```
+=== HyperVision ISE Portal v6.19.0713 START | url=https://hypervision.ll.lan | python=3.12.x | pid=1234 ===
+```
+Gør det trivielt at identificere version og system i log-eksporter, selv når flere portaler kører i samme analyse.
+
+**GET /api/logs/export** (kun admin):
+Download alle 4 roterede logfiler kombineret som ét fil. Understøtter to formater:
+- `?format=text` — rå loglinjer med version/URL-header øverst (standard)
+- `?format=ndjson` — én JSON-objekt per linje, inkl. metadata-record (egnet til maskinlæsning og AI-analyse)
+
+Filnavn: `hypervision-6.19.0713-20260702-1200.log`
+
+**GET /api/logs/summary** (kun admin):
+Aggregeret JSON-rapport til baseline-analyse og kvalitetsvurdering. Inkluderer:
+- Level-fordeling og tidsspænd på tværs af alle filer
+- Top-30 normaliserede fejlbeskeder (UUIDs/IPs abstraheret)
+- Circuit breaker events med tidsstempler
+- Transport-fejl-statistik: exception-type, idle-tid (min/max/avg + over-300s/1800s)
+- ISE request outcomes (2xx/4xx/5xx/error)
+- Drip-effektivitet (refreshed vs. skipped)
+- Startup-events med version (versionhistorik direkte fra loggen)
+- Per-time breakdown (seneste 48 timer)
+
+---
+
+## [6.19.0712] — 2026-07-02 — feat: Cache/connection robusthed — 5 forbedringer
+
+> **Build:** 0712
+
+### Forbedringer
+
+**A — Drip-loop er nu CB-aware:**
+Drip-loop pauser automatisk når circuit breaker er OPEN i stedet for at sende én WARNING per iteration. Eliminerer ~36.000 overflødige WARNING-logs/time ved ISE-nedetid. Logger én gang ved åbning og én gang ved genoprettelse.
+
+**B — Alert ved manglende ISE-sync:**
+Portalen advarer nu aktivt (orange alert i øverste banner) hvis den ikke har synkroniseret med ISE i over 1 time. Alerten ryddes automatisk ved næste vellykkede sync.
+
+**C — ISE-sync-alder i Dashboard:**
+Cache-kvalitetskortet viser nu "Sidst ISE-sync: X siden" med farvet indikator — grøn (<30 min), orange (<1 time), rød (>1 time).
+
+**D — Billig ISE-probe:**
+Når drip-loop vågner efter CB-pause, sendes nu et let `GET /ers/config/endpointgroup?size=1` som probe frem for en tung endpoint-detail-fetch. Reducerer belastning på ISE ved CB-genoprettelse.
+
+**E — pxGrid STOMP timeout øget:**
+Default recv-timeout øget fra 600s til 3600s. Forhindrer falske disconnects i miljøer med lange rolige perioder på pxGrid-topic'et.
+
+---
+
+## [6.18.0711] — 2026-07-02 — fix: Circuit breaker låser ved portal-inaktivitet
+
+> **Build:** 0711
+
+### Problem: Portal kom tilbage med åben circuit breaker efter idle-periode
+
+ISE (ERS/Tomcat) lukker idle TCP-forbindelser internt. Portalen vidste ikke om dette og forsøgte at genbruge lukkede forbindelser ved næste prewarm-scan → transport error (tom fejlbesked) → circuit breaker åbnede → halvt-åbne probes fejlede på samme stale forbindelser → portalen forblev afskåret fra ISE indtil manuel genstart.
+
+**Symptom i loggen:** `ISE API 0: transport error: ` (tom), efterfulgt af `circuit breaker: OPEN (half-open probe failed)` hvert 30. minut.
+
+### Løsning
+
+`keepalive_expiry=30s` sat på httpx's connection pool: portalen lukker idle-forbindelser FØR ISE gør det. Ny prewarm-scan åbner altid friske forbindelser.
+
+Konfigurerbar via `ise_keepalive_expiry_s` i `.env` (default 30s).
+
+### Bedre logning
+
+Fremover vises:
+- `ISE klient: første request efter Xs inaktivitet` — tydeligt hvornår en lang idle-pause bryder mønsteret
+- `transport error: RemoteProtocolError: ...` i stedet for tom fejlbesked
+- `[idle_before=Xs]` på alle transport-fejl
+
+## [6.18.0710] — 2026-07-01 — feat: Lifecycle — søg og sortér alle kolonner
+
+> **Build:** 0710
+
+### Nyt: Søgning og sortering i Lifecycle-tabellen
+
+**Søgefelt** filtrerer live på tværs af MAC-adresse, endpoint-gruppe, profil og ejer med 250ms debounce. Aktiv filtrering viser `n / total`-tæller i controls-linjen.
+
+**Alle kolonner er nu klikbare** med tydelige sorterings-indikatorer:
+
+| Kolonne | Default ved første klik |
+|---|---|
+| MAC-adresse | A → Z |
+| Endpoint-gruppe | A → Z |
+| Profil | A → Z |
+| Ejer | A → Z |
+| **Første gang set** | Nyeste først (↓) |
+| Cache-alder | Yngste først (↓) |
+
+Klik igen på aktiv kolonne for at vende retning (↑/↓). Inaktive kolonner viser ↕.
+
+Implementeret client-side: data hentes én gang; sort og søgning opdaterer kun `<tbody>` — ingen re-fetch mod ISE.
+
+## [6.18.0709] — 2026-07-01 — feat: Cache kvalitetsmetrics i Dashboard
+
+> **Build:** 0709
+
+### Nyt: Cache kvalitet-kort i Dashboard
+
+Dashboardet viser nu et dedikeret **Cache kvalitet**-kort med:
+
+| Metric | Hvad det viser |
+|---|---|
+| **Tier-fordeling (EMA)** | Stacked bar: 🔥 hot / warm / ❄ cold — med antal og % |
+| **Staleness-bar** | Fresh (grøn) / Stale (gul) / Meget stale (rød) + samlet stale-% |
+| **Entry-aldre** | Gennemsnitlig og ældste entry-alder |
+| **Cache RAM** | Progressbar med forbrug vs. max (vises kun hvis `cache_max_memory_mb` er sat) |
+| **Drip-effektivitet** | % af drip-iterationer der resulterede i et refresh (refreshed / refreshed+skipped) |
+| **Inflight / Hot-queue** | Antal igangværende ISE-fetches og ventende prioriterede endpoints |
+| **Evictions** | Samlet antal entries tvangsfjernel pga. memory/entry-limit |
+
+Kortets accent-farve afspejler cache-sundhed: blå (OK) → orange (>40% stale) → rød (>10% meget stale). Skjules automatisk når cachen er tom (f.eks. ved opstart inden første scan).
+
+## [6.17.0708] — 2026-07-01 — fix: 2 cache-bugs fundet i to-fase test
+
+> **Build:** 0708
+
+Gennemgribende to-fase analyse (statisk + scenarie-sporing) af cache-motoren afslørede 2 bugs:
+
+**Bug 1 — Hot-queue dedup låste sig selv fast (`_drain_hot_queue`)**  
+Efter en hot-queue flush blev IDs ikke fjernet fra `_hot_set`. Resultat: alle efterfølgende `prioritize(id)`-kald for de drænede IDs blev stiltiende ignoreret — brugere der åbner edit-modal to gange for samme endpoint efter en full-scan fik ikke prioriteret refresh den anden gang.
+
+**Bug 2 — `invalidate_all()` mistede EMA-historik**  
+`invalidate_all()` kaldte `dict.clear()` uden at gemme `entry.change_ema` til `_tier_emas` først. Konsekvens: 3-tier-systemet reset til "alle warm" efter enhver fuld cache-invalidation (f.eks. settings-reload), og hot/cold-klassificeringer måtte akkumuleres fra nul igen.
+
+## [6.17.0707] — 2026-07-01 — feat: Cache-motor refaktorering (13 forbedringer)
+
+> **Build:** 0707
+
+### 13 korrekthed- og ydelsesforbedringer i cache-motoren
+
+To-fase analyse af cache-infrastrukturen (`endpoint_cache.py` + `cache_prewarm.py`) afslørede 13 bugs og ydelsesproblemer — alle er nu rettet.
+
+**Vigtigste forbedringer:**
+
+- **Hukommelseslækage elimineret:** `_tier_emas`-dict voksede ubegrænset ved endpoint-slettning. `forget_tier_ema()` rydder nu EMA-historik for permanent slettede endpoints.
+- **Thread-safety i disk-save:** `save_to_disk_async()` snapshottede dict under serialisering — risiko for race condition. Ny `_save_snapshot()` metode snapper data på event-loop, serialiserer i thread-pool.
+- **Korrekt eviction-strategi:** `_evict_oldest()` brugte FIFO (insertion order). Rettede til LRU via `fetched_at`.
+- **Tier-aware freshness:** `get_detail()` returnerer nu stale-status baseret på `effective_ttl` (hot endpoints er stale hurtigere og refreshes hurtigere).
+- **O(n²) → O(n) hot-queue drain:** `list.remove()` per hot-element → set-subtraktion.
+- **Tier-justeret full-scan skip:** Hot endpoints springes sjældnere over i fuld-scan (lavere `effective_skip_threshold`).
+- **Sprint skalerer til 10K+ endpoints:** `batch_size = min(max(3, total//200), 20)` frem for hardkodet 3.
+- **tier_emas persisteres til disk:** Overlever server-genstart (DISK_CACHE_VERSION 3→4).
+- **Dead code fjernet:** `_fetch_all_ids()` importerede `get_ise_client` uden at bruge den.
+- **`stats()` single O(n) pass:** Var 3 separate traversals.
+
+---
+
+## [6.16.0706] — 2026-07-01 — fix: ISE API-bruger lockout-detektion
+
+> **Build:** 0706
+
+### Problem: ISE API-brugeren disabled uden advarsel
+
+ISE's "Account Disable Policy" deaktiverer konti efter N dages inaktivitet. ISE tæller kun GUI-logins — ikke API Basic Auth-kald — som aktivitet. Portalen laver hundredvis af API-kald dagligt, men API-brugeren ses som "inaktiv" og disables automatisk.
+
+### Løsning: Lockout-alarm i Dashboard
+
+Portalen registrerer nu 401 Unauthorized-sekvenser fra ISE og viser en rød alarm:
+
+**Nivauer:**
+- 1-2 × 401 i træk → gul advarsel: "ISE authentication fejler"
+- 3+ × 401 i træk → rød alarm: "ISE API-bruger låst ude" med trin-for-trin vejledning
+
+**Alarm viser præcis hvad man skal gøre:**
+1. ISE GUI → Administration → System → Admin Access → Administrators → Admin Users → genaktivér brugeren
+2. ISE GUI → Authentication → Account Disable Policy → sæt "inactivity disable" til 0 (aldrig)
+
+Alarmen forsvinder automatisk når ISE godkender igen (ingen manuel dismiss nødvendig).
+
+## [6.16.0705] — 2026-07-01 — feat: Intelligent 3-tier cache prioritering
+
+> **Build:** 0705
+
+### Problem: ISE API-bruger disabled af for mange kald
+
+ISE REST API-brugeren blev løbende låst ude fordi drip-loopen behandlede alle endpoints ens — et endpoint med daglige registreringsændringer fik nøjagtig samme antal ISE-kald som et endpoint der aldrig ændres.
+
+### Løsning: EMA-baseret tier-system
+
+Hvert endpoint tildeles nu automatisk et tier baseret på historisk ændringsfrekvens (Exponential Moving Average med alpha=0.20, dvs. ~5 refreshes til konvergens):
+
+| Tier | EMA-grænse | Effective TTL | Konsekvens |
+|------|-----------|---------------|------------|
+| 🔴 Hot | ≥ 0.30 | × 0.5 | Refreshes dobbelt så hyppigt |
+| 🟡 Warm | 0.05–0.30 | × 1.0 | Normal drip-frekvens |
+| 🔵 Cold | < 0.05 | × 3.0 | Refreshes 3× sjældnere |
+
+Et ISE-netværk med typisk 80% stabile endpoints vil reducere total ISE API-kald med op til **60%** sammenlignet med at behandle alle endpoints ens.
+
+### Auto-fresh ved detail-view
+
+Endpoint markeret som ⏱ stale i Browse-tabellen → klik på det → portalen henter automatisk friske data fra ISE (bypass cache) i stedet for at vise forældet information.
+
+### Mutationer booster tier
+
+Når du redigerer, sletter eller decommissioner et endpoint via portalen, boostes dets EMA — samme effekt som pxGrid-events. EMA-historik bevares på tværs af cache-invalidations.
+
+## [6.15.0704] — 2026-06-17 — fix: Cache-tuning — færre ⏱-badges, hurtigere fejlhåndtering
+
+> **Build:** 0704
+
+### Parameter-trim: TTL 900s + ISE timeout 10s
+
+**`CACHE_TTL_SECONDS=900` (15 min, var 5 min):**
+Med drip-batch (3 parallel, cycle ~150s) refreshes alle 100 endpoints hvert 2.5 min. Med TTL=15 min er entries altid friske — ingen ⏱-badges i normal drift. Kun hvis ISE er nede i > 15 min vil badges dukke op.
+
+**`ISE_TIMEOUT=10` (var 30s):**
+På LAN svarer ISE normalt < 2s. 30s timeout var unødigt lang og betød at én hængende ISE-forbindelse blokerede drip-loopen i op til 90s (30s × 3 retry). Nu: max 30s (10s × 3 retry).
+
+**`CACHE_PREWARM_SKIP_FRESH_S=900` (synkroniseret med TTL):**
+Fuld-scan (hvert 30 min) refresher nu præcis de entries der er > 15 min gamle — samme tærskel som TTL.
+
+---
+
+## [6.15.0703] — 2026-06-17 — fix: Cache drip 3× hurtigere + safety-net strammere
+
+> **Build:** 0703
+
+### Parameter-trim: drip-parallelitet og fuld-scan safety-net
+
+**Drip batch-parallelitet (x3):**
+Sprint-mode fetcher nu 3 endpoints parallelt per iteration i stedet for 1. For 100 endpoints giver det en fuld cache-runde på ~117s, godt inden for TTL=300s. Alle endpoints i en portal af den størrelse holdes nu friske løbende.
+
+**Fuld-scan safety-net strammet:**
+`cache_prewarm_skip_fresh_s` ændret fra 1800s (30 min) til 900s (15 min). Den periodiske fuld-scan (hvert 30. min) opsamler nu alt hvad drip-loopen har misset inden for de seneste 15 min, i stedet for 30 min. Maksimal cache-dataalder ved transient ISE-fejl er nu 15 min i stedet for 30 min.
+
+---
+
+## [6.15.0702] — 2026-06-17 — fix: Cache data bliver gammel efter noget tid
+
+> **Build:** 0702
+
+### Bugfix: Cache holdt gammel data — kun "Refresh from ISE" hjalp
+
+**Problem:** Efter noget tid indeholdt cachen forældet ISE-data. Data opdateredes ikke automatisk og forblev gammel indtil brugeren trykkede "Refresh from ISE".
+
+**Root cause 1 — drip-loop fastlåst:**
+Drip-loopen vælger altid det endpoint med den ældste `fetched_at`-timestamp. Hvis ISE-kald fejler for dette endpoint, fanges fejlen, men `fetched_at` opdateres aldrig → loopen henter præcis samme endpoint igen næste iteration → permanent fastlåst på ét fejlende endpoint. Alle 99 øvrige entries refreshes ikke — kun af `_full_scan()` hvert 30. minut.
+
+**Root cause 2 — sprint-formel for langsom:**
+Sprint-søvnen `(interval/4)/stale_count` gav 4.5s for 100 endpoints. Inkl. ISE-fetch ≈ 5.5s/endpoint → fuld runde 550s >> TTL=300s. Drip-loopen kunne aldrig nå at holde alle entries friske inden de igen blev stale.
+
+**Fix:**
+- Fastlåst drip: ved fejl sættes `entry.fetched_at = now - ttl + 60` (60s back-off) → drip-loopen vælger et andet endpoint i næste iteration
+- Sprint-formel: `ttl / total / 2` giver 1.5s sleep for 100 endpoints → fuld runde ≈ 250s < TTL=300s → cache holdes frisk
+
+---
+
+## [6.15.0701] — 2026-06-17 — feat: Cache health widget i Browse
+
+> **Build:** 0701
+
+### Ny: Cache sundhedsmonitor i Browse-toolbar
+
+Admins kan nu se cache-sundhed direkte i Browse-tabellens toolbar via en farvet dot-knap ved siden af Reload-knappen.
+
+**Farver:**
+- Grøn — cache er i god stand (< 5% very stale)
+- Gul — let stale (< 20% very stale)
+- Orange — moderat stale (< 50% very stale)
+- Rød — kritisk / cache tom
+
+**Dropdown-panel viser:**
+- Antal cachede endpoints vs. ISE-total
+- Fordeling: fresh / stale / very-stale med mini progress-bar og gennemsnitlig alder
+- Drip-prewarm: interval + estimeret fuld cycle-tid
+- Seneste full scan: alder + "scanning"-badge hvis aktiv
+- Hit rate og antal SWR-serves (hurtige svar fra stale cache)
+- Seneste fejlbesked fra cache-lag
+
+Dot-farven opdateres automatisk hvert 60 sekunder i baggrunden. Panelet hentes on-demand. Kræver admin-rolle.
+
+---
+
+## [6.14.0700] — 2026-06-17 — fix: Browse reload hurtig igen efter fravær
+
+> **Build:** 0700
+
+### Bugfix: Reload tog ~30 sekunder efter 30+ minutters fravær
+
+**Problem:** "Reload"-knappen i Browse/Edit var meget langsom (~30 sek) når portalen ikke havde vaeret i brug i 30+ minutter. Siden stod og viste "Loading endpoints..." mens den ventede.
+
+**Root cause:** Hver gang Browse-tabellen indlaeses (inkl. ved Reload), hentes DACLs (downloadable ACLs) fra ISE for at populere dropdown-menuen i edit-modal. `DaclService.list_summaries()` havde ingen cache — hvert kald ramte ISE REST API direkte. Efter 30 minutters idle er ISE-forbindelsen tvaeret (TCP re-establish + SSL handshake) og ISE kan vaere langsom, hvilket gav 5-30 sekunders forsinkelse. Da frontend venter pa det langsomste svar inden tabellen vises, blokerede DACL-kaldet hele Browse-indlaesningen.
+
+**Fix:** SWR-cache i backend: DACL-listen caches i 5 minutter (fresh) og serveres stale i op til 150 minutter med baggrunds-refresh. Reload er nu <200ms i normal drift. Cache invalideres automatisk nar en DACL oprettes, aendres eller slettes.
+
+---
+
+## [6.14.0697] — 2026-06-17 — fix: Browse viser endpoints øjeblikkeligt efter genstart
+
+> **Build:** 0697
+
+### Bugfix: Disk-cache-entries blokerede Browse-listen i 15-30 sekunder
+
+**Problem:** Efter en portal-genstart (eller lang tids fravær) viste Browse/Edit ingen endpoints i op til 15-30 sekunder, hvorefter alle dukker op på én gang.
+
+**Root cause:** Disk-cachen indlæses korrekt ved opstart — men entries ældre end `ttl × 30` (2,5 timer med standard TTL=5 min) var ikke SWR-kandidater. De faldt igennem til en **synkron ISE-fetch** i `get_detail()`. Da `_list_all_from_cache` awaiter alle N fetches med concurrency=8, betød det 500 endpoints × 300ms / 8 ≈ 18 sekunder inden Browse kunne svare.
+
+**Fix:** Disk-loaded entries har nu et dedikeret branch i `get_detail()` der:
+- Altid returnerer disk-værdien øjeblikkeligt (markeret stale, `⏱ ISE …ms` badge)
+- Starter en background-refresh (som pre-warm-workeren alligevel er ved at lave)
+- Aldrig blokerer list-view-kald — uanset hvor gammel disk-entry er
+
+**Effekt:** Browse åbner med det samme efter genstart og viser disk-cachen. Entries opdateres til live ISE-data i baggrunden inden for de næste par minutter, og badge-indikatoren (`⏱`) viser at data er stale.
+
+---
+
+## [6.14.0696] — 2026-06-17 — fix: ISE REST API-konto låses ikke længere af portalen
+
+> **Build:** 0696
+
+### Bugfix: Circuit breaker var blind for ISE auth-fejl (401)
+
+**Problem:** ISE deaktiverede REST API-brugerkontoen på grund af for mange fejlede login-forsøg. Portalens circuit breaker kaldte `record_success()` på **alle** HTTP-responses — inkl. 401 Auth-fejl. Det betød at circuit breakeren aldrig åbnede, og pre-warm-workeren fortsatte med at sende hundredvis af ISE-requests med forkerte credentials. ISE's interne "disable account after N consecutive failed logins"-politik (typisk 3-5 forsøg) aktiverede sig og låste kontoen.
+
+**Fix:** 401-responses behandles nu korrekt:
+- Kalder `record_failure()` (ikke `record_success()`) — gentagne 401er tæller som CB-fejl
+- Separat tæller (`_consecutive_401s`) registrerer på hinanden følgende auth-fejl
+- 1. fejl: WARNING i log med besked om at kontrollere credentials
+- 2.+ fejl: ERROR med klar instruktion: *"Tjek ISE > Administration > Admin Access > Authentication og genaktiver kontoen"*
+- Efter `failure_threshold` (default 5) 401er åbner circuit breakeren og blokerer yderligere ISE-kald i `recovery_timeout` (default 60s) — ISE kontoen kan dermed ikke nå lockout-grænsen
+- Andre HTTP-fejl (404, 500 etc.) og succesfulde requests nulstiller 401-tælleren som normalt
+
+**Hvad du skal gøre hvis kontoen allerede er låst:** Log ind i ISE → Administration → Admin Access → Authentication → Account Disable Policy og genaktiver kontoen. Ret credentials i portal Settings hvis de er forkerte.
+
+---
+
+## [6.14.0692] — 2026-06-15 — CoA ved manuel GuestAccessExpire=true
+
+> **Build:** 0692
+
+### Feature: Automatisk CoA når admin sætter GuestAccessExpire til true
+
+Når en admin redigerer et endpoint i Browse og sætter `GuestAccessExpire = true`, sendes der nu automatisk en CoA (Reauth eller Disconnect) til enhedens MAC — forudsat at "CoA ved guest-udløb" er slået til i Indstillinger → Guest Registration. CoA-typen følger den eksisterende `selfregister_expiry_coa_type`-indstilling. CoA-fejl logges men blokerer ikke selve gem-operationen.
+
+---
+
+## [6.14.0690] — 2026-06-15 — MnT node status for guest-registrering
+
+> **Build:** 0690
+
+### Feature: MnT node latens-monitor
+
+**Problemet:** Guest-registrering tog 30-45 sekunder og slog fejl efter 5 forsøg — årsagen var at ISE MnT-noden var langsom (3-10s per svar), og med 3s ventetid mellem hvert forsøg løb man nemt over grænsen.
+
+**Løsning:**
+- **Admin "Test MnT"-knap** i Indstillinger > Guest Registration — viser latens for MnT session-opslag med samme API-kald som det rigtige flow. Farvekodet: grøn (< 2s), gul (2-5s), rød (> 5s / fejl).
+- **Diagnostik** viser nu "MnT forbindelse (guest MAC-opslag)" i både hurtig-status (Dashboard) og fuld diagnostik (Settings > Diagnostics). Inklusive latens og råt HTTP-statuskode.
+- **Guest-siden** viser nu svar-tid per forsøg fra 2. forsøg og advarer med "⚠️ MnT-node svarer langsomt" hvis et svar tager > 4s. Når alle 5 forsøg er brugt, vises samlet søgetid i sekunder.
+
+---
+
+## [6.14.0689] — 2026-06-15 — Hurtigere Endpoint Details + korrekt timing-badge
+
+> **Build:** 0689
+
+### Bugfix: Endpoint Details var langsom og timing-badge var forkert
+Endpoint Details åbner nu markant hurtigere: backend bruger nu cache (SWR) til at returnere detail-data når cachen er varm, i stedet for altid at hente fra ISE. Cachen invalideres automatisk ved hvert Gem, så du ser altid opdaterede data efter en ændring.
+
+Timing-badge-logikken var fejlagtig: den viste "Cache" selvom ISE faktisk blev kaldt (fordi `X-Cache-Age-Seconds` var ~0 lige efter en ISE-fetch). Backend sender nu en præcis `X-From-Cache: true/false` header, og badge viser desuden cache-alder i sekunder: f.eks. `⚡ Cache (42s) 3ms`.
+
+---
+
+## [6.13.0685] — 2026-06-14 — Aktiv/Inaktiv i form · System adm dropdown · Hurtigere filter
+
+> **Build:** 0685
+
+### Bugfix: Aktiv/Inaktiv-felt i Endpoint Details
+Aktiv/Inaktiv-status (`HypervisionActive`) er nu et synligt `<select>`-felt direkte i formular-griddet i Endpoint Details — ikke længere gemt i action-knapper i bunden. Feltet gemmes som alle andre CA-felter via **Gem**-knappen.
+
+Detalje-modalen åbner nu hurtigere fordi tre API-kald kører parallelt i stedet for sekventielt.
+
+### Feat: System adm — kompakt kolonne + dropdown i details
+- **Browse-tabel:** Kolonnen "System adm" viser nu kun de valgte roller som kompakte farvede badges — ikke hele katalog med tomme markeringsbokse.
+- **Endpoint Details:** Roller vælges nu via en `<select multiple>`-dropdown, der giver overblik over alle tilgængelige roller og lader dig vælge/fravælge med Ctrl/Cmd-klik.
+
+### Feat: Filter-chips henter ikke længere fra ISE
+Klik på filter-chips i MAC-kolonnen (Aktiv/Inaktiv, DeComm, Markeret) bruger nu backend-cachen direkte i stedet for at lave nye ISE-kald. Filtreringen sker øjeblikkeligt når cachen er varm.
+
+---
+
+## [6.12.0684] — 2026-06-14 — Lokal genindlæsning i Browse
+
+> **Build:** 0684
+
+Ny knap "↻ Genindlæs" i Browse-toolbar — opdaterer den aktuelle side direkte fra backend-cache uden at ramme ISE. Ideel til at se ændringer du netop har gemt, eller til at opdatere visningen hurtigt.
+
+Den eksisterende "Opdater"-knap er omdøbt til "Opdater fra ISE" og er fortsat den knap der ryder cache og henter alle endpoints forfra.
+
+Begge knapper har tooltip der forklarer forskellen.
+
+---
+
+## [6.12.0683] — 2026-06-14 — CoA ved guest-udløb
+
+> **Build:** 0683
+
+Portalen sender nu automatisk en CoA (Change of Authorization) til gæstens enhed når guest-adgangen udløber. Gæsten omdirigeres straks til registreringsportalen — ingen manuel indgriben nødvendig.
+
+**Opsætning:** Settings → Guest Registration → Automatisk udløb → aktiver "Send CoA ved udløb".
+
+**CoA-type:**
+- **Re-Auth** (anbefalet): Gæsten omdirigeres til portalen uden sessionsafbrydelse.
+- **Disconnect**: Sessionen afbrydes; gæsten skal forbinde igen.
+
+**Krav:** ISE-bruger skal have MnT Admin-rolle. `coa_psn_name` skal være sat i ISE-indstillinger.
+
+---
+
+## [6.11.0681] — 2026-06-14 — CLI Recovery Tool
+
+> **Build:** 0681
+
+Ny fil: `backend/recover.py` — standalone recovery-script til brug via SSH hvis man er låst ude af portalen.
+
+**Krav:** Ingen kørende server, kun stdlib Python 3.
+
+```bash
+cd /opt/hypervision
+python backend/recover.py
+```
+
+**Interaktiv menu:**
+1. Vis alle brugere (brugernavn, rolle, aktiv, oprettet, låst status)
+2. Nulstil adgangskode (PBKDF2-SHA256, invaliderer alle aktive sessioner via token_gen)
+3. Lås konto op (rydder lockout.db)
+4. Opret nødadmin (opretter ny admin-bruger)
+5. Skift rolle (admin ↔ user)
+6. Aktivér / deaktivér konto
+7. Test adgangskode (debug-tjek)
+
+**Ikke-interaktiv brug (scripting):**
+```bash
+python backend/recover.py --list
+python backend/recover.py --reset admin
+python backend/recover.py --unlock admin
+python backend/recover.py --emergency
+```
+
+## [6.11.0680] — 2026-06-14 — Dashboard: CPU/RAM/disk ressource-bars
+
+> **Build:** 0680
+
+Dashboardets system-kort viser nu tre kompakte progress-bars øverst:
+
+- **CPU %** — realtids CPU-forbrug (gennemsnit over 0,3 s)
+- **RAM %** — RAM-forbrug med brugt/total i GB
+- **Disk %** — diskforbrug med fri plads i GB
+
+Farvekodning: grøn (< 75%), orange (75-90%), rød (> 90%). Opdateres hvert 30 sekund med resten af dashboard-dataene.
+
+Ny afhængighed: `psutil >= 5.9.0` — installeres automatisk via OTA-opdatering. Hvis psutil ikke er installeret endnu, vises en besked og kun disk-% (via `shutil`) er tilgængeligt.
+
+## [6.10.0677] — 2026-06-14 — Funktionsgennemgang: to-faset portal-audit
+
+> **Build:** 0677
+
+Ny sektion under **Indstillinger → System Opdatering: Funktionsgennemgang** giver en struktureret to-faset gennemgang af alle portal-funktioner.
+
+**Fase 1 — Statisk (< 1 sekund, ingen netværk):**
+- ISE URL, brugernavn og adgangskode konfigureret
+- GitHub OTA-branch og .git-mappe tilgængelig
+- Databaser: audit.db, lockout.db, cache/first_seen.db, cache/guest_expiry.db, metrics_history.db
+- Log-mappe (backend/logs/app.log)
+- pxGrid-certifikater (hvis pxGrid aktiveret)
+- Custom attributes JSON-store
+
+**Fase 2 — Live ISE-test (5-15 sekunder):**
+- ERS: kan vi liste endpoints? (total count)
+- ERS: kan vi hente endpoint-grupper?
+- ERS: er custom attributes defineret i ISE — inkl. HypervisionISEPortal?
+- MnT: kan vi query aktive sessioner? (kræver MnT Admin-rolle)
+- OpenAPI: er `/api/v1/endpoint/count` tilgængeligt?
+- nmap: localhost ping-scan som funktionstest
+- GitHub: kan vi nå GitHub og hente seneste version?
+- Cache: er endpoint-cache opvarmet?
+- pxGrid: live forbindelsesstatus (hvis aktiveret)
+
+Resultater vises med ✅/⚠️/❌ pr. tjek med detaljerede metadata. Fase 2-knappen aktiveres først efter Fase 1 er kørt.
+
+## [6.9.0675] — 2026-06-14 — System sundhed på dashboard
+
+> **Build:** 0675
+
+Dashboardet viser nu et **System sundhed**-kort i højre kolonne — opdateres automatisk hvert 30 sekund.
+
+Kortet viser status for 7 hurtige tjek: HTTP/2, nmap, disk plads, ISE konfiguration, endpoint cache, circuit breaker og pxGrid. Den farvede topkant signalerer det samlede niveau: grøn (alt OK), orange (advarsler) eller rød (fejl).
+
+Admin-brugere har et "Fuld diagnostik →"-link til den detaljerede visning i Indstillinger.
+
+## [6.8.0669] — 2026-06-14 — OTA-opdatering: pre-flight tjek + auto-genstart
+
+> **Build:** 0669
+
+**Forhindrer crash-loop efter OTA-opdatering.**
+
+Tidligere: pull → pip install → bruger klikker manuelt "Genstart server" → server crasher hvis ny kode har fejl → crash-loop.
+
+Nu: pull → pip install → **pre-flight tjek** → auto-genstart (hvis tjek OK) / ingen genstart (hvis tjek fejler).
+
+**Pre-flight tjek:** Kører `python -c "from app.main import app"` som subprocess med det aktive venv. Verificerer at den nye kode på disk kan importeres uden syntax- eller import-fejl.
+
+**Auto-genstart:** Hvis pull + pip + pre-flight alle lykkes genstarter serveren automatisk efter 3 sekunder — ingen manuel knap nødvendig. Browseren poller og viser "Server er oppe igen ✅ — Genindlæs siden".
+
+**Sikkerhed:** Hvis pre-flight fejler (f.eks. ny modul mangler eller syntax-fejl) sker der ingen genstart. Fejlen vises tydeligt i UI'et så problemet kan løses før genstart.
+
+## [6.8.0668] — 2026-06-14 — Systemdiagnostik
+
+> **Build:** 0668
+
+Ny funktion i Indstillinger → Performance: **Systemdiagnostik**. Klik "Kør diagnostik" og få et komplet sundhedstjek af alle afhængigheder og tjenester på ét sekund.
+
+**12 tjek køres parallelt:**
+
+- Python version (kræver 3.11+) og virtuel miljø (venv)
+- Alle 12 påkrævede Python-pakker (fastapi, uvicorn, httpx, pydantic, cryptography m.fl.)
+- HTTP/2 h2-pakke installeret og aktiv
+- nmap tilgængelig i PATH (bruges til nmap-scanning)
+- Disk plads med advarsler under 2 GB fri
+- ISE konfiguration (URL, brugernavn, adgangskode konfigureret)
+- ISE ERS-forbindelsestest med latens (live GET mod ISE med 10 s timeout)
+- Endpoint cache (antal endpoints i memory-cache)
+- Circuit breaker state (closed/half-open/open)
+- pxGrid worker (connected/running/stopped)
+- Git branch og seneste commit
+
+Resultater vises som tabel med ✅ OK / ⚠️ Advarsel / ❌ Fejl og et samlet status-banner øverst.
+
 ## [6.7.0667] — 2026-06-14 — h2 installeres automatisk i baggrunden ved opstart
 
 > **Build:** 0667

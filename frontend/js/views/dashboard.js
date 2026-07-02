@@ -26,6 +26,20 @@ function statRow(label, value, sub = "") {
   </div>`;
 }
 
+function resBar(label, pct, usedLabel) {
+  if (pct === null || pct === undefined) return "";
+  const color = pct >= 90 ? "#dc2626" : pct >= 75 ? "#d97706" : "#16a34a";
+  return `<div style="padding:4px 0;border-bottom:1px solid #f9fafb;">
+    <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+      <span style="color:#6b7280;font-size:.82em;">${label}</span>
+      <span style="font-size:.82em;font-weight:500;color:${color}">${pct.toFixed(0)}%${usedLabel ? `<span style="color:#9ca3af;font-weight:400;margin-left:4px;font-size:.9em;">${usedLabel}</span>` : ""}</span>
+    </div>
+    <div style="background:#f3f4f6;border-radius:3px;height:5px;overflow:hidden;">
+      <div style="width:${Math.min(pct,100)}%;height:100%;background:${color};border-radius:3px;transition:width .4s;"></div>
+    </div>
+  </div>`;
+}
+
 // ── KPI-kort ──────────────────────────────────────────────────────────────────
 
 function kpiCard(label, value, sub = "", accent = "#2563eb") {
@@ -105,6 +119,54 @@ function sparkline(labels, series, height = 110) {
   return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;">${svg}</svg>`;
 }
 
+// ── System health-kort (fra diagnostics/quick) ───────────────────────────────
+
+const DIAG_ICON  = { ok: "✅", warning: "⚠️", error: "❌" };
+const DIAG_COLOR = { ok: "#16a34a", warning: "#d97706", error: "#dc2626" };
+
+function healthCard(diag, isAdmin) {
+  if (!diag || diag._error) return "";
+  const overall      = diag.overall || "ok";
+  const checks       = diag.checks  || [];
+  const overallColor = DIAG_COLOR[overall] || "#6b7280";
+  const overallIcon  = DIAG_ICON[overall]  || "?";
+  const warnCount    = checks.filter(c => c.status === "warning").length;
+  const errCount     = checks.filter(c => c.status === "error").length;
+  const overallLabel = overall === "ok"
+    ? "System OK"
+    : overall === "error"
+      ? `${errCount} fejl${warnCount ? ` · ${warnCount} advarsler` : ""}`
+      : `${warnCount} advarsel${warnCount !== 1 ? "er" : ""}`;
+
+  const rows = checks.map(c => `
+    <div style="display:flex;align-items:baseline;gap:.4rem;padding:2px 0;">
+      <span style="flex:none;font-size:.9em;">${DIAG_ICON[c.status] || "?"}</span>
+      <span style="font-size:.8em;color:#374151;flex:1;min-width:0;overflow:hidden;
+        text-overflow:ellipsis;white-space:nowrap;" title="${esc(c.message)}">${esc(c.name)}</span>
+      <span style="font-size:.75em;color:${DIAG_COLOR[c.status] || "#6b7280"};
+        flex:none;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+        title="${esc(c.message)}">${esc(c.message.split("\n")[0].slice(0, 40))}</span>
+    </div>`).join("");
+
+  const diagLink = isAdmin
+    ? `<a href="#/settings" style="display:block;text-align:right;font-size:.76rem;
+        color:#2563eb;text-decoration:none;margin-top:.5rem;padding-top:.4rem;
+        border-top:1px solid #f3f4f6;">Fuld diagnostik →</a>`
+    : "";
+
+  return `<div style="background:#fff;border-radius:12px;padding:1rem 1.25rem;
+    box-shadow:0 1px 4px rgba(0,0,0,.07);border-top:3px solid ${overallColor};">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;">
+      <h3 style="margin:0;font-size:.92rem;color:#374151;font-weight:600;">System sundhed</h3>
+      <span style="font-size:.8em;font-weight:700;color:${overallColor};">
+        ${overallIcon} ${esc(overallLabel)}
+      </span>
+    </div>
+    ${rows}
+    ${diagLink}
+  </div>`;
+}
+
 // ── Log-tabel ─────────────────────────────────────────────────────────────────
 
 const LOG_COLORS = {
@@ -147,9 +209,160 @@ function renderLogsTable(entries) {
   </div>`;
 }
 
+// ── Cache kvalitetsmetrics ────────────────────────────────────────────────────
+
+function cacheQualityCard(cache, prewarm) {
+  const n        = cache.detail_entries ?? 0;
+  const tiers    = cache.tiers    || {};
+  const stale    = cache.staleness || {};
+  const ttl      = cache.ttl_seconds ?? 0;
+
+  // Tier-fordeling
+  const hot  = tiers.hot  ?? 0;
+  const warm = tiers.warm ?? 0;
+  const cold = tiers.cold ?? 0;
+  const tierTotal = hot + warm + cold || 1;
+  function tierPct(v) { return Math.round(v / tierTotal * 100); }
+
+  const tierBar = `
+    <div style="display:flex;height:8px;border-radius:4px;overflow:hidden;gap:1px;margin:.3rem 0 .2rem;">
+      ${hot  ? `<div style="flex:${hot};background:#dc2626;" title="Hot ${hot}"></div>`  : ""}
+      ${warm ? `<div style="flex:${warm};background:#d97706;" title="Warm ${warm}"></div>` : ""}
+      ${cold ? `<div style="flex:${cold};background:#2563eb;" title="Cold ${cold}"></div>` : ""}
+    </div>
+    <div style="display:flex;gap:.8rem;font-size:.76rem;color:#6b7280;margin-bottom:.5rem;">
+      <span><span style="color:#dc2626;font-weight:600;">🔥 ${hot}</span> hot (${tierPct(hot)}%)</span>
+      <span><span style="color:#d97706;font-weight:600;">~ ${warm}</span> warm (${tierPct(warm)}%)</span>
+      <span><span style="color:#2563eb;font-weight:600;">❄ ${cold}</span> cold (${tierPct(cold)}%)</span>
+    </div>`;
+
+  // Staleness-fordeling
+  const fresh     = stale.fresh_count     ?? 0;
+  const staleC    = stale.stale_count     ?? 0;
+  const veryStale = stale.very_stale_count ?? 0;
+  const sTotal    = fresh + staleC + veryStale || 1;
+  const stalePct  = stale.stale_pct ?? 0;
+  const vsColor   = (stale.very_stale_pct ?? 0) > 5 ? "#dc2626" : stalePct > 40 ? "#d97706" : "#16a34a";
+
+  const stalenessBar = `
+    <div style="display:flex;height:6px;border-radius:3px;overflow:hidden;gap:1px;margin:.3rem 0 .2rem;">
+      ${fresh     ? `<div style="flex:${fresh};background:#16a34a;" title="Fresh ${fresh}"></div>`         : ""}
+      ${staleC    ? `<div style="flex:${staleC};background:#d97706;" title="Stale ${staleC}"></div>`       : ""}
+      ${veryStale ? `<div style="flex:${veryStale};background:#dc2626;" title="Very stale ${veryStale}"></div>` : ""}
+    </div>
+    <div style="display:flex;gap:.8rem;font-size:.76rem;color:#6b7280;margin-bottom:.3rem;">
+      <span style="color:#16a34a;font-weight:600;">${fresh} fresh</span>
+      <span style="color:#d97706;font-weight:600;">${staleC} stale</span>
+      ${veryStale ? `<span style="color:#dc2626;font-weight:600;">${veryStale} meget stale</span>` : ""}
+      <span style="margin-left:auto;color:${vsColor};font-weight:600;">${stalePct}% stale</span>
+    </div>`;
+
+  // Sidst ISE-sync (C)
+  const syncAge    = cache.last_sync_age_s;
+  const syncColor  = syncAge == null ? "#9ca3af" : syncAge > 3600 ? "#dc2626" : syncAge > 1800 ? "#d97706" : "#16a34a";
+  const syncLabel  = syncAge == null ? "ikke sket endnu" : fmtAge(syncAge) + " siden";
+  const syncRow    = `<div style="display:flex;justify-content:space-between;align-items:baseline;padding:4px 0;border-bottom:1px solid #f9fafb;">
+    <span style="color:#6b7280;font-size:.85em;">Sidst ISE-sync</span>
+    <span style="font-weight:500;font-size:.88em;color:${syncColor};">${syncLabel}</span>
+  </div>`;
+
+  // Alder-rækker
+  const avgAge    = stale.average_entry_age_s;
+  const oldestAge = stale.oldest_entry_age_s;
+  const ageRows   = (avgAge != null || oldestAge != null) ? `
+    ${avgAge    != null ? statRow("Gns. entry-alder", fmtAge(avgAge)) : ""}
+    ${oldestAge != null ? statRow("Ældste entry",     fmtAge(oldestAge)) : ""}` : "";
+
+  // Hukommelse
+  const totalMB  = cache.total_bytes > 0 ? (cache.total_bytes / 1048576).toFixed(1) : null;
+  const maxMB    = cache.max_memory_bytes > 0 ? (cache.max_memory_bytes / 1048576).toFixed(0) : null;
+  const memPct   = totalMB && maxMB ? Math.round(cache.total_bytes / cache.max_memory_bytes * 100) : null;
+  const memRow   = totalMB ? resBar(
+    "Cache RAM",
+    memPct ?? (totalMB > 0 ? 5 : 0),
+    maxMB ? `${totalMB} / ${maxMB} MB` : `${totalMB} MB`
+  ) : "";
+
+  // Drip-effektivitet
+  const dripRef  = prewarm.drip_refreshed_total ?? 0;
+  const dripSkip = prewarm.drip_skipped_total   ?? 0;
+  const dripEff  = dripRef + dripSkip > 0
+    ? Math.round(dripRef / (dripRef + dripSkip) * 100) + "%"
+    : "—";
+  const hotQ     = prewarm.hot_queue_size ?? 0;
+  const inflight = cache.inflight ?? 0;
+
+  const accentColor = (stale.very_stale_pct ?? 0) > 10 ? "#dc2626"
+    : stalePct > 50 ? "#d97706" : "#0891b2";
+
+  return `<div style="background:#fff;border-radius:12px;padding:1rem 1.25rem;
+    box-shadow:0 1px 4px rgba(0,0,0,.07);border-top:3px solid ${accentColor};">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;">
+      <h3 style="margin:0;font-size:.92rem;color:#374151;font-weight:600;">Cache kvalitet</h3>
+      <span style="font-size:.78rem;color:#9ca3af;">${n.toLocaleString()} entries · TTL ${ttl}s</span>
+    </div>
+
+    <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;
+      color:#9ca3af;margin:.4rem 0 .1rem;">Tier-fordeling (EMA)</div>
+    ${tierBar}
+
+    <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;
+      color:#9ca3af;margin:.5rem 0 .1rem;">Staleness</div>
+    ${stalenessBar}
+
+    ${syncRow}
+    ${ageRows}
+    ${memRow}
+
+    <div style="margin-top:.5rem;padding-top:.5rem;border-top:1px solid #f3f4f6;
+      display:flex;gap:1rem;flex-wrap:wrap;font-size:.8rem;">
+      <span style="color:#6b7280;">Drip-effektivitet <strong style="color:#374151;">${dripEff}</strong></span>
+      ${inflight > 0 ? `<span style="color:#6b7280;">Inflight <strong style="color:#2563eb;">${inflight}</strong></span>` : ""}
+      ${hotQ > 0 ? `<span style="color:#6b7280;">Hot-queue <strong style="color:#d97706;">${hotQ}</strong></span>` : ""}
+      ${cache.evictions > 0 ? `<span style="color:#6b7280;">Evictions <strong style="color:#9ca3af;">${cache.evictions}</strong></span>` : ""}
+    </div>
+  </div>`;
+}
+
 // ── Compose dashboard HTML ─────────────────────────────────────────────────────
 
-function compose(dash, trends, lifecycle, isAdmin) {
+function iseAuthBanner(iseAuth) {
+  const s = iseAuth?.status;
+  if (!s || s === "ok") return "";
+  const locked = s === "locked";
+  const bg     = locked ? "#fef2f2" : "#fffbeb";
+  const border = locked ? "#dc2626" : "#d97706";
+  const icon   = locked ? "🔒" : "⚠️";
+  const n      = iseAuth.consecutive_401s ?? 0;
+  const since  = iseAuth.locked_since
+    ? new Date(iseAuth.locked_since * 1000).toLocaleTimeString()
+    : null;
+  const title  = locked
+    ? t("dash.ise_auth_locked_title") || "ISE API-bruger låst ude"
+    : t("dash.ise_auth_warn_title")   || "ISE authentication fejler";
+  const steps  = locked ? `
+    <ol style="margin:.5rem 0 0 1.2rem;padding:0;font-size:.85rem;color:#374151;line-height:1.7;">
+      <li>Åbn ISE GUI og gå til <strong>Administration → System → Admin Access → Administrators → Admin Users</strong></li>
+      <li>Find API-brugeren (typisk <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">${esc(t("dash.ise_api_user") || "ers-admin")}</code>) og sæt <strong>Enabled = Yes</strong></li>
+      <li>Kontrollér <strong>Administration → System → Admin Access → Authentication → Account Disable Policy</strong> — overvej at sætte "Disable after X days inactivity" til 0 (aldrig)</li>
+      <li>Portalen genopretter forbindelsen automatisk når ISE godkender</li>
+    </ol>` : `<p style="margin:.4rem 0 0;font-size:.85rem;color:#374151;">
+      Kontrollér brugernavn/password: <a href="#/settings" style="color:#2563eb;">${t("dash.ise_auth_settings_link") || "Settings → ISE-forbindelse"}</a>
+    </p>`;
+  return `<div style="background:${bg};border-left:4px solid ${border};border-radius:8px;
+    padding:.85rem 1rem;margin-bottom:.75rem;">
+    <div style="display:flex;align-items:baseline;gap:.5rem;">
+      <span style="font-size:1.05rem;">${icon}</span>
+      <strong style="color:${border};font-size:.92rem;">${esc(title)}</strong>
+      <span style="font-size:.8rem;color:#9ca3af;margin-left:auto;">
+        401 × ${n}${since ? ` — siden ${since}` : ""}
+      </span>
+    </div>
+    ${steps}
+  </div>`;
+}
+
+function compose(dash, trends, lifecycle, isAdmin, diagQuick, sysinfo) {
   const cb      = dash.circuit_breaker || {};
   const ep      = dash.endpoints       || {};
   const cache   = dash.cache           || {};
@@ -244,12 +457,17 @@ function compose(dash, trends, lifecycle, isAdmin) {
       <div style="font-size:.77rem;color:#9ca3af;margin-top:.3rem;">${prewarm.scanning ? t("dash.prewarm_scanning") : "Idle"}</div>
     </div>` : "";
 
+  const si = sysinfo || {};
   const sysCard = `<div style="background:#fff;border-radius:12px;padding:1rem 1.25rem;
     box-shadow:0 1px 4px rgba(0,0,0,.07);">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;">
       <h3 style="margin:0;font-size:.92rem;color:#374151;font-weight:600;">${t("dash.sys_title")}</h3>
       ${cbPill(cb.state)}
     </div>
+    ${resBar("CPU", si.cpu_pct ?? null, si.cpu_pct != null ? "" : "")}
+    ${resBar("RAM", si.ram_pct ?? null, si.ram_used_gb != null ? `${si.ram_used_gb}/${si.ram_total_gb} GB` : "")}
+    ${resBar("Disk", si.disk_pct ?? null, si.disk_free_gb != null ? `${si.disk_free_gb} GB fri` : "")}
+    ${si.cpu_pct == null ? `<div style="font-size:.75rem;color:#9ca3af;padding:4px 0;border-bottom:1px solid #f9fafb;">psutil ikke installeret — kør OTA-opdatering</div>` : ""}
     ${statRow(t("dash.sys_sessions"), sess.active ?? "—")}
     ${statRow(t("dash.sys_hit_rate"), hitRate)}
     ${statRow("Stale serves", cache.stale_serves ?? "—")}
@@ -285,7 +503,7 @@ function compose(dash, trends, lifecycle, isAdmin) {
   let eventsCard = "";
   if (events.length) {
     eventsCard = `<div style="background:#fff;border-radius:12px;padding:1rem 1.25rem;
-      box-shadow:0 1px 4px rgba(0,0,0,.07);margin-top:.75rem;">
+      box-shadow:0 1px 4px rgba(0,0,0,.07);">
       <h3 style="margin:0 0 .75rem;font-size:.92rem;color:#374151;font-weight:600;">${t("dash.events_title")}</h3>
       <div style="overflow-x:auto;">
         <table style="width:100%;border-collapse:collapse;font-size:.85em;">
@@ -312,15 +530,29 @@ function compose(dash, trends, lifecycle, isAdmin) {
   }
 
   // ── Samlet layout ─────────────────────────────────────────────────────────
-  const rightCol = [sysCard, lcCard].filter(Boolean).join('<div style="height:.75rem;"></div>');
+  const hCard = healthCard(diagQuick, isAdmin);
+
+  // Cache kvalitetsmetrics — vises kun når cache har entries
+  const cqCard = cache.detail_entries > 0
+    ? cacheQualityCard(cache, prewarm)
+    : "";
+
+  // Bundlinje: system stats + cache kvalitet + lifecycle + audit events side om side
+  const bottomItems = [sysCard, cqCard, lcCard, eventsCard].filter(Boolean);
+  const bottomRow = bottomItems.length
+    ? `<div style="display:flex;gap:.75rem;align-items:flex-start;flex-wrap:wrap;margin-top:.75rem;">
+        ${bottomItems.map(c => `<div style="flex:1;min-width:240px;">${c}</div>`).join("")}
+      </div>`
+    : "";
 
   return `
+    ${iseAuthBanner(dash.ise_auth)}
     ${kpiRow}
-    <div style="display:flex;gap:.75rem;align-items:flex-start;flex-wrap:wrap;margin-bottom:.75rem;">
-      <div style="flex:1;min-width:300px;">${trendCard}</div>
-      <div style="flex:0 0 250px;min-width:220px;display:flex;flex-direction:column;gap:.75rem;">${rightCol}</div>
+    <div style="display:flex;gap:.75rem;align-items:flex-start;flex-wrap:wrap;">
+      <div style="flex:2;min-width:320px;">${trendCard}</div>
+      ${hCard ? `<div style="flex:1;min-width:270px;">${hCard}</div>` : ""}
     </div>
-    ${eventsCard}
+    ${bottomRow}
   `;
 }
 
@@ -420,13 +652,15 @@ export async function renderDashboard(container) {
 
   async function load() {
     try {
-      const [dash, alertsRes, trendsRes, lifecycleRes] = await Promise.all([
+      const [dash, alertsRes, trendsRes, lifecycleRes, diagQuick, sysinfo] = await Promise.all([
         api.getDashboard(),
         api.getAlerts().catch(() => ({ alerts: [] })),
         api.getTrends("30d").catch((e) => ({ _error: e.message })),
         isAdmin
           ? api.getStaleEndpoints(90).catch((e) => ({ _error: e.message }))
           : Promise.resolve(null),
+        api.diagnosticsQuick().catch((e) => ({ _error: e.message })),
+        api.sysinfo().catch(() => null),
       ]);
 
       const alertList = alertsRes?.alerts || [];
@@ -443,7 +677,7 @@ export async function renderDashboard(container) {
         alertsEl.innerHTML = "";
       }
 
-      body.innerHTML = compose(dash, trendsRes, lifecycleRes, isAdmin);
+      body.innerHTML = compose(dash, trendsRes, lifecycleRes, isAdmin, diagQuick, sysinfo);
       tsEl.textContent = t("dash.updated") + new Date().toLocaleTimeString();
     } catch (err) {
       body.innerHTML = `<div class="alert error">${t("dash.error").replace("{msg}", esc(err.message))}</div>`;
