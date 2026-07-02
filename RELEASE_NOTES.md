@@ -4,6 +4,18 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.20.0716] — 2026-07-02 — feat: Log — Claude-analyse eksport og .json download
+
+> **Build:** 0716
+
+Settings → Log eksport-toolbar har nu tre knapper:
+
+- **Download .log** — rå logfiler (uændret)
+- **Download .json** — alle log-entries som proper JSON-array (var `.ndjson`)
+- **🤖 Claude-analyse (.json)** — kondenseret JSON med statistik + seneste 300 WARNING/ERROR/CRITICAL entries — upload direkte på claude.ai for hurtigt overblik over systemets tilstand
+
+---
+
 ## [6.19.0715] — 2026-07-02 — feat: Settings/Endpoint cache — tier-fordeling og evictions
 
 > **Build:** 0715

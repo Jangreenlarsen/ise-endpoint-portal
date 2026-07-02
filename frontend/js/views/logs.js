@@ -153,8 +153,11 @@ export async function renderLogs(container) {
         <button id="log-export-text" class="btn-secondary" title="${t("logs.export_hint")}">
           ⬇ ${t("logs.btn_export_text")}
         </button>
-        <button id="log-export-ndjson" class="btn-secondary" title="${t("logs.export_hint")}">
-          ⬇ ${t("logs.btn_export_ndjson")}
+        <button id="log-export-json" class="btn-secondary" title="${t("logs.export_hint")}">
+          ⬇ ${t("logs.btn_export_json")}
+        </button>
+        <button id="log-export-condensed" class="btn-secondary" title="${t("logs.condensed_hint")}">
+          🤖 ${t("logs.btn_export_condensed")}
         </button>
         <button id="log-summary" class="btn-secondary">
           📊 ${t("logs.btn_summary")}
@@ -204,8 +207,11 @@ export async function renderLogs(container) {
   container.querySelector("#log-export-text").addEventListener("click", () => {
     triggerDownload(api.getLogsExportUrl("text"));
   });
-  container.querySelector("#log-export-ndjson").addEventListener("click", () => {
-    triggerDownload(api.getLogsExportUrl("ndjson"));
+  container.querySelector("#log-export-json").addEventListener("click", () => {
+    triggerDownload(api.getLogsExportUrl("json"));
+  });
+  container.querySelector("#log-export-condensed").addEventListener("click", () => {
+    triggerDownload(api.getLogsExportUrl("condensed"));
   });
 
   // ── Analyse-rapport-knap (toggle) ──────────────────────────────────────────

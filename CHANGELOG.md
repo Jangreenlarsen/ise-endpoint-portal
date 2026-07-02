@@ -3,6 +3,17 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.20.0716] — 2026-07-02 — feat: Log — kondenseret Claude-analyse eksport og .json download
+
+Tilføjer to forbedringer til Settings → Log eksport-toolbar:
+
+- **Claude-analyse eksport** (`format=condensed`): ny "🤖 Claude-analyse (.json)"-knap downloader et kompakt JSON-dokument med den fulde analysestatistik (level-fordeling, top fejlbeskeder, CB-events, transport-fejl, startup-events, hourly timeline) plus de seneste 300 notable entries (WARNING/ERROR/CRITICAL). Designet til direkte upload på claude.ai til analyse uden at skulle sende GB-store rå logfiler.
+- **Download .json** (var `.ndjson`): omdøbt til proper JSON-format — et root JSON-objekt med `meta` og `entries`-array i stedet for NDJSON (én JSON per linje). Nemmere at åbne i alle JSON-redaktorer.
+- Backend: `_analyze_logs()`-helper refaktoreret ud af `get_logs_summary()` så logikken deles.
+- Export format-parameter ændret fra `^(text|ndjson)$` → `^(text|json|condensed)$`.
+
+**Berørte filer:** `backend/app/api/logs.py`, `frontend/js/views/logs.js`, `frontend/js/i18n.js`
+
 ## [6.19.0715] — 2026-07-02 — feat: Settings/Endpoint cache — tier-fordeling og evictions i live stats
 
 Fuldender Settings → Endpoint cache-sektionens live statistik-panel så det reflekterer alle cache-modul kapabiliteter:

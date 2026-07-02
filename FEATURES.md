@@ -9,6 +9,8 @@ Alle nye features registreres her FØR implementering påbegyndes.
 
 ## Planlagt / Under implementering
 
+- `[done 6.20.0716] 2026-07-02 — Log: kondenseret Claude-analyse eksport + .json download` — (A) Nyt "Claude-analyse" eksport-format: kondenseret JSON med summary-statistik + de seneste 300 notable entries (WARNING/ERROR/CRITICAL) til direkte upload på claude.ai. (B) Omdøb `.ndjson`-download til `.json` med proper JSON-array-format (ikke NDJSON). **Berørte lag:** `backend/app/api/logs.py`, `frontend/js/views/logs.js`, `frontend/js/api.js`, `frontend/js/i18n.js`.
+
 - `[done 6.19.0715] 2026-07-02 — Settings/Endpoint cache: tier-fordeling og evictions i live stats` — Tier-bar (hot/warm/cold fra `stats.tiers`) og evictions-tæller i Settings → Endpoint cache statistik-panel. Rewrite af brudt `renderCacheStats()`-funktion. **Berørte lag:** `frontend/js/views/settings/section-cache.js`.
 
 - `[done 6.19.0714] 2026-07-02 — Log-eksport og baseline-analyse` — (A) Udvidet startup-banner i loggen med version+build+python+PID+URL. (B) GET /api/logs/export: downloader alle 4 roterede logfiler kombineret som .log eller .ndjson med version-header. (C) GET /api/logs/summary: aggregeret analyse på tværs af alle filer — level-fordeling, top fejl-beskeder, CB-events-tidslinje, transport-fejl-statistik (idle-tid, exc-type), startup-events (versionhistorik), per-time breakdown. **Berørte lag:** `backend/app/api/logs.py`, `backend/app/main.py`.
