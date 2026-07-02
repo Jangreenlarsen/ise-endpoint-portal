@@ -3,6 +3,18 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.19.0715] — 2026-07-02 — feat: Settings/Endpoint cache — tier-fordeling og evictions i live stats
+
+Fuldender Settings → Endpoint cache-sektionens live statistik-panel så det reflekterer alle cache-modul kapabiliteter:
+
+- **Tier-fordeling (EMA)**: Horisontalt staplet bar (rød=hot / orange=warm / blå=cold) med procent og antal under. Vises kun hvis cache indeholder tier-data (`stats.tiers`).
+- **Evictions**: Vises som rød-fed tæller under tier-baren — kun hvis `stats.evictions > 0`.
+- **Syntaks-fix**: `renderCacheStats()` var brudt af en ufuldstændig Edit-operation (prematurt lukket template-literal, stray `}`, ubrugt variabel). Fuldstændig rewrite af funktionen med korrekt struktur.
+
+Eksisterende funktionalitet bevaret: staleness-bar, drip-kapacitetsbadge, cache-alder-rækker, pre-warm worker rækker.
+
+**Berørte filer:** `frontend/js/views/settings/section-cache.js`.
+
 ## [6.19.0714] — 2026-07-02 — feat: Log-GUI — eksport og analyse-rapport i log-sektionen
 
 Tre nye elementer i Log-sektionen i GUI (kun synlige for admin):

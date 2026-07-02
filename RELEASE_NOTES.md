@@ -4,6 +4,19 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.19.0715] — 2026-07-02 — feat: Settings/Endpoint cache — tier-fordeling og evictions
+
+> **Build:** 0715
+
+Settings → Endpoint cache live-statistik viser nu:
+
+- **Tier-fordeling (EMA)**: Farvet bar og procentfordeling — 🔥 Hot / ~ Warm / ❄ Cold
+- **Evictions**: Rød tæller hvis cache har smidt entries ud p.g.a. pladsmangel
+
+Derudover er `renderCacheStats()`-funktionen rewritet korrekt efter en syntaksbrud fra ufuldstændig redigering.
+
+---
+
 ## [6.19.0714] — 2026-07-02 — feat: Log-GUI — eksport og analyse-rapport
 
 > **Build:** 0714

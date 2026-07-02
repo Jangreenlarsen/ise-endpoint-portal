@@ -29,6 +29,9 @@ class BackendSettingsUpdate(BaseModel):
     cache_disk_path: str = "cache/endpoints.json"
     cache_prewarm_concurrency: int = 5
     cache_prewarm_interval_s: float = 1800.0
+    cache_prewarm_skip_fresh_s: float = 900.0
+    cache_max_entries: int = 5000
+    cache_max_memory_mb: int = 300
     debug_pxgrid_sessions: bool = False
     github_branch: str = "main"
     decomm_set_authz: bool = True
@@ -72,6 +75,9 @@ class BackendSettingsResponse(BaseModel):
     cache_disk_path: str = "cache/endpoints.json"
     cache_prewarm_concurrency: int = 5
     cache_prewarm_interval_s: float = 1800.0
+    cache_prewarm_skip_fresh_s: float = 900.0
+    cache_max_entries: int = 5000
+    cache_max_memory_mb: int = 300
     debug_pxgrid_sessions: bool = False
     github_branch: str = "main"
     decomm_set_authz: bool = True

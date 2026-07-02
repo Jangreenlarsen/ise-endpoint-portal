@@ -154,12 +154,27 @@ export async function renderSettings(container) {
           <input type="number" id="cache_sync_interval_seconds" min="0" max="3600" step="30" />
           <div class="hint">0 = deaktiveret. Supplerer pre-warm: refresh'er entries der er ældre end halv TTL ud over den planlagte scanning.</div>
         </div>
+        <div class="field">
+          <label for="cache_max_entries" id="cache-max-entries-lbl">Maks entries</label>
+          <input type="number" id="cache_max_entries" min="100" max="100000" step="100" />
+          <div class="hint">Maks antal endpoints i detail-cachen. Ældste entries eviktes ved overskridelse. 0 = ubegrænset. (default: 5000)</div>
+        </div>
+        <div class="field">
+          <label for="cache_max_memory_mb" id="cache-max-memory-lbl">Maks hukommelse (MB)</label>
+          <input type="number" id="cache_max_memory_mb" min="0" max="4096" step="50" />
+          <div class="hint">Eviction sker når estimeret JSON-størrelse overstiger grænsen. 0 = ubegrænset. (default: 300 MB)</div>
+        </div>
 
         <h4 style="margin-top:1.2rem;margin-bottom:0.6rem;" id="cache-prewarm-h4"></h4>
         <div class="field">
           <label for="cache_prewarm_interval_s" id="cache-scan-interval-lbl"></label>
           <input type="number" id="cache_prewarm_interval_s" min="60" max="86400" step="60" />
           <div class="hint">Hvor ofte workeren scanner <em>alle</em> ISE-endpoints (default: 1800 = 30 min).</div>
+        </div>
+        <div class="field">
+          <label for="cache_prewarm_skip_fresh_s" id="cache-skip-fresh-lbl">Spring friske entries over (sek)</label>
+          <input type="number" id="cache_prewarm_skip_fresh_s" min="0" max="86400" step="60" />
+          <div class="hint">Pre-warm scanner springer entries over der er yngre end denne tærskel. 0 = aldrig spring over. (default: 900 = 15 min)</div>
         </div>
         <div class="field">
           <label for="cache_prewarm_concurrency" id="cache-concurrency-lbl"></label>
