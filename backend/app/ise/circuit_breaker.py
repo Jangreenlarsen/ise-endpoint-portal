@@ -77,7 +77,10 @@ class CircuitBreaker:
             self._opened_at = time.time()
             if previous == HALF_OPEN:
                 logger.warning("circuit breaker: OPEN (half-open probe failed)")
-            else:
+            elif previous != OPEN:
+                # Log kun ved første CLOSED→OPEN transition.
+                # Samtidige requests der rammer threshold+1,+2… logger ikke igen
+                # så open_count i log-analysen svarer til faktiske CB-åbninger.
                 logger.warning(
                     "circuit breaker: OPEN after %d consecutive failures — "
                     "fast-failing ISE requests for %.0fs",

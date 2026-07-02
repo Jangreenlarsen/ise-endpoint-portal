@@ -127,7 +127,9 @@ def _analyze_logs(
                             notable_entries.append(parsed)
 
                     low = msg.lower()
-                    if "circuit" in low and "breaker" in low:
+                    # Drip logger "drip: circuit breaker OPEN — pauser…" som en statuslinje,
+                    # ikke en CB-tilstandsændring — ekskluder disse fra event-tællingen.
+                    if "circuit" in low and "breaker" in low and not low.startswith("drip:"):
                         if _CB_OPEN.search(msg):
                             cb_events.append({"ts": ts, "event": "OPEN",      "detail": msg[:200]})
                         elif _CB_CLOSE.search(msg):

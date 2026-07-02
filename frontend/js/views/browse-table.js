@@ -640,8 +640,12 @@ export function initTable(container, state, api, cb) {
       state.staleIds = new Set(result.items.filter((r) => r.cache_stale).map((r) => r.id));
       state.laaTotal       = epStats ? epStats.laa_count : null;
       if (cb.needsFilterMode()) await cb.enterFilterMode();
-      await cb.refreshActiveSessionMacs(force);
+      // Render tabellen øjeblikkeligt fra cache — MnT-kald kører i baggrunden.
+      // Auth-status-farver (grøn/rød) opdateres når ISE MnT svarer (typisk 1-5s).
+      // Uden denne ændring blokerede det sekvensielle MnT-kald render i 15-20s
+      // selv når alle endpoint-data var klar fra cache på <100ms.
       applyFilter();
+      cb.refreshActiveSessionMacs(force).catch(() => {}).then(() => applyFilter());
     } catch (err) {
       msg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
       tbody.innerHTML = "";

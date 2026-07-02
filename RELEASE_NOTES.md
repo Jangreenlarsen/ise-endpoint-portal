@@ -4,6 +4,14 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.21.0718] — 2026-07-02 — fix: CB-metrik, drip client.closed + Browse-reload latens
+
+> **Build:** 0718
+
+- **Browse-reload**: Tabellen vises nu øjeblikkeligt fra cache (<100ms). Auth-status-farver (grøn/rød) tilføjes i baggrunden når ISE MnT svarer — ikke mere 15-20s blokeret render.
+- **CB `open_count` korrekt**: Drip-statuslog ekskluderes fra CB-event-tælling; dobbelt-log ved samtidige fejl er elimineret. `open_count` afspejler nu faktiske CB-åbninger.
+- **Drip `client.closed`**: Forventet RuntimeError ved genstart logges nu som DEBUG frem for WARNING.
+
 ## [6.20.0717] — 2026-07-02 — fix: 6 bugs i log-analyse, session cache og ANC
 
 > **Build:** 0717

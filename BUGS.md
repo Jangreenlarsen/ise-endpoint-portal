@@ -4,6 +4,15 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 6.21.0718] 2026-07-02 — 4 bugs opdaget via v6.20.0717 condensed-eksport + reload-analyse
+
+- **Bug A** `circuit_breaker.open_count` for høj: drip-loglinjen `"drip: circuit breaker OPEN — pauser…"` matchede `_CB_OPEN`-regex og tæltes som en CB-tilstandsændring. Root cause: regex `r"circuit.?breaker[:\s]+OPEN"` er for bred. Fix: ekskludér linjer der starter med `"drip:"` i CB-event-detektion.
+- **Bug B** `circuit_breaker.open_count` tæller dobbelt pr. CB-åbning: ved samtidige ISE-fejl kalder flere concurrent requests `record_failure()` og rammer threshold+1, +2 etc. — alle logger `"circuit breaker: OPEN after N failures"`, som alle matches af regex. Fix: log kun "OPEN after N failures" ved første CLOSED→OPEN transition (skip hvis allerede OPEN).
+- **Bug C** `drip: fetch fejlede id=<uuid>: Cannot send a request, as the client has been closed`: httpx-klienten lukkes under restart/settings-ændring mens drip stadig har en inflight asyncio.gather. RuntimeError er korrekt fanget men logges på WARNING → vises som problem i analyse. Fix: downgrade til DEBUG for RuntimeError med "closed".
+- **Bug D** Browse-reload latens 15-20s: `refreshActiveSessionMacs(force=true)` kaldes SYNKRONT efter `Promise.all()` i `load()`, dvs. ISE MnT-kald blokerer rendering. Cachen er varm og endpoint-data er klar på <100ms, men tabellen viser ikke noget før MnT-kaldet svarer. Fix: kør `refreshActiveSessionMacs` i baggrunden — render tabel øjeblikkeligt, opdater auth-farver når MnT svarer.
+- **Løsning (v6.21.0718):** Alle 4 bugs fixet — se CHANGELOG.
+- **Berørte filer:** `backend/app/api/logs.py`, `backend/app/ise/circuit_breaker.py`, `backend/app/services/cache_prewarm.py`, `frontend/js/views/browse-table.js`
+
 ## [FIXED 6.20.0717] 2026-07-02 — Log-analyse: 5 bugs opdaget via condensed-eksport
 
 - **Bug A** `time_range.first > time_range.last`: `_all_log_files()` returnerede nyeste-fil-først grundet fejlagtig `.reverse()` → `first_ts`/`last_ts` var byttet om.

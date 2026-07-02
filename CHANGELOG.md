@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.21.0718] — 2026-07-02 — fix: CB-metrik-fejl, drip client.closed og Browse-reload latens
+
+- **Bug A CB `open_count` oppustet af drip-log** (`logs.py`): `"drip: circuit breaker OPEN — pauser…"` matchede `_CB_OPEN`-regex → tæltes som CB-tilstandsændring. Tilføjet `not low.startswith("drip:")` guard i CB-event-detektion.
+- **Bug B CB dobbelt-log ved samtidige fejl** (`circuit_breaker.py`): Concurrent requests der alle rammer failure threshold logger `"OPEN after N failures"` for N+1, N+2 etc. → `open_count` oppustet. Ændret `record_failure()` til kun at logge "OPEN after" ved første CLOSED→OPEN-transition (`elif previous != OPEN`).
+- **Bug C drip `client.closed` logges som WARNING** (`cache_prewarm.py`): `RuntimeError("closed")` opstår forventeligt når httpx-klienten lukkes under restart mens `asyncio.gather` stadig kører. Downgradet til DEBUG-niveau for disse specifikke errors.
+- **Bug D Browse-reload 15-20s trods varm cache** (`browse-table.js`): `refreshActiveSessionMacs(force=true)` kaldt SYNKRONT i `load()` efter `Promise.all()` — ISE MnT-kald blokerede render selv når endpoint-data var klar fra cache på <100ms. Fix: `applyFilter()` kaldes nu øjeblikkeligt, MnT-kald kører i baggrunden og kalder `applyFilter()` igen når det returnerer med auth-status-farver.
+
 ## [6.20.0717] — 2026-07-02 — fix: 6 bugs i log-analyse, session cache og ANC-endpoint
 
 Bugs opdaget via condensed log-eksport:

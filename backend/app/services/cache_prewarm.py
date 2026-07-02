@@ -271,7 +271,13 @@ class PrewarmWorker:
                         CACHE_DRIP_REFRESHED.inc()
                         logger.debug("drip: refreshed %s", ep_id)
                     except Exception as exc:  # noqa: BLE001
-                        logger.warning("drip: fetch fejlede id=%s: %s", ep_id, exc)
+                        # RuntimeError("closed") opstår når httpx-klienten lukkes under
+                        # restart/settings-ændring mens gather stadig kører — forventet,
+                        # ikke en reel fejl. Log på DEBUG så det ikke fylder i analysen.
+                        if isinstance(exc, RuntimeError) and "closed" in str(exc).lower():
+                            logger.debug("drip: afbrudt id=%s (klient lukket ved genstart)", ep_id)
+                        else:
+                            logger.warning("drip: fetch fejlede id=%s: %s", ep_id, exc)
                         # Back-off via public API: undgår direkte fetched_at-manipulation.
                         cache.set_fetch_backoff(ep_id)
 
