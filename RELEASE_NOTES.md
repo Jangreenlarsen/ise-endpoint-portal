@@ -4,6 +4,12 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.21.0723] — 2026-07-04 — fix: Grupper overlever nu genstart (offline disk-cache)
+
+> **Build:** 0723
+
+- **Grupper vises straks efter genstart**: Gruppe-listen gemmes nu til disk-cachen ligesom endpoints. Tidligere var gruppe-dropdown og -filtre tomme indtil ISE svarede første gang efter en genstart (og kunne udløse en 502 hvis ISE var langsom). Nu serveres grupperne øjeblikkeligt fra disk, og opdateres i baggrunden. Sammen med 6.21.0722 renderer Browse fuldt fra cachen — både endpoints og grupper — uden at vente på ISE.
+
 ## [6.21.0722] — 2026-07-03 — fix: Browse viste 502 og tom tabel når grupper ikke kunne hentes
 
 > **Build:** 0722

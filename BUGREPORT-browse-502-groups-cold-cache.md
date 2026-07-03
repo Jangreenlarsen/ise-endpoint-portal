@@ -1,6 +1,6 @@
 # Bug Report: Browse viser `502` og tom tabel når `/groups` timer ud (trods varm disk-cache)
 
-> **Status:** FIXED i v6.21.0722 (2026-07-03) — frontend-resiliens. Backend follow-up (groups disk-persistens) UDESTÅR.
+> **Status:** FIXED — frontend-resiliens (v6.21.0722) + groups disk-persistens (v6.21.0723). Fuldt løst.
 > **Severity:** Middel — Browse ubrugelig i perioder efter genstart/ISE-udfald, selvom data findes i cachen
 > **Type:** Frontend-orkestrering (ét ikke-kritisk kald vælter hele viewet) + manglende offline-cache for grupper
 > **Primære filer:** `frontend/js/views/browse-table.js`, `backend/app/api/groups.py`, `backend/app/core/endpoint_cache.py`
@@ -80,22 +80,23 @@ Gruppe-dropdown og filtre degraderer blødt og self-healer via SWR når ISE svar
 
 ---
 
-## 4. UDESTÅENDE follow-up (backend) — groups disk-persistens
+## 4. Backend follow-up — groups disk-persistens (LØST i v6.21.0723)
 
-Frontend-fixen fjerner symptomet, men gruppe-dropdown'en er stadig **tom** indtil første
-succesfulde ISE-svar efter genstart, fordi grupper ikke har offline-data. For at levere
-"disk-cache har grupper med det samme":
+Frontend-fixen fjernede symptomet, men gruppe-dropdown'en var stadig tom indtil første
+succesfulde ISE-svar efter genstart. Løst ved at persistere gruppe-cachen til disk:
 
-- Gem gruppe-summary (`EndpointCache._groups`) i `cache/endpoints.json` sammen med details.
-- Berørte punkter: `DISK_CACHE_VERSION` 4→5 (gamle disk-caches droppes én gang og genopbygges),
-  `_save_snapshot` (nyt `"groups"`-felt), `save_to_disk`/`save_to_disk_async` (snapshot af
-  `_groups`), `load_from_disk` (gendan `_groups` hvis `None`).
-- Load-flag grupper som stale (`from_disk`-agtigt) så SWR refresher dem i baggrunden.
-- **Risiko:** disk-format-migration → test load/save grundigt (se `tests/test_endpoint_cache.py`).
+- `_save_snapshot` gemmer nu et `"groups"`-felt (`{fetched_at, value:[EndpointGroupSummary…]}`);
+  `save_to_disk`/`save_to_disk_async` sender `self._groups` med.
+- `DISK_CACHE_VERSION` 4→5 (gamle disk-caches droppes én gang og genopbygges ved første scan).
+- `load_from_disk` gendanner `_groups` hvis `None`, med `fetched_at = now - ttl - 1` så
+  `get_groups()` serverer dem **øjeblikkeligt** og spawner en ikke-blokerende SWR-refresh
+  (samme princip som disk-loadede details). Ingen blokerende ISE-kald efter genstart.
+- Verificeret med round-trip (gem → load i ny cache → serveres straks + bg-refresh spawnet) +
+  `tests/test_endpoint_cache.py` grønne.
 
-Alternativ/supplerende backend-hærdning: lad `/groups` degradere til et sidst-kendt/tomt svar
-i stedet for rå 502, eller genbrug `_shared_group_names` (id→navn fra 6.21.0721) som nød-fallback
-til dropdown'en.
+Yderligere mulig hærdning (ikke nødvendig efter ovenstående, noteret for fuldstændighed):
+lad `/groups` degradere til sidst-kendt/tomt svar i stedet for rå 502, eller genbrug
+`_shared_group_names` (id→navn fra 6.21.0721) som nød-fallback til dropdown'en.
 
 ---
 

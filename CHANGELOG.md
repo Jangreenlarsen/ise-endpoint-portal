@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.21.0723] — 2026-07-04 — fix: Gruppe-cache persisteres til disk (offline-data efter genstart)
+
+Follow-up på 6.21.0722. Se BUGS.md 6.21.0723 + [BUGREPORT-browse-502-groups-cold-cache.md](BUGREPORT-browse-502-groups-cold-cache.md) §4.
+
+- **`endpoint_cache.py`**: Gruppe-cachen (`_groups`) gemmes nu til disk sammen med endpoint-details. `DISK_CACHE_VERSION` 4→5. `_save_snapshot` tilføjer et `"groups"`-felt (`{fetched_at, value:[EndpointGroupSummary…]}`); `save_to_disk`/`save_to_disk_async` sender `self._groups` med. `load_from_disk` gendanner `_groups` (hvis `None`) med `fetched_at = now - ttl - 1` → `get_groups()` serverer grupperne **øjeblikkeligt** efter genstart og spawner en ikke-blokerende SWR-refresh, i stedet for at blokere på ISE `list_all()` (som kunne give 502). Gamle v4-diskcaches droppes én gang og genopbygges ved første scan.
+- **Effekt:** Efter genstart har både endpoints OG grupper offline-data fra disk — Browse renderer fuldt uden at vente på ISE.
+
 ## [6.21.0722] — 2026-07-03 — fix: Browse 502 + tom tabel når `/groups` timer ud (trods varm disk-cache)
 
 - **`browse-table.js`**: `load()` samlede hjælpe-data og endpoints i ét `Promise.all`, men `api.listGroups()` og `api.listCustomAttributes()` manglede `.catch` (de øvrige 6 kald havde det). `/groups` returnerer 502 ved transport-fejl ([groups.py:23](backend/app/api/groups.py#L23)) og gruppe-cachen er ikke disk-persisteret → efter genstart blokerer første `/groups`-kald på ISE. Langsom ISE → ReadTimeout → 502 → hele `Promise.all` afvist → tom tabel, selvom `listEndpointDetails()` ville have serveret disk-cachen. Fix: `listGroups().catch(() => state.groups || [])` og `listCustomAttributes().catch(() => ({attributes:[]}))`. Kun `listEndpointDetails` er nu hård afhængighed; hjælpe-data degraderer og self-healer via SWR. Se BUGS.md 6.21.0722.

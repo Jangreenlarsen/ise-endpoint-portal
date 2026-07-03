@@ -56,7 +56,7 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T")
 
 STALE_MAX_FACTOR = 30.0
-DISK_CACHE_VERSION = 4  # v4: tier_emas sektion tilføjet til disk-payload
+DISK_CACHE_VERSION = 5  # v5: groups-summary tilføjet til disk-payload (offline gruppe-cache)
 
 # 3-tier change-frequency constants.
 # change_ema tracks EMA of "did value change?" per drip refresh (0.0–1.0).
@@ -654,6 +654,7 @@ class EndpointCache:
         path: Path,
         snapshot: dict[str, "CachedEntry[Any]"],
         tier_emas_snap: dict[str, float],
+        groups_snap: "CachedEntry[Any] | None" = None,
     ) -> int:
         """Serialisér pre-taget snapshot til JSON. Kaldt fra event-loop (sync)
         eller thread-pool (async). Parametrene er snapshot-kopier taget på
@@ -679,15 +680,36 @@ class EndpointCache:
                     }
                 except Exception:  # noqa: BLE001
                     pass
+            # Serialisér groups-summary så /groups er varm efter genstart og ikke
+            # blokerer på et ISE list_all()-kald. Grupper ændres sjældent → billig
+            # at gemme, stor gevinst for Browse-load-resiliens.
+            groups_payload = None
+            if groups_snap is not None and groups_snap.value is not None:
+                try:
+                    groups_payload = {
+                        "fetched_at": groups_snap.fetched_at,
+                        "value": [
+                            g.model_dump() if hasattr(g, "model_dump") else dict(g)
+                            for g in groups_snap.value
+                        ],
+                    }
+                except Exception:  # noqa: BLE001
+                    groups_payload = None
             payload = {
                 "version": DISK_CACHE_VERSION,
                 "saved_at": self._now(),
                 "count": len(entries),
                 "entries": entries,
                 "tier_emas": tier_emas_snap,
+                "groups": groups_payload,
             }
             path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
-            logger.info("disk cache: saved %d entries to %s", len(entries), path)
+            logger.info(
+                "disk cache: saved %d entries + %d groups to %s",
+                len(entries),
+                len(groups_payload["value"]) if groups_payload else 0,
+                path,
+            )
             return len(entries)
         except Exception as exc:  # noqa: BLE001
             logger.warning("disk cache: save failed: %s", exc)
@@ -699,7 +721,7 @@ class EndpointCache:
         """
         snapshot = dict(self._details)
         tier_emas_snap = dict(self._tier_emas)
-        return self._save_snapshot(path, snapshot, tier_emas_snap)
+        return self._save_snapshot(path, snapshot, tier_emas_snap, self._groups)
 
     async def save_to_disk_async(self, path: Path) -> int:
         """Non-blocking: snapshot på event-loop-tråden, serialisering i thread-pool.
@@ -709,9 +731,10 @@ class EndpointCache:
         """
         snapshot = dict(self._details)
         tier_emas_snap = dict(self._tier_emas)
+        groups_snap = self._groups
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(
-            None, self._save_snapshot, path, snapshot, tier_emas_snap
+            None, self._save_snapshot, path, snapshot, tier_emas_snap, groups_snap
         )
 
     def load_from_disk(self, path: Path) -> int:
@@ -752,6 +775,25 @@ class EndpointCache:
                     loaded += 1
                 except Exception:  # noqa: BLE001
                     pass
+            # Gendan groups-summary hvis ikke allerede live-cachet. Sæt fetched_at
+            # så entryen er "lige akkurat stale" (age = ttl+1) → get_groups()
+            # serverer den ØJEBLIKKELIGT og spawner en baggrunds-refresh, i stedet
+            # for at blokere på ISE list_all() efter genstart (samme princip som
+            # disk-loadede details). Fanger også gruppe-ændringer fra nedetiden.
+            if self._groups is None:
+                groups_raw = payload.get("groups")
+                if groups_raw and groups_raw.get("value") is not None:
+                    try:
+                        from app.schemas.endpoint import EndpointGroupSummary
+                        groups_val = [
+                            EndpointGroupSummary.model_validate(g)
+                            for g in groups_raw["value"]
+                        ]
+                        self._groups = CachedEntry(groups_val, self._now() - self._ttl() - 1)
+                        logger.info("disk cache: loaded %d groups from %s", len(groups_val), path)
+                    except Exception:  # noqa: BLE001
+                        pass
+
             self._stats["disk_loads"] += loaded
             saved_at = payload.get("saved_at", 0)
             age_min = (self._now() - saved_at) / 60

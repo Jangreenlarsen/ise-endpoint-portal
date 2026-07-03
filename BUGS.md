@@ -11,7 +11,14 @@ fejlfinder et lignende symptom** — flere ISE-timeout/CB-problemer har været s
 
 Kendte post-mortems:
 - [BUGREPORT-ise-endpointgroup-storm.md](BUGREPORT-ise-endpointgroup-storm.md) — ISE `/ers/config/endpointgroup` ReadTimeout-storm + CB-cykling (grundårsag: N+1 gruppe-fetch i drip-loop). Fixed 6.21.0721.
-- [BUGREPORT-browse-502-groups-cold-cache.md](BUGREPORT-browse-502-groups-cold-cache.md) — Browse `502` + tom tabel når `/groups` timer ud (grundårsag: ikke-kritisk group-kald vælter `Promise.all` + grupper har ingen disk-cache). Fixed 6.21.0722; backend-follow-up (groups disk-persistens) udestår.
+- [BUGREPORT-browse-502-groups-cold-cache.md](BUGREPORT-browse-502-groups-cold-cache.md) — Browse `502` + tom tabel når `/groups` timer ud (grundårsag: ikke-kritisk group-kald vælter `Promise.all` + grupper har ingen disk-cache). Frontend fixed 6.21.0722; groups disk-persistens fixed 6.21.0723.
+
+## [FIXED 6.21.0723] 2026-07-04 — Gruppe-cache persisteres nu til disk (offline-data efter genstart)
+
+- **Baggrund:** Follow-up på 6.21.0722. Gruppe-cachen (`EndpointCache._groups`) blev ikke gemt til disk som endpoint-details, så efter genstart/`invalidate_all()` var `_groups=None` → første `/groups`-kald blokerede på ISE `list_all()` og kunne give 502 hvis ISE var langsom. Gruppe-dropdown var tom indtil første ISE-svar.
+- **Løsning (v6.21.0723):** `save_to_disk`/`save_to_disk_async` gemmer nu `_groups`-summary i `cache/endpoints.json` (`DISK_CACHE_VERSION` 4→5). `load_from_disk` gendanner grupperne med `fetched_at = now - ttl - 1` så `get_groups()` serverer dem **øjeblikkeligt** og spawner en ikke-blokerende SWR-refresh (samme princip som disk-loadede details) — ingen blokerende ISE-kald efter genstart. Gamle v4-diskcaches droppes én gang og genopbygges ved første scan.
+- **Berørte filer:** `backend/app/core/endpoint_cache.py`
+- **Bemærk:** Frontend-fixen (6.21.0722) er stadig sikkerhedsnettet — sammen giver de fuld resiliens: endpoints OG grupper vises fra disk, og et fejlende hjælpe-kald vælter aldrig tabellen.
 
 ## [FIXED 6.21.0722] 2026-07-03 — Browse viser 502 og tom tabel når `/groups` timer ud (trods varm disk-cache)
 
@@ -20,7 +27,7 @@ Kendte post-mortems:
 - **Diskriminator:** Fejlteksten er `502` (ikke `503`) → kommer fra `/groups` (rå `HTTPException(502, str(exc))`), IKKE fra `/endpoints/*` (som bruger `_ise_http_error` → 503 for transport-fejl).
 - **Løsning (v6.21.0722):** `listGroups()` og `listCustomAttributes()` fik `.catch`-fallback i browse-loadet (grupper → sidst-kendte/`[]`, CA → `{attributes:[]}`). Kun `listEndpointDetails` er nu en hård afhængighed — den serverer fra disk-/memory-cache og renderer tabellen selv når ISE er utilgængelig. Hjælpe-data (gruppe-dropdown/filtre) degraderer og self-healer via SWR når ISE svarer igen.
 - **Berørte filer:** `frontend/js/views/browse-table.js`
-- **Kendt follow-up (ikke i denne fix):** Gruppe-cachen (`EndpointCache._groups`) persisteres ikke til disk som endpoint-details gør — derfor er gruppe-dropdown'en tom indtil første succesfulde ISE-svar efter genstart. Overvej at gemme gruppe-summary i `cache/endpoints.json` (DISK_CACHE_VERSION-bump) så grupper også har offline-data.
+- **Follow-up (LØST i 6.21.0723):** Gruppe-cachen persisteres nu til disk (`cache/endpoints.json`, `DISK_CACHE_VERSION` 4→5) så grupper også har offline-data efter genstart. Se `[FIXED 6.21.0723]` ovenfor.
 - **Detaljeret analyse:** [BUGREPORT-browse-502-groups-cold-cache.md](BUGREPORT-browse-502-groups-cold-cache.md)
 
 ## [FIXED 6.21.0721] 2026-07-03 — Drip-loop N+1 gruppe-storm → konstant `/endpointgroup` ReadTimeout + CB-cykling
