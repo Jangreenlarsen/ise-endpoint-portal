@@ -12,6 +12,15 @@ fejlfinder et lignende symptom** — flere ISE-timeout/CB-problemer har været s
 Kendte post-mortems:
 - [BUGREPORT-ise-endpointgroup-storm.md](BUGREPORT-ise-endpointgroup-storm.md) — ISE `/ers/config/endpointgroup` ReadTimeout-storm + CB-cykling (grundårsag: N+1 gruppe-fetch i drip-loop). Fixed 6.21.0721.
 
+## [FIXED 6.21.0722] 2026-07-03 — Browse viser 502 og tom tabel når `/groups` timer ud (trods varm disk-cache)
+
+- **Symptom:** `502: ISE API 0: transport error: ReadTimeout:` i Browse fra tid til anden — og INGEN endpoints vises, selvom disk-cachen har data der burde kunne præsenteres straks.
+- **Root cause:** Browse-loadet henter hjælpe-data og endpoints i samme `Promise.all` ([browse-table.js:607](frontend/js/views/browse-table.js#L607)). `api.listGroups()` og `api.listCustomAttributes()` havde **ingen `.catch`** (i modsætning til de øvrige 6 kald). `/groups` mapper `IseApiError` → **502** ([groups.py:23](backend/app/api/groups.py#L23)), og gruppe-cachen er **ikke disk-persisteret** — efter genstart/cache-invalidering er `EndpointCache._groups=None`, så første `/groups`-kald blokerer på ISE `list_all()`. Er ISE langsom i det øjeblik → ReadTimeout → 502 → hele `Promise.all` afvises → `catch`-blokken rydder tabellen. `listEndpointDetails()` ville ellers have serveret disk-cachen fint (`detail_count()>0` → synkron snapshot, ingen ISE).
+- **Diskriminator:** Fejlteksten er `502` (ikke `503`) → kommer fra `/groups` (rå `HTTPException(502, str(exc))`), IKKE fra `/endpoints/*` (som bruger `_ise_http_error` → 503 for transport-fejl).
+- **Løsning (v6.21.0722):** `listGroups()` og `listCustomAttributes()` fik `.catch`-fallback i browse-loadet (grupper → sidst-kendte/`[]`, CA → `{attributes:[]}`). Kun `listEndpointDetails` er nu en hård afhængighed — den serverer fra disk-/memory-cache og renderer tabellen selv når ISE er utilgængelig. Hjælpe-data (gruppe-dropdown/filtre) degraderer og self-healer via SWR når ISE svarer igen.
+- **Berørte filer:** `frontend/js/views/browse-table.js`
+- **Kendt follow-up (ikke i denne fix):** Gruppe-cachen (`EndpointCache._groups`) persisteres ikke til disk som endpoint-details gør — derfor er gruppe-dropdown'en tom indtil første succesfulde ISE-svar efter genstart. Overvej at gemme gruppe-summary i `cache/endpoints.json` (DISK_CACHE_VERSION-bump) så grupper også har offline-data.
+
 ## [FIXED 6.21.0721] 2026-07-03 — Drip-loop N+1 gruppe-storm → konstant `/endpointgroup` ReadTimeout + CB-cykling
 
 - **Symptom:** Loggen domineres af `GET /ers/config/endpointgroup` `ReadTimeout` (10.000+ issues på `app.ise.client`), CB åbner 10-13×/dag, fresh% ustabil. Kørte hele dagen, ikke som spike.

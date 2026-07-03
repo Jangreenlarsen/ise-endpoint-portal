@@ -604,9 +604,15 @@ export function initTable(container, state, api, cb) {
     state.filterMode  = false;
     state.allRowsCache = null;
     try {
+      // Kun listEndpointDetails er en hård afhængighed — den serverer fra disk-/
+      // memory-cachen og skal altid kunne rendere tabellen. Grupper og custom-
+      // attributter er hjælpe-data (dropdowns/filtre); de rammer ISE direkte og
+      // kan give 502 (fx kold gruppe-cache efter genstart + langsom ISE). Uden
+      // .catch her afviste ét fejlende hjælpe-kald hele Promise.all → tom tabel
+      // trods varm endpoint-cache. Degradér i stedet: behold sidst-kendte grupper.
       const [caData, grps, result, dacls, mapping, roles, me, pskPolicy, epStats] = await Promise.all([
-        api.listCustomAttributes(),
-        api.listGroups(),
+        api.listCustomAttributes().catch(() => ({ attributes: [] })),
+        api.listGroups().catch(() => state.groups || []),
         api.listEndpointDetails(state.currentPage, state.currentSize, "", state.currentFilters),
         api.listDacls().catch(() => []),
         api.getPlatformMapping().catch(() => ({ mappings: [] })),

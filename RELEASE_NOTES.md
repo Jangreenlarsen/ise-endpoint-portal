@@ -4,6 +4,12 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.21.0722] — 2026-07-03 — fix: Browse viste 502 og tom tabel når grupper ikke kunne hentes
+
+> **Build:** 0722
+
+- **Browse er nu robust mod ISE-udfald**: Tidligere kunne et enkelt fejlende hjælpe-kald (fx gruppe-listen der timede ud mod ISE) afvise hele browse-loadet med `502: ISE API 0: transport error: ReadTimeout` og en tom tabel — selvom endpoint-dataene lå klar i disk-cachen. Nu renderes endpoint-tabellen altid fra cachen; gruppe-dropdown og filtre degraderer blødt og udfyldes automatisk når ISE svarer igen.
+
 ## [6.21.0721] — 2026-07-03 — fix: ISE `/endpointgroup` ReadTimeout-storm (endelig grundårsag)
 
 > **Build:** 0721

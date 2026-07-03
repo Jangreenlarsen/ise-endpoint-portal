@@ -3,6 +3,10 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.21.0722] — 2026-07-03 — fix: Browse 502 + tom tabel når `/groups` timer ud (trods varm disk-cache)
+
+- **`browse-table.js`**: `load()` samlede hjælpe-data og endpoints i ét `Promise.all`, men `api.listGroups()` og `api.listCustomAttributes()` manglede `.catch` (de øvrige 6 kald havde det). `/groups` returnerer 502 ved transport-fejl ([groups.py:23](backend/app/api/groups.py#L23)) og gruppe-cachen er ikke disk-persisteret → efter genstart blokerer første `/groups`-kald på ISE. Langsom ISE → ReadTimeout → 502 → hele `Promise.all` afvist → tom tabel, selvom `listEndpointDetails()` ville have serveret disk-cachen. Fix: `listGroups().catch(() => state.groups || [])` og `listCustomAttributes().catch(() => ({attributes:[]}))`. Kun `listEndpointDetails` er nu hård afhængighed; hjælpe-data degraderer og self-healer via SWR. Se BUGS.md 6.21.0722.
+
 ## [6.21.0721] — 2026-07-03 — fix: Drip-loop N+1 gruppe-storm → konstant `/endpointgroup` ReadTimeout + CB-cykling
 
 Endelig grundårsag bag den langvarige ISE `/ers/config/endpointgroup`-storm (bekæmpet gennem 6.14–6.21 uden at kilden blev fundet). Se [BUGREPORT-ise-endpointgroup-storm.md](BUGREPORT-ise-endpointgroup-storm.md).
