@@ -4,6 +4,14 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.21.0721] — 2026-07-03 — fix: ISE `/endpointgroup` ReadTimeout-storm (endelig grundårsag)
+
+> **Build:** 0721
+
+- **ISE-stabilitet (stor forbedring)**: Baggrunds-refresh (drip) hentede hele ISE-gruppe-hierarkiet på ~hver eneste opdatering — titusindvis af unødvendige kald i timen mod `GET /ers/config/endpointgroup`. Det overbelastede ISE ERS, gav konstante `ReadTimeout`-fejl og fik circuit breakeren til at åbne/lukke 10-13× dagligt. Nu deles gruppe-navnene i én cache der hentes højst hvert 5. minut → ISE-kald mod gruppe-endpointet falder ~1000×.
+- Dette er **grundårsagen** bag de ISE-timeout-problemer der er blevet bekæmpet gennem flere releases (keepalive-justeringer m.m. behandlede kun symptomer). Detaljeret teknisk analyse i `BUGREPORT-ise-endpointgroup-storm.md`.
+- Ingen synlig ændring i UI — gruppenavne vises som hidtil.
+
 ## [6.21.0720] — 2026-07-02 — fix: Stale ISE-connections → fresh% falder til 0%
 
 > **Build:** 0720

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from datetime import datetime, timezone
 from typing import Any
 
@@ -95,6 +96,39 @@ def _sync_guest_expiry(endpoint_id: str, mac: str, ca: dict[str, str]) -> None:
             guest_expiry_store.remove(endpoint_id)
     except Exception as exc:  # noqa: BLE001
         logger.warning("guest expiry sync fejlede for %s: %s", endpoint_id, exc)
+
+
+# --------------------------------------------------------------------------- #
+# Shared endpoint-group name cache                                            #
+# --------------------------------------------------------------------------- #
+# id -> short group name, shared across ALL EndpointService instances.
+#
+# Root cause of the long-standing ISE `/ers/config/endpointgroup` ReadTimeout /
+# circuit-breaker storm (BUGS.md 6.21.0721): the drip-refresh loop recreates an
+# EndpointService every tick, so the previous *per-instance* _group_cache was
+# always empty and _resolve_group_name fell through to groups.list_all() — a
+# 1 + N-call fetch of the whole group hierarchy — on essentially every drip
+# refresh. At ~1 refresh/5s that sustained thousands of ISE ERS calls/hour on
+# the group endpoint, which ISE cannot service → timeouts → retries → the CB
+# cycling OPEN/CLOSED all day.
+#
+# Sharing the map at module level (TTL'd, coalesced via one lock) means the
+# hierarchy is fetched at most once per cache_ttl_seconds no matter how many
+# services are created. Short names are preserved (identical to old behaviour).
+# A failed refresh keeps serving the previous map and backs off ~30s.
+_shared_group_names: dict[str, str] = {}
+_shared_group_names_at: float = 0.0
+_shared_group_names_lock: asyncio.Lock | None = None
+
+
+def invalidate_group_names() -> None:
+    """Force the next group-name lookup to refetch from ISE.
+
+    Call after a group create/delete/rename so the change is reflected
+    immediately instead of waiting for the TTL to expire.
+    """
+    global _shared_group_names_at
+    _shared_group_names_at = 0.0
 
 
 class EndpointService:
@@ -292,27 +326,45 @@ class EndpointService:
         )
 
     async def _resolve_group_name(self, group_id: str) -> str:
-        """Look up group name by ID. Returns empty string on failure."""
+        """Look up an endpoint-group's short name by ID. Empty string on failure.
+
+        Resolves via the shared, TTL'd group-name cache (_shared_group_names) so
+        repeated lookups — drip refresh, full scan, request paths — share a single
+        ISE fetch instead of each calling groups.list_all().
+        """
         if not group_id:
             return ""
-        if not hasattr(self, "_group_cache"):
-            self._group_cache: dict[str, str] = {}
-        if not hasattr(self, "_group_cache_lock"):
-            self._group_cache_lock = asyncio.Lock()
-        if group_id in self._group_cache:
-            return self._group_cache[group_id]
-        # Lock prevents N concurrent endpoint-fetches from all hitting ISE for
-        # the same group list when the local cache is cold.
-        async with self._group_cache_lock:
-            if group_id in self._group_cache:
-                return self._group_cache[group_id]
+        names = await self._get_group_names()
+        return names.get(group_id, "")
+
+    async def _get_group_names(self, force: bool = False) -> dict[str, str]:
+        """Return the shared id->short-name map, refreshing from ISE at most once
+        per cache_ttl_seconds. Concurrent callers coalesce on one lock so only a
+        single groups.list_all() runs per refresh window. On ISE failure the
+        previous map is served and the next attempt is backed off ~30s.
+        """
+        global _shared_group_names, _shared_group_names_at, _shared_group_names_lock
+        ttl = float(getattr(config.settings, "cache_ttl_seconds", 300.0))
+        if not force and (time.time() - _shared_group_names_at) <= ttl:
+            return _shared_group_names
+        if _shared_group_names_lock is None:
+            _shared_group_names_lock = asyncio.Lock()
+        async with _shared_group_names_lock:
+            # Re-check inside the lock: another coroutine may have refreshed while
+            # we were waiting, in which case we serve its result without refetching.
+            if not force and (time.time() - _shared_group_names_at) <= ttl:
+                return _shared_group_names
             try:
                 raw = await self.groups.list_all()
-                for g in raw:
-                    self._group_cache[g.get("id", "")] = g.get("name", "")
+                _shared_group_names = {g.get("id", ""): g.get("name", "") for g in raw}
+                _shared_group_names_at = time.time()
+                logger.info("group-name cache refreshed (%d groups)", len(_shared_group_names))
             except IseApiError:
-                pass
-        return self._group_cache.get(group_id, "")
+                # ISE unavailable — keep the previous map (possibly empty on cold
+                # start) and back off ~30s before retrying, rather than refetching
+                # on every lookup. The circuit breaker independently fast-fails.
+                _shared_group_names_at = time.time() - ttl + 30.0
+        return _shared_group_names
 
     async def list_endpoint_details(
         self,
@@ -563,6 +615,7 @@ class EndpointService:
     async def create_group(self, name: str, description: str = "", parent_id: str = "") -> str:
         new_id = await self.groups.create(name, description, parent_id)
         get_cache().invalidate_groups()
+        invalidate_group_names()  # shared id->name map must see the new group immediately
         logger.info("created endpoint group name=%s parent=%s id=%s", name, parent_id or "root", new_id)
         return new_id
 

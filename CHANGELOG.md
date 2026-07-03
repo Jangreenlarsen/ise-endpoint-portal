@@ -3,6 +3,16 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.21.0721] — 2026-07-03 — fix: Drip-loop N+1 gruppe-storm → konstant `/endpointgroup` ReadTimeout + CB-cykling
+
+Endelig grundårsag bag den langvarige ISE `/ers/config/endpointgroup`-storm (bekæmpet gennem 6.14–6.21 uden at kilden blev fundet). Se [BUGREPORT-ise-endpointgroup-storm.md](BUGREPORT-ise-endpointgroup-storm.md).
+
+- **Root cause** (`cache_prewarm.py` + `endpoint_service.py`): `_drip_loop()` genopretter `EndpointService` på hver iteration → per-instans `_group_cache` altid tomt → `_resolve_group_name` faldt igennem til `groups.list_all()` (N+1: 1 list + `GET /endpointgroup/{id}` pr. gruppe) på ~hver drip-refresh (~1/5s). Titusindvis af group-kald/time → ISE ERS overbelastet → ReadTimeout → retries → CB åbner/lukker hele dagen. 37% af timeouts var på friske forbindelser (`idle_before=0s`), hvilket udelukkede stale-connection (som 6.18/6.21.0720 forsøgte at fikse).
+- **`endpoint_service.py`**: Ny delt gruppe-navne-cache på modul-niveau (`_shared_group_names`, `_shared_group_names_at`, `_shared_group_names_lock`) + `invalidate_group_names()`. `_resolve_group_name` delegerer til ny `_get_group_names(force=False)`: refresher fra ISE højst 1× pr. `cache_ttl_seconds` (300s), coalescer concurrent kaldere på én lås → kun ét `list_all()` pr. vindue, serverer forrige map + back-off 30s ved `IseApiError`. Korte navne bevaret → uændret UI-display. Fjernet det gamle per-instans `_group_cache`/`_group_cache_lock`.
+- **`endpoint_service.py`**: `create_group()` kalder `invalidate_group_names()` så nye grupper resolver straks.
+- **`cache_prewarm.py`**: `_full_scan()` pre-warmer nu den delte cache via `service._get_group_names(force=True)` i stedet for at sætte det (nu fjernede) per-instans `service._group_cache`. Coalescing-låsen dækker den oprindelige grund til pre-warm (undgå N parallelle `list_all()`).
+- **Effekt:** group-kald mod ISE falder ~1000× (hierarki hentes ~1×/300s frem for ~1×/5s).
+
 ## [6.21.0720] — 2026-07-02 — fix: keepalive_expiry 30s → 10s — stale connections → CB-lock
 
 - **`client.py`**: `keepalive_expiry_s` default sænket fra 30.0 til 10.0. ISE ERS (Tomcat) lukker idle TCP-forbindelser efter ~12-15s (observeret via `[idle_before=18s]` i log = drip_sleep 18s = ISE lukker i mellemtiden). 30s keepalive > ISE's ~12-15s idle timeout → httpx genbruger stale connections → ReadTimeout → CB åbner → fresh% falder til 0% og recovery-probe fejler på samme stale connections. Med 10s keepalive lukker httpx forbindelser INDEN ISE gør det — alle requests (drip, probe, scan) starter med friske TCP-forbindelser. Opdateret comment med korrekt forklaring.

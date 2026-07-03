@@ -353,18 +353,15 @@ class PrewarmWorker:
             from app.services.endpoint_service import EndpointService
             service = EndpointService(get_ise_client())
 
-            # Pre-warm group-name cache med ét enkelt kald FØR parallel scan.
-            # Uden dette vil N parallelle _fetch_endpoint_detail-kald hver
-            # kalde groups.list_all() når de ikke finder gruppen i _group_cache
-            # — ISE afviser forbindelserne ved for mange samtidige kald.
+            # Opdater den DELTE gruppe-navne-cache FØR parallel scan så alle
+            # _fetch_endpoint_detail-kald resolver gruppenavne fra ét enkelt fetch
+            # i stedet for hver at kalde groups.list_all(). force=True fanger
+            # gruppe-ændringer (nye/omdøbte) ved hvert scan. Coalescing-låsen i
+            # _get_group_names sikrer at de N parallelle fetches deler dette ene kald.
             try:
-                raw_groups = await service.groups.list_all()
-                service._group_cache = {
-                    g.get("id", ""): g.get("name", "") for g in raw_groups
-                }
-                logger.info("prewarm: group-cache pre-warmet (%d grupper)", len(service._group_cache))
+                names = await service._get_group_names(force=True)
+                logger.info("prewarm: gruppe-navne-cache opdateret (%d grupper)", len(names))
             except Exception as exc:  # noqa: BLE001
-                service._group_cache = {}
                 logger.warning("prewarm: group pre-warm fejlede (fortsætter): %s", exc)
 
             # Hent alle endpoint IDs fra ISE (kun ID, billige liste-kald)

@@ -4,6 +4,15 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+## [FIXED 6.21.0721] 2026-07-03 — Drip-loop N+1 gruppe-storm → konstant `/endpointgroup` ReadTimeout + CB-cykling
+
+- **Symptom:** Loggen domineres af `GET /ers/config/endpointgroup` `ReadTimeout` (10.000+ issues på `app.ise.client`), CB åbner 10-13×/dag, fresh% ustabil. Kørte hele dagen, ikke som spike.
+- **Root cause (endelig — grundårsagen bag 6.14–6.21's symptom-fixes):** `_drip_loop()` genopretter `EndpointService` på hver iteration ([cache_prewarm.py:289](backend/app/services/cache_prewarm.py#L289)), så det **per-instans** `_group_cache` altid er tomt. `_fetch_endpoint_detail` → `_resolve_group_name` falder derfor igennem til `self.groups.list_all()` — et **N+1-kald** (1 list + `GET /endpointgroup/{id}` for HVER gruppe) — på ~hver drip-refresh (~1/5s). Det gav titusindvis af group-kald/time, langt over ISE ERS' ~5-10 req/s → ReadTimeout → 2 retries (mere last) → CB åbner → lukker → storm i ring. **Diskriminator:** 37% (1050/2800) af timeouts var på friske forbindelser (`idle_before=0s`) → udelukker stale-connection som årsag.
+- **Hvorfor tidligere fixes ikke virkede:** 6.18.0711/6.21.0720 (keepalive) behandlede forbindelses-alder; 6.15.0702 (drip back-off) og 6.14.0699 (list-view N+1) ramte nabo-symptomer men overså drip-loopens group-storm.
+- **Løsning (v6.21.0721):** Delt gruppe-navne-cache på modul-niveau (`_shared_group_names`, TTL = `cache_ttl_seconds`, coalesced via én lås) deles på tværs af alle `EndpointService`-instanser. `_resolve_group_name` → ny `_get_group_names()`: refresher højst 1×/300s, coalescer concurrent kaldere til ét `list_all()`, serverer stale + back-off 30s ved ISE-fejl. Korte navne bevaret (uændret UI). `create_group` invaliderer cachen; `_full_scan` pre-warmer den via `force=True`. Group-kald falder ~1000×.
+- **Berørte filer:** `backend/app/services/endpoint_service.py`, `backend/app/services/cache_prewarm.py`
+- **Detaljeret analyse:** [BUGREPORT-ise-endpointgroup-storm.md](BUGREPORT-ise-endpointgroup-storm.md)
+
 ## [FIXED 6.21.0720] 2026-07-02 — Stale connections ved korte idle-pauser → CB låser, fresh% → 0%
 
 - **Symptom:** Efter en "Opdater fra ISE"-scan faldt fresh endpoint % gradvist fra 100% til 0% og blev der. Log viste `ReadTimeout` på `GET /ers/config/endpointgroup` med `[idle_before=18s]` — efterfulgt af CB-åbning og ingen recovery.
