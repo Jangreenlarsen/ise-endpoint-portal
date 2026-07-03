@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.21.0724] — 2026-07-04 — fix: REGRESSION fra 0723 — disk-cache kasseret ved versionsbump → browse kold → 502
+
+Kritisk regression fra 6.21.0723. Se BUGS.md 6.21.0724.
+
+- **`endpoint_cache.py`**: `DISK_CACHE_VERSION` 4→5 i 0723 fik `load_from_disk` til at afvise brugerens eksisterende **v4-disk-cache** → memory-cache tom → browse tog kold ISE-sti → 502 (CB-open 503 mappet til 502) + langsom reload. Fix: `_DISK_READABLE_VERSIONS = frozenset({4, 5})` — læs både v4 og v5 (entries/tier_emas-format er uændret; v5 tilføjede kun additivt `groups`-felt). Grupper loades kun når feltet findes.
+- **`endpoint_cache.py`**: Disk-grupper loades nu som **friske** (`fetched_at = now`) i stedet for "just-stale" — undgår at spawne en baggrunds-`list_all()` (N+1) mod en presset ISE ved hver reload efter genstart.
+- **`endpoint_service.py`**: `list_endpoint_details` og `list_all_endpoint_details` fanger `IseApiError` på den kolde sti (`detail_count()==0`) og returnerer tom side/liste i stedet for at boble en 502 op → Browse hård-fejler aldrig mere når cachen er kold og ISE nede.
+
 ## [6.21.0723] — 2026-07-04 — fix: Gruppe-cache persisteres til disk (offline-data efter genstart)
 
 Follow-up på 6.21.0722. Se BUGS.md 6.21.0723 + [BUGREPORT-browse-502-groups-cold-cache.md](BUGREPORT-browse-502-groups-cold-cache.md) §4.

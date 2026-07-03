@@ -4,6 +4,13 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.21.0724] — 2026-07-04 — fix: Reload virker igen fra disk-/memory-cache (regression fra 0723)
+
+> **Build:** 0724
+
+- **Browse/reload henter igen data fra disk-cachen** uden at ramme ISE. En regression i 6.21.0723 (disk-cache-format bumpet fra v4 til v5) fik portalen til at kassere den eksisterende disk-cache ved opstart → Browse blev kold, reload blev langsom, og "Reload"-knappen kunne give `502: ISE returnerede en uventet fejl (HTTP 503)`. Nu læses både v4- og v5-cacher, så eksisterende data bevares.
+- **Reload kan ikke længere hård-fejle**: hvis cachen undtagelsesvist er tom OG ISE er utilgængelig, viser Browse nu en tom (men brugbar) tabel i stedet for en 502-fejl. Data dukker op automatisk når ISE svarer igen.
+
 ## [6.21.0723] — 2026-07-04 — fix: Grupper overlever nu genstart (offline disk-cache)
 
 > **Build:** 0723

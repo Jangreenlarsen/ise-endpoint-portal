@@ -393,9 +393,20 @@ class EndpointService:
         filters = _combine_filters(search, filters)
         # ISE ERS accepterer max 100 per side — cap og paginér internt ved større requests
         ise_size = min(size, 100)
-        resources, total = await self.endpoints.list_page(
-            page=page, size=ise_size, filters=filters
-        )
+        try:
+            resources, total = await self.endpoints.list_page(
+                page=page, size=ise_size, filters=filters
+            )
+        except IseApiError as exc:
+            # Kold cache (detail_count()==0) OG ISE utilgængelig/CB-open: returnér
+            # en tom side i stedet for at boble en 502 op og blanke Browse. Pre-warm
+            # og disk-cache repopulerer så snart ISE svarer. Uden dette blev reload
+            # til en hård fejl når cachen var kold og ISE nede.
+            logger.warning(
+                "list_endpoint_details: kold cache og ISE utilgængelig (%s) — returnerer tom side",
+                exc,
+            )
+            return PaginatedEndpointDetails(items=[], total=0, page=page, size=size)
         logger.info(
             "fetching details for %d endpoints concurrently "
             "(page=%d, total=%d, search=%s)",
@@ -576,7 +587,16 @@ class EndpointService:
             return items
 
         filters = _combine_filters(search, filters)
-        resources = await self.endpoints.list_all(filters=filters)
+        try:
+            resources = await self.endpoints.list_all(filters=filters)
+        except IseApiError as exc:
+            # Kold cache + ISE utilgængelig: tom liste frem for 502 (samme princip
+            # som list_endpoint_details). Register/export degraderer blødt.
+            logger.warning(
+                "list_all_endpoint_details: kold cache og ISE utilgængelig (%s) — returnerer tom liste",
+                exc,
+            )
+            return []
         logger.info(
             "fetching details for ALL %d endpoints concurrently (search=%s)",
             len(resources), search or "",

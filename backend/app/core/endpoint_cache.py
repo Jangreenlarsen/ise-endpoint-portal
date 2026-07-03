@@ -56,7 +56,12 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T")
 
 STALE_MAX_FACTOR = 30.0
-DISK_CACHE_VERSION = 5  # v5: groups-summary tilføjet til disk-payload (offline gruppe-cache)
+DISK_CACHE_VERSION = 5  # skrive-version (v5: groups-summary tilføjet til disk-payload)
+# Versioner vi kan LÆSE. entries/tier_emas-formatet er uændret siden v4 — v5
+# tilføjede KUN et valgfrit "groups"-felt. Smid ALDRIG en gyldig endpoint-disk-
+# cache væk pga. et rent additivt format-bump: det gør browse kold og tvinger
+# ISE-fallback (→ 502 / langsom reload når ISE er nede). Læs derfor både v4 og v5.
+_DISK_READABLE_VERSIONS = frozenset({4, 5})
 
 # 3-tier change-frequency constants.
 # change_ema tracks EMA of "did value change?" per drip refresh (0.0–1.0).
@@ -745,8 +750,12 @@ class EndpointCache:
             return 0
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
-            if payload.get("version") != DISK_CACHE_VERSION:
-                logger.info("disk cache: version mismatch, skipping %s", path)
+            file_version = payload.get("version")
+            if file_version not in _DISK_READABLE_VERSIONS:
+                logger.info(
+                    "disk cache: uforenelig version %s (læsbare: %s) — skipper %s",
+                    file_version, sorted(_DISK_READABLE_VERSIONS), path,
+                )
                 return 0
             # Gendan tier EMA-historik for endpoints der ikke allerede er i _tier_emas.
             # Disse værdier gælder for endpoints der var invaliderede ved shutdown.
@@ -775,11 +784,11 @@ class EndpointCache:
                     loaded += 1
                 except Exception:  # noqa: BLE001
                     pass
-            # Gendan groups-summary hvis ikke allerede live-cachet. Sæt fetched_at
-            # så entryen er "lige akkurat stale" (age = ttl+1) → get_groups()
-            # serverer den ØJEBLIKKELIGT og spawner en baggrunds-refresh, i stedet
-            # for at blokere på ISE list_all() efter genstart (samme princip som
-            # disk-loadede details). Fanger også gruppe-ændringer fra nedetiden.
+            # Gendan groups-summary hvis ikke allerede live-cachet. Load som FRISK
+            # (fetched_at = now) så get_groups() serverer den øjeblikkeligt UDEN at
+            # spawne en baggrunds-list_all() (N+1) med det samme — det undgår at
+            # hamre en evt. presset ISE ved hver reload efter genstart. SWR
+            # refresher grupperne naturligt når TTL udløber (ikke-blokerende).
             if self._groups is None:
                 groups_raw = payload.get("groups")
                 if groups_raw and groups_raw.get("value") is not None:
@@ -789,7 +798,7 @@ class EndpointCache:
                             EndpointGroupSummary.model_validate(g)
                             for g in groups_raw["value"]
                         ]
-                        self._groups = CachedEntry(groups_val, self._now() - self._ttl() - 1)
+                        self._groups = CachedEntry(groups_val, self._now())
                         logger.info("disk cache: loaded %d groups from %s", len(groups_val), path)
                     except Exception:  # noqa: BLE001
                         pass

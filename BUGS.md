@@ -13,6 +13,17 @@ Kendte post-mortems:
 - [BUGREPORT-ise-endpointgroup-storm.md](BUGREPORT-ise-endpointgroup-storm.md) — ISE `/ers/config/endpointgroup` ReadTimeout-storm + CB-cykling (grundårsag: N+1 gruppe-fetch i drip-loop). Fixed 6.21.0721.
 - [BUGREPORT-browse-502-groups-cold-cache.md](BUGREPORT-browse-502-groups-cold-cache.md) — Browse `502` + tom tabel når `/groups` timer ud (grundårsag: ikke-kritisk group-kald vælter `Promise.all` + grupper har ingen disk-cache). Frontend fixed 6.21.0722; groups disk-persistens fixed 6.21.0723.
 
+## [FIXED 6.21.0724] 2026-07-04 — REGRESSION fra 0723: disk-cache kasseret ved versionsbump → browse kold → 502 + langsom reload
+
+- **Symptom:** Efter 6.21.0723 blev Browse langsom, og "Reload"-knappen gav `502: ISE returnerede en uventet fejl (HTTP 503)`. Ingen endpoints vist. Log: gentagne `GET /ers/config/endpointgroup` ReadTimeouts + `cache bg-refresh groups failed`.
+- **Root cause (selvforskyldt regression):** 0723 bumpede `DISK_CACHE_VERSION` 4→5, og `load_from_disk` afviste alt ≠ 5 (`version mismatch, skipping`). Brugerens eksisterende **v4-disk-cache blev kasseret** → `detail_count()==0` → `list_endpoint_details` tog den kolde sti og kaldte ISE direkte. ISE var presset/CB-open → `IseApiError(503)` (CB) → `_ise_http_error` mapper 503 → **502 "uventet fejl (HTTP 503)"**. Dertil spawnede 0723's "just-stale" gruppe-disk-load en baggrunds-`list_all()` (N+1) mod den pressede ISE ved hver reload. entries/tier_emas-formatet var i virkeligheden **uændret** mellem v4 og v5 (kun additivt `groups`-felt) — der var aldrig grund til at kassere v4.
+- **Løsning (v6.21.0724):**
+  1. `load_from_disk` læser nu **både v4 og v5** (`_DISK_READABLE_VERSIONS = {4,5}`) — additive format-bumps kasserer aldrig en gyldig endpoint-cache igen. Grupper loades kun hvis `groups`-feltet findes (v5).
+  2. Disk-grupper loades som **friske** (`fetched_at = now`) i stedet for "just-stale" → `get_groups()` serverer straks UDEN at spawne en N+1-refresh mod ISE ved hver reload. SWR opdaterer naturligt ved TTL.
+  3. **Sikkerhedsnet:** `list_endpoint_details` og `list_all_endpoint_details` fanger nu `IseApiError` på den kolde sti og returnerer tom side/liste i stedet for at boble 502 op og blanke Browse. Reload kan aldrig mere hård-fejle når cachen er kold og ISE nede.
+- **Berørte filer:** `backend/app/core/endpoint_cache.py`, `backend/app/services/endpoint_service.py`
+- **Lærdom:** Bump kun disk-cache-læseversionen hvis det binære entries-format ændres. Additive felter skal være bagudkompatible. Se [BUGREPORT-browse-502-groups-cold-cache.md](BUGREPORT-browse-502-groups-cold-cache.md).
+
 ## [FIXED 6.21.0723] 2026-07-04 — Gruppe-cache persisteres nu til disk (offline-data efter genstart)
 
 - **Baggrund:** Follow-up på 6.21.0722. Gruppe-cachen (`EndpointCache._groups`) blev ikke gemt til disk som endpoint-details, så efter genstart/`invalidate_all()` var `_groups=None` → første `/groups`-kald blokerede på ISE `list_all()` og kunne give 502 hvis ISE var langsom. Gruppe-dropdown var tom indtil første ISE-svar.
