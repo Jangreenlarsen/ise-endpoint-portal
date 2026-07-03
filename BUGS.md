@@ -4,6 +4,14 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+**Detaljerede post-mortems**: Komplekse/tilbagevendende bugs har en selvstændig
+`BUGREPORT-*.md`-fil i projektroden med fuld analyse, log-fingeraftryk, hvorfor tidligere
+fixes fejlede, og regressions-vagt. Den linkes fra bug-entryen nedenfor. **Læs den før du
+fejlfinder et lignende symptom** — flere ISE-timeout/CB-problemer har været samme grundårsag.
+
+Kendte post-mortems:
+- [BUGREPORT-ise-endpointgroup-storm.md](BUGREPORT-ise-endpointgroup-storm.md) — ISE `/ers/config/endpointgroup` ReadTimeout-storm + CB-cykling (grundårsag: N+1 gruppe-fetch i drip-loop). Fixed 6.21.0721.
+
 ## [FIXED 6.21.0721] 2026-07-03 — Drip-loop N+1 gruppe-storm → konstant `/endpointgroup` ReadTimeout + CB-cykling
 
 - **Symptom:** Loggen domineres af `GET /ers/config/endpointgroup` `ReadTimeout` (10.000+ issues på `app.ise.client`), CB åbner 10-13×/dag, fresh% ustabil. Kørte hele dagen, ikke som spike.
