@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.23.0727] — 2026-07-04 — feat: Dashboard — fuld-bredde views + kilde-links på alle kort
+
+- **`dashboard.js`** (layout): "Endpoint movement — last 30 days" (trend-kortet) og "Recent audit events" får nu hver **fuld bredde** — samme som System Log-kortet. Trend-kortet flyttet ud af 2-kolonne-rækken (delte tidligere række med System sundhed); System sundhed + System status + Cache kvalitet + Livscyklus samles nu i én fælles wrap-række, og audit-events lægges i egen fuld-bredde-række over System Log.
+- **`dashboard.js`** (kilde-links): Alle dashboard-kort har nu et link til hvor deres data kommer fra. Nye: Recent audit events → `#/audit`, System Log → `#/logs`, Cache kvalitet → `#/settings`, System status → `#/metrics`. (Endpoint movement → `#/trends`, Livscyklus → `#/lifecycle` og System sundhed → `#/settings` havde det allerede.) Links til admin-only ruter (`#/logs`, `#/metrics`, `#/settings`) vises kun for admins. Ny `sourceLink()`-helper.
+- **`i18n.js`** (KPI-labels): `dash.kpi_endpoints` rettet til "Endpoints Total in ISE"; ny `dash.kpi_private_macs` = "Endpoints Total privat MACS" (var tidligere hardcoded fallback "Private MACs (LAA)"). Begge locales (da+en).
+
 ## [6.22.0726] — 2026-07-04 — feat: Adaptiv drip-hastighed (ISE-congestion control) + dashboard-metrik
 
 Ny feature — se FEATURES.md 6.22.0726. Drip-loopen tilpasser sig nu selv til hvad ISE kan håndtere.

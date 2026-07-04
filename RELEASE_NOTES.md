@@ -4,6 +4,13 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.23.0727] — 2026-07-04 — feat: Dashboard — bedre layout + kilde-links på alle kort
+
+> **Build:** 0727
+
+- **Bredere overblik**: "Endpoint movement — last 30 days" og "Recent audit events" fylder nu hele bredden (som System Log), så graf og hændelser er nemmere at læse.
+- **Kilde-links overalt**: Hvert dashboard-kort har nu et lille link til den fulde side hvor dataene kommer fra — fx audit-events → Audit-loggen, System Log → Log-siden, Cache kvalitet → cache-indstillinger, System status → metrics. Links til admin-sider vises kun for admins.
+
 ## [6.22.0726] — 2026-07-04 — feat: Adaptiv drip-hastighed — portalen tilpasser sig ISE automatisk
 
 > **Build:** 0726
