@@ -344,7 +344,10 @@ class EndpointService:
         previous map is served and the next attempt is backed off ~30s.
         """
         global _shared_group_names, _shared_group_names_at, _shared_group_names_lock
-        ttl = float(getattr(config.settings, "cache_ttl_seconds", 300.0))
+        # Dedikeret, lang TTL (default 30 min): grupper ændres sjældent, og
+        # create_group invaliderer med det samme. Minimerer langsomme/timeout-
+        # udsatte GET /ers/config/endpointgroup-kald mod ISE.
+        ttl = float(getattr(config.settings, "ise_group_cache_ttl_s", 1800.0))
         if not force and (time.time() - _shared_group_names_at) <= ttl:
             return _shared_group_names
         if _shared_group_names_lock is None:

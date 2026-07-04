@@ -4,6 +4,13 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.21.0725] — 2026-07-04 — fix: Portalen "vågner" hurtigt efter lang inaktivitet
+
+> **Build:** 0725
+
+- **Hurtig Browse efter idle**: Tidligere føltes portalen som om hele cache-motoren skulle "vågne fra dyb søvn" når en admin loggede ind efter flere timers fravær — det tog lang tid at se noget, og reload var langsom. Årsag: gruppe-cachen havde ingen baggrunds-opdatering og faldt ud af sit servér-vindue efter 2,5 time, hvorefter næste sidevisning blokerede på et langsomt ISE-kald. Nu serveres grupperne altid øjeblikkeligt fra cachen (opdateres i baggrunden), så Browse loader hurtigt uanset hvor længe der er gået.
+- **Færre ISE-kald**: Gruppe-listen hentes nu højst hvert 30. minut (mod hvert 5. minut) — grupper ændres sjældent, og portalen opdaterer straks når du selv opretter en gruppe. Det reducerer de langsomme `GET /ers/config/endpointgroup`-kald mod ISE markant.
+
 ## [6.21.0724] — 2026-07-04 — fix: Reload virker igen fra disk-/memory-cache (regression fra 0723)
 
 > **Build:** 0724

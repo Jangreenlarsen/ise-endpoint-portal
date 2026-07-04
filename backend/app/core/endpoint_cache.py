@@ -604,11 +604,18 @@ class EndpointCache:
         if self._groups and self._fresh(self._groups):
             self._stats["hits"] += 1
             return self._groups.value
-        if self._groups and self._swr() and self._stale_servable(self._groups):
+        if self._groups and self._swr():
+            # Server ENHVER cachet groups-værdi (uanset alder) + baggrunds-refresh —
+            # bloker ALDRIG en Browse-load på et live groups-fetch. Grupper ændres
+            # sjældent; en let forældet dropdown er langt bedre end at blokere på en
+            # N+1 list_all(). Uden dette blokerede get_groups efter >2,5t idle (entry
+            # faldt ud af SWR-vinduet ttl*30) → blocking MISS → hele Browse-loadet
+            # ventede, da Promise.all afventer listGroups. _groups populeres fra disk
+            # ved opstart, så denne gren rammer altid efter en genstart.
             self._stats["stale_serves"] += 1
             self._get_or_create_groups_inflight(fetch_fn)  # fire-and-forget
             return self._groups.value
-        # Miss — coalesce concurrent fetches so only one hits ISE.
+        # Miss — kun når vi slet IKKE har cachede grupper (kold start uden disk).
         self._stats["misses"] += 1
         task = self._get_or_create_groups_inflight(fetch_fn)
         if task is not None:

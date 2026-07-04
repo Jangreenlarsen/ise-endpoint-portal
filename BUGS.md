@@ -13,6 +13,17 @@ Kendte post-mortems:
 - [BUGREPORT-ise-endpointgroup-storm.md](BUGREPORT-ise-endpointgroup-storm.md) — ISE `/ers/config/endpointgroup` ReadTimeout-storm + CB-cykling (grundårsag: N+1 gruppe-fetch i drip-loop). Fixed 6.21.0721.
 - [BUGREPORT-browse-502-groups-cold-cache.md](BUGREPORT-browse-502-groups-cold-cache.md) — Browse `502` + tom tabel når `/groups` timer ud (grundårsag: ikke-kritisk group-kald vælter `Promise.all` + grupper har ingen disk-cache). Frontend fixed 6.21.0722; groups disk-persistens fixed 6.21.0723.
 
+## [FIXED 6.21.0725] 2026-07-04 — Gruppe-cache "vågner fra dyb søvn" ved login efter idle + reducér endpointgroup-kald
+
+- **Symptom:** Efter lang inaktivitet (fx 6 timer uden login) føles portalen som om hele cache-motoren skal "vågne op": det tager lang tid at se noget i Browse, reload er langsom, og cache-kvalitets-metrikkerne ser "genstartet" ud ved login. Dertil vedvarende `GET /ers/config/endpointgroup` ReadTimeouts i loggen — også med `idle_before=0s` (frisk forbindelse).
+- **Root cause 1 (gruppe-cache uden baggrunds-refresh):** Baggrunds-workerne (`_drip_loop`/`_full_scan`) holder endpoint-details varme, men rører **aldrig** `EndpointCache._groups` (ingen reference til `get_groups`/`_groups` i `cache_prewarm.py`). `_groups` opdateres kun ved bruger-`/groups`-kald, og kun inden for SWR-vinduet `ttl*30` (2,5t). Efter >2,5t idle er entryen ude af vinduet → næste `/groups` (ved login) blev en **blokerende MISS** → `list_all()` (N+1) → og da Browse-loadets `Promise.all` afventer `listGroups`, blokeredes HELE tabel-renderingen. Det var "der går lang tid før man ser noget."
+- **Root cause 2 (ISE endpointgroup ægte langsom):** `idle_before=0s` viser at ISE selv ikke kan svare på gruppe-listen inden for `ise_timeout` (30s) — ikke et stale-connection-problem. 0721 gjorde kaldene sjældne (hver 5. min), men de sker stadig periodisk og timer ud under ISE-last.
+- **Løsning (v6.21.0725):**
+  1. `get_groups` serverer nu **enhver** cachet `_groups`-værdi (uanset alder) + baggrunds-refresh — blokerer aldrig når vi har en værdi. `_groups` populeres fra disk ved opstart (0723/0724), så login efter idle rammer altid en øjeblikkelig serve. Fjernet `_stale_servable`-gaten for grupper.
+  2. Gruppe-navne-cachen (0721) fik dedikeret TTL `ise_group_cache_ttl_s` (default 1800s/30 min) i stedet for `cache_ttl_seconds` (300s) — grupper ændres sjældent og `create_group` invaliderer stadig straks. Reducerer langsomme `GET /ers/config/endpointgroup`-kald ~6×.
+- **Berørte filer:** `backend/app/core/endpoint_cache.py`, `backend/app/services/endpoint_service.py`, `backend/app/core/config.py`
+- **Note (ISE-side):** endpointgroup-timeouts er nu **harmløs baggrundsstøj** — brugeren serveres altid fra cache. Resterende timeouts skyldes ISE ERS-last (vores endpoint-detail-fetches konkurrerer med gruppe-listen). Mulig yderligere reduktion: names-only gruppe-fetch (drop N per-gruppe-GET i `list_all()` for navneopslag) — ikke nødvendig efter ovenstående, noteret som follow-up.
+
 ## [FIXED 6.21.0724] 2026-07-04 — REGRESSION fra 0723: disk-cache kasseret ved versionsbump → browse kold → 502 + langsom reload
 
 - **Symptom:** Efter 6.21.0723 blev Browse langsom, og "Reload"-knappen gav `502: ISE returnerede en uventet fejl (HTTP 503)`. Ingen endpoints vist. Log: gentagne `GET /ers/config/endpointgroup` ReadTimeouts + `cache bg-refresh groups failed`.

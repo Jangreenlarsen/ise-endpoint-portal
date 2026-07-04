@@ -191,6 +191,17 @@ class Settings(BaseSettings):
             "i de seneste 15 min. 0 = deaktiveret (klassisk fuld-scan adfærd)."
         ),
     )
+    ise_group_cache_ttl_s: float = Field(
+        default=1800.0,
+        description=(
+            "TTL (sekunder) for den delte gruppe-navne-cache brugt til at resolve "
+            "endpoint-gruppenavne. Grupper ændres sjældent, og portalen invaliderer "
+            "cachen med det samme ved create_group — derfor en lang TTL (default "
+            "30 min) for at minimere langsomme/timeout-udsatte GET /ers/config/"
+            "endpointgroup-kald mod ISE. Ekstern gruppe-ændring (uden om portalen) "
+            "afspejles først efter denne periode."
+        ),
+    )
 
     # Audit log (2.9.0) — append-only event trail with rollback support.
     audit_enabled: bool = Field(

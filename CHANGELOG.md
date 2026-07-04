@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.21.0725] — 2026-07-04 — fix: Gruppe-cache blokerer Browse efter idle + reducér endpointgroup-kald
+
+Robusthedsanalyse af cache-motoren efter "vågner fra dyb søvn"-symptom. Se BUGS.md 6.21.0725.
+
+- **`endpoint_cache.py`**: `get_groups` serverer nu enhver cachet `_groups`-værdi (uanset alder) + baggrunds-refresh — blokerer aldrig når vi har en værdi. Tidligere gate `_stale_servable` (age ≤ ttl*30 = 2,5t) fik `get_groups` til at lave en **blokerende** `list_all()` (N+1) efter >2,5t idle, hvilket blokerede hele Browse-loadet (Promise.all afventer listGroups) — "der går lang tid før man ser noget efter login". `_groups` populeres fra disk ved opstart, så login efter idle rammer altid en øjeblikkelig serve.
+- **`config.py` + `endpoint_service.py`**: Ny `ise_group_cache_ttl_s` (default 1800s/30 min). Gruppe-navne-cachen (`_get_group_names`, 0721) bruger nu denne dedikerede lange TTL i stedet for `cache_ttl_seconds` (300s). Grupper ændres sjældent og `create_group` invaliderer straks → reducerer langsomme/timeout-udsatte `GET /ers/config/endpointgroup`-kald ~6×.
+- **Baggrund (ISE-side):** `GET /ers/config/endpointgroup` timer ud selv på friske forbindelser (`idle_before=0s`) → ISE selv er langsom under ERS-last. Efter denne fix er de resterende timeouts harmløs baggrundsstøj (bruger serveres fra cache).
+
 ## [6.21.0724] — 2026-07-04 — fix: REGRESSION fra 0723 — disk-cache kasseret ved versionsbump → browse kold → 502
 
 Kritisk regression fra 6.21.0723. Se BUGS.md 6.21.0724.
