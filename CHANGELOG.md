@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.26.0730] — 2026-07-04 — feat: Trend Analysis-løft — population over tid + indsigts-nøgletal
+
+Trend-siden viste kun daglige deltaer (til-/fragang). Manglede det vigtigste trend-billede: populationens udvikling over tid. Se FEATURES.md 6.26.0730.
+
+- **`trends.py`**: Response udvidet med `cumulative` + `laa_cumulative` — populationen (endpoints hhv. private MACs) rekonstrueret baglæns fra nuværende total via daglig netto-ændring (clamp til 0). Plus `stats`: `avg_added_per_day`, `avg_removed_per_day`, `peak_added` {day,count}, `peak_removed` {day,count}.
+- **`trends.js`**: (1) Ny headline-graf "Endpoint-population over tid" (kumulativ endpoints + LAA) vist først. (2) To nye stat-kort: gns. tilgang/dag og travleste dag. (3) `svgLineChart` fik `zeroBaseline`-option: population-grafen zoomer ind på det faktiske interval (undgår flad linje øverst ved stor baseline), og fill-baseline følger nu bunden af plottet i stedet for 0-linjen. Bagudkompatibel: population-graf/kort vises kun når backend leverer `cumulative`/`stats`.
+- **`i18n.js`**: Nye `trend.*`-labels (da+en) for population-graf, serier og indsigts-kort.
+
 ## [6.25.0729] — 2026-07-04 — feat: Metrics/monitor-løft — adaptive metrikker + rigere historik
 
 Monitor-sektionen var ikke up to date: de adaptive tiltag (0726 drip-hastighed, 0728 aktivitets-TTL) var ikke engang Prometheus-gauges, og historikken trackede kun 6 serier over ~2 timer. Se FEATURES.md 6.25.0729.

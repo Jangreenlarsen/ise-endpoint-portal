@@ -103,6 +103,38 @@ async def get_trends(
     prewarm_status = get_prewarm_worker().status
     last_scan_at = prewarm_status.last_full_scan_at
 
+    # ── Population over tid ───────────────────────────────────────────────
+    # Rekonstruér udviklingen i det samlede antal endpoints (og private MACs)
+    # baglæns fra nuværende total via daglig netto-ændring. cumulative[i] =
+    # population ved slutningen af dag i. Clamp til 0 — negativ population kan
+    # ellers opstå ved ufuldstændig first_seen-historik.
+    laa_net = [a - r for a, r in zip(laa_added, laa_removed)]
+    cumulative = [0] * len(labels)
+    laa_cumulative = [0] * len(labels)
+    if labels:
+        cumulative[-1] = total
+        laa_cumulative[-1] = laa_now
+        for i in range(len(labels) - 2, -1, -1):
+            cumulative[i] = max(0, cumulative[i + 1] - net[i + 1])
+            laa_cumulative[i] = max(0, laa_cumulative[i + 1] - laa_net[i + 1])
+
+    # ── Indsigts-nøgletal ────────────────────────────────────────────────
+    n_days = max(1, len(labels))
+    peak_add_i = max(range(len(added)), key=lambda i: added[i]) if added else 0
+    peak_rem_i = max(range(len(removed)), key=lambda i: removed[i]) if removed else 0
+    stats = {
+        "avg_added_per_day": round(sum(added) / n_days, 1),
+        "avg_removed_per_day": round(sum(removed) / n_days, 1),
+        "peak_added": {
+            "day": labels[peak_add_i] if labels else "",
+            "count": added[peak_add_i] if added else 0,
+        },
+        "peak_removed": {
+            "day": labels[peak_rem_i] if labels else "",
+            "count": removed[peak_rem_i] if removed else 0,
+        },
+    }
+
     return {
         "period": period,
         "labels": labels,
@@ -111,6 +143,9 @@ async def get_trends(
         "net": net,
         "laa_added": laa_added,
         "laa_removed": laa_removed,
+        "cumulative": cumulative,
+        "laa_cumulative": laa_cumulative,
+        "stats": stats,
         "snapshot": {
             "total": total,
             "laa": laa_now,

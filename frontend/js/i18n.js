@@ -837,6 +837,14 @@ const TRANSLATIONS = {
     "trend.chart1_hint":         "Antal endpoints portalen har observeret per dag (synkroniseres fra ISE hver 30. minut).",
     "trend.chart2_title":        "Private MAC-adresser (LAA) — tilgang og fragang",
     "trend.chart2_hint":         "Locally Administered Address: bit 1 i første octet sat (f.eks. A2:xx, 06:xx). Indikerer randomiseret/privat MAC.",
+    "trend.chart_pop_title":     "Endpoint-population over tid",
+    "trend.chart_pop_hint":      "Rekonstrueret udvikling i det samlede antal endpoints (og private MACs) — beregnet baglæns fra nuværende total via daglig netto-ændring.",
+    "trend.series_population":   "Endpoints i alt",
+    "trend.series_laa_pop":      "Heraf private (LAA)",
+    "trend.stat_avg_added":      "Gns. tilgang/dag",
+    "trend.stat_avg_sub":        "−{n}/dag fjernet",
+    "trend.stat_peak":           "Travleste dag",
+    "trend.stat_peak_sub":       "{day}",
 
     // ── Browse — toolbar tooltips ─────────────────────────────────────────────
     "browse.tooltip_data":      "Data-handlinger",
@@ -2371,6 +2379,14 @@ const TRANSLATIONS = {
     "trend.chart1_hint":         "Number of endpoints the portal has observed per day (synced from ISE every 30 minutes).",
     "trend.chart2_title":        "Private MAC addresses (LAA) — additions and removals",
     "trend.chart2_hint":         "Locally Administered Address: bit 1 of first octet set (e.g. A2:xx, 06:xx). Indicates randomized/private MAC.",
+    "trend.chart_pop_title":     "Endpoint population over time",
+    "trend.chart_pop_hint":      "Reconstructed trajectory of total endpoints (and private MACs) — computed backwards from the current total via daily net change.",
+    "trend.series_population":   "Total endpoints",
+    "trend.series_laa_pop":      "Of which private (LAA)",
+    "trend.stat_avg_added":      "Avg added/day",
+    "trend.stat_avg_sub":        "−{n}/day removed",
+    "trend.stat_peak":           "Busiest day",
+    "trend.stat_peak_sub":       "{day}",
 
     // ── Browse — toolbar tooltips ─────────────────────────────────────────────
     "browse.tooltip_data":      "Data actions",

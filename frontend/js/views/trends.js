@@ -19,7 +19,7 @@ function niceMax(v) {
   return Math.ceil(v / mag) * mag;
 }
 
-function svgLineChart(labels, series, { height = 260 } = {}) {
+function svgLineChart(labels, series, { height = 260, zeroBaseline = true } = {}) {
   const W = _W;
   const H = height;
   const pad = _PAD;
@@ -27,10 +27,21 @@ function svgLineChart(labels, series, { height = 260 } = {}) {
   const plotH = H - pad.top - pad.bottom;
 
   const allVals = series.flatMap((s) => s.data);
-  const rawMin = Math.min(0, ...allVals);
-  const rawMax = Math.max(...allVals, 1);
-  const yMin = rawMin < 0 ? rawMin - Math.abs(rawMin) * 0.1 : 0;
-  const yMax = niceMax(rawMax) * 1.1;
+  const dataMin = Math.min(...allVals, 0);
+  const dataMax = Math.max(...allVals, 1);
+  let yMin, yMax;
+  if (zeroBaseline) {
+    // Del-charts (tilgang/fragang): tving 0-baseline så størrelser er sammenlignelige.
+    const rawMin = Math.min(0, dataMin);
+    yMin = rawMin < 0 ? rawMin - Math.abs(rawMin) * 0.1 : 0;
+    yMax = niceMax(dataMax) * 1.1;
+  } else {
+    // Population-chart: zoom ind på det faktiske interval så variationen er synlig
+    // (ellers ligger en flad linje øverst når baseline er stor, fx 5000+).
+    const span = (dataMax - dataMin) || 1;
+    yMin = Math.max(0, dataMin - span * 0.1);
+    yMax = dataMax + span * 0.1;
+  }
   const yRange = yMax - yMin || 1;
 
   const xOf = (i) => pad.left + (i / Math.max(labels.length - 1, 1)) * plotW;
@@ -60,12 +71,13 @@ function svgLineChart(labels, series, { height = 260 } = {}) {
   }
 
   let seriesSvg = "";
+  // Fill-baseline: 0-linjen ved zeroBaseline, ellers bunden af plottet.
+  const baseY = (zeroBaseline ? yOf(0) : (pad.top + plotH)).toFixed(1);
   series.forEach((s) => {
     const pts = s.data.map((v, i) => `${xOf(i).toFixed(1)},${yOf(v).toFixed(1)}`).join(" ");
-    const y0 = yOf(0).toFixed(1);
     if (s.fill) {
       const n = s.data.length - 1;
-      seriesSvg += `<polygon points="${xOf(0).toFixed(1)},${y0} ${pts} ${xOf(n).toFixed(1)},${y0}" fill="${s.color}" fill-opacity="0.10"/>`;
+      seriesSvg += `<polygon points="${xOf(0).toFixed(1)},${baseY} ${pts} ${xOf(n).toFixed(1)},${baseY}" fill="${s.color}" fill-opacity="0.10"/>`;
     }
     seriesSvg += `<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>`;
     if (labels.length <= 14) {
@@ -250,7 +262,10 @@ export async function renderTrends(container) {
   }
 
   function render(d) {
-    const { labels, added, removed, net, laa_added, laa_removed, snapshot } = d;
+    const {
+      labels, added, removed, net, laa_added, laa_removed, snapshot,
+      cumulative = [], laa_cumulative = [], stats: insights = {},
+    } = d;
 
     const totalAdded    = added.reduce((s, v) => s + v, 0);
     const totalRemoved  = removed.reduce((s, v) => s + v, 0);
@@ -265,13 +280,26 @@ export async function renderTrends(container) {
       return;
     }
 
+    const peak = insights.peak_added || { day: "", count: 0 };
     const stats = `<div style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1.25rem;">
       ${statCard(t("trend.stat_total"), snapshot.total.toLocaleString())}
       ${statCard(t("trend.stat_laa"), snapshot.laa.toLocaleString(), snapshot.laa_pct + t("trend.stat_laa_pct"), "#d97706")}
       ${statCard(t("trend.stat_added"), "+" + totalAdded, t("trend.stat_removed_sub").replace("{n}", totalRemoved), "#059669")}
       ${statCard(t("trend.stat_net"), (netChange >= 0 ? "+" : "") + netChange, t("trend.stat_net_sub"), netChange >= 0 ? "#2563eb" : "#dc2626")}
+      ${insights.avg_added_per_day != null ? statCard(t("trend.stat_avg_added"), "+" + insights.avg_added_per_day, t("trend.stat_avg_sub").replace("{n}", insights.avg_removed_per_day ?? 0), "#0891b2") : ""}
+      ${peak.count ? statCard(t("trend.stat_peak"), "+" + peak.count, t("trend.stat_peak_sub").replace("{day}", (peak.day || "").slice(5)), "#7c3aed") : ""}
       ${statCard(t("trend.stat_laa_added"), "+" + totalLaaAdded, t("trend.stat_laa_sub"), "#d97706")}
     </div>`;
+
+    // Headline: population over tid (kumulativ). Vises kun når backend leverer data.
+    const chartPop = cumulative.length ? chartCard(
+      t("trend.chart_pop_title"),
+      svgLineChart(labels, [
+        { name: t("trend.series_population"), color: "#2563eb", data: cumulative, fill: true },
+        { name: t("trend.series_laa_pop"),    color: "#d97706", data: laa_cumulative },
+      ], { zeroBaseline: false }),
+      t("trend.chart_pop_hint")
+    ) : "";
 
     const chart1 = chartCard(
       t("trend.chart1_title"),
@@ -292,7 +320,7 @@ export async function renderTrends(container) {
       t("trend.chart2_hint")
     );
 
-    content.innerHTML = stats + chart1 + chart2;
+    content.innerHTML = stats + chartPop + chart1 + chart2;
     attachChartTooltips(content);
   }
 

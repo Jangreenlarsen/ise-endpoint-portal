@@ -4,6 +4,14 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.26.0730] — 2026-07-04 — feat: Trend Analysis — se populationen udvikle sig over tid
+
+> **Build:** 0730
+
+- **Ny headline-graf "Endpoint-population over tid"**: viser hvordan det samlede antal endpoints (og heraf private/randomiserede MACs) har udviklet sig over den valgte periode — ikke kun de daglige til-/fragang. Grafen zoomer ind på det faktiske interval, så selv mindre udsving er tydelige.
+- **Nye nøgletal**: gennemsnitlig tilgang pr. dag og den travleste dag (med dato) er nu vist blandt stat-kortene.
+- Bevarer de eksisterende grafer for daglig tilgang/fragang og private MACs.
+
 ## [6.25.0729] — 2026-07-04 — feat: Metrics-siden viser nu de adaptive mekanismer + rigere historik
 
 > **Build:** 0729
