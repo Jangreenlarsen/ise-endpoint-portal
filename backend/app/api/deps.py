@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import Depends, HTTPException, Request, status
 
 from app.core import auth as auth_core
+from app.core import portal_activity
 from app.core.audit_store import ActorContext, actor_ctx
 from app.core.user_store import find_by_id, load_users, increment_token_gen
 from app.ise.client import get_ise_client
@@ -80,6 +81,7 @@ async def get_current_user(request: Request) -> User:
                 source_ip=client_host,
             )
         )
+        portal_activity.touch(role)  # adaptiv TTL: hold cachen hot mens portalen bruges
         return User(
             id=f"tacacs:{username}",
             username=username,
@@ -115,6 +117,7 @@ async def get_current_user(request: Request) -> User:
             source_ip=client_host,
         )
     )
+    portal_activity.touch(record["role"])  # adaptiv TTL: hold cachen hot mens portalen bruges
     return User(
         id=record["id"],
         username=record["username"],

@@ -138,7 +138,11 @@ function renderCacheStats(container, stats) {
     <table class="cache-stats-table">
       <tbody>
         <tr><td>Status</td><td>${stats.enabled ? t("settings.cache_stats_enabled") : t("settings.cache_stats_disabled")}</td></tr>
-        <tr><td>TTL</td><td>${stats.ttl_seconds}s</td></tr>
+        <tr><td>TTL (base)</td><td>${stats.ttl_seconds}s</td></tr>
+        ${stats.adaptive_ttl_enabled && stats.effective_ttl_seconds != null ? `
+        <tr><td>Effektiv TTL (adaptiv)</td><td>${Math.round(stats.effective_ttl_seconds)}s${
+          stats.adaptive_ttl_idle_s != null ? ` <span style="color:#888;font-size:.85em;">(portal inaktiv ${fmtAge(stats.adaptive_ttl_idle_s)})</span>` : ""
+        }</td></tr>` : ""}
         <tr><td>Stale-while-revalidate</td><td>${stats.stale_while_revalidate ? t("settings.cache_stats_on") : t("settings.cache_stats_off")}</td></tr>
         <tr><td>${t("settings.cache_detail_entries")}</td><td>${stats.detail_entries}</td></tr>
         <tr><td>${t("settings.cache_disk_stale")}</td><td>${stats.disk_stale_entries ?? 0}</td></tr>
@@ -209,6 +213,8 @@ export async function initCacheSection(container) {
       container.querySelector("#cache_prewarm_concurrency").value = s.cache_prewarm_concurrency ?? 5;
       container.querySelector("#adaptive_pacing_enabled").checked = s.adaptive_pacing_enabled !== false;
       container.querySelector("#adaptive_pacing_range_pct").value = s.adaptive_pacing_range_pct ?? 50;
+      container.querySelector("#adaptive_ttl_enabled").checked = s.adaptive_ttl_enabled !== false;
+      container.querySelector("#adaptive_ttl_max_seconds").value = s.adaptive_ttl_max_seconds ?? 3600;
       container.querySelector("#cache_disk_path").value = s.cache_disk_path ?? "cache/endpoints.json";
     } catch (err) {
       msg.innerHTML = `<div class="alert error">${t("settings.cache_load_err").replace("{msg}", esc(err.message))}</div>`;
@@ -258,6 +264,8 @@ export async function initCacheSection(container) {
       cache_prewarm_concurrency: parseInt(container.querySelector("#cache_prewarm_concurrency").value, 10),
       adaptive_pacing_enabled:   container.querySelector("#adaptive_pacing_enabled").checked,
       adaptive_pacing_range_pct: parseFloat(container.querySelector("#adaptive_pacing_range_pct").value),
+      adaptive_ttl_enabled:      container.querySelector("#adaptive_ttl_enabled").checked,
+      adaptive_ttl_max_seconds:  parseFloat(container.querySelector("#adaptive_ttl_max_seconds").value),
       cache_disk_path:           container.querySelector("#cache_disk_path").value.trim(),
     };
     try {

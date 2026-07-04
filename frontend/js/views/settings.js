@@ -194,6 +194,18 @@ export async function renderSettings(container) {
           <div class="hint">Hvor meget hastigheden må svinge fra baseline (default 50 → mellem 0,5× og 1,5× tempo). 0 = fast baseline-tempo (deaktiverer adaptationen).</div>
         </div>
         <div class="field">
+          <label>
+            <input type="checkbox" id="adaptive_ttl_enabled" />
+            Aktivitetsstyret cache-TTL
+          </label>
+          <div class="hint">Når nogen bruger portalen holdes cachen hot (base-TTL ovenfor). Når ingen har været aktive rampes TTL gradvist op over 10× base-TTL mod max nedenfor, så der laves færre ISE-kald når ingen kigger. Snapper tilbage til hot ved login. Anbefalet: til.</div>
+        </div>
+        <div class="field">
+          <label for="adaptive_ttl_max_seconds">Max cache-TTL ved inaktivitet (sek)</label>
+          <input type="number" id="adaptive_ttl_max_seconds" min="0" max="86400" step="60" />
+          <div class="hint">Øvre grænse for TTL når portalen har været inaktiv længe (default 3600 = 1 time). Skal være ≥ base-TTL.</div>
+        </div>
+        <div class="field">
           <label for="cache_disk_path" id="cache-disk-path-lbl"></label>
           <input type="text" id="cache_disk_path" style="font-family:monospace;width:100%;" />
           <div class="hint">Relativ til backend-mappen. Indeholdet genindlæses ved genstart og markeres med ⏱ i Browse.</div>

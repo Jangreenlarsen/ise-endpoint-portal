@@ -224,6 +224,11 @@ function cacheQualityCard(cache, prewarm, isAdmin) {
   const tiers    = cache.tiers    || {};
   const stale    = cache.staleness || {};
   const ttl      = cache.ttl_seconds ?? 0;
+  // Aktivitetsstyret TTL: vis "base → effektiv" når den er rampet op ved inaktivitet.
+  const effTtl   = cache.effective_ttl_seconds;
+  const ttlLabel = (cache.adaptive_ttl_enabled && effTtl != null && Math.round(effTtl) !== Math.round(ttl))
+    ? `TTL ${Math.round(ttl)}→${Math.round(effTtl)}s`
+    : `TTL ${ttl}s`;
 
   // Tier-fordeling
   const hot  = tiers.hot  ?? 0;
@@ -312,7 +317,7 @@ function cacheQualityCard(cache, prewarm, isAdmin) {
     box-shadow:0 1px 4px rgba(0,0,0,.07);border-top:3px solid ${accentColor};">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;">
       <h3 style="margin:0;font-size:.92rem;color:#374151;font-weight:600;">Cache kvalitet</h3>
-      <span style="font-size:.78rem;color:#9ca3af;">${n.toLocaleString()} entries · TTL ${ttl}s</span>
+      <span style="font-size:.78rem;color:#9ca3af;" title="${cache.adaptive_ttl_enabled && cache.adaptive_ttl_idle_s != null ? `Portal inaktiv i ${Math.round(cache.adaptive_ttl_idle_s)}s` : ""}">${n.toLocaleString()} entries · ${ttlLabel}</span>
     </div>
 
     <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;

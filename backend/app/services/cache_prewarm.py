@@ -294,7 +294,7 @@ class PrewarmWorker:
         # Config læses én gang og genopfriskes hvert 10. iteration.
         _iter = 0
         interval = float(getattr(config.settings, "cache_prewarm_interval_s", 1800.0))
-        ttl = float(getattr(config.settings, "cache_ttl_seconds", 300.0))
+        # ttl beregnes pr. iteration via cache.effective_ttl() (aktivitetsstyret).
         _cb_logged = False  # undgå gentagne WARNING-logs når CB er OPEN (A)
         pacer = AdaptivePacer(
             range_pct=float(getattr(config.settings, "adaptive_pacing_range_pct", 50.0)),
@@ -332,7 +332,6 @@ class PrewarmWorker:
             _iter += 1
             if _iter % 10 == 0:
                 interval = float(getattr(config.settings, "cache_prewarm_interval_s", 1800.0))
-                ttl = float(getattr(config.settings, "cache_ttl_seconds", 300.0))
                 pacer.configure(
                     range_pct=float(getattr(config.settings, "adaptive_pacing_range_pct", 50.0)),
                     enabled=bool(getattr(config.settings, "adaptive_pacing_enabled", True)),
@@ -346,6 +345,9 @@ class PrewarmWorker:
                     pass
                 continue
 
+            # Aktivitetsstyret TTL: base når portalen bruges, ramper op ved
+            # inaktivitet → færre entries anses stale → drip laver færre ISE-kald.
+            ttl = cache.effective_ttl()
             stale_count = cache.stale_count_for_ttl(ttl)
             if stale_count > total // 4:
                 # Sprint: batch_size skalerer med deployment-størrelse.

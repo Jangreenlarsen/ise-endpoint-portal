@@ -3,6 +3,19 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.24.0728] — 2026-07-04 — feat: Aktivitetsstyret cache-TTL (adaptiv refresh-frekvens)
+
+Ny feature — se FEATURES.md 6.24.0728. Komplementerer 6.22.0726: adaptiv drip-hastighed styrer *hvor hårdt* vi henter mod ISE; dette styrer *hvor ofte* vi overhovedet henter, ud fra om nogen bruger portalen.
+
+- **`portal_activity.py`** (ny): In-process aktivitets-tracker. `touch(role)` opdaterer seneste-aktivitet-tidsstempel; `idle_seconds()` returnerer inaktivitet. Kun portal-roller (admin/editor/editor-psk/viewer) tæller. Init til opstartstidspunkt så en frisk genstart starter hot og ramper op.
+- **`deps.py`**: `get_current_user` kalder `portal_activity.touch(role)` på hver autentificeret request (begge auth-stier: lokal + TACACS).
+- **`endpoint_cache.py`**: Ny `effective_ttl()` — base-TTL når portalen er aktiv, rampes lineært op mod `adaptive_ttl_max_seconds` over `ADAPTIVE_TTL_RAMP_WINDOWS` (10) × base-TTL's inaktivitet, klampet til max. `_ttl()` (freshness/SWR/UI-staleness) forbliver **uændret** base — kun drip-frekvensen adapteres. `stats()` eksponerer `effective_ttl_seconds` + `adaptive_ttl_idle_s`.
+- **`cache_prewarm.py`**: Drip-loopen bruger nu `cache.effective_ttl()` pr. iteration (i stedet for config-TTL direkte) til stale-count, sprint-beslutning og priority-kø → færre entries overdue når idle → færre ISE-kald. Snapper til base-TTL (hot) ved næste portal-aktivitet.
+- **`config.py`**: Nye `adaptive_ttl_enabled` (default true) + `adaptive_ttl_max_seconds` (default 3600). Max ≤ base deaktiverer adaptationen.
+- **`schemas/settings.py` + `settings_service.py`**: Begge felter editerbare via `PUT /api/settings/backend`.
+- **`dashboard.py` + `settings.js` + `section-cache.js` + `dashboard.js`**: To nye felter under Settings → Endpoint cache; effektiv TTL + portal-idle vises i cache-statistik og i dashboardets "Cache kvalitet"-kort (`TTL 300→1800s`).
+- **Tests:** `tests/test_adaptive_ttl.py` (8 tests: rolle-gating, ramp base→max, midtpunkt, disabled, max≤base, base uændret ved idle).
+
 ## [6.23.0727] — 2026-07-04 — feat: Dashboard — fuld-bredde views + kilde-links på alle kort
 
 - **`dashboard.js`** (layout): "Endpoint movement — last 30 days" (trend-kortet) og "Recent audit events" får nu hver **fuld bredde** — samme som System Log-kortet. Trend-kortet flyttet ud af 2-kolonne-rækken (delte tidligere række med System sundhed); System sundhed + System status + Cache kvalitet + Livscyklus samles nu i én fælles wrap-række, og audit-events lægges i egen fuld-bredde-række over System Log.

@@ -40,7 +40,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Awaitable, Callable, Generic, TypeVar
 
-from app.core import config
+from app.core import config, portal_activity
 from app.core.metrics import (
     CACHE_DISK_STALE,
     CACHE_ENTRIES,
@@ -56,6 +56,8 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T")
 
 STALE_MAX_FACTOR = 30.0
+# Adaptiv TTL: antal base-TTL-vinduer af inaktivitet før TTL når sit maksimum.
+ADAPTIVE_TTL_RAMP_WINDOWS = 10.0
 DISK_CACHE_VERSION = 5  # skrive-version (v5: groups-summary tilføjet til disk-payload)
 # Versioner vi kan LÆSE. entries/tier_emas-formatet er uændret siden v4 — v5
 # tilføjede KUN et valgfrit "groups"-felt. Smid ALDRIG en gyldig endpoint-disk-
@@ -138,7 +140,30 @@ class EndpointCache:
 
     @staticmethod
     def _ttl() -> float:
+        """Konfigureret base-TTL (cache_ttl_seconds). Driver freshness/SWR og
+        UI-staleness. Den ADAPTIVE (aktivitetsstyrede) TTL ligger i effective_ttl()
+        og bruges KUN af drip-loopen til at regulere refresh-frekvensen — den rører
+        ikke ved hvornår en entry vises som stale for en aktiv bruger."""
         return float(getattr(config.settings, "cache_ttl_seconds", 60.0))
+
+    def effective_ttl(self) -> float:
+        """Aktivitetsstyret TTL brugt af drip-loopen: base-TTL når portalen bruges
+        aktivt; rampes gradvist op mod adaptive_ttl_max_seconds over
+        ADAPTIVE_TTL_RAMP_WINDOWS × base-TTL's inaktivitet. Snapper tilbage til base
+        ved næste portal-aktivitet (portal_activity.touch i get_current_user).
+        Resultat: færre ISE-kald når ingen bruger portalen; hot data ved login.
+        """
+        base = self._ttl()
+        if not bool(getattr(config.settings, "adaptive_ttl_enabled", True)):
+            return base
+        max_ttl = float(getattr(config.settings, "adaptive_ttl_max_seconds", 3600.0))
+        if max_ttl <= base:
+            return base
+        ramp_span = base * ADAPTIVE_TTL_RAMP_WINDOWS
+        if ramp_span <= 0:
+            return base
+        frac = min(1.0, portal_activity.idle_seconds() / ramp_span)
+        return base + frac * (max_ttl - base)
 
     @staticmethod
     def _swr() -> bool:
@@ -841,7 +866,7 @@ class EndpointCache:
         # Enkelt O(n) pass: alder, staleness-distribution og tier-fordeling.
         # Erstatter tidligere 3 separate list-comprehensions + max/sum-kald.
         now = self._now()
-        ttl = self._ttl()
+        ttl = self._ttl()               # base-TTL — driver freshness-klassifikation
         stale_max = ttl * STALE_MAX_FACTOR
         fresh_count = stale_count = very_stale_count = 0
         tier_hot = tier_warm = tier_cold = 0
@@ -870,6 +895,9 @@ class EndpointCache:
         return {
             "enabled": self.enabled(),
             "ttl_seconds": ttl,
+            "effective_ttl_seconds": round(self.effective_ttl(), 1),
+            "adaptive_ttl_enabled": bool(getattr(config.settings, "adaptive_ttl_enabled", True)),
+            "adaptive_ttl_idle_s": round(portal_activity.idle_seconds(), 0),
             "stale_while_revalidate": self._swr(),
             "detail_entries": n,
             "max_entries": max_entries if max_entries > 0 else "unlimited",

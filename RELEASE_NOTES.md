@@ -4,6 +4,15 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.24.0728] — 2026-07-04 — feat: Cachen skruer selv refresh-frekvensen ned når ingen bruger portalen
+
+> **Build:** 0728
+
+- **Færre ISE-kald når portalen er ubrugt**: Cache-motoren måler nu om nogen aktivt bruger portalen. Når nogen er logget ind og arbejder, holdes cachen "hot" med den TTL du har sat. Når ingen har været aktive et stykke tid, skrues opdaterings-TTL'en gradvist op (over 10× TTL-vinduet) mod en max-grænse — så baggrunds-refresh laver langt færre ISE-kald om natten/weekender hvor ingen kigger. Når en bruger logger på igen, snapper cachen straks tilbage til hot og opdaterer data.
+- **Tunable under Settings → Endpoint cache**: `Aktivitetsstyret cache-TTL` (til/fra) + `Max cache-TTL ved inaktivitet` (default 1 time).
+- **Følg det live**: Dashboardets "Cache kvalitet"-kort og cache-statistik viser den effektive TTL og hvor længe portalen har været inaktiv (fx `TTL 300→1800s`).
+- Vigtigt: kun *hvor ofte* baggrunden opdaterer påvirkes — en aktiv bruger ser altid korrekt "frisk/stale"-status som hidtil.
+
 ## [6.23.0727] — 2026-07-04 — feat: Dashboard — bedre layout + kilde-links på alle kort
 
 > **Build:** 0727

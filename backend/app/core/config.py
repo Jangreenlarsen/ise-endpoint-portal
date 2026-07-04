@@ -203,6 +203,25 @@ class Settings(BaseSettings):
         ),
     )
 
+    # Adaptiv cache-TTL (6.24.0728) — aktivitetsstyret refresh-frekvens.
+    adaptive_ttl_enabled: bool = Field(
+        default=True,
+        description=(
+            "Aktivér aktivitetsstyret cache-TTL: når nogen aktivt bruger portalen "
+            "køres med base-TTL (hot); når ingen har været aktive rampes TTL gradvist "
+            "op over 10× base-TTL mod adaptive_ttl_max_seconds, så drip-loopen laver "
+            "færre ISE-kald når ingen kigger. Snapper tilbage til base-TTL ved login."
+        ),
+    )
+    adaptive_ttl_max_seconds: float = Field(
+        default=3600.0,
+        description=(
+            "Maksimal cache-TTL (sekunder) når portalen har været inaktiv længe "
+            "(default 3600 = 1 time). Nås gradvist over 10× base-TTL's inaktivitet. "
+            "Skal være >= cache_ttl_seconds; ellers ignoreres adaptationen."
+        ),
+    )
+
     # Adaptiv drip-hastighed (6.22.0726) — ISE-congestion control.
     adaptive_pacing_enabled: bool = Field(
         default=True,
