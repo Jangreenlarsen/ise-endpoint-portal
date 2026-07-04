@@ -32,6 +32,10 @@ class BackendSettingsUpdate(BaseModel):
     cache_prewarm_skip_fresh_s: float = 900.0
     cache_max_entries: int = 5000
     cache_max_memory_mb: int = 300
+    adaptive_pacing_enabled: bool = True
+    adaptive_pacing_range_pct: float = 50.0
+    adaptive_ttl_enabled: bool = True
+    adaptive_ttl_max_seconds: float = 3600.0
     debug_pxgrid_sessions: bool = False
     github_branch: str = "main"
     decomm_set_authz: bool = True
@@ -78,6 +82,10 @@ class BackendSettingsResponse(BaseModel):
     cache_prewarm_skip_fresh_s: float = 900.0
     cache_max_entries: int = 5000
     cache_max_memory_mb: int = 300
+    adaptive_pacing_enabled: bool = True
+    adaptive_pacing_range_pct: float = 50.0
+    adaptive_ttl_enabled: bool = True
+    adaptive_ttl_max_seconds: float = 3600.0
     debug_pxgrid_sessions: bool = False
     github_branch: str = "main"
     decomm_set_authz: bool = True

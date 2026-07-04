@@ -40,7 +40,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Awaitable, Callable, Generic, TypeVar
 
-from app.core import config
+from app.core import config, portal_activity
 from app.core.metrics import (
     CACHE_DISK_STALE,
     CACHE_ENTRIES,
@@ -56,7 +56,14 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T")
 
 STALE_MAX_FACTOR = 30.0
-DISK_CACHE_VERSION = 4  # v4: tier_emas sektion tilføjet til disk-payload
+# Adaptiv TTL: antal base-TTL-vinduer af inaktivitet før TTL når sit maksimum.
+ADAPTIVE_TTL_RAMP_WINDOWS = 10.0
+DISK_CACHE_VERSION = 5  # skrive-version (v5: groups-summary tilføjet til disk-payload)
+# Versioner vi kan LÆSE. entries/tier_emas-formatet er uændret siden v4 — v5
+# tilføjede KUN et valgfrit "groups"-felt. Smid ALDRIG en gyldig endpoint-disk-
+# cache væk pga. et rent additivt format-bump: det gør browse kold og tvinger
+# ISE-fallback (→ 502 / langsom reload når ISE er nede). Læs derfor både v4 og v5.
+_DISK_READABLE_VERSIONS = frozenset({4, 5})
 
 # 3-tier change-frequency constants.
 # change_ema tracks EMA of "did value change?" per drip refresh (0.0–1.0).
@@ -133,7 +140,30 @@ class EndpointCache:
 
     @staticmethod
     def _ttl() -> float:
+        """Konfigureret base-TTL (cache_ttl_seconds). Driver freshness/SWR og
+        UI-staleness. Den ADAPTIVE (aktivitetsstyrede) TTL ligger i effective_ttl()
+        og bruges KUN af drip-loopen til at regulere refresh-frekvensen — den rører
+        ikke ved hvornår en entry vises som stale for en aktiv bruger."""
         return float(getattr(config.settings, "cache_ttl_seconds", 60.0))
+
+    def effective_ttl(self) -> float:
+        """Aktivitetsstyret TTL brugt af drip-loopen: base-TTL når portalen bruges
+        aktivt; rampes gradvist op mod adaptive_ttl_max_seconds over
+        ADAPTIVE_TTL_RAMP_WINDOWS × base-TTL's inaktivitet. Snapper tilbage til base
+        ved næste portal-aktivitet (portal_activity.touch i get_current_user).
+        Resultat: færre ISE-kald når ingen bruger portalen; hot data ved login.
+        """
+        base = self._ttl()
+        if not bool(getattr(config.settings, "adaptive_ttl_enabled", True)):
+            return base
+        max_ttl = float(getattr(config.settings, "adaptive_ttl_max_seconds", 3600.0))
+        if max_ttl <= base:
+            return base
+        ramp_span = base * ADAPTIVE_TTL_RAMP_WINDOWS
+        if ramp_span <= 0:
+            return base
+        frac = min(1.0, portal_activity.idle_seconds() / ramp_span)
+        return base + frac * (max_ttl - base)
 
     @staticmethod
     def _swr() -> bool:
@@ -599,11 +629,18 @@ class EndpointCache:
         if self._groups and self._fresh(self._groups):
             self._stats["hits"] += 1
             return self._groups.value
-        if self._groups and self._swr() and self._stale_servable(self._groups):
+        if self._groups and self._swr():
+            # Server ENHVER cachet groups-værdi (uanset alder) + baggrunds-refresh —
+            # bloker ALDRIG en Browse-load på et live groups-fetch. Grupper ændres
+            # sjældent; en let forældet dropdown er langt bedre end at blokere på en
+            # N+1 list_all(). Uden dette blokerede get_groups efter >2,5t idle (entry
+            # faldt ud af SWR-vinduet ttl*30) → blocking MISS → hele Browse-loadet
+            # ventede, da Promise.all afventer listGroups. _groups populeres fra disk
+            # ved opstart, så denne gren rammer altid efter en genstart.
             self._stats["stale_serves"] += 1
             self._get_or_create_groups_inflight(fetch_fn)  # fire-and-forget
             return self._groups.value
-        # Miss — coalesce concurrent fetches so only one hits ISE.
+        # Miss — kun når vi slet IKKE har cachede grupper (kold start uden disk).
         self._stats["misses"] += 1
         task = self._get_or_create_groups_inflight(fetch_fn)
         if task is not None:
@@ -654,6 +691,7 @@ class EndpointCache:
         path: Path,
         snapshot: dict[str, "CachedEntry[Any]"],
         tier_emas_snap: dict[str, float],
+        groups_snap: "CachedEntry[Any] | None" = None,
     ) -> int:
         """Serialisér pre-taget snapshot til JSON. Kaldt fra event-loop (sync)
         eller thread-pool (async). Parametrene er snapshot-kopier taget på
@@ -679,15 +717,36 @@ class EndpointCache:
                     }
                 except Exception:  # noqa: BLE001
                     pass
+            # Serialisér groups-summary så /groups er varm efter genstart og ikke
+            # blokerer på et ISE list_all()-kald. Grupper ændres sjældent → billig
+            # at gemme, stor gevinst for Browse-load-resiliens.
+            groups_payload = None
+            if groups_snap is not None and groups_snap.value is not None:
+                try:
+                    groups_payload = {
+                        "fetched_at": groups_snap.fetched_at,
+                        "value": [
+                            g.model_dump() if hasattr(g, "model_dump") else dict(g)
+                            for g in groups_snap.value
+                        ],
+                    }
+                except Exception:  # noqa: BLE001
+                    groups_payload = None
             payload = {
                 "version": DISK_CACHE_VERSION,
                 "saved_at": self._now(),
                 "count": len(entries),
                 "entries": entries,
                 "tier_emas": tier_emas_snap,
+                "groups": groups_payload,
             }
             path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
-            logger.info("disk cache: saved %d entries to %s", len(entries), path)
+            logger.info(
+                "disk cache: saved %d entries + %d groups to %s",
+                len(entries),
+                len(groups_payload["value"]) if groups_payload else 0,
+                path,
+            )
             return len(entries)
         except Exception as exc:  # noqa: BLE001
             logger.warning("disk cache: save failed: %s", exc)
@@ -699,7 +758,7 @@ class EndpointCache:
         """
         snapshot = dict(self._details)
         tier_emas_snap = dict(self._tier_emas)
-        return self._save_snapshot(path, snapshot, tier_emas_snap)
+        return self._save_snapshot(path, snapshot, tier_emas_snap, self._groups)
 
     async def save_to_disk_async(self, path: Path) -> int:
         """Non-blocking: snapshot på event-loop-tråden, serialisering i thread-pool.
@@ -709,9 +768,10 @@ class EndpointCache:
         """
         snapshot = dict(self._details)
         tier_emas_snap = dict(self._tier_emas)
+        groups_snap = self._groups
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(
-            None, self._save_snapshot, path, snapshot, tier_emas_snap
+            None, self._save_snapshot, path, snapshot, tier_emas_snap, groups_snap
         )
 
     def load_from_disk(self, path: Path) -> int:
@@ -722,8 +782,12 @@ class EndpointCache:
             return 0
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
-            if payload.get("version") != DISK_CACHE_VERSION:
-                logger.info("disk cache: version mismatch, skipping %s", path)
+            file_version = payload.get("version")
+            if file_version not in _DISK_READABLE_VERSIONS:
+                logger.info(
+                    "disk cache: uforenelig version %s (læsbare: %s) — skipper %s",
+                    file_version, sorted(_DISK_READABLE_VERSIONS), path,
+                )
                 return 0
             # Gendan tier EMA-historik for endpoints der ikke allerede er i _tier_emas.
             # Disse værdier gælder for endpoints der var invaliderede ved shutdown.
@@ -752,6 +816,25 @@ class EndpointCache:
                     loaded += 1
                 except Exception:  # noqa: BLE001
                     pass
+            # Gendan groups-summary hvis ikke allerede live-cachet. Load som FRISK
+            # (fetched_at = now) så get_groups() serverer den øjeblikkeligt UDEN at
+            # spawne en baggrunds-list_all() (N+1) med det samme — det undgår at
+            # hamre en evt. presset ISE ved hver reload efter genstart. SWR
+            # refresher grupperne naturligt når TTL udløber (ikke-blokerende).
+            if self._groups is None:
+                groups_raw = payload.get("groups")
+                if groups_raw and groups_raw.get("value") is not None:
+                    try:
+                        from app.schemas.endpoint import EndpointGroupSummary
+                        groups_val = [
+                            EndpointGroupSummary.model_validate(g)
+                            for g in groups_raw["value"]
+                        ]
+                        self._groups = CachedEntry(groups_val, self._now())
+                        logger.info("disk cache: loaded %d groups from %s", len(groups_val), path)
+                    except Exception:  # noqa: BLE001
+                        pass
+
             self._stats["disk_loads"] += loaded
             saved_at = payload.get("saved_at", 0)
             age_min = (self._now() - saved_at) / 60
@@ -783,7 +866,7 @@ class EndpointCache:
         # Enkelt O(n) pass: alder, staleness-distribution og tier-fordeling.
         # Erstatter tidligere 3 separate list-comprehensions + max/sum-kald.
         now = self._now()
-        ttl = self._ttl()
+        ttl = self._ttl()               # base-TTL — driver freshness-klassifikation
         stale_max = ttl * STALE_MAX_FACTOR
         fresh_count = stale_count = very_stale_count = 0
         tier_hot = tier_warm = tier_cold = 0
@@ -812,6 +895,9 @@ class EndpointCache:
         return {
             "enabled": self.enabled(),
             "ttl_seconds": ttl,
+            "effective_ttl_seconds": round(self.effective_ttl(), 1),
+            "adaptive_ttl_enabled": bool(getattr(config.settings, "adaptive_ttl_enabled", True)),
+            "adaptive_ttl_idle_s": round(portal_activity.idle_seconds(), 0),
             "stale_while_revalidate": self._swr(),
             "detail_entries": n,
             "max_entries": max_entries if max_entries > 0 else "unlimited",

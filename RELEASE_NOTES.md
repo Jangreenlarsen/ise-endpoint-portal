@@ -4,6 +4,114 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.26.0730] — 2026-07-04 — feat: Trend Analysis — se populationen udvikle sig over tid
+
+> **Build:** 0730
+
+- **Ny headline-graf "Endpoint-population over tid"**: viser hvordan det samlede antal endpoints (og heraf private/randomiserede MACs) har udviklet sig over den valgte periode — ikke kun de daglige til-/fragang. Grafen zoomer ind på det faktiske interval, så selv mindre udsving er tydelige.
+- **Nye nøgletal**: gennemsnitlig tilgang pr. dag og den travleste dag (med dato) er nu vist blandt stat-kortene.
+- Bevarer de eksisterende grafer for daglig tilgang/fragang og private MACs.
+
+## [6.25.0729] — 2026-07-04 — feat: Metrics-siden viser nu de adaptive mekanismer + rigere historik
+
+> **Build:** 0729
+
+- **Se den adaptive styring live**: Metrics-siden har nu et "Adaptiv styring"-kort med drip-hastigheden (fx `0.75×`), den effektive cache-TTL og hvor længe portalen har været inaktiv.
+- **Rigere historik**: Historik-graferne dækker nu også adaptiv drip-hastighed, effektiv TTL og portal-inaktivitet (foruden cache/CB/ISE-serierne). Du kan nu vælge periode — **2, 6, 12 eller 24 timer** — i stedet for et fast 2-timers vindue.
+- Dermed kan man følge hvordan cache-motoren regulerer sig selv over tid: fx at drip-hastigheden falder når ISE er presset, og at TTL'en ramper op om natten hvor ingen bruger portalen.
+
+## [6.24.0728] — 2026-07-04 — feat: Cachen skruer selv refresh-frekvensen ned når ingen bruger portalen
+
+> **Build:** 0728
+
+- **Færre ISE-kald når portalen er ubrugt**: Cache-motoren måler nu om nogen aktivt bruger portalen. Når nogen er logget ind og arbejder, holdes cachen "hot" med den TTL du har sat. Når ingen har været aktive et stykke tid, skrues opdaterings-TTL'en gradvist op (over 10× TTL-vinduet) mod en max-grænse — så baggrunds-refresh laver langt færre ISE-kald om natten/weekender hvor ingen kigger. Når en bruger logger på igen, snapper cachen straks tilbage til hot og opdaterer data.
+- **Tunable under Settings → Endpoint cache**: `Aktivitetsstyret cache-TTL` (til/fra) + `Max cache-TTL ved inaktivitet` (default 1 time).
+- **Følg det live**: Dashboardets "Cache kvalitet"-kort og cache-statistik viser den effektive TTL og hvor længe portalen har været inaktiv (fx `TTL 300→1800s`).
+- Vigtigt: kun *hvor ofte* baggrunden opdaterer påvirkes — en aktiv bruger ser altid korrekt "frisk/stale"-status som hidtil.
+
+## [6.23.0727] — 2026-07-04 — feat: Dashboard — bedre layout + kilde-links på alle kort
+
+> **Build:** 0727
+
+- **Bredere overblik**: "Endpoint movement — last 30 days" og "Recent audit events" fylder nu hele bredden (som System Log), så graf og hændelser er nemmere at læse.
+- **Kilde-links overalt**: Hvert dashboard-kort har nu et lille link til den fulde side hvor dataene kommer fra — fx audit-events → Audit-loggen, System Log → Log-siden, Cache kvalitet → cache-indstillinger, System status → metrics. Links til admin-sider vises kun for admins.
+
+## [6.22.0726] — 2026-07-04 — feat: Adaptiv drip-hastighed — portalen tilpasser sig ISE automatisk
+
+> **Build:** 0726
+
+- **Selvregulerende baggrunds-refresh**: Cache-motorens drip-loop justerer nu selv sit tempo efter hvor godt ISE svarer — hurtigere når ISE er sund, langsommere ved fejl/timeout, og bremser hårdt op når circuit breakeren åbner (samme princip som TCP's overbelastningsstyring). Det insulerer ISE mod at blive overbelastet og reducerer de tilbagevendende `endpointgroup`-timeouts — uden manuel tuning.
+- **Tunable under Settings → Endpoint cache**: Slå funktionen til/fra (`Adaptiv drip-hastighed`) og sæt hvor meget tempoet må svinge (`Adaptivt spænd ±%`, default 50 → mellem 0,5× og 1,5×). Sæt til 0 for fast tempo.
+- **Følg status live**: Dashboardets "Cache kvalitet"-kort og cache-statistik viser nu den aktuelle adaptive hastighed (fx `1.15×` grøn = ISE sund, `0.60×` orange = ISE presset).
+
+## [6.21.0725] — 2026-07-04 — fix: Portalen "vågner" hurtigt efter lang inaktivitet
+
+> **Build:** 0725
+
+- **Hurtig Browse efter idle**: Tidligere føltes portalen som om hele cache-motoren skulle "vågne fra dyb søvn" når en admin loggede ind efter flere timers fravær — det tog lang tid at se noget, og reload var langsom. Årsag: gruppe-cachen havde ingen baggrunds-opdatering og faldt ud af sit servér-vindue efter 2,5 time, hvorefter næste sidevisning blokerede på et langsomt ISE-kald. Nu serveres grupperne altid øjeblikkeligt fra cachen (opdateres i baggrunden), så Browse loader hurtigt uanset hvor længe der er gået.
+- **Færre ISE-kald**: Gruppe-listen hentes nu højst hvert 30. minut (mod hvert 5. minut) — grupper ændres sjældent, og portalen opdaterer straks når du selv opretter en gruppe. Det reducerer de langsomme `GET /ers/config/endpointgroup`-kald mod ISE markant.
+
+## [6.21.0724] — 2026-07-04 — fix: Reload virker igen fra disk-/memory-cache (regression fra 0723)
+
+> **Build:** 0724
+
+- **Browse/reload henter igen data fra disk-cachen** uden at ramme ISE. En regression i 6.21.0723 (disk-cache-format bumpet fra v4 til v5) fik portalen til at kassere den eksisterende disk-cache ved opstart → Browse blev kold, reload blev langsom, og "Reload"-knappen kunne give `502: ISE returnerede en uventet fejl (HTTP 503)`. Nu læses både v4- og v5-cacher, så eksisterende data bevares.
+- **Reload kan ikke længere hård-fejle**: hvis cachen undtagelsesvist er tom OG ISE er utilgængelig, viser Browse nu en tom (men brugbar) tabel i stedet for en 502-fejl. Data dukker op automatisk når ISE svarer igen.
+
+## [6.21.0723] — 2026-07-04 — fix: Grupper overlever nu genstart (offline disk-cache)
+
+> **Build:** 0723
+
+- **Grupper vises straks efter genstart**: Gruppe-listen gemmes nu til disk-cachen ligesom endpoints. Tidligere var gruppe-dropdown og -filtre tomme indtil ISE svarede første gang efter en genstart (og kunne udløse en 502 hvis ISE var langsom). Nu serveres grupperne øjeblikkeligt fra disk, og opdateres i baggrunden. Sammen med 6.21.0722 renderer Browse fuldt fra cachen — både endpoints og grupper — uden at vente på ISE.
+
+## [6.21.0722] — 2026-07-03 — fix: Browse viste 502 og tom tabel når grupper ikke kunne hentes
+
+> **Build:** 0722
+
+- **Browse er nu robust mod ISE-udfald**: Tidligere kunne et enkelt fejlende hjælpe-kald (fx gruppe-listen der timede ud mod ISE) afvise hele browse-loadet med `502: ISE API 0: transport error: ReadTimeout` og en tom tabel — selvom endpoint-dataene lå klar i disk-cachen. Nu renderes endpoint-tabellen altid fra cachen; gruppe-dropdown og filtre degraderer blødt og udfyldes automatisk når ISE svarer igen.
+
+## [6.21.0721] — 2026-07-03 — fix: ISE `/endpointgroup` ReadTimeout-storm (endelig grundårsag)
+
+> **Build:** 0721
+
+- **ISE-stabilitet (stor forbedring)**: Baggrunds-refresh (drip) hentede hele ISE-gruppe-hierarkiet på ~hver eneste opdatering — titusindvis af unødvendige kald i timen mod `GET /ers/config/endpointgroup`. Det overbelastede ISE ERS, gav konstante `ReadTimeout`-fejl og fik circuit breakeren til at åbne/lukke 10-13× dagligt. Nu deles gruppe-navnene i én cache der hentes højst hvert 5. minut → ISE-kald mod gruppe-endpointet falder ~1000×.
+- Dette er **grundårsagen** bag de ISE-timeout-problemer der er blevet bekæmpet gennem flere releases (keepalive-justeringer m.m. behandlede kun symptomer). Detaljeret teknisk analyse i `BUGREPORT-ise-endpointgroup-storm.md`.
+- Ingen synlig ændring i UI — gruppenavne vises som hidtil.
+
+## [6.21.0720] — 2026-07-02 — fix: Stale ISE-connections → fresh% falder til 0%
+
+> **Build:** 0720
+
+- **Circuit breaker recovery**: `keepalive_expiry` reduceret fra 30s til 10s. ISE Tomcat lukker ERS-forbindelser efter ~12-15s inaktivitet (ikke ~25-30 min som tidligere antaget). Med 30s keepalive genbrugte httpx lukkede forbindelser → `ReadTimeout` → CB åbnede og nåede aldrig at recover. Med 10s keepalive lukkes forbindelser INDEN ISE gør det — alle requests bruger nu altid friske TCP-forbindelser.
+
+## [6.21.0719] — 2026-07-02 — feat: Refresh fra ISE ikke-blokerende
+
+> **Build:** 0719
+
+- **"Opdater fra ISE"-knap** er nu ikke-blokerende: trigger en fuld ISE-scan i baggrunden og viser eksisterende data øjeblikkeligt. Scan og UI kører uafhængigt — ingen 15-20s ventetid.
+- Infobanner vises med tekst: *"ISE-scan kører i baggrunden — tryk ↻ Genindlæs for at se opdateringer."*
+- Ny backend `POST /cache/rescan`: signalerer prewarm-workeren via `asyncio.Event` til at starte scan straks uden at afvente 30-min interval.
+
+## [6.21.0718] — 2026-07-02 — fix: CB-metrik, drip client.closed + Browse-reload latens
+
+> **Build:** 0718
+
+- **Browse-reload**: Tabellen vises nu øjeblikkeligt fra cache (<100ms). Auth-status-farver (grøn/rød) tilføjes i baggrunden når ISE MnT svarer — ikke mere 15-20s blokeret render.
+- **CB `open_count` korrekt**: Drip-statuslog ekskluderes fra CB-event-tælling; dobbelt-log ved samtidige fejl er elimineret. `open_count` afspejler nu faktiske CB-åbninger.
+- **Drip `client.closed`**: Forventet RuntimeError ved genstart logges nu som DEBUG frem for WARNING.
+
+## [6.20.0717] — 2026-07-02 — fix: 6 bugs i log-analyse, session cache og ANC
+
+> **Build:** 0717
+
+- **Log-analyse** (`time_range` og `notable_entries`): Filrækkefølge var inverteret → `first > last` og condensed-eksport viste ældste entries. Nu kronologisk.
+- **ISE 2xx i log**: Succesfulde ISE-kald logges nu med statuskode → `ise_requests.outcomes.2xx` viser korrekt antal.
+- **Session cache startup-crash** (`UnboundLocalError: loaded`): Python-exception ved boot med disk-cache er elimineret.
+- **Drip-statistik 0/0**: Periodeisk status-log viser nu akkumulerede refreshed/skipped i logfilen.
+- **ANC endpoint 400**: `macAddress`-filter er fjernet; paginerer nu client-side.
+
+---
+
 ## [6.20.0716] — 2026-07-02 — feat: Log — Claude-analyse eksport og .json download
 
 > **Build:** 0716

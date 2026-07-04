@@ -1,8 +1,10 @@
-<!-- Version: 4.0.5 | Opdateret: 2026-05-10 -->
+<!-- Version: 6.26.0730 | Opdateret: 2026-07-04 -->
 
 # HyperVision ISE Portal — Dokumentationsindeks
 
-Dette er hoveddokumentet for HyperVision ISE Portal version **4.0.5 build 0232**. Alle sektioner i manualen er selvstændige filer; dette dokument fungerer som navigationspunkt og overblik over dokumentationsstrukturen.
+Dette er hoveddokumentet for HyperVision ISE Portal version **6.26 build 0730**. Alle sektioner i manualen er selvstændige filer; dette dokument fungerer som navigationspunkt og overblik over dokumentationsstrukturen.
+
+> **Aktuelt funktions-niveau:** [README.md](../README.md) og [FEATURES.md](../FEATURES.md) er den autoritative, altid-opdaterede oversigt over portalens funktioner; [CHANGELOG.md](../CHANGELOG.md) og [RELEASE_NOTES.md](../RELEASE_NOTES.md) dækker hver enkelt version. De uddybende manual-afsnit nedenfor (01–05) opdateres periodisk og kan beskrive et lidt ældre funktions-niveau end README/CHANGELOG.
 
 ---
 

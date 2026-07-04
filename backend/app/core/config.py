@@ -191,6 +191,55 @@ class Settings(BaseSettings):
             "i de seneste 15 min. 0 = deaktiveret (klassisk fuld-scan adfærd)."
         ),
     )
+    ise_group_cache_ttl_s: float = Field(
+        default=1800.0,
+        description=(
+            "TTL (sekunder) for den delte gruppe-navne-cache brugt til at resolve "
+            "endpoint-gruppenavne. Grupper ændres sjældent, og portalen invaliderer "
+            "cachen med det samme ved create_group — derfor en lang TTL (default "
+            "30 min) for at minimere langsomme/timeout-udsatte GET /ers/config/"
+            "endpointgroup-kald mod ISE. Ekstern gruppe-ændring (uden om portalen) "
+            "afspejles først efter denne periode."
+        ),
+    )
+
+    # Adaptiv cache-TTL (6.24.0728) — aktivitetsstyret refresh-frekvens.
+    adaptive_ttl_enabled: bool = Field(
+        default=True,
+        description=(
+            "Aktivér aktivitetsstyret cache-TTL: når nogen aktivt bruger portalen "
+            "køres med base-TTL (hot); når ingen har været aktive rampes TTL gradvist "
+            "op over 10× base-TTL mod adaptive_ttl_max_seconds, så drip-loopen laver "
+            "færre ISE-kald når ingen kigger. Snapper tilbage til base-TTL ved login."
+        ),
+    )
+    adaptive_ttl_max_seconds: float = Field(
+        default=3600.0,
+        description=(
+            "Maksimal cache-TTL (sekunder) når portalen har været inaktiv længe "
+            "(default 3600 = 1 time). Nås gradvist over 10× base-TTL's inaktivitet. "
+            "Skal være >= cache_ttl_seconds; ellers ignoreres adaptationen."
+        ),
+    )
+
+    # Adaptiv drip-hastighed (6.22.0726) — ISE-congestion control.
+    adaptive_pacing_enabled: bool = Field(
+        default=True,
+        description=(
+            "Aktivér adaptiv drip-hastighed (ISE-congestion control): drip-loopen "
+            "justerer selv tempoet op/ned efter hvor godt ISE svarer — additiv "
+            "forøgelse ved succes, multiplikativ nedsættelse ved fejl/timeout/CB-open "
+            "(som TCP). Insulerer ISE mod overbelastning uden manuel tuning."
+        ),
+    )
+    adaptive_pacing_range_pct: float = Field(
+        default=50.0,
+        description=(
+            "Hvor meget den adaptive hastighed må svinge fra baseline, i procent "
+            "(default 50 → drip-tempo mellem 0,5× og 1,5× af det konfigurerede). "
+            "0 = deaktiveret (fast baseline-tempo). Klampes internt til 0–90 %."
+        ),
+    )
 
     # Audit log (2.9.0) — append-only event trail with rollback support.
     audit_enabled: bool = Field(

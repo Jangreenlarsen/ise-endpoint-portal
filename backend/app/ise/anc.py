@@ -90,23 +90,30 @@ async def clear(client, mac: str) -> tuple[bool, str]:
 async def get_endpoint_status(client, mac: str) -> str | None:
     """Return the ANC policy currently applied to the MAC, or None if free.
 
-    Two ISE calls: list (filter by MAC) → detail (get policyName).
-    Returns None on any error so callers can treat unknown status gracefully.
+    ISE ERS /ancendpoint does not support macAddress as a filter field (returns 400).
+    Instead: paginate through all ANC assignments and match client-side.
+    ANC assignments are typically very few so this is efficient in practice.
     """
     mac_n = _normalize_mac(mac)
     try:
-        data = await client.get(
-            _ENDPOINT_PATH,
-            params={"filter": f"macAddress.EQ.{mac_n}", "size": 1},
-        )
-        resources = data.get("SearchResult", {}).get("resources", []) if data else []
-        if not resources:
-            return None
-        entry_id = resources[0].get("id", "")
-        if not entry_id:
-            return None
-        detail = await client.get(f"{_ENDPOINT_PATH}/{entry_id}")
-        return detail.get("ErsAncEndpoint", {}).get("policyName") if detail else None
+        page = 1
+        while True:
+            data = await client.get(_ENDPOINT_PATH, params={"size": 100, "page": page})
+            if not data:
+                return None
+            result = data.get("SearchResult", {})
+            resources = result.get("resources", [])
+            total = result.get("total", 0)
+            for r in resources:
+                if _normalize_mac(r.get("name", "")) == mac_n:
+                    entry_id = r.get("id", "")
+                    if not entry_id:
+                        return None
+                    detail = await client.get(f"{_ENDPOINT_PATH}/{entry_id}")
+                    return detail.get("ErsAncEndpoint", {}).get("policyName") if detail else None
+            if not resources or page * 100 >= total:
+                return None
+            page += 1
     except IseApiError as exc:
         logger.debug("ANC get_status mac=%s: %s", mac_n, exc)
         return None

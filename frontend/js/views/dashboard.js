@@ -40,6 +40,14 @@ function resBar(label, pct, usedLabel) {
   </div>`;
 }
 
+// ── Kilde-link (hvor kortets data kommer fra) ─────────────────────────────────
+
+function sourceLink(href, label) {
+  return `<a href="${href}" style="display:block;text-align:right;font-size:.76rem;
+    color:#2563eb;text-decoration:none;margin-top:.5rem;padding-top:.4rem;
+    border-top:1px solid #f3f4f6;">${label} →</a>`;
+}
+
 // ── KPI-kort ──────────────────────────────────────────────────────────────────
 
 function kpiCard(label, value, sub = "", accent = "#2563eb") {
@@ -211,11 +219,16 @@ function renderLogsTable(entries) {
 
 // ── Cache kvalitetsmetrics ────────────────────────────────────────────────────
 
-function cacheQualityCard(cache, prewarm) {
+function cacheQualityCard(cache, prewarm, isAdmin) {
   const n        = cache.detail_entries ?? 0;
   const tiers    = cache.tiers    || {};
   const stale    = cache.staleness || {};
   const ttl      = cache.ttl_seconds ?? 0;
+  // Aktivitetsstyret TTL: vis "base → effektiv" når den er rampet op ved inaktivitet.
+  const effTtl   = cache.effective_ttl_seconds;
+  const ttlLabel = (cache.adaptive_ttl_enabled && effTtl != null && Math.round(effTtl) !== Math.round(ttl))
+    ? `TTL ${Math.round(ttl)}→${Math.round(effTtl)}s`
+    : `TTL ${ttl}s`;
 
   // Tier-fordeling
   const hot  = tiers.hot  ?? 0;
@@ -291,6 +304,11 @@ function cacheQualityCard(cache, prewarm) {
     : "—";
   const hotQ     = prewarm.hot_queue_size ?? 0;
   const inflight = cache.inflight ?? 0;
+  // Adaptiv drip-hastighed (ISE-congestion control): 1.0 = baseline.
+  const speed      = prewarm.adaptive_speed_factor;
+  const speedColor = speed == null ? "#6b7280" : speed >= 1 ? "#16a34a" : "#d97706";
+  const speedHint  = speed == null ? "" : speed > 1 ? "hurtigere — ISE sund"
+    : speed < 1 ? "langsommere — ISE presset" : "baseline";
 
   const accentColor = (stale.very_stale_pct ?? 0) > 10 ? "#dc2626"
     : stalePct > 50 ? "#d97706" : "#0891b2";
@@ -299,7 +317,7 @@ function cacheQualityCard(cache, prewarm) {
     box-shadow:0 1px 4px rgba(0,0,0,.07);border-top:3px solid ${accentColor};">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;">
       <h3 style="margin:0;font-size:.92rem;color:#374151;font-weight:600;">Cache kvalitet</h3>
-      <span style="font-size:.78rem;color:#9ca3af;">${n.toLocaleString()} entries · TTL ${ttl}s</span>
+      <span style="font-size:.78rem;color:#9ca3af;" title="${cache.adaptive_ttl_enabled && cache.adaptive_ttl_idle_s != null ? `Portal inaktiv i ${Math.round(cache.adaptive_ttl_idle_s)}s` : ""}">${n.toLocaleString()} entries · ${ttlLabel}</span>
     </div>
 
     <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;
@@ -316,11 +334,13 @@ function cacheQualityCard(cache, prewarm) {
 
     <div style="margin-top:.5rem;padding-top:.5rem;border-top:1px solid #f3f4f6;
       display:flex;gap:1rem;flex-wrap:wrap;font-size:.8rem;">
+      ${speed != null ? `<span style="color:#6b7280;" title="${speedHint}">Adaptiv hastighed <strong style="color:${speedColor};">${speed.toFixed(2)}×</strong></span>` : ""}
       <span style="color:#6b7280;">Drip-effektivitet <strong style="color:#374151;">${dripEff}</strong></span>
       ${inflight > 0 ? `<span style="color:#6b7280;">Inflight <strong style="color:#2563eb;">${inflight}</strong></span>` : ""}
       ${hotQ > 0 ? `<span style="color:#6b7280;">Hot-queue <strong style="color:#d97706;">${hotQ}</strong></span>` : ""}
       ${cache.evictions > 0 ? `<span style="color:#6b7280;">Evictions <strong style="color:#9ca3af;">${cache.evictions}</strong></span>` : ""}
     </div>
+    ${isAdmin ? sourceLink("#/settings", "Cache-indstillinger") : ""}
   </div>`;
 }
 
@@ -382,7 +402,7 @@ function compose(dash, trends, lifecycle, isAdmin, diagQuick, sysinfo) {
     ${kpiCard(t("dash.kpi_endpoints"),
         totalEp != null ? Number(totalEp).toLocaleString() : "—",
         t("dash.kpi_endpoints_sub"), "#2563eb")}
-    ${kpiCard(t("dash.kpi_private_macs") || "Private MACs (LAA)",
+    ${kpiCard(t("dash.kpi_private_macs") || "Endpoints Total privat MACS",
         snap.laa != null ? snap.laa.toLocaleString() : "—",
         snap.laa_pct != null ? snap.laa_pct + "% " + (t("trend.stat_laa_pct") || "% of total").replace("% ", "") : "",
         "#d97706")}`;
@@ -473,6 +493,7 @@ function compose(dash, trends, lifecycle, isAdmin, diagQuick, sysinfo) {
     ${statRow("Stale serves", cache.stale_serves ?? "—")}
     ${statRow(t("dash.sys_disk_loaded"), cache.disk_loaded_at_startup ?? "0")}
     ${prewarmRows}
+    ${isAdmin ? sourceLink("#/metrics", "System-metrics") : ""}
   </div>`;
 
   // ── Livscyklus-summary (admin) ────────────────────────────────────────────
@@ -504,7 +525,10 @@ function compose(dash, trends, lifecycle, isAdmin, diagQuick, sysinfo) {
   if (events.length) {
     eventsCard = `<div style="background:#fff;border-radius:12px;padding:1rem 1.25rem;
       box-shadow:0 1px 4px rgba(0,0,0,.07);">
-      <h3 style="margin:0 0 .75rem;font-size:.92rem;color:#374151;font-weight:600;">${t("dash.events_title")}</h3>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;">
+        <h3 style="margin:0;font-size:.92rem;color:#374151;font-weight:600;">${t("dash.events_title")}</h3>
+        <a href="#/audit" style="font-size:.8rem;color:#2563eb;text-decoration:none;white-space:nowrap;">Åbn audit-log →</a>
+      </div>
       <div style="overflow-x:auto;">
         <table style="width:100%;border-collapse:collapse;font-size:.85em;">
           <thead><tr>
@@ -534,31 +558,33 @@ function compose(dash, trends, lifecycle, isAdmin, diagQuick, sysinfo) {
 
   // Cache kvalitetsmetrics — vises kun når cache har entries
   const cqCard = cache.detail_entries > 0
-    ? cacheQualityCard(cache, prewarm)
+    ? cacheQualityCard(cache, prewarm, isAdmin)
     : "";
 
-  // Bundlinje: system stats + cache kvalitet + lifecycle + audit events side om side
-  const bottomItems = [sysCard, cqCard, lcCard, eventsCard].filter(Boolean);
-  const bottomRow = bottomItems.length
+  // Status-kort side om side: system sundhed + system status + cache + lifecycle.
+  // Endpoint-movement (trend) og Recent audit events får hver FULD bredde — samme
+  // som System Log-kortet nederst.
+  const statusItems = [hCard, sysCard, cqCard, lcCard].filter(Boolean);
+  const statusRow = statusItems.length
     ? `<div style="display:flex;gap:.75rem;align-items:flex-start;flex-wrap:wrap;margin-top:.75rem;">
-        ${bottomItems.map(c => `<div style="flex:1;min-width:240px;">${c}</div>`).join("")}
+        ${statusItems.map(c => `<div style="flex:1;min-width:240px;">${c}</div>`).join("")}
       </div>`
     : "";
 
   return `
     ${iseAuthBanner(dash.ise_auth)}
     ${kpiRow}
-    <div style="display:flex;gap:.75rem;align-items:flex-start;flex-wrap:wrap;">
-      <div style="flex:2;min-width:320px;">${trendCard}</div>
-      ${hCard ? `<div style="flex:1;min-width:270px;">${hCard}</div>` : ""}
-    </div>
-    ${bottomRow}
+    ${trendCard}
+    ${statusRow}
+    ${eventsCard ? `<div style="margin-top:.75rem;">${eventsCard}</div>` : ""}
   `;
 }
 
 // ── Export ────────────────────────────────────────────────────────────────────
 
 export async function renderDashboard(container) {
+  const user    = auth.getUser();
+  const isAdmin = user?.role === "admin";
   container.innerHTML = `
     <div style="padding:1.25rem;max-width:1100px;">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;
@@ -582,6 +608,7 @@ export async function renderDashboard(container) {
           box-shadow:0 1px 4px rgba(0,0,0,.07);">
           <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;flex-wrap:wrap;">
             <h3 style="margin:0;font-size:.92rem;font-weight:600;color:#374151;flex:none;">${t("dash.log_title")}</h3>
+            ${isAdmin ? `<a href="#/logs" style="font-size:.8rem;color:#2563eb;text-decoration:none;flex:none;">Åbn fuld log →</a>` : ""}
             <label style="display:flex;align-items:center;gap:.3rem;font-size:.85em;color:#6b7280;">
               ${t("dash.log_level_label")}
               <select id="dash-log-level" style="font-size:.9em;padding:2px 6px;border:1px solid #d1d5db;border-radius:4px;">
@@ -619,9 +646,6 @@ export async function renderDashboard(container) {
   const logSearch   = container.querySelector("#dash-log-search");
   const logTsEl     = container.querySelector("#dash-log-ts");
   const logsSection = container.querySelector("#dash-logs-section");
-
-  const user    = auth.getUser();
-  const isAdmin = user?.role === "admin";
 
   let logsAvailable = true;
   let logSearchTimer = null;

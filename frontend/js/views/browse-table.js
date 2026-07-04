@@ -604,9 +604,15 @@ export function initTable(container, state, api, cb) {
     state.filterMode  = false;
     state.allRowsCache = null;
     try {
+      // Kun listEndpointDetails er en hård afhængighed — den serverer fra disk-/
+      // memory-cachen og skal altid kunne rendere tabellen. Grupper og custom-
+      // attributter er hjælpe-data (dropdowns/filtre); de rammer ISE direkte og
+      // kan give 502 (fx kold gruppe-cache efter genstart + langsom ISE). Uden
+      // .catch her afviste ét fejlende hjælpe-kald hele Promise.all → tom tabel
+      // trods varm endpoint-cache. Degradér i stedet: behold sidst-kendte grupper.
       const [caData, grps, result, dacls, mapping, roles, me, pskPolicy, epStats] = await Promise.all([
-        api.listCustomAttributes(),
-        api.listGroups(),
+        api.listCustomAttributes().catch(() => ({ attributes: [] })),
+        api.listGroups().catch(() => state.groups || []),
         api.listEndpointDetails(state.currentPage, state.currentSize, "", state.currentFilters),
         api.listDacls().catch(() => []),
         api.getPlatformMapping().catch(() => ({ mappings: [] })),
@@ -640,8 +646,12 @@ export function initTable(container, state, api, cb) {
       state.staleIds = new Set(result.items.filter((r) => r.cache_stale).map((r) => r.id));
       state.laaTotal       = epStats ? epStats.laa_count : null;
       if (cb.needsFilterMode()) await cb.enterFilterMode();
-      await cb.refreshActiveSessionMacs(force);
+      // Render tabellen øjeblikkeligt fra cache — MnT-kald kører i baggrunden.
+      // Auth-status-farver (grøn/rød) opdateres når ISE MnT svarer (typisk 1-5s).
+      // Uden denne ændring blokerede det sekvensielle MnT-kald render i 15-20s
+      // selv når alle endpoint-data var klar fra cache på <100ms.
       applyFilter();
+      cb.refreshActiveSessionMacs(force).catch(() => {}).then(() => applyFilter());
     } catch (err) {
       msg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
       tbody.innerHTML = "";
@@ -771,13 +781,17 @@ export function initTable(container, state, api, cb) {
     bulkSaveBtn.disabled = false;
   });
 
-  // Refresh button — invaliderer ISE-cache og henter alt forfra
+  // Refresh button — trigger baggrunds-scan i ISE, render fra eksisterende cache straks.
+  // Scan og UI er nu uafhængige processer: cache er tilgængelig hele vejen igennem.
   refreshBtn.addEventListener("click", async () => {
     refreshBtn.disabled    = true;
     refreshBtn.textContent = t("browse.refreshing");
     try {
-      await api.invalidateCache().catch(() => {});
-      await load(true);
+      // 1. Trigger ISE-scan i baggrunden (returnerer øjeblikkeligt)
+      await api.rescanCache().catch(() => {});
+      // 2. Render fra eksisterende cache — stale entries vises med markering
+      await load(false, { silent: true });
+      msg.innerHTML = `<div class="alert info">${t("browse.rescan_background")}</div>`;
     } finally {
       refreshBtn.disabled    = false;
       refreshBtn.textContent = t("browse.btn_refresh");

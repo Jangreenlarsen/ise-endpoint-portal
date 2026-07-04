@@ -4,7 +4,7 @@
 
 Web-baseret administrationssystem til Cisco ISE 3.4 endpoint-management via REST API og pxGrid 2.0.
 
-**Version 6.11 build 0681** — [Fuld manual](docs/INDEX.md) — [Changelog](CHANGELOG.md) — [Release Notes](RELEASE_NOTES.md)
+**Version 6.26 build 0730** — [Fuld manual](docs/INDEX.md) — [Changelog](CHANGELOG.md) — [Release Notes](RELEASE_NOTES.md)
 
 Copyright (C) 2026 Jan Green Larsen — udgivet under [GNU Affero General Public License v3](LICENSE)
 
@@ -57,12 +57,15 @@ De to protokoller supplerer hinanden: REST til management, pxGrid til observabil
 - **Kopiér bruger** — kopiér eksisterende bruger/operatør til ny med auto-postfix `_copy`, inkl. rolle, System adm og skabeloner
 - **Login auth-badge i sidebar** — viser TACACS+ eller LOCAL samt struktureret User / Rolle / Login auth-visning
 
-### Cache og ydelse
-- To-lags cache — in-memory (TTL + stale-while-revalidate) og disk-persistens
-- Portal viser data øjeblikkeligt ved genstart; rækker med ældre data markeres med stale-badge
-- Pre-warm worker scanner alle ISE endpoints i baggrunden med konfigurerbar concurrency
-- Request-koalescering — samtidige fetches for samme endpoint deler eet ISE-kald
-- First-seen SQLite-database — tracker portalens første observation per MAC; ryddes automatisk ved sletning (portal, ISE eller prewarm-scan)
+### Cache og selvregulerende ISE-resiliens
+- **To-lags cache** — in-memory (TTL + stale-while-revalidate) og disk-persistens af både endpoint-detaljer **og** gruppe-liste; portalen viser data øjeblikkeligt ved genstart (ældre rækker markeres med ⏱ stale-badge). Browse hård-fejler aldrig på et enkelt ISE-udfald
+- **3-tier drip-refresh** — baggrunds-worker holder cachen varm med prioriteret kø (hot/warm/cold efter historisk ændringsfrekvens pr. endpoint)
+- **Adaptiv drip-hastighed (ISE-congestion control)** — baggrunds-refresh regulerer selv sit tempo efter hvor godt ISE svarer (AIMD, som TCP's overbelastningsstyring): hurtigere ved succes, langsommere ved fejl/timeout, hård opbremsning når circuit breakeren åbner. Justerbart ±spænd under Settings
+- **Aktivitetsstyret cache-TTL** — når nogen bruger portalen køres hot (base-TTL); når ingen har været aktive rampes refresh-frekvensen gradvist ned mod en konfigurerbar max-grænse → markant færre ISE-kald om natten/weekender. Snapper tilbage til hot ved næste login
+- **Circuit breaker** — fast-fejler ISE-kald efter N fejl i træk og recovery-prober automatisk; beskytter både portal og ISE mod overbelastning
+- **Request-koalescering** — samtidige fetches for samme endpoint eller gruppe deler ét ISE-kald
+- **Pre-warm worker** — inkrementel baggrunds-scan af alle ISE-endpoints med konfigurerbar concurrency; gemmer til disk efter hvert scan
+- **First-seen SQLite-database** — tracker portalens første observation per MAC; ryddes automatisk ved sletning (portal, ISE eller prewarm-scan)
 
 ### RADIUS Policy administration
 - **Politikker-dashboard** — overblik over alle ISE policy sets med regelkort (rank-badge, betingelses-chips, autorisationsprofil-chips)
@@ -85,9 +88,18 @@ De to protokoller supplerer hinanden: REST til management, pxGrid til observabil
 - Tillidsproxy-liste — X-Forwarded-For til rate limiting kun fra konfigurerede proxy-IPs
 - ISE CA-bundle — mulighed for at angive eget root-CA PEM til TLS-verifikation mod ISE
 
-### Dashboard
-- **System sundhed** — kompakt sundhedskortet i højre kolonne opdateres hvert 30 s; 7 hurtige tjek (HTTP/2, nmap, disk, ISE-config, cache, circuit breaker, pxGrid) med farvekodning grøn/orange/rød; admin-link til fuld diagnostik
-- **CPU / RAM / Disk ressource-bars** — realtids system-ressource-forbrug som progress-bars i system-kortet; grøn < 75 %, orange 75-90 %, rød > 90 %; hentes via `psutil` hvert 30 s
+### Dashboard & monitoring
+- **KPI-overblik** — endpoints i alt i ISE, private MACs (LAA), cache hit-rate og circuit breaker-tilstand
+- **Fuld-bredde views med kilde-links** — "Endpoint movement (30 dage)" og "Recent audit events" i fuld bredde; hvert dashboard-kort har et link til den fulde side hvor dataene kommer fra (trends, audit, log, metrics, cache-indstillinger)
+- **System sundhed** — kompakt sundhedskort opdateres hvert 30 s; 7 hurtige tjek (HTTP/2, nmap, disk, ISE-config, cache, circuit breaker, pxGrid) med farvekodning grøn/orange/rød; admin-link til fuld diagnostik
+- **CPU / RAM / Disk ressource-bars** — realtids system-ressource-forbrug via `psutil` hvert 30 s; grøn < 75 %, orange 75-90 %, rød > 90 %
+- **Cache kvalitet** — tier-fordeling (hot/warm/cold), staleness-bar, hukommelse, drip-effektivitet og **den adaptive styring live** (drip-hastighed × og effektiv TTL)
+- **System Log** — backend-loggen direkte i dashboardet (kun admin) med niveau-filter, antal og fritekst-søgning
+
+### Metrics & trends
+- **Metrics-side** — indbygget live Prometheus-dashboard (ingen ekstern Grafana kræves): ISE-requests/latens/retries, cache, circuit breaker, rate-limit, bulk — og **adaptiv styring** (drip-hastighed, effektiv TTL, portal-inaktivitet). Prometheus-scrape eksponeret på `GET /metrics`
+- **Metrics-historik** — indbygget SQLite time-series (24 t) uden ekstern stack; grafer med valgbar periode (2 / 6 / 12 / 24 timer) inkl. de adaptive serier — følg fx hvordan drip-hastigheden dykker under ISE-pres og TTL'en ramper op om natten
+- **Trend Analysis** — **endpoint-population over tid** (kumulativ udvikling), daglig til-/fragang, private MACs (LAA) og indsigts-nøgletal (gns. tilgang/dag, travleste dag) over 7 / 30 / 90 / 365 dage; interaktive grafer med tooltip og crosshair
 
 ### Administration
 - Downloadable ACL editor med live Cisco IOS ACL syntax-validering
@@ -156,5 +168,5 @@ python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --app-dir backend
 
 ## Teknologier
 
-Backend: Python 3.11+, FastAPI, httpx (async), Pydantic v2, tacacs-plus, psutil.
-Frontend: Vanilla HTML/CSS/JS — ingen build-trin, ingen eksterne afhængigheder.
+Backend: Python 3.11+, FastAPI, httpx (async, HTTP/2), Pydantic v2, tenacity (retry/circuit breaker), prometheus-client (metrics), SQLite (first-seen + metrics-historik), tacacs-plus, psutil.
+Frontend: Vanilla HTML/CSS/JS — ingen build-trin, ingen eksterne afhængigheder; SVG-grafer renderet i browseren.

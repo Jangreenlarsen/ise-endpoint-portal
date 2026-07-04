@@ -4,6 +4,90 @@ Alle bugs registreres her så snart de opdages. Opdateres når de fikses.
 
 **Format**: `[status] YYYY-MM-DD — Titel` — beskrivelse, berørte filer, løsning (hvis fixed).
 
+**Detaljerede post-mortems**: Komplekse/tilbagevendende bugs har en selvstændig
+`BUGREPORT-*.md`-fil i projektroden med fuld analyse, log-fingeraftryk, hvorfor tidligere
+fixes fejlede, og regressions-vagt. Den linkes fra bug-entryen nedenfor. **Læs den før du
+fejlfinder et lignende symptom** — flere ISE-timeout/CB-problemer har været samme grundårsag.
+
+Kendte post-mortems:
+- [BUGREPORT-ise-endpointgroup-storm.md](BUGREPORT-ise-endpointgroup-storm.md) — ISE `/ers/config/endpointgroup` ReadTimeout-storm + CB-cykling (grundårsag: N+1 gruppe-fetch i drip-loop). Fixed 6.21.0721.
+- [BUGREPORT-browse-502-groups-cold-cache.md](BUGREPORT-browse-502-groups-cold-cache.md) — Browse `502` + tom tabel når `/groups` timer ud (grundårsag: ikke-kritisk group-kald vælter `Promise.all` + grupper har ingen disk-cache). Frontend fixed 6.21.0722; groups disk-persistens fixed 6.21.0723.
+
+## [FIXED 6.21.0725] 2026-07-04 — Gruppe-cache "vågner fra dyb søvn" ved login efter idle + reducér endpointgroup-kald
+
+- **Symptom:** Efter lang inaktivitet (fx 6 timer uden login) føles portalen som om hele cache-motoren skal "vågne op": det tager lang tid at se noget i Browse, reload er langsom, og cache-kvalitets-metrikkerne ser "genstartet" ud ved login. Dertil vedvarende `GET /ers/config/endpointgroup` ReadTimeouts i loggen — også med `idle_before=0s` (frisk forbindelse).
+- **Root cause 1 (gruppe-cache uden baggrunds-refresh):** Baggrunds-workerne (`_drip_loop`/`_full_scan`) holder endpoint-details varme, men rører **aldrig** `EndpointCache._groups` (ingen reference til `get_groups`/`_groups` i `cache_prewarm.py`). `_groups` opdateres kun ved bruger-`/groups`-kald, og kun inden for SWR-vinduet `ttl*30` (2,5t). Efter >2,5t idle er entryen ude af vinduet → næste `/groups` (ved login) blev en **blokerende MISS** → `list_all()` (N+1) → og da Browse-loadets `Promise.all` afventer `listGroups`, blokeredes HELE tabel-renderingen. Det var "der går lang tid før man ser noget."
+- **Root cause 2 (ISE endpointgroup ægte langsom):** `idle_before=0s` viser at ISE selv ikke kan svare på gruppe-listen inden for `ise_timeout` (30s) — ikke et stale-connection-problem. 0721 gjorde kaldene sjældne (hver 5. min), men de sker stadig periodisk og timer ud under ISE-last.
+- **Løsning (v6.21.0725):**
+  1. `get_groups` serverer nu **enhver** cachet `_groups`-værdi (uanset alder) + baggrunds-refresh — blokerer aldrig når vi har en værdi. `_groups` populeres fra disk ved opstart (0723/0724), så login efter idle rammer altid en øjeblikkelig serve. Fjernet `_stale_servable`-gaten for grupper.
+  2. Gruppe-navne-cachen (0721) fik dedikeret TTL `ise_group_cache_ttl_s` (default 1800s/30 min) i stedet for `cache_ttl_seconds` (300s) — grupper ændres sjældent og `create_group` invaliderer stadig straks. Reducerer langsomme `GET /ers/config/endpointgroup`-kald ~6×.
+- **Berørte filer:** `backend/app/core/endpoint_cache.py`, `backend/app/services/endpoint_service.py`, `backend/app/core/config.py`
+- **Note (ISE-side):** endpointgroup-timeouts er nu **harmløs baggrundsstøj** — brugeren serveres altid fra cache. Resterende timeouts skyldes ISE ERS-last (vores endpoint-detail-fetches konkurrerer med gruppe-listen). Mulig yderligere reduktion: names-only gruppe-fetch (drop N per-gruppe-GET i `list_all()` for navneopslag) — ikke nødvendig efter ovenstående, noteret som follow-up.
+
+## [FIXED 6.21.0724] 2026-07-04 — REGRESSION fra 0723: disk-cache kasseret ved versionsbump → browse kold → 502 + langsom reload
+
+- **Symptom:** Efter 6.21.0723 blev Browse langsom, og "Reload"-knappen gav `502: ISE returnerede en uventet fejl (HTTP 503)`. Ingen endpoints vist. Log: gentagne `GET /ers/config/endpointgroup` ReadTimeouts + `cache bg-refresh groups failed`.
+- **Root cause (selvforskyldt regression):** 0723 bumpede `DISK_CACHE_VERSION` 4→5, og `load_from_disk` afviste alt ≠ 5 (`version mismatch, skipping`). Brugerens eksisterende **v4-disk-cache blev kasseret** → `detail_count()==0` → `list_endpoint_details` tog den kolde sti og kaldte ISE direkte. ISE var presset/CB-open → `IseApiError(503)` (CB) → `_ise_http_error` mapper 503 → **502 "uventet fejl (HTTP 503)"**. Dertil spawnede 0723's "just-stale" gruppe-disk-load en baggrunds-`list_all()` (N+1) mod den pressede ISE ved hver reload. entries/tier_emas-formatet var i virkeligheden **uændret** mellem v4 og v5 (kun additivt `groups`-felt) — der var aldrig grund til at kassere v4.
+- **Løsning (v6.21.0724):**
+  1. `load_from_disk` læser nu **både v4 og v5** (`_DISK_READABLE_VERSIONS = {4,5}`) — additive format-bumps kasserer aldrig en gyldig endpoint-cache igen. Grupper loades kun hvis `groups`-feltet findes (v5).
+  2. Disk-grupper loades som **friske** (`fetched_at = now`) i stedet for "just-stale" → `get_groups()` serverer straks UDEN at spawne en N+1-refresh mod ISE ved hver reload. SWR opdaterer naturligt ved TTL.
+  3. **Sikkerhedsnet:** `list_endpoint_details` og `list_all_endpoint_details` fanger nu `IseApiError` på den kolde sti og returnerer tom side/liste i stedet for at boble 502 op og blanke Browse. Reload kan aldrig mere hård-fejle når cachen er kold og ISE nede.
+- **Berørte filer:** `backend/app/core/endpoint_cache.py`, `backend/app/services/endpoint_service.py`
+- **Lærdom:** Bump kun disk-cache-læseversionen hvis det binære entries-format ændres. Additive felter skal være bagudkompatible. Se [BUGREPORT-browse-502-groups-cold-cache.md](BUGREPORT-browse-502-groups-cold-cache.md).
+
+## [FIXED 6.21.0723] 2026-07-04 — Gruppe-cache persisteres nu til disk (offline-data efter genstart)
+
+- **Baggrund:** Follow-up på 6.21.0722. Gruppe-cachen (`EndpointCache._groups`) blev ikke gemt til disk som endpoint-details, så efter genstart/`invalidate_all()` var `_groups=None` → første `/groups`-kald blokerede på ISE `list_all()` og kunne give 502 hvis ISE var langsom. Gruppe-dropdown var tom indtil første ISE-svar.
+- **Løsning (v6.21.0723):** `save_to_disk`/`save_to_disk_async` gemmer nu `_groups`-summary i `cache/endpoints.json` (`DISK_CACHE_VERSION` 4→5). `load_from_disk` gendanner grupperne med `fetched_at = now - ttl - 1` så `get_groups()` serverer dem **øjeblikkeligt** og spawner en ikke-blokerende SWR-refresh (samme princip som disk-loadede details) — ingen blokerende ISE-kald efter genstart. Gamle v4-diskcaches droppes én gang og genopbygges ved første scan.
+- **Berørte filer:** `backend/app/core/endpoint_cache.py`
+- **Bemærk:** Frontend-fixen (6.21.0722) er stadig sikkerhedsnettet — sammen giver de fuld resiliens: endpoints OG grupper vises fra disk, og et fejlende hjælpe-kald vælter aldrig tabellen.
+
+## [FIXED 6.21.0722] 2026-07-03 — Browse viser 502 og tom tabel når `/groups` timer ud (trods varm disk-cache)
+
+- **Symptom:** `502: ISE API 0: transport error: ReadTimeout:` i Browse fra tid til anden — og INGEN endpoints vises, selvom disk-cachen har data der burde kunne præsenteres straks.
+- **Root cause:** Browse-loadet henter hjælpe-data og endpoints i samme `Promise.all` ([browse-table.js:607](frontend/js/views/browse-table.js#L607)). `api.listGroups()` og `api.listCustomAttributes()` havde **ingen `.catch`** (i modsætning til de øvrige 6 kald). `/groups` mapper `IseApiError` → **502** ([groups.py:23](backend/app/api/groups.py#L23)), og gruppe-cachen er **ikke disk-persisteret** — efter genstart/cache-invalidering er `EndpointCache._groups=None`, så første `/groups`-kald blokerer på ISE `list_all()`. Er ISE langsom i det øjeblik → ReadTimeout → 502 → hele `Promise.all` afvises → `catch`-blokken rydder tabellen. `listEndpointDetails()` ville ellers have serveret disk-cachen fint (`detail_count()>0` → synkron snapshot, ingen ISE).
+- **Diskriminator:** Fejlteksten er `502` (ikke `503`) → kommer fra `/groups` (rå `HTTPException(502, str(exc))`), IKKE fra `/endpoints/*` (som bruger `_ise_http_error` → 503 for transport-fejl).
+- **Løsning (v6.21.0722):** `listGroups()` og `listCustomAttributes()` fik `.catch`-fallback i browse-loadet (grupper → sidst-kendte/`[]`, CA → `{attributes:[]}`). Kun `listEndpointDetails` er nu en hård afhængighed — den serverer fra disk-/memory-cache og renderer tabellen selv når ISE er utilgængelig. Hjælpe-data (gruppe-dropdown/filtre) degraderer og self-healer via SWR når ISE svarer igen.
+- **Berørte filer:** `frontend/js/views/browse-table.js`
+- **Follow-up (LØST i 6.21.0723):** Gruppe-cachen persisteres nu til disk (`cache/endpoints.json`, `DISK_CACHE_VERSION` 4→5) så grupper også har offline-data efter genstart. Se `[FIXED 6.21.0723]` ovenfor.
+- **Detaljeret analyse:** [BUGREPORT-browse-502-groups-cold-cache.md](BUGREPORT-browse-502-groups-cold-cache.md)
+
+## [FIXED 6.21.0721] 2026-07-03 — Drip-loop N+1 gruppe-storm → konstant `/endpointgroup` ReadTimeout + CB-cykling
+
+- **Symptom:** Loggen domineres af `GET /ers/config/endpointgroup` `ReadTimeout` (10.000+ issues på `app.ise.client`), CB åbner 10-13×/dag, fresh% ustabil. Kørte hele dagen, ikke som spike.
+- **Root cause (endelig — grundårsagen bag 6.14–6.21's symptom-fixes):** `_drip_loop()` genopretter `EndpointService` på hver iteration ([cache_prewarm.py:289](backend/app/services/cache_prewarm.py#L289)), så det **per-instans** `_group_cache` altid er tomt. `_fetch_endpoint_detail` → `_resolve_group_name` falder derfor igennem til `self.groups.list_all()` — et **N+1-kald** (1 list + `GET /endpointgroup/{id}` for HVER gruppe) — på ~hver drip-refresh (~1/5s). Det gav titusindvis af group-kald/time, langt over ISE ERS' ~5-10 req/s → ReadTimeout → 2 retries (mere last) → CB åbner → lukker → storm i ring. **Diskriminator:** 37% (1050/2800) af timeouts var på friske forbindelser (`idle_before=0s`) → udelukker stale-connection som årsag.
+- **Hvorfor tidligere fixes ikke virkede:** 6.18.0711/6.21.0720 (keepalive) behandlede forbindelses-alder; 6.15.0702 (drip back-off) og 6.14.0699 (list-view N+1) ramte nabo-symptomer men overså drip-loopens group-storm.
+- **Løsning (v6.21.0721):** Delt gruppe-navne-cache på modul-niveau (`_shared_group_names`, TTL = `cache_ttl_seconds`, coalesced via én lås) deles på tværs af alle `EndpointService`-instanser. `_resolve_group_name` → ny `_get_group_names()`: refresher højst 1×/300s, coalescer concurrent kaldere til ét `list_all()`, serverer stale + back-off 30s ved ISE-fejl. Korte navne bevaret (uændret UI). `create_group` invaliderer cachen; `_full_scan` pre-warmer den via `force=True`. Group-kald falder ~1000×.
+- **Berørte filer:** `backend/app/services/endpoint_service.py`, `backend/app/services/cache_prewarm.py`
+- **Detaljeret analyse:** [BUGREPORT-ise-endpointgroup-storm.md](BUGREPORT-ise-endpointgroup-storm.md)
+
+## [FIXED 6.21.0720] 2026-07-02 — Stale connections ved korte idle-pauser → CB låser, fresh% → 0%
+
+- **Symptom:** Efter en "Opdater fra ISE"-scan faldt fresh endpoint % gradvist fra 100% til 0% og blev der. Log viste `ReadTimeout` på `GET /ers/config/endpointgroup` med `[idle_before=18s]` — efterfulgt af CB-åbning og ingen recovery.
+- **Root cause:** ISE ERS (Tomcat) lukker idle TCP-forbindelser efter ~12-15s — ikke ~25-30 min som den tidligere kommentar antog. Drip-loopets søvn i normal mode er `max(0.5, 1800/100) = 18s`. I de 18s lukker ISE forbindelserne. httpx forsøger at genbruge dem (keepalive_expiry=30s >> 18s idle) og får ReadTimeout. CB åbner efter 5 failures. CB's recovery-probe (60s) bruger samme stale connections → probe fejler → CB reset til OPEN. Endless loop.
+- **Løsning (v6.21.0720):** Reduceret `keepalive_expiry_s` default fra 30s til 10s. httpx lukker nu idle forbindelser efter 10s — FØR ISE lukker dem ved ~12-15s. Drips 18s søvn og CB's 60s probe resulterer altid i en frisk TCP-forbindelse.
+- **Berørte filer:** `backend/app/ise/client.py`
+
+## [FIXED 6.21.0718] 2026-07-02 — 4 bugs opdaget via v6.20.0717 condensed-eksport + reload-analyse
+
+- **Bug A** `circuit_breaker.open_count` for høj: drip-loglinjen `"drip: circuit breaker OPEN — pauser…"` matchede `_CB_OPEN`-regex og tæltes som en CB-tilstandsændring. Root cause: regex `r"circuit.?breaker[:\s]+OPEN"` er for bred. Fix: ekskludér linjer der starter med `"drip:"` i CB-event-detektion.
+- **Bug B** `circuit_breaker.open_count` tæller dobbelt pr. CB-åbning: ved samtidige ISE-fejl kalder flere concurrent requests `record_failure()` og rammer threshold+1, +2 etc. — alle logger `"circuit breaker: OPEN after N failures"`, som alle matches af regex. Fix: log kun "OPEN after N failures" ved første CLOSED→OPEN transition (skip hvis allerede OPEN).
+- **Bug C** `drip: fetch fejlede id=<uuid>: Cannot send a request, as the client has been closed`: httpx-klienten lukkes under restart/settings-ændring mens drip stadig har en inflight asyncio.gather. RuntimeError er korrekt fanget men logges på WARNING → vises som problem i analyse. Fix: downgrade til DEBUG for RuntimeError med "closed".
+- **Bug D** Browse-reload latens 15-20s: `refreshActiveSessionMacs(force=true)` kaldes SYNKRONT efter `Promise.all()` i `load()`, dvs. ISE MnT-kald blokerer rendering. Cachen er varm og endpoint-data er klar på <100ms, men tabellen viser ikke noget før MnT-kaldet svarer. Fix: kør `refreshActiveSessionMacs` i baggrunden — render tabel øjeblikkeligt, opdater auth-farver når MnT svarer.
+- **Løsning (v6.21.0718):** Alle 4 bugs fixet — se CHANGELOG.
+- **Berørte filer:** `backend/app/api/logs.py`, `backend/app/ise/circuit_breaker.py`, `backend/app/services/cache_prewarm.py`, `frontend/js/views/browse-table.js`
+
+## [FIXED 6.20.0717] 2026-07-02 — Log-analyse: 5 bugs opdaget via condensed-eksport
+
+- **Bug A** `time_range.first > time_range.last`: `_all_log_files()` returnerede nyeste-fil-først grundet fejlagtig `.reverse()` → `first_ts`/`last_ts` var byttet om.
+- **Bug B** `notable_entries` viste de ældste 300 entries i stedet for nyeste: samme forkerte fil-rækkefølge, `[-300:]` gav oldest file's tail.
+- **Bug C** `ise_requests.outcomes` manglede 2xx: succesfulde ISE-kald loggedes aldrig med statuskode → regex matchede ingenting. Fix: tilføj `logger.info("ISE %s %s -> %d")` i `client.py`.
+- **Bug D** `UnboundLocalError: cannot access local variable 'loaded'` i `session_cache.load_from_disk`: `loaded` aldrig initialiseret til 0 inden loop.
+- **Bug E** `drip_refresh: 0/0`: drip-success loggedes på DEBUG-niveau (usynligt) og skip loggedes slet ikke. Fix: periodisk INFO-statuslog i drip-loop + ny regex.
+- **Bug F** `ancendpoint 400: The filter field 'macAddress' is not supported`: ISE ERS `/ancendpoint` understøtter ikke `macAddress` som filter-parameter. Fix: paginér client-side i stedet.
+- **Løsning (v6.20.0717):** Alle 6 bugs fixet — se CHANGELOG.
+- **Berørte filer:** `backend/app/api/logs.py`, `backend/app/ise/client.py`, `backend/app/pxgrid/session_cache.py`, `backend/app/services/cache_prewarm.py`, `backend/app/ise/anc.py`
+
 ## [FIXED 6.18.0711] 2026-07-02 — Stale idle-forbindelser → circuit breaker låser ved portal-inaktivitet
 
 - **Symptom:** Når ingen brugere er logget ind på portalen i >30 min (f.eks. om natten), fejler alle ISE-kald med `ISE API 0: transport error: ` (tom fejlbesked) og circuit breakeren åbner. Half-open proben genbruger samme stale forbindelser og fejler → CB forbliver OPEN.

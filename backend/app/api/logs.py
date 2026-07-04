@@ -50,7 +50,6 @@ def _all_log_files(log_path: Path) -> list[Path]:
         p = Path(str(log_path) + suffix) if suffix else log_path
         if p.exists():
             files.append(p)
-    files.reverse()
     return files
 
 
@@ -74,7 +73,8 @@ def _analyze_logs(
     startup_events: list[dict] = []
     per_hour: dict[str, Counter] = defaultdict(Counter)
     ise_outcomes: Counter = Counter()
-    drip_stats: Counter = Counter()
+    drip_last_refreshed: int = 0
+    drip_last_skipped: int = 0
     notable_entries: list[dict] = []
     total_lines = 0
     first_ts: str | None = None
@@ -88,8 +88,9 @@ def _analyze_logs(
     )
     _ISE_OUT   = re.compile(r"ISE\s+\w+\s+/[^\s]+\s+->\s+(\d{3})")
     _STARTUP   = re.compile(r"HyperVision ISE Portal\s+v?([\d]+\.[\d]+(?:\.[\d]+)?)")
-    _DRIP_REF  = re.compile(r"drip: refreshed", re.I)
-    _DRIP_SKIP = re.compile(r"drip.*skip|CACHE_DRIP_SKIPPED", re.I)
+    _DRIP_STAT = re.compile(
+        r"drip: status — refreshed=(\d+) skipped=(\d+)", re.I
+    )
     _UUID      = re.compile(
         r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", re.I
     )
@@ -126,7 +127,9 @@ def _analyze_logs(
                             notable_entries.append(parsed)
 
                     low = msg.lower()
-                    if "circuit" in low and "breaker" in low:
+                    # Drip logger "drip: circuit breaker OPEN — pauser…" som en statuslinje,
+                    # ikke en CB-tilstandsændring — ekskluder disse fra event-tællingen.
+                    if "circuit" in low and "breaker" in low and not low.startswith("drip:"):
                         if _CB_OPEN.search(msg):
                             cb_events.append({"ts": ts, "event": "OPEN",      "detail": msg[:200]})
                         elif _CB_CLOSE.search(msg):
@@ -150,10 +153,10 @@ def _analyze_logs(
                     if "transport error" in low:
                         ise_outcomes["error"] += 1
 
-                    if _DRIP_REF.search(msg):
-                        drip_stats["refreshed"] += 1
-                    elif _DRIP_SKIP.search(msg):
-                        drip_stats["skipped"] += 1
+                    m_drip = _DRIP_STAT.search(msg)
+                    if m_drip:
+                        drip_last_refreshed = int(m_drip.group(1))
+                        drip_last_skipped   = int(m_drip.group(2))
 
                     if m3 := _STARTUP.search(msg):
                         if "start" in low or "===" in msg:
@@ -175,9 +178,9 @@ def _analyze_logs(
         for h in sorted_hours
     ]
 
-    drip_total = drip_stats["refreshed"] + drip_stats["skipped"]
+    drip_total = drip_last_refreshed + drip_last_skipped
     drip_eff_pct = (
-        round(drip_stats["refreshed"] / drip_total * 100, 1) if drip_total > 0 else None
+        round(drip_last_refreshed / drip_total * 100, 1) if drip_total > 0 else None
     )
 
     result: dict = {
@@ -221,8 +224,8 @@ def _analyze_logs(
             "outcomes": dict(ise_outcomes.most_common()),
         },
         "drip_refresh": {
-            "total_refreshed": drip_stats["refreshed"],
-            "total_skipped":   drip_stats["skipped"],
+            "total_refreshed": drip_last_refreshed,
+            "total_skipped":   drip_last_skipped,
             "efficiency_pct":  drip_eff_pct,
         },
         "startup_events": startup_events,

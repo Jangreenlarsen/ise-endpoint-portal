@@ -3,6 +3,123 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.26.0730] — 2026-07-04 — feat: Trend Analysis-løft — population over tid + indsigts-nøgletal
+
+Trend-siden viste kun daglige deltaer (til-/fragang). Manglede det vigtigste trend-billede: populationens udvikling over tid. Se FEATURES.md 6.26.0730.
+
+- **`trends.py`**: Response udvidet med `cumulative` + `laa_cumulative` — populationen (endpoints hhv. private MACs) rekonstrueret baglæns fra nuværende total via daglig netto-ændring (clamp til 0). Plus `stats`: `avg_added_per_day`, `avg_removed_per_day`, `peak_added` {day,count}, `peak_removed` {day,count}.
+- **`trends.js`**: (1) Ny headline-graf "Endpoint-population over tid" (kumulativ endpoints + LAA) vist først. (2) To nye stat-kort: gns. tilgang/dag og travleste dag. (3) `svgLineChart` fik `zeroBaseline`-option: population-grafen zoomer ind på det faktiske interval (undgår flad linje øverst ved stor baseline), og fill-baseline følger nu bunden af plottet i stedet for 0-linjen. Bagudkompatibel: population-graf/kort vises kun når backend leverer `cumulative`/`stats`.
+- **`i18n.js`**: Nye `trend.*`-labels (da+en) for population-graf, serier og indsigts-kort.
+
+## [6.25.0729] — 2026-07-04 — feat: Metrics/monitor-løft — adaptive metrikker + rigere historik
+
+Monitor-sektionen var ikke up to date: de adaptive tiltag (0726 drip-hastighed, 0728 aktivitets-TTL) var ikke engang Prometheus-gauges, og historikken trackede kun 6 serier over ~2 timer. Se FEATURES.md 6.25.0729.
+
+- **`metrics.py`**: Tre nye gauges — `ise_portal_cache_adaptive_speed_factor`, `ise_portal_cache_effective_ttl_seconds`, `ise_portal_portal_idle_seconds`.
+- **`main.py`**: Scrape-loopet sætter nu de tre gauges fra deres autoritative kilder (`cache.effective_ttl()`, `portal_activity.idle_seconds()`, `worker.status.adaptive_speed_factor`) FØR hver scrape — friske i både `/metrics` og historik, også når drip-loopen er pauset. `_tracked_metrics` udvidet fra 6 → 11 serier (+ `ise_retries_total`, `drip_sleep_s` + de 3 adaptive).
+- **`metrics_api.py`**: Default-serier + docstring opdateret med de nye navne.
+- **`metrics.js`**: (1) Nyt live "Adaptiv styring"-kort (drip-hastighed ×, effektiv TTL, portal-idle). (2) Historik-kortet får tre nye grafer (adaptiv drip-hastighed, effektiv TTL, portal-idle) og en **periodevælger** (2h/6h/12h/24h) i stedet for fast 2h-vindue.
+- **`i18n.js`**: Nye `metrics.*`-labels (da+en); `history_title` uden fast "(24 timer)" da perioden nu er valgbar.
+
+## [6.24.0728] — 2026-07-04 — feat: Aktivitetsstyret cache-TTL (adaptiv refresh-frekvens)
+
+Ny feature — se FEATURES.md 6.24.0728. Komplementerer 6.22.0726: adaptiv drip-hastighed styrer *hvor hårdt* vi henter mod ISE; dette styrer *hvor ofte* vi overhovedet henter, ud fra om nogen bruger portalen.
+
+- **`portal_activity.py`** (ny): In-process aktivitets-tracker. `touch(role)` opdaterer seneste-aktivitet-tidsstempel; `idle_seconds()` returnerer inaktivitet. Kun portal-roller (admin/editor/editor-psk/viewer) tæller. Init til opstartstidspunkt så en frisk genstart starter hot og ramper op.
+- **`deps.py`**: `get_current_user` kalder `portal_activity.touch(role)` på hver autentificeret request (begge auth-stier: lokal + TACACS).
+- **`endpoint_cache.py`**: Ny `effective_ttl()` — base-TTL når portalen er aktiv, rampes lineært op mod `adaptive_ttl_max_seconds` over `ADAPTIVE_TTL_RAMP_WINDOWS` (10) × base-TTL's inaktivitet, klampet til max. `_ttl()` (freshness/SWR/UI-staleness) forbliver **uændret** base — kun drip-frekvensen adapteres. `stats()` eksponerer `effective_ttl_seconds` + `adaptive_ttl_idle_s`.
+- **`cache_prewarm.py`**: Drip-loopen bruger nu `cache.effective_ttl()` pr. iteration (i stedet for config-TTL direkte) til stale-count, sprint-beslutning og priority-kø → færre entries overdue når idle → færre ISE-kald. Snapper til base-TTL (hot) ved næste portal-aktivitet.
+- **`config.py`**: Nye `adaptive_ttl_enabled` (default true) + `adaptive_ttl_max_seconds` (default 3600). Max ≤ base deaktiverer adaptationen.
+- **`schemas/settings.py` + `settings_service.py`**: Begge felter editerbare via `PUT /api/settings/backend`.
+- **`dashboard.py` + `settings.js` + `section-cache.js` + `dashboard.js`**: To nye felter under Settings → Endpoint cache; effektiv TTL + portal-idle vises i cache-statistik og i dashboardets "Cache kvalitet"-kort (`TTL 300→1800s`).
+- **Tests:** `tests/test_adaptive_ttl.py` (8 tests: rolle-gating, ramp base→max, midtpunkt, disabled, max≤base, base uændret ved idle).
+
+## [6.23.0727] — 2026-07-04 — feat: Dashboard — fuld-bredde views + kilde-links på alle kort
+
+- **`dashboard.js`** (layout): "Endpoint movement — last 30 days" (trend-kortet) og "Recent audit events" får nu hver **fuld bredde** — samme som System Log-kortet. Trend-kortet flyttet ud af 2-kolonne-rækken (delte tidligere række med System sundhed); System sundhed + System status + Cache kvalitet + Livscyklus samles nu i én fælles wrap-række, og audit-events lægges i egen fuld-bredde-række over System Log.
+- **`dashboard.js`** (kilde-links): Alle dashboard-kort har nu et link til hvor deres data kommer fra. Nye: Recent audit events → `#/audit`, System Log → `#/logs`, Cache kvalitet → `#/settings`, System status → `#/metrics`. (Endpoint movement → `#/trends`, Livscyklus → `#/lifecycle` og System sundhed → `#/settings` havde det allerede.) Links til admin-only ruter (`#/logs`, `#/metrics`, `#/settings`) vises kun for admins. Ny `sourceLink()`-helper.
+- **`i18n.js`** (KPI-labels): `dash.kpi_endpoints` rettet til "Endpoints Total in ISE"; ny `dash.kpi_private_macs` = "Endpoints Total privat MACS" (var tidligere hardcoded fallback "Private MACs (LAA)"). Begge locales (da+en).
+
+## [6.22.0726] — 2026-07-04 — feat: Adaptiv drip-hastighed (ISE-congestion control) + dashboard-metrik
+
+Ny feature — se FEATURES.md 6.22.0726. Drip-loopen tilpasser sig nu selv til hvad ISE kan håndtere.
+
+- **`cache_prewarm.py`**: Ny `AdaptivePacer` (AIMD, som TCP congestion control). En `speed_factor` skalerer `drip_sleep`: additiv forøgelse (+0.05) ved ren succes, multiplikativ nedsættelse (×0.5) ved enhver ISE-fejl/timeout i vinduet, og hård nedsættelse når circuit breakeren åbner (`penalize()`). Klampet til `[1−range, 1+range]`. `_drip_one` registrerer succes/fejl (in-process ISE-signal, ikke log-parsing); RuntimeError("closed") ved genstart er neutralt. Config hot-reloades hvert 10. iteration.
+- **`config.py`**: Nye `adaptive_pacing_enabled` (default true) + `adaptive_pacing_range_pct` (default 50 → tempo mellem 0,5× og 1,5×; 0 = fast). Range klampes internt til 0–90 %.
+- **`schemas/settings.py` + `settings_service.py`**: Begge felter er nu editerbare via `PUT /api/settings/backend` og persisteres i overrides.
+- **`api/cache.py` + `api/dashboard.py`**: `adaptive_speed_factor` eksponeres i `/cache/stats` og `/dashboard` prewarm-status.
+- **`settings.js` + `section-cache.js`**: To nye felter under Settings → Endpoint cache (checkbox + spænd-input) + live-visning af aktuel faktor ("0.72× — langsommere, ISE presset").
+- **`dashboard.js`**: "Cache kvalitet"-kortet viser nu **Adaptiv hastighed** (fx `1.15×`, grøn=sund/orange=presset) så status kan følges live.
+- **Tests:** `tests/test_adaptive_pacer.py` (12 tests: AIMD, klamp, penalize, disabled, range-0, hot-reload).
+
+## [6.21.0725] — 2026-07-04 — fix: Gruppe-cache blokerer Browse efter idle + reducér endpointgroup-kald
+
+Robusthedsanalyse af cache-motoren efter "vågner fra dyb søvn"-symptom. Se BUGS.md 6.21.0725.
+
+- **`endpoint_cache.py`**: `get_groups` serverer nu enhver cachet `_groups`-værdi (uanset alder) + baggrunds-refresh — blokerer aldrig når vi har en værdi. Tidligere gate `_stale_servable` (age ≤ ttl*30 = 2,5t) fik `get_groups` til at lave en **blokerende** `list_all()` (N+1) efter >2,5t idle, hvilket blokerede hele Browse-loadet (Promise.all afventer listGroups) — "der går lang tid før man ser noget efter login". `_groups` populeres fra disk ved opstart, så login efter idle rammer altid en øjeblikkelig serve.
+- **`config.py` + `endpoint_service.py`**: Ny `ise_group_cache_ttl_s` (default 1800s/30 min). Gruppe-navne-cachen (`_get_group_names`, 0721) bruger nu denne dedikerede lange TTL i stedet for `cache_ttl_seconds` (300s). Grupper ændres sjældent og `create_group` invaliderer straks → reducerer langsomme/timeout-udsatte `GET /ers/config/endpointgroup`-kald ~6×.
+- **Baggrund (ISE-side):** `GET /ers/config/endpointgroup` timer ud selv på friske forbindelser (`idle_before=0s`) → ISE selv er langsom under ERS-last. Efter denne fix er de resterende timeouts harmløs baggrundsstøj (bruger serveres fra cache).
+
+## [6.21.0724] — 2026-07-04 — fix: REGRESSION fra 0723 — disk-cache kasseret ved versionsbump → browse kold → 502
+
+Kritisk regression fra 6.21.0723. Se BUGS.md 6.21.0724.
+
+- **`endpoint_cache.py`**: `DISK_CACHE_VERSION` 4→5 i 0723 fik `load_from_disk` til at afvise brugerens eksisterende **v4-disk-cache** → memory-cache tom → browse tog kold ISE-sti → 502 (CB-open 503 mappet til 502) + langsom reload. Fix: `_DISK_READABLE_VERSIONS = frozenset({4, 5})` — læs både v4 og v5 (entries/tier_emas-format er uændret; v5 tilføjede kun additivt `groups`-felt). Grupper loades kun når feltet findes.
+- **`endpoint_cache.py`**: Disk-grupper loades nu som **friske** (`fetched_at = now`) i stedet for "just-stale" — undgår at spawne en baggrunds-`list_all()` (N+1) mod en presset ISE ved hver reload efter genstart.
+- **`endpoint_service.py`**: `list_endpoint_details` og `list_all_endpoint_details` fanger `IseApiError` på den kolde sti (`detail_count()==0`) og returnerer tom side/liste i stedet for at boble en 502 op → Browse hård-fejler aldrig mere når cachen er kold og ISE nede.
+
+## [6.21.0723] — 2026-07-04 — fix: Gruppe-cache persisteres til disk (offline-data efter genstart)
+
+Follow-up på 6.21.0722. Se BUGS.md 6.21.0723 + [BUGREPORT-browse-502-groups-cold-cache.md](BUGREPORT-browse-502-groups-cold-cache.md) §4.
+
+- **`endpoint_cache.py`**: Gruppe-cachen (`_groups`) gemmes nu til disk sammen med endpoint-details. `DISK_CACHE_VERSION` 4→5. `_save_snapshot` tilføjer et `"groups"`-felt (`{fetched_at, value:[EndpointGroupSummary…]}`); `save_to_disk`/`save_to_disk_async` sender `self._groups` med. `load_from_disk` gendanner `_groups` (hvis `None`) med `fetched_at = now - ttl - 1` → `get_groups()` serverer grupperne **øjeblikkeligt** efter genstart og spawner en ikke-blokerende SWR-refresh, i stedet for at blokere på ISE `list_all()` (som kunne give 502). Gamle v4-diskcaches droppes én gang og genopbygges ved første scan.
+- **Effekt:** Efter genstart har både endpoints OG grupper offline-data fra disk — Browse renderer fuldt uden at vente på ISE.
+
+## [6.21.0722] — 2026-07-03 — fix: Browse 502 + tom tabel når `/groups` timer ud (trods varm disk-cache)
+
+- **`browse-table.js`**: `load()` samlede hjælpe-data og endpoints i ét `Promise.all`, men `api.listGroups()` og `api.listCustomAttributes()` manglede `.catch` (de øvrige 6 kald havde det). `/groups` returnerer 502 ved transport-fejl ([groups.py:23](backend/app/api/groups.py#L23)) og gruppe-cachen er ikke disk-persisteret → efter genstart blokerer første `/groups`-kald på ISE. Langsom ISE → ReadTimeout → 502 → hele `Promise.all` afvist → tom tabel, selvom `listEndpointDetails()` ville have serveret disk-cachen. Fix: `listGroups().catch(() => state.groups || [])` og `listCustomAttributes().catch(() => ({attributes:[]}))`. Kun `listEndpointDetails` er nu hård afhængighed; hjælpe-data degraderer og self-healer via SWR. Se BUGS.md 6.21.0722.
+
+## [6.21.0721] — 2026-07-03 — fix: Drip-loop N+1 gruppe-storm → konstant `/endpointgroup` ReadTimeout + CB-cykling
+
+Endelig grundårsag bag den langvarige ISE `/ers/config/endpointgroup`-storm (bekæmpet gennem 6.14–6.21 uden at kilden blev fundet). Se [BUGREPORT-ise-endpointgroup-storm.md](BUGREPORT-ise-endpointgroup-storm.md).
+
+- **Root cause** (`cache_prewarm.py` + `endpoint_service.py`): `_drip_loop()` genopretter `EndpointService` på hver iteration → per-instans `_group_cache` altid tomt → `_resolve_group_name` faldt igennem til `groups.list_all()` (N+1: 1 list + `GET /endpointgroup/{id}` pr. gruppe) på ~hver drip-refresh (~1/5s). Titusindvis af group-kald/time → ISE ERS overbelastet → ReadTimeout → retries → CB åbner/lukker hele dagen. 37% af timeouts var på friske forbindelser (`idle_before=0s`), hvilket udelukkede stale-connection (som 6.18/6.21.0720 forsøgte at fikse).
+- **`endpoint_service.py`**: Ny delt gruppe-navne-cache på modul-niveau (`_shared_group_names`, `_shared_group_names_at`, `_shared_group_names_lock`) + `invalidate_group_names()`. `_resolve_group_name` delegerer til ny `_get_group_names(force=False)`: refresher fra ISE højst 1× pr. `cache_ttl_seconds` (300s), coalescer concurrent kaldere på én lås → kun ét `list_all()` pr. vindue, serverer forrige map + back-off 30s ved `IseApiError`. Korte navne bevaret → uændret UI-display. Fjernet det gamle per-instans `_group_cache`/`_group_cache_lock`.
+- **`endpoint_service.py`**: `create_group()` kalder `invalidate_group_names()` så nye grupper resolver straks.
+- **`cache_prewarm.py`**: `_full_scan()` pre-warmer nu den delte cache via `service._get_group_names(force=True)` i stedet for at sætte det (nu fjernede) per-instans `service._group_cache`. Coalescing-låsen dækker den oprindelige grund til pre-warm (undgå N parallelle `list_all()`).
+- **Effekt:** group-kald mod ISE falder ~1000× (hierarki hentes ~1×/300s frem for ~1×/5s).
+
+## [6.21.0720] — 2026-07-02 — fix: keepalive_expiry 30s → 10s — stale connections → CB-lock
+
+- **`client.py`**: `keepalive_expiry_s` default sænket fra 30.0 til 10.0. ISE ERS (Tomcat) lukker idle TCP-forbindelser efter ~12-15s (observeret via `[idle_before=18s]` i log = drip_sleep 18s = ISE lukker i mellemtiden). 30s keepalive > ISE's ~12-15s idle timeout → httpx genbruger stale connections → ReadTimeout → CB åbner → fresh% falder til 0% og recovery-probe fejler på samme stale connections. Med 10s keepalive lukker httpx forbindelser INDEN ISE gør det — alle requests (drip, probe, scan) starter med friske TCP-forbindelser. Opdateret comment med korrekt forklaring.
+
+## [6.21.0719] — 2026-07-02 — feat: Refresh fra ISE ikke-blokerende (scan + UI uafhængige processer)
+
+- **`cache_prewarm.py`**: `PrewarmWorker` får `_rescan_event: asyncio.Event` og `trigger_rescan()`. `_list_scan_loop()` bruger `asyncio.wait({stop_t, rescan_t}, timeout=interval)` i stedet for `asyncio.wait_for(stop.wait(), timeout=interval)` — vågner øjeblikkeligt ved manuel trigger uden at afvente 30-min interval.
+- **`cache.py`**: Ny `POST /cache/rescan` — kalder `worker.trigger_rescan()` og returnerer straks med `{"status": "triggered"}`. Cache tømmes ikke; alle entries forbliver tilgængelige (stale) under scan.
+- **`api.js`**: `rescanCache()` — kalder `POST /cache/rescan`.
+- **`browse-table.js`**: Refresh-knap: `invalidateCache()` + blokerende `load(true)` erstattet af `rescanCache()` + `load(false, { silent: true })`. ISE-scan og UI er nu uafhængige — tabel vises øjeblikkeligt.
+- **`i18n.js`**: DA/EN `browse.rescan_background` besked + opdateret `browse.btn_refresh_title`.
+
+## [6.21.0718] — 2026-07-02 — fix: CB-metrik-fejl, drip client.closed og Browse-reload latens
+
+- **Bug A CB `open_count` oppustet af drip-log** (`logs.py`): `"drip: circuit breaker OPEN — pauser…"` matchede `_CB_OPEN`-regex → tæltes som CB-tilstandsændring. Tilføjet `not low.startswith("drip:")` guard i CB-event-detektion.
+- **Bug B CB dobbelt-log ved samtidige fejl** (`circuit_breaker.py`): Concurrent requests der alle rammer failure threshold logger `"OPEN after N failures"` for N+1, N+2 etc. → `open_count` oppustet. Ændret `record_failure()` til kun at logge "OPEN after" ved første CLOSED→OPEN-transition (`elif previous != OPEN`).
+- **Bug C drip `client.closed` logges som WARNING** (`cache_prewarm.py`): `RuntimeError("closed")` opstår forventeligt når httpx-klienten lukkes under restart mens `asyncio.gather` stadig kører. Downgradet til DEBUG-niveau for disse specifikke errors.
+- **Bug D Browse-reload 15-20s trods varm cache** (`browse-table.js`): `refreshActiveSessionMacs(force=true)` kaldt SYNKRONT i `load()` efter `Promise.all()` — ISE MnT-kald blokerede render selv når endpoint-data var klar fra cache på <100ms. Fix: `applyFilter()` kaldes nu øjeblikkeligt, MnT-kald kører i baggrunden og kalder `applyFilter()` igen når det returnerer med auth-status-farver.
+
+## [6.20.0717] — 2026-07-02 — fix: 6 bugs i log-analyse, session cache og ANC-endpoint
+
+Bugs opdaget via condensed log-eksport:
+
+- **Bug A+B `_all_log_files` rækkefølge** (`logs.py`): Fjernet fejlagtigt `.reverse()` kald — filer processeres nu korrekt ældste-til-nyeste (`.3 → .log`). Rettede `time_range.first > last` og at `notable_entries[-300:]` gav de ældste i stedet for de nyeste entries.
+- **Bug C ISE 2xx ikke logget** (`client.py`): Tilføjet `logger.info("ISE %s %s -> %d")` for 2xx-responses — `ise_requests.outcomes` viser nu korrekte 2xx-counts i log-analyse.
+- **Bug D `UnboundLocalError: loaded`** (`session_cache.py`): Variablen `loaded` initialiseres nu til 0 inden loop i `load_from_disk` — eliminerer Python-exception ved startup med disk-cache.
+- **Bug E drip-metrics 0/0** (`cache_prewarm.py` + `logs.py`): Drip-success loggedes på DEBUG-niveau; drip-skip loggedes slet ikke. Tilføjet periodisk INFO-statuslog (`drip: status — refreshed=N skipped=N`) hvert 100. iteration. Log-analyse matcher nu denne linje og rapporterer korrekte kumulative totaler.
+- **Bug F ANC macAddress-filter 400** (`anc.py`): ISE ERS `/ancendpoint` understøtter ikke `macAddress` som filter. Ændret `get_endpoint_status` til at paginere over alle ANC-assignments og matche client-side (ANC-assignments er typisk meget få → effektivt i praksis).
+
+**Berørte filer:** `backend/app/api/logs.py`, `backend/app/ise/client.py`, `backend/app/pxgrid/session_cache.py`, `backend/app/services/cache_prewarm.py`, `backend/app/ise/anc.py`, `version.json`
+
 ## [6.20.0716] — 2026-07-02 — feat: Log — kondenseret Claude-analyse eksport og .json download
 
 Tilføjer to forbedringer til Settings → Log eksport-toolbar:

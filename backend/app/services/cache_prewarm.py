@@ -65,6 +65,76 @@ class PrewarmStatus:
     drip_skipped_total: int = 0
     drip_current_sleep_s: float = 0.0
     drip_estimated_full_cycle_s: float | None = None
+    # Adaptiv hastighed (ISE-congestion control): 1.0 = baseline, <1 langsommere, >1 hurtigere.
+    adaptive_speed_factor: float = 1.0
+
+
+class AdaptivePacer:
+    """AIMD-baseret adaptiv hastighedsregulering for drip-loopen.
+
+    Justerer en ``speed_factor`` der skalerer drip-tempoet efter hvor godt ISE
+    svarer — additiv forøgelse ved succes, multiplikativ nedsættelse ved fejl
+    (samme princip som TCP congestion control). Faktoren klampes til
+    ``[1-range, 1+range]``.
+
+      speed_factor > 1  → hurtigere (kortere drip_sleep) når ISE er sund.
+      speed_factor < 1  → langsommere (længere drip_sleep) når ISE er presset.
+
+    Signalet er in-process ISE-svar (succes/fejl pr. drip-fetch + CB-open) —
+    ikke log-parsing, da klienten allerede kender resultaterne direkte.
+    """
+
+    _DECREASE = 0.5   # multiplikativ nedsættelse ved fejl (halvér)
+    _INCREASE = 0.05  # additivt skridt opad ved ren succes
+    _MIN_SLEEP = 0.5  # gulv for effektiv drip_sleep (sekunder)
+
+    def __init__(self, range_pct: float, enabled: bool) -> None:
+        self.factor = 1.0
+        self._ok = 0
+        self._fail = 0
+        self.configure(range_pct, enabled)
+
+    def configure(self, range_pct: float, enabled: bool) -> None:
+        """Hot-reload af settings; bevar nuværende factor men klamp den ind."""
+        self.enabled = enabled
+        r = max(0.0, min(0.9, (range_pct or 0.0) / 100.0))
+        self.min_factor = 1.0 - r
+        self.max_factor = 1.0 + r
+        self.factor = max(self.min_factor, min(self.max_factor, self.factor))
+
+    def record(self, ok: bool) -> None:
+        """Registrér udfaldet af ét ISE drip-fetch."""
+        if ok:
+            self._ok += 1
+        else:
+            self._fail += 1
+
+    def penalize(self) -> None:
+        """Hård nedsættelse (fx da circuit breakeren åbnede)."""
+        if self.enabled:
+            self.factor = max(self.min_factor, self.factor * self._DECREASE)
+        self._ok = self._fail = 0
+
+    def update(self) -> float:
+        """Fold denne iterations observationer ind og returnér ny factor.
+
+        Enhver fejl i vinduet → multiplikativ nedsættelse; ellers ren succes →
+        additiv forøgelse. Nulstiller tælleren.
+        """
+        if not self.enabled:
+            self.factor = 1.0
+        elif self._fail > 0:
+            self.factor = max(self.min_factor, self.factor * self._DECREASE)
+        elif self._ok > 0:
+            self.factor = min(self.max_factor, self.factor + self._INCREASE)
+        self._ok = self._fail = 0
+        return self.factor
+
+    def apply_sleep(self, base_sleep: float) -> float:
+        """Skalér et baseline drip_sleep med den aktuelle factor (med gulv)."""
+        if not self.enabled or self.factor <= 0:
+            return base_sleep
+        return max(self._MIN_SLEEP, base_sleep / self.factor)
 
 
 class PrewarmWorker:
@@ -73,6 +143,7 @@ class PrewarmWorker:
         self._stop = asyncio.Event()
         self._hot: asyncio.Queue[str] = asyncio.Queue()
         self._hot_set: set[str] = set()  # dedup-sæt: forhindrer samme ID i køen to gange
+        self._rescan_event = asyncio.Event()  # trigger-signal til _list_scan_loop
         self.status = PrewarmStatus()
 
     @property
@@ -85,10 +156,22 @@ class PrewarmWorker:
         alle entries er tilgængelige fra første HTTP-request."""
         self._load_from_disk()
 
+    def trigger_rescan(self) -> None:
+        """Signalér workeren om at køre en fuld ISE-scan øjeblikkeligt.
+
+        Returnerer straks — scan kører i baggrunden. Kalder _list_scan_loop
+        ud af sin interval-søvn via _rescan_event så den starter næste
+        _full_scan() uden at afvente det normale interval (default 30 min).
+        """
+        if self.status.running:
+            self._rescan_event.set()
+            logger.info("prewarm: øjeblikkelig rescan signaleret af bruger")
+
     def start(self) -> None:
         if self._task and not self._task.done():
             return
         self._stop = asyncio.Event()
+        self._rescan_event = asyncio.Event()
         self._hot = asyncio.Queue()
         self._hot_set = set()
         self.status = PrewarmStatus(
@@ -162,15 +245,28 @@ class PrewarmWorker:
         interval = float(getattr(config.settings, "cache_prewarm_interval_s", 1800.0))
 
         async def _list_scan_loop() -> None:
-            """Periodisk: hent ISE-liste og invalider slettede endpoints."""
+            """Periodisk: hent ISE-liste og invalider slettede endpoints.
+
+            Venter normalt `interval` sekunder (default 30 min), men vågner
+            straks hvis trigger_rescan() sætter _rescan_event — bruges af
+            Refresh-knappen i Browse-view så brugeren ikke skal vente.
+            """
             while not self._stop.is_set():
                 if interval <= 0:
                     return
+                # Vent på timeout, stop-signal eller manuelt rescan-trigger
+                stop_t   = asyncio.ensure_future(self._stop.wait())
+                rescan_t = asyncio.ensure_future(self._rescan_event.wait())
                 try:
-                    await asyncio.wait_for(self._stop.wait(), timeout=interval)
-                    return
-                except asyncio.TimeoutError:
-                    pass
+                    await asyncio.wait(
+                        {stop_t, rescan_t},
+                        timeout=interval,
+                        return_when=asyncio.FIRST_COMPLETED,
+                    )
+                finally:
+                    stop_t.cancel()
+                    rescan_t.cancel()
+                self._rescan_event.clear()
                 if self._stop.is_set():
                     return
                 await self._drain_hot_queue()
@@ -198,8 +294,12 @@ class PrewarmWorker:
         # Config læses én gang og genopfriskes hvert 10. iteration.
         _iter = 0
         interval = float(getattr(config.settings, "cache_prewarm_interval_s", 1800.0))
-        ttl = float(getattr(config.settings, "cache_ttl_seconds", 300.0))
+        # ttl beregnes pr. iteration via cache.effective_ttl() (aktivitetsstyret).
         _cb_logged = False  # undgå gentagne WARNING-logs når CB er OPEN (A)
+        pacer = AdaptivePacer(
+            range_pct=float(getattr(config.settings, "adaptive_pacing_range_pct", 50.0)),
+            enabled=bool(getattr(config.settings, "adaptive_pacing_enabled", True)),
+        )
 
         while not self._stop.is_set():
             # A: CB-aware pause — forhindrer 36K WARNING-logs/t ved CB OPEN.
@@ -213,6 +313,10 @@ class PrewarmWorker:
                         remaining,
                     )
                     _cb_logged = True
+                    # ISE er tydeligt overbelastet → hård adaptiv nedsættelse, så
+                    # drip genoptager forsigtigt (lavt tempo) når CB lukker igen.
+                    pacer.penalize()
+                    self.status.adaptive_speed_factor = pacer.factor
                 try:
                     await asyncio.wait_for(self._stop.wait(), timeout=remaining)
                     break  # stop-signal
@@ -228,7 +332,10 @@ class PrewarmWorker:
             _iter += 1
             if _iter % 10 == 0:
                 interval = float(getattr(config.settings, "cache_prewarm_interval_s", 1800.0))
-                ttl = float(getattr(config.settings, "cache_ttl_seconds", 300.0))
+                pacer.configure(
+                    range_pct=float(getattr(config.settings, "adaptive_pacing_range_pct", 50.0)),
+                    enabled=bool(getattr(config.settings, "adaptive_pacing_enabled", True)),
+                )
 
             total = cache.detail_count()
             if total == 0:
@@ -238,6 +345,9 @@ class PrewarmWorker:
                     pass
                 continue
 
+            # Aktivitetsstyret TTL: base når portalen bruges, ramper op ved
+            # inaktivitet → færre entries anses stale → drip laver færre ISE-kald.
+            ttl = cache.effective_ttl()
             stale_count = cache.stale_count_for_ttl(ttl)
             if stale_count > total // 4:
                 # Sprint: batch_size skalerer med deployment-størrelse.
@@ -249,6 +359,12 @@ class PrewarmWorker:
                 # Normal: 1 fetch spredt jævnt over intervallet.
                 batch_size = 1
                 drip_sleep = max(0.5, interval / total)
+            # Adaptiv hastighed: fold forrige iterations ISE-udfald ind og skalér
+            # drip_sleep. speed_factor > 1 → hurtigere når ISE er sund; < 1 →
+            # langsommere når ISE er presset. Klampet til ±adaptive_pacing_range_pct.
+            factor = pacer.update()
+            self.status.adaptive_speed_factor = factor
+            drip_sleep = pacer.apply_sleep(drip_sleep)
             self.status.drip_current_sleep_s = drip_sleep
             cycle_s = drip_sleep * total / batch_size
             self.status.drip_estimated_full_cycle_s = cycle_s
@@ -269,9 +385,18 @@ class PrewarmWorker:
                         cache.put_detail(ep_id, detail, from_disk=False)
                         self.status.drip_refreshed_total += 1
                         CACHE_DRIP_REFRESHED.inc()
+                        pacer.record(True)  # ISE svarede → adaptiv signal
                         logger.debug("drip: refreshed %s", ep_id)
                     except Exception as exc:  # noqa: BLE001
-                        logger.warning("drip: fetch fejlede id=%s: %s", ep_id, exc)
+                        # RuntimeError("closed") opstår når httpx-klienten lukkes under
+                        # restart/settings-ændring mens gather stadig kører — forventet,
+                        # ikke en reel fejl. Log på DEBUG så det ikke fylder i analysen.
+                        if isinstance(exc, RuntimeError) and "closed" in str(exc).lower():
+                            logger.debug("drip: afbrudt id=%s (klient lukket ved genstart)", ep_id)
+                            # Neutralt for pacer: klient-luk er ikke ISE-congestion.
+                        else:
+                            logger.warning("drip: fetch fejlede id=%s: %s", ep_id, exc)
+                            pacer.record(False)  # ISE-fejl/timeout → adaptiv nedsættelse
                         # Back-off via public API: undgår direkte fetched_at-manipulation.
                         cache.set_fetch_backoff(ep_id)
 
@@ -289,6 +414,18 @@ class PrewarmWorker:
                 stale = sum(1 for a in ages if a > ttl)
                 CACHE_STALE_COUNT.set(stale)
                 CACHE_STALE_PCT.set(stale / n_ages * 100)
+
+            # Periodisk INFO-status så drip-metrics er synlige i logfilen.
+            # Hvert 100. iteration (≈ 90s ved 1 endpoint/s) skrives en linje
+            # der kan matches af log-analysen uden at give per-endpoint log-støj.
+            if _iter % 100 == 0:
+                logger.info(
+                    "drip: status — refreshed=%d skipped=%d sleep=%.1fs cycle=%.0fs",
+                    self.status.drip_refreshed_total,
+                    self.status.drip_skipped_total,
+                    drip_sleep,
+                    cycle_s,
+                )
 
             try:
                 await asyncio.wait_for(self._stop.wait(), timeout=drip_sleep)
@@ -309,18 +446,15 @@ class PrewarmWorker:
             from app.services.endpoint_service import EndpointService
             service = EndpointService(get_ise_client())
 
-            # Pre-warm group-name cache med ét enkelt kald FØR parallel scan.
-            # Uden dette vil N parallelle _fetch_endpoint_detail-kald hver
-            # kalde groups.list_all() når de ikke finder gruppen i _group_cache
-            # — ISE afviser forbindelserne ved for mange samtidige kald.
+            # Opdater den DELTE gruppe-navne-cache FØR parallel scan så alle
+            # _fetch_endpoint_detail-kald resolver gruppenavne fra ét enkelt fetch
+            # i stedet for hver at kalde groups.list_all(). force=True fanger
+            # gruppe-ændringer (nye/omdøbte) ved hvert scan. Coalescing-låsen i
+            # _get_group_names sikrer at de N parallelle fetches deler dette ene kald.
             try:
-                raw_groups = await service.groups.list_all()
-                service._group_cache = {
-                    g.get("id", ""): g.get("name", "") for g in raw_groups
-                }
-                logger.info("prewarm: group-cache pre-warmet (%d grupper)", len(service._group_cache))
+                names = await service._get_group_names(force=True)
+                logger.info("prewarm: gruppe-navne-cache opdateret (%d grupper)", len(names))
             except Exception as exc:  # noqa: BLE001
-                service._group_cache = {}
                 logger.warning("prewarm: group pre-warm fejlede (fortsætter): %s", exc)
 
             # Hent alle endpoint IDs fra ISE (kun ID, billige liste-kald)

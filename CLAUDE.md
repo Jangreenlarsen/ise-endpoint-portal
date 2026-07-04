@@ -15,7 +15,7 @@ Dette er Claudes system-prompt for dette projekt. Den læses altid først og fø
    - Commit-besked format: `vX.Y.ZZZZ: fix: beskrivelse` (bugfix) eller `vX.Y.ZZZZ: feat: beskrivelse` (feature).
    - Claude **skal** opdatere `version.json` og vise den nye version i commit-beskeden.
 2. **Ny funktionalitet (features)** skal ALTID registreres i [FEATURES.md](FEATURES.md) *før* implementering påbegyndes. Opdatér status når den er færdig.
-2. **Bugs** skal ALTID registreres i [BUGS.md](BUGS.md) så snart de opdages. Opdatér med løsning når de er fikset.
+2. **Bugs** skal ALTID registreres i [BUGS.md](BUGS.md) så snart de opdages. Opdatér med løsning når de er fikset. **Før du fejlfinder et ISE-/cache-/performance-problem: læs BUGS.md igennem** — flere problemer er tilbagevendende symptomer på tidligere-fundne grundårsager. Komplekse post-mortems ligger som selvstændige `BUGREPORT-*.md`-filer i roden og er linket fra deres BUGS.md-entry; læs den detaljerede rapport hvis symptomet ligner. Eksempel: [BUGREPORT-ise-endpointgroup-storm.md](BUGREPORT-ise-endpointgroup-storm.md) (ISE `/endpointgroup` ReadTimeout + CB-cykling).
 3. **Alle kodeændringer** skal logges i [CHANGELOG.md](CHANGELOG.md) med version, dato, berørte filer og kort beskrivelse. Nyeste øverst.
 4. **Lag-arkitekturen** beskrevet i [ARCHITECTURE.md](ARCHITECTURE.md) skal respekteres. Frontend må aldrig tale direkte med ISE — kun gennem backend. Backend-lagene kalder kun nedad.
 5. **ISE API reference**: [ISE_API_REFERENCE.md](ISE_API_REFERENCE.md) indeholder ERS og Open API paths, payloads, filter-syntaks, status codes og gotchas for Cisco ISE 3.4. Konsulter dette dokument ved al ISE-integration og hold det opdateret med nye fund.
