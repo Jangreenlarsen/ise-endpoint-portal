@@ -4,6 +4,14 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.22.0726] — 2026-07-04 — feat: Adaptiv drip-hastighed — portalen tilpasser sig ISE automatisk
+
+> **Build:** 0726
+
+- **Selvregulerende baggrunds-refresh**: Cache-motorens drip-loop justerer nu selv sit tempo efter hvor godt ISE svarer — hurtigere når ISE er sund, langsommere ved fejl/timeout, og bremser hårdt op når circuit breakeren åbner (samme princip som TCP's overbelastningsstyring). Det insulerer ISE mod at blive overbelastet og reducerer de tilbagevendende `endpointgroup`-timeouts — uden manuel tuning.
+- **Tunable under Settings → Endpoint cache**: Slå funktionen til/fra (`Adaptiv drip-hastighed`) og sæt hvor meget tempoet må svinge (`Adaptivt spænd ±%`, default 50 → mellem 0,5× og 1,5×). Sæt til 0 for fast tempo.
+- **Følg status live**: Dashboardets "Cache kvalitet"-kort og cache-statistik viser nu den aktuelle adaptive hastighed (fx `1.15×` grøn = ISE sund, `0.60×` orange = ISE presset).
+
 ## [6.21.0725] — 2026-07-04 — fix: Portalen "vågner" hurtigt efter lang inaktivitet
 
 > **Build:** 0725

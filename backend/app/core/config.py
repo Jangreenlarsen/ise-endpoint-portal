@@ -203,6 +203,25 @@ class Settings(BaseSettings):
         ),
     )
 
+    # Adaptiv drip-hastighed (6.22.0726) — ISE-congestion control.
+    adaptive_pacing_enabled: bool = Field(
+        default=True,
+        description=(
+            "Aktivér adaptiv drip-hastighed (ISE-congestion control): drip-loopen "
+            "justerer selv tempoet op/ned efter hvor godt ISE svarer — additiv "
+            "forøgelse ved succes, multiplikativ nedsættelse ved fejl/timeout/CB-open "
+            "(som TCP). Insulerer ISE mod overbelastning uden manuel tuning."
+        ),
+    )
+    adaptive_pacing_range_pct: float = Field(
+        default=50.0,
+        description=(
+            "Hvor meget den adaptive hastighed må svinge fra baseline, i procent "
+            "(default 50 → drip-tempo mellem 0,5× og 1,5× af det konfigurerede). "
+            "0 = deaktiveret (fast baseline-tempo). Klampes internt til 0–90 %."
+        ),
+    )
+
     # Audit log (2.9.0) — append-only event trail with rollback support.
     audit_enabled: bool = Field(
         default=True,

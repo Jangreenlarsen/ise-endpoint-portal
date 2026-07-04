@@ -182,6 +182,18 @@ export async function renderSettings(container) {
           <div class="hint">Antal samtidige GET-kald mod ISE under scanning. ISE klarer max ~5 (default: 5).</div>
         </div>
         <div class="field">
+          <label>
+            <input type="checkbox" id="adaptive_pacing_enabled" />
+            Adaptiv drip-hastighed (ISE-congestion control)
+          </label>
+          <div class="hint">Drip-loopen justerer selv tempoet efter hvor godt ISE svarer — hurtigere ved succes, langsommere ved fejl/timeout og circuit-breaker. Insulerer ISE mod overbelastning uden manuel tuning. Anbefalet: til.</div>
+        </div>
+        <div class="field">
+          <label for="adaptive_pacing_range_pct">Adaptivt spænd (±%)</label>
+          <input type="number" id="adaptive_pacing_range_pct" min="0" max="90" step="5" />
+          <div class="hint">Hvor meget hastigheden må svinge fra baseline (default 50 → mellem 0,5× og 1,5× tempo). 0 = fast baseline-tempo (deaktiverer adaptationen).</div>
+        </div>
+        <div class="field">
           <label for="cache_disk_path" id="cache-disk-path-lbl"></label>
           <input type="text" id="cache_disk_path" style="font-family:monospace;width:100%;" />
           <div class="hint">Relativ til backend-mappen. Indeholdet genindlæses ved genstart og markeres med ⏱ i Browse.</div>

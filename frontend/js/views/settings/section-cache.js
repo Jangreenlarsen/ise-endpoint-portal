@@ -96,6 +96,11 @@ function renderCacheStats(container, stats) {
       <tr><td>Kapacitet</td><td>
         Opdateringsinterval: ${fmtAge(pw.drip_current_sleep_s)}${dripCapacityBadge}
       </td></tr>
+      ${pw.adaptive_speed_factor != null ? `
+      <tr><td>Adaptiv hastighed</td><td>
+        <span style="font-weight:600;color:${pw.adaptive_speed_factor >= 1 ? "#27ae60" : "#f39c12"};">${pw.adaptive_speed_factor.toFixed(2)}×</span>
+        <span style="color:#888;font-size:.85em;margin-left:4px;">${pw.adaptive_speed_factor > 1 ? "hurtigere — ISE sund" : pw.adaptive_speed_factor < 1 ? "langsommere — ISE presset" : "baseline"}</span>
+      </td></tr>` : ""}
       <tr><td>Refreshet i alt</td><td>${pw.drip_refreshed_total} endpoints (sprunget over: ${pw.drip_skipped_total})</td></tr>
       ${sl ? `
       <tr><td colspan="2" style="font-weight:600;padding-top:.6rem;">Cache-alder</td></tr>
@@ -202,6 +207,8 @@ export async function initCacheSection(container) {
       container.querySelector("#cache_prewarm_interval_s").value = s.cache_prewarm_interval_s ?? 1800;
       container.querySelector("#cache_prewarm_skip_fresh_s").value = s.cache_prewarm_skip_fresh_s ?? 900;
       container.querySelector("#cache_prewarm_concurrency").value = s.cache_prewarm_concurrency ?? 5;
+      container.querySelector("#adaptive_pacing_enabled").checked = s.adaptive_pacing_enabled !== false;
+      container.querySelector("#adaptive_pacing_range_pct").value = s.adaptive_pacing_range_pct ?? 50;
       container.querySelector("#cache_disk_path").value = s.cache_disk_path ?? "cache/endpoints.json";
     } catch (err) {
       msg.innerHTML = `<div class="alert error">${t("settings.cache_load_err").replace("{msg}", esc(err.message))}</div>`;
@@ -249,6 +256,8 @@ export async function initCacheSection(container) {
       cache_prewarm_interval_s:  parseFloat(container.querySelector("#cache_prewarm_interval_s").value),
       cache_prewarm_skip_fresh_s: parseFloat(container.querySelector("#cache_prewarm_skip_fresh_s").value),
       cache_prewarm_concurrency: parseInt(container.querySelector("#cache_prewarm_concurrency").value, 10),
+      adaptive_pacing_enabled:   container.querySelector("#adaptive_pacing_enabled").checked,
+      adaptive_pacing_range_pct: parseFloat(container.querySelector("#adaptive_pacing_range_pct").value),
       cache_disk_path:           container.querySelector("#cache_disk_path").value.trim(),
     };
     try {

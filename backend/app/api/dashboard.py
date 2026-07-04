@@ -34,6 +34,7 @@ async def get_dashboard() -> dict:
             "drip_sleep_s": pw.drip_current_sleep_s,
             "drip_refreshed_total": pw.drip_refreshed_total,
             "drip_skipped_total": pw.drip_skipped_total,
+            "adaptive_speed_factor": round(pw.adaptive_speed_factor, 2),
             "scanning": pw.scanning,
             "disk_loaded_at_startup": pw.disk_loaded,
             "hot_queue_size": pw.hot_queue_size,

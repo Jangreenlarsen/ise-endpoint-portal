@@ -65,6 +65,76 @@ class PrewarmStatus:
     drip_skipped_total: int = 0
     drip_current_sleep_s: float = 0.0
     drip_estimated_full_cycle_s: float | None = None
+    # Adaptiv hastighed (ISE-congestion control): 1.0 = baseline, <1 langsommere, >1 hurtigere.
+    adaptive_speed_factor: float = 1.0
+
+
+class AdaptivePacer:
+    """AIMD-baseret adaptiv hastighedsregulering for drip-loopen.
+
+    Justerer en ``speed_factor`` der skalerer drip-tempoet efter hvor godt ISE
+    svarer — additiv forøgelse ved succes, multiplikativ nedsættelse ved fejl
+    (samme princip som TCP congestion control). Faktoren klampes til
+    ``[1-range, 1+range]``.
+
+      speed_factor > 1  → hurtigere (kortere drip_sleep) når ISE er sund.
+      speed_factor < 1  → langsommere (længere drip_sleep) når ISE er presset.
+
+    Signalet er in-process ISE-svar (succes/fejl pr. drip-fetch + CB-open) —
+    ikke log-parsing, da klienten allerede kender resultaterne direkte.
+    """
+
+    _DECREASE = 0.5   # multiplikativ nedsættelse ved fejl (halvér)
+    _INCREASE = 0.05  # additivt skridt opad ved ren succes
+    _MIN_SLEEP = 0.5  # gulv for effektiv drip_sleep (sekunder)
+
+    def __init__(self, range_pct: float, enabled: bool) -> None:
+        self.factor = 1.0
+        self._ok = 0
+        self._fail = 0
+        self.configure(range_pct, enabled)
+
+    def configure(self, range_pct: float, enabled: bool) -> None:
+        """Hot-reload af settings; bevar nuværende factor men klamp den ind."""
+        self.enabled = enabled
+        r = max(0.0, min(0.9, (range_pct or 0.0) / 100.0))
+        self.min_factor = 1.0 - r
+        self.max_factor = 1.0 + r
+        self.factor = max(self.min_factor, min(self.max_factor, self.factor))
+
+    def record(self, ok: bool) -> None:
+        """Registrér udfaldet af ét ISE drip-fetch."""
+        if ok:
+            self._ok += 1
+        else:
+            self._fail += 1
+
+    def penalize(self) -> None:
+        """Hård nedsættelse (fx da circuit breakeren åbnede)."""
+        if self.enabled:
+            self.factor = max(self.min_factor, self.factor * self._DECREASE)
+        self._ok = self._fail = 0
+
+    def update(self) -> float:
+        """Fold denne iterations observationer ind og returnér ny factor.
+
+        Enhver fejl i vinduet → multiplikativ nedsættelse; ellers ren succes →
+        additiv forøgelse. Nulstiller tælleren.
+        """
+        if not self.enabled:
+            self.factor = 1.0
+        elif self._fail > 0:
+            self.factor = max(self.min_factor, self.factor * self._DECREASE)
+        elif self._ok > 0:
+            self.factor = min(self.max_factor, self.factor + self._INCREASE)
+        self._ok = self._fail = 0
+        return self.factor
+
+    def apply_sleep(self, base_sleep: float) -> float:
+        """Skalér et baseline drip_sleep med den aktuelle factor (med gulv)."""
+        if not self.enabled or self.factor <= 0:
+            return base_sleep
+        return max(self._MIN_SLEEP, base_sleep / self.factor)
 
 
 class PrewarmWorker:
@@ -226,6 +296,10 @@ class PrewarmWorker:
         interval = float(getattr(config.settings, "cache_prewarm_interval_s", 1800.0))
         ttl = float(getattr(config.settings, "cache_ttl_seconds", 300.0))
         _cb_logged = False  # undgå gentagne WARNING-logs når CB er OPEN (A)
+        pacer = AdaptivePacer(
+            range_pct=float(getattr(config.settings, "adaptive_pacing_range_pct", 50.0)),
+            enabled=bool(getattr(config.settings, "adaptive_pacing_enabled", True)),
+        )
 
         while not self._stop.is_set():
             # A: CB-aware pause — forhindrer 36K WARNING-logs/t ved CB OPEN.
@@ -239,6 +313,10 @@ class PrewarmWorker:
                         remaining,
                     )
                     _cb_logged = True
+                    # ISE er tydeligt overbelastet → hård adaptiv nedsættelse, så
+                    # drip genoptager forsigtigt (lavt tempo) når CB lukker igen.
+                    pacer.penalize()
+                    self.status.adaptive_speed_factor = pacer.factor
                 try:
                     await asyncio.wait_for(self._stop.wait(), timeout=remaining)
                     break  # stop-signal
@@ -255,6 +333,10 @@ class PrewarmWorker:
             if _iter % 10 == 0:
                 interval = float(getattr(config.settings, "cache_prewarm_interval_s", 1800.0))
                 ttl = float(getattr(config.settings, "cache_ttl_seconds", 300.0))
+                pacer.configure(
+                    range_pct=float(getattr(config.settings, "adaptive_pacing_range_pct", 50.0)),
+                    enabled=bool(getattr(config.settings, "adaptive_pacing_enabled", True)),
+                )
 
             total = cache.detail_count()
             if total == 0:
@@ -275,6 +357,12 @@ class PrewarmWorker:
                 # Normal: 1 fetch spredt jævnt over intervallet.
                 batch_size = 1
                 drip_sleep = max(0.5, interval / total)
+            # Adaptiv hastighed: fold forrige iterations ISE-udfald ind og skalér
+            # drip_sleep. speed_factor > 1 → hurtigere når ISE er sund; < 1 →
+            # langsommere når ISE er presset. Klampet til ±adaptive_pacing_range_pct.
+            factor = pacer.update()
+            self.status.adaptive_speed_factor = factor
+            drip_sleep = pacer.apply_sleep(drip_sleep)
             self.status.drip_current_sleep_s = drip_sleep
             cycle_s = drip_sleep * total / batch_size
             self.status.drip_estimated_full_cycle_s = cycle_s
@@ -295,6 +383,7 @@ class PrewarmWorker:
                         cache.put_detail(ep_id, detail, from_disk=False)
                         self.status.drip_refreshed_total += 1
                         CACHE_DRIP_REFRESHED.inc()
+                        pacer.record(True)  # ISE svarede → adaptiv signal
                         logger.debug("drip: refreshed %s", ep_id)
                     except Exception as exc:  # noqa: BLE001
                         # RuntimeError("closed") opstår når httpx-klienten lukkes under
@@ -302,8 +391,10 @@ class PrewarmWorker:
                         # ikke en reel fejl. Log på DEBUG så det ikke fylder i analysen.
                         if isinstance(exc, RuntimeError) and "closed" in str(exc).lower():
                             logger.debug("drip: afbrudt id=%s (klient lukket ved genstart)", ep_id)
+                            # Neutralt for pacer: klient-luk er ikke ISE-congestion.
                         else:
                             logger.warning("drip: fetch fejlede id=%s: %s", ep_id, exc)
+                            pacer.record(False)  # ISE-fejl/timeout → adaptiv nedsættelse
                         # Back-off via public API: undgår direkte fetched_at-manipulation.
                         cache.set_fetch_backoff(ep_id)
 

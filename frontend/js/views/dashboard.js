@@ -291,6 +291,11 @@ function cacheQualityCard(cache, prewarm) {
     : "—";
   const hotQ     = prewarm.hot_queue_size ?? 0;
   const inflight = cache.inflight ?? 0;
+  // Adaptiv drip-hastighed (ISE-congestion control): 1.0 = baseline.
+  const speed      = prewarm.adaptive_speed_factor;
+  const speedColor = speed == null ? "#6b7280" : speed >= 1 ? "#16a34a" : "#d97706";
+  const speedHint  = speed == null ? "" : speed > 1 ? "hurtigere — ISE sund"
+    : speed < 1 ? "langsommere — ISE presset" : "baseline";
 
   const accentColor = (stale.very_stale_pct ?? 0) > 10 ? "#dc2626"
     : stalePct > 50 ? "#d97706" : "#0891b2";
@@ -316,6 +321,7 @@ function cacheQualityCard(cache, prewarm) {
 
     <div style="margin-top:.5rem;padding-top:.5rem;border-top:1px solid #f3f4f6;
       display:flex;gap:1rem;flex-wrap:wrap;font-size:.8rem;">
+      ${speed != null ? `<span style="color:#6b7280;" title="${speedHint}">Adaptiv hastighed <strong style="color:${speedColor};">${speed.toFixed(2)}×</strong></span>` : ""}
       <span style="color:#6b7280;">Drip-effektivitet <strong style="color:#374151;">${dripEff}</strong></span>
       ${inflight > 0 ? `<span style="color:#6b7280;">Inflight <strong style="color:#2563eb;">${inflight}</strong></span>` : ""}
       ${hotQ > 0 ? `<span style="color:#6b7280;">Hot-queue <strong style="color:#d97706;">${hotQ}</strong></span>` : ""}

@@ -3,6 +3,18 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.22.0726] — 2026-07-04 — feat: Adaptiv drip-hastighed (ISE-congestion control) + dashboard-metrik
+
+Ny feature — se FEATURES.md 6.22.0726. Drip-loopen tilpasser sig nu selv til hvad ISE kan håndtere.
+
+- **`cache_prewarm.py`**: Ny `AdaptivePacer` (AIMD, som TCP congestion control). En `speed_factor` skalerer `drip_sleep`: additiv forøgelse (+0.05) ved ren succes, multiplikativ nedsættelse (×0.5) ved enhver ISE-fejl/timeout i vinduet, og hård nedsættelse når circuit breakeren åbner (`penalize()`). Klampet til `[1−range, 1+range]`. `_drip_one` registrerer succes/fejl (in-process ISE-signal, ikke log-parsing); RuntimeError("closed") ved genstart er neutralt. Config hot-reloades hvert 10. iteration.
+- **`config.py`**: Nye `adaptive_pacing_enabled` (default true) + `adaptive_pacing_range_pct` (default 50 → tempo mellem 0,5× og 1,5×; 0 = fast). Range klampes internt til 0–90 %.
+- **`schemas/settings.py` + `settings_service.py`**: Begge felter er nu editerbare via `PUT /api/settings/backend` og persisteres i overrides.
+- **`api/cache.py` + `api/dashboard.py`**: `adaptive_speed_factor` eksponeres i `/cache/stats` og `/dashboard` prewarm-status.
+- **`settings.js` + `section-cache.js`**: To nye felter under Settings → Endpoint cache (checkbox + spænd-input) + live-visning af aktuel faktor ("0.72× — langsommere, ISE presset").
+- **`dashboard.js`**: "Cache kvalitet"-kortet viser nu **Adaptiv hastighed** (fx `1.15×`, grøn=sund/orange=presset) så status kan følges live.
+- **Tests:** `tests/test_adaptive_pacer.py` (12 tests: AIMD, klamp, penalize, disabled, range-0, hot-reload).
+
 ## [6.21.0725] — 2026-07-04 — fix: Gruppe-cache blokerer Browse efter idle + reducér endpointgroup-kald
 
 Robusthedsanalyse af cache-motoren efter "vågner fra dyb søvn"-symptom. Se BUGS.md 6.21.0725.
