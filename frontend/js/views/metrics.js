@@ -145,6 +145,12 @@ function renderData(parsed) {
   const stalePct      = getScalar(parsed, "ise_portal_cache_stale_pct");
   const dripActive    = dripRefreshed !== null;
 
+  // Adaptiv styring (6.22.0726 drip-hastighed + 6.24.0728 aktivitets-TTL)
+  const adaptiveSpeed = getScalar(parsed, "ise_portal_cache_adaptive_speed_factor");
+  const effectiveTtl  = getScalar(parsed, "ise_portal_cache_effective_ttl_seconds");
+  const portalIdle    = getScalar(parsed, "ise_portal_portal_idle_seconds");
+  const adaptiveActive = adaptiveSpeed !== null || effectiveTtl !== null;
+
   const blocked = getScalar(parsed, "ise_portal_rate_limit_blocked_total") ?? 0;
 
   const bulkOk = getLabeled(parsed, "ise_portal_bulk_items_total", "outcome", "succeeded");
@@ -189,6 +195,12 @@ function renderData(parsed) {
         { label: t("metrics.drip_stale"),       value: staleCount !== null ? fmt(staleCount) : "–",    sub: stalePct !== null ? fmt(stalePct, 1) + "%" : "" },
       ]) : ""}
 
+      ${adaptiveActive ? buildStatCard(t("metrics.card_adaptive"), [
+        { label: t("metrics.adaptive_speed"), value: adaptiveSpeed !== null ? fmt(adaptiveSpeed, 2) + "×" : "–", sub: t("metrics.adaptive_speed_sub") },
+        { label: t("metrics.effective_ttl"),  value: fmtAge(effectiveTtl) },
+        { label: t("metrics.portal_idle"),    value: fmtAge(portalIdle) },
+      ]) : ""}
+
       ${buildStatCard(t("metrics.card_rate"), [
         { label: t("metrics.rate_blocked"), value: fmt(blocked) },
       ])}
@@ -222,6 +234,11 @@ export async function renderMetrics(container) {
   const tsEl = container.querySelector("#metrics-ts");
   const refreshBtn = container.querySelector("#metrics-refresh");
   let timer = null;
+  let histLimit = 120;  // periodevælger i historik-kortet (120=2h … 1440=24h)
+  const HIST_NAMES = [
+    "cache_entries", "cache_stale_pct", "ise_requests_total", "circuit_state",
+    "adaptive_speed_factor", "effective_ttl_s", "portal_idle_s",
+  ];
 
   function renderNodesCard(nodes) {
     if (!nodes || !nodes.length) return "";
@@ -283,12 +300,16 @@ export async function renderMetrics(container) {
     </svg>`;
   }
 
-  function renderHistoryCard(histData) {
+  function renderHistoryCard(histData, limit) {
     const series = [
       { key: "cache_entries",   label: t("metrics.hist_cache_entries"),   color: "#3b82f6", fmtV: (v) => Math.round(v).toString() },
       { key: "cache_stale_pct", label: t("metrics.hist_stale_pct"),       color: "#f59e0b", fmtV: (v) => Number(v).toFixed(1) + "%" },
       { key: "ise_requests_total", label: t("metrics.hist_ise_requests"), color: "#10b981", fmtV: (v) => Math.round(v).toString() },
       { key: "circuit_state",   label: t("metrics.hist_circuit_state"),   color: "#ef4444", fmtV: (v) => v === 0 ? "closed" : v === 1 ? "half" : "open" },
+      // Adaptiv styring (6.22.0726 + 6.24.0728)
+      { key: "adaptive_speed_factor", label: t("metrics.hist_speed_factor"), color: "#8b5cf6", fmtV: (v) => Number(v).toFixed(2) + "×" },
+      { key: "effective_ttl_s", label: t("metrics.hist_effective_ttl"),   color: "#0891b2", fmtV: (v) => fmtAge(v) },
+      { key: "portal_idle_s",   label: t("metrics.portal_idle"),          color: "#64748b", fmtV: (v) => fmtAge(v) },
     ];
     const charts = series.map(({ key, label, color, fmtV }) => {
       const pts = histData[key] || [];
@@ -297,9 +318,17 @@ export async function renderMetrics(container) {
         ${renderLineChart(pts, { key, color, fmtV, width: 320, height: 80 })}
       </div>`;
     }).join("");
+    const ranges = [[120, "2h"], [360, "6h"], [720, "12h"], [1440, "24h"]];
     return `<div class="card metrics-card">
-      <h3>${t("metrics.history_title")}</h3>
-      <div style="display:flex;flex-wrap:wrap;gap:24px;">${charts}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+        <h3 style="margin:0;">${t("metrics.history_title")}</h3>
+        <label style="font-size:.82em;color:#64748b;">${t("metrics.hist_range")}
+          <select id="metrics-hist-range" style="font-size:.95em;padding:2px 6px;margin-left:4px;border:1px solid #d1d5db;border-radius:4px;">
+            ${ranges.map(([v, l]) => `<option value="${v}"${v === limit ? " selected" : ""}>${l}</option>`).join("")}
+          </select>
+        </label>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:24px;margin-top:10px;">${charts}</div>
     </div>`;
   }
 
@@ -308,7 +337,7 @@ export async function renderMetrics(container) {
       const [metricsRes, nodesRes, histRes] = await Promise.allSettled([
         fetch(`${BASE}/metrics`),
         api.getIseNodes().catch(() => null),
-        api.getMetricsHistory(["cache_entries", "cache_stale_pct", "ise_requests_total", "circuit_state"], 120).catch(() => null),
+        api.getMetricsHistory(HIST_NAMES, histLimit).catch(() => null),
       ]);
       if (metricsRes.status === "rejected" || !metricsRes.value.ok) {
         throw new Error(metricsRes.reason?.message || `HTTP ${metricsRes.value?.status}`);
@@ -318,8 +347,15 @@ export async function renderMetrics(container) {
       const nodes = nodesRes.status === "fulfilled" ? (nodesRes.value?.nodes || null) : null;
       const histData = histRes.status === "fulfilled" ? histRes.value : null;
       body.innerHTML = renderData(parsed)
-        + (histData ? renderHistoryCard(histData) : "")
+        + (histData ? renderHistoryCard(histData, histLimit) : "")
         + (nodes ? renderNodesCard(nodes) : "");
+      const rangeSel = container.querySelector("#metrics-hist-range");
+      if (rangeSel) {
+        rangeSel.addEventListener("change", () => {
+          histLimit = parseInt(rangeSel.value, 10) || 120;
+          load();
+        });
+      }
       const locale = getLocale() === "da" ? "da-DK" : "en-GB";
       tsEl.textContent = t("metrics.last_updated") + new Date().toLocaleTimeString(locale);
     } catch (err) {

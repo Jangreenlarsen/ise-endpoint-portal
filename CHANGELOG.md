@@ -3,6 +3,16 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.25.0729] — 2026-07-04 — feat: Metrics/monitor-løft — adaptive metrikker + rigere historik
+
+Monitor-sektionen var ikke up to date: de adaptive tiltag (0726 drip-hastighed, 0728 aktivitets-TTL) var ikke engang Prometheus-gauges, og historikken trackede kun 6 serier over ~2 timer. Se FEATURES.md 6.25.0729.
+
+- **`metrics.py`**: Tre nye gauges — `ise_portal_cache_adaptive_speed_factor`, `ise_portal_cache_effective_ttl_seconds`, `ise_portal_portal_idle_seconds`.
+- **`main.py`**: Scrape-loopet sætter nu de tre gauges fra deres autoritative kilder (`cache.effective_ttl()`, `portal_activity.idle_seconds()`, `worker.status.adaptive_speed_factor`) FØR hver scrape — friske i både `/metrics` og historik, også når drip-loopen er pauset. `_tracked_metrics` udvidet fra 6 → 11 serier (+ `ise_retries_total`, `drip_sleep_s` + de 3 adaptive).
+- **`metrics_api.py`**: Default-serier + docstring opdateret med de nye navne.
+- **`metrics.js`**: (1) Nyt live "Adaptiv styring"-kort (drip-hastighed ×, effektiv TTL, portal-idle). (2) Historik-kortet får tre nye grafer (adaptiv drip-hastighed, effektiv TTL, portal-idle) og en **periodevælger** (2h/6h/12h/24h) i stedet for fast 2h-vindue.
+- **`i18n.js`**: Nye `metrics.*`-labels (da+en); `history_title` uden fast "(24 timer)" da perioden nu er valgbar.
+
 ## [6.24.0728] — 2026-07-04 — feat: Aktivitetsstyret cache-TTL (adaptiv refresh-frekvens)
 
 Ny feature — se FEATURES.md 6.24.0728. Komplementerer 6.22.0726: adaptiv drip-hastighed styrer *hvor hårdt* vi henter mod ISE; dette styrer *hvor ofte* vi overhovedet henter, ud fra om nogen bruger portalen.

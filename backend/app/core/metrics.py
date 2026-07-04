@@ -82,6 +82,25 @@ CACHE_STALE_PCT = Gauge(
 )
 
 # ------------------------------------------------------------------ #
+# Adaptiv styring (6.22.0726 drip-hastighed + 6.24.0728 aktivitets-TTL) #
+# ------------------------------------------------------------------ #
+
+CACHE_ADAPTIVE_SPEED_FACTOR = Gauge(
+    "ise_portal_cache_adaptive_speed_factor",
+    "Adaptive drip speed factor (AIMD ISE-congestion control): 1.0=baseline, "
+    "<1 slower (ISE stressed), >1 faster (ISE healthy).",
+)
+CACHE_EFFECTIVE_TTL_S = Gauge(
+    "ise_portal_cache_effective_ttl_seconds",
+    "Activity-driven effective cache TTL used by the drip loop; ramps from base "
+    "TTL up to adaptive_ttl_max_seconds while the portal is idle.",
+)
+PORTAL_IDLE_S = Gauge(
+    "ise_portal_portal_idle_seconds",
+    "Seconds since the last authenticated portal activity (drives adaptive TTL).",
+)
+
+# ------------------------------------------------------------------ #
 # ISE API metrics                                                      #
 # ------------------------------------------------------------------ #
 

@@ -1467,12 +1467,20 @@ const TRANSLATIONS = {
     "settings.restore_error":         "Gendannelse fejlede: {msg}",
 
     // Feature 4 — Metrics historik
-    "metrics.history_title":          "Metrics historik (24 timer)",
+    "metrics.history_title":          "Metrics historik",
     "metrics.hist_cache_entries":     "Cache-entries",
     "metrics.hist_stale_pct":         "Stale %",
     "metrics.hist_ise_requests":      "ISE requests total",
     "metrics.hist_circuit_state":     "Circuit state",
     "metrics.history_no_data":        "Ingen data endnu — scraper ét punkt per minut",
+    "metrics.card_adaptive":          "Adaptiv styring",
+    "metrics.adaptive_speed":         "Drip-hastighed",
+    "metrics.adaptive_speed_sub":     "1.0 = baseline",
+    "metrics.effective_ttl":          "Effektiv cache-TTL",
+    "metrics.portal_idle":            "Portal inaktiv",
+    "metrics.hist_speed_factor":      "Adaptiv drip-hastighed (×)",
+    "metrics.hist_effective_ttl":     "Effektiv cache-TTL",
+    "metrics.hist_range":             "Periode",
 
     // Feature 5 — Bulk template-apply
     "bulk.tpl_title":                 "Anvend skabelon på valgte",
@@ -2993,12 +3001,20 @@ const TRANSLATIONS = {
     "settings.restore_error":         "Restore failed: {msg}",
 
     // Feature 4 — Metrics history
-    "metrics.history_title":          "Metrics history (24 h)",
+    "metrics.history_title":          "Metrics history",
     "metrics.hist_cache_entries":     "Cache entries",
     "metrics.hist_stale_pct":         "Stale %",
     "metrics.hist_ise_requests":      "ISE requests total",
     "metrics.hist_circuit_state":     "Circuit state",
     "metrics.history_no_data":        "No data yet — scrapes one point per minute",
+    "metrics.card_adaptive":          "Adaptive control",
+    "metrics.adaptive_speed":         "Drip speed",
+    "metrics.adaptive_speed_sub":     "1.0 = baseline",
+    "metrics.effective_ttl":          "Effective cache TTL",
+    "metrics.portal_idle":            "Portal idle",
+    "metrics.hist_speed_factor":      "Adaptive drip speed (×)",
+    "metrics.hist_effective_ttl":     "Effective cache TTL",
+    "metrics.hist_range":             "Range",
 
     // Feature 5 — Bulk template apply
     "bulk.tpl_title":                 "Apply template to selected",

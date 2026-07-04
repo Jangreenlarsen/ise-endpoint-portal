@@ -267,6 +267,12 @@ async def lifespan(_: FastAPI):
         "ise_portal_cache_memory_bytes": "cache_memory_bytes",
         "ise_portal_circuit_breaker_state": "circuit_state",
         "ise_portal_ise_requests_total": "ise_requests_total",
+        "ise_portal_ise_retries_total": "ise_retries_total",
+        "ise_portal_cache_drip_sleep_seconds": "drip_sleep_s",
+        # Adaptiv styring (6.22.0726 + 6.24.0728)
+        "ise_portal_cache_adaptive_speed_factor": "adaptive_speed_factor",
+        "ise_portal_cache_effective_ttl_seconds": "effective_ttl_s",
+        "ise_portal_portal_idle_seconds": "portal_idle_s",
     }
 
     async def _metrics_scrape_loop() -> None:
@@ -276,6 +282,23 @@ async def lifespan(_: FastAPI):
         prune_tick = 0
         while True:
             try:
+                # Opdater adaptive gauges fra deres autoritative kilder FØR scrape,
+                # så både /metrics og historikken altid har friske værdier — også
+                # når drip-loopen er pauset (CB open / ingen entries).
+                try:
+                    from app.core import portal_activity as _pa
+                    from app.core.endpoint_cache import get_cache as _gc
+                    from app.core.metrics import (
+                        CACHE_ADAPTIVE_SPEED_FACTOR as _SF,
+                        CACHE_EFFECTIVE_TTL_S as _ET,
+                        PORTAL_IDLE_S as _PI,
+                    )
+                    from app.services.cache_prewarm import get_worker as _gw
+                    _ET.set(_gc().effective_ttl())
+                    _PI.set(_pa.idle_seconds())
+                    _SF.set(_gw().status.adaptive_speed_factor)
+                except Exception:  # noqa: BLE001
+                    pass
                 snapshot: dict[str, float] = {}
                 for metric in REGISTRY.collect():
                     for sample in metric.samples:

@@ -26,7 +26,10 @@ async def prometheus_metrics() -> Response:
 @router.get("/api/metrics/history", dependencies=[Depends(require_any)])
 async def metrics_history(
     names: list[str] = Query(
-        default=["cache_entries", "cache_stale_pct", "ise_requests_total", "circuit_state"],
+        default=[
+            "cache_entries", "cache_stale_pct", "ise_requests_total", "circuit_state",
+            "adaptive_speed_factor", "effective_ttl_s", "portal_idle_s", "drip_sleep_s",
+        ],
     ),
     limit: int = Query(120, ge=1, le=1440),
 ) -> dict:
@@ -35,7 +38,8 @@ async def metrics_history(
     Hvert punkt er ``{ts: ISO8601, value: float}``, ældst først.
     Tilladt ``names``:
     - cache_entries, cache_stale_pct, cache_avg_age_s, cache_memory_mb,
-      circuit_state, ise_requests_total
+      circuit_state, ise_requests_total, ise_retries_total, drip_sleep_s,
+      adaptive_speed_factor, effective_ttl_s, portal_idle_s
     """
     result: dict = {}
     for name in names[:10]:

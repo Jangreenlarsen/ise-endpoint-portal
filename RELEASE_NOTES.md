@@ -4,6 +4,14 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.25.0729] — 2026-07-04 — feat: Metrics-siden viser nu de adaptive mekanismer + rigere historik
+
+> **Build:** 0729
+
+- **Se den adaptive styring live**: Metrics-siden har nu et "Adaptiv styring"-kort med drip-hastigheden (fx `0.75×`), den effektive cache-TTL og hvor længe portalen har været inaktiv.
+- **Rigere historik**: Historik-graferne dækker nu også adaptiv drip-hastighed, effektiv TTL og portal-inaktivitet (foruden cache/CB/ISE-serierne). Du kan nu vælge periode — **2, 6, 12 eller 24 timer** — i stedet for et fast 2-timers vindue.
+- Dermed kan man følge hvordan cache-motoren regulerer sig selv over tid: fx at drip-hastigheden falder når ISE er presset, og at TTL'en ramper op om natten hvor ingen bruger portalen.
+
 ## [6.24.0728] — 2026-07-04 — feat: Cachen skruer selv refresh-frekvensen ned når ingen bruger portalen
 
 > **Build:** 0728
