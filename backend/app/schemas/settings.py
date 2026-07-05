@@ -36,6 +36,8 @@ class BackendSettingsUpdate(BaseModel):
     adaptive_pacing_range_pct: float = 50.0
     adaptive_ttl_enabled: bool = True
     adaptive_ttl_max_seconds: float = 3600.0
+    adaptive_scan_max_seconds: float = 14400.0
+    ise_group_cache_ttl_s: float = 7200.0
     debug_pxgrid_sessions: bool = False
     github_branch: str = "main"
     decomm_set_authz: bool = True
@@ -86,6 +88,8 @@ class BackendSettingsResponse(BaseModel):
     adaptive_pacing_range_pct: float = 50.0
     adaptive_ttl_enabled: bool = True
     adaptive_ttl_max_seconds: float = 3600.0
+    adaptive_scan_max_seconds: float = 14400.0
+    ise_group_cache_ttl_s: float = 7200.0
     debug_pxgrid_sessions: bool = False
     github_branch: str = "main"
     decomm_set_authz: bool = True
@@ -152,6 +156,7 @@ class PxGridSettingsUpdate(BaseModel):
     pxgrid_stomp_heartbeat_ms: int = 30000
     pxgrid_stomp_reconnect_min_s: float = 1.0
     pxgrid_stomp_reconnect_max_s: float = 300.0
+    pxgrid_stomp_recv_timeout_s: float = 7200.0
     pxgrid_session_cache_max_age_s: float = 0.0
     pxgrid_worker_enabled: bool = True
     pxgrid_endpoint_topic_enabled: bool = False
@@ -173,6 +178,7 @@ class PxGridSettingsResponse(BaseModel):
     pxgrid_stomp_heartbeat_ms: int = 30000
     pxgrid_stomp_reconnect_min_s: float = 1.0
     pxgrid_stomp_reconnect_max_s: float = 300.0
+    pxgrid_stomp_recv_timeout_s: float = 7200.0
     pxgrid_session_cache_max_age_s: float = 0.0
     pxgrid_worker_enabled: bool = True
     pxgrid_endpoint_topic_enabled: bool = False

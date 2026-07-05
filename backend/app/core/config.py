@@ -192,12 +192,12 @@ class Settings(BaseSettings):
         ),
     )
     ise_group_cache_ttl_s: float = Field(
-        default=1800.0,
+        default=7200.0,
         description=(
             "TTL (sekunder) for den delte gruppe-navne-cache brugt til at resolve "
             "endpoint-gruppenavne. Grupper ændres sjældent, og portalen invaliderer "
             "cachen med det samme ved create_group — derfor en lang TTL (default "
-            "30 min) for at minimere langsomme/timeout-udsatte GET /ers/config/"
+            "7200 = 2 timer) for at minimere langsomme/timeout-udsatte GET /ers/config/"
             "endpointgroup-kald mod ISE. Ekstern gruppe-ændring (uden om portalen) "
             "afspejles først efter denne periode."
         ),
@@ -219,6 +219,17 @@ class Settings(BaseSettings):
             "Maksimal cache-TTL (sekunder) når portalen har været inaktiv længe "
             "(default 3600 = 1 time). Nås gradvist over 10× base-TTL's inaktivitet. "
             "Skal være >= cache_ttl_seconds; ellers ignoreres adaptationen."
+        ),
+    )
+    adaptive_scan_max_seconds: float = Field(
+        default=14400.0,
+        description=(
+            "Maksimalt interval (sekunder) mellem fulde pre-warm scans når portalen "
+            "har været inaktiv længe (default 14400 = 4 timer). Aktivitetsstyret: "
+            "scan-intervallet rampes fra cache_prewarm_interval_s op mod denne værdi "
+            "over 10× base-TTL's inaktivitet (styret af adaptive_ttl_enabled) — så "
+            "baggrunds-scanningen laver færre ISE-kald når ingen bruger portalen. "
+            "Skal være >= cache_prewarm_interval_s; ellers ingen scan-adaptation."
         ),
     )
 
@@ -336,14 +347,15 @@ class Settings(BaseSettings):
         ),
     )
     pxgrid_stomp_recv_timeout_s: float = Field(
-        default=3600.0,
+        default=7200.0,
         description=(
             "Maks ventetid i sekunder på en STOMP-frame (MESSAGE, heartbeat o.l.). "
             "WebSocket ping/pong (ping_interval=20, ping_timeout=10) detekterer "
             "dead TCP inden for 30s — denne timeout er kun backstop mod en broker "
             "der er alive på TCP-niveau men sender ingenting. ISE pxGrid broker "
-            "kan sagtens have >120s stille perioder; default er 3600s (1 time) "
-            "for at undgå falsk disconnect ved lange rolige perioder."
+            "kan sagtens have lange stille perioder om natten/weekender uden RADIUS-"
+            "auth; default er 7200s (2 timer) for at undgå falske 'broker tavs'-"
+            "warnings ved lange rolige perioder."
         ),
     )
     pxgrid_stomp_reconnect_min_s: float = Field(

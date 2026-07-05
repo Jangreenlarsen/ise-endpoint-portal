@@ -99,6 +99,11 @@ PORTAL_IDLE_S = Gauge(
     "ise_portal_portal_idle_seconds",
     "Seconds since the last authenticated portal activity (drives adaptive TTL).",
 )
+CACHE_SCAN_INTERVAL_S = Gauge(
+    "ise_portal_cache_scan_interval_seconds",
+    "Activity-driven full pre-warm scan interval; ramps from base up to "
+    "adaptive_scan_max_seconds while the portal is idle.",
+)
 
 # ------------------------------------------------------------------ #
 # ISE API metrics                                                      #

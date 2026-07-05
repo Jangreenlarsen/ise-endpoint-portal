@@ -4,6 +4,14 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.27.0731] — 2026-07-05 — feat: Endnu færre ISE-kald når portalen er ubrugt + tunable timeouts
+
+> **Build:** 0731
+
+- **Baggrunds-scanning skruer nu også ned ved inaktivitet**: Ud over den aktivitetsstyrede cache-TTL kører den fulde ISE-scan nu også sjældnere når ingen bruger portalen (op til hvert 4. time om natten/weekender i stedet for fast hvert 30. minut). Det fjerner størstedelen af de resterende `endpointgroup`-timeouts i loggen. Scan-intervallet vises live på Metrics-siden ("Adaptiv styring") og i historikken.
+- **Nye indstillinger** under Settings → Endpoint cache: *Max scan-interval ved inaktivitet* og *Gruppe-navne-cache TTL* (default hævet til 2 timer, da grupper ændres sjældent).
+- **pxGrid**: STOMP recv-timeout er nu en indstilling (Settings → pxGrid) og default hævet til 2 timer — fjerner de falske "broker tavs"-advarsler på stille netværk (nætter/weekender uden RADIUS-trafik).
+
 ## [6.26.0730] — 2026-07-04 — feat: Trend Analysis — se populationen udvikle sig over tid
 
 > **Build:** 0730

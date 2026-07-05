@@ -273,6 +273,7 @@ async def lifespan(_: FastAPI):
         "ise_portal_cache_adaptive_speed_factor": "adaptive_speed_factor",
         "ise_portal_cache_effective_ttl_seconds": "effective_ttl_s",
         "ise_portal_portal_idle_seconds": "portal_idle_s",
+        "ise_portal_cache_scan_interval_seconds": "scan_interval_s",
     }
 
     async def _metrics_scrape_loop() -> None:
@@ -291,12 +292,14 @@ async def lifespan(_: FastAPI):
                     from app.core.metrics import (
                         CACHE_ADAPTIVE_SPEED_FACTOR as _SF,
                         CACHE_EFFECTIVE_TTL_S as _ET,
+                        CACHE_SCAN_INTERVAL_S as _SI,
                         PORTAL_IDLE_S as _PI,
                     )
                     from app.services.cache_prewarm import get_worker as _gw
                     _ET.set(_gc().effective_ttl())
                     _PI.set(_pa.idle_seconds())
                     _SF.set(_gw().status.adaptive_speed_factor)
+                    _SI.set(_gw().status.scan_interval_effective_s)
                 except Exception:  # noqa: BLE001
                     pass
                 snapshot: dict[str, float] = {}

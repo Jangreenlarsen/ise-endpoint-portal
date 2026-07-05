@@ -144,6 +144,7 @@ export async function initPxGridSection(container) {
       container.querySelector("#pxgrid_stomp_heartbeat_ms").value = s.pxgrid_stomp_heartbeat_ms ?? 30000;
       container.querySelector("#pxgrid_stomp_reconnect_min_s").value = s.pxgrid_stomp_reconnect_min_s ?? 1;
       container.querySelector("#pxgrid_stomp_reconnect_max_s").value = s.pxgrid_stomp_reconnect_max_s ?? 300;
+      container.querySelector("#pxgrid_stomp_recv_timeout_s").value = s.pxgrid_stomp_recv_timeout_s ?? 7200;
       container.querySelector("#pxgrid_session_cache_max_age_s").value = s.pxgrid_session_cache_max_age_s ?? 0;
       container.querySelector("#pxgrid_endpoint_topic_enabled").checked = !!s.pxgrid_endpoint_topic_enabled;
       container.querySelector("#pxgrid_endpoint_topic").value = s.pxgrid_endpoint_topic || "/topic/com.cisco.ise.endpoint";
@@ -178,6 +179,7 @@ export async function initPxGridSection(container) {
       pxgrid_stomp_heartbeat_ms: parseInt(container.querySelector("#pxgrid_stomp_heartbeat_ms").value, 10) || 0,
       pxgrid_stomp_reconnect_min_s: parseFloat(container.querySelector("#pxgrid_stomp_reconnect_min_s").value) || 1,
       pxgrid_stomp_reconnect_max_s: parseFloat(container.querySelector("#pxgrid_stomp_reconnect_max_s").value) || 300,
+      pxgrid_stomp_recv_timeout_s: parseFloat(container.querySelector("#pxgrid_stomp_recv_timeout_s").value) || 7200,
       pxgrid_session_cache_max_age_s: parseFloat(container.querySelector("#pxgrid_session_cache_max_age_s").value) || 0,
       pxgrid_endpoint_topic_enabled: container.querySelector("#pxgrid_endpoint_topic_enabled").checked,
       pxgrid_endpoint_topic: container.querySelector("#pxgrid_endpoint_topic").value.trim() || "/topic/com.cisco.ise.endpoint",
