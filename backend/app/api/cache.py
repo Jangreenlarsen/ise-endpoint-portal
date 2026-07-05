@@ -43,6 +43,7 @@ async def cache_stats() -> dict:
             "drip_current_sleep_s":       round(s.drip_current_sleep_s, 2),
             "drip_estimated_full_cycle_s": round(s.drip_estimated_full_cycle_s, 0) if s.drip_estimated_full_cycle_s is not None else None,
             "adaptive_speed_factor":      round(s.adaptive_speed_factor, 2),
+            "scan_interval_effective_s":  round(s.scan_interval_effective_s, 0),
         }
     except Exception:  # noqa: BLE001
         stats["prewarm"] = None

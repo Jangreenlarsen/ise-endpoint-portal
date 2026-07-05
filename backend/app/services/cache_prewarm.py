@@ -27,8 +27,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from app.core import config
-from app.core.endpoint_cache import get_cache
+from app.core import config, portal_activity
+from app.core.endpoint_cache import ADAPTIVE_TTL_RAMP_WINDOWS, get_cache
 from app.core.metrics import (
     CACHE_AVG_AGE_S,
     CACHE_DRIP_CYCLE_S,
@@ -67,6 +67,8 @@ class PrewarmStatus:
     drip_estimated_full_cycle_s: float | None = None
     # Adaptiv hastighed (ISE-congestion control): 1.0 = baseline, <1 langsommere, >1 hurtigere.
     adaptive_speed_factor: float = 1.0
+    # Aktivitetsstyret fuld-scan-interval (sekunder): base når aktiv, rampet op ved idle.
+    scan_interval_effective_s: float = 0.0
 
 
 class AdaptivePacer:
@@ -233,6 +235,24 @@ class PrewarmWorker:
             self._hot_set.add(endpoint_id)
         self.status.hot_queue_size = self._hot.qsize()
 
+    def _effective_scan_interval(self, base: float) -> float:
+        """Aktivitetsstyret fuld-scan-interval: base når portalen bruges aktivt;
+        rampes gradvist op mod adaptive_scan_max_seconds ved inaktivitet (samme
+        idle-ramp som EndpointCache.effective_ttl — 10× base-TTL). Gated på
+        adaptive_ttl_enabled. Resultat: færre baggrunds-ISE-kald når ingen kigger.
+        """
+        if base <= 0 or not bool(getattr(config.settings, "adaptive_ttl_enabled", True)):
+            return base
+        max_iv = float(getattr(config.settings, "adaptive_scan_max_seconds", 14400.0))
+        if max_iv <= base:
+            return base
+        ttl = float(getattr(config.settings, "cache_ttl_seconds", 300.0))
+        ramp = ttl * ADAPTIVE_TTL_RAMP_WINDOWS
+        if ramp <= 0:
+            return base
+        frac = min(1.0, portal_activity.idle_seconds() / ramp)
+        return base + frac * (max_iv - base)
+
     async def _run(self) -> None:
         # Trin 1: Load disk cache (kun hvis preload_disk_cache() ikke allerede kørte)
         if self.status.disk_loaded == 0:
@@ -242,25 +262,29 @@ class PrewarmWorker:
         await self._full_scan()
 
         # Trin 3: Drip-refresh + periodisk liste-scan kører parallelt
-        interval = float(getattr(config.settings, "cache_prewarm_interval_s", 1800.0))
 
         async def _list_scan_loop() -> None:
             """Periodisk: hent ISE-liste og invalider slettede endpoints.
 
-            Venter normalt `interval` sekunder (default 30 min), men vågner
-            straks hvis trigger_rescan() sætter _rescan_event — bruges af
-            Refresh-knappen i Browse-view så brugeren ikke skal vente.
+            Venter et aktivitetsstyret interval: base (cache_prewarm_interval_s,
+            default 30 min) når portalen bruges, rampet op mod adaptive_scan_max_
+            seconds ved inaktivitet — så baggrunds-scanningen laver færre ISE-kald
+            når ingen kigger. Vågner straks hvis trigger_rescan() sætter
+            _rescan_event (Refresh-knappen i Browse), uanset hvor langt der er igen.
             """
             while not self._stop.is_set():
-                if interval <= 0:
+                base_iv = float(getattr(config.settings, "cache_prewarm_interval_s", 1800.0))
+                if base_iv <= 0:
                     return
+                eff_iv = self._effective_scan_interval(base_iv)
+                self.status.scan_interval_effective_s = eff_iv
                 # Vent på timeout, stop-signal eller manuelt rescan-trigger
                 stop_t   = asyncio.ensure_future(self._stop.wait())
                 rescan_t = asyncio.ensure_future(self._rescan_event.wait())
                 try:
                     await asyncio.wait(
                         {stop_t, rescan_t},
-                        timeout=interval,
+                        timeout=eff_iv,
                         return_when=asyncio.FIRST_COMPLETED,
                     )
                 finally:

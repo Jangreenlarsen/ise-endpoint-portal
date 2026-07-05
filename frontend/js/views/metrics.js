@@ -149,6 +149,7 @@ function renderData(parsed) {
   const adaptiveSpeed = getScalar(parsed, "ise_portal_cache_adaptive_speed_factor");
   const effectiveTtl  = getScalar(parsed, "ise_portal_cache_effective_ttl_seconds");
   const portalIdle    = getScalar(parsed, "ise_portal_portal_idle_seconds");
+  const scanIntervalS = getScalar(parsed, "ise_portal_cache_scan_interval_seconds");
   const adaptiveActive = adaptiveSpeed !== null || effectiveTtl !== null;
 
   const blocked = getScalar(parsed, "ise_portal_rate_limit_blocked_total") ?? 0;
@@ -199,6 +200,7 @@ function renderData(parsed) {
         { label: t("metrics.adaptive_speed"), value: adaptiveSpeed !== null ? fmt(adaptiveSpeed, 2) + "×" : "–", sub: t("metrics.adaptive_speed_sub") },
         { label: t("metrics.effective_ttl"),  value: fmtAge(effectiveTtl) },
         { label: t("metrics.portal_idle"),    value: fmtAge(portalIdle) },
+        { label: t("metrics.scan_interval"),  value: fmtAge(scanIntervalS) },
       ]) : ""}
 
       ${buildStatCard(t("metrics.card_rate"), [
@@ -237,7 +239,7 @@ export async function renderMetrics(container) {
   let histLimit = 120;  // periodevælger i historik-kortet (120=2h … 1440=24h)
   const HIST_NAMES = [
     "cache_entries", "cache_stale_pct", "ise_requests_total", "circuit_state",
-    "adaptive_speed_factor", "effective_ttl_s", "portal_idle_s",
+    "adaptive_speed_factor", "effective_ttl_s", "portal_idle_s", "scan_interval_s",
   ];
 
   function renderNodesCard(nodes) {
@@ -310,6 +312,7 @@ export async function renderMetrics(container) {
       { key: "adaptive_speed_factor", label: t("metrics.hist_speed_factor"), color: "#8b5cf6", fmtV: (v) => Number(v).toFixed(2) + "×" },
       { key: "effective_ttl_s", label: t("metrics.hist_effective_ttl"),   color: "#0891b2", fmtV: (v) => fmtAge(v) },
       { key: "portal_idle_s",   label: t("metrics.portal_idle"),          color: "#64748b", fmtV: (v) => fmtAge(v) },
+      { key: "scan_interval_s", label: t("metrics.scan_interval"),        color: "#16a34a", fmtV: (v) => fmtAge(v) },
     ];
     const charts = series.map(({ key, label, color, fmtV }) => {
       const pts = histData[key] || [];

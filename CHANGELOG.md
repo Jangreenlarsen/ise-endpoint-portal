@@ -3,6 +3,18 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.27.0731] — 2026-07-05 — feat: Aktivitetsstyret scan-interval + tunable ISE-/pxGrid-timeouts
+
+Opfølgning på log-analyse af v6.26.0730 (ISE-fejlrate faldet ~30×, 0 circuit-breaker-opens på 21t). Adresserer de sidste residuale `endpointgroup`-timeouts + pxGrid idle-warnings. Se FEATURES.md 6.27.0731.
+
+- **`cache_prewarm.py`**: Nyt `PrewarmWorker._effective_scan_interval()` — fuld-scan-intervallet er nu aktivitetsstyret ligesom cache-TTL'en: base (`cache_prewarm_interval_s`) når portalen bruges, rampet op mod `adaptive_scan_max_seconds` over 10× base-TTL's inaktivitet (gated på `adaptive_ttl_enabled`). `_list_scan_loop` bruger det pr. iteration → færre baggrunds-ISE-kald (og dermed færre `endpointgroup`-timeouts) når ingen er logget ind. Ny `PrewarmStatus.scan_interval_effective_s`.
+- **`config.py`**: Ny `adaptive_scan_max_seconds` (default 14400 = 4t). Hævet `ise_group_cache_ttl_s` default 1800→7200 (2t) og `pxgrid_stomp_recv_timeout_s` default 3600→7200 (2t).
+- **`schemas/settings.py` + `settings_service.py`**: `ise_group_cache_ttl_s` + `adaptive_scan_max_seconds` editerbare i Backend-settings; `pxgrid_stomp_recv_timeout_s` i pxGrid-settings.
+- **`metrics.py` + `main.py` + `api/cache.py` + `metrics_api.py`**: Ny gauge `ise_portal_cache_scan_interval_seconds`, sat i scrape-loopet, tracket i historik, eksponeret i `/cache/stats`.
+- **`settings.js` + `section-cache.js` + `section-pxgrid.js`**: Tre nye tunable felter (gruppe-navne-cache TTL, max scan-interval, pxGrid recv-timeout).
+- **`metrics.js` + `i18n.js`**: Scan-interval vist i "Adaptiv styring"-kort + historik.
+- **Tests:** `test_adaptive_ttl.py` udvidet med scan-interval-ramp + disabled (nu 10 tests). Alle 42 cache-tests grønne.
+
 ## [6.26.0730] — 2026-07-04 — feat: Trend Analysis-løft — population over tid + indsigts-nøgletal
 
 Trend-siden viste kun daglige deltaer (til-/fragang). Manglede det vigtigste trend-billede: populationens udvikling over tid. Se FEATURES.md 6.26.0730.

@@ -215,6 +215,8 @@ export async function initCacheSection(container) {
       container.querySelector("#adaptive_pacing_range_pct").value = s.adaptive_pacing_range_pct ?? 50;
       container.querySelector("#adaptive_ttl_enabled").checked = s.adaptive_ttl_enabled !== false;
       container.querySelector("#adaptive_ttl_max_seconds").value = s.adaptive_ttl_max_seconds ?? 3600;
+      container.querySelector("#adaptive_scan_max_seconds").value = s.adaptive_scan_max_seconds ?? 14400;
+      container.querySelector("#ise_group_cache_ttl_s").value = s.ise_group_cache_ttl_s ?? 7200;
       container.querySelector("#cache_disk_path").value = s.cache_disk_path ?? "cache/endpoints.json";
     } catch (err) {
       msg.innerHTML = `<div class="alert error">${t("settings.cache_load_err").replace("{msg}", esc(err.message))}</div>`;
@@ -266,6 +268,8 @@ export async function initCacheSection(container) {
       adaptive_pacing_range_pct: parseFloat(container.querySelector("#adaptive_pacing_range_pct").value),
       adaptive_ttl_enabled:      container.querySelector("#adaptive_ttl_enabled").checked,
       adaptive_ttl_max_seconds:  parseFloat(container.querySelector("#adaptive_ttl_max_seconds").value),
+      adaptive_scan_max_seconds: parseFloat(container.querySelector("#adaptive_scan_max_seconds").value),
+      ise_group_cache_ttl_s:     parseFloat(container.querySelector("#ise_group_cache_ttl_s").value),
       cache_disk_path:           container.querySelector("#cache_disk_path").value.trim(),
     };
     try {

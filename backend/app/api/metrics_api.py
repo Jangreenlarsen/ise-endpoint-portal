@@ -39,7 +39,7 @@ async def metrics_history(
     Tilladt ``names``:
     - cache_entries, cache_stale_pct, cache_avg_age_s, cache_memory_mb,
       circuit_state, ise_requests_total, ise_retries_total, drip_sleep_s,
-      adaptive_speed_factor, effective_ttl_s, portal_idle_s
+      adaptive_speed_factor, effective_ttl_s, portal_idle_s, scan_interval_s
     """
     result: dict = {}
     for name in names[:10]:

@@ -206,6 +206,16 @@ export async function renderSettings(container) {
           <div class="hint">Øvre grænse for TTL når portalen har været inaktiv længe (default 3600 = 1 time). Skal være ≥ base-TTL.</div>
         </div>
         <div class="field">
+          <label for="adaptive_scan_max_seconds">Max scan-interval ved inaktivitet (sek)</label>
+          <input type="number" id="adaptive_scan_max_seconds" min="0" max="86400" step="300" />
+          <div class="hint">Øvre grænse for hvor sjældent baggrunds-scanningen kører når portalen er inaktiv (default 14400 = 4 timer). Skal være ≥ scan-intervallet ovenfor. Kræver aktivitetsstyret cache-TTL slået til.</div>
+        </div>
+        <div class="field">
+          <label for="ise_group_cache_ttl_s">Gruppe-navne-cache TTL (sek)</label>
+          <input type="number" id="ise_group_cache_ttl_s" min="60" max="86400" step="300" />
+          <div class="hint">Hvor længe endpoint-gruppenavne caches før de genhentes fra ISE (default 7200 = 2 timer). Grupper ændres sjældent og opdateres straks ved oprettelse i portalen — en lang TTL reducerer langsomme GET /endpointgroup-kald mod ISE.</div>
+        </div>
+        <div class="field">
           <label for="cache_disk_path" id="cache-disk-path-lbl"></label>
           <input type="text" id="cache_disk_path" style="font-family:monospace;width:100%;" />
           <div class="hint">Relativ til backend-mappen. Indeholdet genindlæses ved genstart og markeres med ⏱ i Browse.</div>
@@ -432,6 +442,11 @@ export async function renderSettings(container) {
             </div>
           </div>
           <div class="hint">Eksponentiel backoff: starter ved <em>min</em>, fordobles efter hver fejlet reconnect, capper ved <em>max</em>. 1 → 300s er en god balance.</div>
+          <div class="field">
+            <label for="pxgrid_stomp_recv_timeout_s">STOMP recv-timeout (sek)</label>
+            <input type="number" id="pxgrid_stomp_recv_timeout_s" min="60" step="60" placeholder="7200" />
+            <div class="hint">Maks ventetid på en STOMP-frame før forbindelsen anses tavs. WebSocket ping/pong detekterer død TCP inden for 30s — dette er kun backstop mod en broker der er alive men sender ingenting. ISE-brokeren er stille om natten/weekender uden RADIUS-auth; default 7200 = 2 timer undgår falske "broker tavs"-warnings.</div>
+          </div>
           <div class="field">
             <label for="pxgrid_session_cache_max_age_s" id="pxgrid-session-age-lbl"></label>
             <input type="number" id="pxgrid_session_cache_max_age_s" min="0" step="60" placeholder="0" />
