@@ -9,7 +9,7 @@ from typing import Any
 from app.core.custom_attr_store import PSK_MODE_ATTR
 from app.core.exceptions import IseApiError
 from app.ise import policy as policy_api
-from app.ise.endpoints import IseEndpointGroupRepository, IseEndpointRepository
+from app.ise.endpoints import IseEndpointRepository
 from app.schemas.policy import (
     AuthzRuleDetail,
     AuthzRuleSummary,
@@ -410,9 +410,15 @@ class PolicyService:
         group_name = ""
         if group_id:
             try:
-                groups = await IseEndpointGroupRepository(self._client).list_all()
-                by_id = {g.get("id", ""): g.get("name", "") for g in groups}
-                group_name = by_id.get(group_id, "")
+                # Brug den delte, TTL-cachede gruppe-navne-cache (samme som
+                # EndpointService) i stedet for et direkte list_all(). list_all()
+                # er et N+1-kald (1 liste + N per-gruppe-GET) mod ISE og kan tage
+                # 30s+ på en presset ISE — og i Auto-mode kaldes match_endpoint
+                # pr. policy set, så stormen blev gentaget N gange. Cachen giver
+                # et opslag (typisk cache-hit; refreshes højst hver ise_group_cache_ttl_s).
+                from app.services.endpoint_service import EndpointService
+                names = await EndpointService(self._client)._get_group_names()
+                group_name = names.get(group_id, "")
             except Exception:
                 pass
 

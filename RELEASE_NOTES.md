@@ -4,6 +4,12 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.28.0735] — 2026-07-06 — fix: Policy-simulering er nu meget hurtigere
+
+> **Build:** 0735
+
+- **"Simulér… (MAC auth)" i edit-endpoint er nu hurtig**: Simuleringen hentede tidligere hele ISE-gruppe-hierarkiet (et tungt N+1-kald der på en presset ISE tager 30+ sekunder) bare for at slå ét gruppenavn op — og i "test alle policy sets"-tilstand blev det gentaget for hvert policy set. Nu bruges den delte gruppe-navne-cache, så gruppe-opslaget er stort set øjeblikkeligt. Enkelt policy set: ~30s → ~1-2s; alle policy sets: fra minutter til få sekunder.
+
 ## [6.28.0734] — 2026-07-06 — fix: Ro på pxGrid-loggen om natten
 
 > **Build:** 0734

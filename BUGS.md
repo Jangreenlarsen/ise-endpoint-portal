@@ -13,6 +13,15 @@ Kendte post-mortems:
 - [BUGREPORT-ise-endpointgroup-storm.md](BUGREPORT-ise-endpointgroup-storm.md) — ISE `/ers/config/endpointgroup` ReadTimeout-storm + CB-cykling (grundårsag: N+1 gruppe-fetch i drip-loop). Fixed 6.21.0721.
 - [BUGREPORT-browse-502-groups-cold-cache.md](BUGREPORT-browse-502-groups-cold-cache.md) — Browse `502` + tom tabel når `/groups` timer ud (grundårsag: ikke-kritisk group-kald vælter `Promise.all` + grupper har ingen disk-cache). Frontend fixed 6.21.0722; groups disk-persistens fixed 6.21.0723.
 
+## [FIXED 6.28.0735] 2026-07-06 — Policy-simulering (edit-endpoint) meget langsom: N+1 gruppe-storm pr. policy set
+
+- **Symptom:** Ved edit af et endpoint og "Simulér… (MAC auth)" gik der meget lang tid inden resultatet kom op — særligt i Auto-mode ("test alle policy sets").
+- **Root cause:** `PolicyService._fetch_ep_from_ise` (kaldt af `match_endpoint`) resolvede gruppenavn via et direkte `IseEndpointGroupRepository.list_all()` — et **N+1-kald** (1 liste + N per-gruppe-GET) mod ISE. På den pressede ISE tager ét `GET /ers/config/endpointgroup` 30s+ (kendt: se [BUGREPORT-ise-endpointgroup-storm.md](BUGREPORT-ise-endpointgroup-storm.md)). I Auto-mode kalder frontend'en `matchPolicyEndpoint` **pr. policy set**, så N+1-stormen blev gentaget for hvert set → 30s × antal sets. Samme N+1-mønster som allerede var fjernet i endpoint_service/drip, men her overset i policy_service.
+- **Løsning (v6.28.0735):** `_fetch_ep_from_ise` bruger nu den delte, TTL-cachede gruppe-navne-cache (`EndpointService._get_group_names()`, samme cache som drip/scan/browse) i stedet for `list_all()`. Typisk cache-hit (refreshes højst hver `ise_group_cache_ttl_s` = 2t) → gruppe-opslaget går fra 30s+ til ~0. Fjernede ubrugt `IseEndpointGroupRepository`-import.
+- **Effekt:** Enkelt-set-simulering ~30s+ → ~1-2s; Auto-mode ~30s × N sets → ~få sekunder i alt.
+- **Berørte filer:** `backend/app/services/policy_service.py`
+- **Follow-up (ikke i denne fix):** I Auto-mode genhentes endpoint-attributterne (1 ERS-GET) + policy set/rules pr. set. Videre optimering: hent endpoint én gang og/eller cache policy-set-regler (SWR).
+
 ## [FIXED 6.28.0734] 2026-07-06 — pxGrid "broker tavs" logges som WARNING + unødig reconnect ved stille broker
 
 - **Symptom:** Tilbagevendende `WARNING pxgrid worker iteration failed: Broker tavs i Ns …` ~hver recv_timeout (1-2t) om natten/weekender. Hver udløste også en teardown + reconnect af WebSocket-forbindelsen.
