@@ -13,6 +13,22 @@ const BASE = window.location.origin.startsWith("file://")
   ? "http://localhost:8000"
   : "";
 
+// ── Delt cursor-tooltip til historik-grafer ───────────────────────────────
+let _mtip = null;
+function metricsTip() {
+  if (!_mtip) {
+    _mtip = document.createElement("div");
+    _mtip.style.cssText = [
+      "position:fixed", "pointer-events:none", "z-index:9999",
+      "background:#1f2937", "color:#f9fafb", "border-radius:8px",
+      "padding:.4rem .7rem", "font-size:.8rem", "line-height:1.5",
+      "box-shadow:0 4px 16px rgba(0,0,0,.35)", "display:none",
+    ].join(";");
+    document.body.appendChild(_mtip);
+  }
+  return _mtip;
+}
+
 // ------------------------------------------------------------------ //
 // Prometheus text-format parser                                        //
 // ------------------------------------------------------------------ //
@@ -256,14 +272,14 @@ export async function renderMetrics(container) {
     return `<div class="card metrics-card"><h3>${t("metrics.psn_nodes")}</h3><div class="metric-stats">${rows}</div></div>`;
   }
 
-  // ── SVG Linjediagram ─────────────────────────────────────────────────────
+  // ── SVG Linjediagram med tids-sektioner + cursor-tooltip ─────────────────
   function renderLineChart(points, opts = {}) {
     if (!points || points.length < 2) {
       return `<span class="hint" style="font-size:.8em;">${t("metrics.history_no_data")}</span>`;
     }
-    const W = opts.width || 320;
-    const H = opts.height || 80;
-    const pad = { top: 6, right: 8, bottom: 18, left: 36 };
+    const W = opts.width || 340;
+    const H = opts.height || 96;
+    const pad = { top: 8, right: 10, bottom: 24, left: 42 };
     const iW = W - pad.left - pad.right;
     const iH = H - pad.top - pad.bottom;
 
@@ -271,35 +287,99 @@ export async function renderMetrics(container) {
     const minV = Math.min(...vals);
     const maxV = Math.max(...vals);
     const range = maxV - minV || 1;
-
-    const xs = points.map((_, i) => pad.left + (i / (points.length - 1)) * iW);
-    const ys = points.map((p) => pad.top + iH - ((p.value - minV) / range) * iH);
-
-    const polyline = xs.map((x, i) => `${x.toFixed(1)},${ys[i].toFixed(1)}`).join(" ");
-    const fillPath = `M${xs[0].toFixed(1)},${(pad.top + iH).toFixed(1)} `
-      + xs.map((x, i) => `L${x.toFixed(1)},${ys[i].toFixed(1)}`).join(" ")
-      + ` L${xs[xs.length - 1].toFixed(1)},${(pad.top + iH).toFixed(1)} Z`;
-
+    const n = points.length - 1;
     const color = opts.color || "#3b82f6";
     const fmtV = opts.fmtV || ((v) => Number(v).toFixed(opts.decimals ?? 1));
+    const key = opts.key || "0";
 
-    const firstTs = points[0].ts.slice(11, 16);
-    const lastTs  = points[points.length - 1].ts.slice(11, 16);
+    const xOf = (i) => pad.left + (i / n) * iW;
+    const yOf = (v) => pad.top + iH - ((v - minV) / range) * iH;
 
-    return `<svg width="${W}" height="${H}" style="overflow:visible;display:block;">
+    // Vandrette gridlinjer (min / midt / max) + y-labels
+    let grid = "";
+    for (let g = 0; g <= 2; g++) {
+      const v = minV + (g / 2) * range;
+      const y = yOf(v).toFixed(1);
+      grid += `<line x1="${pad.left}" y1="${y}" x2="${pad.left + iW}" y2="${y}" stroke="#eef2f7" stroke-width="1"/>`;
+      grid += `<text x="${pad.left - 4}" y="${(+y) + 3}" text-anchor="end" font-size="9" fill="#94a3b8">${fmtV(v)}</text>`;
+    }
+
+    // Lodrette tids-sektioner med HH:MM-labels
+    const ticks = Math.min(6, n);
+    let xgrid = "";
+    for (let k = 0; k <= ticks; k++) {
+      const i = Math.round((k / ticks) * n);
+      const x = xOf(i).toFixed(1);
+      xgrid += `<line x1="${x}" y1="${pad.top}" x2="${x}" y2="${pad.top + iH}" stroke="#f4f7fa" stroke-width="1"/>`;
+      xgrid += `<text x="${x}" y="${pad.top + iH + 13}" text-anchor="middle" font-size="8.5" fill="#94a3b8">${points[i].ts.slice(11, 16)}</text>`;
+    }
+
+    const polyline = points.map((p, i) => `${xOf(i).toFixed(1)},${yOf(p.value).toFixed(1)}`).join(" ");
+    const fillPath = `M${xOf(0).toFixed(1)},${(pad.top + iH).toFixed(1)} `
+      + points.map((p, i) => `L${xOf(i).toFixed(1)},${yOf(p.value).toFixed(1)}`).join(" ")
+      + ` L${xOf(n).toFixed(1)},${(pad.top + iH).toFixed(1)} Z`;
+
+    // Metadata til cursor-tooltip (præ-beregnede positioner + formaterede værdier)
+    const mpts = points.map((p, i) => ({
+      x: +xOf(i).toFixed(1), y: +yOf(p.value).toFixed(1),
+      ts: p.ts, label: fmtV(p.value),
+    }));
+    const mchart = JSON.stringify({ pts: mpts });
+
+    return `<svg viewBox="0 0 ${W} ${H}" data-mchart='${mchart}'
+      style="width:100%;max-width:${W}px;height:auto;display:block;cursor:crosshair;overflow:visible;">
       <defs>
-        <linearGradient id="grad_${opts.key || "0"}" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="${color}" stop-opacity=".25"/>
+        <linearGradient id="grad_${key}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="${color}" stop-opacity=".22"/>
           <stop offset="100%" stop-color="${color}" stop-opacity=".02"/>
         </linearGradient>
       </defs>
-      <path d="${fillPath}" fill="url(#grad_${opts.key || "0"})" />
-      <polyline points="${polyline}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round"/>
-      <text x="${pad.left}" y="${pad.top + iH + 14}" font-size="10" fill="#94a3b8" text-anchor="start">${firstTs}</text>
-      <text x="${pad.left + iW}" y="${pad.top + iH + 14}" font-size="10" fill="#94a3b8" text-anchor="end">${lastTs}</text>
-      <text x="${(pad.left - 2)}" y="${(pad.top + 4).toFixed(0)}" font-size="9" fill="#94a3b8" text-anchor="end">${fmtV(maxV)}</text>
-      <text x="${(pad.left - 2)}" y="${(pad.top + iH).toFixed(0)}" font-size="9" fill="#94a3b8" text-anchor="end">${fmtV(minV)}</text>
+      ${grid}${xgrid}
+      <path d="${fillPath}" fill="url(#grad_${key})" />
+      <polyline points="${polyline}" fill="none" stroke="${color}" stroke-width="1.6" stroke-linejoin="round"/>
+      <line class="mch-v" x1="0" y1="${pad.top}" x2="0" y2="${pad.top + iH}" stroke="#64748b" stroke-width="1" stroke-dasharray="3,3" style="display:none;pointer-events:none"/>
+      <circle class="mch-dot" cx="0" cy="0" r="3.5" fill="${color}" stroke="#fff" stroke-width="1.5" style="display:none;pointer-events:none"/>
     </svg>`;
+  }
+
+  function attachMetricsChartTooltips(root) {
+    root.querySelectorAll("svg[data-mchart]").forEach((svg) => {
+      let cd;
+      try { cd = JSON.parse(svg.getAttribute("data-mchart")); } catch { return; }
+      const pts = cd.pts;
+      if (!pts || !pts.length) return;
+      const vline = svg.querySelector(".mch-v");
+      const dot   = svg.querySelector(".mch-dot");
+      const vbW   = (svg.viewBox && svg.viewBox.baseVal && svg.viewBox.baseVal.width) || 340;
+
+      svg.addEventListener("mousemove", (e) => {
+        const rect = svg.getBoundingClientRect();
+        const svgX = ((e.clientX - rect.left) / rect.width) * vbW;
+        let best = 0, bestD = Infinity;
+        for (let i = 0; i < pts.length; i++) {
+          const d = Math.abs(pts[i].x - svgX);
+          if (d < bestD) { bestD = d; best = i; }
+        }
+        const p = pts[best];
+        if (vline) { vline.setAttribute("x1", p.x); vline.setAttribute("x2", p.x); vline.style.display = ""; }
+        if (dot)   { dot.setAttribute("cx", p.x); dot.setAttribute("cy", p.y); dot.style.display = ""; }
+        const tip = metricsTip();
+        tip.innerHTML = `<div style="color:#9ca3af;font-size:.72rem;margin-bottom:.15rem;">${esc((p.ts || "").slice(5, 16).replace("T", " "))}</div>`
+          + `<div style="font-weight:600;">${esc(p.label)}</div>`;
+        tip.style.display = "block";
+        const tw = tip.offsetWidth, th = tip.offsetHeight;
+        let tx = e.clientX + 14, ty = e.clientY - 10;
+        if (tx + tw > window.innerWidth - 8)  tx = e.clientX - tw - 14;
+        if (ty + th > window.innerHeight - 8) ty = e.clientY - th + 10;
+        tip.style.left = tx + "px";
+        tip.style.top  = ty + "px";
+      });
+      svg.addEventListener("mouseleave", () => {
+        if (vline) vline.style.display = "none";
+        if (dot)   dot.style.display = "none";
+        metricsTip().style.display = "none";
+      });
+    });
   }
 
   function renderHistoryCard(histData, limit) {
@@ -352,6 +432,7 @@ export async function renderMetrics(container) {
       body.innerHTML = renderData(parsed)
         + (histData ? renderHistoryCard(histData, histLimit) : "")
         + (nodes ? renderNodesCard(nodes) : "");
+      attachMetricsChartTooltips(container);
       const rangeSel = container.querySelector("#metrics-hist-range");
       if (rangeSel) {
         rangeSel.addEventListener("change", () => {

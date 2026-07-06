@@ -3,6 +3,11 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.28.0733] — 2026-07-06 — feat: Metrics-historik — tids-sektioner + cursor-tooltip
+
+- **`metrics.js`** (`renderLineChart`): Historik-graferne har nu opdelt tidsakse — lodrette gridlinjer med HH:MM-labels (op til 6 sektioner) og vandrette gridlinjer med y-værdier (min/midt/max) — så man kan aflæse hvornår og hvor meget direkte på grafen. Graferne er let forstørret (340×96) for læsbarhed.
+- **`metrics.js`** (`attachMetricsChartTooltips` + `metricsTip`): Cursor-tooltip på alle historik-grafer — hover viser crosshair + punkt-markør og en flydende tooltip med tidsstempel + værdi for nærmeste datapunkt (samme interaktion som Trend Analysis). Metadata (præ-beregnede pixel-positioner + formaterede værdier) embeddes i `data-mchart`; én delt tooltip-div genbruges. Kaldes efter hver render (også ved auto-refresh og periodeskift).
+
 ## [6.27.0732] — 2026-07-06 — fix: Scan-interval responsivt + synligt i log (opfølgning på 0731)
 
 Log-analyse af 6.27.0731 bekræftede stabilitet (0 CB-opens, fejl-rate ~0,5/t efter deploy) men afslørede at scan-intervallet opdaterede sig dovent (én gang pr. scan-cyklus, op til 4t) og derfor ikke var synligt/responsivt i metrics.

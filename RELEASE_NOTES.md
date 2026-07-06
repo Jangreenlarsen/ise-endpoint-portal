@@ -4,6 +4,13 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.28.0733] — 2026-07-06 — feat: Metrics-historik med tidsakse og cursor-værdier
+
+> **Build:** 0733
+
+- **Læs data direkte på graferne**: Historik-graferne på Metrics-siden er nu interaktive — hold musen over en graf for at se en crosshair og en tooltip med tidspunkt og værdi for det nærmeste punkt (som på Trend Analysis).
+- **Tidsakse i sektioner**: Graferne har nu lodrette tidslinjer med klokkeslæt (HH:MM) og vandrette hjælpelinjer med værdier, så man nemt kan aflæse hvornår og hvor meget.
+
 ## [6.27.0732] — 2026-07-06 — fix: Scan-interval reagerer nu hurtigt på aktivitet + synligt i loggen
 
 > **Build:** 0732
