@@ -13,6 +13,13 @@ Kendte post-mortems:
 - [BUGREPORT-ise-endpointgroup-storm.md](BUGREPORT-ise-endpointgroup-storm.md) — ISE `/ers/config/endpointgroup` ReadTimeout-storm + CB-cykling (grundårsag: N+1 gruppe-fetch i drip-loop). Fixed 6.21.0721.
 - [BUGREPORT-browse-502-groups-cold-cache.md](BUGREPORT-browse-502-groups-cold-cache.md) — Browse `502` + tom tabel når `/groups` timer ud (grundårsag: ikke-kritisk group-kald vælter `Promise.all` + grupper har ingen disk-cache). Frontend fixed 6.21.0722; groups disk-persistens fixed 6.21.0723.
 
+## [FIXED 6.28.0734] 2026-07-06 — pxGrid "broker tavs" logges som WARNING + unødig reconnect ved stille broker
+
+- **Symptom:** Tilbagevendende `WARNING pxgrid worker iteration failed: Broker tavs i Ns …` ~hver recv_timeout (1-2t) om natten/weekender. Hver udløste også en teardown + reconnect af WebSocket-forbindelsen.
+- **Root cause:** `_one_session` kastede `RuntimeError("Broker tavs …")` når `ws.recv()` ramte `recv_timeout` uden en STOMP-frame — men en `TimeoutError` her betyder at WebSocket ping/pong (ping_interval=20, ping_timeout=10) stadig holder forbindelsen i live; en reelt død forbindelse ville give `ConnectionClosed` i stedet. En stille broker (ingen RADIUS-auth-events om natten) er derfor helt normal, ikke en fejl — men blev behandlet som en iteration-failure → WARNING + unødig reconnect-churn.
+- **Løsning (v6.28.0734):** På `recv()`-timeout logges nu på **INFO** (`pxgrid: broker stille i Ns (ping/pong OK) — beholder forbindelsen`) og recv-loopen `continue`r på SAMME forbindelse. Ingen reconnect. `ConnectionClosed` (reelt død forbindelse) håndteres uændret → reconnect. Fjerner både log-støjen og den unødige reconnect.
+- **Berørte filer:** `backend/app/pxgrid/session_worker.py`
+
 ## [FIXED 6.21.0725] 2026-07-04 — Gruppe-cache "vågner fra dyb søvn" ved login efter idle + reducér endpointgroup-kald
 
 - **Symptom:** Efter lang inaktivitet (fx 6 timer uden login) føles portalen som om hele cache-motoren skal "vågne op": det tager lang tid at se noget i Browse, reload er langsom, og cache-kvalitets-metrikkerne ser "genstartet" ud ved login. Dertil vedvarende `GET /ers/config/endpointgroup` ReadTimeouts i loggen — også med `idle_before=0s` (frisk forbindelse).

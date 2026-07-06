@@ -208,11 +208,11 @@ class PxGridSessionWorker:
         topic = s.pxgrid_session_topic
         heartbeat_ms = max(0, int(s.pxgrid_stomp_heartbeat_ms))
         # WebSocket ping/pong (ping_interval=20, ping_timeout=10) er den primære
-        # liveness-mekanisme og detekterer en død TCP-forbindelse inden for 30s.
-        # recv_timeout er kun backstop mod en broker der er TCP-alive men tavs;
-        # ISE pxGrid broker kan have stille perioder på langt over 120s (ingen
-        # sessions der skifter state), så vi bruger den konfigurerbare setting
-        # (default 600s) fremfor en hardkodet 120s.
+        # liveness-mekanisme og detekterer en død TCP-forbindelse inden for 30s
+        # (giver ConnectionClosed på recv → reconnect). recv_timeout er blot en
+        # periodisk vågn-op på recv() så vi kan tjekke stop_event; en timeout her
+        # betyder "ping/pong OK men ingen STOMP-frame" = en helt normal stille
+        # broker (fx nætter/weekender uden RADIUS-auth) og behandles IKKE som fejl.
         recv_timeout = float(getattr(s, "pxgrid_stomp_recv_timeout_s", 600.0))
 
         async with websockets.connect(
@@ -328,11 +328,15 @@ class PxGridSessionWorker:
                 try:
                     chunk = await asyncio.wait_for(ws.recv(), timeout=recv_timeout)
                 except asyncio.TimeoutError:
-                    raise RuntimeError(
-                        f"Broker tavs i {recv_timeout:.0f}s — ingen STOMP-frames modtaget "
-                        f"(WebSocket ping/pong OK; øg pxgrid_stomp_recv_timeout_s hvis "
-                        f"ISE-broker har lange idle-perioder)"
-                    ) from None
+                    # Ingen STOMP-frame i recv_timeout, men WebSocket ping/pong holder
+                    # forbindelsen i live (en død forbindelse ville give ConnectionClosed,
+                    # ikke TimeoutError). Helt normal stille broker — ikke en fejl.
+                    # Log på INFO og fortsæt på SAMME forbindelse (ingen unødig reconnect).
+                    logger.info(
+                        "pxgrid: broker stille i %.0fs (ping/pong OK) — beholder forbindelsen",
+                        recv_timeout,
+                    )
+                    continue
                 buf += chunk if isinstance(chunk, bytes) else chunk.encode("utf-8")
                 frames, buf = stomp.split_frames(buf)
                 for f in frames:
