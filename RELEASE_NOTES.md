@@ -4,6 +4,12 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.28.0734] — 2026-07-06 — fix: Ro på pxGrid-loggen om natten
+
+> **Build:** 0734
+
+- **Ingen falske pxGrid-advarsler mere**: En stille pxGrid-broker (fx om natten/weekender uden RADIUS-trafik) blev tidligere logget som en advarsel og udløste en unødig genforbindelse hver 1-2. time. Nu genkendes det korrekt som en normal stille periode (WebSocket-forbindelsen holdes i live af ping/pong) — logges kun som info, og forbindelsen bevares. En reelt død forbindelse genforbinder som hidtil.
+
 ## [6.28.0733] — 2026-07-06 — feat: Metrics-historik med tidsakse og cursor-værdier
 
 > **Build:** 0733

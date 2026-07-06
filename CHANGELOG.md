@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.28.0734] — 2026-07-06 — fix: pxGrid "broker tavs" er ikke længere en WARNING/reconnect
+
+Observeret i log-analyserne: `pxgrid worker iteration failed: Broker tavs i Ns` dukkede op ~hver 1-2t om natten. Se BUGS.md 6.28.0734.
+
+- **`pxgrid/session_worker.py`**: `_one_session` kastede tidligere `RuntimeError("Broker tavs …")` på `ws.recv()`-timeout → WARNING + teardown/reconnect. Men en `TimeoutError` her betyder at ping/pong stadig holder forbindelsen (en død forbindelse giver `ConnectionClosed`), så en stille broker uden RADIUS-events er normal. Nu: log på INFO (`pxgrid: broker stille i Ns (ping/pong OK) — beholder forbindelsen`) og `continue` recv-loopen på samme forbindelse — ingen reconnect. `ConnectionClosed` håndteres uændret. Fjerner log-støj + unødig reconnect-churn.
+
 ## [6.28.0733] — 2026-07-06 — feat: Metrics-historik — tids-sektioner + cursor-tooltip
 
 - **`metrics.js`** (`renderLineChart`): Historik-graferne har nu opdelt tidsakse — lodrette gridlinjer med HH:MM-labels (op til 6 sektioner) og vandrette gridlinjer med y-værdier (min/midt/max) — så man kan aflæse hvornår og hvor meget direkte på grafen. Graferne er let forstørret (340×96) for læsbarhed.
