@@ -3397,17 +3397,70 @@ body.register-route .login-card {
 .detail-lbl { font-weight: 600; margin-right: 0.4rem; color: #374151; }
 .detail-cond-block { margin-top: 0.5rem; }
 .detail-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
-/* Condition tree */
-.cond-tree { font-size: 0.8rem; font-family: monospace; margin-top: 0.25rem; }
-.cond-tree-single { padding: 2px 0; }
-.cond-tree-block  { padding-left: 4px; }
-.cond-tree-sep    { color: #6b7280; font-size: 0.72rem; margin: 1px 0; }
-.cond-tree-ref    { color: #7c3aed; font-style: italic; }
-.cond-dict-lbl    { color: #0369a1; font-weight: 600; }
-.cond-attr-lbl    { color: #1d4ed8; }
-.cond-op-lbl      { color: #6b7280; }
-.cond-val-lbl     { color: #065f46; }
-.cond-neg         { color: #b91c1c; }
+/* Condition tree — struktureret, farvekodet read-only visning (ISE-editor-stil) */
+.cond-tree { font-size: 0.82rem; margin-top: 0.3rem; }
+.cond-tree > .cond-view-block:first-child,
+.cond-tree > .cond-view-attr:first-child { margin-top: 0; }
+
+/* AND/OR-grupper som indrammede bokse med farvet venstre-kant + badge */
+.cond-view-block {
+  position: relative;
+  border: 1px solid #e5e7eb;
+  border-left-width: 3px;
+  border-radius: 8px;
+  padding: 0.45rem 0.55rem 0.5rem;
+  margin: 0.35rem 0;
+  background: #fbfcfe;
+}
+.cond-view-block-and { border-left-color: #2563eb; background: #f8faff; }
+.cond-view-block-or  { border-left-color: #d97706; background: #fffdf7; }
+.cond-view-badge {
+  display: inline-block;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  border-radius: 4px;
+  padding: 0.08rem 0.4rem;
+  margin-bottom: 0.4rem;
+}
+.cond-view-badge-and { background: #dbeafe; color: #1e40af; }
+.cond-view-badge-or  { background: #fef3c7; color: #92400e; }
+.cond-view-children { display: flex; flex-direction: column; gap: 0.32rem; }
+
+/* Enkelt attribut-betingelse som afgrænset kort */
+.cond-view-attr {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.15rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 0.28rem 0.5rem;
+  background: #fff;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+.cond-dict-lbl { color: #0369a1; font-weight: 600; }
+.cond-dot      { color: #9ca3af; }
+.cond-attr-lbl { color: #0f766e; font-weight: 600; }
+.cond-op-lbl   { color: #6b7280; font-weight: 600; margin: 0 0.3rem; }
+.cond-val-lbl  { color: #065f46; font-weight: 600; background: #ecfdf5; border: 1px solid #d1fae5; border-radius: 4px; padding: 0 0.32rem; }
+.cond-neg      { color: #b91c1c; font-weight: 800; font-size: 0.68rem; letter-spacing: 0.04em; margin-right: 0.3rem; }
+
+/* Reference til navngiven betingelse */
+.cond-view-ref {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: #7c3aed;
+  font-style: italic;
+  border: 1px dashed #ddd6fe;
+  border-radius: 6px;
+  padding: 0.28rem 0.5rem;
+  background: #faf5ff;
+}
+.cond-view-ref-icon { font-style: normal; font-weight: 700; }
+.cond-view-empty { color: #9ca3af; font-style: italic; }
 /* Condition editor rows */
 .cond-row {
   display: flex;
@@ -3694,6 +3747,20 @@ body.register-route .login-card {
 [data-theme="dark"] .cond-chip-val      { color: #34d399; }
 [data-theme="dark"] .cond-chip-ref      { background: #2d1b4e; border-color: #7c3aed; }
 [data-theme="dark"] .cond-chip-empty    { background: #1e1e2e; border-color: #374151; }
+[data-theme="dark"] .cond-view-block       { border-color: #2a2a4a; background: #171727; }
+[data-theme="dark"] .cond-view-block-and   { border-left-color: #3b82f6; background: #131a2b; }
+[data-theme="dark"] .cond-view-block-or    { border-left-color: #d97706; background: #211a0e; }
+[data-theme="dark"] .cond-view-badge-and   { background: #1e3a5f; color: #bfdbfe; }
+[data-theme="dark"] .cond-view-badge-or    { background: #3a2c07; color: #fde68a; }
+[data-theme="dark"] .cond-view-attr        { border-color: #2a2a4a; background: #1e1e2e; }
+[data-theme="dark"] .cond-dict-lbl         { color: #60a5fa; }
+[data-theme="dark"] .cond-dot              { color: #6b7280; }
+[data-theme="dark"] .cond-attr-lbl         { color: #5eead4; }
+[data-theme="dark"] .cond-op-lbl           { color: #9ca3af; }
+[data-theme="dark"] .cond-val-lbl          { color: #6ee7b7; background: #064e3b; border-color: #065f46; }
+[data-theme="dark"] .cond-neg              { color: #fca5a5; }
+[data-theme="dark"] .cond-view-ref         { color: #c4b5fd; border-color: #4c1d95; background: #201636; }
+[data-theme="dark"] .cond-view-empty       { color: #6b7280; }
 [data-theme="dark"] .pol-detail-card    { border-color: #2a2a4a; background: #1e1e2e; }
 [data-theme="dark"] .pol-detail-lbl     { color: #d1d5db; }
 [data-theme="dark"] .pol-detail-split   { border-color: #2a2a4a; }

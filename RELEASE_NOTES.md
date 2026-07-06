@@ -4,6 +4,12 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.30.0738] — 2026-07-06 — feat: Betingelser vises nu struktureret — også når du bare kigger
+
+> **Build:** 0738
+
+- **Betingelser er ikke længere "bare tekst"**: Når du kigger på en autoriseringsregel (uden at redigere), vises reglens betingelse nu som pæne, farvekodede grupper i stedet for en flad tekstlinje. AND-grupper har en blå kant og et blåt "AND"-mærke, OR-grupper en rav kant og et "OR"-mærke, og hver enkelt betingelse står i sit eget lille kort med tydelig adskillelse af dictionary, attribut, operator og værdi. Nu ligner visningen den nye editor — bare uden redigerings-knapperne. Virker i både lyst og mørkt tema.
+
 ## [6.29.0737] — 2026-07-06 — feat: Pænere og mere konsistent policy-editor
 
 > **Build:** 0737
