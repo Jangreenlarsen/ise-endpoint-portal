@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.28.0735] — 2026-07-06 — fix: Policy-simulering meget hurtigere (fjernet N+1 gruppe-storm)
+
+Rapporteret: "Simulér… (MAC auth)" i edit-endpoint tog meget lang tid. Se BUGS.md 6.28.0735.
+
+- **`policy_service.py`**: `_fetch_ep_from_ise` (kaldt af `match_endpoint`/simulering) resolvede gruppenavn via `IseEndpointGroupRepository.list_all()` — et N+1-kald (1 liste + N per-gruppe-GET) der på den pressede ISE tager 30s+ pr. `GET /ers/config/endpointgroup`. I Auto-mode (test alle policy sets) gentages det pr. set. Nu bruges den delte, TTL-cachede gruppe-navne-cache (`EndpointService._get_group_names()`) → typisk cache-hit, gruppe-opslag fra 30s+ → ~0. Fjernet ubrugt import. Enkelt-set ~30s+ → ~1-2s; Auto-mode ~30s×N → få sekunder. 212 tests grønne.
+
 ## [6.28.0734] — 2026-07-06 — fix: pxGrid "broker tavs" er ikke længere en WARNING/reconnect
 
 Observeret i log-analyserne: `pxgrid worker iteration failed: Broker tavs i Ns` dukkede op ~hver 1-2t om natten. Se BUGS.md 6.28.0734.
