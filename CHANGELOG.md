@@ -3,6 +3,15 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.28.0736] — 2026-07-06 — perf: Auto-simulering server-side + policy-cache (follow-up på 0735)
+
+De to follow-ups fra 6.28.0735. Se BUGS.md 6.28.0735.
+
+- **`policy_service.py`**: (1) Ny `match_all(ep)` + `POST /policy/simulate-auto`: Auto-mode ("test alle policy sets") looper nu **server-side** og henter endpointet fra ISE **én gang** i stedet for pr. policy set (frontend lavede tidligere N separate kald der hver genhentede endpointet). (2) SWR-cache for policy sets + authz-regler (`_cached_policy_sets`/`_cached_policy_set`/`_cached_rules`, TTL 300s) — brugt af `match_endpoint`, `get_policy_set_detail`, `list_authorization_rules`. Invalideres ved create/update/delete af regler (`invalidate_policy_cache`). Gentagne simuleringer på samme set rammer nu cachen i stedet for ISE.
+- **`api/policy.py`**: Nyt `POST /policy/simulate-auto`-endpoint (mirror af `/match`, men mod alle sets).
+- **`api.js` + `browse-detail.js`**: Auto-mode kalder nu `simulatePolicyAuto(ep)` (ét kald) i stedet for at loope `matchPolicyEndpoint` pr. set.
+- **`tests/test_policy.py`**: Autouse-fixture rydder policy-cachen mellem tests (så mockede returns ikke lækker). 212 tests grønne.
+
 ## [6.28.0735] — 2026-07-06 — fix: Policy-simulering meget hurtigere (fjernet N+1 gruppe-storm)
 
 Rapporteret: "Simulér… (MAC auth)" i edit-endpoint tog meget lang tid. Se BUGS.md 6.28.0735.

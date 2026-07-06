@@ -20,6 +20,16 @@ from app.services.policy_service import (
     _eval_operator,
     _get_ep_value,
 )
+from app.services import policy_service as _ps_mod
+
+
+@pytest.fixture(autouse=True)
+def _clear_policy_cache():
+    """Ryd den modul-globale policy-cache (SWR) før/efter hver test, så mockede
+    policy_api-returns ikke lækker på tværs af tests via _ps_cache/_rules_cache."""
+    _ps_mod.invalidate_policy_cache()
+    yield
+    _ps_mod.invalidate_policy_cache()
 
 
 # ------------------------------------------------------------------ #

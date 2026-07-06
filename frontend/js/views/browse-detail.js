@@ -717,19 +717,14 @@ export function initDetail(container, state, api, cb) {
           const ep = { ...collectEndpointAttrs(), radius_attrs: radiusAttrs };
 
           if (setId === AUTO_SET) {
-            // Test alle policy sets i rank-rækkefølge — stop ved første match
-            let matchResult = null;
-            for (const set of sets) {
-              resultEl.innerHTML = `<div class="alert info">Simulerer… <em>${esc(set.name)}</em></div>`;
-              const r = await api.matchPolicyEndpoint(set.id, ep);
-              if (!r.no_rules && r.matched_rule_id) {
-                matchResult = r;
-                break;
-              }
-            }
-            if (matchResult) {
-              resultEl.innerHTML = renderMatchResult(matchResult);
-              mergeNeededRadiusAttrs(matchResult.radius_attrs_needed || []);
+            // Test alle policy sets i rank-rækkefølge — ét backend-kald der henter
+            // endpointet én gang og looper server-side (frem for N frontend-kald
+            // der hver genhentede endpointet). Stop ved første match.
+            resultEl.innerHTML = `<div class="alert info">Simulerer… <em>alle policy sets</em></div>`;
+            const r = await api.simulatePolicyAuto(ep);
+            mergeNeededRadiusAttrs(r.radius_attrs_needed || []);
+            if (!r.no_rules && r.matched_rule_id) {
+              resultEl.innerHTML = renderMatchResult(r);
             } else {
               resultEl.innerHTML = `<div class="alert warning">${t("detail.policy_no_match")}</div>`;
             }

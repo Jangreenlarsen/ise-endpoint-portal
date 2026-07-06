@@ -429,6 +429,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify(epAttrs),
     }),
+  simulatePolicyAuto: (epAttrs) =>
+    request("/policy/simulate-auto", {
+      method: "POST",
+      body: JSON.stringify(epAttrs),
+    }),
   batchSimulate: (policy_set_id, endpoint_ids, radius_attrs = {}) =>
     request("/policy/batch-simulate", {
       method: "POST",

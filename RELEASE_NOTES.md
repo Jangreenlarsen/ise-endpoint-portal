@@ -4,6 +4,12 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.28.0736] — 2026-07-06 — perf: "Test alle policy sets" er nu markant hurtigere
+
+> **Build:** 0736
+
+- **Auto-simulering optimeret**: "Test alle policy sets" hentede tidligere endpointet forfra for hvert policy set og lavede et separat kald pr. set. Nu kører hele gennemløbet server-side med ét endpoint-opslag, og policy-reglerne caches — så gentagne simuleringer er næsten øjeblikkelige. Enkelt-set-simulering er også hurtigere ved gentagne kørsler pga. regel-cachen.
+
 ## [6.28.0735] — 2026-07-06 — fix: Policy-simulering er nu meget hurtigere
 
 > **Build:** 0735

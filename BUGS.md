@@ -20,7 +20,7 @@ Kendte post-mortems:
 - **Løsning (v6.28.0735):** `_fetch_ep_from_ise` bruger nu den delte, TTL-cachede gruppe-navne-cache (`EndpointService._get_group_names()`, samme cache som drip/scan/browse) i stedet for `list_all()`. Typisk cache-hit (refreshes højst hver `ise_group_cache_ttl_s` = 2t) → gruppe-opslaget går fra 30s+ til ~0. Fjernede ubrugt `IseEndpointGroupRepository`-import.
 - **Effekt:** Enkelt-set-simulering ~30s+ → ~1-2s; Auto-mode ~30s × N sets → ~få sekunder i alt.
 - **Berørte filer:** `backend/app/services/policy_service.py`
-- **Follow-up (ikke i denne fix):** I Auto-mode genhentes endpoint-attributterne (1 ERS-GET) + policy set/rules pr. set. Videre optimering: hent endpoint én gang og/eller cache policy-set-regler (SWR).
+- **Follow-up (LØST i 6.28.0736):** I Auto-mode genhentedes endpoint-attributterne + policy set/rules pr. set. Nu: nyt `POST /policy/simulate-auto` looper server-side (henter endpoint én gang), og policy sets/regler caches (SWR, TTL 300s, invalideres ved regel-mutation). Auto-mode: N frontend-kald → 1; ISE-kald pr. set → cache-hit.
 
 ## [FIXED 6.28.0734] 2026-07-06 — pxGrid "broker tavs" logges som WARNING + unødig reconnect ved stille broker
 
