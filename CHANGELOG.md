@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.30.0738] — 2026-07-06 — feat: Policy detalje-visning — struktureret + farvekodet betingelses-træ
+
+Rapporteret (opfølgning på 0737): edit-tilstanden ser nu fin ud, men read-only-visningen afspejlede politikken "kun som tekst" — den var ikke sat op på samme visuelle måde som editoren.
+
+- **`policy-condition-builder.js`** (`renderConditionTree`): Read-only-betingelses-træet er omskrevet fra flad monospace-tekst med `— AND —`/`— OR —`-tekstseparatorer til **indrammede, farvekodede AND/OR-blokke** i ISE-policy-editor-stil. AND-blokke: blå venstre-kant + blåt "AND"-badge. OR-blokke: rav venstre-kant + rav "OR"-badge. Nesting sker via faktisk indlejrede bokse (ikke `margin-left`-indryk). Hver attribut-betingelse renderes som et afgrænset kort med farvede dictionary/attribut/operator-spans + grøn værdi-pille; `NOT` som rød negations-chip; condition-referencer som stiplet lilla kort med `↪`-ikon. Read-only (ingen edit-controls), men nu visuelt konsistent med editoren.
+- **`styles.css`**: Nye `.cond-view-*`-klasser (block/badge/attr/ref/empty) erstatter de gamle `.cond-tree-single/-block/-sep`-tekstklasser; opgraderede `.cond-dict-lbl/.cond-attr-lbl/.cond-op-lbl/.cond-val-lbl/.cond-neg`. Fuld dark mode for alle nye klasser.
+
 ## [6.29.0737] — 2026-07-06 — feat: Policy rule-editor — konsistent kort-layout + edit-mode-farve
 
 Rapporteret: policy-editoren skulle være mere elegant og "hænge sammen" med detalje-visningen, gerne med farve.

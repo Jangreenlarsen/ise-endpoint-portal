@@ -588,31 +588,36 @@ export function renderConditionChips(cond, depth = 0) {
 // ── Condition tree renderer (read-only) ───────────────────────────────────────
 
 export function renderConditionTree(cond, depth = 0) {
-  if (!cond) return `<em>${t("pol.no_condition")}</em>`;
-  const ct     = cond.conditionType || "";
-  const indent = depth * 12;
-  const style  = `style="margin-left:${indent}px"`;
+  if (!cond) return `<div class="cond-view-empty"><em>${t("pol.no_condition")}</em></div>`;
+  const ct = cond.conditionType || "";
 
   if (ct === "ConditionReference") {
-    return `<div class="cond-tree-ref" ${style}>${t("pol.cond_ref").replace("{name}", esc(cond.name || ""))}</div>`;
+    return `<div class="cond-view-ref">` +
+      `<span class="cond-view-ref-icon">↪</span>` +
+      `${t("pol.cond_ref").replace("{name}", esc(cond.name || ""))}</div>`;
   }
   if (ct === "ConditionAttributes") {
-    const neg   = cond.isNegate ? "<span class='cond-neg'>NOT</span> " : "";
+    const neg   = cond.isNegate ? `<span class="cond-neg">NOT</span>` : "";
     const opLbl = OPERATORS().find((o) => o.value === cond.operator)?.label || esc(cond.operator || "");
-    return `<div class="cond-tree-single" ${style}>${neg}` +
-      `<span class="cond-dict-lbl">${esc(cond.dictionaryName)}</span>.` +
-      `<span class="cond-attr-lbl">${esc(cond.attributeName)}</span> ` +
-      `<span class="cond-op-lbl">${opLbl}</span> ` +
+    return `<div class="cond-view-attr">${neg}` +
+      `<span class="cond-dict-lbl">${esc(cond.dictionaryName)}</span>` +
+      `<span class="cond-dot">.</span>` +
+      `<span class="cond-attr-lbl">${esc(cond.attributeName)}</span>` +
+      `<span class="cond-op-lbl">${opLbl}</span>` +
       `<span class="cond-val-lbl">${esc(cond.attributeValue)}</span></div>`;
   }
   if (ct === "ConditionAndBlock" || ct === "ConditionOrBlock") {
-    const sep      = ct === "ConditionAndBlock" ? "AND" : "OR";
+    const isAnd = ct === "ConditionAndBlock";
+    const kind  = isAnd ? "and" : "or";
+    const label = isAnd ? "AND" : "OR";
     const children = (cond.children || [])
       .map((c) => renderConditionTree(c, depth + 1))
-      .join(`<div class="cond-tree-sep" ${style}>— ${sep} —</div>`);
-    return `<div class="cond-tree-block" ${style}>${children}</div>`;
+      .join("");
+    return `<div class="cond-view-block cond-view-block-${kind}">` +
+      `<span class="cond-view-badge cond-view-badge-${kind}">${label}</span>` +
+      `<div class="cond-view-children">${children}</div></div>`;
   }
-  return `<div ${style}>${esc(ct)}</div>`;
+  return `<div class="cond-view-attr">${esc(ct)}</div>`;
 }
 
 // ── Profile widget ────────────────────────────────────────────────────────────
