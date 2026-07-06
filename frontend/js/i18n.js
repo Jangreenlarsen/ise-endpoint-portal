@@ -62,6 +62,8 @@ const TRANSLATIONS = {
     // Editor
     "pol.ed_new_title":      "Ny autoriseringsregel",
     "pol.ed_edit_title":     "Rediger: {name}",
+    "pol.ed_new_chip":       "Ny regel",
+    "pol.ed_edit_chip":      "Redigerer",
     "pol.ed_name_label":     "Navn",
     "pol.ed_name_ph":        "Regelnavn…",
     "pol.ed_rank_label":     "Rank",
@@ -1605,6 +1607,8 @@ const TRANSLATIONS = {
     // Editor
     "pol.ed_new_title":      "New authorization rule",
     "pol.ed_edit_title":     "Edit: {name}",
+    "pol.ed_new_chip":       "New rule",
+    "pol.ed_edit_chip":      "Editing",
     "pol.ed_name_label":     "Name",
     "pol.ed_name_ph":        "Rule name…",
     "pol.ed_rank_label":     "Rank",

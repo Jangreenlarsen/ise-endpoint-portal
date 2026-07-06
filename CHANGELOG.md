@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.29.0737] — 2026-07-06 — feat: Policy rule-editor — konsistent kort-layout + edit-mode-farve
+
+Rapporteret: policy-editoren skulle være mere elegant og "hænge sammen" med detalje-visningen, gerne med farve.
+
+- **`policy.js`** (`showRuleEditor`): Editoren er omskrevet fra en flad stakket formular til samme kort-struktur som detalje-visningen (`showRuleDetail`): header-række (`.pol-editor-header`) med en `✎`-edit-chip + prominent navne-input + state-select og bundstreg; kompakt meta-række med rank + hint; en rammet body (`.pol-editor-body`) med versal-sektionslabels (`.pol-detail-col-label` — genbrugt fra detaljen) for BETINGELSER og PROFILER. Samme element-ID'er → uændret wiring/gem-logik.
+- **`styles.css`**: Nye editor-klasser + **rav "edit mode"-accent** (venstre-kant `#f59e0b`, subtil header-gradient, `.pol-edit-chip` i rav, rav fokus-ring på navne-feltet) så edit-tilstand er tydeligt adskilt fra read-only-visningen uden at bruge fejl-rød/success-grøn. Fuld dark mode.
+- **`i18n.js`**: Nye `pol.ed_new_chip` / `pol.ed_edit_chip` (da+en).
+
 ## [6.28.0736] — 2026-07-06 — perf: Auto-simulering server-side + policy-cache (follow-up på 0735)
 
 De to follow-ups fra 6.28.0735. Se BUGS.md 6.28.0735.

@@ -406,31 +406,39 @@ export async function renderPolicy(container) {
 
     rulesMsg.innerHTML = "";
     detailPanel.innerHTML = `
-      <div class="pol-editor-card">
-        <h4>${isNew ? t("pol.ed_new_title") : t("pol.ed_edit_title").replace("{name}", esc(existing?.name || ""))}</h4>
-        <div id="pol-editor-msg"></div>
-
-        <label>${t("pol.ed_name_label")}
-          <input type="text" id="pol-rule-name" value="${esc(existing?.name || "")}" placeholder="${t("pol.ed_name_ph")}" />
-        </label>
-        <label>${t("pol.ed_rank_label")} <small>${t("pol.ed_rank_hint")}</small>
-          <input type="number" id="pol-rule-rank" value="${existing?.rank ?? 0}" min="0" />
-        </label>
-        <label>${t("pol.ed_state_label")}
-          <select id="pol-rule-state">
+      <div class="pol-editor-card pol-editing">
+        <div class="pol-editor-header">
+          <span class="pol-edit-chip">✎ ${isNew ? t("pol.ed_new_chip") : t("pol.ed_edit_chip")}</span>
+          <input type="text" id="pol-rule-name" class="pol-name-input"
+                 value="${esc(existing?.name || "")}" placeholder="${t("pol.ed_name_ph")}" />
+          <select id="pol-rule-state" class="pol-state-select" title="${t("pol.ed_state_label")}">
             <option value="enabled"${(!existing || existing.state === "enabled") ? " selected" : ""}>${t("pol.ed_state_enabled")}</option>
             <option value="disabled"${existing?.state === "disabled" ? " selected" : ""}>${t("pol.ed_state_disabled")}</option>
           </select>
-        </label>
+        </div>
+        <div id="pol-editor-msg"></div>
 
-        <div class="editor-section-label">${t("pol.ed_conds_label")}</div>
-        ${isDefault
-          ? `<div class="alert info" style="font-size:.82rem;margin:.2rem 0 .4rem;">Default-reglen matcher alt — betingelser kan ikke ændres i ISE.</div>`
-          : `<div id="pol-cond-editor">${groupEditorHtml(existing?.condition ?? null, caValues)}</div>`
-        }
+        <div class="pol-editor-metarow">
+          <label class="pol-inline-field">${t("pol.ed_rank_label")}
+            <input type="number" id="pol-rule-rank" value="${existing?.rank ?? 0}" min="0" />
+          </label>
+          <span class="pol-metahint">${t("pol.ed_rank_hint")}</span>
+        </div>
 
-        <div class="editor-section-label">${t("pol.ed_profiles_label")}</div>
-        <div id="pol-profiles-wrap">${profilesHtml(existing?.profiles || [], knownProfiles)}</div>
+        <div class="pol-editor-body">
+          <div class="pol-editor-section">
+            <div class="pol-detail-col-label">${t("pol.ed_conds_label")}</div>
+            ${isDefault
+              ? `<div class="alert info" style="font-size:.82rem;margin:.2rem 0 .4rem;">Default-reglen matcher alt — betingelser kan ikke ændres i ISE.</div>`
+              : `<div id="pol-cond-editor">${groupEditorHtml(existing?.condition ?? null, caValues)}</div>`
+            }
+          </div>
+
+          <div class="pol-editor-section">
+            <div class="pol-detail-col-label">${t("pol.ed_profiles_label")}</div>
+            <div id="pol-profiles-wrap">${profilesHtml(existing?.profiles || [], knownProfiles)}</div>
+          </div>
+        </div>
 
         <div class="pol-pd-section">
           <div class="pol-detail-col-label">${t("pol.pd_section_label")}</div>

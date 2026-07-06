@@ -4,6 +4,13 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.29.0737] — 2026-07-06 — feat: Pænere og mere konsistent policy-editor
+
+> **Build:** 0737
+
+- **Redigering af en regel ligner nu visningen**: Når du redigerer en autoriseringsregel, vises den nu i samme kort-layout som når du bare kigger på den — med en tydelig header (navn + status), afgrænsede sektioner for Betingelser og Profiler, og de samme sektions-overskrifter. Ikke længere en flad formular der ser anderledes ud.
+- **Farve viser edit-tilstand**: Redigering er markeret med en rav-farvet kant og et `✎ Redigerer`-mærke, så det er tydeligt at du er i gang med at ændre — uden at bruge advarsels-rød eller success-grøn. Virker i både lyst og mørkt tema.
+
 ## [6.28.0736] — 2026-07-06 — perf: "Test alle policy sets" er nu markant hurtigere
 
 > **Build:** 0736
