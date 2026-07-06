@@ -266,35 +266,47 @@ class PrewarmWorker:
         async def _list_scan_loop() -> None:
             """Periodisk: hent ISE-liste og invalider slettede endpoints.
 
-            Venter et aktivitetsstyret interval: base (cache_prewarm_interval_s,
-            default 30 min) når portalen bruges, rampet op mod adaptive_scan_max_
-            seconds ved inaktivitet — så baggrunds-scanningen laver færre ISE-kald
-            når ingen kigger. Vågner straks hvis trigger_rescan() sætter
-            _rescan_event (Refresh-knappen i Browse), uanset hvor langt der er igen.
+            Scan-intervallet er aktivitetsstyret (se _effective_scan_interval):
+            base (cache_prewarm_interval_s, default 30 min) når portalen bruges,
+            rampet op mod adaptive_scan_max_seconds ved inaktivitet — så baggrunds-
+            scanningen laver færre ISE-kald når ingen kigger. For at reagere hurtigt
+            når en bruger logger på igen (og for at metrikken opdateres jævnt)
+            genberegnes intervallet mindst hvert 60. sekund frem for at sove i ét
+            langt interval. Vågner straks ved trigger_rescan() (Refresh-knappen).
             """
+            last_scan = time.time()  # _full_scan() kørte netop i _run() ovenfor
             while not self._stop.is_set():
                 base_iv = float(getattr(config.settings, "cache_prewarm_interval_s", 1800.0))
                 if base_iv <= 0:
                     return
                 eff_iv = self._effective_scan_interval(base_iv)
                 self.status.scan_interval_effective_s = eff_iv
-                # Vent på timeout, stop-signal eller manuelt rescan-trigger
+                # Poll i korte bidder (≤60s) så eff_iv + metrikken følger aktivitet,
+                # og et login snapper scan-intervallet tilbage mod base inden for 60s.
+                due_in = (last_scan + eff_iv) - time.time()
+                poll = min(due_in, 60.0)
+                if poll < 0.1:
+                    poll = 0.1
                 stop_t   = asyncio.ensure_future(self._stop.wait())
                 rescan_t = asyncio.ensure_future(self._rescan_event.wait())
                 try:
                     await asyncio.wait(
                         {stop_t, rescan_t},
-                        timeout=eff_iv,
+                        timeout=poll,
                         return_when=asyncio.FIRST_COMPLETED,
                     )
                 finally:
                     stop_t.cancel()
                     rescan_t.cancel()
-                self._rescan_event.clear()
                 if self._stop.is_set():
                     return
-                await self._drain_hot_queue()
-                await self._full_scan()
+                triggered = self._rescan_event.is_set()
+                self._rescan_event.clear()
+                # Scan når forfalden (mod aktuelt eff_iv) eller manuelt trigget.
+                if triggered or time.time() >= last_scan + eff_iv:
+                    await self._drain_hot_queue()
+                    await self._full_scan()
+                    last_scan = time.time()
 
         await asyncio.gather(
             _list_scan_loop(),
@@ -465,7 +477,12 @@ class PrewarmWorker:
         self.status.skipped = 0
         self.status.deleted = 0
         scan_start = time.time()
-        logger.info("prewarm: starter scan #%d", self.status.scan_number)
+        logger.info(
+            "prewarm: starter scan #%d (interval=%.0fs, idle=%.0fs)",
+            self.status.scan_number,
+            self.status.scan_interval_effective_s,
+            portal_activity.idle_seconds(),
+        )
         try:
             from app.services.endpoint_service import EndpointService
             service = EndpointService(get_ise_client())

@@ -75,6 +75,7 @@ def _analyze_logs(
     ise_outcomes: Counter = Counter()
     drip_last_refreshed: int = 0
     drip_last_skipped: int = 0
+    scan_events: list[dict] = []
     notable_entries: list[dict] = []
     total_lines = 0
     first_ts: str | None = None
@@ -90,6 +91,9 @@ def _analyze_logs(
     _STARTUP   = re.compile(r"HyperVision ISE Portal\s+v?([\d]+\.[\d]+(?:\.[\d]+)?)")
     _DRIP_STAT = re.compile(
         r"drip: status — refreshed=(\d+) skipped=(\d+)", re.I
+    )
+    _SCAN_STAT = re.compile(
+        r"prewarm: starter scan #(\d+) \(interval=([\d.]+)s, idle=([\d.]+)s\)"
     )
     _UUID      = re.compile(
         r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", re.I
@@ -157,6 +161,15 @@ def _analyze_logs(
                     if m_drip:
                         drip_last_refreshed = int(m_drip.group(1))
                         drip_last_skipped   = int(m_drip.group(2))
+
+                    m_scan = _SCAN_STAT.search(msg)
+                    if m_scan:
+                        scan_events.append({
+                            "ts": ts,
+                            "scan": int(m_scan.group(1)),
+                            "interval_s": float(m_scan.group(2)),
+                            "idle_s": float(m_scan.group(3)),
+                        })
 
                     if m3 := _STARTUP.search(msg):
                         if "start" in low or "===" in msg:
@@ -227,6 +240,10 @@ def _analyze_logs(
             "total_refreshed": drip_last_refreshed,
             "total_skipped":   drip_last_skipped,
             "efficiency_pct":  drip_eff_pct,
+        },
+        "prewarm_scans": {
+            "total": len(scan_events),
+            "recent": scan_events[-20:],
         },
         "startup_events": startup_events,
         "hourly_timeline": timeline,
