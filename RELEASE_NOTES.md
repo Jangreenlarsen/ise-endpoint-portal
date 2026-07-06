@@ -4,6 +4,13 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.27.0732] — 2026-07-06 — fix: Scan-interval reagerer nu hurtigt på aktivitet + synligt i loggen
+
+> **Build:** 0732
+
+- **Scan-intervallet snapper tilbage ved login**: Det aktivitetsstyrede scan-interval (fra 0731) opdaterede sig tidligere først ved næste scan (op til 4 timer) — nu genberegnes det mindst hvert 60. sekund, så du kan se det stige under inaktivitet og falde tilbage til normal kadence inden for et minut efter login. Vises live i Metrics "Adaptiv styring" + historik.
+- **Synligt i loggen**: Hver scan logger nu sit effektive interval og portal-inaktivitet, og den kondenserede log-eksport har en ny `prewarm_scans`-sektion — så scan-kadencen kan verificeres direkte.
+
 ## [6.27.0731] — 2026-07-05 — feat: Endnu færre ISE-kald når portalen er ubrugt + tunable timeouts
 
 > **Build:** 0731

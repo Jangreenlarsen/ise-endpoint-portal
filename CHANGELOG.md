@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.27.0732] — 2026-07-06 — fix: Scan-interval responsivt + synligt i log (opfølgning på 0731)
+
+Log-analyse af 6.27.0731 bekræftede stabilitet (0 CB-opens, fejl-rate ~0,5/t efter deploy) men afslørede at scan-intervallet opdaterede sig dovent (én gang pr. scan-cyklus, op til 4t) og derfor ikke var synligt/responsivt i metrics.
+
+- **`cache_prewarm.py`** (`_list_scan_loop`): Poller nu i ≤60s-bidder med due-time-tracking (`last_scan + eff_iv`) i stedet for at sove i ét langt interval. `scan_interval_effective_s` (og dermed Prometheus-gaugen + metrics-visningen) opdateres nu mindst hvert 60. sekund, og et login snapper scan-intervallet tilbage mod base inden for 60s — konsistent med den aktivitetsstyrede TTL. Manuel rescan (Refresh-knap) virker uændret.
+- **`cache_prewarm.py`** (`_full_scan`): Scan-start-loggen beriget med effektivt interval + idle: `prewarm: starter scan #N (interval=Xs, idle=Ys)` — gør den aktivitetsstyrede scan-adfærd direkte synlig i app.log.
+- **`api/logs.py`**: Ny `prewarm_scans`-sektion i den kondenserede log-eksport (total + seneste 20 scans med interval_s/idle_s) — så scan-kadencen kan verificeres direkte fra eksporten (som `drip_refresh` og `circuit_breaker`).
+
 ## [6.27.0731] — 2026-07-05 — feat: Aktivitetsstyret scan-interval + tunable ISE-/pxGrid-timeouts
 
 Opfølgning på log-analyse af v6.26.0730 (ISE-fejlrate faldet ~30×, 0 circuit-breaker-opens på 21t). Adresserer de sidste residuale `endpointgroup`-timeouts + pxGrid idle-warnings. Se FEATURES.md 6.27.0731.
