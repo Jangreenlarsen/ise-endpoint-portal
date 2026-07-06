@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from typing import Any
 
 from app.core.custom_attr_store import PSK_MODE_ATTR
@@ -21,6 +22,28 @@ from app.schemas.policy import (
 )
 
 logger = logging.getLogger(__name__)
+
+# ── Policy-cache (SWR) ────────────────────────────────────────────────────────
+# Policy sets + authz-regler ændres sjældent men hentes ellers friskt ved hver
+# simulering (og i Auto-mode pr. policy set). En kort TTL-cache gør gentagne
+# simuleringer næsten øjeblikkelige. Invalideres ved regel-mutationer.
+_POLICY_CACHE_TTL = 300.0
+_sets_cache: tuple[float, Any] | None = None          # (ts, rå policy sets)
+_ps_cache: dict[str, tuple[float, Any]] = {}          # policy_set_id -> (ts, ps)
+_rules_cache: dict[str, tuple[float, Any]] = {}       # policy_set_id -> (ts, rules)
+
+
+def invalidate_policy_cache(policy_set_id: str | None = None) -> None:
+    """Ryd policy-cachen (kaldes ved regel-create/update/delete)."""
+    global _sets_cache
+    _sets_cache = None
+    if policy_set_id is None:
+        _ps_cache.clear()
+        _rules_cache.clear()
+    else:
+        _ps_cache.pop(policy_set_id, None)
+        _rules_cache.pop(policy_set_id, None)
+
 
 # ISE Open API operator aliases (ISE uses lowercase)
 _OP_LABEL = {
@@ -340,15 +363,43 @@ class PolicyService:
     def __init__(self, client) -> None:
         self._client = client
 
-    async def list_policy_sets(self) -> list[PolicySetSummary]:
+    # ── Cachede ISE-læsninger (SWR, se _POLICY_CACHE_TTL) ──────────────────
+    async def _cached_policy_sets(self) -> Any:
+        global _sets_cache
+        now = time.time()
+        if _sets_cache and now - _sets_cache[0] <= _POLICY_CACHE_TTL:
+            return _sets_cache[1]
         sets = await policy_api.list_policy_sets(self._client)
+        _sets_cache = (now, sets)
+        return sets
+
+    async def _cached_policy_set(self, policy_set_id: str) -> Any:
+        now = time.time()
+        hit = _ps_cache.get(policy_set_id)
+        if hit and now - hit[0] <= _POLICY_CACHE_TTL:
+            return hit[1]
+        ps = await policy_api.get_policy_set(self._client, policy_set_id)
+        _ps_cache[policy_set_id] = (now, ps)
+        return ps
+
+    async def _cached_rules(self, policy_set_id: str) -> Any:
+        now = time.time()
+        hit = _rules_cache.get(policy_set_id)
+        if hit and now - hit[0] <= _POLICY_CACHE_TTL:
+            return hit[1]
+        rules = await policy_api.list_authorization_rules(self._client, policy_set_id)
+        _rules_cache[policy_set_id] = (now, rules)
+        return rules
+
+    async def list_policy_sets(self) -> list[PolicySetSummary]:
+        sets = await self._cached_policy_sets()
         return sorted(
             [_ps_summary(ps) for ps in sets], key=lambda s: s.rank
         )
 
     async def get_policy_set_detail(self, policy_set_id: str) -> PolicySetDetail:
-        ps = await policy_api.get_policy_set(self._client, policy_set_id)
-        rules = await policy_api.list_authorization_rules(self._client, policy_set_id)
+        ps = await self._cached_policy_set(policy_set_id)
+        rules = await self._cached_rules(policy_set_id)
         summary = _ps_summary(ps)
         return PolicySetDetail(
             **summary.model_dump(),
@@ -356,7 +407,7 @@ class PolicyService:
         )
 
     async def list_authorization_rules(self, policy_set_id: str) -> list[AuthzRuleDetail]:
-        rules = await policy_api.list_authorization_rules(self._client, policy_set_id)
+        rules = await self._cached_rules(policy_set_id)
         return [_rule_detail(r) for r in rules]
 
     async def create_rule(
@@ -371,6 +422,7 @@ class PolicyService:
         rule = await policy_api.create_authorization_rule(
             self._client, policy_set_id, name, rank, condition, profiles, state
         )
+        invalidate_policy_cache(policy_set_id)
         logger.info("Created authz rule '%s' in policy set %s", name, policy_set_id)
         return _rule_detail(rule)
 
@@ -387,11 +439,13 @@ class PolicyService:
         rule = await policy_api.update_authorization_rule(
             self._client, policy_set_id, rule_id, name, rank, condition, profiles, state
         )
+        invalidate_policy_cache(policy_set_id)
         logger.info("Updated authz rule %s in policy set %s", rule_id, policy_set_id)
         return _rule_detail(rule)
 
     async def delete_rule(self, policy_set_id: str, rule_id: str) -> None:
         await policy_api.delete_authorization_rule(self._client, policy_set_id, rule_id)
+        invalidate_policy_cache(policy_set_id)
 
     async def _fetch_ep_from_ise(self, endpoint_id: str) -> dict:
         """Fetch live endpoint attributes from ISE ERS and return an ep dict."""
@@ -443,6 +497,46 @@ class PolicyService:
             "hypervision_roles":  ca.get("HypervisionRoles", ""),
         }
 
+    async def match_all(self, ep: dict) -> PolicyMatchResult:
+        """Simulér mod ALLE policy sets i rank-rækkefølge; returnér første match.
+
+        Henter endpointet fra ISE ÉN gang (frem for pr. policy set, som frontend-
+        loopet tidligere gjorde) og genbruger den cachede policy-data — så en Auto-
+        simulering går fra N × (endpoint-GET + regel-fetch) til ét endpoint-GET +
+        cachede regler.
+        """
+        radius_attrs: dict[str, str] = ep.get("radius_attrs") or {}
+        endpoint_id = ep.get("endpoint_id", "")
+        if endpoint_id:
+            try:
+                ep = await self._fetch_ep_from_ise(endpoint_id)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("simulate-auto: kunne ikke hente ep %s fra ISE: %s", endpoint_id, exc)
+        # ep har nu INGEN endpoint_id → match_endpoint re-fetcher ikke pr. set.
+        ep = {**ep, "radius_attrs": radius_attrs}
+
+        sets = await self._cached_policy_sets()
+        ordered = sorted(
+            [s for s in sets if isinstance(s, dict) and s.get("id")],
+            key=lambda s: s.get("rank", 0),
+        )
+        needed: set[str] = set()
+        last: PolicyMatchResult | None = None
+        for s in ordered:
+            result = await self.match_endpoint(s["id"], ep)
+            last = result
+            needed |= set(result.radius_attrs_needed or [])
+            if not result.no_rules and result.matched_rule_id:
+                return result.model_copy(update={"radius_attrs_needed": sorted(needed)})
+        # Intet match i noget policy set.
+        base = last or PolicyMatchResult(policy_set_id="", policy_set_name="")
+        return base.model_copy(update={
+            "matched_rule_id": None,
+            "matched_rule_name": None,
+            "no_rules": False,
+            "radius_attrs_needed": sorted(needed),
+        })
+
     async def match_endpoint(self, policy_set_id: str, ep: dict) -> PolicyMatchResult:
         """Simulate which authorization rule first matches the given endpoint dict."""
         # Preserve user-supplied RADIUS values before potentially overwriting ep
@@ -461,8 +555,8 @@ class PolicyService:
         # Inject RADIUS values (user-provided) so _get_ep_value can evaluate them
         ep = {**ep, "radius_attrs": radius_attrs}
 
-        ps = await policy_api.get_policy_set(self._client, policy_set_id)
-        rules = await policy_api.list_authorization_rules(self._client, policy_set_id)
+        ps = await self._cached_policy_set(policy_set_id)
+        rules = await self._cached_rules(policy_set_id)
 
         ps_name = ps.get("name", policy_set_id) if isinstance(ps, dict) else policy_set_id
 

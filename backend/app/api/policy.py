@@ -177,6 +177,26 @@ async def match_endpoint(
         raise _502(exc) from exc
 
 
+@router.post(
+    "/simulate-auto",
+    response_model=PolicyMatchResult,
+    dependencies=[Depends(require_any)],
+)
+async def simulate_auto(
+    ep: EndpointMatchRequest,
+    svc: PolicyService = Depends(get_policy_service),
+) -> PolicyMatchResult:
+    """Simulér mod ALLE policy sets i rank-rækkefølge; returnér første match.
+
+    Henter endpointet fra ISE én gang (frem for pr. set) og bruger cachede
+    policy-regler — meget hurtigere end at loope match-kald pr. policy set.
+    """
+    try:
+        return await svc.match_all(ep.model_dump(exclude_none=True))
+    except IseApiError as exc:
+        raise _502(exc) from exc
+
+
 # ── Batch policy-simulering ──────────────────────────────────────────────────
 
 
