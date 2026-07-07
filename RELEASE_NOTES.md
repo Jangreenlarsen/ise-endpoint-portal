@@ -4,6 +4,26 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.32.0741] — 2026-07-07 — feat: Automatiske frontend-smoke-tests
+
+> **Build:** 0741
+
+- **Sikkerhedsnet for brugerfladen**: Portalen har nu automatiserede browser-tests (Playwright) der åbner login-siden, den indloggede visning, Settings og Policy og tjekker at de renderer korrekt — med et simuleret backend-API, så de kan køre uden ISE. Det fanger fejl i brugerfladen tidligt, før de rammer produktion. Rent udvikler-/kvalitetsværktøj; ingen ændring i selve portalen. Køres fra `frontend-tests/` med `npm install && npm run install-browser && npm test`.
+
+## [6.31.0740] — 2026-07-07 — feat: Aflast din Primary ISE-node med en separat læse-host
+
+> **Build:** 0740
+
+- **Send læse-trafik til en Secondary PAN**: Portalens tunge baggrunds-læsning (endpoint-listen, grupper, policy-opslag) kan nu pege på en separat ISE-node — typisk en Secondary PAN (read-replika) — så din Primary PAN aflastes. Skrivning (opret/redigér/slet) går altid til Primary. Feltet "ISE læse-host" findes under **Settings → ISE-forbindelse**; lad det være tomt for uændret adfærd (alt mod én node).
+- **Automatisk failover**: Bliver læse-hosten utilgængelig, falder portalen automatisk tilbage til Primary — brugeren mærker ingenting. Hver node har sin egen "circuit breaker", så et Secondary-nedbrud aldrig blokerer skrivning.
+- Under motorhjelmen er TLS-verifikationen også moderniseret (fjerner en biblioteks-advarsel). Rent internt; ingen synlig ændring.
+
+## [6.30.0739] — 2026-07-07 — fix: Robusthed — fejlet baggrunds-audit tabes ikke længere tavst
+
+> **Build:** 0739
+
+- **Audit-hændelser går ikke tabt uden spor**: Når du redigerer et endpoint, skrives audit-loggen i baggrunden (så svaret er hurtigt). Fejlede den skrivning før — fx hvis audit-databasen var midlertidigt utilgængelig — forsvandt hændelsen uden en note i loggen. Nu logges enhver sådan fejl som en advarsel i systemloggen, så den kan opdages. Rent robusthedsfix; ingen synlig ændring i normal drift.
+
 ## [6.30.0738] — 2026-07-06 — feat: Betingelser vises nu struktureret — også når du bare kigger
 
 > **Build:** 0738

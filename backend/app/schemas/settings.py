@@ -14,6 +14,7 @@ class BackendSettingsUpdate(BaseModel):
     """
 
     ise_base_url: str
+    ise_read_base_url: str = ""
     ise_username: str
     ise_password: str = ""
     ise_verify_tls: bool = False
@@ -66,6 +67,7 @@ class BackendSettingsResponse(BaseModel):
     """Response for GET /api/settings/backend — password is masked."""
 
     ise_base_url: str
+    ise_read_base_url: str = ""
     ise_username: str
     ise_password_set: bool = Field(..., description="true if a password is stored")
     ise_verify_tls: bool

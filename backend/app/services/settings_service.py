@@ -43,6 +43,7 @@ def get_backend_settings() -> BackendSettingsResponse:
     s = config.settings
     return BackendSettingsResponse(
         ise_base_url=s.ise_base_url,
+        ise_read_base_url=getattr(s, "ise_read_base_url", ""),
         ise_username=s.ise_username,
         ise_password_set=bool(s.ise_password),
         ise_verify_tls=s.ise_verify_tls,
@@ -99,6 +100,7 @@ async def update_backend_settings(
     overrides.update(
         {
             "ise_base_url": new.ise_base_url,
+            "ise_read_base_url": new.ise_read_base_url,
             "ise_username": new.ise_username,
             "ise_verify_tls": new.ise_verify_tls,
             "ise_timeout": new.ise_timeout,

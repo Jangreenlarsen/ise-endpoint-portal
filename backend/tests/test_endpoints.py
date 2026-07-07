@@ -7,6 +7,7 @@ delete 404. Ingen ISE-netværkskald — repository-metoder og cache mockes.
 from __future__ import annotations
 
 import asyncio
+import logging
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -316,6 +317,44 @@ async def test_update_endpoint_calls_ensure_ca_definitions():
         await svc.update_endpoint("ep-ca", EndpointUpdate(description="test"))
 
     svc._ensure_ca_definitions.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_update_endpoint_audit_failure_is_logged_not_swallowed(caplog):
+    """Fejler baggrunds-audit-skrivningen, logges den som WARNING — aldrig tavst tab.
+
+    Regressionsvagt for fire-and-forget-tasken i update_endpoint: ingen awaiter
+    dens exceptions, så kroppen skal wrappes og logge selv.
+    """
+    svc = make_service()
+    svc.endpoints.update = AsyncMock()
+    svc.get_endpoint = AsyncMock(return_value=make_detail("ep-aud"))
+    mock_cache = _mock_cache()
+
+    real_create = asyncio.create_task
+    created: list[asyncio.Task] = []
+
+    def _capture(coro, **kw):
+        task = real_create(coro, **kw)
+        created.append(task)
+        return task
+
+    with (
+        patch("app.services.endpoint_service.audit_store") as mock_audit,
+        patch("app.services.endpoint_service.get_cache", return_value=mock_cache),
+        patch("asyncio.create_task", side_effect=_capture),
+    ):
+        mock_audit.record = AsyncMock(side_effect=RuntimeError("audit-store nede"))
+        caplog.set_level(logging.WARNING, logger="app.services.endpoint_service")
+        # update_endpoint må IKKE fejle selvom baggrunds-auditen gør
+        await svc.update_endpoint("ep-aud", EndpointUpdate(description="x"))
+        # lad baggrunds-tasken køre færdig (inde i patch-konteksten)
+        await asyncio.gather(*created, return_exceptions=True)
+
+    svc.endpoints.update.assert_awaited_once()
+    assert any(
+        "audit-after-update fejlede" in r.message for r in caplog.records
+    ), [r.message for r in caplog.records]
 
 
 # ------------------------------------------------------------------ #

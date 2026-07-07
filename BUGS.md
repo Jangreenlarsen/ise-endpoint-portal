@@ -13,6 +13,13 @@ Kendte post-mortems:
 - [BUGREPORT-ise-endpointgroup-storm.md](BUGREPORT-ise-endpointgroup-storm.md) — ISE `/ers/config/endpointgroup` ReadTimeout-storm + CB-cykling (grundårsag: N+1 gruppe-fetch i drip-loop). Fixed 6.21.0721.
 - [BUGREPORT-browse-502-groups-cold-cache.md](BUGREPORT-browse-502-groups-cold-cache.md) — Browse `502` + tom tabel når `/groups` timer ud (grundårsag: ikke-kritisk group-kald vælter `Promise.all` + grupper har ingen disk-cache). Frontend fixed 6.21.0722; groups disk-persistens fixed 6.21.0723.
 
+## [FIXED 6.30.0739] 2026-07-07 — Fejlet baggrunds-audit ved endpoint-update sluges tavst
+
+- **Symptom:** Fundet i portal-audit (ikke felt-rapporteret). `update_endpoint` skriver audit-hændelsen fire-and-forget via `asyncio.create_task(_audit_after())` for at spare et ISE-kald på hot path. `await audit_store.record(...)` lå **uden for** try/except — fejlede audit-store-skrivningen (fx disk-fejl), boblede exceptionen op i en task ingen awaiter → tabt audit-spor **uden log**. Testsuiten viste symptomet som `RuntimeWarning: coroutine '_audit_after' was never awaited`.
+- **Root cause:** Fire-and-forget-tasks har ingen awaiter til at fange exceptions; kroppen skal selv wrappe og logge. Kun `after`-snapshot-fetchen var beskyttet, ikke selve `record`-kaldet.
+- **Løsning (v6.30.0739):** Hele `_audit_after`-kroppen wrappet i `try/except Exception` → `logger.warning("audit-after-update fejlede for %s: %s", ...)`. Success-stien uændret. Ny regressions-test `test_update_endpoint_audit_failure_is_logged_not_swallowed` lader baggrunds-tasken køre og asserter at warningen logges + at `update_endpoint` ikke fejler.
+- **Berørte filer:** `backend/app/services/endpoint_service.py`, `backend/tests/test_endpoints.py`
+
 ## [FIXED 6.28.0735] 2026-07-06 — Policy-simulering (edit-endpoint) meget langsom: N+1 gruppe-storm pr. policy set
 
 - **Symptom:** Ved edit af et endpoint og "Simulér… (MAC auth)" gik der meget lang tid inden resultatet kom op — særligt i Auto-mode ("test alle policy sets").

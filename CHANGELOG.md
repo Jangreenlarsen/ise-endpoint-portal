@@ -3,6 +3,33 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.32.0741] — 2026-07-07 — feat: Playwright frontend smoke-tests (mocket backend)
+
+Tiltag C af 3 fra portal-audit. Lukker frontend-hullet (ingen automatiserede UI-tests) med et startniveau af e2e-smoke.
+
+- **`frontend-tests/` (ny)**: Playwright + Chromium. SPA'en serveres statisk (`python -m http.server` mod `../frontend` via `webServer`); alle `/api/**`-kald mockes → ingen live backend/ISE.
+- **`fixtures.ts`**: `seedAdminSession()` (logget-ind localStorage-state) + `installApiMock(page, custom)` (path→JSON-map med boot-defaults; ukendte stier → tomt `{}` 200).
+- **4 smoke-specs**: login-form (uautentificeret), autentificeret shell (sidebar + bruger-badge) uden crash, Settings → ISE-forbindelse har `#base_url` + nyt `#read_base_url` (validerer 6.31.0740 i browser), policy-view uden crash.
+- **Kør**: `cd frontend-tests && npm install && npm run install-browser && npm test`. Rod-`.gitignore` udvidet med Playwright-artefakter. Alle 4 grønne.
+
+## [6.31.0740] — 2026-07-07 — feat: Læs/skriv-node-split mod ISE (Secondary PAN read-offload) + TLS-context
+
+Tiltag B af 3 fra portal-audit. Aflaster Primary PAN ved at sende læse-trafik til en valgfri Secondary PAN.
+
+- **`core/config.py`**: Nyt `ise_read_base_url` (default tom). Sat (≠ base) ⇒ GET routes til read-hosten; skriv altid til `ise_base_url`.
+- **`core/tls.py` (ny)**: `build_httpx_verify(ca_bundle, verify_tls)` returnerer `ssl.SSLContext` (bundle sat) eller bool — fjerner httpx `verify=<str>`-deprecation. Samme mønster som pxGrid allerede bruger.
+- **`ise/client.py`**: To httpx-klienter (write→Primary, read→Secondary) + **separat circuit breaker pr. host**. `request()` routes GET→read når split aktiv, wrapper `_request_on(client, cb, label, …)` og **auto-fallback** til Primary ved transport-fejl/CB-open på read (status 0/503); autoritative HTTP-svar (401/4xx/5xx) bobler op uden fallback. `ping()` prober Primary. `close()` lukker begge. `CIRCUIT_STATE`-gauge afspejler fortsat Primary-CB. Tom read-url ⇒ delt klient-objekt (uændret adfærd).
+- **`schemas/settings.py` + `services/settings_service.py`**: `ise_read_base_url` i update/response + persist. Klient-genopbygges via eksisterende `close_ise_client()` ved save.
+- **Frontend**: Nyt "ISE læse-host"-felt i Settings → ISE-forbindelse (`settings.js` + `section-backend.js`), båret med i cache-gem (`section-cache.js`), i18n da+en.
+- **Tests**: Ny `test_read_write_split.py` (11 tests): routing, auto-fallback (transport + CB-open), ingen fallback ved 404, split-inaktiv når read-url tom/=base.
+
+## [6.30.0739] — 2026-07-07 — fix: Fejlet baggrunds-audit ved endpoint-update logges nu (blev sluget tavst)
+
+Fra portal-audit (tiltag A af 3). `update_endpoint` sender audit fire-and-forget via `asyncio.create_task(_audit_after())`; `await audit_store.record(...)` lå uden for try/except → en fejlet audit-skrivning boblede op i en task uden awaiter og blev tabt uden log.
+
+- **`endpoint_service.py`**: Hele `_audit_after`-kroppen wrappet i `try/except Exception` → `logger.warning(...)`. Success-sti uændret.
+- **`test_endpoints.py`**: Ny regressions-test `test_update_endpoint_audit_failure_is_logged_not_swallowed` (lader baggrunds-tasken køre, asserter warning + at update ikke fejler). Suite: 213 tests.
+
 ## [6.30.0738] — 2026-07-06 — feat: Policy detalje-visning — struktureret + farvekodet betingelses-træ
 
 Rapporteret (opfølgning på 0737): edit-tilstanden ser nu fin ud, men read-only-visningen afspejlede politikken "kun som tekst" — den var ikke sat op på samme visuelle måde som editoren.
