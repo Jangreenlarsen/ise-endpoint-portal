@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.30.0739] — 2026-07-07 — fix: Fejlet baggrunds-audit ved endpoint-update logges nu (blev sluget tavst)
+
+Fra portal-audit (tiltag A af 3). `update_endpoint` sender audit fire-and-forget via `asyncio.create_task(_audit_after())`; `await audit_store.record(...)` lå uden for try/except → en fejlet audit-skrivning boblede op i en task uden awaiter og blev tabt uden log.
+
+- **`endpoint_service.py`**: Hele `_audit_after`-kroppen wrappet i `try/except Exception` → `logger.warning(...)`. Success-sti uændret.
+- **`test_endpoints.py`**: Ny regressions-test `test_update_endpoint_audit_failure_is_logged_not_swallowed` (lader baggrunds-tasken køre, asserter warning + at update ikke fejler). Suite: 213 tests.
+
 ## [6.30.0738] — 2026-07-06 — feat: Policy detalje-visning — struktureret + farvekodet betingelses-træ
 
 Rapporteret (opfølgning på 0737): edit-tilstanden ser nu fin ud, men read-only-visningen afspejlede politikken "kun som tekst" — den var ikke sat op på samme visuelle måde som editoren.

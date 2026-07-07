@@ -897,12 +897,17 @@ class EndpointService:
         _svc = self
 
         async def _audit_after() -> None:
-            after: dict[str, Any] | None = None
+            # Fire-and-forget task: ingen awaiter fanger exceptions herfra, så
+            # ALT skal wrappes — ellers tabes en fejlet audit-skrivning tavst.
             try:
-                after = (await _svc.get_endpoint(_ep_id, is_psk_editor=True)).model_dump()
-            except IseApiError:
-                pass
-            await audit_store.record("updated", "endpoint", _ep_id, before=_before, after=after)
+                after: dict[str, Any] | None = None
+                try:
+                    after = (await _svc.get_endpoint(_ep_id, is_psk_editor=True)).model_dump()
+                except IseApiError:
+                    pass
+                await audit_store.record("updated", "endpoint", _ep_id, before=_before, after=after)
+            except Exception as exc:  # noqa: BLE001 — baggrundstask: log, sluk aldrig tavst
+                logger.warning("audit-after-update fejlede for %s: %s", _ep_id, exc)
 
         asyncio.create_task(_audit_after(), name=f"audit-after-update-{endpoint_id[:8]}")
 

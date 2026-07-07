@@ -4,6 +4,12 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.30.0739] — 2026-07-07 — fix: Robusthed — fejlet baggrunds-audit tabes ikke længere tavst
+
+> **Build:** 0739
+
+- **Audit-hændelser går ikke tabt uden spor**: Når du redigerer et endpoint, skrives audit-loggen i baggrunden (så svaret er hurtigt). Fejlede den skrivning før — fx hvis audit-databasen var midlertidigt utilgængelig — forsvandt hændelsen uden en note i loggen. Nu logges enhver sådan fejl som en advarsel i systemloggen, så den kan opdages. Rent robusthedsfix; ingen synlig ændring i normal drift.
+
 ## [6.30.0738] — 2026-07-06 — feat: Betingelser vises nu struktureret — også når du bare kigger
 
 > **Build:** 0738
