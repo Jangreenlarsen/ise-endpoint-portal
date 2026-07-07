@@ -173,3 +173,55 @@ def get_many(macs: list[str]) -> dict[str, float]:
         return {row[0]: row[1] for row in rows}
     finally:
         con.close()
+
+
+def export_rows() -> list[dict]:
+    """Alle poster som JSON-serialiserbare dicts — til config-backup."""
+    init_db()
+    con = sqlite3.connect(DB_PATH)
+    try:
+        rows = con.execute(
+            "SELECT mac, first_seen_at, endpoint_id, deleted_at FROM first_seen"
+        ).fetchall()
+        return [
+            {"mac": r[0], "first_seen_at": r[1], "endpoint_id": r[2], "deleted_at": r[3]}
+            for r in rows
+        ]
+    finally:
+        con.close()
+
+
+def import_rows(rows: list[dict], replace: bool = True) -> int:
+    """Genindlæs poster fra en backup. replace=True rydder tabellen først.
+    Returnerer antal importerede rækker."""
+    init_db()
+    imported = 0
+    con = sqlite3.connect(DB_PATH)
+    try:
+        if replace:
+            con.execute("DELETE FROM first_seen")
+        for row in rows or []:
+            mac = ((row or {}).get("mac") or "").upper().strip()
+            if not mac:
+                continue
+            con.execute(
+                """
+                INSERT INTO first_seen (mac, first_seen_at, endpoint_id, deleted_at)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(mac) DO UPDATE SET
+                    first_seen_at = excluded.first_seen_at,
+                    endpoint_id   = excluded.endpoint_id,
+                    deleted_at    = excluded.deleted_at
+                """,
+                (
+                    mac,
+                    row.get("first_seen_at") or time.time(),
+                    row.get("endpoint_id", ""),
+                    row.get("deleted_at"),
+                ),
+            )
+            imported += 1
+        con.commit()
+        return imported
+    finally:
+        con.close()

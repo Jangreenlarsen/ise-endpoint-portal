@@ -3,6 +3,17 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.33.0742] — 2026-07-07 — feat: Krypteret fuld backup (passphrase) + lukning af backup-huller
+
+Tillæg til config-backup fra backup-audit: en passphrase-krypteret backup der bevarer integritet og inkluderer hemmelighederne, plus lukning af de identificerede huller.
+
+- **`core/backup_crypto.py` (ny)**: `encrypt_obj`/`decrypt_obj` med PBKDF2-HMAC-SHA256 (200k) → Fernet (AES-128-CBC + HMAC). Autentificeret → forkert passphrase eller manipuleret fil afvises (`BackupCryptoError`).
+- **`api/config_backup.py`**: Backup-format bumpet til **version 2**. Ny `POST /config/backup {passphrase}` → krypteret fuld backup (inkl. `ise_password`/`pxgrid_password`/`tacacs_secret`, cert-filer og `auth_secret.key`). `GET /config/backup` = plain/redigeret (bagudkompatibel). Begge inkluderer nu **`guest_expiry.db`** (gæste-udløb — tidligere tavst tab) + **`first_seen.db`**. Restore accepterer `{backup, passphrase}`, læser stadig version 1 (legacy), og skriver kun cert-filer **inden for `backend/`** (path-traversal-værn). Testbare `build_backup_payload`/`apply_restore`.
+- **`guest_expiry_store.py` + `first_seen_store.py`**: nye `export_rows()`/`import_rows()`.
+- **Frontend** (`settings.js` + `section-backup.js`): valgfrit passphrase-felt i backup + restore; rettet misvisende UI-tekst (plain-backup indeholder ikke credentials).
+- **Docs** (`05-DRIFT.md`): ny sektion om portal-backup + tilføjet `guest_expiry.db` til filsystem-backup-tabellen (manglede).
+- **Tests**: `test_backup_crypto.py` (6) + `test_config_backup.py` (9) — round-trip, secrets/certs/auth_secret, path-traversal-værn, legacy v1, forkert passphrase.
+
 ## [6.32.0741] — 2026-07-07 — feat: Playwright frontend smoke-tests (mocket backend)
 
 Tiltag C af 3 fra portal-audit. Lukker frontend-hullet (ingen automatiserede UI-tests) med et startniveau af e2e-smoke.
