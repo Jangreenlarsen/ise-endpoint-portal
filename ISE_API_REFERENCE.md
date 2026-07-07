@@ -18,6 +18,15 @@ Officielle docs: `https://<ise>/api/swagger-ui/index.html` (Open API) og `https:
 
 Siden ISE 3.1 router **API gateway** alle tre API-typer (ERS, Open API, MnT) over port 443.
 
+### Node-routing i portalen (læs/skriv-split, v6.31.0740)
+
+ERS + Open API (config-REST) serveres af **Admin-personaen** — der findes ingen "REST-only"-node. Men en Secondary PAN har en fuld read-replika af config-DB'en, så **GET** kan serveres derfra:
+
+- `ise_base_url` (Primary PAN) — autoritativ. **Al skrivning** (POST/PUT/DELETE) går hertil.
+- `ise_read_base_url` (valgfri, Secondary PAN) — når sat routes **GET** hertil for at aflaste Primary. Fejler/CB-open'er den, **auto-fallback** til Primary.
+- Routing er ren HTTP-metode: GET → read-host, alt andet → Primary. (POST-baserede "læse"-kald, hvis nogen, går derfor til Primary — altid sikkert.)
+- pxGrid (`pxgrid_psn_fqdn`) og MnT/CoA (`coa_psn_name`) har allerede egne node-targets.
+
 ---
 
 ## ERS — Endpoint resources

@@ -247,6 +247,7 @@ export async function initCacheSection(container) {
     }
     const payload = {
       ise_base_url:              current.ise_base_url,
+      ise_read_base_url:         current.ise_read_base_url,
       ise_username:              current.ise_username,
       ise_password:              "",
       ise_verify_tls:            current.ise_verify_tls,

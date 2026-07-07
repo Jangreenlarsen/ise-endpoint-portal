@@ -296,6 +296,7 @@ Admin-brugeren valideres altid lokalt — også når TACACS+ er aktiveret.
 Under **Settings → ISE-forbindelsesindstillinger**:
 
 - **ISE Host**: IP-adresse eller hostname for ISE Primary Admin Node (PAN). Brug ikke `https://` — bare hostname.
+- **ISE læse-host** (valgfri): FQDN for en Secondary PAN (read-replika). Sæt den for at aflaste Primary — portalens læse-kald (GET) sendes hertil, mens al skrivning går til Primary. Fejler læse-hosten, falder portalen automatisk tilbage til Primary. Tom = alt mod Primary (uændret adfærd).
 - **ERS Brugernavn / Adgangskode**: den dedikerede ISE service-account.
 - **Timeout**: anbefalet 30 sekunder. Sæt ikke under 10 sekunder i produktionsmiljøer — ISE kan svare langsomt ved stor load.
 - **Open API aktiveret**: slå til hvis du bruger Open API til DACL/custom attribute-administration.

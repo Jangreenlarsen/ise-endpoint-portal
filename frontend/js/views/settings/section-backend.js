@@ -17,6 +17,10 @@ export async function initBackendSection(container) {
   if (apiErsOpt) apiErsOpt.textContent = t("settings.ic_api_ers");
   const apiOpenApiOpt = container.querySelector("#ic-api-openapi-opt");
   if (apiOpenApiOpt) apiOpenApiOpt.textContent = t("settings.ic_api_openapi");
+  const readUrlLbl = container.querySelector("#ic-read-url-lbl");
+  if (readUrlLbl) readUrlLbl.textContent = t("settings.ic_read_url");
+  const readUrlHint = container.querySelector("#ic-read-url-hint");
+  if (readUrlHint) readUrlHint.textContent = t("settings.ic_read_url_hint");
   const verifyTlsLbl = container.querySelector("#ic-verify-tls-lbl");
   if (verifyTlsLbl) verifyTlsLbl.textContent = t("settings.ic_verify_tls");
   const verifyTlsHint = container.querySelector("#ic-verify-tls-hint");
@@ -39,6 +43,7 @@ export async function initBackendSection(container) {
   try {
     const s = await api.getBackendSettings();
     container.querySelector("#base_url").value = s.ise_base_url;
+    container.querySelector("#read_base_url").value = s.ise_read_base_url || "";
     container.querySelector("#username").value = s.ise_username;
     container.querySelector("#api_type").value = s.ise_api_type;
     container.querySelector("#verify_tls").checked = s.ise_verify_tls;
@@ -80,6 +85,7 @@ export async function initBackendSection(container) {
     backendMsg.innerHTML = "";
     const payload = {
       ise_base_url: container.querySelector("#base_url").value.trim(),
+      ise_read_base_url: container.querySelector("#read_base_url").value.trim(),
       ise_username: container.querySelector("#username").value.trim(),
       ise_password: container.querySelector("#password").value,
       ise_verify_tls: container.querySelector("#verify_tls").checked,

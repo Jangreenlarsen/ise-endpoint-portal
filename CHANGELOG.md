@@ -3,6 +3,17 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.31.0740] — 2026-07-07 — feat: Læs/skriv-node-split mod ISE (Secondary PAN read-offload) + TLS-context
+
+Tiltag B af 3 fra portal-audit. Aflaster Primary PAN ved at sende læse-trafik til en valgfri Secondary PAN.
+
+- **`core/config.py`**: Nyt `ise_read_base_url` (default tom). Sat (≠ base) ⇒ GET routes til read-hosten; skriv altid til `ise_base_url`.
+- **`core/tls.py` (ny)**: `build_httpx_verify(ca_bundle, verify_tls)` returnerer `ssl.SSLContext` (bundle sat) eller bool — fjerner httpx `verify=<str>`-deprecation. Samme mønster som pxGrid allerede bruger.
+- **`ise/client.py`**: To httpx-klienter (write→Primary, read→Secondary) + **separat circuit breaker pr. host**. `request()` routes GET→read når split aktiv, wrapper `_request_on(client, cb, label, …)` og **auto-fallback** til Primary ved transport-fejl/CB-open på read (status 0/503); autoritative HTTP-svar (401/4xx/5xx) bobler op uden fallback. `ping()` prober Primary. `close()` lukker begge. `CIRCUIT_STATE`-gauge afspejler fortsat Primary-CB. Tom read-url ⇒ delt klient-objekt (uændret adfærd).
+- **`schemas/settings.py` + `services/settings_service.py`**: `ise_read_base_url` i update/response + persist. Klient-genopbygges via eksisterende `close_ise_client()` ved save.
+- **Frontend**: Nyt "ISE læse-host"-felt i Settings → ISE-forbindelse (`settings.js` + `section-backend.js`), båret med i cache-gem (`section-cache.js`), i18n da+en.
+- **Tests**: Ny `test_read_write_split.py` (11 tests): routing, auto-fallback (transport + CB-open), ingen fallback ved 404, split-inaktiv når read-url tom/=base.
+
 ## [6.30.0739] — 2026-07-07 — fix: Fejlet baggrunds-audit ved endpoint-update logges nu (blev sluget tavst)
 
 Fra portal-audit (tiltag A af 3). `update_endpoint` sender audit fire-and-forget via `asyncio.create_task(_audit_after())`; `await audit_store.record(...)` lå uden for try/except → en fejlet audit-skrivning boblede op i en task uden awaiter og blev tabt uden log.

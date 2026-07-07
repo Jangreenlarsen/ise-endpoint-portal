@@ -58,6 +58,11 @@ export async function renderSettings(container) {
           <input type="url" id="base_url" placeholder="https://ise.example.local" required />
         </div>
         <div class="field">
+          <label for="read_base_url" id="ic-read-url-lbl">ISE læse-host (valgfri — Secondary PAN)</label>
+          <input type="url" id="read_base_url" placeholder="https://ise-secondary.example.local" />
+          <div class="hint" id="ic-read-url-hint"></div>
+        </div>
+        <div class="field">
           <label for="username">Username</label>
           <input type="text" id="username" required autocomplete="off" />
         </div>

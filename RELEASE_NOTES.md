@@ -4,6 +4,14 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.31.0740] — 2026-07-07 — feat: Aflast din Primary ISE-node med en separat læse-host
+
+> **Build:** 0740
+
+- **Send læse-trafik til en Secondary PAN**: Portalens tunge baggrunds-læsning (endpoint-listen, grupper, policy-opslag) kan nu pege på en separat ISE-node — typisk en Secondary PAN (read-replika) — så din Primary PAN aflastes. Skrivning (opret/redigér/slet) går altid til Primary. Feltet "ISE læse-host" findes under **Settings → ISE-forbindelse**; lad det være tomt for uændret adfærd (alt mod én node).
+- **Automatisk failover**: Bliver læse-hosten utilgængelig, falder portalen automatisk tilbage til Primary — brugeren mærker ingenting. Hver node har sin egen "circuit breaker", så et Secondary-nedbrud aldrig blokerer skrivning.
+- Under motorhjelmen er TLS-verifikationen også moderniseret (fjerner en biblioteks-advarsel). Rent internt; ingen synlig ændring.
+
 ## [6.30.0739] — 2026-07-07 — fix: Robusthed — fejlet baggrunds-audit tabes ikke længere tavst
 
 > **Build:** 0739

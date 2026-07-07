@@ -14,6 +14,16 @@ class Settings(BaseSettings):
     )
 
     ise_base_url: str = Field(default="https://ise.example.local")
+    ise_read_base_url: str = Field(
+        default="",
+        description=(
+            "Valgfri separat host til LÆSE-kald (GET) mod ISE — typisk en "
+            "Secondary PAN (read-replika af config-DB'en). Tom = brug "
+            "ise_base_url til alt. Skrive-kald (POST/PUT/DELETE) går ALTID til "
+            "ise_base_url (Primary PAN, autoritativ). Ved læse-fejl/CB-open på "
+            "read-hosten falder klienten automatisk tilbage til Primary."
+        ),
+    )
     ise_username: str = "ers-admin"
     ise_password: str = ""
     ise_verify_tls: bool = True
