@@ -3,6 +3,15 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.32.0741] — 2026-07-07 — feat: Playwright frontend smoke-tests (mocket backend)
+
+Tiltag C af 3 fra portal-audit. Lukker frontend-hullet (ingen automatiserede UI-tests) med et startniveau af e2e-smoke.
+
+- **`frontend-tests/` (ny)**: Playwright + Chromium. SPA'en serveres statisk (`python -m http.server` mod `../frontend` via `webServer`); alle `/api/**`-kald mockes → ingen live backend/ISE.
+- **`fixtures.ts`**: `seedAdminSession()` (logget-ind localStorage-state) + `installApiMock(page, custom)` (path→JSON-map med boot-defaults; ukendte stier → tomt `{}` 200).
+- **4 smoke-specs**: login-form (uautentificeret), autentificeret shell (sidebar + bruger-badge) uden crash, Settings → ISE-forbindelse har `#base_url` + nyt `#read_base_url` (validerer 6.31.0740 i browser), policy-view uden crash.
+- **Kør**: `cd frontend-tests && npm install && npm run install-browser && npm test`. Rod-`.gitignore` udvidet med Playwright-artefakter. Alle 4 grønne.
+
 ## [6.31.0740] — 2026-07-07 — feat: Læs/skriv-node-split mod ISE (Secondary PAN read-offload) + TLS-context
 
 Tiltag B af 3 fra portal-audit. Aflaster Primary PAN ved at sende læse-trafik til en valgfri Secondary PAN.

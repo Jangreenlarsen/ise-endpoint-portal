@@ -4,6 +4,12 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.32.0741] — 2026-07-07 — feat: Automatiske frontend-smoke-tests
+
+> **Build:** 0741
+
+- **Sikkerhedsnet for brugerfladen**: Portalen har nu automatiserede browser-tests (Playwright) der åbner login-siden, den indloggede visning, Settings og Policy og tjekker at de renderer korrekt — med et simuleret backend-API, så de kan køre uden ISE. Det fanger fejl i brugerfladen tidligt, før de rammer produktion. Rent udvikler-/kvalitetsværktøj; ingen ændring i selve portalen. Køres fra `frontend-tests/` med `npm install && npm run install-browser && npm test`.
+
 ## [6.31.0740] — 2026-07-07 — feat: Aflast din Primary ISE-node med en separat læse-host
 
 > **Build:** 0740

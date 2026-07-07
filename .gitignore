@@ -42,3 +42,8 @@ backend/=*
 
 # Lokale ISE-konfigurationsdumps og IP-mapper
 [0-9]*.[0-9]*.[0-9]*.[0-9]*/
+
+# Playwright frontend-tests artefakter (node_modules dækkes af mønstret ovenfor)
+frontend-tests/playwright-report/
+frontend-tests/test-results/
+frontend-tests/.playwright/
