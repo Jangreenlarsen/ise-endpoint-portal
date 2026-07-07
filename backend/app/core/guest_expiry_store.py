@@ -99,3 +99,44 @@ def count() -> int:
     with _connect() as con:
         row = con.execute("SELECT COUNT(*) FROM guest_expiry").fetchone()
         return row[0] if row else 0
+
+
+def export_rows() -> list[dict[str, Any]]:
+    """Alle poster som JSON-serialiserbare dicts — til config-backup."""
+    init_db()
+    with _connect() as con:
+        cur = con.execute(
+            "SELECT endpoint_id, mac, expiry_str, registered_at FROM guest_expiry"
+        )
+        return [
+            {"endpoint_id": r[0], "mac": r[1], "expiry_str": r[2], "registered_at": r[3]}
+            for r in cur.fetchall()
+        ]
+
+
+def import_rows(rows: list[dict[str, Any]], replace: bool = True) -> int:
+    """Genindlæs poster fra en backup. replace=True rydder tabellen først.
+    Returnerer antal importerede rækker."""
+    init_db()
+    imported = 0
+    with _connect() as con:
+        if replace:
+            con.execute("DELETE FROM guest_expiry")
+        for row in rows or []:
+            ep = (row or {}).get("endpoint_id")
+            expiry = (row or {}).get("expiry_str")
+            if not ep or not expiry:
+                continue
+            con.execute(
+                """
+                INSERT INTO guest_expiry (endpoint_id, mac, expiry_str, registered_at)
+                VALUES (?, ?, ?, COALESCE(?, strftime('%Y-%m-%dT%H:%M:%SZ','now')))
+                ON CONFLICT(endpoint_id) DO UPDATE SET
+                    mac = excluded.mac, expiry_str = excluded.expiry_str
+                """,
+                (ep, row.get("mac", ""), expiry, row.get("registered_at")),
+            )
+            imported += 1
+        con.commit()
+    logger.info("guest_expiry: importerede %d poster fra backup (replace=%s)", imported, replace)
+    return imported

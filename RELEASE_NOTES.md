@@ -4,6 +4,14 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.33.0742] — 2026-07-07 — feat: Krypteret backup med passphrase — fuld, selvstændig gendannelse
+
+> **Build:** 0742
+
+- **Backup med passphrase**: Du kan nu tage en **krypteret** backup ved at angive en passphrase under **Settings → Portal-backup**. Modsat den almindelige backup (hvor passwords redigeres ud) indeholder den krypterede backup også ISE-/pxGrid-/TACACS-hemmelighederne, pxGrid-certifikaterne og JWT-nøglen — så en gendannelse er komplet og selvstændig. Filen er beskyttet mod både aflytning og manipulation; en forkert passphrase eller en ændret fil afvises. Opbevar filen og passphrasen sikkert — passphrasen kan ikke gendannes.
+- **Flere ting kommer nu med i backup**: Både almindelig og krypteret backup medtager nu **gæste-udløbs-skemaet** (så planlagte udløb af self-registrerede enheder overlever en gendannelse — det gjorde de ikke før) samt first-seen-historikken til trend/lifecycle.
+- Uden passphrase virker backup præcis som før (bagudkompatibel), og gamle backup-filer kan stadig gendannes.
+
 ## [6.32.0741] — 2026-07-07 — feat: Automatiske frontend-smoke-tests
 
 > **Build:** 0741

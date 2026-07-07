@@ -18,20 +18,29 @@ export function initBackupSection(container) {
 
   if (!backupBtn) return;
 
+  const backupPass  = container.querySelector("#cfg-backup-pass");
+  const restorePass = container.querySelector("#cfg-restore-pass");
+
   backupBtn.addEventListener("click", async () => {
     backupBtn.disabled = true;
     backupBtn.textContent = t("settings.backup_btn_loading");
     msg.innerHTML = "";
+    const pass = backupPass?.value || "";
     try {
-      const res = await authFetch("/config/backup");
+      // Med passphrase: POST → krypteret fuld backup. Uden: GET → plain (redigeret).
+      const res = pass
+        ? await authFetch("/config/backup", { method: "POST", body: JSON.stringify({ passphrase: pass }) })
+        : await authFetch("/config/backup");
       if (!res.ok) throw new Error(`${res.status}`);
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `ise_portal_config_backup_${new Date().toISOString().slice(0, 10)}.json`;
+      const kind = pass ? "encrypted" : "plain";
+      a.download = `ise_portal_config_backup_${kind}_${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       URL.revokeObjectURL(url);
+      if (backupPass) backupPass.value = "";
       msg.innerHTML = `<div class="alert success">${t("settings.backup_success")}</div>`;
     } catch (err) {
       msg.innerHTML = `<div class="alert error">${t("settings.backup_error").replace("{msg}", esc(err.message))}</div>`;
@@ -66,7 +75,7 @@ export function initBackupSection(container) {
 
       const res = await authFetch("/config/restore", {
         method: "POST",
-        body: JSON.stringify(body),
+        body: JSON.stringify({ backup: body, passphrase: restorePass?.value || "" }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -81,6 +90,7 @@ export function initBackupSection(container) {
           ${fileList ? `<ul style="margin:4px 0 0 16px;">${fileList}</ul>` : ""}
         </div>`;
       restoreInput.value = "";
+      if (restorePass) restorePass.value = "";
       restoreBtn.disabled = true;
     } catch (err) {
       msg.innerHTML = `<div class="alert error">${t("settings.restore_error").replace("{msg}", esc(err.message))}</div>`;

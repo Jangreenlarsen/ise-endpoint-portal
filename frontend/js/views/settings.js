@@ -1112,14 +1112,22 @@ export async function renderSettings(container) {
     <div class="card" data-tab="portal-backup">
       <h3>Backup af portalens konfiguration</h3>
       <p class="hint">
-        Backup gemmer alle portalens konfigurationsfiler i ét JSON-dokument.
-        <strong>Filen indeholder credentials (ISE password, JWT-secret)</strong> — opbevar den sikkert.
+        Backup gemmer portalens konfiguration i ét JSON-dokument.
+        <strong>Uden passphrase</strong> redigeres credentials ud (ise_password, pxgrid_password,
+        tacacs_secret) og skal genindtastes efter restore.
+        <strong>Med passphrase</strong> laves en <strong>krypteret</strong> backup der også indeholder
+        credentials, cert-filer og JWT-nøglen — restore bliver selvstændig. Opbevar både filen og
+        passphrasen sikkert; passphrasen kan ikke gendannes.
       </p>
       <div id="cfg-backup-msg"></div>
       <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-start;margin-bottom:1.5rem;">
-        <div>
+        <div style="max-width:420px;">
           <h4 style="margin:0 0 0.4rem;">Download backup</h4>
-          <p class="hint" style="margin:0 0 0.5rem;">Henter aktuelle indstillinger, brugere, skabeloner og mapping.</p>
+          <p class="hint" style="margin:0 0 0.5rem;">Henter indstillinger, brugere, skabeloner, mapping + gæste-udløbs-skema.</p>
+          <div class="field" style="margin-bottom:0.6rem;">
+            <label for="cfg-backup-pass">Passphrase (valgfri — krypterer + inkluderer hemmeligheder)</label>
+            <input type="password" id="cfg-backup-pass" autocomplete="new-password" placeholder="Tom = redigeret plain-backup" />
+          </div>
           <button id="cfg-backup-btn">Download backup</button>
         </div>
       </div>
@@ -1128,10 +1136,12 @@ export async function renderSettings(container) {
       <p class="hint">
         Vælg en backup-fil for at gendanne konfigurationen.
         Eksisterende filer overskrives straks — ingen fortryd.
-        Genstart backend efterfølgende for at ISE-forbindelsesindstillinger træder i kraft.
+        Er backup'en krypteret, skal du angive samme passphrase.
+        Genstart backend efterfølgende for at ISE-forbindelse + JWT-nøgle træder i kraft.
       </p>
       <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
         <input type="file" id="cfg-restore-input" accept=".json" />
+        <input type="password" id="cfg-restore-pass" autocomplete="off" placeholder="Passphrase (hvis krypteret)" style="max-width:260px;" />
         <button id="cfg-restore-btn" disabled class="danger">Gendan backup</button>
       </div>
     </div>

@@ -70,9 +70,21 @@ Ved genstart (disk-cache eksisterer): portalen viser cached data øjeblikkeligt.
 | `backend/pxgrid/` | pxGrid-certifikatfiler | Vigtig — genskabes via CSR-flow men kræver ISE-godkendelse |
 | `backend/cache/first_seen.db` | Første-gang-set tidsstempler per MAC (SQLite) | Anbefalet — datatab sletter historik |
 | `cache/endpoints.json` | Disk-persisteret endpoint-cache | Ikke kritisk — regenereres automatisk |
+| `backend/cache/guest_expiry.db` | Gæste-udløbs-skema (hvornår self-registrerede enheder udløber) | Vigtig — tab standser udløb af gæster |
 | `backend/logs/` | Runtime-logfiler | Anbefalet til audit-trail |
 
-### Backup-procedure
+### Portal-backup (indbygget) — Settings → Portal-backup
+
+Portalen har en indbygget backup/restore (admin-only) der samler konfigurationen i ét JSON-dokument:
+
+- **Uden passphrase** (`GET /config/backup`): konfigurationsfilerne + gæste-udløbs-skema + first-seen-historik. Credentials (`ise_password`, `pxgrid_password`, `tacacs_secret`) **redigeres ud** og skal genindtastes efter restore.
+- **Med passphrase** (`POST /config/backup`, v6.33.0742+): **krypteret** (PBKDF2 → Fernet, giver fortrolighed + integritet). Inkluderer også credentials, cert-filerne (pxGrid + ISE CA-bundle, hvis de ligger under `backend/`) og `auth_secret.key` — restore bliver dermed **selvstændig**. Kræver samme passphrase ved restore; passphrasen kan ikke gendannes.
+
+Restore skriver kun cert-filer inden for `backend/` (path-traversal-værn) og kræver backend-genstart for at ISE-forbindelse + JWT-nøgle træder i kraft.
+
+**Ikke dækket af portal-backup** (tag separat filsystem-backup): `audit.db` (compliance-log), `metrics_history.db` (historik). `cache/endpoints.json` og `lockout.db` er bevidst udeladt (regenereres/transient).
+
+### Backup-procedure (filsystem-niveau)
 
 ```powershell
 # Simpel filkopi til backup-mappe
