@@ -4,6 +4,13 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.34.0746] — 2026-07-10 — fix: En ISE-node der ikke rigtig svarer vises ikke længere som "OK"
+
+> **Build:** 0746
+
+- **Ærlig node-status**: Hvis en ISE-node (typisk en Secondary PAN sat som læse-host) svarer med en redirect eller uden rigtige data, blev den fejlagtigt vist som grøn "OK". Nu markeres den korrekt som **Fejl** — kun et rigtigt ERS-svar (2xx med data) tæller som OK, både i node-panelet, "Test nu" og "Test forbindelse".
+- **Reads virker igen**: Samtidig faldt læse-kald ikke tilbage til Primary når læse-hosten redirectede — så Browse kunne ende tom. Nu falder de automatisk tilbage til Primary, som også dermed vises korrekt som "OK".
+
 ## [6.34.0745] — 2026-07-10 — feat: "Test forbindelse" tester både Primary og læse-host
 
 > **Build:** 0745

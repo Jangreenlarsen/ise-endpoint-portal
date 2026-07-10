@@ -187,11 +187,12 @@ class IseClient:
                     return_response=return_response,
                 )
             except IseApiError as exc:
-                # Kun host-tilgængeligheds-fejl udløser fallback: 0 = transport,
-                # 503 = CB-open. Autoritative ISE-svar (401/4xx/5xx) bobler op.
-                if exc.status_code in (0, 503):
+                # Host-utilgængelighed/-uduelighed udløser fallback: 0 = transport,
+                # 503 = CB-open, 3xx = redirect (Secondary serverer ikke ERS her).
+                # Autoritative svar (401/4xx/5xx) bobler op.
+                if exc.status_code in (0, 503) or 300 <= exc.status_code < 400:
                     logger.warning(
-                        "ISE læse-host utilgængelig (%s) — fallback til Primary for %s %s",
+                        "ISE læse-host utilgængelig/uduelig (%s) — fallback til Primary for %s %s",
                         exc.status_code, method, path,
                     )
                     return await self._request_on(
@@ -295,8 +296,16 @@ class IseClient:
             raise IseApiError(0, f"transport error: {type(exc).__name__}: {exc}") from exc
 
         ISE_REQUEST_DURATION.observe(time.perf_counter() - _t0)
-        # Vi fik et HTTP-svar (uanset status) → noden er nåbar.
-        self._record_node(label, ok=True, latency_ms=round((time.perf_counter() - _t0) * 1000))
+        _elapsed_ms = round((time.perf_counter() - _t0) * 1000)
+        _sc = response.status_code
+        # Node "op/OK" = 2xx (noden serverer faktisk ERS). Alt andet — 3xx (redirect,
+        # typisk en Secondary PAN der peger på Primary), 4xx (fx 401 auth-fejl) og 5xx
+        # — tæller som "ikke OK", så en node der ikke reelt serverer ERS ikke vises grøn.
+        _node_ok = 200 <= _sc < 300
+        self._record_node(
+            label, ok=_node_ok, latency_ms=_elapsed_ms,
+            error=None if _node_ok else f"HTTP {_sc}",
+        )
 
         # Parse error body before branching so it's available in all paths.
         message = response.text
@@ -345,6 +354,28 @@ class IseClient:
                 )
             ISE_REQUESTS.labels(method=method, outcome="4xx").inc()
             raise IseApiError(response.status_code, message, payload)
+
+        if 300 <= response.status_code < 400:
+            # ISE ERS redirecter ikke et gyldigt, autentificeret read. En 3xx betyder
+            # typisk forkert node (Secondary PAN → Primary) eller en login-redirect →
+            # noden serverer IKKE brugbar ERS her. Behandl som fejl så læse-split
+            # falder tilbage til Primary i stedet for at returnere et tomt svar.
+            cb.record_failure()
+            if _is_primary:
+                CIRCUIT_STATE.set(_CB_STATE_MAP.get(cb.state, 0))
+            ISE_REQUESTS.labels(method=method, outcome="3xx").inc()
+            logger.warning(
+                "ISE %s %s [%s] -> %d redirect (Location=%s) — behandles som fejl; "
+                "noden serverer ikke ERS her",
+                method, path, label, response.status_code,
+                response.headers.get("location", "?"),
+            )
+            raise IseApiError(
+                response.status_code,
+                f"HTTP {response.status_code} redirect — noden serverer ikke ERS "
+                "(typisk en Secondary PAN der peger på Primary)",
+                payload,
+            )
 
         # Non-401 response (2xx, other 4xx, 5xx) — mark CB success and reset 401 counter.
         self._last_request_at = time.time()
@@ -470,11 +501,25 @@ class IseClient:
                     params={"size": "1", "page": "1"}, timeout=to,
                 )
                 ms = round((time.perf_counter() - t0) * 1000)
-                ok = r.status_code < 400
-                self._record_node(label, ok=True, latency_ms=ms)  # svar modtaget → nåbar
+                # "OK" kræver 2xx OG gyldig ERS-body — en redirect (3xx) eller et
+                # tomt/forkert 2xx-svar (fx en Secondary PAN der ikke serverer ERS)
+                # skal IKKE rapporteres som OK.
+                is_2xx = 200 <= r.status_code < 300
+                body_ok = False
+                if is_2xx:
+                    try:
+                        body_ok = isinstance(r.json(), dict) and "SearchResult" in r.json()
+                    except Exception:  # noqa: BLE001
+                        body_ok = False
+                ok = is_2xx and body_ok
+                err = (
+                    None if ok
+                    else (f"HTTP {r.status_code}" if not is_2xx else "uventet svar (ikke ERS-data)")
+                )
+                self._record_node(label, ok=ok, latency_ms=ms, error=err)
                 return {
                     "role": label, "host": host, "ok": ok, "status_code": r.status_code,
-                    "latency_ms": ms, "error": None if ok else f"HTTP {r.status_code}",
+                    "latency_ms": ms, "error": err,
                 }
             except Exception as exc:  # noqa: BLE001
                 ms = round((time.perf_counter() - t0) * 1000)

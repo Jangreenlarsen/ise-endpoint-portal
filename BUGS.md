@@ -13,6 +13,18 @@ Kendte post-mortems:
 - [BUGREPORT-ise-endpointgroup-storm.md](BUGREPORT-ise-endpointgroup-storm.md) — ISE `/ers/config/endpointgroup` ReadTimeout-storm + CB-cykling (grundårsag: N+1 gruppe-fetch i drip-loop). Fixed 6.21.0721.
 - [BUGREPORT-browse-502-groups-cold-cache.md](BUGREPORT-browse-502-groups-cold-cache.md) — Browse `502` + tom tabel når `/groups` timer ud (grundårsag: ikke-kritisk group-kald vælter `Promise.all` + grupper har ingen disk-cache). Frontend fixed 6.21.0722; groups disk-persistens fixed 6.21.0723.
 
+## [FIXED 6.34.0746] 2026-07-10 — Node-status viser en redirecting Secondary PAN som "OK" (og reads fejler ikke over)
+
+- **Symptom:** Efter konfiguration af ise3 (Secondary PAN) som læse-host viste "Node-kommunikation"-panelet **ise3 = OK, 3 ms** — selvom vi vidste at ise3's ERS ikke virker (curl mod ise3 gav intet brugbart). Samtidig stod Primary (ise2) som "Unknown / no traffic yet".
+- **Root cause:** En Secondary PAN redirecter typisk ERS-kald (HTTP 302 → Primary) eller svarer hurtigt uden data. To fejl i `IseClient`: (1) `_request_on` registrerede noden som `ok=True` på **ethvert** HTTP-svar ("nåbar"), inkl. 3xx → status viste grøn. (2) En 3xx blev behandlet som **success** (returnerede tomt svar, `data=None`) i stedet for at fejle — så læse-split faldt **ikke** tilbage til Primary, og Primary fik derfor ingen trafik (→ "Unknown"). `probe()` havde samme fejl (`ok = status < 400`).
+- **Løsning (v6.34.0746):**
+  1. `_request_on`: node "op" = **2xx** (ERS serverer) eller **4xx** (nåbar + behandlede requesten, fx 404/401); **3xx og 5xx tæller som fejl**. En 3xx raiser nu `IseApiError(3xx)` + tæller som CB-fejl på noden (i stedet for fake-tomt-success).
+  2. `request()`: læse-split falder nu **også tilbage til Primary ved 3xx** (redirect), ikke kun transport/CB-open → reads virker igen mod Primary, og Primary får trafik (→ vises korrekt "OK").
+  3. `probe()` ("Test nu") kræver nu **2xx + gyldig ERS-body** (`SearchResult`) → en redirect eller et tomt 2xx-svar rapporteres korrekt som fejl.
+  4. `settings_service.test_connection` validerer også ERS-body (2xx uden `SearchResult` → ikke OK).
+- **Effekt:** ise3 vises nu korrekt som **Fejl (HTTP 302)**, reads serveres fra ise2 (Primary vises "OK"), og "Test nu"/"Test forbindelse" afslører en ikke-serverende node.
+- **Berørte filer:** `backend/app/ise/client.py`, `backend/app/services/settings_service.py`, `backend/tests/test_read_write_split.py`
+
 ## [FIXED 6.30.0739] 2026-07-07 — Fejlet baggrunds-audit ved endpoint-update sluges tavst
 
 - **Symptom:** Fundet i portal-audit (ikke felt-rapporteret). `update_endpoint` skriver audit-hændelsen fire-and-forget via `asyncio.create_task(_audit_after())` for at spare et ISE-kald på hot path. `await audit_store.record(...)` lå **uden for** try/except — fejlede audit-store-skrivningen (fx disk-fejl), boblede exceptionen op i en task ingen awaiter → tabt audit-spor **uden log**. Testsuiten viste symptomet som `RuntimeWarning: coroutine '_audit_after' was never awaited`.

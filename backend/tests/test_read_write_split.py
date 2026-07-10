@@ -155,9 +155,12 @@ async def test_node_status_reflects_real_traffic(split_client):
     assert st["read"]["last_latency_ms"] is not None
 
 
+_ERS_BODY = b'{"SearchResult":{"total":1,"resources":[]}}'
+
+
 @pytest.mark.asyncio
 async def test_probe_reports_up_and_down_per_node(split_client):
-    split_client._http.request = AsyncMock(return_value=_resp(200, b'{"ok":1}'))
+    split_client._http.request = AsyncMock(return_value=_resp(200, _ERS_BODY))
     split_client._http_read.request = AsyncMock(side_effect=httpx.ConnectError("boom"))
     res = await split_client.probe()
     by = {n["role"]: n for n in res["nodes"]}
@@ -175,3 +178,34 @@ async def test_probe_flags_http_error_as_not_ok(split_client):
     res = await split_client.probe()
     prim = next(n for n in res["nodes"] if n["role"] == "primary")
     assert prim["ok"] is False and prim["error"] == "HTTP 401"
+
+
+@pytest.mark.asyncio
+async def test_probe_flags_redirect_as_not_ok(split_client):
+    # En Secondary PAN der redirecter (302) må ALDRIG vises som OK.
+    split_client._http.request = AsyncMock(return_value=_resp(302, b""))
+    res = await split_client.probe()
+    prim = next(n for n in res["nodes"] if n["role"] == "primary")
+    assert prim["ok"] is False and prim["error"] == "HTTP 302"
+
+
+@pytest.mark.asyncio
+async def test_probe_flags_empty_2xx_as_not_ok(split_client):
+    # 2xx uden SearchResult (tomt/forkert svar) er ikke rigtig ERS-data → ikke OK.
+    split_client._http.request = AsyncMock(return_value=_resp(200, b'{"foo":1}'))
+    res = await split_client.probe()
+    prim = next(n for n in res["nodes"] if n["role"] == "primary")
+    assert prim["ok"] is False and "ERS-data" in (prim["error"] or "")
+
+
+@pytest.mark.asyncio
+async def test_read_redirect_falls_back_to_primary(split_client):
+    # Kernefixet: en redirecting læse-host (Secondary PAN) skal markeres FEJL og
+    # GET skal falde tilbage til Primary — ikke returnere et tomt svar som "OK".
+    split_client._http_read.request = AsyncMock(return_value=_resp(302, b""))
+    data = await split_client.get("/ers/config/endpoint")
+    assert data == {"which": "primary"}                 # serveret af Primary via fallback
+    split_client._http.request.assert_awaited_once()
+    st = {n["role"]: n for n in split_client.node_status()["nodes"]}
+    assert st["read"]["status"] == "down" and st["read"]["last_error"] == "HTTP 302"
+    assert st["primary"]["status"] == "up"

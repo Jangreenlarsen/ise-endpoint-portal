@@ -3,6 +3,16 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.34.0746] — 2026-07-10 — fix: Redirecting Secondary PAN vises ikke længere som "OK" (+ reads falder tilbage)
+
+Rapporteret: ise3 (Secondary PAN som læse-host) viste "OK, 3 ms" i node-panelet, selvom dens ERS ikke virker, og Primary stod "Unknown".
+
+- **Root cause:** En Secondary PAN redirecter typisk ERS-kald (302 → Primary). `IseClient._request_on` registrerede noden som `ok=True` på ethvert HTTP-svar (inkl. 3xx) OG behandlede en 3xx som success (tomt svar) → status grøn + ingen fallback → Primary fik ingen læse-trafik (→ "Unknown"). `probe()` havde samme fejl (`ok = status < 400`).
+- **`ise/client.py`**: (1) Node "op" = **kun 2xx**; 3xx/4xx/5xx = ikke OK. (2) En **3xx raiser nu** `IseApiError(3xx)` + CB-fejl på noden i stedet for fake-tomt-success. (3) `request()` **falder nu også tilbage til Primary ved 3xx** (redirect), ikke kun transport/CB-open. (4) `probe()` kræver **2xx + gyldig ERS-body** (`SearchResult`).
+- **`services/settings_service.py`**: `test_connection` validerer nu også ERS-body (2xx uden `SearchResult` → ikke OK, med hint om Admin-node/PAN).
+- **Effekt:** ise3 vises korrekt som **Fejl (HTTP 302)**, reads serveres fra Primary (som vises "OK"), og "Test nu"/"Test forbindelse" afslører en ikke-serverende node.
+- **Tests:** +3 i `test_read_write_split.py` (redirect ≠ OK, tomt 2xx ≠ OK, redirect-læse-host → fallback til Primary). Suite: 247 passed.
+
 ## [6.34.0745] — 2026-07-10 — feat: "Test forbindelse" tester nu både Primary og læse-host
 
 Rapporteret: "Test forbindelse" under Backend → Cisco ISE connection skal forholde sig til om der er 1 eller 2 forbindelser konfigureret.
