@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.34.0744] — 2026-07-10 — feat: ISE-kommunikationsstatus også på dashboardet
+
+Follow-up på 0743 — surfacer node-status hvor man kigger først.
+
+- **`dashboard.js`**: Nyt kompakt "ISE-kommunikation"-kort i status-rækken (admin-only, ved siden af System sundhed/status/cache). Genbruger `GET /ise/connection`: farvet dot pr. node (grøn/rød/grå) + host + latency/fejl-årsag, header viser samlet status (Alle noder OK / Problem / Ukendt), link til ISE-forbindelse. Hentes i dashboardets `Promise.all` (kun for admin) og følger den eksisterende 30s auto-refresh.
+- **`i18n.js`**: `dash.ise_*` (da+en). Genbruger `settings.link_role_*`.
+
 ## [6.34.0743] — 2026-07-10 — feat: Live Primary/Secondary ISE-kommunikationsstatus
 
 Synliggør om ERS-forbindelsen til hver ISE-node virker — foranlediget af fejlfinding hvor portalen pegede på en Secondary PAN hvis ERS hang (tom cache uden tydelig årsag).

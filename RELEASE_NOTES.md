@@ -4,6 +4,12 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.34.0744] — 2026-07-10 — feat: ISE-kommunikationsstatus også på dashboardet
+
+> **Build:** 0744
+
+- **Statuskort på dashboardet**: ISE-kommunikationsstatussen vises nu også direkte på dashboardet (for admins) — et lille kort ved siden af System sundhed, der med grøn/rød prik viser om din Primary og (hvis konfigureret) læse-host svarer, med svartid eller fejl-årsag. Så du ser med det samme om ISE-forbindelsen er sund, uden at åbne Settings. Følger dashboardets automatiske opdatering.
+
 ## [6.34.0743] — 2026-07-10 — feat: Se med det samme om ISE-forbindelsen virker (Primary/Secondary)
 
 > **Build:** 0743

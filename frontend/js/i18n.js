@@ -757,6 +757,11 @@ const TRANSLATIONS = {
     // ── Dashboard ─────────────────────────────────────────────────────────────
     "dash.title":                "Dashboard",
     "dash.subtitle":             "Aggregeret portal-overblik — opdateres automatisk hvert 30. sekund",
+    "dash.ise_comm_title":       "ISE-kommunikation",
+    "dash.ise_all_ok":           "Alle noder OK",
+    "dash.ise_problem":          "Problem",
+    "dash.ise_unknown":          "Ukendt",
+    "dash.ise_details":          "ISE-forbindelse",
     "dash.btn_refresh":          "↺ Opdatér",
     "dash.loading":              "Henter dashboard…",
     "dash.updated":              "Opdateret ",
@@ -2322,6 +2327,11 @@ const TRANSLATIONS = {
     // ── Dashboard ─────────────────────────────────────────────────────────────
     "dash.title":                "Dashboard",
     "dash.subtitle":             "Aggregated portal overview — refreshes automatically every 30 seconds",
+    "dash.ise_comm_title":       "ISE communication",
+    "dash.ise_all_ok":           "All nodes OK",
+    "dash.ise_problem":          "Problem",
+    "dash.ise_unknown":          "Unknown",
+    "dash.ise_details":          "ISE connection",
     "dash.btn_refresh":          "↺ Refresh",
     "dash.loading":              "Loading dashboard…",
     "dash.updated":              "Updated ",
