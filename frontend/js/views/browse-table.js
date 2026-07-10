@@ -464,6 +464,9 @@ export function initTable(container, state, api, cb) {
 
   // ── Selection ────────────────────────────────────────────────────────────
   function getSelectedIds() {
+    // Gruppetræ-view har sin egen selektion (state.treeSelectedIds) → bulk-toolbaren
+    // (rediger/CoA/disconnect/slet) virker på grenens endpoints via samme kilde.
+    if (state.viewMode === "tree") return [...(state.treeSelectedIds || [])];
     return Array.from(tbody.querySelectorAll(".row-select:checked")).map(
       (cbEl) => cbEl.closest("tr").dataset.id,
     );

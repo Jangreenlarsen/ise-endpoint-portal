@@ -46,8 +46,17 @@ export function renderTree(container, rows, ctx) {
   if (!(state.treeExpanded instanceof Set)) state.treeExpanded = new Set();
   // Per-gren overstyring: nodePath → dimKey ("" = vis rækker, fraværende = arv standard).
   if (!state.treeBranchDim || typeof state.treeBranchDim !== "object") state.treeBranchDim = {};
+  // Selektion (delt kilde med bulk-toolbaren via getSelectedIds).
+  if (!(state.treeSelectedIds instanceof Set)) state.treeSelectedIds = new Set();
   const groupBy = state.treeGroupBy;
-  state._treeRows = rows;  // så expand-all kan materialisere alle gren-stier
+  state._treeRows = rows;   // så expand-all kan materialisere alle gren-stier
+  state._treeBranchIds = {}; // path → [endpoint-ids] under grenen (fyldes i renderNodes)
+
+  // Fjern selekterede IDs der ikke længere findes (fx efter bulk-slet/reload).
+  const presentIds = new Set(rows.map((r) => r.id));
+  for (const id of [...state.treeSelectedIds]) {
+    if (!presentIds.has(id)) state.treeSelectedIds.delete(id);
+  }
 
   container.innerHTML = `
     <div class="tree-toolbar">
@@ -72,6 +81,10 @@ export function renderTree(container, rows, ctx) {
             : `<div class="hint tree-empty">${t("tree.no_dims")}</div>`)
         : `<div class="hint tree-empty">${t("tree.no_rows")}</div>`
     }</div>`;
+
+  // Native indeterminate kan ikke sættes via HTML-attribut → sæt efter render.
+  container.querySelectorAll('.tree-branch-cb[data-indet="1"]').forEach((el) => { el.indeterminate = true; });
+  ctx.updateSelectionUI?.();  // hold bulk-toolbaren i sync med træets selektion
 
   wire(container, ctx);
 }
@@ -144,10 +157,16 @@ function branchGroupControl(path, childDepth, state) {
 function renderNodes(rows, path, depth, dim, state) {
   if (!dim) return renderLeaves(rows, state);
   const buckets = bucketize(rows, dim);
+  const sel = state.treeSelectedIds;
   return sortedKeys(buckets).map((k) => {
     const label = k === NONE ? t("tree.none") : k;
     const nodePath = `${path}//${depth}:${k}`;
     const childRows = buckets.get(k);
+    const ids = childRows.map((r) => r.id);
+    state._treeBranchIds[nodePath] = ids;  // til gren-select af hele undertræet
+    const selCount = ids.reduce((n, id) => n + (sel.has(id) ? 1 : 0), 0);
+    const allSel = selCount === ids.length && ids.length > 0;
+    const someSel = selCount > 0 && !allSel;
     const open = state.treeExpanded.has(nodePath);
     const childDim = effectiveDim(nodePath, depth + 1, state);
     const overridden = nodePath in state.treeBranchDim;
@@ -158,10 +177,14 @@ function renderNodes(rows, path, depth, dim, state) {
     return `
       <div class="tree-node" style="--depth:${depth}">
         <div class="tree-branch${overridden ? " tree-branch-custom" : ""}" data-path="${esc(nodePath)}">
+          <input type="checkbox" class="tree-branch-cb" data-path="${esc(nodePath)}"
+            ${allSel ? "checked" : ""} ${someSel ? 'data-indet="1"' : ""}
+            title="${t("tree.select_branch")}" />
           <span class="tree-caret">${open ? "▾" : "▸"}</span>
           <span class="tree-dim">${esc(dimLabel(dim))}:</span>
           <span class="tree-val">${esc(label)}</span>
           <span class="tree-count">${childRows.length}</span>
+          ${selCount ? `<span class="tree-sel-count" title="${t("tree.selected_n").replace("{n}", selCount)}">${selCount}✓</span>` : ""}
           ${overridden ? `<span class="tree-custom-badge" title="${t("tree.custom_badge_title")}">⚙</span>` : ""}
         </div>
         ${open ? `<div class="tree-children">${children}</div>` : ""}
@@ -210,9 +233,10 @@ function leafBadges(r) {
 function renderLeaves(rows, state) {
   const cols = leafColumns(state);
   const live = liveSessionMacs(state);
+  const sel = state.treeSelectedIds;
   const shown = rows.slice(0, LEAF_CAP);
 
-  const head = `<thead><tr>${
+  const head = `<thead><tr><th class="tree-leaf-cb-th"></th>${
     cols.map((c) => `<th${c.cls ? ` class="${c.cls}"` : ""}>${esc(c.label)}</th>`).join("")
   }</tr></thead>`;
 
@@ -227,11 +251,12 @@ function renderLeaves(rows, state) {
       try { val = c.field ? c.field(r) : (r[c.key] ?? ""); } catch { val = ""; }
       return `<td${c.cls ? ` class="${c.cls}"` : ""}>${esc(String(val ?? ""))}</td>`;
     }).join("");
-    return `<tr class="tree-leaf-row" data-id="${esc(r.id)}" title="${t("tree.open_edit")}">${tds}</tr>`;
+    const cbTd = `<td class="tree-leaf-cb-td"><input type="checkbox" class="tree-leaf-cb" data-id="${esc(r.id)}"${sel.has(r.id) ? " checked" : ""} /></td>`;
+    return `<tr class="tree-leaf-row${sel.has(r.id) ? " tree-leaf-selected" : ""}" data-id="${esc(r.id)}" title="${t("tree.open_edit")}">${cbTd}${tds}</tr>`;
   }).join("");
 
   const more = rows.length > LEAF_CAP
-    ? `<tr><td class="tree-more" colspan="${cols.length || 1}">${t("tree.more").replace("{n}", rows.length - LEAF_CAP)}</td></tr>`
+    ? `<tr><td class="tree-more" colspan="${cols.length + 1}">${t("tree.more").replace("{n}", rows.length - LEAF_CAP)}</td></tr>`
     : "";
 
   return `<table class="tree-leaf-table"><colgroup></colgroup>${head}<tbody>${body}${more}</tbody></table>`;
@@ -245,6 +270,8 @@ function wire(container, ctx) {
   const state = ctx.state;
 
   container.addEventListener("click", (e) => {
+    // Checkboxe håndteres af change-listener — lad ikke klik toggle gren/leaf.
+    if (e.target.matches(".tree-branch-cb, .tree-leaf-cb")) return;
     if (e.target.closest("#tree-add-btn")) {
       container.querySelector("#tree-add-menu")?.classList.toggle("hidden");
       return;
@@ -299,8 +326,25 @@ function wire(container, ctx) {
     }
   });
 
-  // Per-gren undergruppering: vælg dimension for en grens børn.
   container.addEventListener("change", (e) => {
+    // Gren-checkbox: vælg/fravælg alle endpoints under grenen (hele undertræet).
+    const branchCb = e.target.closest(".tree-branch-cb");
+    if (branchCb) {
+      const ids = state._treeBranchIds[branchCb.dataset.path] || [];
+      if (branchCb.checked) ids.forEach((id) => state.treeSelectedIds.add(id));
+      else ids.forEach((id) => state.treeSelectedIds.delete(id));
+      ctx.rerender();  // renderTree opdaterer også bulk-toolbaren
+      return;
+    }
+    // Enkelt endpoint-checkbox.
+    const leafCb = e.target.closest(".tree-leaf-cb");
+    if (leafCb) {
+      if (leafCb.checked) state.treeSelectedIds.add(leafCb.dataset.id);
+      else state.treeSelectedIds.delete(leafCb.dataset.id);
+      ctx.rerender();
+      return;
+    }
+    // Per-gren undergruppering: vælg dimension for en grens børn.
     const sel = e.target.closest(".tree-subgroup-select");
     if (!sel) return;
     const p = sel.dataset.path;
