@@ -3,6 +3,10 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [7.0.0748] — 2026-07-10 — fix: Fjern utilsigtet NUL-byte i browse-tree.js (git så filen som binær)
+
+- **`browse-tree.js`**: `NONE`-sentinel'en indeholdt ved en fejl en rå NUL-byte (`"\x00none"`) fra 0747-commit'et. Funktionelt harmløs (kørte fint), men gjorde filen "binær" i git → ingen tekst-diffs. Erstattet med et Private-Use-Area-tegn (`"none"`) der aldrig kolliderer med ISE-data. Ingen funktionel ændring.
+
 ## [7.0.0747] — 2026-07-10 — feat: Gruppetræ-view i Browse (MAJOR-milepæl 7.0)
 
 Major-milepæl. Nyt alternativt view i Browse (Fase 1) hvor endpoints grupperes hierarkisk efter en fri, bruger-valgt stak af parametre. `version` MAJOR 6→7, MINOR→0; `build` fortsætter (nulstilles aldrig).

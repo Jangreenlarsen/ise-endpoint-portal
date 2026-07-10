@@ -4,6 +4,12 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [7.0.0748] — 2026-07-10 — fix: Intern oprydning (ingen funktionel ændring)
+
+> **Build:** 0748
+
+- Fjernet en utilsigtet skjult byte i en ny kildefil fra 7.0-udgivelsen. Ingen synlig ændring i portalen; rent internt kodehygiejne-fix.
+
 ## [7.0.0747] — 2026-07-10 — 🎉 Version 7.0: Gruppetræ-view i Browse
 
 > **Build:** 0747 · MAJOR-milepæl
