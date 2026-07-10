@@ -44,6 +44,8 @@ export function renderTree(container, rows, ctx) {
   const state = ctx.state;
   if (!Array.isArray(state.treeGroupBy)) state.treeGroupBy = ["group_name", "profiler_name"];
   if (!(state.treeExpanded instanceof Set)) state.treeExpanded = new Set();
+  // Per-gren overstyring: nodePath → dimKey ("" = vis rækker, fraværende = arv standard).
+  if (!state.treeBranchDim || typeof state.treeBranchDim !== "object") state.treeBranchDim = {};
   const groupBy = state.treeGroupBy;
   state._treeRows = rows;  // så expand-all kan materialisere alle gren-stier
 
@@ -57,15 +59,18 @@ export function renderTree(container, rows, ctx) {
         <div class="tree-add-menu hidden" id="tree-add-menu">${renderAddMenu(groupBy)}</div>
       </div>
       <span class="spacer"></span>
+      ${Object.keys(state.treeBranchDim).length
+        ? `<button type="button" class="secondary small" id="tree-reset-branches" title="${t("tree.reset_branches_title")}">${t("tree.reset_branches")}</button>`
+        : ""}
       <button type="button" class="secondary small" id="tree-expand-all">${t("tree.expand_all")}</button>
       <button type="button" class="secondary small" id="tree-collapse-all">${t("tree.collapse_all")}</button>
     </div>
     <div class="tree-body">${
-      groupBy.length
-        ? (rows.length
-            ? renderLevel(rows, groupBy, 0, "", state)
-            : `<div class="hint tree-empty">${t("tree.no_rows")}</div>`)
-        : `<div class="hint tree-empty">${t("tree.no_dims")}</div>`
+      rows.length
+        ? (effectiveDim("", 0, state)
+            ? renderNodes(rows, "", 0, effectiveDim("", 0, state), state)
+            : `<div class="hint tree-empty">${t("tree.no_dims")}</div>`)
+        : `<div class="hint tree-empty">${t("tree.no_rows")}</div>`
     }</div>`;
 
   wire(container, ctx);
@@ -89,60 +94,87 @@ function renderAddMenu(groupBy) {
   ).join("");
 }
 
-function renderLevel(rows, groupBy, depth, pathPrefix, state) {
-  const dimKey = groupBy[depth];
+// Effektiv dimension der grupperer en grens BØRN: per-gren-overstyring vinder over
+// standard-stakken (treeGroupBy[depth]). "" = vis rækker (leaves). null = ingen.
+function effectiveDim(path, depth, state) {
+  const override = state.treeBranchDim ? state.treeBranchDim[path] : undefined;
+  if (override !== undefined) return override || null;  // "" → null (leaves)
+  return state.treeGroupBy[depth] || null;
+}
+
+function bucketize(rows, dim) {
   const buckets = new Map();
   for (const r of rows) {
-    const v = valueOf(r, dimKey) || NONE;
+    const v = valueOf(r, dim) || NONE;
     let arr = buckets.get(v);
     if (!arr) { arr = []; buckets.set(v, arr); }
     arr.push(r);
   }
-  const keys = [...buckets.keys()].sort((a, b) => {
+  return buckets;
+}
+
+function sortedKeys(buckets) {
+  return [...buckets.keys()].sort((a, b) => {
     if (a === NONE) return 1;
     if (b === NONE) return -1;
     return a.localeCompare(b, undefined, { numeric: true });
   });
-  const isLast = depth === groupBy.length - 1;
+}
 
-  return keys.map((k) => {
+// Kompakt kontrol pr. åben gren: vælg hvordan DENNE grens børn grupperes.
+function branchGroupControl(path, childDepth, state) {
+  const defaultDim = state.treeGroupBy[childDepth] || null;
+  const overridden = path in state.treeBranchDim;
+  const cur = overridden ? (state.treeBranchDim[path] || "__leaves__") : "__default__";
+  const defLabel = defaultDim ? esc(dimLabel(defaultDim)) : t("tree.rows");
+  const opts = [
+    `<option value="__default__"${cur === "__default__" ? " selected" : ""}>${t("tree.sub_default")} (${defLabel})</option>`,
+    `<option value="__leaves__"${cur === "__leaves__" ? " selected" : ""}>${t("tree.sub_rows")}</option>`,
+    ...DIMS.map((d) => `<option value="${esc(d.key)}"${cur === d.key ? " selected" : ""}>${esc(d.label())}</option>`),
+  ];
+  return `<div class="tree-subgroup" style="--depth:${childDepth}">
+    <span class="tree-subgroup-lbl">${t("tree.subgroup_label")}</span>
+    <select class="tree-subgroup-select" data-path="${esc(path)}">${opts.join("")}</select>
+  </div>`;
+}
+
+function renderNodes(rows, path, depth, dim, state) {
+  if (!dim) return renderLeaves(rows, state);
+  const buckets = bucketize(rows, dim);
+  return sortedKeys(buckets).map((k) => {
     const label = k === NONE ? t("tree.none") : k;
-    const nodePath = `${pathPrefix}//${depth}:${k}`;
+    const nodePath = `${path}//${depth}:${k}`;
     const childRows = buckets.get(k);
     const open = state.treeExpanded.has(nodePath);
+    const childDim = effectiveDim(nodePath, depth + 1, state);
+    const overridden = nodePath in state.treeBranchDim;
     const children = open
-      ? (isLast
-          ? renderLeaves(childRows, state)
-          : renderLevel(childRows, groupBy, depth + 1, nodePath, state))
+      ? branchGroupControl(nodePath, depth + 1, state) +
+        renderNodes(childRows, nodePath, depth + 1, childDim, state)
       : "";
     return `
       <div class="tree-node" style="--depth:${depth}">
-        <div class="tree-branch" data-path="${esc(nodePath)}">
+        <div class="tree-branch${overridden ? " tree-branch-custom" : ""}" data-path="${esc(nodePath)}">
           <span class="tree-caret">${open ? "▾" : "▸"}</span>
-          <span class="tree-dim">${esc(dimLabel(dimKey))}:</span>
+          <span class="tree-dim">${esc(dimLabel(dim))}:</span>
           <span class="tree-val">${esc(label)}</span>
           <span class="tree-count">${childRows.length}</span>
+          ${overridden ? `<span class="tree-custom-badge" title="${t("tree.custom_badge_title")}">⚙</span>` : ""}
         </div>
         ${open ? `<div class="tree-children">${children}</div>` : ""}
       </div>`;
   }).join("");
 }
 
-// Saml alle gren-stier (ikke leaves) — bruges af "fold alt ud".
-function collectPaths(rows, groupBy, depth, pathPrefix, out) {
-  if (depth >= groupBy.length) return;
-  const dimKey = groupBy[depth];
-  const buckets = new Map();
-  for (const r of rows) {
-    const v = valueOf(r, dimKey) || NONE;
-    let arr = buckets.get(v);
-    if (!arr) { arr = []; buckets.set(v, arr); }
-    arr.push(r);
-  }
+// Saml alle gren-stier (ikke leaves) — bruges af "fold alt ud". Følger per-gren-dims.
+function collectPaths(rows, path, depth, state, out) {
+  const dim = effectiveDim(path, depth, state);
+  if (!dim) return;
+  const buckets = bucketize(rows, dim);
   for (const [k, childRows] of buckets) {
-    const nodePath = `${pathPrefix}//${depth}:${k}`;
+    const nodePath = `${path}//${depth}:${k}`;
     out.add(nodePath);
-    collectPaths(childRows, groupBy, depth + 1, nodePath, out);
+    collectPaths(childRows, nodePath, depth + 1, state, out);
   }
 }
 
@@ -242,7 +274,7 @@ function wire(container, ctx) {
       return;
     }
     if (e.target.closest("#tree-expand-all")) {
-      collectPaths(state._treeRows || [], state.treeGroupBy || [], 0, "", state.treeExpanded);
+      collectPaths(state._treeRows || [], "", 0, state, state.treeExpanded);
       ctx.rerender();
       return;
     }
@@ -251,6 +283,23 @@ function wire(container, ctx) {
       ctx.rerender();
       return;
     }
+    if (e.target.closest("#tree-reset-branches")) {
+      state.treeBranchDim = {};
+      ctx.rerender();
+      return;
+    }
+  });
+
+  // Per-gren undergruppering: vælg dimension for en grens børn.
+  container.addEventListener("change", (e) => {
+    const sel = e.target.closest(".tree-subgroup-select");
+    if (!sel) return;
+    const p = sel.dataset.path;
+    const v = sel.value;
+    if (v === "__default__") delete state.treeBranchDim[p];
+    else if (v === "__leaves__") state.treeBranchDim[p] = "";
+    else state.treeBranchDim[p] = v;
+    ctx.rerender();
   });
 
   // Luk add-menu ved klik udenfor.
