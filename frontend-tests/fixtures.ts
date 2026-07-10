@@ -42,6 +42,14 @@ export async function installApiMock(
     "alerts": { count: 0, has_errors: false },
     "me/prefs": {},
     "me/views": [],
+    // Browse-load læser disse direkte (uden shape-guard) → giv korrekte tomme former.
+    "custom-attributes": { attributes: [] },
+    "groups": [],
+    "dacls": [],
+    "endpoint-roles": { roles: [] },
+    "platform-mapping": { mappings: [] },
+    "endpoints/details": { items: [], total: 0 },
+    "endpoints/stats": { laa_count: 0 },
   };
   const map = { ...defaults, ...custom };
   const keys = Object.keys(map).sort((a, b) => b.length - a.length); // længste-præfiks først

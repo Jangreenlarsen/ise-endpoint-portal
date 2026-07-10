@@ -6,7 +6,7 @@
 // indlæste rows — ingen ekstra ISE-kald. Genbruger detalje-draweren (openDetail)
 // til redigering af den enkelte endpoint (leaf).
 import { t } from "../i18n.js";
-import { esc } from "./browse-utils.js";
+import { esc, getOrderedColumns, normalizeMac } from "./browse-utils.js";
 
 // Grupperbare dimensioner — managed felter der findes på hver row.
 const DIMS = [
@@ -112,7 +112,7 @@ function renderLevel(rows, groupBy, depth, pathPrefix, state) {
     const open = state.treeExpanded.has(nodePath);
     const children = open
       ? (isLast
-          ? renderLeaves(childRows)
+          ? renderLeaves(childRows, state)
           : renderLevel(childRows, groupBy, depth + 1, nodePath, state))
       : "";
     return `
@@ -148,21 +148,58 @@ function collectPaths(rows, groupBy, depth, pathPrefix, out) {
 
 const LEAF_CAP = 200;
 
-function renderLeaves(rows) {
+// Synlige, ordnede kolonner MINUS dem der allerede er grupperet efter i træet.
+function leafColumns(state) {
+  const grouped = new Set(state.treeGroupBy || []);
+  const colVis = state.colVis || {};
+  return getOrderedColumns().filter(
+    (c) => colVis[c.key] !== false && !grouped.has(c.key)
+  );
+}
+
+// Live-session-MACs (samme kilde som tabellens applyAuthStatusColors) → farvning.
+function liveSessionMacs(state) {
+  return state.activeSessionMacs || (state.pxgridLive && state.pxgridSessionMacs) || null;
+}
+
+function leafBadges(r) {
+  let b = "";
+  if (r.status === "Decommissioned") b += `<span class="tree-badge decomm" title="${t("tree.decomm")}">⚰</span>`;
+  if (r.active_status === "Inaktiv") b += `<span class="tree-badge inaktiv" title="${t("detail.active_status_inaktiv")}">⊘</span>`;
+  else if (r.active_status === "Aktiv") b += `<span class="tree-badge aktiv" title="${t("detail.active_status_aktiv")}">✓</span>`;
+  return b;
+}
+
+// Leaves render'es som en mini-tabel med SAMME synlige kolonner som tabel-viewet
+// (minus de grupperede) + pxGrid-live-farve på MAC (samme td.mac-cell-CSS).
+function renderLeaves(rows, state) {
+  const cols = leafColumns(state);
+  const live = liveSessionMacs(state);
   const shown = rows.slice(0, LEAF_CAP);
-  const html = shown.map((r) => {
-    const decomm = r.status === "Decommissioned" ? ` · ${t("tree.decomm")}` : "";
-    return `
-      <div class="tree-leaf" data-id="${esc(r.id)}" title="${t("tree.open_edit")}">
-        <span class="tree-leaf-mac">${esc(r.mac || r.name || "")}</span>
-        <span class="tree-leaf-name">${esc(r.description || r.name || "")}</span>
-        <span class="tree-leaf-meta">${esc(r.group_name || "")}${decomm}</span>
-      </div>`;
+
+  const head = `<thead><tr>${
+    cols.map((c) => `<th${c.cls ? ` class="${c.cls}"` : ""}>${esc(c.label)}</th>`).join("")
+  }</tr></thead>`;
+
+  const body = shown.map((r) => {
+    const mac = r.mac || r.name || "";
+    const macCls = live ? (live.has(normalizeMac(mac)) ? " auth-active" : " auth-failed") : "";
+    const tds = cols.map((c) => {
+      if (c.key === "mac") {
+        return `<td class="mac-cell${macCls}"><a class="mac-link">${esc(mac)}</a>${leafBadges(r)}</td>`;
+      }
+      let val = "";
+      try { val = c.field ? c.field(r) : (r[c.key] ?? ""); } catch { val = ""; }
+      return `<td${c.cls ? ` class="${c.cls}"` : ""}>${esc(String(val ?? ""))}</td>`;
+    }).join("");
+    return `<tr class="tree-leaf-row" data-id="${esc(r.id)}" title="${t("tree.open_edit")}">${tds}</tr>`;
   }).join("");
+
   const more = rows.length > LEAF_CAP
-    ? `<div class="tree-more">${t("tree.more").replace("{n}", rows.length - LEAF_CAP)}</div>`
+    ? `<tr><td class="tree-more" colspan="${cols.length || 1}">${t("tree.more").replace("{n}", rows.length - LEAF_CAP)}</td></tr>`
     : "";
-  return `<div class="tree-leaves">${html}${more}</div>`;
+
+  return `<table class="tree-leaf-table"><colgroup></colgroup>${head}<tbody>${body}${more}</tbody></table>`;
 }
 
 // ── Interaktion (delegeret, idempotent) ───────────────────────────────────────
@@ -199,7 +236,7 @@ function wire(container, ctx) {
       ctx.rerender();
       return;
     }
-    const leaf = e.target.closest(".tree-leaf");
+    const leaf = e.target.closest(".tree-leaf-row");
     if (leaf) {
       ctx.openDetail(leaf.dataset.id);
       return;
