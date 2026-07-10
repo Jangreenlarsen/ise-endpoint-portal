@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [7.0.0750] — 2026-07-10 — feat: Tabel-viewet bruger nu samme font-størrelse som gruppetræet
+
+Rapporteret: samme font/størrelse i tabel-viewet som i træ-viewet.
+
+- **`styles.css`**: `.browse-table-wrap table` sat til `font-size: 0.78rem` (samme som `.tree-leaf-table`), og `.browse-table-wrap select` fra 0.82rem → 0.78rem. Giver et ensartet, tættere look på tværs af tabel- og træ-visning. Celler/inputs arver; `.col-filter-input` var allerede 0.78rem.
+
 ## [7.0.0749] — 2026-07-10 — feat: Gruppetræ-leaves render'es nu som tabel-rækker (samme kolonner + pxGrid-live-farve)
 
 Rapporteret: leaves i træet skal ligne tabel-viewet — samme kolonner (minus de grupperede) + pxGrid-live-status-farve på MAC.

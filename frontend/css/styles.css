@@ -594,6 +594,8 @@ td.auth-status-col.auth-failed { background: #f87171; color: #450a0a; }
   overflow-x: auto;
   overflow-y: auto;
 }
+/* Samme font-størrelse som gruppetræ-viewet (0.78rem) for et ensartet, tættere look. */
+.browse-table-wrap table { font-size: 0.78rem; }
 .browse-table-wrap table thead th {
   position: sticky;
   top: 0;
@@ -632,7 +634,7 @@ td.auth-status-col.auth-failed { background: #f87171; color: #450a0a; }
 .browse-table-wrap select {
   width: 100%;
   padding: 0.15rem 0.25rem;
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   border: 1px solid #d1d5db;
   border-left: 3px solid #93c5fd;
   border-radius: 3px;

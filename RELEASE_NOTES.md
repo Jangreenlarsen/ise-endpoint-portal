@@ -4,6 +4,12 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [7.0.0750] — 2026-07-10 — feat: Tættere, ensartet skriftstørrelse i tabel-visningen
+
+> **Build:** 0750
+
+- **Tabellen matcher træet**: Endpoint-tabellen bruger nu samme (lidt mindre) skriftstørrelse som gruppetræ-visningen, så de to visninger ser ensartede ud og tabellen viser mere pr. skærm.
+
 ## [7.0.0749] — 2026-07-10 — feat: Gruppetræet viser nu de samme kolonner som tabellen
 
 > **Build:** 0749
