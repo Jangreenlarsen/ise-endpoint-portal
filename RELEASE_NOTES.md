@@ -4,6 +4,40 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [7.0.0747] — 2026-07-10 — 🎉 Version 7.0: Gruppetræ-view i Browse
+
+> **Build:** 0747 · MAJOR-milepæl
+
+- **Nyt gruppetræ-view**: I Browse kan du nu skifte mellem **Tabel** og **Træ** (knap i værktøjslinjen). I træ-visningen grupperes dine endpoints hierarkisk efter parametre du selv vælger — fx *Gruppe → Profil → Platform* — hvor hver gren bliver mere og mere specifik. Du bygger grupperingen med chips (`+ parameter`) af 14 felter (gruppe, profil, platform, ejer, lokation, VLAN, ACL, status m.fl.), ser antal pr. gren, folder ud/sammen, og klikker på en enkelt enhed for at redigere den — præcis som i tabellen.
+- **Hurtigt og filtrer-bevidst**: Træet bygges direkte fra de data der allerede er indlæst (ingen ekstra ISE-kald) og respekterer de filtre/søgninger du har sat. Det er et *alternativt* view — standard-tabellen er uændret.
+- Dette er Fase 1; senere kommer bulk-redigering af en hel gren og træk-og-slip mellem grupper.
+
+## [6.34.0746] — 2026-07-10 — fix: En ISE-node der ikke rigtig svarer vises ikke længere som "OK"
+
+> **Build:** 0746
+
+- **Ærlig node-status**: Hvis en ISE-node (typisk en Secondary PAN sat som læse-host) svarer med en redirect eller uden rigtige data, blev den fejlagtigt vist som grøn "OK". Nu markeres den korrekt som **Fejl** — kun et rigtigt ERS-svar (2xx med data) tæller som OK, både i node-panelet, "Test nu" og "Test forbindelse".
+- **Reads virker igen**: Samtidig faldt læse-kald ikke tilbage til Primary når læse-hosten redirectede — så Browse kunne ende tom. Nu falder de automatisk tilbage til Primary, som også dermed vises korrekt som "OK".
+
+## [6.34.0745] — 2026-07-10 — feat: "Test forbindelse" tester både Primary og læse-host
+
+> **Build:** 0745
+
+- **Test af 1 eller 2 forbindelser**: "Test forbindelse" under Settings → ISE-forbindelse tester nu automatisk både Primary-hosten og — hvis du har udfyldt "ISE læse-host" — også den, hver med sit eget ✓/✗-resultat, host-navn og svartid. Har du kun én host konfigureret, virker den som før.
+
+## [6.34.0744] — 2026-07-10 — feat: ISE-kommunikationsstatus også på dashboardet
+
+> **Build:** 0744
+
+- **Statuskort på dashboardet**: ISE-kommunikationsstatussen vises nu også direkte på dashboardet (for admins) — et lille kort ved siden af System sundhed, der med grøn/rød prik viser om din Primary og (hvis konfigureret) læse-host svarer, med svartid eller fejl-årsag. Så du ser med det samme om ISE-forbindelsen er sund, uden at åbne Settings. Følger dashboardets automatiske opdatering.
+
+## [6.34.0743] — 2026-07-10 — feat: Se med det samme om ISE-forbindelsen virker (Primary/Secondary)
+
+> **Build:** 0743
+
+- **Node-kommunikationsstatus**: Under **Settings → ISE-forbindelse** er der nu et "Node-kommunikation"-panel der viser, live, om portalen kan tale ERS med hver ISE-node — din Primary og (hvis konfigureret) din læse-host/Secondary. Grøn prik = svarer, rød = fejler (med årsag: timeout, circuit breaker åben, HTTP-fejl), grå = ingen trafik endnu. Der vises også svartid og hvornår noden sidst svarede. Statussen kommer fra portalens faktiske baggrunds-trafik, så den koster ikke ekstra ISE-kald, og opdateres automatisk hvert 20. sekund.
+- **"Test nu"-knap**: Laver et aktivt opslag mod hver node med det samme — nyttigt til at bekræfte at fx en nyligt konfigureret Secondary PAN faktisk svarer, før du bruger den som læse-host.
+
 ## [6.33.0742] — 2026-07-07 — feat: Krypteret backup med passphrase — fuld, selvstændig gendannelse
 
 > **Build:** 0742

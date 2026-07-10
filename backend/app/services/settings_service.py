@@ -227,10 +227,31 @@ async def test_connection(req: TestConnectionRequest) -> TestConnectionResponse:
     status_code = response.status_code
 
     if 200 <= status_code < 300:
+        # Bekræft at svaret faktisk ER ERS-data. En node der svarer 2xx men uden
+        # forventet indhold (fx en Secondary PAN der ikke serverer ERS) skal ikke
+        # rapporteres som OK. Kun for ERS — Open API-probet returnerer et andet format.
+        body_ok = True
+        if api_type == "ers":
+            try:
+                body = response.json()
+                body_ok = isinstance(body, dict) and "SearchResult" in body
+            except Exception:  # noqa: BLE001
+                body_ok = False
+        if body_ok:
+            return TestConnectionResponse(
+                ok=True,
+                status_code=status_code,
+                message=f"OK — ISE svarede {status_code} på {latency_ms} ms.",
+                latency_ms=latency_ms,
+            )
         return TestConnectionResponse(
-            ok=True,
+            ok=False,
             status_code=status_code,
-            message=f"OK — ISE svarede {status_code} på {latency_ms} ms.",
+            message=(
+                f"ISE svarede {status_code} men uden forventet ERS-data. "
+                "Peger hosten på en Admin-node (PAN) med ERS aktiveret? "
+                "En Secondary PAN der redirecter serverer ofte ikke ERS."
+            ),
             latency_ms=latency_ms,
         )
     if status_code in (401, 403):

@@ -127,3 +127,85 @@ async def test_writes_never_fall_back(split_client):
         await split_client.post("/ers/config/endpoint")
     assert exc.value.status_code == 0
     split_client._http_read.request.assert_not_awaited()
+
+
+# ── Node-status / probe (link-synlighed) ──────────────────────────────────────
+
+def test_node_status_initial_unknown(split_client):
+    st = split_client.node_status()
+    assert st["split_active"] is True
+    assert [n["role"] for n in st["nodes"]] == ["primary", "read"]
+    assert all(n["status"] == "unknown" for n in st["nodes"])
+
+
+def test_node_status_single_host_no_read():
+    c = _make_client(read_url="")
+    st = c.node_status()
+    assert st["split_active"] is False
+    assert [n["role"] for n in st["nodes"]] == ["primary"]
+
+
+@pytest.mark.asyncio
+async def test_node_status_reflects_real_traffic(split_client):
+    await split_client.get("/ers/config/endpoint")   # → read-host, 200
+    await split_client.post("/ers/config/endpoint")  # → primary, 200
+    st = {n["role"]: n for n in split_client.node_status()["nodes"]}
+    assert st["read"]["status"] == "up"
+    assert st["primary"]["status"] == "up"
+    assert st["read"]["last_latency_ms"] is not None
+
+
+_ERS_BODY = b'{"SearchResult":{"total":1,"resources":[]}}'
+
+
+@pytest.mark.asyncio
+async def test_probe_reports_up_and_down_per_node(split_client):
+    split_client._http.request = AsyncMock(return_value=_resp(200, _ERS_BODY))
+    split_client._http_read.request = AsyncMock(side_effect=httpx.ConnectError("boom"))
+    res = await split_client.probe()
+    by = {n["role"]: n for n in res["nodes"]}
+    assert by["primary"]["ok"] is True
+    assert by["read"]["ok"] is False and by["read"]["error"] == "ConnectError"
+    # den passive status afspejler probe-resultatet
+    st = {n["role"]: n for n in split_client.node_status()["nodes"]}
+    assert st["primary"]["status"] == "up"
+    assert st["read"]["status"] == "down" and st["read"]["last_error"] == "ConnectError"
+
+
+@pytest.mark.asyncio
+async def test_probe_flags_http_error_as_not_ok(split_client):
+    split_client._http.request = AsyncMock(return_value=_resp(401, b'{"m":"no"}'))
+    res = await split_client.probe()
+    prim = next(n for n in res["nodes"] if n["role"] == "primary")
+    assert prim["ok"] is False and prim["error"] == "HTTP 401"
+
+
+@pytest.mark.asyncio
+async def test_probe_flags_redirect_as_not_ok(split_client):
+    # En Secondary PAN der redirecter (302) må ALDRIG vises som OK.
+    split_client._http.request = AsyncMock(return_value=_resp(302, b""))
+    res = await split_client.probe()
+    prim = next(n for n in res["nodes"] if n["role"] == "primary")
+    assert prim["ok"] is False and prim["error"] == "HTTP 302"
+
+
+@pytest.mark.asyncio
+async def test_probe_flags_empty_2xx_as_not_ok(split_client):
+    # 2xx uden SearchResult (tomt/forkert svar) er ikke rigtig ERS-data → ikke OK.
+    split_client._http.request = AsyncMock(return_value=_resp(200, b'{"foo":1}'))
+    res = await split_client.probe()
+    prim = next(n for n in res["nodes"] if n["role"] == "primary")
+    assert prim["ok"] is False and "ERS-data" in (prim["error"] or "")
+
+
+@pytest.mark.asyncio
+async def test_read_redirect_falls_back_to_primary(split_client):
+    # Kernefixet: en redirecting læse-host (Secondary PAN) skal markeres FEJL og
+    # GET skal falde tilbage til Primary — ikke returnere et tomt svar som "OK".
+    split_client._http_read.request = AsyncMock(return_value=_resp(302, b""))
+    data = await split_client.get("/ers/config/endpoint")
+    assert data == {"which": "primary"}                 # serveret af Primary via fallback
+    split_client._http.request.assert_awaited_once()
+    st = {n["role"]: n for n in split_client.node_status()["nodes"]}
+    assert st["read"]["status"] == "down" and st["read"]["last_error"] == "HTTP 302"
+    assert st["primary"]["status"] == "up"

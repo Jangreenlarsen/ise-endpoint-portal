@@ -3,6 +3,48 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [7.0.0747] — 2026-07-10 — feat: Gruppetræ-view i Browse (MAJOR-milepæl 7.0)
+
+Major-milepæl. Nyt alternativt view i Browse (Fase 1) hvor endpoints grupperes hierarkisk efter en fri, bruger-valgt stak af parametre. `version` MAJOR 6→7, MINOR→0; `build` fortsætter (nulstilles aldrig).
+
+- **`browse-tree.js` (ny)**: Rekursiv gruppering client-side over de allerede-indlæste rows. Group-by-stak af 14 managed dimensioner (Gruppe/Profil/Platform/Ejer/Lokation/VLAN/ACL/Status/Aktiv/Gæst/…) bygget via chips (`+ parameter`); hvert niveau = én parameter, grene bliver mere specifikke. Counts pr. gren, expand/collapse + fold alt ud/sammen (materialiserer alle gren-stier), "(Ingen)"-spand for tomme værdier, leaf-cap 200 m. "+N flere". Leaf-klik → eksisterende detalje/edit-drawer.
+- **`browse.js`**: Tabel/Træ-toggle i view-toolbaren + træ-container + `treeCtx` (openDetail/rerender) + `cb.renderTree`. Toggle skjuler tabel+paginering og viser træet.
+- **`browse-table.js`**: `applyFilter` render'er træet fra de filtrerede rows når `viewMode === "tree"` (respekterer aktive filtre) i stedet for tabellen.
+- **`styles.css` + `i18n.js`**: Træ-styling (lys+dark) + toggle-segmentknap; da+en (`tree.*` + `browse.view_*`).
+- **Tests**: Ny `smoke-tree.spec.ts` (Playwright) — toggle renderer træet + group-by-chips uden crash; skift tilbage til tabel. Backend uændret (247 tests står).
+
+## [6.34.0746] — 2026-07-10 — fix: Redirecting Secondary PAN vises ikke længere som "OK" (+ reads falder tilbage)
+
+Rapporteret: ise3 (Secondary PAN som læse-host) viste "OK, 3 ms" i node-panelet, selvom dens ERS ikke virker, og Primary stod "Unknown".
+
+- **Root cause:** En Secondary PAN redirecter typisk ERS-kald (302 → Primary). `IseClient._request_on` registrerede noden som `ok=True` på ethvert HTTP-svar (inkl. 3xx) OG behandlede en 3xx som success (tomt svar) → status grøn + ingen fallback → Primary fik ingen læse-trafik (→ "Unknown"). `probe()` havde samme fejl (`ok = status < 400`).
+- **`ise/client.py`**: (1) Node "op" = **kun 2xx**; 3xx/4xx/5xx = ikke OK. (2) En **3xx raiser nu** `IseApiError(3xx)` + CB-fejl på noden i stedet for fake-tomt-success. (3) `request()` **falder nu også tilbage til Primary ved 3xx** (redirect), ikke kun transport/CB-open. (4) `probe()` kræver **2xx + gyldig ERS-body** (`SearchResult`).
+- **`services/settings_service.py`**: `test_connection` validerer nu også ERS-body (2xx uden `SearchResult` → ikke OK, med hint om Admin-node/PAN).
+- **Effekt:** ise3 vises korrekt som **Fejl (HTTP 302)**, reads serveres fra Primary (som vises "OK"), og "Test nu"/"Test forbindelse" afslører en ikke-serverende node.
+- **Tests:** +3 i `test_read_write_split.py` (redirect ≠ OK, tomt 2xx ≠ OK, redirect-læse-host → fallback til Primary). Suite: 247 passed.
+
+## [6.34.0745] — 2026-07-10 — feat: "Test forbindelse" tester nu både Primary og læse-host
+
+Rapporteret: "Test forbindelse" under Backend → Cisco ISE connection skal forholde sig til om der er 1 eller 2 forbindelser konfigureret.
+
+- **`section-backend.js`**: Test-knappen tester nu **1 eller 2 hosts** alt efter om et (distinkt) "ISE læse-host"-felt er udfyldt. Kalder det eksisterende `POST /settings/test` pr. host (samme credentials, `ise_base_url` sat til hhv. primær/læse-host) parallelt og viser et resultat pr. host med ✓/✗, host-navn og latency. Ingen backend-ændring — test-endpointet bygger allerede en ephemeral klient mod den angivne `base_url`. Enkelt-host (ingen læse-host) viser uændret én-linjes resultat.
+
+## [6.34.0744] — 2026-07-10 — feat: ISE-kommunikationsstatus også på dashboardet
+
+Follow-up på 0743 — surfacer node-status hvor man kigger først.
+
+- **`dashboard.js`**: Nyt kompakt "ISE-kommunikation"-kort i status-rækken (admin-only, ved siden af System sundhed/status/cache). Genbruger `GET /ise/connection`: farvet dot pr. node (grøn/rød/grå) + host + latency/fejl-årsag, header viser samlet status (Alle noder OK / Problem / Ukendt), link til ISE-forbindelse. Hentes i dashboardets `Promise.all` (kun for admin) og følger den eksisterende 30s auto-refresh.
+- **`i18n.js`**: `dash.ise_*` (da+en). Genbruger `settings.link_role_*`.
+
+## [6.34.0743] — 2026-07-10 — feat: Live Primary/Secondary ISE-kommunikationsstatus
+
+Synliggør om ERS-forbindelsen til hver ISE-node virker — foranlediget af fejlfinding hvor portalen pegede på en Secondary PAN hvis ERS hang (tom cache uden tydelig årsag).
+
+- **`ise/client.py`**: Passiv per-node-tracking (`_node_stats` + `_record_node`) opdateret fra rigtig drip/scan/browse-trafik — sidste OK, latency, seneste transport-fejl, fejl i træk pr. node. `node_status()` → up/down/unknown (down når CB åben eller seneste event var transport-fejl). Ny aktiv `probe()`: rå ERS-GET mod hver node parallelt, bypasser CB+retry.
+- **`api/ise_nodes.py`**: `GET /ise/connection` (instant status, ingen ekstra ISE-kald) + `POST /ise/connection/probe` (aktiv test).
+- **Frontend**: "Node-kommunikation"-panel i Settings → ISE-forbindelse: farvet dot (grøn/rød/grå) + host + latency + sidst-OK/fejl/CB-tilstand pr. node, auto-refresh hvert 20s (selv-stoppende), + "Test nu"-knap. `api.js`, `styles.css`, i18n (da+en).
+- **Tests**: +5 i `test_read_write_split.py` (initial unknown, single-host, status fra trafik, probe up/down pr. node, HTTP-fejl-flag). Suite: 244 passed.
+
 ## [6.33.0742] — 2026-07-07 — feat: Krypteret fuld backup (passphrase) + lukning af backup-huller
 
 Tillæg til config-backup fra backup-audit: en passphrase-krypteret backup der bevarer integritet og inkluderer hemmelighederne, plus lukning af de identificerede huller.

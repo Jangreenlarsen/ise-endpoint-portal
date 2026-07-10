@@ -175,6 +175,51 @@ function healthCard(diag, isAdmin) {
   </div>`;
 }
 
+// ── ISE-kommunikations-kort (Primary/Secondary link-status) ──────────────────
+
+function iseCommCard(conn) {
+  if (!conn || !Array.isArray(conn.nodes) || !conn.nodes.length) return "";
+  const dotColor = (s) => (s === "up" ? "#16a34a" : s === "down" ? "#dc2626" : "#9ca3af");
+  const worst = conn.nodes.some((n) => n.status === "down")
+    ? "down"
+    : conn.nodes.every((n) => n.status === "up")
+      ? "up"
+      : "unknown";
+  const topColor = dotColor(worst);
+  const headLabel = worst === "up"
+    ? t("dash.ise_all_ok")
+    : worst === "down"
+      ? t("dash.ise_problem")
+      : t("dash.ise_unknown");
+
+  const rows = conn.nodes.map((n) => {
+    const role = n.role === "read" ? t("settings.link_role_read") : t("settings.link_role_primary");
+    const meta = [];
+    if (n.status === "up" && n.last_latency_ms != null) meta.push(`${n.last_latency_ms} ms`);
+    if (n.status === "down") meta.push(n.cb_state === "open" ? "CB" : (n.last_error || "fejl"));
+    if (n.status === "unknown") meta.push(t("settings.link_no_traffic"));
+    const host = (n.host || "").replace(/^https?:\/\//, "");
+    return `<div style="display:flex;align-items:center;gap:.45rem;padding:3px 0;">
+      <span style="width:9px;height:9px;border-radius:50%;background:${dotColor(n.status)};flex:none;"></span>
+      <span style="font-size:.8em;color:#374151;font-weight:600;flex:none;">${esc(role)}</span>
+      <span style="font-size:.75em;color:#6b7280;font-family:monospace;flex:1;min-width:0;
+        overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(n.host || "")}">${esc(host)}</span>
+      <span style="font-size:.75em;color:${dotColor(n.status)};font-weight:600;flex:none;">${esc(meta.join(" · "))}</span>
+    </div>`;
+  }).join("");
+
+  return `<div style="background:#fff;border-radius:12px;padding:1rem 1.25rem;
+    box-shadow:0 1px 4px rgba(0,0,0,.07);border-top:3px solid ${topColor};">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;">
+      <h3 style="margin:0;font-size:.92rem;color:#374151;font-weight:600;">${t("dash.ise_comm_title")}</h3>
+      <span style="font-size:.8em;font-weight:700;color:${topColor};">${esc(headLabel)}</span>
+    </div>
+    ${rows}
+    <a href="#/settings" style="display:block;text-align:right;font-size:.76rem;color:#2563eb;
+      text-decoration:none;margin-top:.5rem;padding-top:.4rem;border-top:1px solid #f3f4f6;">${t("dash.ise_details")} →</a>
+  </div>`;
+}
+
 // ── Log-tabel ─────────────────────────────────────────────────────────────────
 
 const LOG_COLORS = {
@@ -382,7 +427,7 @@ function iseAuthBanner(iseAuth) {
   </div>`;
 }
 
-function compose(dash, trends, lifecycle, isAdmin, diagQuick, sysinfo) {
+function compose(dash, trends, lifecycle, isAdmin, diagQuick, sysinfo, iseConn) {
   const cb      = dash.circuit_breaker || {};
   const ep      = dash.endpoints       || {};
   const cache   = dash.cache           || {};
@@ -564,7 +609,8 @@ function compose(dash, trends, lifecycle, isAdmin, diagQuick, sysinfo) {
   // Status-kort side om side: system sundhed + system status + cache + lifecycle.
   // Endpoint-movement (trend) og Recent audit events får hver FULD bredde — samme
   // som System Log-kortet nederst.
-  const statusItems = [hCard, sysCard, cqCard, lcCard].filter(Boolean);
+  const iseCard = iseCommCard(iseConn);
+  const statusItems = [hCard, iseCard, sysCard, cqCard, lcCard].filter(Boolean);
   const statusRow = statusItems.length
     ? `<div style="display:flex;gap:.75rem;align-items:flex-start;flex-wrap:wrap;margin-top:.75rem;">
         ${statusItems.map(c => `<div style="flex:1;min-width:240px;">${c}</div>`).join("")}
@@ -676,7 +722,7 @@ export async function renderDashboard(container) {
 
   async function load() {
     try {
-      const [dash, alertsRes, trendsRes, lifecycleRes, diagQuick, sysinfo] = await Promise.all([
+      const [dash, alertsRes, trendsRes, lifecycleRes, diagQuick, sysinfo, iseConn] = await Promise.all([
         api.getDashboard(),
         api.getAlerts().catch(() => ({ alerts: [] })),
         api.getTrends("30d").catch((e) => ({ _error: e.message })),
@@ -685,6 +731,7 @@ export async function renderDashboard(container) {
           : Promise.resolve(null),
         api.diagnosticsQuick().catch((e) => ({ _error: e.message })),
         api.sysinfo().catch(() => null),
+        isAdmin ? api.getIseConnection().catch(() => null) : Promise.resolve(null),
       ]);
 
       const alertList = alertsRes?.alerts || [];
@@ -701,7 +748,7 @@ export async function renderDashboard(container) {
         alertsEl.innerHTML = "";
       }
 
-      body.innerHTML = compose(dash, trendsRes, lifecycleRes, isAdmin, diagQuick, sysinfo);
+      body.innerHTML = compose(dash, trendsRes, lifecycleRes, isAdmin, diagQuick, sysinfo, iseConn);
       tsEl.textContent = t("dash.updated") + new Date().toLocaleTimeString();
     } catch (err) {
       body.innerHTML = `<div class="alert error">${t("dash.error").replace("{msg}", esc(err.message))}</div>`;

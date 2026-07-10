@@ -60,24 +60,43 @@ export async function initBackendSection(container) {
 
   container.querySelector("#test-conn-btn").addEventListener("click", async () => {
     backendMsg.innerHTML = `<div class="alert info">${t("settings.ic_testing")}</div>`;
-    const payload = {
-      ise_base_url: container.querySelector("#base_url").value.trim(),
+    const basePayload = {
       ise_username: container.querySelector("#username").value.trim(),
       ise_password: container.querySelector("#password").value,
       ise_verify_tls: container.querySelector("#verify_tls").checked,
       ise_timeout: parseFloat(container.querySelector("#timeout").value),
       ise_api_type: container.querySelector("#api_type").value,
-      coa_psn_name: container.querySelector("#coa_psn_name").value.trim(),
-      coa_reauth_type: parseInt(container.querySelector("#coa_reauth_type").value, 10),
-      coa_disconnect_type: parseInt(container.querySelector("#coa_disconnect_type").value, 10),
     };
-    try {
-      const res = await api.testBackendConnection(payload);
-      const cls = res.ok ? "success" : "error";
-      backendMsg.innerHTML = `<div class="alert ${cls}">${res.message}</div>`;
-    } catch (err) {
-      backendMsg.innerHTML = `<div class="alert error">${t("settings.ic_test_failed").replace("{msg}", esc(err.message))}</div>`;
+    const primaryUrl = container.querySelector("#base_url").value.trim();
+    const readUrl = container.querySelector("#read_base_url").value.trim();
+
+    // Test 1 eller 2 hosts alt efter om en (distinkt) læse-host er konfigureret.
+    const targets = [{ label: t("settings.link_role_primary"), url: primaryUrl }];
+    if (readUrl && readUrl !== primaryUrl) {
+      targets.push({ label: t("settings.link_role_read"), url: readUrl });
     }
+
+    const results = await Promise.all(targets.map(async (tg) => {
+      try {
+        const res = await api.testBackendConnection({ ...basePayload, ise_base_url: tg.url });
+        return { ...tg, ok: !!res.ok, message: res.message, latency: res.latency_ms };
+      } catch (err) {
+        return { ...tg, ok: false, message: err.message };
+      }
+    }));
+
+    const single = targets.length === 1;
+    const allOk = results.every((r) => r.ok);
+    const lines = results.map((r) => {
+      const icon = r.ok ? "✓" : "✗";
+      const lat = r.ok && r.latency != null ? ` (${r.latency} ms)` : "";
+      const host = (r.url || "").replace(/^https?:\/\//, "");
+      const head = single
+        ? ""
+        : `<strong>${esc(r.label)}</strong> <span style="font-family:monospace;font-size:.9em;opacity:.75;">${esc(host)}</span> — `;
+      return `<div>${head}${icon} ${esc(r.message || "")}${lat}</div>`;
+    }).join("");
+    backendMsg.innerHTML = `<div class="alert ${allOk ? "success" : "error"}">${lines}</div>`;
   });
 
   container.querySelector("#backend-form").addEventListener("submit", async (e) => {
@@ -106,4 +125,81 @@ export async function initBackendSection(container) {
       backendMsg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
     }
   });
+
+  // ── ISE Primary/Secondary link-status ──────────────────────────────────────
+  const linkStatusEl = container.querySelector("#ise-link-status");
+  const linkTitle = container.querySelector("#ise-link-title");
+  const linkHint = container.querySelector("#ise-link-hint");
+  const linkTestBtn = container.querySelector("#ise-link-test-btn");
+  const linkLoading = container.querySelector("#ise-link-loading");
+  if (linkTitle) linkTitle.textContent = t("settings.link_title");
+  if (linkHint) linkHint.textContent = t("settings.link_hint");
+  if (linkTestBtn) linkTestBtn.textContent = t("settings.link_test_btn");
+  if (linkLoading) linkLoading.textContent = t("settings.link_loading");
+
+  function fmtLinkNode(n) {
+    const roleLabel = n.role === "read"
+      ? t("settings.link_role_read") : t("settings.link_role_primary");
+    const dot = n.status === "up" ? "up" : n.status === "down" ? "down" : "unknown";
+    const statusTxt = t("settings.link_status_" + dot);
+    const bits = [];
+    if (n.last_latency_ms != null) bits.push(`${n.last_latency_ms} ms`);
+    if (n.status === "up" && n.seconds_since_ok != null) {
+      bits.push(t("settings.link_last_ok").replace("{s}", Math.round(n.seconds_since_ok)));
+    }
+    if (n.status === "down") {
+      if (n.cb_state === "open") {
+        bits.push(t("settings.link_cb_open").replace("{s}", Math.round(n.cb_recovery_remaining_s || 0)));
+      }
+      if (n.last_error) bits.push(t("settings.link_err_label").replace("{err}", esc(n.last_error)));
+      if (n.consecutive_errors) bits.push(t("settings.link_consec").replace("{n}", n.consecutive_errors));
+    }
+    if (n.status === "unknown") bits.push(t("settings.link_no_traffic"));
+    return `
+      <div class="ise-link-node ise-link-${dot}">
+        <span class="ise-link-dot"></span>
+        <div class="ise-link-body">
+          <div class="ise-link-role">${esc(roleLabel)} <span class="ise-link-status-txt">${esc(statusTxt)}</span></div>
+          <div class="ise-link-host">${esc(n.host || "—")}</div>
+          <div class="ise-link-meta">${bits.join(" · ")}</div>
+        </div>
+      </div>`;
+  }
+
+  function renderIseLink(data) {
+    if (!data || !Array.isArray(data.nodes) || !data.nodes.length) {
+      return `<div class="hint">${t("settings.link_none")}</div>`;
+    }
+    const foot = !data.split_active
+      ? `<div class="hint" style="margin-top:0.5rem;">${t("settings.link_single")}</div>` : "";
+    return data.nodes.map(fmtLinkNode).join("") + foot;
+  }
+
+  async function refreshIseLink() {
+    if (!linkStatusEl || !document.body.contains(linkStatusEl)) return false;
+    try {
+      linkStatusEl.innerHTML = renderIseLink(await api.getIseConnection());
+    } catch (err) {
+      linkStatusEl.innerHTML = `<div class="hint">${t("settings.link_load_err").replace("{msg}", esc(err.message))}</div>`;
+    }
+    return true;
+  }
+
+  if (linkTestBtn) {
+    linkTestBtn.addEventListener("click", async () => {
+      linkTestBtn.disabled = true;
+      const prev = linkTestBtn.textContent;
+      linkTestBtn.textContent = t("settings.link_testing");
+      try { await api.probeIseConnection(); } catch { /* status-render viser fejlen */ }
+      await refreshIseLink();
+      linkTestBtn.textContent = prev;
+      linkTestBtn.disabled = false;
+    });
+  }
+
+  refreshIseLink();
+  const _linkTimer = setInterval(async () => {
+    const alive = await refreshIseLink();
+    if (!alive) clearInterval(_linkTimer);  // panelet forlod DOM → stop polling
+  }, 20000);
 }

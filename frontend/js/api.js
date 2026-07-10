@@ -453,6 +453,9 @@ export const api = {
 
   // ISE PSN nodes (5.6.0)
   getIseNodes: () => request("/ise/nodes"),
+  // ISE Primary/Secondary link-status (6.34.0743)
+  getIseConnection: () => request("/ise/connection"),
+  probeIseConnection: () => request("/ise/connection/probe", { method: "POST" }),
 
   // Endpoint lifecycle (5.6.0)
   getStaleEndpoints: (days = 90) => request(`/lifecycle/stale?days=${days}`),

@@ -2,8 +2,10 @@
 # Copyright (C) 2026 Jan Green Larsen <jgl@laces.dk>
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
+from datetime import datetime, timezone
 from typing import Any
 
 import httpx
@@ -23,6 +25,22 @@ from app.ise.circuit_breaker import CircuitBreaker
 logger = logging.getLogger(__name__)
 
 _CB_STATE_MAP = {"closed": 0, "half_open": 1, "open": 2}
+
+
+def _iso(ts: float | None) -> str | None:
+    if not ts:
+        return None
+    return datetime.fromtimestamp(ts, tz=timezone.utc).isoformat()
+
+
+def _blank_node_stat() -> dict[str, Any]:
+    return {
+        "last_ok_at": None,
+        "last_err_at": None,
+        "last_error": None,
+        "last_latency_ms": None,
+        "consecutive_errors": 0,
+    }
 
 
 class IseClient:
@@ -127,6 +145,12 @@ class IseClient:
         self._consecutive_401s = 0
         self._auth_locked_since: float | None = None  # tid for første 401 i nuværende sekvens
         self._last_request_at: float = 0.0  # til idle-tid-logning
+        # Per-node kommunikations-status — fyldes af _request_on fra RIGTIG trafik
+        # (drip/scan/browse), så status altid er frisk uden ekstra ISE-last.
+        self._node_stats: dict[str, dict[str, Any]] = {
+            "primary": _blank_node_stat(),
+            "read": _blank_node_stat(),
+        }
         CIRCUIT_STATE.set(0)  # start closed
 
     async def close(self) -> None:
@@ -163,11 +187,12 @@ class IseClient:
                     return_response=return_response,
                 )
             except IseApiError as exc:
-                # Kun host-tilgængeligheds-fejl udløser fallback: 0 = transport,
-                # 503 = CB-open. Autoritative ISE-svar (401/4xx/5xx) bobler op.
-                if exc.status_code in (0, 503):
+                # Host-utilgængelighed/-uduelighed udløser fallback: 0 = transport,
+                # 503 = CB-open, 3xx = redirect (Secondary serverer ikke ERS her).
+                # Autoritative svar (401/4xx/5xx) bobler op.
+                if exc.status_code in (0, 503) or 300 <= exc.status_code < 400:
                     logger.warning(
-                        "ISE læse-host utilgængelig (%s) — fallback til Primary for %s %s",
+                        "ISE læse-host utilgængelig/uduelig (%s) — fallback til Primary for %s %s",
                         exc.status_code, method, path,
                     )
                     return await self._request_on(
@@ -245,8 +270,10 @@ class IseClient:
                             attempt.retry_state.attempt_number, method, path, label,
                         )
         except httpx.TransportError as exc:
+            _elapsed_ms = round((time.perf_counter() - _t0) * 1000)
             ISE_REQUEST_DURATION.observe(time.perf_counter() - _t0)
             ISE_REQUESTS.labels(method=method, outcome="error").inc()
+            self._record_node(label, ok=False, latency_ms=_elapsed_ms, error=type(exc).__name__)
             _prev_cb_state = cb.state
             cb.record_failure()
             if _is_primary:
@@ -269,6 +296,16 @@ class IseClient:
             raise IseApiError(0, f"transport error: {type(exc).__name__}: {exc}") from exc
 
         ISE_REQUEST_DURATION.observe(time.perf_counter() - _t0)
+        _elapsed_ms = round((time.perf_counter() - _t0) * 1000)
+        _sc = response.status_code
+        # Node "op/OK" = 2xx (noden serverer faktisk ERS). Alt andet — 3xx (redirect,
+        # typisk en Secondary PAN der peger på Primary), 4xx (fx 401 auth-fejl) og 5xx
+        # — tæller som "ikke OK", så en node der ikke reelt serverer ERS ikke vises grøn.
+        _node_ok = 200 <= _sc < 300
+        self._record_node(
+            label, ok=_node_ok, latency_ms=_elapsed_ms,
+            error=None if _node_ok else f"HTTP {_sc}",
+        )
 
         # Parse error body before branching so it's available in all paths.
         message = response.text
@@ -318,6 +355,28 @@ class IseClient:
             ISE_REQUESTS.labels(method=method, outcome="4xx").inc()
             raise IseApiError(response.status_code, message, payload)
 
+        if 300 <= response.status_code < 400:
+            # ISE ERS redirecter ikke et gyldigt, autentificeret read. En 3xx betyder
+            # typisk forkert node (Secondary PAN → Primary) eller en login-redirect →
+            # noden serverer IKKE brugbar ERS her. Behandl som fejl så læse-split
+            # falder tilbage til Primary i stedet for at returnere et tomt svar.
+            cb.record_failure()
+            if _is_primary:
+                CIRCUIT_STATE.set(_CB_STATE_MAP.get(cb.state, 0))
+            ISE_REQUESTS.labels(method=method, outcome="3xx").inc()
+            logger.warning(
+                "ISE %s %s [%s] -> %d redirect (Location=%s) — behandles som fejl; "
+                "noden serverer ikke ERS her",
+                method, path, label, response.status_code,
+                response.headers.get("location", "?"),
+            )
+            raise IseApiError(
+                response.status_code,
+                f"HTTP {response.status_code} redirect — noden serverer ikke ERS "
+                "(typisk en Secondary PAN der peger på Primary)",
+                payload,
+            )
+
         # Non-401 response (2xx, other 4xx, 5xx) — mark CB success and reset 401 counter.
         self._last_request_at = time.time()
         _prev_cb_state = cb.state
@@ -358,6 +417,120 @@ class IseClient:
 
     async def delete(self, path: str, **kwargs: Any) -> Any:
         return await self.request("DELETE", path, **kwargs)
+
+    def _record_node(
+        self, label: str, *, ok: bool, latency_ms: int | None = None, error: str | None = None
+    ) -> None:
+        """Opdatér per-node kommunikations-status. Kaldes fra _request_on + probe."""
+        st = self._node_stats.get(label)
+        if st is None:
+            return
+        now = time.time()
+        if ok:
+            st["last_ok_at"] = now
+            st["consecutive_errors"] = 0
+            st["last_error"] = None
+        else:
+            st["last_err_at"] = now
+            st["last_error"] = error
+            st["consecutive_errors"] = int(st.get("consecutive_errors", 0)) + 1
+        if latency_ms is not None:
+            st["last_latency_ms"] = latency_ms
+
+    def _node_view(self, label: str, host: str, cb: CircuitBreaker, role: str) -> dict[str, Any]:
+        st = self._node_stats[label]
+        cb_state = cb.state
+        if cb_state == "open":
+            status = "down"
+        elif st["last_ok_at"] and (st["last_err_at"] is None or st["last_ok_at"] >= st["last_err_at"]):
+            status = "up"
+        elif st["last_err_at"]:
+            status = "down"
+        else:
+            status = "unknown"
+        now = time.time()
+        return {
+            "role": role,
+            "host": host,
+            "status": status,
+            "cb_state": cb_state,
+            "cb_recovery_remaining_s": (
+                round(cb.stats()["recovery_remaining_s"], 1) if cb_state == "open" else 0.0
+            ),
+            "last_ok_at": _iso(st["last_ok_at"]),
+            "last_error_at": _iso(st["last_err_at"]),
+            "last_error": st["last_error"],
+            "last_latency_ms": st["last_latency_ms"],
+            "consecutive_errors": st["consecutive_errors"],
+            "seconds_since_ok": round(now - st["last_ok_at"], 1) if st["last_ok_at"] else None,
+        }
+
+    def node_status(self) -> dict[str, Any]:
+        """Live kommunikations-status pr. ISE-node ud fra seneste RIGTIGE trafik.
+
+        Ingen ekstra ISE-kald — læser blot de tal drip/scan/browse allerede har sat.
+        """
+        s = config.settings
+        primary_host = s.ise_base_url
+        nodes = [self._node_view("primary", primary_host, self._cb, "primary")]
+        if self._split:
+            read_host = (getattr(s, "ise_read_base_url", "") or "").strip()
+            nodes.append(self._node_view("read", read_host, self._cb_read, "read"))
+        return {"split_active": self._split, "nodes": nodes}
+
+    async def probe(self, timeout_s: float | None = None) -> dict[str, Any]:
+        """Aktiv probe: rå ERS-GET mod hver node (parallelt), bypasser CB + retry.
+
+        Bruges af "Test nu"-knappen. Opdaterer også den passive node-status.
+        """
+        to = timeout_s or min(float(getattr(config.settings, "ise_timeout", 30.0)), 15.0)
+        s = config.settings
+        targets: list[tuple[str, httpx.AsyncClient, str]] = [
+            ("primary", self._http, s.ise_base_url)
+        ]
+        if self._split:
+            targets.append(
+                ("read", self._http_read, (getattr(s, "ise_read_base_url", "") or "").strip())
+            )
+
+        async def _one(label: str, client: httpx.AsyncClient, host: str) -> dict[str, Any]:
+            t0 = time.perf_counter()
+            try:
+                r = await client.request(
+                    "GET", "/ers/config/endpointgroup",
+                    params={"size": "1", "page": "1"}, timeout=to,
+                )
+                ms = round((time.perf_counter() - t0) * 1000)
+                # "OK" kræver 2xx OG gyldig ERS-body — en redirect (3xx) eller et
+                # tomt/forkert 2xx-svar (fx en Secondary PAN der ikke serverer ERS)
+                # skal IKKE rapporteres som OK.
+                is_2xx = 200 <= r.status_code < 300
+                body_ok = False
+                if is_2xx:
+                    try:
+                        body_ok = isinstance(r.json(), dict) and "SearchResult" in r.json()
+                    except Exception:  # noqa: BLE001
+                        body_ok = False
+                ok = is_2xx and body_ok
+                err = (
+                    None if ok
+                    else (f"HTTP {r.status_code}" if not is_2xx else "uventet svar (ikke ERS-data)")
+                )
+                self._record_node(label, ok=ok, latency_ms=ms, error=err)
+                return {
+                    "role": label, "host": host, "ok": ok, "status_code": r.status_code,
+                    "latency_ms": ms, "error": err,
+                }
+            except Exception as exc:  # noqa: BLE001
+                ms = round((time.perf_counter() - t0) * 1000)
+                self._record_node(label, ok=False, latency_ms=ms, error=type(exc).__name__)
+                return {
+                    "role": label, "host": host, "ok": False, "status_code": None,
+                    "latency_ms": ms, "error": type(exc).__name__,
+                }
+
+        results = await asyncio.gather(*(_one(lbl, cl, ho) for lbl, cl, ho in targets))
+        return {"split_active": self._split, "probe_timeout_s": to, "nodes": list(results)}
 
     def cb_is_open(self) -> bool:
         """True hvis primary-CB er OPEN. Ingen sideeffekt — trigrer ikke OPEN→HALF_OPEN."""
