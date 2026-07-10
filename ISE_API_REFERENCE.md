@@ -27,6 +27,16 @@ ERS + Open API (config-REST) serveres af **Admin-personaen** — der findes inge
 - Routing er ren HTTP-metode: GET → read-host, alt andet → Primary. (POST-baserede "læse"-kald, hvis nogen, går derfor til Primary — altid sikkert.)
 - pxGrid (`pxgrid_psn_fqdn`) og MnT/CoA (`coa_psn_name`) har allerede egne node-targets.
 
+> ⚠️ **GOTCHA (empirisk bekræftet, ise2/ise3-deployment 2026-07-10): en Secondary PAN serverer ikke nødvendigvis ERS.**
+> "Read-replika ⇒ GET virker på Secondary PAN" er teorien, men i praksis **hang ERS fuldstændigt** på den sekundære PAN (`ise3`): TCP forbandt, men `GET /ers/config/endpointgroup` svarede aldrig → ReadTimeout med `idle_before=0s`. Samme kald mod Primary PAN (`ise2`) svarede øjeblikkeligt. Symptom i portalen: **tom endpoint-cache** når hoved-hosten pegede på den sekundære.
+> **Regel: verificér ALTID en Secondary PAN's ERS med `curl` FØR den sættes som `ise_read_base_url`:**
+> ```
+> curl -k -m 35 -u '<ers-user>:<pw>' -H 'Accept: application/json' \
+>   'https://<sec-pan>/ers/config/endpointgroup?size=1&page=1'
+> ```
+> Får du `{"SearchResult":...}` → OK som læse-host. Hænger den → **brug den ikke**; kør single-host mod Primary PAN. ERS serveres pålideligt kun af Primary PAN i mange ISE-versioner/deployments.
+> Portalens auto-fallback (læse-fejl → Primary) beskytter mod nedbrud, men en hængende læse-host betyder at hvert read spilder én timeout før fallback — så en ikke-svarende Secondary skal udelades helt, ikke bare tolereres.
+
 ---
 
 ## ERS — Endpoint resources
