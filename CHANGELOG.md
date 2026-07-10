@@ -3,6 +3,20 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [7.0.0749] — 2026-07-10 — feat: Gruppetræ-leaves render'es nu som tabel-rækker (samme kolonner + pxGrid-live-farve)
+
+Rapporteret: leaves i træet skal ligne tabel-viewet — samme kolonner (minus de grupperede) + pxGrid-live-status-farve på MAC.
+
+- **`browse-tree.js`**: Leaves render'es nu som en mini-`<table>` med de **samme synlige, ordnede kolonner** som tabel-viewet (`getOrderedColumns()` filtreret på `state.colVis`), **minus de kolonner der allerede er grupperet efter** i træet. Værdier via de eksisterende `col.field(row)`-accessorer. Header-række pr. leaf-gruppe. Status-badges (decomm/aktiv/inaktiv) på MAC. Leaf-række-klik → detalje/edit-drawer (uændret).
+- **pxGrid-live-farve på MAC**: MAC-cellen render'es som `<td class="mac-cell auth-active|auth-failed">` fra samme kilde som tabellen (`state.activeSessionMacs || state.pxgridSessionMacs`) — den eksisterende `td.mac-cell.auth-active/failed`-CSS (grøn/rød) virker automatisk. Opdateres når session-MACs lander (`load()` → `applyFilter` → re-render).
+- **`browse-table.js`**: Træ-grenen i `applyFilter` bruger nu samme row-udvalg som tabellen (filter-mode → filtrerede; ellers hele datasættet, evt. minus decommissioned) — fixede at træet viste "ingen rows" uden for filter-mode.
+- **`styles.css`**: `.tree-leaf-table`-styling (lys+dark), MAC-farve bevaret på hover.
+- **Tests**: `smoke-tree.spec.ts` udvidet (leaf-tabel render'es med kolonner + MAC-værdier); robuste browse-mock-defaults i `fixtures.ts`.
+
+## [7.0.0748] — 2026-07-10 — fix: Fjern utilsigtet NUL-byte i browse-tree.js (git så filen som binær)
+
+- **`browse-tree.js`**: `NONE`-sentinel'en indeholdt ved en fejl en rå NUL-byte (`"\x00none"`) fra 0747-commit'et. Funktionelt harmløs (kørte fint), men gjorde filen "binær" i git → ingen tekst-diffs. Erstattet med et Private-Use-Area-tegn (`"none"`) der aldrig kolliderer med ISE-data. Ingen funktionel ændring.
+
 ## [7.0.0747] — 2026-07-10 — feat: Gruppetræ-view i Browse (MAJOR-milepæl 7.0)
 
 Major-milepæl. Nyt alternativt view i Browse (Fase 1) hvor endpoints grupperes hierarkisk efter en fri, bruger-valgt stak af parametre. `version` MAJOR 6→7, MINOR→0; `build` fortsætter (nulstilles aldrig).

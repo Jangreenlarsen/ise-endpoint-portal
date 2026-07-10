@@ -4,6 +4,19 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [7.0.0749] — 2026-07-10 — feat: Gruppetræet viser nu de samme kolonner som tabellen
+
+> **Build:** 0749
+
+- **Kolonner i træet**: Når du folder en gren ud i gruppetræet, vises hver enhed nu som en rigtig tabel-række med de **samme kolonner som i tabel-visningen** — bare uden de kolonner du allerede grupperer efter (de er jo givet af grenen). Klik på en række for at redigere, præcis som før.
+- **pxGrid live-status i træet**: MAC-adresser farves nu grønt/rødt efter aktiv session — samme farver som i tabel-visningen — også i træet.
+
+## [7.0.0748] — 2026-07-10 — fix: Intern oprydning (ingen funktionel ændring)
+
+> **Build:** 0748
+
+- Fjernet en utilsigtet skjult byte i en ny kildefil fra 7.0-udgivelsen. Ingen synlig ændring i portalen; rent internt kodehygiejne-fix.
+
 ## [7.0.0747] — 2026-07-10 — 🎉 Version 7.0: Gruppetræ-view i Browse
 
 > **Build:** 0747 · MAJOR-milepæl

@@ -3422,12 +3422,18 @@ body.register-route .login-card {
 .tree-dim { color: #9ca3af; font-size: 0.78rem; }
 .tree-val { color: #111827; font-weight: 600; }
 .tree-count { margin-left: auto; background: #e5e7eb; color: #374151; border-radius: 10px; padding: 0 8px; font-size: 0.72rem; font-weight: 700; flex: none; }
-.tree-leaf { display: flex; align-items: baseline; gap: 0.6rem; padding: 2px 6px; padding-left: calc(6px + (var(--depth, 0) + 1) * 18px + 14px); border-radius: 6px; cursor: pointer; font-size: 0.8rem; }
-.tree-leaf:hover { background: #eff6ff; }
-.tree-leaf-mac { font-family: monospace; color: #1d4ed8; font-weight: 600; flex: none; min-width: 150px; }
-.tree-leaf-name { color: #374151; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tree-leaf-meta { color: #9ca3af; font-size: 0.76rem; flex: none; }
-.tree-more { padding: 3px 6px; padding-left: calc(6px + (var(--depth, 0) + 1) * 18px + 14px); color: #9ca3af; font-size: 0.76rem; font-style: italic; }
+.tree-leaf-table { border-collapse: collapse; margin: 3px 0 6px; margin-left: calc((var(--depth, 0) + 1) * 18px + 14px); font-size: 0.78rem; }
+.tree-leaf-table th { text-align: left; padding: 2px 10px 2px 8px; color: #6b7280; font-weight: 600; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.02em; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }
+.tree-leaf-table td { padding: 2px 10px 2px 8px; border-bottom: 1px solid #f3f4f6; white-space: nowrap; color: #374151; }
+.tree-leaf-row { cursor: pointer; }
+.tree-leaf-row:hover td:not(.mac-cell) { background: #eff6ff; }
+.tree-leaf-table td.mac-cell { font-family: monospace; font-weight: 600; }
+.tree-leaf-table td.mac-cell a { color: #1d4ed8; text-decoration: none; cursor: pointer; }
+.tree-badge { margin-left: 4px; font-size: 0.82em; }
+.tree-badge.decomm { color: #6b7280; }
+.tree-badge.inaktiv { color: #b91c1c; }
+.tree-badge.aktiv { color: #16a34a; }
+.tree-more { padding: 3px 8px; color: #9ca3af; font-size: 0.76rem; font-style: italic; }
 .tree-empty { padding: 1rem 0.25rem; }
 [data-theme="dark"] .view-mode-toggle { border-color: #3a3a5c; }
 [data-theme="dark"] .view-mode-toggle .vm-btn { background: #1e1e2e; color: #cbd5e1; }
@@ -3441,9 +3447,10 @@ body.register-route .login-card {
 [data-theme="dark"] .tree-branch:hover { background: #23233a; }
 [data-theme="dark"] .tree-val { color: #e5e7eb; }
 [data-theme="dark"] .tree-count { background: #2a2a4a; color: #cbd5e1; }
-[data-theme="dark"] .tree-leaf:hover { background: #0c2340; }
-[data-theme="dark"] .tree-leaf-mac { color: #60a5fa; }
-[data-theme="dark"] .tree-leaf-name { color: #cbd5e1; }
+[data-theme="dark"] .tree-leaf-table th { color: #9ca3af; border-bottom-color: #2a2a4a; }
+[data-theme="dark"] .tree-leaf-table td { color: #cbd5e1; border-bottom-color: #23233a; }
+[data-theme="dark"] .tree-leaf-row:hover td:not(.mac-cell) { background: #0c2340; }
+[data-theme="dark"] .tree-leaf-table td.mac-cell a { color: #60a5fa; }
 
 /* ISE Primary/Secondary link-status (6.34.0743) */
 .ise-link-panel { margin-top: 1.25rem; border-top: 1px solid var(--border); padding-top: 1rem; }
