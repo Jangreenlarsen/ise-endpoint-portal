@@ -574,6 +574,7 @@ export async function renderBrowse(container) {
     state,
     openDetail: (id) => cb.openDetail?.(id),
     rerender: () => cb.applyFilter?.(),
+    updateSelectionUI: () => cb.updateSelectionUI?.(),
   };
   cb.renderTree = (rows) => renderTree(treeWrap, rows, treeCtx);
   function setViewMode(mode) {

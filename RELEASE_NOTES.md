@@ -4,6 +4,12 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [7.0.0753] — 2026-07-10 — feat: Rediger en hel gren på én gang i træ-viewet (bulk)
+
+> **Build:** 0753
+
+- **Gren-bulk**: I gruppetræet er der nu afkrydsningsfelter — sæt flueben ved en hel gren for at vælge alle endpoints under den (eller vælg enkelte enheder), og brug så de eksisterende bulk-knapper i værktøjslinjen (**Bulk rediger, CoA, Disconnect, Slet, Simulér, nmap**) på hele udvalget. Grene viser hvor mange der er valgt (fx `12✓`), og udvalget nulstilles automatisk når du fx sletter enheder. Fx: fold "Guest-Devices" ud, sæt flueben ved grenen, og sæt en udløbsdato eller send CoA til alle på én gang.
+
 ## [7.0.0752] — 2026-07-10 — feat: Fjern en grens gruppering igen med ét klik
 
 > **Build:** 0752

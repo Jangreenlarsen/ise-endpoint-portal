@@ -3,6 +3,16 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [7.0.0753] — 2026-07-10 — feat: Fase 2 — gren-bulk i træ-viewet (vælg en gren → bulk på alle dens endpoints)
+
+Fase 2 af gruppetræet: rediger alle endpoints under en gren på én gang via den eksisterende bulk-motor.
+
+- **`browse-tree.js`**: Checkboxe på hver gren (vælg/fravælg hele undertræet) og på hver leaf-række (enkelt endpoint). Delt selektion i `state.treeSelectedIds`; `state._treeBranchIds` (path→ids) bygges under render så en collapsed gren også kan vælges. Gren-checkbox viser checked/indeterminate (native, sat efter render) + antal-valgt-badge (`N✓`). Selektion prunes til eksisterende rows ved reload (fx efter bulk-slet). Klik-guards så checkbox ikke toggler gren/detalje.
+- **`browse-table.js`**: `getSelectedIds()` er nu **træ-bevidst** — i tree-mode returnerer den `state.treeSelectedIds`. Da bulk-motoren (rediger/CoA/disconnect/slet/simulér/nmap) alle læser `cb.getSelectedIds()`, virker **hele den eksisterende bulk-toolbar** nu på træets selektion. `updateSelectionUI` (som allerede bruger `getSelectedIds`) opdaterer knap-tilstand + antal i begge modes.
+- **`browse.js`**: `treeCtx.updateSelectionUI` → `cb.updateSelectionUI`, så træet holder toolbaren i sync.
+- **`styles.css` + `i18n.js`**: checkbox/sel-count-styling + `tree.select_branch`/`selected_n` (da+en).
+- **Tests**: Ny Playwright-case (vælg gren → bulk-knapper aktiveres + "2 valgt", fravælg → deaktiveres). 8/8 grønne.
+
 ## [7.0.0752] — 2026-07-10 — feat: Fjern en enkelt grens gruppering igen (✕ pr. gren)
 
 Rapporteret: når man har valgt en gruppering til i træet, skal man også kunne slette den igen.

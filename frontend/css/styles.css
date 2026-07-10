@@ -3449,6 +3449,14 @@ body.register-route .login-card {
 [data-theme="dark"] .tree-subgroup-lbl { color: #6b7280; }
 [data-theme="dark"] .tree-branch-custom .tree-val { color: #93c5fd; }
 [data-theme="dark"] .tree-custom-badge { color: #60a5fa; }
+.tree-branch-cb { margin: 0 2px 0 0; flex: none; cursor: pointer; }
+.tree-sel-count { margin-left: 6px; font-size: 0.68rem; font-weight: 700; color: #2563eb; background: #eff6ff; border-radius: 8px; padding: 0 6px; }
+.tree-leaf-cb-th { width: 22px; }
+.tree-leaf-cb-td { width: 22px; text-align: center; }
+.tree-leaf-cb { cursor: pointer; }
+.tree-leaf-selected td:not(.mac-cell) { background: #eff6ff; }
+[data-theme="dark"] .tree-sel-count { background: #0c2340; color: #93c5fd; }
+[data-theme="dark"] .tree-leaf-selected td:not(.mac-cell) { background: #0c2340; }
 [data-theme="dark"] .view-mode-toggle { border-color: #3a3a5c; }
 [data-theme="dark"] .view-mode-toggle .vm-btn { background: #1e1e2e; color: #cbd5e1; }
 [data-theme="dark"] .view-mode-toggle .vm-btn + .vm-btn { border-left-color: #3a3a5c; }

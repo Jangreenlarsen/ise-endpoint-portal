@@ -79,3 +79,31 @@ test("browse: per-gren gruppering — en grens undergruppering kan skiftes", asy
   await expect(corp.locator(".tree-custom-badge")).toHaveCount(0);
   await expect(page.locator("#view-container")).not.toContainText("View error");
 });
+
+test("browse: gren-bulk — vælg en gren aktiverer bulk-toolbaren", async ({ page }) => {
+  await installApiMock(page, {
+    "endpoints/details": {
+      items: [
+        { id: "e1", mac: "AA:BB:CC:00:00:01", name: "AA:BB:CC:00:00:01", group_name: "Corp", profiler_name: "Windows" },
+        { id: "e2", mac: "AA:BB:CC:00:00:02", name: "AA:BB:CC:00:00:02", group_name: "Corp", profiler_name: "Windows" },
+      ],
+      total: 2,
+    },
+  });
+  await page.goto("/#/browse");
+  await page.locator("#view-mode-tree").click();
+  const corp = page.locator('#browse-tree-wrap .tree-branch[data-path="//0:Corp"]');
+  await expect(corp).toBeVisible({ timeout: 10000 });
+
+  await expect(page.locator("#bulk-edit-btn")).toBeDisabled();
+  // Vælg hele Corp-grenen → alle 2 endpoints under den vælges + bulk-toolbaren aktiveres.
+  await corp.locator(".tree-branch-cb").click();
+  await expect(page.locator("#bulk-edit-btn")).toBeEnabled();
+  await expect(page.locator("#bulk-coa-btn")).toBeEnabled();
+  await expect(page.locator("#selection-count")).toContainText("2");
+
+  // Fravælg igen → bulk-toolbaren deaktiveres.
+  await corp.locator(".tree-branch-cb").click();
+  await expect(page.locator("#bulk-edit-btn")).toBeDisabled();
+  await expect(page.locator("#view-container")).not.toContainText("View error");
+});
