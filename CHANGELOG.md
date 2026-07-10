@@ -3,6 +3,16 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [7.0.0747] — 2026-07-10 — feat: Gruppetræ-view i Browse (MAJOR-milepæl 7.0)
+
+Major-milepæl. Nyt alternativt view i Browse (Fase 1) hvor endpoints grupperes hierarkisk efter en fri, bruger-valgt stak af parametre. `version` MAJOR 6→7, MINOR→0; `build` fortsætter (nulstilles aldrig).
+
+- **`browse-tree.js` (ny)**: Rekursiv gruppering client-side over de allerede-indlæste rows. Group-by-stak af 14 managed dimensioner (Gruppe/Profil/Platform/Ejer/Lokation/VLAN/ACL/Status/Aktiv/Gæst/…) bygget via chips (`+ parameter`); hvert niveau = én parameter, grene bliver mere specifikke. Counts pr. gren, expand/collapse + fold alt ud/sammen (materialiserer alle gren-stier), "(Ingen)"-spand for tomme værdier, leaf-cap 200 m. "+N flere". Leaf-klik → eksisterende detalje/edit-drawer.
+- **`browse.js`**: Tabel/Træ-toggle i view-toolbaren + træ-container + `treeCtx` (openDetail/rerender) + `cb.renderTree`. Toggle skjuler tabel+paginering og viser træet.
+- **`browse-table.js`**: `applyFilter` render'er træet fra de filtrerede rows når `viewMode === "tree"` (respekterer aktive filtre) i stedet for tabellen.
+- **`styles.css` + `i18n.js`**: Træ-styling (lys+dark) + toggle-segmentknap; da+en (`tree.*` + `browse.view_*`).
+- **Tests**: Ny `smoke-tree.spec.ts` (Playwright) — toggle renderer træet + group-by-chips uden crash; skift tilbage til tabel. Backend uændret (247 tests står).
+
 ## [6.34.0746] — 2026-07-10 — fix: Redirecting Secondary PAN vises ikke længere som "OK" (+ reads falder tilbage)
 
 Rapporteret: ise3 (Secondary PAN som læse-host) viste "OK, 3 ms" i node-panelet, selvom dens ERS ikke virker, og Primary stod "Unknown".

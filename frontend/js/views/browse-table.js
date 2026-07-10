@@ -558,6 +558,15 @@ export function initTable(container, state, api, cb) {
 
   // ── applyFilter (client-side pagination over full dataset) ───────────────
   function applyFilter() {
+    // Gruppetræ-view: render træet fra de filtrerede rows i stedet for tabellen.
+    if (state.viewMode === "tree") {
+      const rows = cb.applyFiltersToRows
+        ? cb.applyFiltersToRows(state.allRows || [])
+        : (state.allRows || []);
+      cb.renderTree?.(rows);
+      countEl.innerHTML = t("browse.tree_count").replace("{n}", rows.length);
+      return;
+    }
     if (state.filterMode) {
       const filtered = cb.applyFiltersToRows(state.allRows);
       state.totalEndpoints = filtered.length;

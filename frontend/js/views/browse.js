@@ -15,6 +15,7 @@ import {
 } from "./browse-utils.js";
 import { initFilter } from "./browse-filter.js";
 import { initTable  } from "./browse-table.js";
+import { renderTree } from "./browse-tree.js";
 import { initDetail } from "./browse-detail.js";
 import { initBulk   } from "./browse-bulk.js";
 
@@ -108,6 +109,10 @@ export async function renderBrowse(container) {
         <span class="toolbar-divider"></span>
 
         <div class="toolbar-group" title="${t("browse.tooltip_view")}">
+          <div class="view-mode-toggle" role="group" title="${t("browse.view_mode_title")}">
+            <button type="button" id="view-mode-table" class="vm-btn active">${t("browse.view_table")}</button>
+            <button type="button" id="view-mode-tree" class="vm-btn">${t("browse.view_tree")}</button>
+          </div>
           <label class="hint page-size-label" style="font-size:0.78rem;">${t("browse.label_show")}
             <select id="page-size-select" style="font-size:0.78rem;padding:1px 4px;">
               <option value="10">10</option>
@@ -168,6 +173,7 @@ export async function renderBrowse(container) {
           </tbody>
         </table>
       </div>
+      <div id="browse-tree-wrap" class="browse-tree-wrap hidden"></div>
       <div class="pagination-bar" id="pagination-bar">
         <button id="page-prev" class="secondary small" disabled>&laquo; ${t("browse.page_prev")}</button>
         <span id="page-info" class="hint"></span>
@@ -557,6 +563,31 @@ export async function renderBrowse(container) {
   const tableAPI  = initTable(container, state, api, cb);
   const detailAPI = initDetail(container, state, api, cb);
   initBulk(container, state, api, cb);
+
+  // ── Alternativt gruppetræ-view (toggle ud over standard-tabellen) ─────────
+  const treeWrap      = container.querySelector("#browse-tree-wrap");
+  const tableWrap     = container.querySelector(".browse-table-wrap");
+  const paginationBar = container.querySelector("#pagination-bar");
+  const vmTableBtn    = container.querySelector("#view-mode-table");
+  const vmTreeBtn     = container.querySelector("#view-mode-tree");
+  const treeCtx = {
+    state,
+    openDetail: (id) => cb.openDetail?.(id),
+    rerender: () => cb.applyFilter?.(),
+  };
+  cb.renderTree = (rows) => renderTree(treeWrap, rows, treeCtx);
+  function setViewMode(mode) {
+    state.viewMode = mode;
+    const tree = mode === "tree";
+    treeWrap?.classList.toggle("hidden", !tree);
+    tableWrap?.classList.toggle("hidden", tree);
+    paginationBar?.classList.toggle("hidden", tree);
+    vmTreeBtn?.classList.toggle("active", tree);
+    vmTableBtn?.classList.toggle("active", !tree);
+    cb.applyFilter?.();
+  }
+  vmTableBtn?.addEventListener("click", () => setViewMode("table"));
+  vmTreeBtn?.addEventListener("click", () => setViewMode("tree"));
 
   // ── MAC-type filter chips (Privat / Markeret / DeComm / Aktiv|Inaktiv) ────
   container.querySelectorAll(".mac-chip").forEach((chip) => {

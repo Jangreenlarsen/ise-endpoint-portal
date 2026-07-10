@@ -4,6 +4,14 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [7.0.0747] — 2026-07-10 — 🎉 Version 7.0: Gruppetræ-view i Browse
+
+> **Build:** 0747 · MAJOR-milepæl
+
+- **Nyt gruppetræ-view**: I Browse kan du nu skifte mellem **Tabel** og **Træ** (knap i værktøjslinjen). I træ-visningen grupperes dine endpoints hierarkisk efter parametre du selv vælger — fx *Gruppe → Profil → Platform* — hvor hver gren bliver mere og mere specifik. Du bygger grupperingen med chips (`+ parameter`) af 14 felter (gruppe, profil, platform, ejer, lokation, VLAN, ACL, status m.fl.), ser antal pr. gren, folder ud/sammen, og klikker på en enkelt enhed for at redigere den — præcis som i tabellen.
+- **Hurtigt og filtrer-bevidst**: Træet bygges direkte fra de data der allerede er indlæst (ingen ekstra ISE-kald) og respekterer de filtre/søgninger du har sat. Det er et *alternativt* view — standard-tabellen er uændret.
+- Dette er Fase 1; senere kommer bulk-redigering af en hel gren og træk-og-slip mellem grupper.
+
 ## [6.34.0746] — 2026-07-10 — fix: En ISE-node der ikke rigtig svarer vises ikke længere som "OK"
 
 > **Build:** 0746
