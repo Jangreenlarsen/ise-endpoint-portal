@@ -135,6 +135,9 @@ function branchGroupControl(path, childDepth, state) {
   return `<div class="tree-subgroup" style="--depth:${childDepth}">
     <span class="tree-subgroup-lbl">${t("tree.subgroup_label")}</span>
     <select class="tree-subgroup-select" data-path="${esc(path)}">${opts.join("")}</select>
+    ${overridden
+      ? `<button type="button" class="tree-subgroup-clear" data-clear-path="${esc(path)}" title="${t("tree.clear_branch_title")}">✕ ${t("tree.clear_branch")}</button>`
+      : ""}
   </div>`;
 }
 
@@ -285,6 +288,12 @@ function wire(container, ctx) {
     }
     if (e.target.closest("#tree-reset-branches")) {
       state.treeBranchDim = {};
+      ctx.rerender();
+      return;
+    }
+    const clear = e.target.closest("[data-clear-path]");
+    if (clear) {
+      delete state.treeBranchDim[clear.dataset.clearPath];
       ctx.rerender();
       return;
     }
