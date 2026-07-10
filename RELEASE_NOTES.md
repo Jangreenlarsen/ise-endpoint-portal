@@ -4,6 +4,18 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [7.0.0751] — 2026-07-10 — feat: Grupper hver gren for sig i træ-viewet
+
+> **Build:** 0751
+
+- **Per-gren gruppering**: I gruppetræet kan du nu gruppere hver gren for sig — i stedet for at hele træet tvinges til samme rækkefølge. Fold en gren ud og vælg i "Grupper børn efter:" hvordan netop den grens indhold skal opdeles (eller "vis rækker" for at stoppe der). Fx kan *Corp* grupperes efter platform mens *Guest* grupperes efter lokation, i samme træ. Grene med egen gruppering markeres med et ⚙, og "Nulstil pr-gren" rydder det hele igen. Den øverste chip-række er stadig standarden, som alle grene arver indtil du ændrer dem.
+
+## [7.0.0750] — 2026-07-10 — feat: Tættere, ensartet skriftstørrelse i tabel-visningen
+
+> **Build:** 0750
+
+- **Tabellen matcher træet**: Endpoint-tabellen bruger nu samme (lidt mindre) skriftstørrelse som gruppetræ-visningen, så de to visninger ser ensartede ud og tabellen viser mere pr. skærm.
+
 ## [7.0.0749] — 2026-07-10 — feat: Gruppetræet viser nu de samme kolonner som tabellen
 
 > **Build:** 0749

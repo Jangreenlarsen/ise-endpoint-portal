@@ -594,6 +594,8 @@ td.auth-status-col.auth-failed { background: #f87171; color: #450a0a; }
   overflow-x: auto;
   overflow-y: auto;
 }
+/* Samme font-størrelse som gruppetræ-viewet (0.78rem) for et ensartet, tættere look. */
+.browse-table-wrap table { font-size: 0.78rem; }
 .browse-table-wrap table thead th {
   position: sticky;
   top: 0;
@@ -632,7 +634,7 @@ td.auth-status-col.auth-failed { background: #f87171; color: #450a0a; }
 .browse-table-wrap select {
   width: 100%;
   padding: 0.15rem 0.25rem;
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   border: 1px solid #d1d5db;
   border-left: 3px solid #93c5fd;
   border-radius: 3px;
@@ -3435,6 +3437,15 @@ body.register-route .login-card {
 .tree-badge.aktiv { color: #16a34a; }
 .tree-more { padding: 3px 8px; color: #9ca3af; font-size: 0.76rem; font-style: italic; }
 .tree-empty { padding: 1rem 0.25rem; }
+.tree-subgroup { display: flex; align-items: center; gap: 0.35rem; padding: 1px 6px 4px; padding-left: calc(var(--depth, 0) * 18px + 14px); }
+.tree-subgroup-lbl { font-size: 0.7rem; color: #9ca3af; }
+.tree-subgroup-select { font-size: 0.72rem; padding: 1px 4px; border: 1px solid #d1d5db; border-radius: 4px; background: #fff; color: #374151; max-width: 210px; }
+.tree-branch-custom .tree-val { color: #1e40af; }
+.tree-custom-badge { margin-left: 4px; font-size: 0.8em; color: #2563eb; }
+[data-theme="dark"] .tree-subgroup-select { background: #1e1e2e; color: #cbd5e1; border-color: #3a3a5c; }
+[data-theme="dark"] .tree-subgroup-lbl { color: #6b7280; }
+[data-theme="dark"] .tree-branch-custom .tree-val { color: #93c5fd; }
+[data-theme="dark"] .tree-custom-badge { color: #60a5fa; }
 [data-theme="dark"] .view-mode-toggle { border-color: #3a3a5c; }
 [data-theme="dark"] .view-mode-toggle .vm-btn { background: #1e1e2e; color: #cbd5e1; }
 [data-theme="dark"] .view-mode-toggle .vm-btn + .vm-btn { border-left-color: #3a3a5c; }
