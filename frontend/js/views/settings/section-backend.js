@@ -60,24 +60,43 @@ export async function initBackendSection(container) {
 
   container.querySelector("#test-conn-btn").addEventListener("click", async () => {
     backendMsg.innerHTML = `<div class="alert info">${t("settings.ic_testing")}</div>`;
-    const payload = {
-      ise_base_url: container.querySelector("#base_url").value.trim(),
+    const basePayload = {
       ise_username: container.querySelector("#username").value.trim(),
       ise_password: container.querySelector("#password").value,
       ise_verify_tls: container.querySelector("#verify_tls").checked,
       ise_timeout: parseFloat(container.querySelector("#timeout").value),
       ise_api_type: container.querySelector("#api_type").value,
-      coa_psn_name: container.querySelector("#coa_psn_name").value.trim(),
-      coa_reauth_type: parseInt(container.querySelector("#coa_reauth_type").value, 10),
-      coa_disconnect_type: parseInt(container.querySelector("#coa_disconnect_type").value, 10),
     };
-    try {
-      const res = await api.testBackendConnection(payload);
-      const cls = res.ok ? "success" : "error";
-      backendMsg.innerHTML = `<div class="alert ${cls}">${res.message}</div>`;
-    } catch (err) {
-      backendMsg.innerHTML = `<div class="alert error">${t("settings.ic_test_failed").replace("{msg}", esc(err.message))}</div>`;
+    const primaryUrl = container.querySelector("#base_url").value.trim();
+    const readUrl = container.querySelector("#read_base_url").value.trim();
+
+    // Test 1 eller 2 hosts alt efter om en (distinkt) læse-host er konfigureret.
+    const targets = [{ label: t("settings.link_role_primary"), url: primaryUrl }];
+    if (readUrl && readUrl !== primaryUrl) {
+      targets.push({ label: t("settings.link_role_read"), url: readUrl });
     }
+
+    const results = await Promise.all(targets.map(async (tg) => {
+      try {
+        const res = await api.testBackendConnection({ ...basePayload, ise_base_url: tg.url });
+        return { ...tg, ok: !!res.ok, message: res.message, latency: res.latency_ms };
+      } catch (err) {
+        return { ...tg, ok: false, message: err.message };
+      }
+    }));
+
+    const single = targets.length === 1;
+    const allOk = results.every((r) => r.ok);
+    const lines = results.map((r) => {
+      const icon = r.ok ? "✓" : "✗";
+      const lat = r.ok && r.latency != null ? ` (${r.latency} ms)` : "";
+      const host = (r.url || "").replace(/^https?:\/\//, "");
+      const head = single
+        ? ""
+        : `<strong>${esc(r.label)}</strong> <span style="font-family:monospace;font-size:.9em;opacity:.75;">${esc(host)}</span> — `;
+      return `<div>${head}${icon} ${esc(r.message || "")}${lat}</div>`;
+    }).join("");
+    backendMsg.innerHTML = `<div class="alert ${allOk ? "success" : "error"}">${lines}</div>`;
   });
 
   container.querySelector("#backend-form").addEventListener("submit", async (e) => {

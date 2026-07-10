@@ -4,6 +4,12 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.34.0745] — 2026-07-10 — feat: "Test forbindelse" tester både Primary og læse-host
+
+> **Build:** 0745
+
+- **Test af 1 eller 2 forbindelser**: "Test forbindelse" under Settings → ISE-forbindelse tester nu automatisk både Primary-hosten og — hvis du har udfyldt "ISE læse-host" — også den, hver med sit eget ✓/✗-resultat, host-navn og svartid. Har du kun én host konfigureret, virker den som før.
+
 ## [6.34.0744] — 2026-07-10 — feat: ISE-kommunikationsstatus også på dashboardet
 
 > **Build:** 0744

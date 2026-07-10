@@ -3,6 +3,12 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.34.0745] — 2026-07-10 — feat: "Test forbindelse" tester nu både Primary og læse-host
+
+Rapporteret: "Test forbindelse" under Backend → Cisco ISE connection skal forholde sig til om der er 1 eller 2 forbindelser konfigureret.
+
+- **`section-backend.js`**: Test-knappen tester nu **1 eller 2 hosts** alt efter om et (distinkt) "ISE læse-host"-felt er udfyldt. Kalder det eksisterende `POST /settings/test` pr. host (samme credentials, `ise_base_url` sat til hhv. primær/læse-host) parallelt og viser et resultat pr. host med ✓/✗, host-navn og latency. Ingen backend-ændring — test-endpointet bygger allerede en ephemeral klient mod den angivne `base_url`. Enkelt-host (ingen læse-host) viser uændret én-linjes resultat.
+
 ## [6.34.0744] — 2026-07-10 — feat: ISE-kommunikationsstatus også på dashboardet
 
 Follow-up på 0743 — surfacer node-status hvor man kigger først.
