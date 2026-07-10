@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [7.0.0752] — 2026-07-10 — feat: Fjern en enkelt grens gruppering igen (✕ pr. gren)
+
+Rapporteret: når man har valgt en gruppering til i træet, skal man også kunne slette den igen.
+
+- **`browse-tree.js`**: `branchGroupControl` viser nu en **"✕ Fjern"-knap** på grene med egen undergruppering → rydder netop den grens overstyring (tilbage til standard), uden at røre andre grene. Komplementerer den eksisterende "Nulstil pr-gren" (rydder alle). De globale grupperings-chips havde allerede hver sin ✕.
+- **`styles.css` + `i18n.js`**: `.tree-subgroup-clear`-styling + `tree.clear_branch`-nøgler (da+en).
+- **Tests**: Per-gren-testen udvidet — sæt en grens gruppering, fjern den igen med ✕ → tilbage til standard (grene + ⚙-badge væk). 7/7 grønne.
+
 ## [7.0.0751] — 2026-07-10 — feat: Per-gren gruppering i træ-viewet (hver gren kan grupperes forskelligt)
 
 Rapporteret: i stedet for at hele træet bruger samme grupperings-sekvens skal man kunne customisere grupperingen pr. gren.

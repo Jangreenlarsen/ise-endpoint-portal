@@ -3440,6 +3440,9 @@ body.register-route .login-card {
 .tree-subgroup { display: flex; align-items: center; gap: 0.35rem; padding: 1px 6px 4px; padding-left: calc(var(--depth, 0) * 18px + 14px); }
 .tree-subgroup-lbl { font-size: 0.7rem; color: #9ca3af; }
 .tree-subgroup-select { font-size: 0.72rem; padding: 1px 4px; border: 1px solid #d1d5db; border-radius: 4px; background: #fff; color: #374151; max-width: 210px; }
+.tree-subgroup-clear { border: 0; background: transparent; color: #dc2626; font-size: 0.7rem; cursor: pointer; padding: 0 4px; }
+.tree-subgroup-clear:hover { text-decoration: underline; }
+[data-theme="dark"] .tree-subgroup-clear { color: #f87171; }
 .tree-branch-custom .tree-val { color: #1e40af; }
 .tree-custom-badge { margin-left: 4px; font-size: 0.8em; color: #2563eb; }
 [data-theme="dark"] .tree-subgroup-select { background: #1e1e2e; color: #cbd5e1; border-color: #3a3a5c; }

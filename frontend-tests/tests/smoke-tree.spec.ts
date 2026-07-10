@@ -72,5 +72,10 @@ test("browse: per-gren gruppering — en grens undergruppering kan skiftes", asy
   await expect(page.locator('#browse-tree-wrap .tree-branch[data-path="//0:Corp//1:Dell"]')).toBeVisible();
   await expect(page.locator('#browse-tree-wrap .tree-branch[data-path="//0:Corp//1:HP"]')).toBeVisible();
   await expect(corp.locator(".tree-custom-badge")).toBeVisible();
+
+  // Fjern Corps egen gruppering igen med ✕ → tilbage til standard (badge + vendor-grene væk).
+  await page.locator('.tree-subgroup-clear[data-clear-path="//0:Corp"]').click();
+  await expect(page.locator('#browse-tree-wrap .tree-branch[data-path="//0:Corp//1:Dell"]')).toHaveCount(0);
+  await expect(corp.locator(".tree-custom-badge")).toHaveCount(0);
   await expect(page.locator("#view-container")).not.toContainText("View error");
 });

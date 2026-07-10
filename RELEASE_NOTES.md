@@ -4,6 +4,12 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [7.0.0752] — 2026-07-10 — feat: Fjern en grens gruppering igen med ét klik
+
+> **Build:** 0752
+
+- **Fjern pr. gren**: Har du givet en enkelt gren sin egen gruppering, kan du nu fjerne den igen med en lille **✕ Fjern** ud for grenens "Grupper børn efter"-vælger — så vender netop den gren tilbage til standard, uden at røre resten. (De øverste grupperings-chips kunne allerede fjernes med hver sin ✕, og "Nulstil pr-gren" rydder alle på én gang.)
+
 ## [7.0.0751] — 2026-07-10 — feat: Grupper hver gren for sig i træ-viewet
 
 > **Build:** 0751
