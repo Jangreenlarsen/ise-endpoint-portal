@@ -3,6 +3,15 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [6.34.0743] — 2026-07-10 — feat: Live Primary/Secondary ISE-kommunikationsstatus
+
+Synliggør om ERS-forbindelsen til hver ISE-node virker — foranlediget af fejlfinding hvor portalen pegede på en Secondary PAN hvis ERS hang (tom cache uden tydelig årsag).
+
+- **`ise/client.py`**: Passiv per-node-tracking (`_node_stats` + `_record_node`) opdateret fra rigtig drip/scan/browse-trafik — sidste OK, latency, seneste transport-fejl, fejl i træk pr. node. `node_status()` → up/down/unknown (down når CB åben eller seneste event var transport-fejl). Ny aktiv `probe()`: rå ERS-GET mod hver node parallelt, bypasser CB+retry.
+- **`api/ise_nodes.py`**: `GET /ise/connection` (instant status, ingen ekstra ISE-kald) + `POST /ise/connection/probe` (aktiv test).
+- **Frontend**: "Node-kommunikation"-panel i Settings → ISE-forbindelse: farvet dot (grøn/rød/grå) + host + latency + sidst-OK/fejl/CB-tilstand pr. node, auto-refresh hvert 20s (selv-stoppende), + "Test nu"-knap. `api.js`, `styles.css`, i18n (da+en).
+- **Tests**: +5 i `test_read_write_split.py` (initial unknown, single-host, status fra trafik, probe up/down pr. node, HTTP-fejl-flag). Suite: 244 passed.
+
 ## [6.33.0742] — 2026-07-07 — feat: Krypteret fuld backup (passphrase) + lukning af backup-huller
 
 Tillæg til config-backup fra backup-audit: en passphrase-krypteret backup der bevarer integritet og inkluderer hemmelighederne, plus lukning af de identificerede huller.

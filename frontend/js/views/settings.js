@@ -121,6 +121,15 @@ export async function renderSettings(container) {
           <button type="button" id="test-conn-btn" class="secondary"></button>
         </div>
       </form>
+
+      <div class="ise-link-panel">
+        <div class="ise-link-head">
+          <h4 id="ise-link-title"></h4>
+          <button type="button" id="ise-link-test-btn" class="secondary"></button>
+        </div>
+        <p class="hint" id="ise-link-hint"></p>
+        <div id="ise-link-status"><div class="hint" id="ise-link-loading"></div></div>
+      </div>
     </div>
     ` : ""}
 

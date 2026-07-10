@@ -4,6 +4,13 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [6.34.0743] — 2026-07-10 — feat: Se med det samme om ISE-forbindelsen virker (Primary/Secondary)
+
+> **Build:** 0743
+
+- **Node-kommunikationsstatus**: Under **Settings → ISE-forbindelse** er der nu et "Node-kommunikation"-panel der viser, live, om portalen kan tale ERS med hver ISE-node — din Primary og (hvis konfigureret) din læse-host/Secondary. Grøn prik = svarer, rød = fejler (med årsag: timeout, circuit breaker åben, HTTP-fejl), grå = ingen trafik endnu. Der vises også svartid og hvornår noden sidst svarede. Statussen kommer fra portalens faktiske baggrunds-trafik, så den koster ikke ekstra ISE-kald, og opdateres automatisk hvert 20. sekund.
+- **"Test nu"-knap**: Laver et aktivt opslag mod hver node med det samme — nyttigt til at bekræfte at fx en nyligt konfigureret Secondary PAN faktisk svarer, før du bruger den som læse-host.
+
 ## [6.33.0742] — 2026-07-07 — feat: Krypteret backup med passphrase — fuld, selvstændig gendannelse
 
 > **Build:** 0742

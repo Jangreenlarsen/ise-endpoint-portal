@@ -106,4 +106,81 @@ export async function initBackendSection(container) {
       backendMsg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
     }
   });
+
+  // ── ISE Primary/Secondary link-status ──────────────────────────────────────
+  const linkStatusEl = container.querySelector("#ise-link-status");
+  const linkTitle = container.querySelector("#ise-link-title");
+  const linkHint = container.querySelector("#ise-link-hint");
+  const linkTestBtn = container.querySelector("#ise-link-test-btn");
+  const linkLoading = container.querySelector("#ise-link-loading");
+  if (linkTitle) linkTitle.textContent = t("settings.link_title");
+  if (linkHint) linkHint.textContent = t("settings.link_hint");
+  if (linkTestBtn) linkTestBtn.textContent = t("settings.link_test_btn");
+  if (linkLoading) linkLoading.textContent = t("settings.link_loading");
+
+  function fmtLinkNode(n) {
+    const roleLabel = n.role === "read"
+      ? t("settings.link_role_read") : t("settings.link_role_primary");
+    const dot = n.status === "up" ? "up" : n.status === "down" ? "down" : "unknown";
+    const statusTxt = t("settings.link_status_" + dot);
+    const bits = [];
+    if (n.last_latency_ms != null) bits.push(`${n.last_latency_ms} ms`);
+    if (n.status === "up" && n.seconds_since_ok != null) {
+      bits.push(t("settings.link_last_ok").replace("{s}", Math.round(n.seconds_since_ok)));
+    }
+    if (n.status === "down") {
+      if (n.cb_state === "open") {
+        bits.push(t("settings.link_cb_open").replace("{s}", Math.round(n.cb_recovery_remaining_s || 0)));
+      }
+      if (n.last_error) bits.push(t("settings.link_err_label").replace("{err}", esc(n.last_error)));
+      if (n.consecutive_errors) bits.push(t("settings.link_consec").replace("{n}", n.consecutive_errors));
+    }
+    if (n.status === "unknown") bits.push(t("settings.link_no_traffic"));
+    return `
+      <div class="ise-link-node ise-link-${dot}">
+        <span class="ise-link-dot"></span>
+        <div class="ise-link-body">
+          <div class="ise-link-role">${esc(roleLabel)} <span class="ise-link-status-txt">${esc(statusTxt)}</span></div>
+          <div class="ise-link-host">${esc(n.host || "—")}</div>
+          <div class="ise-link-meta">${bits.join(" · ")}</div>
+        </div>
+      </div>`;
+  }
+
+  function renderIseLink(data) {
+    if (!data || !Array.isArray(data.nodes) || !data.nodes.length) {
+      return `<div class="hint">${t("settings.link_none")}</div>`;
+    }
+    const foot = !data.split_active
+      ? `<div class="hint" style="margin-top:0.5rem;">${t("settings.link_single")}</div>` : "";
+    return data.nodes.map(fmtLinkNode).join("") + foot;
+  }
+
+  async function refreshIseLink() {
+    if (!linkStatusEl || !document.body.contains(linkStatusEl)) return false;
+    try {
+      linkStatusEl.innerHTML = renderIseLink(await api.getIseConnection());
+    } catch (err) {
+      linkStatusEl.innerHTML = `<div class="hint">${t("settings.link_load_err").replace("{msg}", esc(err.message))}</div>`;
+    }
+    return true;
+  }
+
+  if (linkTestBtn) {
+    linkTestBtn.addEventListener("click", async () => {
+      linkTestBtn.disabled = true;
+      const prev = linkTestBtn.textContent;
+      linkTestBtn.textContent = t("settings.link_testing");
+      try { await api.probeIseConnection(); } catch { /* status-render viser fejlen */ }
+      await refreshIseLink();
+      linkTestBtn.textContent = prev;
+      linkTestBtn.disabled = false;
+    });
+  }
+
+  refreshIseLink();
+  const _linkTimer = setInterval(async () => {
+    const alive = await refreshIseLink();
+    if (!alive) clearInterval(_linkTimer);  // panelet forlod DOM → stop polling
+  }, 20000);
 }
