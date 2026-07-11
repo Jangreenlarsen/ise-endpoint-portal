@@ -4,6 +4,13 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [7.1.0754] — 2026-07-10 — 🎉 Version 7.1: Træk-og-slip mellem grupper i træ-viewet
+
+> **Build:** 0754 · MINOR-milepæl (gruppetræet komplet)
+
+- **Drag-and-drop mellem grupper**: I gruppetræet kan du nu **trække en enhed — eller en hel gren — over på en gruppe** og slippe den for at flytte den/dem til den ISE-gruppe. Måltgruppen fremhæves mens du trækker, og du bliver bedt om at bekræfte (fx "Flyt 42 endpoints til gruppen 'Corp-Laptops'?"). Bagefter opdateres træet automatisk. Kun selve gruppen ændres på enhederne — beskrivelser og attributter røres ikke.
+- Dette fuldender gruppetræet: fri gruppering (også pr. gren), samme kolonner + live-farver som tabellen, redigering enkeltvis og i bulk pr. gren, og nu flytning mellem grupper med træk-og-slip.
+
 ## [7.0.0753] — 2026-07-10 — feat: Rediger en hel gren på én gang i træ-viewet (bulk)
 
 > **Build:** 0753
