@@ -4,6 +4,15 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [7.2.0755] — 2026-07-11 — 🎉 Version 7.2: Sammenlæg, undergrupper og slet grene i træet
+
+> **Build:** 0755 · MINOR-milepæl
+
+- **Sammenlæg to grene (kun visning)**: Træk en gren over på en anden gren **på samme niveau** for at vise dem som én samlet **"A + B"-gren** med alle enheder fra begge (undergrene bevares). Det er rent en visnings-sammenlægning — **intet ændres i ISE**. Retter den tidligere adfærd hvor den ene profil "forsvandt" ind i den anden ved sammenlægning. Virker både på gruppe-grene (fx "eks1 + eks2") og på undergrupperinger (fx "platform noget1 + platform noget3").
+- **"+"-undergruppering**: I stedet for en "Grupper børn efter"-menu er der nu en **"+ grupper"-knap efter en grens sidste barn**. Klik den for at få en liste over alle parametre, du kan undergruppere netop den grens børn efter.
+- **Slet grene fra visningen**: Hver gren har nu et **✕** (vises når du holder musen over den), der skjuler grenen fra træet. Det påvirker kun visningen — ikke ISE.
+- **"Nulstil visning"**: Én knap i værktøjslinjen rydder alle dine egne tilpasninger på én gang — per-gren-grupperinger, sammenlægninger og skjulte grene.
+
 ## [7.1.0754] — 2026-07-10 — 🎉 Version 7.1: Træk-og-slip mellem grupper i træ-viewet
 
 > **Build:** 0754 · MINOR-milepæl (gruppetræet komplet)
