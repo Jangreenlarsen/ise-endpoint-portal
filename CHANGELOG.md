@@ -3,6 +3,15 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [7.1.0754] — 2026-07-10 — feat: Fase 3 — drag-and-drop mellem grupper i træ-viewet (MINOR → 7.1)
+
+Sidste fase af gruppetræet: træk en enhed eller en hel gren over på en gruppe-gren → flyt dem til den ISE-gruppe. `version` MINOR 7.0→7.1; `build` fortsætter.
+
+- **`browse-tree.js`**: Leaves og grene er nu `draggable`. Grene grupperet efter `group_name` (med et rigtigt `group_id`) er **drop-mål** (`data-drop-gid`/`-gname`). Drag-payload (module-var): leaf → dét endpoint; gren → alle endpoints i undertræet (fra `_treeBranchIds`). dragover fremhæver gyldigt mål; drop på egen gruppe er no-op. Ved drop: bekræftelse ("Flyt N til gruppe X?") → flyt.
+- **`browse.js`**: `treeCtx.moveToGroup(ids, groupId, groupName)` — kalder `api.updateEndpoint(id, {group_id, static_group_assignment:true})` pr. endpoint (verificeret **partiel** opdatering → kun gruppen ændres) + reload + status i `#msg`.
+- **`styles.css` + `i18n.js`**: `.tree-drop-target`-fremhævning + `tree.move_*`-nøgler (da+en).
+- **Tests**: Ny Playwright-case — `dragTo` et endpoint fra én gruppe til en anden + bekræft dialog → asserter `PUT /endpoints/{id}` med den nye `group_id`. 9/9 grønne.
+
 ## [7.0.0753] — 2026-07-10 — feat: Fase 2 — gren-bulk i træ-viewet (vælg en gren → bulk på alle dens endpoints)
 
 Fase 2 af gruppetræet: rediger alle endpoints under en gren på én gang via den eksisterende bulk-motor.

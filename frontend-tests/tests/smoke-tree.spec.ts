@@ -107,3 +107,37 @@ test("browse: gren-bulk — vælg en gren aktiverer bulk-toolbaren", async ({ pa
   await expect(page.locator("#bulk-edit-btn")).toBeDisabled();
   await expect(page.locator("#view-container")).not.toContainText("View error");
 });
+
+test("browse: Fase 3 — drag et endpoint til en anden gruppe → updateEndpoint m. ny group_id", async ({ page }) => {
+  let putGid: string | null = null;
+  await installApiMock(page, {
+    "endpoints/details": {
+      items: [
+        { id: "e1", mac: "AA:BB:CC:00:00:01", name: "AA:BB:CC:00:00:01", group_name: "Corp", group_id: "g-corp", profiler_name: "Windows" },
+        { id: "e2", mac: "AA:BB:CC:00:00:02", name: "AA:BB:CC:00:00:02", group_name: "Guest", group_id: "g-guest", profiler_name: "Windows" },
+      ],
+      total: 2,
+    },
+  });
+  // Fang PUT /endpoints/e1 (flyt-kaldet). Registreres efter installApiMock → vinder.
+  await page.route("**/api/endpoints/e1", async (route) => {
+    if (route.request().method() === "PUT") {
+      try { putGid = JSON.parse(route.request().postData() || "{}").group_id; } catch { /* ignore */ }
+      return route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
+    }
+    return route.fallback();
+  });
+  page.on("dialog", (d) => d.accept());  // bekræft flyt
+
+  await page.goto("/#/browse");
+  await page.locator("#view-mode-tree").click();
+  await expect(page.locator('#browse-tree-wrap .tree-branch[data-drop-gid="g-guest"]')).toBeVisible({ timeout: 10000 });
+  await page.locator("#tree-expand-all").click();
+
+  const leaf = page.locator('#browse-tree-wrap .tree-leaf-row[data-id="e1"]');
+  const guest = page.locator('#browse-tree-wrap .tree-branch[data-drop-gid="g-guest"]');
+  await expect(leaf).toBeVisible();
+  await leaf.dragTo(guest);
+
+  await expect.poll(() => putGid, { timeout: 5000 }).toBe("g-guest");
+});

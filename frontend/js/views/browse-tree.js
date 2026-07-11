@@ -26,6 +26,9 @@ const DIMS = [
   { key: "hypervision",        label: () => t("tree.dim_hv") },
 ];
 const DIM_BY_KEY = Object.fromEntries(DIMS.map((d) => [d.key, d]));
+// Drag-and-drop state (same-page DnD → module-var er enklere end dataTransfer).
+let _dragIds = null;
+let _dragSourceGid = null;
 const NONE = "\uE000none";  // sentinel-nøgle for tom/manglende værdi
 
 function dimLabel(key) {
@@ -174,9 +177,13 @@ function renderNodes(rows, path, depth, dim, state) {
       ? branchGroupControl(nodePath, depth + 1, state) +
         renderNodes(childRows, nodePath, depth + 1, childDim, state)
       : "";
+    // Group-grene (grupperet efter group_name med et rigtigt group_id) er drop-mål:
+    // slip endpoints her → flyt til den ISE-gruppe.
+    const gid = dim === "group_name" ? (childRows[0]?.group_id || "") : "";
+    const dropAttrs = gid ? ` data-drop-gid="${esc(gid)}" data-drop-gname="${esc(label)}"` : "";
     return `
       <div class="tree-node" style="--depth:${depth}">
-        <div class="tree-branch${overridden ? " tree-branch-custom" : ""}" data-path="${esc(nodePath)}">
+        <div class="tree-branch${overridden ? " tree-branch-custom" : ""}" data-path="${esc(nodePath)}" draggable="true"${dropAttrs}>
           <input type="checkbox" class="tree-branch-cb" data-path="${esc(nodePath)}"
             ${allSel ? "checked" : ""} ${someSel ? 'data-indet="1"' : ""}
             title="${t("tree.select_branch")}" />
@@ -252,7 +259,7 @@ function renderLeaves(rows, state) {
       return `<td${c.cls ? ` class="${c.cls}"` : ""}>${esc(String(val ?? ""))}</td>`;
     }).join("");
     const cbTd = `<td class="tree-leaf-cb-td"><input type="checkbox" class="tree-leaf-cb" data-id="${esc(r.id)}"${sel.has(r.id) ? " checked" : ""} /></td>`;
-    return `<tr class="tree-leaf-row${sel.has(r.id) ? " tree-leaf-selected" : ""}" data-id="${esc(r.id)}" title="${t("tree.open_edit")}">${cbTd}${tds}</tr>`;
+    return `<tr class="tree-leaf-row${sel.has(r.id) ? " tree-leaf-selected" : ""}" data-id="${esc(r.id)}" draggable="true" title="${t("tree.open_edit")}">${cbTd}${tds}</tr>`;
   }).join("");
 
   const more = rows.length > LEAF_CAP
@@ -353,6 +360,54 @@ function wire(container, ctx) {
     else if (v === "__leaves__") state.treeBranchDim[p] = "";
     else state.treeBranchDim[p] = v;
     ctx.rerender();
+  });
+
+  // ── Drag-and-drop: træk en leaf eller en hel gren til en gruppe-gren ───────
+  container.addEventListener("dragstart", (e) => {
+    const branch = e.target.closest(".tree-branch");
+    const leaf = e.target.closest(".tree-leaf-row");
+    if (branch) {
+      _dragIds = (state._treeBranchIds[branch.dataset.path] || []).slice();
+      _dragSourceGid = branch.dataset.dropGid || null;  // group-gren → dens egen gid
+    } else if (leaf) {
+      _dragIds = [leaf.dataset.id];
+      _dragSourceGid = null;
+    } else { return; }
+    if (!_dragIds.length) { _dragIds = null; return; }
+    e.dataTransfer.effectAllowed = "move";
+    try { e.dataTransfer.setData("text/plain", _dragIds.join(",")); } catch { /* ignore */ }
+  });
+
+  container.addEventListener("dragover", (e) => {
+    const target = e.target.closest("[data-drop-gid]");
+    if (!target || !_dragIds || !_dragIds.length) return;
+    if (target.dataset.dropGid === _dragSourceGid) return;  // egen gruppe → ikke drop-mål
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    target.classList.add("tree-drop-target");
+  });
+
+  container.addEventListener("dragleave", (e) => {
+    e.target.closest("[data-drop-gid]")?.classList.remove("tree-drop-target");
+  });
+
+  container.addEventListener("drop", async (e) => {
+    const target = e.target.closest("[data-drop-gid]");
+    if (!target || !_dragIds || !_dragIds.length) return;
+    e.preventDefault();
+    target.classList.remove("tree-drop-target");
+    const gid = target.dataset.dropGid;
+    const gname = target.dataset.dropGname || "";
+    const ids = _dragIds.slice();
+    _dragIds = null;
+    if (gid === _dragSourceGid || !ctx.moveToGroup) return;
+    if (!confirm(t("tree.move_confirm").replace("{n}", ids.length).replace("{g}", gname))) return;
+    await ctx.moveToGroup(ids, gid, gname);
+  });
+
+  container.addEventListener("dragend", () => {
+    _dragIds = null;
+    container.querySelectorAll(".tree-drop-target").forEach((el) => el.classList.remove("tree-drop-target"));
   });
 
   // Luk add-menu ved klik udenfor.

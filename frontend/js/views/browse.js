@@ -575,6 +575,24 @@ export async function renderBrowse(container) {
     openDetail: (id) => cb.openDetail?.(id),
     rerender: () => cb.applyFilter?.(),
     updateSelectionUI: () => cb.updateSelectionUI?.(),
+    // Fase 3: flyt endpoints til en ISE-gruppe (drag-and-drop i træet).
+    moveToGroup: async (ids, groupId, groupName) => {
+      const msgEl = container.querySelector("#msg");
+      if (msgEl) msgEl.innerHTML = `<div class="alert info">${t("tree.moving").replace("{n}", ids.length).replace("{g}", esc(groupName))}</div>`;
+      let ok = 0, fail = 0;
+      for (const id of ids) {
+        try {
+          await api.updateEndpoint(id, { group_id: groupId, static_group_assignment: true });
+          ok++;
+        } catch { fail++; }
+      }
+      try { await cb.load?.(true); } catch { /* reload viser evt. fejl selv */ }
+      if (msgEl) {
+        const cls = fail ? "error" : "success";
+        msgEl.innerHTML = `<div class="alert ${cls}">${t("tree.move_done")
+          .replace("{ok}", ok).replace("{fail}", fail).replace("{g}", esc(groupName))}</div>`;
+      }
+    },
   };
   cb.renderTree = (rows) => renderTree(treeWrap, rows, treeCtx);
   function setViewMode(mode) {

@@ -3457,6 +3457,8 @@ body.register-route .login-card {
 .tree-leaf-selected td:not(.mac-cell) { background: #eff6ff; }
 [data-theme="dark"] .tree-sel-count { background: #0c2340; color: #93c5fd; }
 [data-theme="dark"] .tree-leaf-selected td:not(.mac-cell) { background: #0c2340; }
+.tree-drop-target { outline: 2px dashed #2563eb; outline-offset: -2px; background: #eff6ff !important; border-radius: 6px; }
+[data-theme="dark"] .tree-drop-target { outline-color: #60a5fa; background: #0c2340 !important; }
 [data-theme="dark"] .view-mode-toggle { border-color: #3a3a5c; }
 [data-theme="dark"] .view-mode-toggle .vm-btn { background: #1e1e2e; color: #cbd5e1; }
 [data-theme="dark"] .view-mode-toggle .vm-btn + .vm-btn { border-left-color: #3a3a5c; }
