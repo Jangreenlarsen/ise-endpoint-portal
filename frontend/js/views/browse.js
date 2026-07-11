@@ -22,9 +22,11 @@ import { initBulk   } from "./browse-bulk.js";
 export async function renderBrowse(container) {
   // Hent kolonnepræferencer fra backend inden HTML/state initialiseres,
   // så getOrderedColumns() og loadColVis() returnerer serverens værdier.
+  let treeLayoutSeed = null;
   try {
     const prefs = await api.getMyPrefs();
     applyBackendColPrefs(prefs.col_order, prefs.col_vis, prefs.col_widths);
+    if (prefs.tree_layout && typeof prefs.tree_layout === "object") treeLayoutSeed = prefs.tree_layout;
   } catch { /* ignorér — falder tilbage til localStorage */ }
 
   container.innerHTML = `
@@ -538,6 +540,7 @@ export async function renderBrowse(container) {
     ancPoliciesCache: null,
     detailCurrentId: null, detailOriginalGroupId: "",
     savedViews: [], activeViewId: null,
+    treeLayoutSeed,  // gruppetræets gemte layout fra backend (anvendes ved første render)
     colVis,
     macPrivate: false, markedOnly: false, decommOnly: false, activeStatusFilter: "",
     pxgridLive: false, pxgridSessionMacs: null, pxgridSessionData: null,
@@ -592,6 +595,12 @@ export async function renderBrowse(container) {
         msgEl.innerHTML = `<div class="alert ${cls}">${t("tree.move_done")
           .replace("{ok}", ok).replace("{fail}", fail).replace("{g}", esc(groupName))}</div>`;
       }
+    },
+    // Persistér træets layout pr. bruger i backend (samme mekanisme som kolonnepræferencer).
+    saveLayout: (layout) => {
+      api.updateMyPrefs({ tree_layout: layout }).catch((e) => {
+        if (!e?.message?.includes("403")) console.warn("[tree layout sync]", e?.message);
+      });
     },
   };
   cb.renderTree = (rows) => renderTree(treeWrap, rows, treeCtx);
