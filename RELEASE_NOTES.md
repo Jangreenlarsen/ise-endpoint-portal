@@ -4,6 +4,10 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [7.3.0757] — 2026-07-11 — fix: Sammenlægning bevarer nu grenens tilpasninger
+
+- **Rettelse i gruppetræet:** Havde du tilpasset en gren (skjult undergrene, givet den sin egen undergruppering eller sammenlagt nogle af dens undergrene) og **derefter** sammenlagde selve grenen med en nabo, forsvandt de tilpasninger tidligere. Nu følger de korrekt med over på den sammenlagte gren.
+
 ## [7.3.0756] — 2026-07-11 — 🎉 Version 7.3: Træets layout huskes pr. bruger
 
 - **Dit trævisnings-layout gemmes nu automatisk** og følger dig — også efter genindlæsning, ny login og på andre maskiner (præcis som dine kolonneindstillinger). Der gemmes: din grupperings-opsætning (både den overordnede og pr. gren), dine sammenlægninger af grene, og de grene du har skjult. Expand/sammenklap og hvad du har markeret gemmes bevidst **ikke** (det er midlertidigt fra gang til gang).

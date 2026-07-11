@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [7.3.0757] — 2026-07-11 — fix: Gruppetræ — merge af forælder-gren bevarer nu børns tilpasninger + persist-test
+
+Retter faldgrube fundet i implementerings-review af 7.2/7.3: en søskende-merge ændrede forældre-stien og forældreløste dermed børns skjul/undergruppering/under-merges. Bugfix → kun `build` (0756→0757).
+
+- **`browse-tree.js`**: To nye helpers. `mergedNodePath(anyMemberPath, a, b)` beregner den nye merged sti (samme forælder+dybde, sorteret union af medlemmer joinet med `MERGE_SEP` — matcher `applyMergesHidden`). `remapCustomizationKeys(state, oldPaths, newPath)` prefix-rewriter alle `treeBranchDim`/`treeHidden`/`treeMerges`-nøgler der er/ligger under de to sammenlagte grenes stier → ny merged sti (kollision: branchDim=første, hidden=union, merges=konkat). Kaldt i drop-handleren **før** `mergeValues`. Se [BUGS.md](BUGS.md) FIXED 7.3.0757 for restbegrænsning (member-tab ved reload).
+- **`smoke-tree.spec.ts`**: (1) **persist-round-trip** — en merge udløser efter debounce `PUT /me/prefs` med `tree_layout.merges` (validerer 7.3.0756-persisteringen i browseren). (2) **migrerings-vagt** — Corp får per-gren-undergruppering (⚙-badge), merges med Guest, og badge'en overlever på den merged gren. 9/9 tree- og fuld frontend-suite grøn.
+
 ## [7.3.0756] — 2026-07-11 — feat: Gruppetræ-layout gemmes pr. bruger i backend (MINOR → 7.3)
 
 Træets tilpasninger overlever nu reload/login og følger brugeren på tværs af maskiner — samme mekanisme som kolonnepræferencer. `version` MINOR 7.2→7.3; `build` fortsætter.

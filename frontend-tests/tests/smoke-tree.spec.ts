@@ -192,3 +192,67 @@ test("browse: Fase 3 — drag et endpoint til en anden gruppe → updateEndpoint
 
   await expect.poll(() => putGid, { timeout: 5000 }).toBe("g-guest");
 });
+
+test("browse: layout gemmes pr. bruger — en ændring udløser PUT /me/prefs m. tree_layout", async ({ page }) => {
+  let lastLayout: Record<string, unknown> | null = null;
+  await installApiMock(page, {
+    "endpoints/details": {
+      items: [
+        { id: "e1", mac: "AA:BB:CC:00:00:01", name: "AA:BB:CC:00:00:01", group_name: "Corp", profiler_name: "Windows" },
+        { id: "e2", mac: "AA:BB:CC:00:00:02", name: "AA:BB:CC:00:00:02", group_name: "Guest", profiler_name: "Windows" },
+      ],
+      total: 2,
+    },
+  });
+  // Fang PUT /me/prefs (debounced layout-gemning). Registreres efter installApiMock → vinder.
+  await page.route("**/api/me/prefs", async (route) => {
+    if (route.request().method() === "PUT") {
+      try { lastLayout = JSON.parse(route.request().postData() || "{}").tree_layout; } catch { /* ignore */ }
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ tree_layout: lastLayout }) });
+    }
+    return route.fallback();  // GET → tom mock (intet gemt layout ved mount)
+  });
+
+  await page.goto("/#/browse");
+  await page.locator("#view-mode-tree").click();
+  const corp = page.locator('#browse-tree-wrap .tree-branch[data-path="//0:Corp"]');
+  const guest = page.locator('#browse-tree-wrap .tree-branch[data-path="//0:Guest"]');
+  await expect(corp).toBeVisible({ timeout: 10000 });
+
+  // En layout-ændring (merge) → efter debounce gemmes layoutet med sammenlægningen.
+  await corp.dragTo(guest);
+  await expect.poll(() => lastLayout && Object.keys((lastLayout.merges as object) || {}).length, { timeout: 5000 })
+    .toBeGreaterThan(0);
+});
+
+test("browse: merge af forælder bevarer børns tilpasninger (BUG 7.3.0757 — ingen forældreløsning)", async ({ page }) => {
+  await installApiMock(page, {
+    "endpoints/details": {
+      items: [
+        { id: "e1", mac: "AA:BB:CC:00:00:01", name: "AA:BB:CC:00:00:01", group_name: "Corp", profiler_name: "Windows", vendor: "Dell" },
+        { id: "e2", mac: "AA:BB:CC:00:00:02", name: "AA:BB:CC:00:00:02", group_name: "Corp", profiler_name: "Windows", vendor: "HP" },
+        { id: "e3", mac: "AA:BB:CC:00:00:03", name: "AA:BB:CC:00:00:03", group_name: "Guest", profiler_name: "Windows" },
+      ],
+      total: 3,
+    },
+  });
+  await page.goto("/#/browse");
+  await page.locator("#view-mode-tree").click();
+  const corp = page.locator('#browse-tree-wrap .tree-branch[data-path="//0:Corp"]');
+  await expect(corp).toBeVisible({ timeout: 10000 });
+  await corp.click();  // fold ud
+
+  // Giv Corp en per-gren-undergruppering (vendor) → custom-badge på Corp.
+  const addWrap = page.locator('.tree-addchild-wrap:has([data-setdim-path="//0:Corp"])');
+  await addWrap.locator(".tree-addchild-btn").click();
+  await addWrap.locator('[data-setdim-path="//0:Corp"][data-setdim="vendor"]').click();
+  await expect(corp.locator(".tree-custom-badge")).toBeVisible();
+
+  // Sammenlæg Corp med Guest → tilpasningen skal FØLGE med til den merged gren.
+  const guest = page.locator('#browse-tree-wrap .tree-branch[data-path="//0:Guest"]');
+  await corp.dragTo(guest);
+  const merged = page.locator("#browse-tree-wrap .tree-branch-merged");
+  await expect(merged).toContainText("Corp + Guest");
+  await expect(merged.locator(".tree-custom-badge")).toBeVisible();  // ← før fix: væk (forældreløst)
+  await expect(page.locator("#view-container")).not.toContainText("View error");
+});
