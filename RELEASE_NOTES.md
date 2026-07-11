@@ -4,6 +4,11 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [7.3.0756] — 2026-07-11 — 🎉 Version 7.3: Træets layout huskes pr. bruger
+
+- **Dit trævisnings-layout gemmes nu automatisk** og følger dig — også efter genindlæsning, ny login og på andre maskiner (præcis som dine kolonneindstillinger). Der gemmes: din grupperings-opsætning (både den overordnede og pr. gren), dine sammenlægninger af grene, og de grene du har skjult. Expand/sammenklap og hvad du har markeret gemmes bevidst **ikke** (det er midlertidigt fra gang til gang).
+- Gemningen sker i baggrunden, kort efter du ændrer noget — du behøver ikke gøre andet. Vil du starte forfra, rydder **"Nulstil visning"** det hele.
+
 ## [7.2.0755] — 2026-07-11 — 🎉 Version 7.2: Sammenlæg, undergrupper og slet grene i træet
 
 > **Build:** 0755 · MINOR-milepæl

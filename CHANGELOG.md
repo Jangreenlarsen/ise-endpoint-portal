@@ -3,6 +3,16 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [7.3.0756] — 2026-07-11 — feat: Gruppetræ-layout gemmes pr. bruger i backend (MINOR → 7.3)
+
+Træets tilpasninger overlever nu reload/login og følger brugeren på tværs af maskiner — samme mekanisme som kolonnepræferencer. `version` MINOR 7.2→7.3; `build` fortsætter.
+
+- **`schemas/user.py`**: `UserPrefs.tree_layout: dict | None`.
+- **`api/me.py`**: `_safe_tree_layout()` valideret + størrelsesbegrænset (groupBy ≤20, branchDim/merges/hidden ≤300 nøgler, sti-nøgler ≤1024, værdier ≤256, merge-grupper ≤100 med ≥2 medlemmer). **Tillader tom parent-nøgle `""`** (root-niveau-sammenlægninger/skjul). Wiret ind i `_prefs_response` (GET) og `update_my_prefs` (PUT, `model_fields_set`-mønster; `None`/ugyldig → fjern).
+- **`browse.js`**: læser `prefs.tree_layout` ved Browse-mount (samme kald som kolonnepræferencer) → `state.treeLayoutSeed`; `treeCtx.saveLayout(layout)` → `api.updateMyPrefs({tree_layout})` (403 ignoreres).
+- **`browse-tree.js`**: `initTreeState()` seeder `treeGroupBy`/`treeBranchDim`/`treeMerges`/`treeHidden` fra backend-layout (gyldighedsfiltreret) ellers standard. `currentLayout()` bygger normaliseret, serialiserbart layout (tomme grupper beskåret). `persistLayoutIfChanged()` kaldt i slutningen af hver render: gemmer **debounced (600 ms)** men kun når layout-**signaturen** faktisk ændrer sig — expand/collapse og selektion udløser derfor ingen skrivning. **Ikke** gemt: expand-tilstand + selektion (flygtige).
+- **`test_user_prefs.py` (ny)**: round-trip (PUT persisteres + GET returnerer), rører ikke andre prefs, `None` rydder, + validerings-/clamping-tests. 6/6 grønne; fuld backend-suite 253/253, frontend 11/11.
+
 ## [7.2.0755] — 2026-07-11 — feat: Gruppetræ — visuel søskende-merge + "+"-undergruppering + slet grene (MINOR → 7.2)
 
 Tre justeringer af gruppetræet efter brug. `version` MINOR 7.1→7.2; `build` fortsætter.

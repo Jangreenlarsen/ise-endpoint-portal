@@ -58,20 +58,77 @@ function nodeLabel(key) {
   return mergeMembers(key).map((m) => (m === NONE ? t("tree.none") : m)).join(" + ");
 }
 
+// ── Layout-persistering (pr. bruger i backend) ────────────────────────────────
+// Gemt: groupBy + per-gren-dim + sammenlægninger + skjulte grene. IKKE expand/selektion.
+
+const DEFAULT_GROUPBY = ["group_name", "profiler_name"];
+
+// Initialisér træets state — brug backend-seed hvis gyldig, ellers standard.
+function initTreeState(state) {
+  state.treeBranchDim = {};
+  state.treeMerges = {};
+  state.treeHidden = {};
+  const seed = state.treeLayoutSeed;
+  if (seed && typeof seed === "object") {
+    if (Array.isArray(seed.groupBy)) state.treeGroupBy = seed.groupBy.filter((k) => DIM_BY_KEY[k]);
+    if (seed.branchDim && typeof seed.branchDim === "object") {
+      for (const [p, v] of Object.entries(seed.branchDim)) if (typeof v === "string") state.treeBranchDim[p] = v;
+    }
+    if (seed.merges && typeof seed.merges === "object") {
+      for (const [p, groups] of Object.entries(seed.merges)) {
+        if (Array.isArray(groups)) state.treeMerges[p] = groups.filter((g) => Array.isArray(g) && g.length >= 2);
+      }
+    }
+    if (seed.hidden && typeof seed.hidden === "object") {
+      for (const [p, vals] of Object.entries(seed.hidden)) if (Array.isArray(vals)) state.treeHidden[p] = vals.slice();
+    }
+  }
+  if (!Array.isArray(state.treeGroupBy)) state.treeGroupBy = DEFAULT_GROUPBY.slice();
+}
+
+// Byg det normaliserede, serialiserbare layout (tomme grupper beskåret → stabil signatur).
+function currentLayout(state) {
+  const merges = {};
+  for (const [p, groups] of Object.entries(state.treeMerges || {})) {
+    const keep = (groups || []).filter((g) => Array.isArray(g) && g.length >= 2);
+    if (keep.length) merges[p] = keep;
+  }
+  const hidden = {};
+  for (const [p, vals] of Object.entries(state.treeHidden || {})) {
+    if (Array.isArray(vals) && vals.length) hidden[p] = vals;
+  }
+  return {
+    groupBy: state.treeGroupBy || [],
+    branchDim: { ...(state.treeBranchDim || {}) },
+    merges,
+    hidden,
+  };
+}
+
+let _saveTimer = null;
+
+// Gem layoutet debounced — men kun når signaturen faktisk har ændret sig (så
+// expand/selektion-rerenders ikke udløser skrivninger).
+function persistLayoutIfChanged(state, ctx) {
+  if (!ctx.saveLayout) return;
+  const layout = currentLayout(state);
+  const sig = JSON.stringify(layout);
+  if (state._treeLayoutSig === undefined) { state._treeLayoutSig = sig; return; }  // første render seeder kun
+  if (sig === state._treeLayoutSig) return;
+  state._treeLayoutSig = sig;
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(() => ctx.saveLayout(layout), 600);
+}
+
 // ── Render ────────────────────────────────────────────────────────────────────
 
 export function renderTree(container, rows, ctx) {
   const state = ctx.state;
-  if (!Array.isArray(state.treeGroupBy)) state.treeGroupBy = ["group_name", "profiler_name"];
+  // Første render: seed fra backend-gemt layout (pr. bruger) hvis til stede, ellers standard.
+  if (!Array.isArray(state.treeGroupBy)) initTreeState(state);
   if (!(state.treeExpanded instanceof Set)) state.treeExpanded = new Set();
-  // Per-gren overstyring: nodePath → dimKey ("" = vis rækker, fraværende = arv standard).
-  if (!state.treeBranchDim || typeof state.treeBranchDim !== "object") state.treeBranchDim = {};
   // Selektion (delt kilde med bulk-toolbaren via getSelectedIds).
   if (!(state.treeSelectedIds instanceof Set)) state.treeSelectedIds = new Set();
-  // Visuel sammenlægning: parentPath → [[member-værdier], …] (kun visning).
-  if (!state.treeMerges || typeof state.treeMerges !== "object") state.treeMerges = {};
-  // Skjulte grene: parentPath → [værdier] (slettet i visningen, ikke i ISE).
-  if (!state.treeHidden || typeof state.treeHidden !== "object") state.treeHidden = {};
   const groupBy = state.treeGroupBy;
   state._treeRows = rows;   // så expand-all kan materialisere alle gren-stier
   state._treeBranchIds = {}; // path → [endpoint-ids] under grenen (fyldes i renderNodes)
@@ -109,6 +166,7 @@ export function renderTree(container, rows, ctx) {
   // Native indeterminate kan ikke sættes via HTML-attribut → sæt efter render.
   container.querySelectorAll('.tree-branch-cb[data-indet="1"]').forEach((el) => { el.indeterminate = true; });
   ctx.updateSelectionUI?.();  // hold bulk-toolbaren i sync med træets selektion
+  persistLayoutIfChanged(state, ctx);  // gem layout pr. bruger når (og kun når) det har ændret sig
 
   wire(container, ctx);
 }

@@ -170,6 +170,54 @@ def _safe_col_widths(raw: object) -> dict[str, int] | None:
     return result or None
 
 
+def _safe_tree_layout(raw: object) -> dict | None:
+    """Valider + begræns gruppetræets layout (per-bruger, egen visning — men
+    grænser holder users.json overskuelig og modvirker misbrug).
+
+    Struktur: {groupBy:[str], branchDim:{path:str}, merges:{path:[[str]]},
+    hidden:{path:[str]}}. Stier kan være lange (indeholder gren-værdier).
+    """
+    if not isinstance(raw, dict):
+        return None
+    out: dict = {}
+
+    gb = raw.get("groupBy")
+    if isinstance(gb, list):
+        out["groupBy"] = [k for k in gb if isinstance(k, str) and 1 <= len(k) <= 32][:20]
+
+    # NB: parent-stier kan være "" (root-niveau) → tillad tom nøgle her.
+    bd = raw.get("branchDim")
+    if isinstance(bd, dict):
+        out["branchDim"] = {
+            k: v for k, v in list(bd.items())[:300]
+            if isinstance(k, str) and len(k) <= 1024
+            and isinstance(v, str) and len(v) <= 256
+        }
+
+    mg = raw.get("merges")
+    if isinstance(mg, dict):
+        merges: dict = {}
+        for k, v in list(mg.items())[:300]:
+            if not (isinstance(k, str) and len(k) <= 1024 and isinstance(v, list)):
+                continue
+            groups = [
+                [x for x in grp if isinstance(x, str) and len(x) <= 256][:100]
+                for grp in v[:100] if isinstance(grp, list)
+            ]
+            merges[k] = [g for g in groups if len(g) >= 2]
+        out["merges"] = merges
+
+    hd = raw.get("hidden")
+    if isinstance(hd, dict):
+        out["hidden"] = {
+            k: [x for x in v if isinstance(x, str) and len(x) <= 256][:200]
+            for k, v in list(hd.items())[:300]
+            if isinstance(k, str) and len(k) <= 1024 and isinstance(v, list)
+        }
+
+    return out or None
+
+
 def _prefs_response(prefs: dict) -> UserPrefs:
     lang = prefs.get("language")
     if lang not in _VALID_LANGUAGES:
@@ -179,6 +227,7 @@ def _prefs_response(prefs: dict) -> UserPrefs:
         col_order=_safe_col_order(prefs.get("col_order")),
         col_vis=_safe_col_vis(prefs.get("col_vis")),
         col_widths=_safe_col_widths(prefs.get("col_widths")),
+        tree_layout=_safe_tree_layout(prefs.get("tree_layout")),
     )
 
 
@@ -244,6 +293,16 @@ async def update_my_prefs(
             valid = _safe_col_widths(payload.col_widths)
             if valid is not None:
                 prefs["col_widths"] = valid
+
+    if "tree_layout" in updated:
+        if payload.tree_layout is None:
+            prefs.pop("tree_layout", None)
+        else:
+            valid = _safe_tree_layout(payload.tree_layout)
+            if valid is not None:
+                prefs["tree_layout"] = valid
+            else:
+                prefs.pop("tree_layout", None)
 
     record["prefs"] = prefs
     save_users(users)
