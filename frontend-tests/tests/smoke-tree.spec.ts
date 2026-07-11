@@ -63,20 +63,71 @@ test("browse: per-gren gruppering — en grens undergruppering kan skiftes", asy
   await expect(corp).toBeVisible({ timeout: 10000 });
   await corp.click();
 
-  // Skift Corps undergruppering fra Profil (standard) til Vendor.
-  const sub = page.locator('.tree-subgroup-select[data-path="//0:Corp"]');
-  await expect(sub).toBeVisible();
-  await sub.selectOption("vendor");
+  // Skift Corps undergruppering til Vendor via "+"-kontrollen efter Corps børn.
+  const addWrap = page.locator('.tree-addchild-wrap:has([data-setdim-path="//0:Corp"])');
+  await addWrap.locator(".tree-addchild-btn").click();
+  await addWrap.locator('[data-setdim-path="//0:Corp"][data-setdim="vendor"]').click();
 
   // Corps børn er nu grupperet efter vendor → Dell- og HP-grene, + custom-badge på Corp.
   await expect(page.locator('#browse-tree-wrap .tree-branch[data-path="//0:Corp//1:Dell"]')).toBeVisible();
   await expect(page.locator('#browse-tree-wrap .tree-branch[data-path="//0:Corp//1:HP"]')).toBeVisible();
   await expect(corp.locator(".tree-custom-badge")).toBeVisible();
 
-  // Fjern Corps egen gruppering igen med ✕ → tilbage til standard (badge + vendor-grene væk).
-  await page.locator('.tree-subgroup-clear[data-clear-path="//0:Corp"]').click();
+  // Nulstil visning → tilbage til standard (badge + vendor-grene væk).
+  await page.locator("#tree-reset-view").click();
   await expect(page.locator('#browse-tree-wrap .tree-branch[data-path="//0:Corp//1:Dell"]')).toHaveCount(0);
-  await expect(corp.locator(".tree-custom-badge")).toHaveCount(0);
+  await expect(page.locator("#view-container")).not.toContainText("View error");
+});
+
+test("browse: søskende-merge — træk en gren over en søskende → visuel sammenlægning", async ({ page }) => {
+  await installApiMock(page, {
+    "endpoints/details": {
+      items: [
+        { id: "e1", mac: "AA:BB:CC:00:00:01", name: "AA:BB:CC:00:00:01", group_name: "Corp", profiler_name: "Windows" },
+        { id: "e2", mac: "AA:BB:CC:00:00:02", name: "AA:BB:CC:00:00:02", group_name: "Guest", profiler_name: "Windows" },
+      ],
+      total: 2,
+    },
+  });
+  await page.goto("/#/browse");
+  await page.locator("#view-mode-tree").click();
+  const corp = page.locator('#browse-tree-wrap .tree-branch[data-path="//0:Corp"]');
+  const guest = page.locator('#browse-tree-wrap .tree-branch[data-path="//0:Guest"]');
+  await expect(corp).toBeVisible({ timeout: 10000 });
+  await expect(guest).toBeVisible();
+
+  // Træk Corp-grenen over Guest → én sammenlagt "Corp + Guest"-gren (ingen ISE-ændring).
+  await corp.dragTo(guest);
+  const merged = page.locator("#browse-tree-wrap .tree-branch-merged");
+  await expect(merged).toBeVisible();
+  await expect(merged).toContainText("Corp + Guest");
+  await expect(merged.locator(".tree-count")).toHaveText("2");  // begge endpoints samlet
+  await expect(page.locator("#view-container")).not.toContainText("View error");
+});
+
+test("browse: slet gren — ✕ skjuler en gren fra visningen (ikke ISE)", async ({ page }) => {
+  await installApiMock(page, {
+    "endpoints/details": {
+      items: [
+        { id: "e1", mac: "AA:BB:CC:00:00:01", name: "AA:BB:CC:00:00:01", group_name: "Corp", profiler_name: "Windows" },
+        { id: "e2", mac: "AA:BB:CC:00:00:02", name: "AA:BB:CC:00:00:02", group_name: "Guest", profiler_name: "Windows" },
+      ],
+      total: 2,
+    },
+  });
+  await page.goto("/#/browse");
+  await page.locator("#view-mode-tree").click();
+  const guest = page.locator('#browse-tree-wrap .tree-branch[data-path="//0:Guest"]');
+  await expect(guest).toBeVisible({ timeout: 10000 });
+
+  // Slet Guest-grenen → forsvinder fra visningen; Corp består.
+  await guest.locator(".tree-hide-branch").click({ force: true });
+  await expect(page.locator('#browse-tree-wrap .tree-branch[data-path="//0:Guest"]')).toHaveCount(0);
+  await expect(page.locator('#browse-tree-wrap .tree-branch[data-path="//0:Corp"]')).toBeVisible();
+
+  // Nulstil visning → Guest kommer tilbage.
+  await page.locator("#tree-reset-view").click();
+  await expect(page.locator('#browse-tree-wrap .tree-branch[data-path="//0:Guest"]')).toBeVisible();
   await expect(page.locator("#view-container")).not.toContainText("View error");
 });
 

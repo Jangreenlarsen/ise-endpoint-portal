@@ -29,6 +29,7 @@ const DIM_BY_KEY = Object.fromEntries(DIMS.map((d) => [d.key, d]));
 // Drag-and-drop state (same-page DnD → module-var er enklere end dataTransfer).
 let _dragIds = null;
 let _dragSourceGid = null;
+let _dragBranchPath = null;  // sat når en HEL gren trækkes → søskende-sammenlægning
 const NONE = "\uE000none";  // sentinel-nøgle for tom/manglende værdi
 
 function dimLabel(key) {
@@ -41,6 +42,22 @@ function valueOf(row, key) {
   return (v == null ? "" : String(v)).trim();
 }
 
+// ── Sti-/merge-helpers ────────────────────────────────────────────────────────
+const MERGE_SEP = "\u0001";  // intern join af sammenlagte værdier i én bucket-nøgle
+
+function parentOf(path) {
+  const i = path.lastIndexOf("//");
+  return i < 0 ? "" : path.slice(0, i);
+}
+function valueOfPath(path) {
+  const seg = path.slice(path.lastIndexOf("//") + 2);  // "depth:value"
+  return seg.slice(seg.indexOf(":") + 1);
+}
+function mergeMembers(key) { return key.split(MERGE_SEP); }
+function nodeLabel(key) {
+  return mergeMembers(key).map((m) => (m === NONE ? t("tree.none") : m)).join(" + ");
+}
+
 // ── Render ────────────────────────────────────────────────────────────────────
 
 export function renderTree(container, rows, ctx) {
@@ -51,6 +68,10 @@ export function renderTree(container, rows, ctx) {
   if (!state.treeBranchDim || typeof state.treeBranchDim !== "object") state.treeBranchDim = {};
   // Selektion (delt kilde med bulk-toolbaren via getSelectedIds).
   if (!(state.treeSelectedIds instanceof Set)) state.treeSelectedIds = new Set();
+  // Visuel sammenlægning: parentPath → [[member-værdier], …] (kun visning).
+  if (!state.treeMerges || typeof state.treeMerges !== "object") state.treeMerges = {};
+  // Skjulte grene: parentPath → [værdier] (slettet i visningen, ikke i ISE).
+  if (!state.treeHidden || typeof state.treeHidden !== "object") state.treeHidden = {};
   const groupBy = state.treeGroupBy;
   state._treeRows = rows;   // så expand-all kan materialisere alle gren-stier
   state._treeBranchIds = {}; // path → [endpoint-ids] under grenen (fyldes i renderNodes)
@@ -71,8 +92,8 @@ export function renderTree(container, rows, ctx) {
         <div class="tree-add-menu hidden" id="tree-add-menu">${renderAddMenu(groupBy)}</div>
       </div>
       <span class="spacer"></span>
-      ${Object.keys(state.treeBranchDim).length
-        ? `<button type="button" class="secondary small" id="tree-reset-branches" title="${t("tree.reset_branches_title")}">${t("tree.reset_branches")}</button>`
+      ${(Object.keys(state.treeBranchDim).length || Object.keys(state.treeMerges).length || Object.keys(state.treeHidden).length)
+        ? `<button type="button" class="secondary small" id="tree-reset-view" title="${t("tree.reset_view_title")}">${t("tree.reset_view")}</button>`
         : ""}
       <button type="button" class="secondary small" id="tree-expand-all">${t("tree.expand_all")}</button>
       <button type="button" class="secondary small" id="tree-collapse-all">${t("tree.collapse_all")}</button>
@@ -137,32 +158,57 @@ function sortedKeys(buckets) {
   });
 }
 
-// Kompakt kontrol pr. åben gren: vælg hvordan DENNE grens børn grupperes.
-function branchGroupControl(path, childDepth, state) {
-  const defaultDim = state.treeGroupBy[childDepth] || null;
+// Anvend visuel sammenlægning + skjulte grene på en Map(value→rows) for et parentPath.
+function applyMergesHidden(buckets, path, state) {
+  for (const members of state.treeMerges[path] || []) {
+    const present = members.filter((m) => buckets.has(m));
+    if (present.length < 2) continue;
+    const key = [...present].sort((a, b) => a.localeCompare(b)).join(MERGE_SEP);
+    const combined = [];
+    for (const m of present) { combined.push(...buckets.get(m)); buckets.delete(m); }
+    buckets.set(key, combined);
+  }
+  for (const h of state.treeHidden[path] || []) buckets.delete(h);
+  return buckets;
+}
+
+// Sammenlæg to (evt. allerede sammenlagte) grenværdier under et parentPath til én gren.
+// Folder overlappende eksisterende merge-grupper ind, så resultatet altid er disjunkt.
+function mergeValues(state, parent, a, b) {
+  const groups = state.treeMerges[parent] || (state.treeMerges[parent] = []);
+  const union = new Set([...mergeMembers(a), ...mergeMembers(b)]);
+  const keep = [];
+  for (const g of groups) {
+    if (g.some((m) => union.has(m))) g.forEach((m) => union.add(m));
+    else keep.push(g);
+  }
+  keep.push([...union]);
+  state.treeMerges[parent] = keep;
+}
+
+// "+"-kontrol efter en grens børn: vælg hvordan børnene grupperes (dropdown).
+function addChildControl(path, childDepth, state) {
   const overridden = path in state.treeBranchDim;
-  const cur = overridden ? (state.treeBranchDim[path] || "__leaves__") : "__default__";
-  const defLabel = defaultDim ? esc(dimLabel(defaultDim)) : t("tree.rows");
-  const opts = [
-    `<option value="__default__"${cur === "__default__" ? " selected" : ""}>${t("tree.sub_default")} (${defLabel})</option>`,
-    `<option value="__leaves__"${cur === "__leaves__" ? " selected" : ""}>${t("tree.sub_rows")}</option>`,
-    ...DIMS.map((d) => `<option value="${esc(d.key)}"${cur === d.key ? " selected" : ""}>${esc(d.label())}</option>`),
+  const items = [
+    ...(overridden ? [`<div class="tree-add-item" data-setdim-path="${esc(path)}" data-setdim="__default__">${t("tree.sub_default")}</div>`] : []),
+    `<div class="tree-add-item" data-setdim-path="${esc(path)}" data-setdim="__leaves__">${t("tree.sub_rows")}</div>`,
+    ...DIMS.map((d) => `<div class="tree-add-item" data-setdim-path="${esc(path)}" data-setdim="${esc(d.key)}">${esc(d.label())}</div>`),
   ];
-  return `<div class="tree-subgroup" style="--depth:${childDepth}">
-    <span class="tree-subgroup-lbl">${t("tree.subgroup_label")}</span>
-    <select class="tree-subgroup-select" data-path="${esc(path)}">${opts.join("")}</select>
-    ${overridden
-      ? `<button type="button" class="tree-subgroup-clear" data-clear-path="${esc(path)}" title="${t("tree.clear_branch_title")}">✕ ${t("tree.clear_branch")}</button>`
-      : ""}
+  return `<div class="tree-addchild" style="--depth:${childDepth}">
+    <div class="tree-addchild-wrap">
+      <button type="button" class="tree-addchild-btn" title="${t("tree.addchild_title")}">+ ${t("tree.addchild")}</button>
+      <div class="tree-addchild-menu hidden">${items.join("")}</div>
+    </div>
   </div>`;
 }
 
 function renderNodes(rows, path, depth, dim, state) {
   if (!dim) return renderLeaves(rows, state);
-  const buckets = bucketize(rows, dim);
+  const buckets = applyMergesHidden(bucketize(rows, dim), path, state);
   const sel = state.treeSelectedIds;
   return sortedKeys(buckets).map((k) => {
-    const label = k === NONE ? t("tree.none") : k;
+    const label = nodeLabel(k);
+    const isMerged = k.includes(MERGE_SEP);
     const nodePath = `${path}//${depth}:${k}`;
     const childRows = buckets.get(k);
     const ids = childRows.map((r) => r.id);
@@ -174,16 +220,15 @@ function renderNodes(rows, path, depth, dim, state) {
     const childDim = effectiveDim(nodePath, depth + 1, state);
     const overridden = nodePath in state.treeBranchDim;
     const children = open
-      ? branchGroupControl(nodePath, depth + 1, state) +
-        renderNodes(childRows, nodePath, depth + 1, childDim, state)
+      ? renderNodes(childRows, nodePath, depth + 1, childDim, state) +
+        addChildControl(nodePath, depth + 1, state)
       : "";
-    // Group-grene (grupperet efter group_name med et rigtigt group_id) er drop-mål:
-    // slip endpoints her → flyt til den ISE-gruppe.
-    const gid = dim === "group_name" ? (childRows[0]?.group_id || "") : "";
+    // Ikke-merged group-grene (rigtigt group_id) er ISE-drop-mål (Fase 3).
+    const gid = (dim === "group_name" && !isMerged) ? (childRows[0]?.group_id || "") : "";
     const dropAttrs = gid ? ` data-drop-gid="${esc(gid)}" data-drop-gname="${esc(label)}"` : "";
     return `
       <div class="tree-node" style="--depth:${depth}">
-        <div class="tree-branch${overridden ? " tree-branch-custom" : ""}" data-path="${esc(nodePath)}" draggable="true"${dropAttrs}>
+        <div class="tree-branch${overridden ? " tree-branch-custom" : ""}${isMerged ? " tree-branch-merged" : ""}" data-path="${esc(nodePath)}" draggable="true"${dropAttrs}>
           <input type="checkbox" class="tree-branch-cb" data-path="${esc(nodePath)}"
             ${allSel ? "checked" : ""} ${someSel ? 'data-indet="1"' : ""}
             title="${t("tree.select_branch")}" />
@@ -193,6 +238,7 @@ function renderNodes(rows, path, depth, dim, state) {
           <span class="tree-count">${childRows.length}</span>
           ${selCount ? `<span class="tree-sel-count" title="${t("tree.selected_n").replace("{n}", selCount)}">${selCount}✓</span>` : ""}
           ${overridden ? `<span class="tree-custom-badge" title="${t("tree.custom_badge_title")}">⚙</span>` : ""}
+          <button type="button" class="tree-hide-branch" data-hide-branch="${esc(nodePath)}" title="${t("tree.delete_branch_title")}">✕</button>
         </div>
         ${open ? `<div class="tree-children">${children}</div>` : ""}
       </div>`;
@@ -203,7 +249,7 @@ function renderNodes(rows, path, depth, dim, state) {
 function collectPaths(rows, path, depth, state, out) {
   const dim = effectiveDim(path, depth, state);
   if (!dim) return;
-  const buckets = bucketize(rows, dim);
+  const buckets = applyMergesHidden(bucketize(rows, dim), path, state);
   for (const [k, childRows] of buckets) {
     const nodePath = `${path}//${depth}:${k}`;
     out.add(nodePath);
@@ -297,6 +343,40 @@ function wire(container, ctx) {
       ctx.rerender();
       return;
     }
+    // Slet (skjul) en gren fra visningen — ingen ISE-ændring.
+    const hide = e.target.closest("[data-hide-branch]");
+    if (hide) {
+      e.stopPropagation();
+      const np = hide.dataset.hideBranch;
+      const parent = parentOf(np);
+      const val = valueOfPath(np);
+      const list = state.treeHidden[parent] || (state.treeHidden[parent] = []);
+      if (!list.includes(val)) list.push(val);
+      // ryd op i selektion + eventuel merge, der refererer denne gren
+      (state._treeBranchIds[np] || []).forEach((id) => state.treeSelectedIds.delete(id));
+      ctx.rerender();
+      return;
+    }
+    // "+"-kontrol: åbn/luk dropdown med dimensioner for niveauet.
+    const addBtn = e.target.closest(".tree-addchild-btn");
+    if (addBtn) {
+      const menu = addBtn.parentElement.querySelector(".tree-addchild-menu");
+      const wasHidden = menu?.classList.contains("hidden");
+      container.querySelectorAll(".tree-addchild-menu").forEach((m) => m.classList.add("hidden"));
+      if (wasHidden) menu.classList.remove("hidden");
+      return;
+    }
+    // Vælg dimension for en grens børn (per-gren-overstyring).
+    const setdim = e.target.closest("[data-setdim-path]");
+    if (setdim) {
+      const p = setdim.dataset.setdimPath;
+      const v = setdim.dataset.setdim;
+      if (v === "__default__") delete state.treeBranchDim[p];
+      else if (v === "__leaves__") state.treeBranchDim[p] = "";
+      else state.treeBranchDim[p] = v;
+      ctx.rerender();
+      return;
+    }
     const branch = e.target.closest(".tree-branch");
     if (branch) {
       const p = branch.dataset.path;
@@ -320,14 +400,10 @@ function wire(container, ctx) {
       ctx.rerender();
       return;
     }
-    if (e.target.closest("#tree-reset-branches")) {
+    if (e.target.closest("#tree-reset-view")) {
       state.treeBranchDim = {};
-      ctx.rerender();
-      return;
-    }
-    const clear = e.target.closest("[data-clear-path]");
-    if (clear) {
-      delete state.treeBranchDim[clear.dataset.clearPath];
+      state.treeMerges = {};
+      state.treeHidden = {};
       ctx.rerender();
       return;
     }
@@ -351,15 +427,6 @@ function wire(container, ctx) {
       ctx.rerender();
       return;
     }
-    // Per-gren undergruppering: vælg dimension for en grens børn.
-    const sel = e.target.closest(".tree-subgroup-select");
-    if (!sel) return;
-    const p = sel.dataset.path;
-    const v = sel.value;
-    if (v === "__default__") delete state.treeBranchDim[p];
-    else if (v === "__leaves__") state.treeBranchDim[p] = "";
-    else state.treeBranchDim[p] = v;
-    ctx.rerender();
   });
 
   // ── Drag-and-drop: træk en leaf eller en hel gren til en gruppe-gren ───────
@@ -369,18 +436,39 @@ function wire(container, ctx) {
     if (branch) {
       _dragIds = (state._treeBranchIds[branch.dataset.path] || []).slice();
       _dragSourceGid = branch.dataset.dropGid || null;  // group-gren → dens egen gid
+      _dragBranchPath = branch.dataset.path;            // → søskende-sammenlægning
     } else if (leaf) {
       _dragIds = [leaf.dataset.id];
       _dragSourceGid = null;
+      _dragBranchPath = null;
     } else { return; }
     if (!_dragIds.length) { _dragIds = null; return; }
     e.dataTransfer.effectAllowed = "move";
     try { e.dataTransfer.setData("text/plain", _dragIds.join(",")); } catch { /* ignore */ }
   });
 
+  // Søskende-merge-mål: en anden gren på SAMME niveau (samme parent) som den trukne gren.
+  function siblingMergeTarget(e) {
+    if (!_dragBranchPath) return null;
+    const b = e.target.closest(".tree-branch");
+    if (!b || b.dataset.path === _dragBranchPath) return null;
+    if (parentOf(b.dataset.path) !== parentOf(_dragBranchPath)) return null;
+    return b;
+  }
+
   container.addEventListener("dragover", (e) => {
+    if (!_dragIds || !_dragIds.length) return;
+    // 1) Trækker vi en hel gren over en søskende? → visuel sammenlægning.
+    const sib = siblingMergeTarget(e);
+    if (sib) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      sib.classList.add("tree-drop-merge");
+      return;
+    }
+    // 2) Ellers: leaf/gren → gruppe (ISE-flyt).
     const target = e.target.closest("[data-drop-gid]");
-    if (!target || !_dragIds || !_dragIds.length) return;
+    if (!target) return;
     if (target.dataset.dropGid === _dragSourceGid) return;  // egen gruppe → ikke drop-mål
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
@@ -388,32 +476,53 @@ function wire(container, ctx) {
   });
 
   container.addEventListener("dragleave", (e) => {
+    const b = e.target.closest(".tree-branch");
+    if (b) b.classList.remove("tree-drop-merge");
     e.target.closest("[data-drop-gid]")?.classList.remove("tree-drop-target");
   });
 
   container.addEventListener("drop", async (e) => {
+    if (!_dragIds || !_dragIds.length) return;
+    // 1) Søskende-merge → visuel sammenlægning (ingen ISE-ændring).
+    const sib = siblingMergeTarget(e);
+    if (sib) {
+      e.preventDefault();
+      sib.classList.remove("tree-drop-merge");
+      const parent = parentOf(_dragBranchPath);
+      const a = valueOfPath(_dragBranchPath);
+      const b = valueOfPath(sib.dataset.path);
+      mergeValues(state, parent, a, b);
+      _dragIds = null; _dragBranchPath = null;
+      ctx.rerender();
+      return;
+    }
+    // 2) Leaf/gren → gruppe (ISE-flyt).
     const target = e.target.closest("[data-drop-gid]");
-    if (!target || !_dragIds || !_dragIds.length) return;
+    if (!target) { _dragIds = null; _dragBranchPath = null; return; }
     e.preventDefault();
     target.classList.remove("tree-drop-target");
     const gid = target.dataset.dropGid;
     const gname = target.dataset.dropGname || "";
     const ids = _dragIds.slice();
-    _dragIds = null;
+    _dragIds = null; _dragBranchPath = null;
     if (gid === _dragSourceGid || !ctx.moveToGroup) return;
     if (!confirm(t("tree.move_confirm").replace("{n}", ids.length).replace("{g}", gname))) return;
     await ctx.moveToGroup(ids, gid, gname);
   });
 
   container.addEventListener("dragend", () => {
-    _dragIds = null;
+    _dragIds = null; _dragBranchPath = null;
     container.querySelectorAll(".tree-drop-target").forEach((el) => el.classList.remove("tree-drop-target"));
+    container.querySelectorAll(".tree-drop-merge").forEach((el) => el.classList.remove("tree-drop-merge"));
   });
 
-  // Luk add-menu ved klik udenfor.
+  // Luk add-/dimensions-menuer ved klik udenfor.
   document.addEventListener("click", (e) => {
     if (!e.target.closest(".tree-add-wrap")) {
       container.querySelector("#tree-add-menu")?.classList.add("hidden");
+    }
+    if (!e.target.closest(".tree-addchild-wrap")) {
+      container.querySelectorAll(".tree-addchild-menu").forEach((m) => m.classList.add("hidden"));
     }
   });
 }

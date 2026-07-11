@@ -3,6 +3,19 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [7.2.0755] — 2026-07-11 — feat: Gruppetræ — visuel søskende-merge + "+"-undergruppering + slet grene (MINOR → 7.2)
+
+Tre justeringer af gruppetræet efter brug. `version` MINOR 7.1→7.2; `build` fortsætter.
+
+- **`browse-tree.js`**:
+  - **Visuel søskende-merge**: ny drag-vej — trækkes en hel gren over en søskende på samme niveau (`parentOf` ens, forskellig sti), sammenlægges de to grene visuelt til én "A + B"-gren via `state.treeMerges[parentPath] → [[medlemmer]]`. `mergeValues()` laver union og folder overlappende grupper ind (disjunkt). `applyMergesHidden()` kombinerer value-buckets (nøgler joines med ``, label via `nodeLabel` → " + "). **Ingen ISE-ændring.** Fremhævning via `.tree-drop-merge`; ISE-flyt (leaf→gruppe) bevaret som fallback når der ikke trækkes en gren-på-søskende.
+  - **"+"-undergruppering**: `branchGroupControl`/`.tree-subgroup-select` erstattet af `addChildControl()` — en "+ grupper"-knap **efter** en grens børn med dropdown over alle dimensioner (+ "vis rækker"/"Standard"). Sætter `treeBranchDim[path]`.
+  - **Slet grene**: ✕-knap pr. gren (`data-hide-branch`) → `state.treeHidden[parentPath]`; skjules i både `renderNodes` og `collectPaths`. Rydder også grenens IDs fra selektionen.
+  - Toolbar: `tree-reset-branches` → `tree-reset-view` (rydder `treeBranchDim` + `treeMerges` + `treeHidden`); vises når nogen af de tre er ikke-tom.
+- **`styles.css`**: `.tree-addchild*`, `.tree-hide-branch` (hover-vist), `.tree-branch-merged` (violet), `.tree-drop-merge` (violet drop-fremhævning) — inkl. dark mode.
+- **`i18n.js`**: `tree.addchild(_title)`, `tree.delete_branch_title`, `tree.reset_view(_title)` (da+en).
+- **`smoke-tree.spec.ts`**: per-gren-testen omskrevet til "+"-flowet; nye tests for søskende-merge ("Corp + Guest", count 2) og slet-gren (skjul + nulstil). 7/7 tree- og 11/11 total grønne.
+
 ## [7.1.0754] — 2026-07-10 — feat: Fase 3 — drag-and-drop mellem grupper i træ-viewet (MINOR → 7.1)
 
 Sidste fase af gruppetræet: træk en enhed eller en hel gren over på en gruppe-gren → flyt dem til den ISE-gruppe. `version` MINOR 7.0→7.1; `build` fortsætter.

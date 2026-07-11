@@ -3459,6 +3459,31 @@ body.register-route .login-card {
 [data-theme="dark"] .tree-leaf-selected td:not(.mac-cell) { background: #0c2340; }
 .tree-drop-target { outline: 2px dashed #2563eb; outline-offset: -2px; background: #eff6ff !important; border-radius: 6px; }
 [data-theme="dark"] .tree-drop-target { outline-color: #60a5fa; background: #0c2340 !important; }
+
+/* "+"-kontrol: undergruppering af en grens børn (efter sidste barn) */
+.tree-addchild { padding: 2px 6px 6px; padding-left: calc(var(--depth, 0) * 18px + 14px); }
+.tree-addchild-wrap { position: relative; display: inline-block; }
+.tree-addchild-btn { border: 1px dashed #cbd5e1; background: transparent; color: #6b7280; font-size: 0.72rem; border-radius: 6px; padding: 1px 8px; cursor: pointer; }
+.tree-addchild-btn:hover { border-color: #2563eb; color: #2563eb; background: #eff6ff; }
+.tree-addchild-menu { position: absolute; top: 100%; left: 0; z-index: 20; background: #fff; border: 1px solid #d1d5db; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,.12); min-width: 190px; margin-top: 3px; max-height: 320px; overflow-y: auto; }
+[data-theme="dark"] .tree-addchild-btn { border-color: #3a3a5c; color: #9ca3af; }
+[data-theme="dark"] .tree-addchild-btn:hover { border-color: #60a5fa; color: #93c5fd; background: #0c2340; }
+[data-theme="dark"] .tree-addchild-menu { background: #1e1e2e; border-color: #3a3a5c; }
+
+/* Slet (skjul) gren-knap */
+.tree-hide-branch { margin-left: auto; border: 0; background: transparent; color: #cbd5e1; font-size: 0.85rem; line-height: 1; cursor: pointer; padding: 0 4px; opacity: 0; transition: opacity .1s, color .1s; }
+.tree-branch:hover .tree-hide-branch { opacity: 1; }
+.tree-hide-branch:hover { color: #dc2626; }
+[data-theme="dark"] .tree-hide-branch { color: #4b5563; }
+[data-theme="dark"] .tree-hide-branch:hover { color: #f87171; }
+
+/* Visuelt sammenlagt gren (A + B) */
+.tree-branch-merged .tree-val { color: #7c3aed; font-weight: 600; }
+[data-theme="dark"] .tree-branch-merged .tree-val { color: #c4b5fd; }
+
+/* Drop-mål ved søskende-sammenlægning */
+.tree-drop-merge { outline: 2px dashed #7c3aed; outline-offset: -2px; background: #f5f3ff !important; border-radius: 6px; }
+[data-theme="dark"] .tree-drop-merge { outline-color: #a78bfa; background: #241b3a !important; }
 [data-theme="dark"] .view-mode-toggle { border-color: #3a3a5c; }
 [data-theme="dark"] .view-mode-toggle .vm-btn { background: #1e1e2e; color: #cbd5e1; }
 [data-theme="dark"] .view-mode-toggle .vm-btn + .vm-btn { border-left-color: #3a3a5c; }
