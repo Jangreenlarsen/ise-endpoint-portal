@@ -63,12 +63,16 @@ class Settings(BaseSettings):
         ),
     )
     trusted_proxy_ips: list[str] = Field(
-        default_factory=list,
+        default_factory=lambda: ["127.0.0.1", "::1"],
         description=(
             "Liste af IP-adresser der tillades at sætte X-Forwarded-For headeren. "
-            "Kun requests fra disse adresser anvender X-Forwarded-For til rate limiting. "
+            "Kun requests fra disse adresser anvender X-Forwarded-For til at bestemme "
+            "klientens IP (rate limiting + selvregistrerings-binding). "
             "Andre requests identificeres ved den direkte forbindelses IP. "
-            "Eksempel: ['10.0.0.1', '192.168.1.254'] (reverse proxy / load balancer IPs)."
+            "Default er loopback, fordi den dokumenterede opsætning har nginx på "
+            "samme host: uden den ville alle klienter fremstå som 127.0.0.1 og dele "
+            "én rate-limit-bucket OG én selvregistrerings-binding. "
+            "Udvid hvis proxyen kører på en anden host, fx ['10.0.0.1']."
         ),
     )
     ise_http2: bool = Field(
@@ -461,7 +465,7 @@ class Settings(BaseSettings):
     )
     decomm_authz_vlan: str = Field(default="999", description="AuthzVlan der sættes på et endpoint ved dekommissionering (kun hvis decomm_set_authz=True).")
     decomm_authz_acl: str = Field(default="deny_all_ipv4_traffic", description="AuthzACL (DACL) der sættes på et endpoint ved dekommissionering (kun hvis decomm_set_authz=True).")
-    selfregister_enabled: bool = Field(default=True, description="Aktivér public selvregistrerings-side (/selfregister).")
+    selfregister_enabled: bool = Field(default=False, description="Aktivér public selvregistrerings-side (/selfregister). Uautentificeret flade — slå kun til når gæsteregistrering faktisk skal bruges, og sæt selfregister_group_id samtidig.")
     selfregister_group_id: str = Field(default="", description="ISE endpoint group ID som selvregistrerede endpoints placeres i. Tom = standard gruppe.")
     selfregister_redirect_url: str = Field(default="", description="URL brugeren sendes til efter succesfuld registrering (fx https://company.com). Tom = vis success-besked.")
     selfregister_intro_text: str = Field(default="Registrér din enhed for at få adgang til netværket.", description="Introduktionstekst vist over formularen på selvregistreringssiden.")

@@ -13,6 +13,158 @@ Kendte post-mortems:
 - [BUGREPORT-ise-endpointgroup-storm.md](BUGREPORT-ise-endpointgroup-storm.md) — ISE `/ers/config/endpointgroup` ReadTimeout-storm + CB-cykling (grundårsag: N+1 gruppe-fetch i drip-loop). Fixed 6.21.0721.
 - [BUGREPORT-browse-502-groups-cold-cache.md](BUGREPORT-browse-502-groups-cold-cache.md) — Browse `502` + tom tabel når `/groups` timer ud (grundårsag: ikke-kritisk group-kald vælter `Promise.all` + grupper har ingen disk-cache). Frontend fixed 6.21.0722; groups disk-persistens fixed 6.21.0723.
 
+---
+
+# Bugs fra portalrevision 2026-08-18
+
+Tofaset gennemgang af hele portalen på v7.3.0757 (branch `dev`, commit `92c1e08`).
+Fase 1: inventering + testkørsel (253 grønne) + statiske scanninger. Fase 2: kodelæsning
+af de moduler fase 1 udpegede som udækkede. **Alle 16 fund er verificeret ved læsning af
+den citerede kode** — ingen er udledt af mønstermatch alene. ID'erne `F-01`…`F-16` følger
+revisionsrapporten, så entry og rapport kan matches.
+
+**Rod-observation der forbinder dem:** 66 af ~100 backend-moduler nævnes ikke i en eneste
+test (frontend: 332 linjer smoketests mod 21.140 linjer kode). Samtlige 16 fund ligger i den
+udækkede halvdel. Ved fix bør hvert fund have en regressions-vagt, ellers lukkes symptomet
+uden at lukke hullet i dækningen.
+
+**Status:** F-01, F-02 og F-07 er lukket i **7.3.0758** — de to kritiske plus den
+default-ændring de afhang af. Resterende anbefalet rækkefølge: **F-04 + F-03**
+(lavt privilegerede konti kommer længere end rollemodellen tillader) → **F-05 + F-06**
+(samme rod: `users.json`) → resten som almindelig oprydning.
+
+## [FIXED 7.3.0758] 2026-08-18 — F-01: Selvregistrering binder ikke MAC-adressen til den der spørger (KRITISK)
+
+- **Symptom:** Fundet i portalrevision (ikke felt-rapporteret). `POST /api/selfregister` er uautentificeret og læser `mac` direkte fra request-body. Enhver der kan nå portalen kan (a) oprette en vilkårlig MAC i ISE med `HypervisionActive=Aktiv` + de konfigurerede `AuthzVlan`/`AuthzACL` — altså give netværksadgang til en enhed de ikke ejer; (b) ramme upsert-grenen på et **eksisterende** endpoint og overskrive dets `description`, custom-attributter og `group_id`, så en virksomhedsenhed kan flyttes til gæstegruppen og få ændret sin autorisation; (c) sætte en vilkårlig `PSK_Key` når IPSK er slået til.
+- **Root cause:** Docstringen lover *"mac: MAC verificeret via MnT session-lookup"*, men serveren verificerer det aldrig. `/selfregister/session` er et separat GET-kald der kun fortæller **frontenden** hvad MAC'en er — der findes ingen serverside-tilstand, intet nonce og ingen binding mellem de to kald. `selfregister_enabled` har `default=True` ([config.py:464](backend/app/core/config.py#L464)), så fladen er åben uden at nogen har valgt det. Der sættes heller ingen audit-aktør på kaldet.
+- **Foreslået løsning:** Gem MnT-opslaget serverside (klient-IP → MAC, kortlivet TTL) og lad POST'en slå MAC'en op i den tilstand ud fra **requestens egen IP** i stedet for at læse den fra body. Sæt `selfregister_enabled` til `default=False`. Afvis upsert mod endpoints der ikke allerede står i gæstegruppen, så et eksisterende corporate-endpoint aldrig kan overskrives ad denne vej. Audit-log hvert kald med kilde-IP.
+- **Løsning (v7.3.0758):** MAC'en kommer nu fra en serverside-binding (`core/selfregister_bindings.py`, TTL 600s, bounded til 10.000 poster) som `GET /session` opretter mellem klientens afsender-IP og den MAC ISE MnT rapporterer. `POST` slår op i bindingen ud fra sin **egen** afsender-IP; ingen binding → `409`. Body-feltet `mac` er nu optional og ikke autoritativt — en uoverensstemmelse → `403`. Bindingen forbruges ved succes. Upsert af et eksisterende endpoint afvises med `409` hvis det ikke allerede står i `selfregister_group_id`, så en virksomhedsenhed ikke kan flyttes til gæstegruppen. `selfregister_enabled` er nu default `False` (også i `schemas/settings.py`, ellers ville en delvis settings-opdatering gen-aktivere fladen). Registreringer og afviste forsøg audit-logges med `actor_username="selfregister"` + kilde-IP.
+- **Regressions-vagt:** `backend/tests/test_selfregister.py` — 15 tests, heriblandt `test_post_without_binding_is_rejected`, `test_post_rejects_mac_that_differs_from_binding`, `test_post_uses_bound_mac_not_body_mac` og `test_upsert_rejected_for_endpoint_outside_guest_group`.
+- **Berørte filer:** `backend/app/api/selfregister.py:218-322`, `backend/app/core/config.py:464`
+- **Regressions-vagt (mangler):** ingen test rører `selfregister.py`.
+
+## [FIXED 7.3.0758] 2026-08-18 — F-02: Uautentificeret opslag af MAC-adresse for enhver IP i netværket (KRITISK)
+
+- **Symptom:** `GET /api/selfregister/session?ip=…` kræver ingen auth og returnerer MAC, NAS-IP og ACS-session-ID for **enhver** aktiv RADIUS-session på nettet. Det er en oracle der kan enumereres, og det er samtidig det der gør F-01 trivielt at udnytte: find offerets MAC, send den så til POST-endpointet.
+- **Root cause:** `client_ip = ip.strip() or _client_ip(request)` — den angivne query-parameter vinder over requestens faktiske afsender-IP, så man kan spørge om hvad som helst. Parameteren valideres ikke som IP-adresse før den interpoleres i MnT-stien (`f"/admin/API/mnt/Session/IPAddress/{ip}"`), hvilket giver kontrol over en del af den URL portalen kalder mod ISE's admin-API med sine egne credentials. `_client_ip()` stoler desuden ubetinget på `X-Forwarded-For` — i modsætning til rate limiteren, der bruger `trusted_proxy_ips`-whitelisten (SEC-9).
+- **Foreslået løsning:** Fjern `?ip=`-parameteren helt og brug udelukkende requestens egen IP. Valider værdien med `ipaddress.ip_address()` før den når URL'en. Lad `_client_ip()` respektere `trusted_proxy_ips` på samme måde som `rate_limiter.py`.
+- **Løsning (v7.3.0758):** `?ip=`-parameteren er **fjernet**. `/session` slår udelukkende klientens egen afsender-IP op. `_client_ip()` accepterer kun `X-Forwarded-For` fra en IP i `trusted_proxy_ips` (samme whitelist som rate limiteren, SEC-9), så en klient ikke selv kan vælge sin "IP". Værdien valideres med `ipaddress.ip_address()` før den interpoleres i MnT-stien.
+- **Regressions-vagt:** `test_session_lookup_ignores_ip_query_param`, `test_session_lookup_rejects_untrusted_forwarded_for`, `test_session_lookup_honours_forwarded_for_from_trusted_proxy`.
+- **Berørte filer:** `backend/app/api/selfregister.py:172-215` (+ `_client_ip` linje 48-53), `backend/app/ise/mnt_sessions.py:567`
+
+## [OPEN] 2026-08-18 — F-03: nmap-flag filtreres med ufuldstændig denylist — og ruten er åben for alle roller (HØJ)
+
+- **Symptom:** `POST /nmap/scan` accepterer `custom_flags` fra brugeren og sender dem til `create_subprocess_exec`. Filteret er en denylist på otte flag; alt andet slipper igennem. Ruten kræver `require_register_lookup`, som omfatter **samtlige** roller — også `viewer`, `registrant` og `registrant_templet`, der ellers hverken må redigere eller browse endpoints.
+- **Root cause:** `SAFE_FLAG_DENYLIST = {"-iL", "--script", "--script=", "-oG", "-oN", "-oX", "-oA", "--resume"}`. Manglende bl.a.: `-oS` og `--append-output` (vilkårlig filskrivning som portal-brugeren), `--datadir`, `--servicedb`, `--versiondb` (indlæsning af data fra en sti angriberen vælger), `--stylesheet`, `-iR`. Denylister på nmap-flag kan i praksis ikke gøres komplette. Der er ingen shell-injektion (`create_subprocess_exec`, ikke `shell=True`) — vektoren er nmap's egne flag.
+- **Bifund:** `"--script="` i listen er en **død entry** — `base = p.split("=")[0]` har allerede fjernet `=`-delen, så den kan aldrig matche (dækkes dog af `--script`). API-skemaet reklamerer stadig med presettet `os` ([nmap.py:19](backend/app/api/nmap.py#L19)), som er fjernet fra `PRESETS`; angives det, falder kaldet **tavst** tilbage til default i stedet for at fejle.
+- **Foreslået løsning:** Vend om til en allowlist af tilladte flag. Begræns ruten til `require_editor` eller `require_admin`. Fjern `os` fra feltbeskrivelsen, eller afvis ukendte presets eksplicit med 422.
+- **Berørte filer:** `backend/app/services/nmap_service.py:15, 37-44, 52-61`, `backend/app/api/nmap.py:19, 30`
+
+## [OPEN] 2026-08-18 — F-04: SSE-strømmen med live-sessioner mangler rollekontrol (HØJ)
+
+- **Symptom:** `registrant` og `registrant_templet` — roller der efter design **kun** må oprette endpoints og eksplicit ikke må browse ([deps.py](backend/app/api/deps.py) kommentar: *"registrant må KUN oprette endpoints — ingen browse/edit/delete/audit/admin"*) — kan abonnere på `GET /api/pxgrid/sessions/stream` og få den fulde live-strøm af RADIUS-sessioner: MAC, bruger, IP og NAS for hver enhed på nettet.
+- **Root cause:** Ruten har ikke `dependencies=[Depends(require_any)]` som alle sine søsterruter ([pxgrid.py:37-42](backend/app/api/pxgrid.py#L37) og [:171-176](backend/app/api/pxgrid.py#L171)). Auth er håndrullet i funktionskroppen fordi `EventSource` ikke kan sætte headers, og den kopi validerer korrekt token, brugerens eksistens og `token_gen` — men **tjekker aldrig en rolle**. Klassisk følge af at duplikere en dependency i hånden.
+- **Bifund:** Ruten accepterer tokenet som query-parameter (`?token=`, dokumenteret som `file://`-udviklingsfallback). Frontenden bruger det ikke — den sender httpOnly-cookien via `withCredentials` — men parameteren er aktiv i produktion, og query-strenge havner i nginx' access-log og i browserhistorik.
+- **Foreslået løsning:** Udtræk den håndrullede blok til en genbrugelig dependency der returnerer `User` (cookie eller Bearer), og tjek rollen mod `require_any`. Fjern `?token=`-fallbacken.
+- **Berørte filer:** `backend/app/api/pxgrid.py:76-113`
+
+## [OPEN] 2026-08-18 — F-05: Ingen JSON-tilstand skrives atomisk — users.json kan tømmes af en OTA-genstart (HØJ)
+
+- **Symptom:** Potentiel total udelukkelse fra portalen: står `users.json` tom, returnerer `load_users()` stille `[]` ved parse-fejl, så symptomet er ikke en fejlmeddelelse men en portal hvor ingen kan logge ind.
+- **Root cause:** Samtlige ni JSON-stores skriver med et direkte `write_text()`, der **trunkerer filen før den skriver**. Der findes ikke ét skriv-til-temp-og-`os.replace` i kodebasen. Vinduet er ikke hypotetisk: opdateringstjenesten afslutter selv processen med `os._exit(0)` ([update_service.py:620](backend/app/services/update_service.py#L620)) — et hårdt kill uden flush eller oprydning — og `save_users()` kaldes fra 17 steder, heriblandt **hvert logout** ([auth.py:103](backend/app/api/auth.py#L103)) og **hver gemning af brugerpræferencer** ([me.py:308](backend/app/api/me.py#L308)). En OTA-opdatering mens nogen gemmer en indstilling kan efterlade filen tom.
+- **Bifund:** `os._exit(0)` springer også lifespan-shutdown over, så pxGrid-session-cachen ikke når at blive gemt til disk ved en opdaterings-genstart.
+- **Foreslået løsning:** Én fælles `atomic_write_json(path, data)` — skriv til `path.with_suffix(".tmp")`, `flush()` + `os.fsync()`, derefter `os.replace()` — og lad alle stores gå gennem den. Skift `os._exit(0)` ud med et almindeligt shutdown-signal (SIGTERM til egen proces), så systemd's `Restart=always` genstarter efter en ren nedlukning.
+- **Berørte filer:** `backend/app/core/user_store.py:29`, `settings_store.py:33`, `auth_config_store.py:42`, `template_store.py:34`, `role_catalog.py:51`, `operator_profile_store.py:23`, `platform_mapping_store.py:90`, `custom_attr_store.py:100`, `endpoint_cache.py:743`, `backend/app/services/update_service.py:607-622`
+
+## [OPEN] 2026-08-18 — F-06: Kapløb om users.json — læs-ret-skriv uden lås kan genoplive tilbagekaldte tokens (HØJ)
+
+- **Symptom:** En samtidig skrivning kan gendanne en gammel `token_gen` og dermed **genoplive et token der skulle være tilbagekaldt** ved logout. Generelt: ændringer på brugerlisten kan forsvinde uden spor.
+- **Root cause:** Mønstret `users = load_users(); …; save_users(users)` gentages 17 steder uden nogen serialisering. To samtidige requests læser hver sin kopi af **hele** listen, ændrer hver sin del og skriver begge tilbage — den sidste vinder. Logout incrementerer `token_gen` for at tilbagekalde tokens ([auth.py:101-103](backend/app/api/auth.py#L101)), mens en samtidig gemning af brugerpræferencer ([me.py:308](backend/app/api/me.py#L308)) kan skrive den gamle værdi tilbage. Hænger sammen med F-05 — samme fil, samme rod.
+- **Bifund:** `load_users()` læser filen fra disk ved **hver** autentificeret request (`deps.get_current_user`), synkront i event-loopen.
+- **Foreslået løsning:** Læg en `asyncio.Lock` om hele læs-ret-skriv-sekvensen (eller flyt brugerhåndteringen til SQLite som `audit_store`/`lockout_store`). Hold brugerlisten i hukommelsen med gen-indlæsning ved ændring i stedet for at ramme disken pr. request.
+- **Berørte filer:** `backend/app/core/user_store.py:17-31`, `backend/app/api/auth.py:101-103`, `backend/app/api/me.py:86, 115, 138, 308`, `backend/app/services/user_service.py` (9 steder), `backend/app/api/deps.py:98`
+
+## [FIXED 7.3.0758] 2026-08-18 — F-07: Bag nginx deler hele portalen én rate-limit-bucket (MIDDEL)
+
+- **Symptom:** Sporadiske `429 Too many requests` for **alle** brugere når én bruger kører bulk-operationer. Sandsynligvis allerede mærkbart i produktion.
+- **Root cause:** Rate limiteren læser kun `X-Forwarded-For` hvis afsender-IP'en står i `trusted_proxy_ips` (SEC-9-fixet). Den liste har `default_factory=list` ([config.py:65](backend/app/core/config.py#L65)) og sættes ikke af installationen. I den dokumenterede produktionsopsætning kommer al trafik fra nginx på `127.0.0.1`, så **samtlige** brugere identificeres som samme IP og deler ét vindue på 200 requests/minut. Sikkerhedsmekanismen er intakt, men uden konfiguration slår den om til en tilgængelighedsfejl i stedet for en beskyttelse.
+- **Foreslået løsning:** Sæt `trusted_proxy_ips` til `["127.0.0.1", "::1"]` som default. Log en advarsel ved opstart hvis al trafik over et tidsrum kommer fra loopback mens listen er tom. Overvej at dokumentere det i `INSTALL.md`.
+- **Løsning (v7.3.0758):** `trusted_proxy_ips` har nu default `["127.0.0.1", "::1"]`. Ændringen var samtidig en **forudsætning** for F-01's fix: bag nginx på samme host ville alle klienter ellers fremstå som `127.0.0.1` og dermed dele én selvregistrerings-binding, ikke bare én rate-limit-bucket.
+- **Berørte filer:** `backend/app/core/rate_limiter.py:66-73`, `backend/app/core/config.py:65-71`, `deploy/nginx-hypervision.conf:33`
+
+## [OPEN] 2026-08-18 — F-08: Rate limiterens buckets ryddes aldrig — modul-docstringen påstår det modsatte (MIDDEL)
+
+- **Symptom:** Langsom hukommelseslækage. På en gæsteflade med skiftende klient-IP'er vokser processens hukommelse monotont indtil genstart.
+- **Root cause:** Docstringen lover *"én deque pr. aktiv IP, automatisk ryddet når vinduet er tomt"*. Det sker ikke. `is_allowed()` popper forældede tidsstempler ud af deque'en, men sletter aldrig nøglen fra `_buckets` (`defaultdict(deque)`). Der findes ikke ét `del`, `pop()` eller `clear()` i filen. Estimatet i docstringen ("10.000 samtidige IPs ≈ 2 MB") gælder derfor **alle IPs portalen nogensinde har set**, ikke samtidige.
+- **Foreslået løsning:** Slet nøglen når deque'en er tom efter oprydning, eller kør en periodisk sweep der fjerner buckets uden aktivitet i vinduet. Ret docstringen så den beskriver den faktiske adfærd.
+- **Berørte filer:** `backend/app/core/rate_limiter.py:10-11, 31-46`
+
+## [OPEN] 2026-08-18 — F-09: Login blokerer event-loopen for hele portalen (MIDDEL)
+
+- **Symptom:** Portalen står helt stille mens et login kører — ingen andre requests behandles, og baggrundsworkerne kan ikke tikke. Med TACACS-tilstand og en utilgængelig TACACS-server fryser portalen i hele timeout-perioden **pr. loginforsøg**; gentagne forsøg kan holde den nede uden at nå rate-limitens 200/min.
+- **Root cause:** `async def login()` kalder `user_service.login()` direkte — en fuldt synkron funktion. Den udfører PBKDF2 med 600.000 iterationer (hundreder af ms CPU), læser `users.json` + `auth_config.json` fra disk, og i TACACS-tilstand åbner den en **blokerende socket** mod TACACS-serveren med `tacacs_timeout_seconds` som loft. Intet af det er lagt i en threadpool, selvom resten af kodebasen bruger `asyncio.to_thread` 15 steder til netop dette.
+- **Foreslået løsning:** Kør `user_service.login()` gennem `starlette.concurrency.run_in_threadpool`. Samme behandling bør overvejes for `setup_first_admin` og password-skift, som også kører PBKDF2.
+- **Berørte filer:** `backend/app/api/auth.py:79-83`, `backend/app/services/user_service.py:413`, `backend/app/services/tacacs_service.py:74`
+
+## [OPEN] 2026-08-18 — F-10: Baggrundstasks uden reference kan blive frigivet midt i kørslen (MIDDEL)
+
+- **Symptom:** Ikke-deterministisk tab af baggrundsarbejde uden fejl nogen steder. Mest følsomme tilfælde: audit-posten for en endpoint-ændring skrives fire-and-forget, så en tabt task betyder **en manglende post i revisionssporet**. Testkørslen viser symptomet som `RuntimeWarning: coroutine '_audit_after' was never awaited`.
+- **Root cause:** Syv steder kaldes `asyncio.create_task()` / `ensure_future()` uden at resultatet gemmes. Event-loopen holder kun **svage** referencer til kørende tasks, så garbage collectoren kan afslutte dem før tid — derfor beder CPythons dokumentation eksplicit om at gemme referencen. Bemærk: 6.30.0739 fiksede at exceptions i `_audit_after` blev slugt, men **ikke** at selve tasken kan forsvinde.
+- **Foreslået løsning:** Hold et modul-niveau `set()` af kørende tasks; tilføj ved oprettelse og fjern i `add_done_callback`. Lad samme callback logge en exception, så fejlede baggrundstasks ikke forsvinder tavst.
+- **Berørte filer:** `backend/app/services/endpoint_service.py:912`, `backend/app/services/dacl_service.py:272, 281`, `backend/app/pxgrid/session_worker.py:322, 438`, `backend/app/ise/network_devices.py:53`, `backend/app/ise/profiler.py:111`, `backend/app/services/update_service.py:622`
+
+## [OPEN] 2026-08-18 — F-11: TACACS-tokens kan ikke tilbagekaldes (MIDDEL)
+
+- **Symptom:** Ændring af en operatørprofil, fratagelse af en rolle eller et logout har **ingen effekt** på en TACACS+-autentificeret bruger før tokenet udløber af sig selv efter 1 time.
+- **Root cause:** Lokale tokens bærer et `gen`-felt der checkes mod `token_gen` i brugerposten, så tilbagekaldelse virker øjeblikkeligt. TACACS-tokens har ikke feltet: `create_tacacs_token()` sætter det ikke ([auth.py:127-148](backend/app/core/auth.py#L127)), og `deps.py` checker det ikke på TACACS-grenen ([deps.py:71-95](backend/app/api/deps.py#L71)). Al autorisation — rolle, operatørprofil, endpoint-roller — ligger i selve tokenet. Logout springer også bevidst revokeringen over for TACACS ([auth.py:98](backend/app/api/auth.py#L98)).
+- **Foreslået løsning:** Giv operatørprofiler en generation-tæller (i `operator_profile_store`) og indlejr den i TACACS-tokenet, så `deps.py` kan validere den på samme måde som lokale brugere. Alternativt en denyliste over tilbagekaldte token-JTI'er med TTL = token-levetid.
+- **Berørte filer:** `backend/app/core/auth.py:127-148`, `backend/app/api/deps.py:71-95`, `backend/app/api/auth.py:96-104`
+
+## [OPEN] 2026-08-18 — F-12: Portalen lytter på 0.0.0.0:8000 uden brandmur — TLS kan omgås (MIDDEL)
+
+- **Symptom:** Al TLS-beskyttelse kan omgås ved at gå direkte til port 8000 i klartekst. Session-cookien går da over nettet **uden `Secure`-flag**.
+- **Root cause:** Systemd-unitten starter uvicorn med `--host 0.0.0.0 --port 8000` ([hypervision.service:22](deploy/hypervision.service#L22)), og hverken `install.sh`, `deploy/first-boot.sh` eller `deploy/prepare-ova-base.sh` sætter en firewall-regel. TLS-terminering, HTTP→HTTPS-redirect og HSTS ligger alle i nginx. Cookien sættes med `secure = request.url.scheme == "https"` ([auth.py:28](backend/app/api/auth.py#L28)) — over det direkte klartekst-endpoint bliver flaget `False`. Førstegangs-opsætningen udskriver oven i købet `http://<ip>:8000` som portalens URL ([first-boot.sh:177](deploy/first-boot.sh#L177)).
+- **Foreslået løsning:** Bind til `127.0.0.1` i unit-filen når nginx er i brug, eller læg en ufw/nftables-regel i first-boot der kun tillader 80/443 udefra. Ret first-boot-outputtet til `https://<hostname>`.
+- **Berørte filer:** `deploy/hypervision.service:22`, `deploy/first-boot.sh:177`, `backend/app/api/auth.py:26-38`
+
+## [OPEN] 2026-08-18 — F-13: Fire fejlbeskeder indsættes i DOM'en uden escaping (LAV)
+
+- **Symptom:** Fejltekst fra backend renderes som HTML i stedet for tekst. Frontenden er ellers disciplineret — `esc()` bruges på 581 af 585 `innerHTML`-indsættelser, inkl. alle tabelceller, options og chips der bærer ISE-data.
+- **Root cause:** Fire steder med mønstret `innerHTML = \`…${err.message}…\``. Beskeden sammensættes i `api.js` af HTTP-status og serverens `detail`-felt, som for ISE-fejl kan indeholde tekst fra ISE selv — herunder ekkoede attributværdier. CSP'en (`script-src 'self'`) begrænser konsekvensen, men indsættelsen er stadig forkert.
+- **Foreslået løsning:** Wrap de fire i `esc()` fra [browse-utils.js:140](frontend/js/views/browse-utils.js#L140).
+- **Berørte filer:** `frontend/js/views/attributes.js:391`, `frontend/js/views/settings/section-diagnostics.js:76`, `frontend/js/views/settings/section-feature-check.js:29, 42`
+
+## [OPEN] 2026-08-18 — F-14: Service workeren cacher JS/CSS på tværs af opdateringer (LAV)
+
+- **Symptom:** Lige efter en OTA-genstart, hvor backenden er nede et par sekunder, kan klienten få den **gamle** frontend serveret mod en ny backend.
+- **Root cause:** Backenden sætter bevidst `Cache-Control: no-store` på `.js`/`.css` ([main.py:367](backend/app/main.py#L367)) for at sikre at nye versioner altid hentes. Service workeren lægger dem alligevel i Cache Storage, hvor HTTP-cache-direktiver ikke gælder, under et cache-navn (`ise-portal-shell-v1`) der aldrig er ændret — så `activate`-handlerens oprydning rydder aldrig noget. Strategien er network-first, så det rammer kun når et fetch fejler; men det er præcis det der sker under en genstart.
+- **Foreslået løsning:** Byg cache-navnet af build-nummeret fra `version.json`, så `activate` rydder den gamle cache ved hver opdatering.
+- **Berørte filer:** `frontend/service-worker.js:6, 32-39`, `backend/app/main.py:365-368`
+
+## [OPEN] 2026-08-18 — F-15: To runtime-databaser mangler i .gitignore (LAV)
+
+- **Symptom:** `backend/lockout.db` og `backend/metrics_history.db` ligger som utrackede filer i arbejdstræet og vil blive committet af et bredt `git add`. `lockout.db` indeholder brugernavne fra fejlede loginforsøg.
+- **Root cause:** `audit.db` (+ `-journal`/`-wal`/`-shm`) og alle JSON-stores er ignoreret, men de to nyere databaser blev ikke tilføjet da de kom til.
+- **Foreslået løsning:** Tilføj `backend/lockout.db*` og `backend/metrics_history.db*` til `.gitignore` (dækker WAL- og journal-suffikser). Verificér at ingen af dem allerede ligger i git-historikken.
+- **Berørte filer:** `.gitignore:21-27`
+
+## [OPEN] 2026-08-18 — F-16: Log-endpoints læser hele logfiler synkront i event-loopen (LAV)
+
+- **Symptom:** Et log-download eller en logsøgning blokerer hele portalen mens filerne læses. Mærkbart på en installation der har kørt længe og har store roterede logfiler.
+- **Root cause:** `logs.py` åbner og gennemløber logfilerne med almindelig synkron I/O inde i async-handlere, fire steder. Stien kommer fra `settings.log_file` og ikke fra brugerinput, så der er **ingen** path-traversal-risiko — problemet er udelukkende blokering.
+- **Foreslået løsning:** Læg filgennemløbet i `asyncio.to_thread`, i tråd med `audit_store` og `metrics_store`.
+- **Berørte filer:** `backend/app/api/logs.py:106, 281, 348, 404`
+
+---
+
+## [FIXED 7.3.0757] 2026-07-11 — Gruppetræ: sammenlægning af en forælder-gren nulstillede dens børns tilpasninger
+
+- **Symptom:** I gruppetræet identificeres hver gren ved sin `nodePath` (`parent//depth:value`). En **visuel sammenlægning** af to søskende ændrer deres værdi-segment til én sammensat nøgle (`Corp␁Guest`) — og dermed forældre-stien for alle deres børn. Havde man **forinden** skjult en undergren (`treeHidden`), givet en gren sin egen undergruppering (`treeBranchDim`) eller lavet en under-sammenlægning (`treeMerges`) *inde i* en af de to grene, matchede de tilpasninger ikke længere den nye sti → tilpasningerne "forsvandt" (skjulte grene dukkede op igen, ⚙-badge/undergruppering væk), og de forældreløse nøgler blev liggende som død vægt i state/backend indtil "Nulstil visning".
+- **Root cause:** Sti-som-identitet: en merge omskriver forældre-segmentet, men de nedarvede tilpasnings-nøgler blev ikke migreret med.
+- **Løsning (v7.3.0757):** Ved en søskende-merge migreres tilpasninger nu **før** sammenlægningen. `mergedNodePath()` beregner den nye merged sti (samme forælder+dybde, sorteret union af medlemmer joinet med `MERGE_SEP` — matcher det `applyMergesHidden` renderer). `remapCustomizationKeys()` prefix-rewriter enhver nøgle i `treeBranchDim`/`treeHidden`/`treeMerges` der **er** eller **ligger under** en af de to grenes stier, til den nye merged sti. Kollision (begge søskende tilpasset samme relative understi): branchDim beholder første, hidden tager union, merges konkateneres.
+- **Kendt restbegrænsning (accepteret):** Mister en merge-gruppe et medlem helt (fx alle endpoints i "Guest" forsvinder ved reload), ændres den renderede merged nøgle (færre medlemmer) og stien igen — det kan forældreløse dybe tilpasninger på ny. Sjældent; "Nulstil visning" rydder altid op. En fuldstændig fix ville kræve merge-uafhængige, stabile gren-id'er (større ændring, fravalgt nu).
+- **Berørte filer:** `frontend/js/views/browse-tree.js`. **Regressions-vagt:** `frontend-tests/tests/smoke-tree.spec.ts` — "merge af forælder bevarer børns tilpasninger" (custom-badge overlever merge).
+
 ## [FIXED 6.34.0746] 2026-07-10 — Node-status viser en redirecting Secondary PAN som "OK" (og reads fejler ikke over)
 
 - **Symptom:** Efter konfiguration af ise3 (Secondary PAN) som læse-host viste "Node-kommunikation"-panelet **ise3 = OK, 3 ms** — selvom vi vidste at ise3's ERS ikke virker (curl mod ise3 gav intet brugbart). Samtidig stod Primary (ise2) som "Unknown / no traffic yet".

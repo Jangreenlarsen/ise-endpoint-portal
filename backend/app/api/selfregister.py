@@ -4,17 +4,32 @@
 
 Flow:
   1. WLC redirecter klient til /selfregister (ingen MAC i URL)
-  2. Frontend kalder GET /api/selfregister/session med klientens IP
-  3. Portal slår MAC op via ISE MnT Session/IPAddress/{ip}
+  2. Frontend kalder GET /api/selfregister/session (ingen parametre)
+  3. Portal slår MAC op via ISE MnT Session/IPAddress/{klientens egen IP}
+     og **binder** MAC'en til den IP (core/selfregister_bindings)
   4. Bruger udfylder navn (+ optional IPSK) og accepterer vilkår
-  5. POST /api/selfregister opretter/opdaterer endpoint i ISE
+  5. POST /api/selfregister slår MAC'en op i bindingen ud fra sin EGEN
+     afsender-IP og opretter/opdaterer endpointet i ISE
   6. CoA Reauth trigges via MnT → WLC re-autentificerer klient
 
 Endpoints (alle public — ingen auth):
-  GET  /api/selfregister/config           → side-config
-  GET  /api/selfregister/session?ip=...   → MAC-lookup via MnT
-  POST /api/selfregister                  → registrér endpoint + CoA
+  GET  /api/selfregister/config    → side-config
+  GET  /api/selfregister/session   → MAC-lookup via MnT + binding
+  POST /api/selfregister           → registrér endpoint + CoA
+
+**Sikkerhedsmodel (BUGS.md F-01/F-02).** Klientens afsender-IP er det eneste
+portalen kan verificere om en anonym bruger, og alt hænger på den:
+
+  - MAC'en kommer ALDRIG fra request-body. Body-feltet `mac` beholdes for
+    bagudkompatibilitet, men bruges kun til at afvise en uoverensstemmelse.
+  - `/session` tager ingen IP-parameter. Kunne man spørge om en vilkårlig IP,
+    var endpointet en åben oracle over alle aktive RADIUS-sessioner på nettet.
+  - Upsert af et EKSISTERENDE endpoint tillades kun når det allerede står i
+    gæstegruppen — ellers kunne en gæst flytte en virksomhedsenhed derover.
+  - `selfregister_enabled` er default False. Fladen er uautentificeret og skal
+    slås til bevidst.
 """
+import ipaddress
 import logging
 import re
 import time
@@ -25,7 +40,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
 from app.api.deps import get_endpoint_service, require_admin
-from app.core import config
+from app.core import audit_store, config, selfregister_bindings
+from app.core.audit_store import ActorContext, actor_ctx
 from app.core.exceptions import IseApiError
 from app.ise import mnt_sessions
 from app.ise.coa import reauth as coa_reauth
@@ -46,11 +62,33 @@ def _normalize_mac(mac: str) -> str:
 
 
 def _client_ip(request: Request) -> str:
-    """Udtræk klientens IP — respekter X-Forwarded-For fra reverse proxy."""
-    xff = request.headers.get("X-Forwarded-For", "")
-    if xff:
-        return xff.split(",")[0].strip()
-    return request.client.host if request.client else ""
+    """Udtræk klientens IP.
+
+    X-Forwarded-For accepteres KUN fra en betroet proxy (`trusted_proxy_ips`) —
+    ellers kunne enhver klient sætte headeren selv og udgive sig for en anden
+    IP. Da IP'en er det eneste selvregistreringen kan verificere om en anonym
+    klient (se `core/selfregister_bindings`), ville en frit valgt XFF gøre hele
+    bindingen værdiløs. Samme whitelist som rate limiteren bruger (SEC-9).
+    """
+    direct = request.client.host if request.client else ""
+    trusted = set(getattr(config.settings, "trusted_proxy_ips", []))
+    if trusted and direct in trusted:
+        forwarded = request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
+        if forwarded:
+            return forwarded
+    return direct
+
+
+def _valid_ip(value: str) -> str | None:
+    """Returnér `value` hvis det er en gyldig IP-adresse, ellers None.
+
+    Værdien interpoleres i MnT-stien (`/admin/API/mnt/Session/IPAddress/{ip}`),
+    så den må aldrig nå frem uvalideret.
+    """
+    try:
+        return str(ipaddress.ip_address((value or "").strip()))
+    except ValueError:
+        return None
 
 
 # ── Schemas ───────────────────────────────────────────────────────────────────
@@ -79,7 +117,14 @@ class SessionLookupResponse(BaseModel):
 
 
 class SelfRegisterRequest(BaseModel):
-    mac: str = Field(..., description="MAC verificeret via MnT session-lookup")
+    mac: str | None = Field(
+        None,
+        description=(
+            "IKKE autoritativ. Serveren bruger MAC'en fra session-bindingen for "
+            "afsender-IP'en; feltet sammenlignes kun, og en uoverensstemmelse "
+            "afvises med 403. Beholdt for bagudkompatibilitet."
+        ),
+    )
     registrant_name: str = Field(..., min_length=2, max_length=128)
     agreed: bool = Field(..., description="Registranten har accepteret vilkårene")
     psk_key: str | None = Field(None, max_length=128, description="Valgfri IPSK-nøgle")
@@ -173,18 +218,23 @@ async def get_selfregister_config() -> SelfRegisterConfig:
 
 
 @router.get("/session", response_model=SessionLookupResponse)
-async def lookup_session(request: Request, ip: str = "") -> SessionLookupResponse:
-    """Slå aktiv RADIUS-session op via klientens IP-adresse.
+async def lookup_session(request: Request) -> SessionLookupResponse:
+    """Slå klientens EGEN aktive RADIUS-session op og bind MAC'en til dens IP.
 
-    Frontend kalder dette endpoint umiddelbart efter sideload.
-    IP tages fra query-param ?ip= eller fra request.remote_addr.
-    Udfører 3 forsøg med 2 sekunders mellemrum mod ISE MnT API.
+    Frontend kalder dette endpoint umiddelbart efter sideload og poller til der
+    er et svar. Ét MnT-forsøg pr. kald — frontend styrer intervallet.
+
+    Der er bevidst INGEN mulighed for at angive hvilken IP der slås op: kunne man
+    det, ville et uautentificeret kald kunne afsløre MAC-adressen for enhver
+    aktiv session på netværket (BUGS.md F-02). Resultatet bindes til klientens
+    afsender-IP, så den efterfølgende POST kan verificeres uden at stole på
+    request-body (F-01).
     """
     s = config.settings
     if not s.selfregister_enabled:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Selvregistrering er deaktiveret")
 
-    client_ip = ip.strip() or _client_ip(request)
+    client_ip = _valid_ip(_client_ip(request))
     if not client_ip:
         return SessionLookupResponse(found=False, message="Kunne ikke bestemme klientens IP-adresse")
 
@@ -207,6 +257,10 @@ async def lookup_session(request: Request, ip: str = "") -> SessionLookupRespons
             message="Ingen aktiv RADIUS-session fundet for denne IP. Prøv igen om få sekunder.",
         )
 
+    # Bind MAC'en til klientens afsender-IP — POST'en læser den herfra i stedet
+    # for fra request-body.
+    selfregister_bindings.bind(client_ip, _normalize_mac(mnt_sess.mac))
+
     logger.info(
         "selfregister/session: fundet via MnT mac=%s ip=%s nas=%s",
         mnt_sess.mac, client_ip, mnt_sess.nas_ip,
@@ -221,11 +275,16 @@ async def lookup_session(request: Request, ip: str = "") -> SessionLookupRespons
 
 
 @router.post("", response_model=SelfRegisterResponse)
-async def selfregister(req: SelfRegisterRequest) -> SelfRegisterResponse:
-    """Registrér endpoint i ISE (upsert) og send CoA Reauth til WLC.
+async def selfregister(req: SelfRegisterRequest, request: Request) -> SelfRegisterResponse:
+    """Registrér klientens EGEN enhed i ISE (upsert) og send CoA Reauth til WLC.
+
+    MAC'en hentes fra den binding `/session` oprettede for denne afsender-IP —
+    aldrig fra request-body (BUGS.md F-01). Uden en gyldig binding afvises
+    kaldet, så klienten må igennem MnT-opslaget først.
 
     Upsert-logik:
-      - Hvis MAC allerede findes i ISE → opdater custom-attributter (PUT)
+      - MAC findes allerede i ISE → opdater custom-attributter (PUT), men KUN
+        hvis endpointet allerede står i gæstegruppen
       - Ellers → opret nyt endpoint (POST)
     """
     s = config.settings
@@ -234,9 +293,42 @@ async def selfregister(req: SelfRegisterRequest) -> SelfRegisterResponse:
     if not req.agreed:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Vilkårene skal accepteres")
 
-    mac = _normalize_mac(req.mac.strip())
+    client_ip = _valid_ip(_client_ip(request)) or ""
+    mac = selfregister_bindings.lookup(client_ip) if client_ip else None
+    if not mac:
+        logger.warning(
+            "selfregister: afvist — ingen aktiv session-binding for ip=%s", client_ip or "?"
+        )
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Din enhed er ikke bekræftet på netværket. Genindlæs siden og prøv igen.",
+        )
+
+    # Body-MAC'en er ikke autoritativ, men en uoverensstemmelse betyder enten en
+    # forældet fane eller et forsøg på at registrere en fremmed enhed — afvis.
+    if req.mac and _normalize_mac(req.mac.strip()) != mac:
+        logger.warning(
+            "selfregister: afvist — body-MAC %s matcher ikke bundet MAC for ip=%s",
+            req.mac, client_ip,
+        )
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "MAC-adressen matcher ikke din enhed. Genindlæs siden og prøv igen.",
+        )
+
     if not _MAC_RE.match(mac):
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Ugyldig MAC-adresse: {req.mac!r}")
+        # Defensivt: MnT bør aldrig give os noget andet.
+        logger.error("selfregister: bundet MAC har uventet format: %r", mac)
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "Uventet MAC-format fra ISE")
+
+    # Audit-aktør for det uautentificerede flow — ellers står hændelsen som "system".
+    actor_ctx.set(
+        ActorContext(
+            actor_id="selfregister",
+            actor_username="selfregister",
+            source_ip=client_ip,
+        )
+    )
 
     registrant = req.registrant_name.strip()
     psk_key = (req.psk_key or "").strip()
@@ -273,6 +365,29 @@ async def selfregister(req: SelfRegisterRequest) -> SelfRegisterResponse:
         existing = None
 
     if existing:
+        # Gen-registrering er kun tilladt for endpoints der ALLEREDE er gæster.
+        # Uden denne spærre kunne en gæst med en aktiv session få et vilkårligt
+        # eksisterende endpoint — fx en virksomhedsenhed — flyttet til
+        # gæstegruppen og få ændret dets AuthzVlan/AuthzACL (BUGS.md F-01).
+        guest_group = (s.selfregister_group_id or "").strip()
+        current_group = (existing.get("groupId") or "").strip()
+        if guest_group and current_group != guest_group:
+            logger.warning(
+                "selfregister: afvist gen-registrering af mac=%s — endpoint er i "
+                "gruppe %s, ikke gæstegruppen %s (ip=%s)",
+                mac, current_group or "(ingen)", guest_group, client_ip,
+            )
+            await audit_store.record(
+                "selfregister_rejected", "endpoint", existing.get("id", ""),
+                after={"mac": mac, "reason": "not_in_guest_group",
+                       "current_group": current_group, "source_ip": client_ip},
+            )
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "Denne enhed er allerede registreret på netværket. "
+                "Kontakt netværksadministratoren.",
+            )
+
         # Opdater eksisterende endpoint — sæt også group_id så MAC flyttes til
         # den konfigurerede guest-gruppe selv ved gen-registrering.
         endpoint_id = existing.get("id", "")
@@ -313,6 +428,16 @@ async def selfregister(req: SelfRegisterRequest) -> SelfRegisterResponse:
             logger.warning("selfregister: CoA Reauth fejlede mac=%s: %s", mac, msg)
     except Exception as exc:  # noqa: BLE001
         logger.warning("selfregister: CoA exception mac=%s: %s", mac, exc)
+
+    # Bindingen er brugt — fjern den så samme IP ikke kan gen-registrere uden et
+    # nyt MnT-opslag.
+    selfregister_bindings.unbind(client_ip)
+
+    await audit_store.record(
+        "selfregister", "endpoint", endpoint_id,
+        after={"mac": mac, "registrant": registrant, "source_ip": client_ip,
+               "existing": bool(existing), "coa_sent": coa_sent},
+    )
 
     return SelfRegisterResponse(
         ok=True,

@@ -230,6 +230,44 @@ function applyMergesHidden(buckets, path, state) {
   return buckets;
 }
 
+// Beregn den nye (merged) nodePath som applyMergesHidden vil producere for a+b:
+// samme forælder + dybde, værdi = sorteret union af medlemmer joinet med MERGE_SEP.
+function mergedNodePath(anyMemberPath, a, b) {
+  const lastSep = anyMemberPath.lastIndexOf("//");
+  const parent = lastSep < 0 ? "" : anyMemberPath.slice(0, lastSep);
+  const seg = anyMemberPath.slice(lastSep + 2);           // "depth:value"
+  const depthPrefix = seg.slice(0, seg.indexOf(":") + 1);  // "depth:"
+  const members = [...new Set([...mergeMembers(a), ...mergeMembers(b)])]
+    .sort((x, y) => x.localeCompare(y));
+  return `${parent}//${depthPrefix}${members.join(MERGE_SEP)}`;
+}
+
+// Flyt tilpasninger (branchDim/hidden/merges) fra to grenes stier til én ny merged
+// sti, så børn under en sammenlagt forælder bevarer deres tilpasninger. Prefix-rewrite:
+// enhver nøgle der ER eller ligger UNDER en af oldPaths får sit prefix skiftet til newPath.
+function remapCustomizationKeys(state, oldPaths, newPath) {
+  const remap = (k) => {
+    for (const op of oldPaths) {
+      if (k === op) return newPath;
+      if (k.startsWith(op + "//")) return newPath + k.slice(op.length);
+    }
+    return k;
+  };
+  const rebuild = (mapName, combine) => {
+    const src = state[mapName];
+    if (!src || typeof src !== "object") return;
+    const out = {};
+    for (const [k, v] of Object.entries(src)) {
+      const nk = remap(k);
+      out[nk] = (nk in out) ? combine(out[nk], v) : v;  // kollision (begge søskende tilpasset) → flet
+    }
+    state[mapName] = out;
+  };
+  rebuild("treeBranchDim", (existing) => existing);                     // behold første (dimKey-string)
+  rebuild("treeHidden", (x, y) => [...new Set([...x, ...y])]);          // union af skjulte værdier
+  rebuild("treeMerges", (x, y) => [...x, ...y]);                        // konkatener merge-grupper
+}
+
 // Sammenlæg to (evt. allerede sammenlagte) grenværdier under et parentPath til én gren.
 // Folder overlappende eksisterende merge-grupper ind, så resultatet altid er disjunkt.
 function mergeValues(state, parent, a, b) {
@@ -546,9 +584,15 @@ function wire(container, ctx) {
     if (sib) {
       e.preventDefault();
       sib.classList.remove("tree-drop-merge");
-      const parent = parentOf(_dragBranchPath);
-      const a = valueOfPath(_dragBranchPath);
-      const b = valueOfPath(sib.dataset.path);
+      const dragPath = _dragBranchPath;
+      const sibPath = sib.dataset.path;
+      const parent = parentOf(dragPath);
+      const a = valueOfPath(dragPath);
+      const b = valueOfPath(sibPath);
+      // Sammenlægning ændrer de to grenes sti til én ny (merged) sti. Flyt derfor
+      // deres børns tilpasninger (skjul/undergruppering/under-merges) med, så de
+      // ikke "forældreløses" (BUG: merge nulstilte tidligere børns tilpasninger).
+      remapCustomizationKeys(state, [dragPath, sibPath], mergedNodePath(dragPath, a, b));
       mergeValues(state, parent, a, b);
       _dragIds = null; _dragBranchPath = null;
       ctx.rerender();

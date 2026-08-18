@@ -44,7 +44,10 @@ class BackendSettingsUpdate(BaseModel):
     decomm_set_authz: bool = True
     decomm_authz_vlan: str = "999"
     decomm_authz_acl: str = "deny_all_ipv4_traffic"
-    selfregister_enabled: bool = True
+    # Default False: uautentificeret flade, skal slås til bevidst.
+    # Skal matche config.Settings — ellers gen-aktiverer en delvis
+    # settings-opdatering fladen utilsigtet (BUGS.md F-01).
+    selfregister_enabled: bool = False
     selfregister_group_id: str = ""
     selfregister_intro_text: str = "Registrér din enhed for at få adgang til netværket."
     selfregister_success_text: str = "Din enhed er nu registreret på netværket."
@@ -97,7 +100,10 @@ class BackendSettingsResponse(BaseModel):
     decomm_set_authz: bool = True
     decomm_authz_vlan: str = "999"
     decomm_authz_acl: str = "deny_all_ipv4_traffic"
-    selfregister_enabled: bool = True
+    # Default False: uautentificeret flade, skal slås til bevidst.
+    # Skal matche config.Settings — ellers gen-aktiverer en delvis
+    # settings-opdatering fladen utilsigtet (BUGS.md F-01).
+    selfregister_enabled: bool = False
     selfregister_group_id: str = ""
     selfregister_intro_text: str = "Registrér din enhed for at få adgang til netværket."
     selfregister_success_text: str = "Din enhed er nu registreret på netværket."
