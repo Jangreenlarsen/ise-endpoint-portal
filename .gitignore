@@ -26,6 +26,14 @@ backend/audit.db
 backend/audit.db-journal
 backend/audit.db-wal
 backend/audit.db-shm
+backend/lockout.db
+backend/lockout.db-journal
+backend/lockout.db-wal
+backend/lockout.db-shm
+backend/metrics_history.db
+backend/metrics_history.db-journal
+backend/metrics_history.db-wal
+backend/metrics_history.db-shm
 backend/cache/
 backend/pxgrid/
 node_modules/

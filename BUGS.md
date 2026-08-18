@@ -144,11 +144,13 @@ autorisationshuller. Resterende anbefalet rækkefølge: **F-03** (nmap-denylist)
 - **Foreslået løsning:** Byg cache-navnet af build-nummeret fra `version.json`, så `activate` rydder den gamle cache ved hver opdatering.
 - **Berørte filer:** `frontend/service-worker.js:6, 32-39`, `backend/app/main.py:365-368`
 
-## [OPEN] 2026-08-18 — F-15: To runtime-databaser mangler i .gitignore (LAV)
+## [FIXED 7.3.0759+] 2026-08-19 — F-15: To runtime-databaser mangler i .gitignore (LAV)
 
 - **Symptom:** `backend/lockout.db` og `backend/metrics_history.db` ligger som utrackede filer i arbejdstræet og vil blive committet af et bredt `git add`. `lockout.db` indeholder brugernavne fra fejlede loginforsøg.
 - **Root cause:** `audit.db` (+ `-journal`/`-wal`/`-shm`) og alle JSON-stores er ignoreret, men de to nyere databaser blev ikke tilføjet da de kom til.
 - **Foreslået løsning:** Tilføj `backend/lockout.db*` og `backend/metrics_history.db*` til `.gitignore` (dækker WAL- og journal-suffikser). Verificér at ingen af dem allerede ligger i git-historikken.
+- **Løsning (efter 7.3.0759, ingen versionsbump — `.gitignore` er ikke kode):** `backend/lockout.db*` og `backend/metrics_history.db*` tilføjet til `.gitignore` (inkl. `-journal`/`-wal`/`-shm`), og begge filer fjernet fra sporing med `git rm --cached`.
+- **Note:** de blev faktisk committet ved et uheld i 7.3.0759 via et bredt `git add -A backend` — præcis det scenarie denne entry beskrev. Indholdet var 16 rækker testdata (brugernavn `findes_ikke`) og nul rigtige brugernavne, så historikken er ikke omskrevet. Var der stået rigtige konti i, ville det have krævet en `filter-repo`-rensning.
 - **Berørte filer:** `.gitignore:21-27`
 
 ## [OPEN] 2026-08-18 — F-16: Log-endpoints læser hele logfiler synkront i event-loopen (LAV)
