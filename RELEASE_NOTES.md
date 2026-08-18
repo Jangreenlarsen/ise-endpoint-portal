@@ -4,6 +4,12 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [7.3.0760] — 2026-08-19 — 🔒 Sikkerhedsrettelse: nmap-scanning
+
+- **Scanning er nu forbeholdt redigerings-roller.** Alle roller — også *viewer*, *registrant* og *registrant_templet* — kunne starte en nmap-scanning på serveren. Det kan nu kun admin, editor og editor-psk.
+- **Egne scan-tilvalg kontrolleres strengere.** Feltet til egne nmap-tilvalg accepterede næsten alt, herunder tilvalg der kunne skrive filer på serveren eller få nmap til at hente data fra en vilkårlig mappe. Kun kendte, ufarlige tilvalg accepteres nu; resten afvises med en forklaring. De almindelige tilvalg — portvalg, hastighed, scan-type — virker som før.
+- **Ukendt scan-type giver nu en fejl.** Angav man en scan-type portalen ikke kender, kørte den tidligere stilfærdigt en anden scanning i stedet. Nu får man besked om hvilke typer der findes.
+
 ## [7.3.0759] — 2026-08-19 — 🔒 Sikkerhedsrettelse: live-sessionsvisning
 
 - **Registrerings-konti kunne se live-sessioner.** Brugere med rollen *registrant* eller *registrant_templet* — der kun må oprette enheder og ikke se listen over endpoints — kunne alligevel følge den løbende strøm af netværkssessioner og dermed se MAC-adresse, brugernavn, IP og switch/AP for hver enhed på nettet. Strømmen kræver nu samme rolle som resten af sessionsvisningen.

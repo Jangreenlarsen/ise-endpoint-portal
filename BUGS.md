@@ -28,10 +28,10 @@ test (frontend: 332 linjer smoketests mod 21.140 linjer kode). Samtlige 16 fund 
 udækkede halvdel. Ved fix bør hvert fund have en regressions-vagt, ellers lukkes symptomet
 uden at lukke hullet i dækningen.
 
-**Status:** F-01, F-02 og F-07 lukket i **7.3.0758**; F-04 i **7.3.0759** — de to
-kritiske, den default-ændring de afhang af, og det første af de to
-autorisationshuller. Resterende anbefalet rækkefølge: **F-03** (nmap-denylist)
-→ **F-05 + F-06** (samme rod: `users.json`) → resten som almindelig oprydning.
+**Status:** F-01, F-02, F-07 lukket i **7.3.0758**; F-04 i **7.3.0759**; F-03 i
+**7.3.0760**; F-15 som repo-hygiejne. Begge kritiske og begge autorisationshuller
+er dermed lukket. Resterende anbefalet rækkefølge: **F-05 + F-06** (samme rod:
+`users.json`) → **F-09** (blokerende login) → resten som almindelig oprydning.
 
 ## [FIXED 7.3.0758] 2026-08-18 — F-01: Selvregistrering binder ikke MAC-adressen til den der spørger (KRITISK)
 
@@ -52,12 +52,15 @@ autorisationshuller. Resterende anbefalet rækkefølge: **F-03** (nmap-denylist)
 - **Regressions-vagt:** `test_session_lookup_ignores_ip_query_param`, `test_session_lookup_rejects_untrusted_forwarded_for`, `test_session_lookup_honours_forwarded_for_from_trusted_proxy`.
 - **Berørte filer:** `backend/app/api/selfregister.py:172-215` (+ `_client_ip` linje 48-53), `backend/app/ise/mnt_sessions.py:567`
 
-## [OPEN] 2026-08-18 — F-03: nmap-flag filtreres med ufuldstændig denylist — og ruten er åben for alle roller (HØJ)
+## [FIXED 7.3.0760] 2026-08-19 — F-03: nmap-flag filtreres med ufuldstændig denylist — og ruten er åben for alle roller (HØJ)
 
 - **Symptom:** `POST /nmap/scan` accepterer `custom_flags` fra brugeren og sender dem til `create_subprocess_exec`. Filteret er en denylist på otte flag; alt andet slipper igennem. Ruten kræver `require_register_lookup`, som omfatter **samtlige** roller — også `viewer`, `registrant` og `registrant_templet`, der ellers hverken må redigere eller browse endpoints.
 - **Root cause:** `SAFE_FLAG_DENYLIST = {"-iL", "--script", "--script=", "-oG", "-oN", "-oX", "-oA", "--resume"}`. Manglende bl.a.: `-oS` og `--append-output` (vilkårlig filskrivning som portal-brugeren), `--datadir`, `--servicedb`, `--versiondb` (indlæsning af data fra en sti angriberen vælger), `--stylesheet`, `-iR`. Denylister på nmap-flag kan i praksis ikke gøres komplette. Der er ingen shell-injektion (`create_subprocess_exec`, ikke `shell=True`) — vektoren er nmap's egne flag.
 - **Bifund:** `"--script="` i listen er en **død entry** — `base = p.split("=")[0]` har allerede fjernet `=`-delen, så den kan aldrig matche (dækkes dog af `--script`). API-skemaet reklamerer stadig med presettet `os` ([nmap.py:19](backend/app/api/nmap.py#L19)), som er fjernet fra `PRESETS`; angives det, falder kaldet **tavst** tilbage til default i stedet for at fejle.
 - **Foreslået løsning:** Vend om til en allowlist af tilladte flag. Begræns ruten til `require_editor` eller `require_admin`. Fjern `os` fra feltbeskrivelsen, eller afvis ukendte presets eksplicit med 422.
+- **Løsning (v7.3.0760):** Denylisten erstattet med en **allowlist** (`_FLAGS_NO_VALUE` + `_FLAGS_WITH_VALUE`) — et ukendt flag afvises per definition, så listen ikke skal holdes komplet. Værdier valideres mod `[A-Za-z0-9][A-Za-z0-9,.:*_-]*`, der udelukker `/` og `\`, så et flag aldrig kan pege på en fil. Loft på 12 tokens. Ruten krævede `require_register_lookup` (alle roller) og kræver nu `require_edit_endpoint` (admin, editor, editor-psk). Ukendt preset fejler nu med 422 i stedet for tavst at falde tilbage til default, og `os` er fjernet fra `preset`-beskrivelsen.
+- **Regressions-vagt:** `backend/tests/test_nmap_flags.py` — 36 tests. Hvert af de syv flag den gamle denylist slap igennem (`-oS`, `--append-output`, `--datadir`, `--servicedb`, `--versiondb`, `--stylesheet`, `-iR`) har sin egen case; de otte oprindelige afvises stadig; allowlist-egenskaben verificeres med et opdigtet flag; sti-værdier afvises; rollekravet tjekkes på selve ruten.
+- **Bevaret:** frontendens "custom"-knap med fritekst-flag virker uændret for de flag der giver mening at bruge fra portalen.
 - **Berørte filer:** `backend/app/services/nmap_service.py:15, 37-44, 52-61`, `backend/app/api/nmap.py:19, 30`
 
 ## [FIXED 7.3.0759] 2026-08-19 — F-04: SSE-strømmen med live-sessioner mangler rollekontrol (HØJ)

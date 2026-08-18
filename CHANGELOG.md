@@ -3,6 +3,17 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [7.3.0760] — 2026-08-19 — fix: nmap-flag valideres nu mod en allowlist + rollekrav strammet (F-03)
+
+`_validate_flags()` afviste otte navngivne flag og slap alt andet igennem til `create_subprocess_exec`. Denylister på nmap-flag kan ikke gøres komplette: den manglede bl.a. `-oS` og `--append-output` (vilkårlig filskrivning som portal-brugeren), `--datadir`, `--servicedb` og `--versiondb` (nmap læser data fra en sti angriberen vælger), `--stylesheet` og `-iR`. Ruten krævede desuden `require_register_lookup`, som omfatter **samtlige** roller. Bugfix → kun `build` (0759→0760).
+
+- **`services/nmap_service.py`**: Denylisten erstattet med en **allowlist**. `_FLAGS_NO_VALUE` (scan-typer uden root-krav, host discovery, verbositet, `-T0`–`-T5`) og `_FLAGS_WITH_VALUE` (`-p`, `--top-ports`, rate/timeout-styring). Et ukendt flag afvises per definition. Værdier valideres mod `[A-Za-z0-9][A-Za-z0-9,.:*_-]*`, som udelukker `/` og `\` — et flag kan dermed aldrig pege på en fil. Understøtter `--flag=v`, `--flag v` og sammenhængende `-p80,443`. Loft på 12 tokens.
+- **Ukendt preset fejler nu eksplicit.** Tidligere faldt det **tavst** tilbage til `service`-presettet, så et kald med det fjernede `os`-preset (stadig annonceret i API-skemaet) kørte en helt anden scanning end kalderen bad om. Nu → 422 med listen over gyldige presets.
+- **`api/nmap.py`**: `require_register_lookup` → `require_edit_endpoint` (admin, editor, editor-psk). En scanning er en aktiv netværkshandling der starter en subprocess på serveren; den hører ikke hjemme hos `viewer`, `registrant` eller `registrant_templet`. `os` fjernet fra `preset`-beskrivelsen.
+- **`tests/test_nmap_flags.py` (ny)**: 36 tests. Hvert af de syv flag den gamle denylist slap igennem har sin egen case, de otte oprindelige afvises stadig, allowlist-egenskaben verificeres med et opdigtet flag, sti-værdier afvises, og rollekravet tjekkes på selve ruten. Suite: 309 grønne (273 → 309).
+
+**Bevaret:** frontendens "custom"-knap med fritekst-flag virker uændret for de flag der giver mening at bruge fra portalen.
+
 ## [7.3.0759] — 2026-08-19 — fix: SSE-strømmen med live-sessioner mangler rollekontrol (F-04)
 
 `GET /api/pxgrid/sessions/stream` havde ikke `dependencies=[Depends(require_any)]` som sine søsterruter. Auth var håndrullet i funktionskroppen, fordi `EventSource` ikke kan sætte headers, og den kopi validerede token, brugerens eksistens og `token_gen` — men **aldrig rollen**. `registrant` og `registrant_templet`, der efter design kun må oprette endpoints og ikke browse, kunne dermed abonnere på hele live-strømmen af RADIUS-sessioner: MAC, bruger, IP og NAS for hver enhed på nettet. Bugfix → kun `build` (0758→0759).
