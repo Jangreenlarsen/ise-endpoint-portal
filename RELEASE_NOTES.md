@@ -4,6 +4,15 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [7.3.0758] — 2026-08-18 — 🔒 Sikkerhedsrettelse: selvregistrering
+
+**Denne opdatering slår gæste-selvregistrering FRA som standard.** Bruger I funktionen, skal den slås til igen under Indstillinger → Backend efter opdateringen. Har I nogensinde gemt backend-indstillinger, er jeres valg allerede gemt, og der sker ingenting.
+
+- **Selvregistrering kunne misbruges.** Registreringssiden kunne bruges til at registrere en anden enheds MAC-adresse end ens egen — og til at ændre gruppe og netværksadgang på enheder der allerede var oprettet i ISE, herunder virksomhedsenheder. Portalen verificerer nu, at MAC-adressen faktisk tilhører den enhed der sidder på siden, ved at binde den til enhedens netværkssession. Enheder der allerede er registreret uden for gæstegruppen kan ikke længere ændres ad denne vej.
+- **Sessionsopslaget kunne bruges til at aflure MAC-adresser.** Siden kunne tidligere spørge om en vilkårlig IP-adresse på netværket og få MAC-adressen på den enhed der brugte den. Opslaget virker nu kun for den enhed der spørger.
+- **Registreringer bliver nu logget.** Både gennemførte og afviste registreringsforsøg står i revisionsloggen med kilde-IP. Tidligere blev de bogført som systemhændelser uden afsender.
+- **Rate limiting virker igen bag reverse proxy.** Portalen talte alle brugere som én, fordi trafikken kom fra proxyens adresse. Det kunne give sporadiske "for mange forespørgsler"-fejl for alle, når én bruger kørte en større handling. Brugere tælles nu hver for sig.
+
 ## [7.3.0757] — 2026-07-11 — fix: Sammenlægning bevarer nu grenens tilpasninger
 
 - **Rettelse i gruppetræet:** Havde du tilpasset en gren (skjult undergrene, givet den sin egen undergruppering eller sammenlagt nogle af dens undergrene) og **derefter** sammenlagde selve grenen med en nabo, forsvandt de tilpasninger tidligere. Nu følger de korrekt med over på den sammenlagte gren.

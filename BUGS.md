@@ -15,7 +15,7 @@ Kendte post-mortems:
 
 ---
 
-# Åbne bugs fra portalrevision 2026-08-18
+# Bugs fra portalrevision 2026-08-18
 
 Tofaset gennemgang af hele portalen på v7.3.0757 (branch `dev`, commit `92c1e08`).
 Fase 1: inventering + testkørsel (253 grønne) + statiske scanninger. Fase 2: kodelæsning
@@ -28,21 +28,28 @@ test (frontend: 332 linjer smoketests mod 21.140 linjer kode). Samtlige 16 fund 
 udækkede halvdel. Ved fix bør hvert fund have en regressions-vagt, ellers lukkes symptomet
 uden at lukke hullet i dækningen.
 
-**Anbefalet rækkefølge:** F-01 + F-02 → F-04 + F-03 → F-05 + F-06 → F-07 → resten.
+**Status:** F-01, F-02 og F-07 er lukket i **7.3.0758** — de to kritiske plus den
+default-ændring de afhang af. Resterende anbefalet rækkefølge: **F-04 + F-03**
+(lavt privilegerede konti kommer længere end rollemodellen tillader) → **F-05 + F-06**
+(samme rod: `users.json`) → resten som almindelig oprydning.
 
-## [OPEN] 2026-08-18 — F-01: Selvregistrering binder ikke MAC-adressen til den der spørger (KRITISK)
+## [FIXED 7.3.0758] 2026-08-18 — F-01: Selvregistrering binder ikke MAC-adressen til den der spørger (KRITISK)
 
 - **Symptom:** Fundet i portalrevision (ikke felt-rapporteret). `POST /api/selfregister` er uautentificeret og læser `mac` direkte fra request-body. Enhver der kan nå portalen kan (a) oprette en vilkårlig MAC i ISE med `HypervisionActive=Aktiv` + de konfigurerede `AuthzVlan`/`AuthzACL` — altså give netværksadgang til en enhed de ikke ejer; (b) ramme upsert-grenen på et **eksisterende** endpoint og overskrive dets `description`, custom-attributter og `group_id`, så en virksomhedsenhed kan flyttes til gæstegruppen og få ændret sin autorisation; (c) sætte en vilkårlig `PSK_Key` når IPSK er slået til.
 - **Root cause:** Docstringen lover *"mac: MAC verificeret via MnT session-lookup"*, men serveren verificerer det aldrig. `/selfregister/session` er et separat GET-kald der kun fortæller **frontenden** hvad MAC'en er — der findes ingen serverside-tilstand, intet nonce og ingen binding mellem de to kald. `selfregister_enabled` har `default=True` ([config.py:464](backend/app/core/config.py#L464)), så fladen er åben uden at nogen har valgt det. Der sættes heller ingen audit-aktør på kaldet.
 - **Foreslået løsning:** Gem MnT-opslaget serverside (klient-IP → MAC, kortlivet TTL) og lad POST'en slå MAC'en op i den tilstand ud fra **requestens egen IP** i stedet for at læse den fra body. Sæt `selfregister_enabled` til `default=False`. Afvis upsert mod endpoints der ikke allerede står i gæstegruppen, så et eksisterende corporate-endpoint aldrig kan overskrives ad denne vej. Audit-log hvert kald med kilde-IP.
+- **Løsning (v7.3.0758):** MAC'en kommer nu fra en serverside-binding (`core/selfregister_bindings.py`, TTL 600s, bounded til 10.000 poster) som `GET /session` opretter mellem klientens afsender-IP og den MAC ISE MnT rapporterer. `POST` slår op i bindingen ud fra sin **egen** afsender-IP; ingen binding → `409`. Body-feltet `mac` er nu optional og ikke autoritativt — en uoverensstemmelse → `403`. Bindingen forbruges ved succes. Upsert af et eksisterende endpoint afvises med `409` hvis det ikke allerede står i `selfregister_group_id`, så en virksomhedsenhed ikke kan flyttes til gæstegruppen. `selfregister_enabled` er nu default `False` (også i `schemas/settings.py`, ellers ville en delvis settings-opdatering gen-aktivere fladen). Registreringer og afviste forsøg audit-logges med `actor_username="selfregister"` + kilde-IP.
+- **Regressions-vagt:** `backend/tests/test_selfregister.py` — 15 tests, heriblandt `test_post_without_binding_is_rejected`, `test_post_rejects_mac_that_differs_from_binding`, `test_post_uses_bound_mac_not_body_mac` og `test_upsert_rejected_for_endpoint_outside_guest_group`.
 - **Berørte filer:** `backend/app/api/selfregister.py:218-322`, `backend/app/core/config.py:464`
 - **Regressions-vagt (mangler):** ingen test rører `selfregister.py`.
 
-## [OPEN] 2026-08-18 — F-02: Uautentificeret opslag af MAC-adresse for enhver IP i netværket (KRITISK)
+## [FIXED 7.3.0758] 2026-08-18 — F-02: Uautentificeret opslag af MAC-adresse for enhver IP i netværket (KRITISK)
 
 - **Symptom:** `GET /api/selfregister/session?ip=…` kræver ingen auth og returnerer MAC, NAS-IP og ACS-session-ID for **enhver** aktiv RADIUS-session på nettet. Det er en oracle der kan enumereres, og det er samtidig det der gør F-01 trivielt at udnytte: find offerets MAC, send den så til POST-endpointet.
 - **Root cause:** `client_ip = ip.strip() or _client_ip(request)` — den angivne query-parameter vinder over requestens faktiske afsender-IP, så man kan spørge om hvad som helst. Parameteren valideres ikke som IP-adresse før den interpoleres i MnT-stien (`f"/admin/API/mnt/Session/IPAddress/{ip}"`), hvilket giver kontrol over en del af den URL portalen kalder mod ISE's admin-API med sine egne credentials. `_client_ip()` stoler desuden ubetinget på `X-Forwarded-For` — i modsætning til rate limiteren, der bruger `trusted_proxy_ips`-whitelisten (SEC-9).
 - **Foreslået løsning:** Fjern `?ip=`-parameteren helt og brug udelukkende requestens egen IP. Valider værdien med `ipaddress.ip_address()` før den når URL'en. Lad `_client_ip()` respektere `trusted_proxy_ips` på samme måde som `rate_limiter.py`.
+- **Løsning (v7.3.0758):** `?ip=`-parameteren er **fjernet**. `/session` slår udelukkende klientens egen afsender-IP op. `_client_ip()` accepterer kun `X-Forwarded-For` fra en IP i `trusted_proxy_ips` (samme whitelist som rate limiteren, SEC-9), så en klient ikke selv kan vælge sin "IP". Værdien valideres med `ipaddress.ip_address()` før den interpoleres i MnT-stien.
+- **Regressions-vagt:** `test_session_lookup_ignores_ip_query_param`, `test_session_lookup_rejects_untrusted_forwarded_for`, `test_session_lookup_honours_forwarded_for_from_trusted_proxy`.
 - **Berørte filer:** `backend/app/api/selfregister.py:172-215` (+ `_client_ip` linje 48-53), `backend/app/ise/mnt_sessions.py:567`
 
 ## [OPEN] 2026-08-18 — F-03: nmap-flag filtreres med ufuldstændig denylist — og ruten er åben for alle roller (HØJ)
@@ -77,11 +84,12 @@ uden at lukke hullet i dækningen.
 - **Foreslået løsning:** Læg en `asyncio.Lock` om hele læs-ret-skriv-sekvensen (eller flyt brugerhåndteringen til SQLite som `audit_store`/`lockout_store`). Hold brugerlisten i hukommelsen med gen-indlæsning ved ændring i stedet for at ramme disken pr. request.
 - **Berørte filer:** `backend/app/core/user_store.py:17-31`, `backend/app/api/auth.py:101-103`, `backend/app/api/me.py:86, 115, 138, 308`, `backend/app/services/user_service.py` (9 steder), `backend/app/api/deps.py:98`
 
-## [OPEN] 2026-08-18 — F-07: Bag nginx deler hele portalen én rate-limit-bucket (MIDDEL)
+## [FIXED 7.3.0758] 2026-08-18 — F-07: Bag nginx deler hele portalen én rate-limit-bucket (MIDDEL)
 
 - **Symptom:** Sporadiske `429 Too many requests` for **alle** brugere når én bruger kører bulk-operationer. Sandsynligvis allerede mærkbart i produktion.
 - **Root cause:** Rate limiteren læser kun `X-Forwarded-For` hvis afsender-IP'en står i `trusted_proxy_ips` (SEC-9-fixet). Den liste har `default_factory=list` ([config.py:65](backend/app/core/config.py#L65)) og sættes ikke af installationen. I den dokumenterede produktionsopsætning kommer al trafik fra nginx på `127.0.0.1`, så **samtlige** brugere identificeres som samme IP og deler ét vindue på 200 requests/minut. Sikkerhedsmekanismen er intakt, men uden konfiguration slår den om til en tilgængelighedsfejl i stedet for en beskyttelse.
 - **Foreslået løsning:** Sæt `trusted_proxy_ips` til `["127.0.0.1", "::1"]` som default. Log en advarsel ved opstart hvis al trafik over et tidsrum kommer fra loopback mens listen er tom. Overvej at dokumentere det i `INSTALL.md`.
+- **Løsning (v7.3.0758):** `trusted_proxy_ips` har nu default `["127.0.0.1", "::1"]`. Ændringen var samtidig en **forudsætning** for F-01's fix: bag nginx på samme host ville alle klienter ellers fremstå som `127.0.0.1` og dermed dele én selvregistrerings-binding, ikke bare én rate-limit-bucket.
 - **Berørte filer:** `backend/app/core/rate_limiter.py:66-73`, `backend/app/core/config.py:65-71`, `deploy/nginx-hypervision.conf:33`
 
 ## [OPEN] 2026-08-18 — F-08: Rate limiterens buckets ryddes aldrig — modul-docstringen påstår det modsatte (MIDDEL)

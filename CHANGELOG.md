@@ -3,6 +3,26 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [7.3.0758] — 2026-08-18 — fix: Selvregistrering verificerer nu at MAC-adressen tilhører afsenderen (F-01/F-02/F-07)
+
+Lukker de to kritiske fund fra portalrevisionen 2026-08-18. `POST /api/selfregister` er uautentificeret og tog MAC-adressen direkte fra request-body uden nogensinde at verificere den — docstringen lovede "MAC verificeret via MnT session-lookup", men `/session` var et separat GET-kald der kun oplyste frontenden. Enhver der kunne nå portalen kunne registrere en vilkårlig MAC eller overskrive et eksisterende endpoints gruppe og autorisations-attributter. Sikkerhedsfix → kun `build` (0757→0758).
+
+- **`core/selfregister_bindings.py` (ny)**: Kortlivet in-memory binding `client_ip → (mac, expires_at)`, TTL 600s, loft på 10.000 poster med oprydning ved hver skrivning (ingen ubegrænset vækst — samme fejl som rate limiterens bucket-lækage undgås bevidst). API: `bind` / `lookup` / `unbind` / `clear` / `stats`.
+- **`api/selfregister.py`**:
+  - `GET /session` tager **ikke længere en `ip`-parameter**. Den slår udelukkende klientens egen afsender-IP op og registrerer bindingen. Uden dette var endpointet en uautentificeret oracle der kunne afsløre MAC-adressen for enhver aktiv RADIUS-session på nettet (F-02).
+  - IP-værdien valideres med `ipaddress.ip_address()` før den interpoleres i MnT-stien `/admin/API/mnt/Session/IPAddress/{ip}`.
+  - `_client_ip()` accepterer kun `X-Forwarded-For` fra en IP i `trusted_proxy_ips` — samme whitelist som rate limiteren (SEC-9). Ellers kunne en klient frit vælge sin egen "IP" og gøre bindingen værdiløs.
+  - `POST /selfregister` henter MAC'en fra bindingen for sin egen afsender-IP. Uden binding → `409`. Body-feltet `mac` er nu optional og ikke autoritativt; en uoverensstemmelse → `403`. Bindingen forbruges ved succes, så gen-registrering kræver et nyt MnT-opslag.
+  - Upsert af et **eksisterende** endpoint afvises med `409` hvis det ikke allerede står i `selfregister_group_id`. Uden spærren kunne en gæst få en virksomhedsenhed flyttet til gæstegruppen og få ændret dens `AuthzVlan`/`AuthzACL`.
+  - Registreringer og afviste forsøg audit-logges med `actor_username="selfregister"` og kilde-IP (før stod de som `system`).
+- **`core/config.py`**:
+  - `selfregister_enabled` default `True` → **`False`**. Fladen er uautentificeret og skal slås til bevidst. Installationer hvor backend-indstillinger nogensinde er gemt har en eksplicit værdi i `config.json` og påvirkes ikke.
+  - `trusted_proxy_ips` default `[]` → **`["127.0.0.1", "::1"]`**. Nødvendig forudsætning for bindingen: bag nginx på samme host ville alle klienter ellers fremstå som `127.0.0.1` og dele én binding. Retter samtidig F-07, hvor hele portalen delte én rate-limit-bucket på 200 req/min.
+- **`schemas/settings.py`**: `selfregister_enabled` default rettet til `False` begge steder (`BackendSettings*`) — ellers ville en delvis settings-opdatering uden feltet gen-aktivere fladen.
+- **`tests/test_selfregister.py` (ny)**: 15 regressionstests. Modulet havde ingen testdækning i forvejen, hvilket er grunden til at fejlen overlevede. Dækker: `?ip=` ignoreres, XFF afvises fra ikke-betroet afsender og respekteres fra betroet, binding oprettes/forbruges/udløber, POST uden binding → 409, fremmed body-MAC → 403, ISE røres kun med den bundne MAC, upsert-spærren begge veje, 503 når deaktiveret, og at binding-storen er bounded. Fuld suite: 268 grønne (253 → 268).
+
+**Frontend uændret** — `selfregister.js` kaldte allerede `/session` uden parametre og sender fortsat `mac` i body, hvilket nu blot valideres mod bindingen.
+
 ## [7.3.0757] — 2026-07-11 — fix: Gruppetræ — merge af forælder-gren bevarer nu børns tilpasninger + persist-test
 
 Retter faldgrube fundet i implementerings-review af 7.2/7.3: en søskende-merge ændrede forældre-stien og forældreløste dermed børns skjul/undergruppering/under-merges. Bugfix → kun `build` (0756→0757).
