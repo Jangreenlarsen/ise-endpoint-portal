@@ -137,3 +137,67 @@ def test_deleted_user_token_returns_401(client):
     with patch("app.api.deps.load_users", return_value=[]):
         r = client.get("/api/users", headers=_auth(ADMIN_TOKEN))
     assert r.status_code == 401
+
+
+# ── F-04: SSE-strømmen skal have samme rollekrav som sine søsterruter ─────────
+#
+# /pxgrid/sessions/stream havde tidligere en håndrullet kopi af get_current_user
+# i funktionskroppen. Kopien validerede token, brugerens eksistens og token_gen —
+# men aldrig ROLLEN. registrant/registrant_templet, der ikke må browse endpoints,
+# kunne dermed læse hele live-strømmen af RADIUS-sessioner.
+
+REGISTRANT_REC = _record("az-registrant", "authz_registrant", "registrant")
+REGISTRANT_TOKEN = auth_core.create_token(
+    "az-registrant", "authz_registrant", "registrant"
+)
+USERS_WITH_REGISTRANT = [*ALL_USERS, REGISTRANT_REC]
+
+_STREAM = "/api/pxgrid/sessions/stream"
+
+
+def test_sse_stream_rejects_registrant(client):
+    """registrant må ikke kunne læse live-sessionsstrømmen (F-04)."""
+    with patch("app.api.deps.load_users", return_value=USERS_WITH_REGISTRANT):
+        r = client.get(_STREAM, headers=_auth(REGISTRANT_TOKEN))
+    assert r.status_code == 403
+
+
+def test_sse_stream_allows_viewer(client, monkeypatch):
+    """viewer har samme adgang som på /sessions og /sessions/{mac}.
+
+    pxgrid_enabled slås fra, så event-generatoren sender ét
+    ``pxgrid_disabled``-event og returnerer. Ellers ville svaret være en
+    uendelig strøm, og TestClient ville blokere på at læse body. Auth-
+    dependency'en køres uanset — det er den testen handler om.
+    """
+    from app.core import config as _config
+    monkeypatch.setattr(_config.settings, "pxgrid_enabled", False, raising=False)
+    with patch("app.api.deps.load_users", return_value=USERS_WITH_REGISTRANT):
+        r = client.get(_STREAM, headers=_auth(VIEWER_TOKEN))
+    assert r.status_code == 200
+    assert "pxgrid_disabled" in r.text
+
+
+def test_sse_stream_rejects_unauthenticated(client):
+    r = client.get(_STREAM)
+    assert r.status_code == 401
+
+
+def test_sse_stream_ignores_token_query_param(client):
+    """?token= er fjernet — et gyldigt token i query må ikke give adgang (F-04)."""
+    with patch("app.api.deps.load_users", return_value=USERS_WITH_REGISTRANT):
+        r = client.get(_STREAM, params={"token": VIEWER_TOKEN})
+    assert r.status_code == 401
+
+
+def test_sse_stream_has_same_role_dep_as_sibling_routes():
+    """Strukturel vagt: strømmen må ikke igen få sin egen auth-kopi.
+
+    Sammenligner dependency-navnene på /sessions/stream med /sessions, så en
+    fremtidig ændring der fjerner rollekravet fejler her.
+    """
+    def _dep_names(path: str) -> set[str]:
+        route = next(r for r in app.routes if getattr(r, "path", None) == path)
+        return {d.call.__name__ for d in route.dependant.dependencies if d.call}
+
+    assert _dep_names("/api/pxgrid/sessions/stream") == _dep_names("/api/pxgrid/sessions")

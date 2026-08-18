@@ -3,6 +3,17 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [7.3.0759] — 2026-08-19 — fix: SSE-strømmen med live-sessioner mangler rollekontrol (F-04)
+
+`GET /api/pxgrid/sessions/stream` havde ikke `dependencies=[Depends(require_any)]` som sine søsterruter. Auth var håndrullet i funktionskroppen, fordi `EventSource` ikke kan sætte headers, og den kopi validerede token, brugerens eksistens og `token_gen` — men **aldrig rollen**. `registrant` og `registrant_templet`, der efter design kun må oprette endpoints og ikke browse, kunne dermed abonnere på hele live-strømmen af RADIUS-sessioner: MAC, bruger, IP og NAS for hver enhed på nettet. Bugfix → kun `build` (0758→0759).
+
+- **`api/pxgrid.py`**: Hele den håndrullede auth-blok (17 linjer) erstattet med `dependencies=[Depends(require_any)]` — samme krav som `/sessions` og `/sessions/{mac}`, der serverer de samme data. `EventSource` sender same-origin cookies med `withCredentials`, og `get_current_user` læser den httpOnly `hv_token`-cookie, så dependency'en dækker behovet.
+- **`?token=`-query-fallbacken er fjernet.** Den var dokumenteret som `file://`-udviklingsmiljø, men frontenden har aldrig brugt den (`new EventSource(url, {withCredentials: true})`), og query-strenge havner i nginx' access-log og browserhistorik.
+- Døde imports fjernet: `auth_core`, `find_by_id`, `load_users`, `Query`.
+- **`tests/test_authz.py`**: 5 nye tests — `registrant` → 403, `viewer` → 200, uautentificeret → 401, gyldigt token i `?token=` → 401, plus en **strukturel vagt** der sammenligner dependency-navnene på `/sessions/stream` med `/sessions`, så ruten ikke igen kan få sin egen auth-kopi uden rollekrav. Suite: 273 grønne (268 → 273).
+
+**Lærdom:** fejlen opstod ved at duplikere `get_current_user` i hånden i stedet for at bruge en dependency. Den positive test kræver at `pxgrid_enabled` slås fra, ellers er svaret en uendelig event-strøm som TestClient blokerer på.
+
 ## [7.3.0758] — 2026-08-18 — fix: Selvregistrering verificerer nu at MAC-adressen tilhører afsenderen (F-01/F-02/F-07)
 
 Lukker de to kritiske fund fra portalrevisionen 2026-08-18. `POST /api/selfregister` er uautentificeret og tog MAC-adressen direkte fra request-body uden nogensinde at verificere den — docstringen lovede "MAC verificeret via MnT session-lookup", men `/session` var et separat GET-kald der kun oplyste frontenden. Enhver der kunne nå portalen kunne registrere en vilkårlig MAC eller overskrive et eksisterende endpoints gruppe og autorisations-attributter. Sikkerhedsfix → kun `build` (0757→0758).

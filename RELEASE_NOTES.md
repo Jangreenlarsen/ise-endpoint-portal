@@ -4,6 +4,11 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [7.3.0759] — 2026-08-19 — 🔒 Sikkerhedsrettelse: live-sessionsvisning
+
+- **Registrerings-konti kunne se live-sessioner.** Brugere med rollen *registrant* eller *registrant_templet* — der kun må oprette enheder og ikke se listen over endpoints — kunne alligevel følge den løbende strøm af netværkssessioner og dermed se MAC-adresse, brugernavn, IP og switch/AP for hver enhed på nettet. Strømmen kræver nu samme rolle som resten af sessionsvisningen.
+- **Adgangstoken kan ikke længere sendes i adressen.** Det var muligt at logge på sessionsstrømmen med et token i selve URL'en, hvilket efterlod det i proxy-logs og browserhistorik. Portalen bruger nu udelukkende den sikre cookie. Ingen ændring i det daglige brug.
+
 ## [7.3.0758] — 2026-08-18 — 🔒 Sikkerhedsrettelse: selvregistrering
 
 **Denne opdatering slår gæste-selvregistrering FRA som standard.** Bruger I funktionen, skal den slås til igen under Indstillinger → Backend efter opdateringen. Har I nogensinde gemt backend-indstillinger, er jeres valg allerede gemt, og der sker ingenting.

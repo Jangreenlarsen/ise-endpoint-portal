@@ -28,10 +28,10 @@ test (frontend: 332 linjer smoketests mod 21.140 linjer kode). Samtlige 16 fund 
 udækkede halvdel. Ved fix bør hvert fund have en regressions-vagt, ellers lukkes symptomet
 uden at lukke hullet i dækningen.
 
-**Status:** F-01, F-02 og F-07 er lukket i **7.3.0758** — de to kritiske plus den
-default-ændring de afhang af. Resterende anbefalet rækkefølge: **F-04 + F-03**
-(lavt privilegerede konti kommer længere end rollemodellen tillader) → **F-05 + F-06**
-(samme rod: `users.json`) → resten som almindelig oprydning.
+**Status:** F-01, F-02 og F-07 lukket i **7.3.0758**; F-04 i **7.3.0759** — de to
+kritiske, den default-ændring de afhang af, og det første af de to
+autorisationshuller. Resterende anbefalet rækkefølge: **F-03** (nmap-denylist)
+→ **F-05 + F-06** (samme rod: `users.json`) → resten som almindelig oprydning.
 
 ## [FIXED 7.3.0758] 2026-08-18 — F-01: Selvregistrering binder ikke MAC-adressen til den der spørger (KRITISK)
 
@@ -60,12 +60,15 @@ default-ændring de afhang af. Resterende anbefalet rækkefølge: **F-04 + F-03*
 - **Foreslået løsning:** Vend om til en allowlist af tilladte flag. Begræns ruten til `require_editor` eller `require_admin`. Fjern `os` fra feltbeskrivelsen, eller afvis ukendte presets eksplicit med 422.
 - **Berørte filer:** `backend/app/services/nmap_service.py:15, 37-44, 52-61`, `backend/app/api/nmap.py:19, 30`
 
-## [OPEN] 2026-08-18 — F-04: SSE-strømmen med live-sessioner mangler rollekontrol (HØJ)
+## [FIXED 7.3.0759] 2026-08-19 — F-04: SSE-strømmen med live-sessioner mangler rollekontrol (HØJ)
 
 - **Symptom:** `registrant` og `registrant_templet` — roller der efter design **kun** må oprette endpoints og eksplicit ikke må browse ([deps.py](backend/app/api/deps.py) kommentar: *"registrant må KUN oprette endpoints — ingen browse/edit/delete/audit/admin"*) — kan abonnere på `GET /api/pxgrid/sessions/stream` og få den fulde live-strøm af RADIUS-sessioner: MAC, bruger, IP og NAS for hver enhed på nettet.
 - **Root cause:** Ruten har ikke `dependencies=[Depends(require_any)]` som alle sine søsterruter ([pxgrid.py:37-42](backend/app/api/pxgrid.py#L37) og [:171-176](backend/app/api/pxgrid.py#L171)). Auth er håndrullet i funktionskroppen fordi `EventSource` ikke kan sætte headers, og den kopi validerer korrekt token, brugerens eksistens og `token_gen` — men **tjekker aldrig en rolle**. Klassisk følge af at duplikere en dependency i hånden.
 - **Bifund:** Ruten accepterer tokenet som query-parameter (`?token=`, dokumenteret som `file://`-udviklingsfallback). Frontenden bruger det ikke — den sender httpOnly-cookien via `withCredentials` — men parameteren er aktiv i produktion, og query-strenge havner i nginx' access-log og i browserhistorik.
 - **Foreslået løsning:** Udtræk den håndrullede blok til en genbrugelig dependency der returnerer `User` (cookie eller Bearer), og tjek rollen mod `require_any`. Fjern `?token=`-fallbacken.
+- **Løsning (v7.3.0759):** Hele den håndrullede auth-blok erstattet med `dependencies=[Depends(require_any)]` — samme krav som `/sessions` og `/sessions/{mac}`, der serverer de samme data. `EventSource` sender same-origin cookies med `withCredentials`, så `get_current_user` dækker behovet uden query-param. `?token=`-fallbacken er **fjernet** (frontenden brugte den aldrig). Døde imports ryddet: `auth_core`, `find_by_id`, `load_users`, `Query`.
+- **Regressions-vagt:** `backend/tests/test_authz.py` — `registrant` → 403, `viewer` → 200, uautentificeret → 401, token i `?token=` → 401, plus `test_sse_stream_has_same_role_dep_as_sibling_routes` der sammenligner dependency-navnene med `/sessions`, så ruten ikke igen kan få sin egen auth-kopi uden rollekrav.
+- **Lærdom:** fejlen opstod ved at duplikere `get_current_user` i hånden. Duplikér ikke auth-logik — udtræk en dependency.
 - **Berørte filer:** `backend/app/api/pxgrid.py:76-113`
 
 ## [OPEN] 2026-08-18 — F-05: Ingen JSON-tilstand skrives atomisk — users.json kan tømmes af en OTA-genstart (HØJ)
