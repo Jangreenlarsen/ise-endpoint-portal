@@ -3,6 +3,21 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [7.3.0761] — 2026-08-19 — fix: atomiske skrivninger af al JSON-tilstand + serialiseret users.json (F-05/F-06)
+
+Samtlige ni JSON-stores skrev med et direkte `Path.write_text()`, der **trunkerer filen før den skriver**. Afbrydes processen i det vindue, står filen tom eller halv — og `load_users()` returnerer stille `[]` ved parse-fejl, så symptomet ikke er en fejlmeddelelse men en portal hvor ingen kan logge ind. Vinduet var reelt: opdateringstjenesten afsluttede selv processen med `os._exit(0)`, og `save_users()` kaldes fra 17 steder, heriblandt hvert logout. Bugfix → kun `build` (0760→0761).
+
+- **`core/atomic_json.py` (ny)**: `atomic_write_json()` og `atomic_write_text()`. Skriver til en temp-fil i **samme mappe** (så `os.replace` bliver en rename inden for ét filsystem og dermed atomisk), `flush()` + `os.fsync()`, derefter `os.replace()`. Læsere ser enten den gamle eller den nye fil — aldrig noget derimellem. `mode` sættes på temp-filen **før** flytningen, så den færdige fil aldrig et øjeblik er for åben.
+- **Alle ni stores konverteret**: `user_store`, `settings_store`, `auth_config_store`, `template_store`, `role_catalog`, `operator_profile_store`, `platform_mapping_store`, `custom_attr_store` og disk-cachen i `endpoint_cache`.
+- **`services/update_service.py`**: `schedule_restart()` forsøger nu en **pæn** nedlukning via SIGTERM, så uvicorn kan køre lifespan-shutdown færdig (den gemmer bl.a. pxGrid-session-cachen). `os._exit(0)` er bevaret som fallback efter 10 s — en genstart der ikke sker, er værre end en hård en. Restart-tasken holdes nu i en modul-reference, så den ikke kan garbage-collectes (samme klasse som F-10).
+
+**F-06 — korrektion af fundet.** Revisionen beskrev et aktivt kapløb om `users.json`. Ved implementeringen viste det sig **ikke at være nåbart**: alle 164 route-handlere er `async def` (intet kører i FastAPI's threadpool), og der er intet `await` mellem `load_users()` og `save_users()` i noget kaldsted, så sekvenserne er atomiske i den enkelttrådede event-loop. Severity nedjusteret HØJ → MIDDEL.
+
+Ændringen er derfor **forebyggende**, ikke en rettelse af en live fejl — men den er værd at lave: garantien afhang af kaldstedernes form frem for af storen, og ét indskudt `await` eller F-09's `run_in_threadpool` gør racet ægte uden at nogen bemærker det.
+
+- **`core/user_store.py`**: `transaction()` — en `threading.RLock` som context manager om hele læs-ret-skriv-sekvensen. 15 kaldsteder wrappet i `user_service.py`, `api/me.py` og `api/auth.py`. `login()` er bevidst kun serialiseret om mutate+save: dens load..save-span omslutter TACACS-netværkskaldet, og en blokerende lås hen over det ville serialisere alle logins bag en langsom TACACS-server; `last_login` er et tidsstempel uden sikkerhedsbetydning.
+- **`tests/test_atomic_state.py` (ny)**: 11 tests. Den originale fil overlever en fejlet serialisering, ingen temp-filer efterlades, temp-filen ligger i målmappen (ellers er `os.replace` ikke atomisk), kortere payload efterlader ikke hale, `mode` sættes før rename, to tråde taber ikke hinandens skrivninger, låsen er reentrant — plus to **strukturelle vagter**: ingen store må genindføre rå `write_text()`, og intet nyt `save_users()`-kaldsted må stå uden `transaction()`. Suite: 319 grønne (309 → 319).
+
 ## [7.3.0760] — 2026-08-19 — fix: nmap-flag valideres nu mod en allowlist + rollekrav strammet (F-03)
 
 `_validate_flags()` afviste otte navngivne flag og slap alt andet igennem til `create_subprocess_exec`. Denylister på nmap-flag kan ikke gøres komplette: den manglede bl.a. `-oS` og `--append-output` (vilkårlig filskrivning som portal-brugeren), `--datadir`, `--servicedb` og `--versiondb` (nmap læser data fra en sti angriberen vælger), `--stylesheet` og `-iR`. Ruten krævede desuden `require_register_lookup`, som omfatter **samtlige** roller. Bugfix → kun `build` (0759→0760).

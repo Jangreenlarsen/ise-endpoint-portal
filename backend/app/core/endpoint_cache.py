@@ -41,6 +41,7 @@ from pathlib import Path
 from typing import Any, Awaitable, Callable, Generic, TypeVar
 
 from app.core import config, portal_activity
+from app.core.atomic_json import atomic_write_text
 from app.core.metrics import (
     CACHE_DISK_STALE,
     CACHE_ENTRIES,
@@ -740,7 +741,9 @@ class EndpointCache:
                 "tier_emas": tier_emas_snap,
                 "groups": groups_payload,
             }
-            path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+            # Atomisk: en afbrudt skrivning maa aldrig efterlade en halv
+            # cache-fil, som load_from_disk saa kasserer ved parse-fejl.
+            atomic_write_text(path, json.dumps(payload, ensure_ascii=False))
             logger.info(
                 "disk cache: saved %d entries + %d groups to %s",
                 len(entries),

@@ -29,9 +29,11 @@ udækkede halvdel. Ved fix bør hvert fund have en regressions-vagt, ellers lukk
 uden at lukke hullet i dækningen.
 
 **Status:** F-01, F-02, F-07 lukket i **7.3.0758**; F-04 i **7.3.0759**; F-03 i
-**7.3.0760**; F-15 som repo-hygiejne. Begge kritiske og begge autorisationshuller
-er dermed lukket. Resterende anbefalet rækkefølge: **F-05 + F-06** (samme rod:
-`users.json`) → **F-09** (blokerende login) → resten som almindelig oprydning.
+**7.3.0760**; F-05 + F-06 i **7.3.0761**; F-15 som repo-hygiejne. Begge kritiske,
+begge autorisationshuller og hele `users.json`-komplekset er dermed lukket.
+Resterende anbefalet rækkefølge: **F-09** (blokerende login — indfører ægte
+samtidighed, som F-06's lås nu er forberedt på) → **F-10** (tabbare
+baggrundstasks) → resten som almindelig oprydning.
 
 ## [FIXED 7.3.0758] 2026-08-18 — F-01: Selvregistrering binder ikke MAC-adressen til den der spørger (KRITISK)
 
@@ -74,20 +76,26 @@ er dermed lukket. Resterende anbefalet rækkefølge: **F-05 + F-06** (samme rod:
 - **Lærdom:** fejlen opstod ved at duplikere `get_current_user` i hånden. Duplikér ikke auth-logik — udtræk en dependency.
 - **Berørte filer:** `backend/app/api/pxgrid.py:76-113`
 
-## [OPEN] 2026-08-18 — F-05: Ingen JSON-tilstand skrives atomisk — users.json kan tømmes af en OTA-genstart (HØJ)
+## [FIXED 7.3.0761] 2026-08-19 — F-05: Ingen JSON-tilstand skrives atomisk — users.json kan tømmes af en OTA-genstart (HØJ)
 
 - **Symptom:** Potentiel total udelukkelse fra portalen: står `users.json` tom, returnerer `load_users()` stille `[]` ved parse-fejl, så symptomet er ikke en fejlmeddelelse men en portal hvor ingen kan logge ind.
 - **Root cause:** Samtlige ni JSON-stores skriver med et direkte `write_text()`, der **trunkerer filen før den skriver**. Der findes ikke ét skriv-til-temp-og-`os.replace` i kodebasen. Vinduet er ikke hypotetisk: opdateringstjenesten afslutter selv processen med `os._exit(0)` ([update_service.py:620](backend/app/services/update_service.py#L620)) — et hårdt kill uden flush eller oprydning — og `save_users()` kaldes fra 17 steder, heriblandt **hvert logout** ([auth.py:103](backend/app/api/auth.py#L103)) og **hver gemning af brugerpræferencer** ([me.py:308](backend/app/api/me.py#L308)). En OTA-opdatering mens nogen gemmer en indstilling kan efterlade filen tom.
 - **Bifund:** `os._exit(0)` springer også lifespan-shutdown over, så pxGrid-session-cachen ikke når at blive gemt til disk ved en opdaterings-genstart.
 - **Foreslået løsning:** Én fælles `atomic_write_json(path, data)` — skriv til `path.with_suffix(".tmp")`, `flush()` + `os.fsync()`, derefter `os.replace()` — og lad alle stores gå gennem den. Skift `os._exit(0)` ud med et almindeligt shutdown-signal (SIGTERM til egen proces), så systemd's `Restart=always` genstarter efter en ren nedlukning.
+- **Løsning (v7.3.0761):** Ny `core/atomic_json.py` med `atomic_write_json()` og `atomic_write_text()`: skriv til temp-fil i **samme mappe** (så `os.replace` bliver en rename inden for ét filsystem og dermed atomisk), `flush()` + `os.fsync()`, derefter `os.replace()`. `mode` sættes på temp-filen FØR flytningen. Alle ni stores konverteret. `schedule_restart()` forsøger nu SIGTERM først, så lifespan-shutdown (der gemmer pxGrid-session-cachen) når at køre; `os._exit(0)` bevaret som fallback efter 10 s.
+- **Regressions-vagt:** `backend/tests/test_atomic_state.py` — original overlever fejlet serialisering, ingen temp-filer efterlades, temp-filen ligger i målmappen, kortere payload efterlader ikke hale, `mode` sættes før rename. Plus strukturel vagt `test_no_store_uses_raw_write_text` der fanger en ny store der genindfører rå `write_text()`.
 - **Berørte filer:** `backend/app/core/user_store.py:29`, `settings_store.py:33`, `auth_config_store.py:42`, `template_store.py:34`, `role_catalog.py:51`, `operator_profile_store.py:23`, `platform_mapping_store.py:90`, `custom_attr_store.py:100`, `endpoint_cache.py:743`, `backend/app/services/update_service.py:607-622`
 
-## [OPEN] 2026-08-18 — F-06: Kapløb om users.json — læs-ret-skriv uden lås kan genoplive tilbagekaldte tokens (HØJ)
+## [FIXED 7.3.0761] 2026-08-19 — F-06: Læs-ret-skriv på users.json uden lås (MIDDEL — nedjusteret fra HØJ)
 
 - **Symptom:** En samtidig skrivning kan gendanne en gammel `token_gen` og dermed **genoplive et token der skulle være tilbagekaldt** ved logout. Generelt: ændringer på brugerlisten kan forsvinde uden spor.
 - **Root cause:** Mønstret `users = load_users(); …; save_users(users)` gentages 17 steder uden nogen serialisering. To samtidige requests læser hver sin kopi af **hele** listen, ændrer hver sin del og skriver begge tilbage — den sidste vinder. Logout incrementerer `token_gen` for at tilbagekalde tokens ([auth.py:101-103](backend/app/api/auth.py#L101)), mens en samtidig gemning af brugerpræferencer ([me.py:308](backend/app/api/me.py#L308)) kan skrive den gamle værdi tilbage. Hænger sammen med F-05 — samme fil, samme rod.
 - **Bifund:** `load_users()` læser filen fra disk ved **hver** autentificeret request (`deps.get_current_user`), synkront i event-loopen.
 - **Foreslået løsning:** Læg en `asyncio.Lock` om hele læs-ret-skriv-sekvensen (eller flyt brugerhåndteringen til SQLite som `audit_store`/`lockout_store`). Hold brugerlisten i hukommelsen med gen-indlæsning ved ændring i stedet for at ramme disken pr. request.
+- **KORREKTION af fundet (2026-08-19):** Entryen beskrev et aktivt kapløb. Ved implementeringen viste det sig **ikke at være nåbart**: alle 164 route-handlere er `async def` (intet kører i FastAPI's threadpool), og der er intet `await` mellem `load_users()` og `save_users()` i noget kaldsted — sekvenserne er derfor atomiske i den enkelttrådede event-loop. Racet blev udledt af mønsteret uden at verificere kaldstederne. Severity HØJ → MIDDEL.
+- **Løsning (v7.3.0761) — forebyggende:** `user_store.transaction()` (`threading.RLock` som context manager) om hele læs-ret-skriv-sekvensen; 15 kaldsteder wrappet. Værd at lave alligevel, fordi garantien afhang af kaldstedernes form frem for af storen: ét indskudt `await` eller F-09's `run_in_threadpool` gør racet ægte uden at nogen bemærker det.
+- **Undtagelse:** `login()` er kun serialiseret om mutate+save. Dens load..save-span omslutter TACACS-netværkskaldet, og en blokerende lås hen over det ville serialisere alle logins bag en langsom TACACS-server; `last_login` er et tidsstempel uden sikkerhedsbetydning.
+- **Regressions-vagt:** `test_transaction_serialises_concurrent_writers` (to tråde taber ikke hinandens skrivninger), `test_transaction_is_reentrant`, og `test_read_modify_write_sites_are_wrapped` der fanger et nyt kaldsted uden lås.
 - **Berørte filer:** `backend/app/core/user_store.py:17-31`, `backend/app/api/auth.py:101-103`, `backend/app/api/me.py:86, 115, 138, 308`, `backend/app/services/user_service.py` (9 steder), `backend/app/api/deps.py:98`
 
 ## [FIXED 7.3.0758] 2026-08-18 — F-07: Bag nginx deler hele portalen én rate-limit-bucket (MIDDEL)

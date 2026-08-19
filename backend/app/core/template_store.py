@@ -15,6 +15,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from app.core.atomic_json import atomic_write_json
 
 STORE_FILE = Path(__file__).resolve().parents[2] / "templates.json"
 
@@ -31,10 +32,7 @@ def load_templates() -> list[dict[str, Any]]:
 
 def save_templates(templates: list[dict[str, Any]]) -> None:
     STORE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    STORE_FILE.write_text(
-        json.dumps(templates, indent=2, ensure_ascii=False),
-        encoding="utf-8",
-    )
+    atomic_write_json(STORE_FILE, templates)
 
 
 def get_template(template_id: str) -> dict[str, Any] | None:
