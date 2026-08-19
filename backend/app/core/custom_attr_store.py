@@ -12,6 +12,7 @@ import json
 import logging
 from pathlib import Path
 from typing import Any
+from app.core.atomic_json import atomic_write_json
 
 _log = logging.getLogger(__name__)
 _cache: dict[str, list[str]] | None = None
@@ -97,7 +98,7 @@ def save_values(data: dict[str, list[str]]) -> None:
     global _cache
     STORE_FILE.parent.mkdir(parents=True, exist_ok=True)
     clean = {attr: sorted(set(data.get(attr, []))) for attr in MANAGED_ATTRS}
-    STORE_FILE.write_text(json.dumps(clean, indent=2, ensure_ascii=False), encoding="utf-8")
+    atomic_write_json(STORE_FILE, clean)
     _cache = clean
 
 

@@ -17,7 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.deps import get_current_user
 from app.core import audit_store
-from app.core.user_store import find_by_id, load_users, save_users
+from app.core.user_store import find_by_id, load_users, save_users, transaction
 from app.schemas.user import (
     SavedView,
     SavedViewCreate,
@@ -61,29 +61,30 @@ async def create_my_view(
     payload: SavedViewCreate,
     user: User = Depends(get_current_user),
 ) -> SavedView:
-    users = load_users()
-    if user.id.startswith("tacacs:"):
-        record = _ensure_shadow_record(users, user)
-    else:
-        record = find_by_id(users, user.id)
-    if not record:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Bruger ikke fundet")
-    views = _get_views(record)
-    # Duplikat-navne tilladt — admin kan vælge selv. Men hård cap på antal.
-    if len(views) >= MAX_VIEWS_PER_USER:
-        raise HTTPException(
-            status.HTTP_400_BAD_REQUEST,
-            f"Maks {MAX_VIEWS_PER_USER} views pr. bruger — slet en eksisterende først",
-        )
-    view = {
-        "id": str(uuid.uuid4()),
-        "name": payload.name.strip(),
-        "query": payload.query or {},
-        "created_at": _now_iso(),
-    }
-    views.append(view)
-    record["saved_views"] = views
-    save_users(users)
+    with transaction():  # F-06: serialiser laes-ret-skriv
+        users = load_users()
+        if user.id.startswith("tacacs:"):
+            record = _ensure_shadow_record(users, user)
+        else:
+            record = find_by_id(users, user.id)
+        if not record:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Bruger ikke fundet")
+        views = _get_views(record)
+        # Duplikat-navne tilladt — admin kan vælge selv. Men hård cap på antal.
+        if len(views) >= MAX_VIEWS_PER_USER:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                f"Maks {MAX_VIEWS_PER_USER} views pr. bruger — slet en eksisterende først",
+            )
+        view = {
+            "id": str(uuid.uuid4()),
+            "name": payload.name.strip(),
+            "query": payload.query or {},
+            "created_at": _now_iso(),
+        }
+        views.append(view)
+        record["saved_views"] = views
+        save_users(users)
     logger.info("user %s created saved view '%s'", user.username, view["name"])
     await audit_store.record(
         "created", "saved_view", view["id"],
@@ -98,21 +99,22 @@ async def update_my_view(
     payload: SavedViewUpdate,
     user: User = Depends(get_current_user),
 ) -> SavedView:
-    users = load_users()
-    record = find_by_id(users, user.id)
-    if not record:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Bruger ikke fundet")
-    views = _get_views(record)
-    target = next((v for v in views if v.get("id") == view_id), None)
-    if not target:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "View ikke fundet")
-    before = {"name": target.get("name"), "query": target.get("query")}
-    if payload.name is not None:
-        target["name"] = payload.name.strip()
-    if payload.query is not None:
-        target["query"] = payload.query
-    record["saved_views"] = views
-    save_users(users)
+    with transaction():  # F-06: serialiser laes-ret-skriv
+        users = load_users()
+        record = find_by_id(users, user.id)
+        if not record:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Bruger ikke fundet")
+        views = _get_views(record)
+        target = next((v for v in views if v.get("id") == view_id), None)
+        if not target:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "View ikke fundet")
+        before = {"name": target.get("name"), "query": target.get("query")}
+        if payload.name is not None:
+            target["name"] = payload.name.strip()
+        if payload.query is not None:
+            target["query"] = payload.query
+        record["saved_views"] = views
+        save_users(users)
     await audit_store.record(
         "updated", "saved_view", view_id,
         before=before,
@@ -126,16 +128,17 @@ async def delete_my_view(
     view_id: str,
     user: User = Depends(get_current_user),
 ) -> None:
-    users = load_users()
-    record = find_by_id(users, user.id)
-    if not record:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Bruger ikke fundet")
-    views = _get_views(record)
-    target = next((v for v in views if v.get("id") == view_id), None)
-    if not target:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "View ikke fundet")
-    record["saved_views"] = [v for v in views if v.get("id") != view_id]
-    save_users(users)
+    with transaction():  # F-06: serialiser laes-ret-skriv
+        users = load_users()
+        record = find_by_id(users, user.id)
+        if not record:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Bruger ikke fundet")
+        views = _get_views(record)
+        target = next((v for v in views if v.get("id") == view_id), None)
+        if not target:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "View ikke fundet")
+        record["saved_views"] = [v for v in views if v.get("id") != view_id]
+        save_users(users)
     await audit_store.record(
         "deleted", "saved_view", view_id,
         before={"name": target.get("name")},
@@ -254,57 +257,58 @@ async def update_my_prefs(
     payload: UserPrefs,
     user: User = Depends(get_current_user),
 ) -> UserPrefs:
-    users = load_users()
-    if user.id.startswith("tacacs:"):
-        record = _ensure_shadow_record(users, user)
-    else:
-        record = find_by_id(users, user.id)
-    if not record:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Bruger ikke fundet")
-    prefs = record.get("prefs") or {}
-    updated = payload.model_fields_set
-
-    if "language" in updated:
-        if payload.language is None:
-            prefs.pop("language", None)
-        elif payload.language in _VALID_LANGUAGES:
-            prefs["language"] = payload.language
-
-    if "col_order" in updated:
-        if payload.col_order is None:
-            prefs.pop("col_order", None)
+    with transaction():  # F-06: serialiser laes-ret-skriv
+        users = load_users()
+        if user.id.startswith("tacacs:"):
+            record = _ensure_shadow_record(users, user)
         else:
-            valid = _safe_col_order(payload.col_order)
-            if valid is not None:
-                prefs["col_order"] = valid
+            record = find_by_id(users, user.id)
+        if not record:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Bruger ikke fundet")
+        prefs = record.get("prefs") or {}
+        updated = payload.model_fields_set
 
-    if "col_vis" in updated:
-        if payload.col_vis is None:
-            prefs.pop("col_vis", None)
-        else:
-            valid = _safe_col_vis(payload.col_vis)
-            if valid is not None:
-                prefs["col_vis"] = valid
+        if "language" in updated:
+            if payload.language is None:
+                prefs.pop("language", None)
+            elif payload.language in _VALID_LANGUAGES:
+                prefs["language"] = payload.language
 
-    if "col_widths" in updated:
-        if payload.col_widths is None:
-            prefs.pop("col_widths", None)
-        else:
-            valid = _safe_col_widths(payload.col_widths)
-            if valid is not None:
-                prefs["col_widths"] = valid
-
-    if "tree_layout" in updated:
-        if payload.tree_layout is None:
-            prefs.pop("tree_layout", None)
-        else:
-            valid = _safe_tree_layout(payload.tree_layout)
-            if valid is not None:
-                prefs["tree_layout"] = valid
+        if "col_order" in updated:
+            if payload.col_order is None:
+                prefs.pop("col_order", None)
             else:
-                prefs.pop("tree_layout", None)
+                valid = _safe_col_order(payload.col_order)
+                if valid is not None:
+                    prefs["col_order"] = valid
 
-    record["prefs"] = prefs
-    save_users(users)
+        if "col_vis" in updated:
+            if payload.col_vis is None:
+                prefs.pop("col_vis", None)
+            else:
+                valid = _safe_col_vis(payload.col_vis)
+                if valid is not None:
+                    prefs["col_vis"] = valid
+
+        if "col_widths" in updated:
+            if payload.col_widths is None:
+                prefs.pop("col_widths", None)
+            else:
+                valid = _safe_col_widths(payload.col_widths)
+                if valid is not None:
+                    prefs["col_widths"] = valid
+
+        if "tree_layout" in updated:
+            if payload.tree_layout is None:
+                prefs.pop("tree_layout", None)
+            else:
+                valid = _safe_tree_layout(payload.tree_layout)
+                if valid is not None:
+                    prefs["tree_layout"] = valid
+                else:
+                    prefs.pop("tree_layout", None)
+
+        record["prefs"] = prefs
+        save_users(users)
     logger.info("user %s updated prefs (fields: %s)", user.username, updated)
     return _prefs_response(prefs)

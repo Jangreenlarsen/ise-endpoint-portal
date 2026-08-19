@@ -8,7 +8,13 @@ from app.core import audit_store
 from app.api.deps import get_current_user
 from app.core import auth as auth_core
 from app.core.auth import TOKEN_COOKIE_NAME, TOKEN_TTL_SECONDS
-from app.core.user_store import find_by_id, increment_token_gen, load_users, save_users
+from app.core.user_store import (
+    find_by_id,
+    increment_token_gen,
+    load_users,
+    save_users,
+    transaction,
+)
 from app.schemas.user import (
     AuthStatus,
     ChangePasswordRequest,
@@ -98,9 +104,10 @@ async def logout(request: Request, response: Response) -> dict[str, str]:
             if payload.get("auth_type") != "tacacs":
                 user_id = payload.get("sub")
                 if user_id:
-                    users = load_users()
-                    increment_token_gen(users, user_id)
-                    save_users(users)
+                    with transaction():  # F-06: serialiser laes-ret-skriv
+                        users = load_users()
+                        increment_token_gen(users, user_id)
+                        save_users(users)
     _delete_auth_cookie(response)
     return {"status": "ok"}
 

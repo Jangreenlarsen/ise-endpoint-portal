@@ -604,19 +604,52 @@ async def git_pull() -> dict[str, Any]:
     return result
 
 
-async def schedule_restart(delay_s: float = 2.5) -> None:
-    """Planlæg server-genstart via os._exit(0) efter delay.
+GRACEFUL_SHUTDOWN_TIMEOUT_S = 10.0
 
-    START.bat skal køre i en loop for at genstarte automatisk. Ellers
-    skal admin starte serveren manuelt efter genstart-signalet.
+# Modul-niveau reference: en fire-and-forget task uden reference kan blive
+# garbage-collected midt i kørslen (BUGS.md F-10) — og her ville det betyde en
+# genstart der aldrig sker.
+_restart_task: "asyncio.Task[None] | None" = None
+
+
+async def schedule_restart(delay_s: float = 2.5) -> None:
+    """Planlæg server-genstart efter `delay_s`.
+
+    Forsøger først en **pæn** nedlukning via SIGTERM, så uvicorn kan køre
+    lifespan-shutdown færdig — den gemmer bl.a. pxGrid-session-cachen til disk.
+    Tidligere kaldte funktionen `os._exit(0)` direkte, hvilket springer al
+    oprydning over (BUGS.md F-05).
+
+    `os._exit(0)` er bevaret som **fallback**, hvis processen stadig lever efter
+    `GRACEFUL_SHUTDOWN_TIMEOUT_S`: en genstart der ikke sker, er værre end en
+    hård en. Med atomiske skrivninger på plads kan et hårdt exit ikke længere
+    efterlade en halv tilstandsfil.
+
+    systemd's `Restart=always` (Linux) eller START.bat's loop (Windows) starter
+    processen igen.
     """
+    global _restart_task
     logger.info("update: server-genstart planlagt om %.1fs", delay_s)
     from app.core import audit_store
     audit_store.record_sync("server_restart", "system", after={"delay_s": delay_s})
 
-    async def _do_exit() -> None:
+    async def _do_restart() -> None:
         await asyncio.sleep(delay_s)
+        try:
+            import signal
+            sig = signal.SIGTERM
+            logger.info("update: sender %s til egen proces for pæn nedlukning", sig.name)
+            os.kill(os.getpid(), sig)
+        except Exception as exc:  # noqa: BLE001 — enhver fejl skal falde tilbage
+            logger.warning("update: pæn nedlukning kunne ikke signaleres: %s", exc)
+        else:
+            # Giv uvicorn tid til at køre lifespan-shutdown færdig.
+            await asyncio.sleep(GRACEFUL_SHUTDOWN_TIMEOUT_S)
+            logger.warning(
+                "update: processen lever stadig efter %.0fs — falder tilbage til os._exit(0)",
+                GRACEFUL_SHUTDOWN_TIMEOUT_S,
+            )
         logger.info("update: udfører os._exit(0) for genstart")
         os._exit(0)  # noqa: SLF001
 
-    asyncio.create_task(_do_exit())
+    _restart_task = asyncio.create_task(_do_restart(), name="scheduled-restart")

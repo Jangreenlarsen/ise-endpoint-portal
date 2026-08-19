@@ -19,6 +19,7 @@ from app.core.user_store import (
     increment_token_gen,
     load_users,
     save_users,
+    transaction,
 )
 from app.schemas.user import (
     ChangePasswordRequest,
@@ -147,33 +148,34 @@ async def set_endpoint_roles(
     Validerer at hver rolle eksisterer i kataloget. Dedupliker
     case-insensitivt men bevarer admin-skrevet stavning.
     """
-    users = load_users()
-    record = find_by_id(users, user_id)
-    if not record:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Bruger ikke fundet")
+    with transaction():  # F-06: serialiser laes-ret-skriv
+        users = load_users()
+        record = find_by_id(users, user_id)
+        if not record:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Bruger ikke fundet")
 
-    catalog = role_catalog.load_roles()
-    seen: set[str] = set()
-    resolved: list[str] = []
-    for raw in roles:
-        name = (raw or "").strip()
-        if not name:
-            continue
-        match = role_catalog.find_by_name(catalog, name)
-        if not match:
-            raise HTTPException(
-                status.HTTP_400_BAD_REQUEST,
-                f"Rollen '{name}' findes ikke i kataloget",
-            )
-        canonical = match["name"]
-        if canonical.lower() in seen:
-            continue
-        seen.add(canonical.lower())
-        resolved.append(canonical)
+        catalog = role_catalog.load_roles()
+        seen: set[str] = set()
+        resolved: list[str] = []
+        for raw in roles:
+            name = (raw or "").strip()
+            if not name:
+                continue
+            match = role_catalog.find_by_name(catalog, name)
+            if not match:
+                raise HTTPException(
+                    status.HTTP_400_BAD_REQUEST,
+                    f"Rollen '{name}' findes ikke i kataloget",
+                )
+            canonical = match["name"]
+            if canonical.lower() in seen:
+                continue
+            seen.add(canonical.lower())
+            resolved.append(canonical)
 
-    before = list(record.get("assigned_endpoint_roles") or [])
-    record["assigned_endpoint_roles"] = resolved
-    save_users(users)
+        before = list(record.get("assigned_endpoint_roles") or [])
+        record["assigned_endpoint_roles"] = resolved
+        save_users(users)
     logger.info(
         "endpoint roles set: user=%s roles=%s by=%s",
         record["username"],
@@ -204,36 +206,37 @@ def get_user(user_id: str) -> User:
 
 async def create_user(payload: UserCreate) -> User:
     from app.core.auth_config_store import load as load_auth_config
-    users = load_users()
-    if find_by_username(users, payload.username):
-        raise HTTPException(status.HTTP_409_CONFLICT, "Brugernavn findes allerede")
+    with transaction():  # F-06: serialiser laes-ret-skriv
+        users = load_users()
+        if find_by_username(users, payload.username):
+            raise HTTPException(status.HTTP_409_CONFLICT, "Brugernavn findes allerede")
 
-    auth_cfg = load_auth_config()
-    is_tacacs_mode = auth_cfg.get("auth_mode") == "tacacs"
+        auth_cfg = load_auth_config()
+        is_tacacs_mode = auth_cfg.get("auth_mode") == "tacacs"
 
-    if payload.password:
-        _validate_password_strength(payload.password)
-        password_hash = auth_core.hash_password(payload.password)
-    elif not is_tacacs_mode:
-        raise HTTPException(
-            status.HTTP_400_BAD_REQUEST,
-            "Password er påkrævet i lokal auth-mode",
-        )
-    else:
-        # TACACS+-mode: generer ubrugt tilfældig hash (login sker via TACACS+)
-        import secrets as _secrets
-        password_hash = auth_core.hash_password(_secrets.token_hex(32))
+        if payload.password:
+            _validate_password_strength(payload.password)
+            password_hash = auth_core.hash_password(payload.password)
+        elif not is_tacacs_mode:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                "Password er påkrævet i lokal auth-mode",
+            )
+        else:
+            # TACACS+-mode: generer ubrugt tilfældig hash (login sker via TACACS+)
+            import secrets as _secrets
+            password_hash = auth_core.hash_password(_secrets.token_hex(32))
 
-    record = {
-        "id": str(uuid.uuid4()),
-        "username": payload.username,
-        "password_hash": password_hash,
-        "role": payload.role,
-        "created_at": _now_iso(),
-        "last_login": None,
-    }
-    users.append(record)
-    save_users(users)
+        record = {
+            "id": str(uuid.uuid4()),
+            "username": payload.username,
+            "password_hash": password_hash,
+            "role": payload.role,
+            "created_at": _now_iso(),
+            "last_login": None,
+        }
+        users.append(record)
+        save_users(users)
     logger.info("user created: %s role=%s", payload.username, payload.role)
     # 3.8.0: auto-opret System adm-rolle med navnet = username.
     # 3.9.6: tildel rollen til brugeren med det samme så UI viser den
@@ -249,7 +252,8 @@ async def create_user(payload: UserCreate) -> User:
             )
         else:
             record["assigned_endpoint_roles"] = [payload.username]
-            save_users(users)
+            with transaction():  # F-06
+                save_users(users)
             logger.info("auto-tildelt System adm-rolle '%s' til ny bruger", payload.username)
     except Exception as exc:  # noqa: BLE001
         logger.warning("auto-rolle-create fejlede for %s: %s", payload.username, exc)
@@ -263,22 +267,23 @@ async def create_user(payload: UserCreate) -> User:
 
 
 async def update_user(user_id: str, payload: UserUpdate) -> User:
-    users = load_users()
-    record = find_by_id(users, user_id)
-    if not record:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Bruger ikke fundet")
-    before = {"username": record["username"], "role": record["role"], "user_type": record.get("user_type", "user")}
-    role_changed = payload.role is not None and payload.role != record["role"]
-    if payload.role is not None:
-        record["role"] = payload.role
-    if payload.user_type is not None:
-        record["user_type"] = payload.user_type
-    pw_changed = bool(payload.password)
-    if pw_changed:
-        record["password_hash"] = auth_core.hash_password(payload.password)
-    if role_changed or pw_changed:
-        increment_token_gen(users, user_id)
-    save_users(users)
+    with transaction():  # F-06: serialiser laes-ret-skriv
+        users = load_users()
+        record = find_by_id(users, user_id)
+        if not record:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Bruger ikke fundet")
+        before = {"username": record["username"], "role": record["role"], "user_type": record.get("user_type", "user")}
+        role_changed = payload.role is not None and payload.role != record["role"]
+        if payload.role is not None:
+            record["role"] = payload.role
+        if payload.user_type is not None:
+            record["user_type"] = payload.user_type
+        pw_changed = bool(payload.password)
+        if pw_changed:
+            record["password_hash"] = auth_core.hash_password(payload.password)
+        if role_changed or pw_changed:
+            increment_token_gen(users, user_id)
+        save_users(users)
     logger.info("user updated: %s", record["username"])
     await audit_store.record(
         "updated",
@@ -301,21 +306,22 @@ async def set_user_templates(
 ) -> User:
     """Admin tildeler specifikke skabelon-IDs til en registrar_templet-bruger."""
     from app.core import template_store
-    users = load_users()
-    record = find_by_id(users, user_id)
-    if not record:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Bruger ikke fundet")
-    # Valider at alle IDs eksisterer
-    all_ids = {t["id"] for t in template_store.load_templates()}
-    invalid = [tid for tid in template_ids if tid not in all_ids]
-    if invalid:
-        raise HTTPException(
-            status.HTTP_400_BAD_REQUEST,
-            f"Ukendte skabelon-IDs: {', '.join(invalid)}",
-        )
-    before = list(record.get("assigned_templates") or [])
-    record["assigned_templates"] = list(dict.fromkeys(template_ids))
-    save_users(users)
+    with transaction():  # F-06: serialiser laes-ret-skriv
+        users = load_users()
+        record = find_by_id(users, user_id)
+        if not record:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Bruger ikke fundet")
+        # Valider at alle IDs eksisterer
+        all_ids = {t["id"] for t in template_store.load_templates()}
+        invalid = [tid for tid in template_ids if tid not in all_ids]
+        if invalid:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                f"Ukendte skabelon-IDs: {', '.join(invalid)}",
+            )
+        before = list(record.get("assigned_templates") or [])
+        record["assigned_templates"] = list(dict.fromkeys(template_ids))
+        save_users(users)
     logger.info(
         "template assignments set: user=%s templates=%s by=%s",
         record["username"],
@@ -335,19 +341,20 @@ async def set_user_templates(
 async def delete_user(user_id: str, requester_id: str) -> None:
     if user_id == requester_id:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Du kan ikke slette dig selv")
-    users = load_users()
-    record = find_by_id(users, user_id)
-    if not record:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Bruger ikke fundet")
-    admins_left = sum(1 for u in users if u["role"] == "admin" and u["id"] != user_id)
-    if record["role"] == "admin" and admins_left == 0:
-        raise HTTPException(
-            status.HTTP_400_BAD_REQUEST,
-            "Kan ikke slette sidste admin — opret en ny admin først",
-        )
-    before = {"username": record["username"], "role": record["role"]}
-    users = [u for u in users if u["id"] != user_id]
-    save_users(users)
+    with transaction():  # F-06: serialiser laes-ret-skriv
+        users = load_users()
+        record = find_by_id(users, user_id)
+        if not record:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Bruger ikke fundet")
+        admins_left = sum(1 for u in users if u["role"] == "admin" and u["id"] != user_id)
+        if record["role"] == "admin" and admins_left == 0:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                "Kan ikke slette sidste admin — opret en ny admin først",
+            )
+        before = {"username": record["username"], "role": record["role"]}
+        users = [u for u in users if u["id"] != user_id]
+        save_users(users)
     logger.info("user deleted: %s", record["username"])
     await audit_store.record(
         "deleted",
@@ -358,16 +365,17 @@ async def delete_user(user_id: str, requester_id: str) -> None:
 
 
 async def change_password(user_id: str, payload: ChangePasswordRequest) -> None:
-    users = load_users()
-    record = find_by_id(users, user_id)
-    if not record:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Bruger ikke fundet")
-    if not auth_core.verify_password(payload.current_password, record["password_hash"]):
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Forkert nuværende password")
-    _validate_password_strength(payload.new_password)
-    record["password_hash"] = auth_core.hash_password(payload.new_password)
-    increment_token_gen(users, user_id)
-    save_users(users)
+    with transaction():  # F-06: serialiser laes-ret-skriv
+        users = load_users()
+        record = find_by_id(users, user_id)
+        if not record:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Bruger ikke fundet")
+        if not auth_core.verify_password(payload.current_password, record["password_hash"]):
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Forkert nuværende password")
+        _validate_password_strength(payload.new_password)
+        record["password_hash"] = auth_core.hash_password(payload.new_password)
+        increment_token_gen(users, user_id)
+        save_users(users)
     logger.info("password changed for %s", record["username"])
     await audit_store.record(
         "password_changed",
@@ -387,18 +395,19 @@ def setup_first_admin(payload: SetupRequest) -> LoginResponse:
             status.HTTP_400_BAD_REQUEST,
             "Opsætning er allerede gennemført",
         )
-    users = load_users()
-    now = _now_iso()
-    record = {
-        "id": str(uuid.uuid4()),
-        "username": payload.username,
-        "password_hash": auth_core.hash_password(payload.password),
-        "role": "admin",
-        "created_at": now,
-        "last_login": now,
-    }
-    users.append(record)
-    save_users(users)
+    with transaction():  # F-06: serialiser laes-ret-skriv
+        users = load_users()
+        now = _now_iso()
+        record = {
+            "id": str(uuid.uuid4()),
+            "username": payload.username,
+            "password_hash": auth_core.hash_password(payload.password),
+            "role": "admin",
+            "created_at": now,
+            "last_login": now,
+        }
+        users.append(record)
+        save_users(users)
     token = auth_core.create_token(record["id"], record["username"], record["role"], gen=0)
     logger.warning("first-run admin created: %s", record["username"])
     from app.core import audit_store
@@ -536,7 +545,8 @@ def login(payload: LoginRequest) -> LoginResponse:
                 shadow["assigned_templates"] = assigned_templates
                 shadow["last_login"] = _now_iso()
                 logger.info("tacacs shadow user updated: %s role=%s", shadow_id, effective_role)
-            save_users(users)
+            with transaction():  # F-06
+                save_users(users)
 
             logger.info(
                 "tacacs login: user=%s profile=%s role=%s",
@@ -578,8 +588,14 @@ def login(payload: LoginRequest) -> LoginResponse:
             "Forkert brugernavn eller password",
         )
     _clear_failures(payload.username)
+    # Kun mutate+save serialiseres. load_users() ligger bevidst UDEN FOR
+    # transaktionen: mellem load og hertil ligger TACACS-netvaerkskaldet, og en
+    # blokerende laas hen over det ville serialisere alle logins bag en langsom
+    # TACACS-server. last_login er et tidsstempel uden sikkerhedsbetydning, saa
+    # en tabt opdatering er uden konsekvens.
     record["last_login"] = _now_iso()
-    save_users(users)
+    with transaction():  # F-06
+        save_users(users)
     token = auth_core.create_token(record["id"], record["username"], record["role"], gen=record.get("token_gen", 0))
     logger.info("local login: %s role=%s", record["username"], record["role"])
     audit_store.record_sync("login_success", "session", record["id"], {"username": record["username"], "role": record["role"]})

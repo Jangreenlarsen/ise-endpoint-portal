@@ -21,6 +21,7 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from app.core.atomic_json import atomic_write_json
 
 STORE_FILE = Path(__file__).resolve().parents[2] / "endpoint_roles.json"
 
@@ -48,10 +49,7 @@ def load_roles() -> list[dict[str, Any]]:
 
 def save_roles(roles: list[dict[str, Any]]) -> None:
     STORE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    STORE_FILE.write_text(
-        json.dumps(roles, indent=2, ensure_ascii=False),
-        encoding="utf-8",
-    )
+    atomic_write_json(STORE_FILE, roles)
 
 
 def find_by_name(roles: list[dict[str, Any]], name: str) -> dict[str, Any] | None:

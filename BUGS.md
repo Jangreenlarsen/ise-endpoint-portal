@@ -28,10 +28,12 @@ test (frontend: 332 linjer smoketests mod 21.140 linjer kode). Samtlige 16 fund 
 udækkede halvdel. Ved fix bør hvert fund have en regressions-vagt, ellers lukkes symptomet
 uden at lukke hullet i dækningen.
 
-**Status:** F-01, F-02 og F-07 er lukket i **7.3.0758** — de to kritiske plus den
-default-ændring de afhang af. Resterende anbefalet rækkefølge: **F-04 + F-03**
-(lavt privilegerede konti kommer længere end rollemodellen tillader) → **F-05 + F-06**
-(samme rod: `users.json`) → resten som almindelig oprydning.
+**Status:** F-01, F-02, F-07 lukket i **7.3.0758**; F-04 i **7.3.0759**; F-03 i
+**7.3.0760**; F-05 + F-06 i **7.3.0761**; F-15 som repo-hygiejne. Begge kritiske,
+begge autorisationshuller og hele `users.json`-komplekset er dermed lukket.
+Resterende anbefalet rækkefølge: **F-09** (blokerende login — indfører ægte
+samtidighed, som F-06's lås nu er forberedt på) → **F-10** (tabbare
+baggrundstasks) → resten som almindelig oprydning.
 
 ## [FIXED 7.3.0758] 2026-08-18 — F-01: Selvregistrering binder ikke MAC-adressen til den der spørger (KRITISK)
 
@@ -52,36 +54,48 @@ default-ændring de afhang af. Resterende anbefalet rækkefølge: **F-04 + F-03*
 - **Regressions-vagt:** `test_session_lookup_ignores_ip_query_param`, `test_session_lookup_rejects_untrusted_forwarded_for`, `test_session_lookup_honours_forwarded_for_from_trusted_proxy`.
 - **Berørte filer:** `backend/app/api/selfregister.py:172-215` (+ `_client_ip` linje 48-53), `backend/app/ise/mnt_sessions.py:567`
 
-## [OPEN] 2026-08-18 — F-03: nmap-flag filtreres med ufuldstændig denylist — og ruten er åben for alle roller (HØJ)
+## [FIXED 7.3.0760] 2026-08-19 — F-03: nmap-flag filtreres med ufuldstændig denylist — og ruten er åben for alle roller (HØJ)
 
 - **Symptom:** `POST /nmap/scan` accepterer `custom_flags` fra brugeren og sender dem til `create_subprocess_exec`. Filteret er en denylist på otte flag; alt andet slipper igennem. Ruten kræver `require_register_lookup`, som omfatter **samtlige** roller — også `viewer`, `registrant` og `registrant_templet`, der ellers hverken må redigere eller browse endpoints.
 - **Root cause:** `SAFE_FLAG_DENYLIST = {"-iL", "--script", "--script=", "-oG", "-oN", "-oX", "-oA", "--resume"}`. Manglende bl.a.: `-oS` og `--append-output` (vilkårlig filskrivning som portal-brugeren), `--datadir`, `--servicedb`, `--versiondb` (indlæsning af data fra en sti angriberen vælger), `--stylesheet`, `-iR`. Denylister på nmap-flag kan i praksis ikke gøres komplette. Der er ingen shell-injektion (`create_subprocess_exec`, ikke `shell=True`) — vektoren er nmap's egne flag.
 - **Bifund:** `"--script="` i listen er en **død entry** — `base = p.split("=")[0]` har allerede fjernet `=`-delen, så den kan aldrig matche (dækkes dog af `--script`). API-skemaet reklamerer stadig med presettet `os` ([nmap.py:19](backend/app/api/nmap.py#L19)), som er fjernet fra `PRESETS`; angives det, falder kaldet **tavst** tilbage til default i stedet for at fejle.
 - **Foreslået løsning:** Vend om til en allowlist af tilladte flag. Begræns ruten til `require_editor` eller `require_admin`. Fjern `os` fra feltbeskrivelsen, eller afvis ukendte presets eksplicit med 422.
+- **Løsning (v7.3.0760):** Denylisten erstattet med en **allowlist** (`_FLAGS_NO_VALUE` + `_FLAGS_WITH_VALUE`) — et ukendt flag afvises per definition, så listen ikke skal holdes komplet. Værdier valideres mod `[A-Za-z0-9][A-Za-z0-9,.:*_-]*`, der udelukker `/` og `\`, så et flag aldrig kan pege på en fil. Loft på 12 tokens. Ruten krævede `require_register_lookup` (alle roller) og kræver nu `require_edit_endpoint` (admin, editor, editor-psk). Ukendt preset fejler nu med 422 i stedet for tavst at falde tilbage til default, og `os` er fjernet fra `preset`-beskrivelsen.
+- **Regressions-vagt:** `backend/tests/test_nmap_flags.py` — 36 tests. Hvert af de syv flag den gamle denylist slap igennem (`-oS`, `--append-output`, `--datadir`, `--servicedb`, `--versiondb`, `--stylesheet`, `-iR`) har sin egen case; de otte oprindelige afvises stadig; allowlist-egenskaben verificeres med et opdigtet flag; sti-værdier afvises; rollekravet tjekkes på selve ruten.
+- **Bevaret:** frontendens "custom"-knap med fritekst-flag virker uændret for de flag der giver mening at bruge fra portalen.
 - **Berørte filer:** `backend/app/services/nmap_service.py:15, 37-44, 52-61`, `backend/app/api/nmap.py:19, 30`
 
-## [OPEN] 2026-08-18 — F-04: SSE-strømmen med live-sessioner mangler rollekontrol (HØJ)
+## [FIXED 7.3.0759] 2026-08-19 — F-04: SSE-strømmen med live-sessioner mangler rollekontrol (HØJ)
 
 - **Symptom:** `registrant` og `registrant_templet` — roller der efter design **kun** må oprette endpoints og eksplicit ikke må browse ([deps.py](backend/app/api/deps.py) kommentar: *"registrant må KUN oprette endpoints — ingen browse/edit/delete/audit/admin"*) — kan abonnere på `GET /api/pxgrid/sessions/stream` og få den fulde live-strøm af RADIUS-sessioner: MAC, bruger, IP og NAS for hver enhed på nettet.
 - **Root cause:** Ruten har ikke `dependencies=[Depends(require_any)]` som alle sine søsterruter ([pxgrid.py:37-42](backend/app/api/pxgrid.py#L37) og [:171-176](backend/app/api/pxgrid.py#L171)). Auth er håndrullet i funktionskroppen fordi `EventSource` ikke kan sætte headers, og den kopi validerer korrekt token, brugerens eksistens og `token_gen` — men **tjekker aldrig en rolle**. Klassisk følge af at duplikere en dependency i hånden.
 - **Bifund:** Ruten accepterer tokenet som query-parameter (`?token=`, dokumenteret som `file://`-udviklingsfallback). Frontenden bruger det ikke — den sender httpOnly-cookien via `withCredentials` — men parameteren er aktiv i produktion, og query-strenge havner i nginx' access-log og i browserhistorik.
 - **Foreslået løsning:** Udtræk den håndrullede blok til en genbrugelig dependency der returnerer `User` (cookie eller Bearer), og tjek rollen mod `require_any`. Fjern `?token=`-fallbacken.
+- **Løsning (v7.3.0759):** Hele den håndrullede auth-blok erstattet med `dependencies=[Depends(require_any)]` — samme krav som `/sessions` og `/sessions/{mac}`, der serverer de samme data. `EventSource` sender same-origin cookies med `withCredentials`, så `get_current_user` dækker behovet uden query-param. `?token=`-fallbacken er **fjernet** (frontenden brugte den aldrig). Døde imports ryddet: `auth_core`, `find_by_id`, `load_users`, `Query`.
+- **Regressions-vagt:** `backend/tests/test_authz.py` — `registrant` → 403, `viewer` → 200, uautentificeret → 401, token i `?token=` → 401, plus `test_sse_stream_has_same_role_dep_as_sibling_routes` der sammenligner dependency-navnene med `/sessions`, så ruten ikke igen kan få sin egen auth-kopi uden rollekrav.
+- **Lærdom:** fejlen opstod ved at duplikere `get_current_user` i hånden. Duplikér ikke auth-logik — udtræk en dependency.
 - **Berørte filer:** `backend/app/api/pxgrid.py:76-113`
 
-## [OPEN] 2026-08-18 — F-05: Ingen JSON-tilstand skrives atomisk — users.json kan tømmes af en OTA-genstart (HØJ)
+## [FIXED 7.3.0761] 2026-08-19 — F-05: Ingen JSON-tilstand skrives atomisk — users.json kan tømmes af en OTA-genstart (HØJ)
 
 - **Symptom:** Potentiel total udelukkelse fra portalen: står `users.json` tom, returnerer `load_users()` stille `[]` ved parse-fejl, så symptomet er ikke en fejlmeddelelse men en portal hvor ingen kan logge ind.
 - **Root cause:** Samtlige ni JSON-stores skriver med et direkte `write_text()`, der **trunkerer filen før den skriver**. Der findes ikke ét skriv-til-temp-og-`os.replace` i kodebasen. Vinduet er ikke hypotetisk: opdateringstjenesten afslutter selv processen med `os._exit(0)` ([update_service.py:620](backend/app/services/update_service.py#L620)) — et hårdt kill uden flush eller oprydning — og `save_users()` kaldes fra 17 steder, heriblandt **hvert logout** ([auth.py:103](backend/app/api/auth.py#L103)) og **hver gemning af brugerpræferencer** ([me.py:308](backend/app/api/me.py#L308)). En OTA-opdatering mens nogen gemmer en indstilling kan efterlade filen tom.
 - **Bifund:** `os._exit(0)` springer også lifespan-shutdown over, så pxGrid-session-cachen ikke når at blive gemt til disk ved en opdaterings-genstart.
 - **Foreslået løsning:** Én fælles `atomic_write_json(path, data)` — skriv til `path.with_suffix(".tmp")`, `flush()` + `os.fsync()`, derefter `os.replace()` — og lad alle stores gå gennem den. Skift `os._exit(0)` ud med et almindeligt shutdown-signal (SIGTERM til egen proces), så systemd's `Restart=always` genstarter efter en ren nedlukning.
+- **Løsning (v7.3.0761):** Ny `core/atomic_json.py` med `atomic_write_json()` og `atomic_write_text()`: skriv til temp-fil i **samme mappe** (så `os.replace` bliver en rename inden for ét filsystem og dermed atomisk), `flush()` + `os.fsync()`, derefter `os.replace()`. `mode` sættes på temp-filen FØR flytningen. Alle ni stores konverteret. `schedule_restart()` forsøger nu SIGTERM først, så lifespan-shutdown (der gemmer pxGrid-session-cachen) når at køre; `os._exit(0)` bevaret som fallback efter 10 s.
+- **Regressions-vagt:** `backend/tests/test_atomic_state.py` — original overlever fejlet serialisering, ingen temp-filer efterlades, temp-filen ligger i målmappen, kortere payload efterlader ikke hale, `mode` sættes før rename. Plus strukturel vagt `test_no_store_uses_raw_write_text` der fanger en ny store der genindfører rå `write_text()`.
 - **Berørte filer:** `backend/app/core/user_store.py:29`, `settings_store.py:33`, `auth_config_store.py:42`, `template_store.py:34`, `role_catalog.py:51`, `operator_profile_store.py:23`, `platform_mapping_store.py:90`, `custom_attr_store.py:100`, `endpoint_cache.py:743`, `backend/app/services/update_service.py:607-622`
 
-## [OPEN] 2026-08-18 — F-06: Kapløb om users.json — læs-ret-skriv uden lås kan genoplive tilbagekaldte tokens (HØJ)
+## [FIXED 7.3.0761] 2026-08-19 — F-06: Læs-ret-skriv på users.json uden lås (MIDDEL — nedjusteret fra HØJ)
 
 - **Symptom:** En samtidig skrivning kan gendanne en gammel `token_gen` og dermed **genoplive et token der skulle være tilbagekaldt** ved logout. Generelt: ændringer på brugerlisten kan forsvinde uden spor.
 - **Root cause:** Mønstret `users = load_users(); …; save_users(users)` gentages 17 steder uden nogen serialisering. To samtidige requests læser hver sin kopi af **hele** listen, ændrer hver sin del og skriver begge tilbage — den sidste vinder. Logout incrementerer `token_gen` for at tilbagekalde tokens ([auth.py:101-103](backend/app/api/auth.py#L101)), mens en samtidig gemning af brugerpræferencer ([me.py:308](backend/app/api/me.py#L308)) kan skrive den gamle værdi tilbage. Hænger sammen med F-05 — samme fil, samme rod.
 - **Bifund:** `load_users()` læser filen fra disk ved **hver** autentificeret request (`deps.get_current_user`), synkront i event-loopen.
 - **Foreslået løsning:** Læg en `asyncio.Lock` om hele læs-ret-skriv-sekvensen (eller flyt brugerhåndteringen til SQLite som `audit_store`/`lockout_store`). Hold brugerlisten i hukommelsen med gen-indlæsning ved ændring i stedet for at ramme disken pr. request.
+- **KORREKTION af fundet (2026-08-19):** Entryen beskrev et aktivt kapløb. Ved implementeringen viste det sig **ikke at være nåbart**: alle 164 route-handlere er `async def` (intet kører i FastAPI's threadpool), og der er intet `await` mellem `load_users()` og `save_users()` i noget kaldsted — sekvenserne er derfor atomiske i den enkelttrådede event-loop. Racet blev udledt af mønsteret uden at verificere kaldstederne. Severity HØJ → MIDDEL.
+- **Løsning (v7.3.0761) — forebyggende:** `user_store.transaction()` (`threading.RLock` som context manager) om hele læs-ret-skriv-sekvensen; 15 kaldsteder wrappet. Værd at lave alligevel, fordi garantien afhang af kaldstedernes form frem for af storen: ét indskudt `await` eller F-09's `run_in_threadpool` gør racet ægte uden at nogen bemærker det.
+- **Undtagelse:** `login()` er kun serialiseret om mutate+save. Dens load..save-span omslutter TACACS-netværkskaldet, og en blokerende lås hen over det ville serialisere alle logins bag en langsom TACACS-server; `last_login` er et tidsstempel uden sikkerhedsbetydning.
+- **Regressions-vagt:** `test_transaction_serialises_concurrent_writers` (to tråde taber ikke hinandens skrivninger), `test_transaction_is_reentrant`, og `test_read_modify_write_sites_are_wrapped` der fanger et nyt kaldsted uden lås.
 - **Berørte filer:** `backend/app/core/user_store.py:17-31`, `backend/app/api/auth.py:101-103`, `backend/app/api/me.py:86, 115, 138, 308`, `backend/app/services/user_service.py` (9 steder), `backend/app/api/deps.py:98`
 
 ## [FIXED 7.3.0758] 2026-08-18 — F-07: Bag nginx deler hele portalen én rate-limit-bucket (MIDDEL)
@@ -141,11 +155,13 @@ default-ændring de afhang af. Resterende anbefalet rækkefølge: **F-04 + F-03*
 - **Foreslået løsning:** Byg cache-navnet af build-nummeret fra `version.json`, så `activate` rydder den gamle cache ved hver opdatering.
 - **Berørte filer:** `frontend/service-worker.js:6, 32-39`, `backend/app/main.py:365-368`
 
-## [OPEN] 2026-08-18 — F-15: To runtime-databaser mangler i .gitignore (LAV)
+## [FIXED 7.3.0759+] 2026-08-19 — F-15: To runtime-databaser mangler i .gitignore (LAV)
 
 - **Symptom:** `backend/lockout.db` og `backend/metrics_history.db` ligger som utrackede filer i arbejdstræet og vil blive committet af et bredt `git add`. `lockout.db` indeholder brugernavne fra fejlede loginforsøg.
 - **Root cause:** `audit.db` (+ `-journal`/`-wal`/`-shm`) og alle JSON-stores er ignoreret, men de to nyere databaser blev ikke tilføjet da de kom til.
 - **Foreslået løsning:** Tilføj `backend/lockout.db*` og `backend/metrics_history.db*` til `.gitignore` (dækker WAL- og journal-suffikser). Verificér at ingen af dem allerede ligger i git-historikken.
+- **Løsning (efter 7.3.0759, ingen versionsbump — `.gitignore` er ikke kode):** `backend/lockout.db*` og `backend/metrics_history.db*` tilføjet til `.gitignore` (inkl. `-journal`/`-wal`/`-shm`), og begge filer fjernet fra sporing med `git rm --cached`.
+- **Note:** de blev faktisk committet ved et uheld i 7.3.0759 via et bredt `git add -A backend` — præcis det scenarie denne entry beskrev. Indholdet var 16 rækker testdata (brugernavn `findes_ikke`) og nul rigtige brugernavne, så historikken er ikke omskrevet. Var der stået rigtige konti i, ville det have krævet en `filter-repo`-rensning.
 - **Berørte filer:** `.gitignore:21-27`
 
 ## [OPEN] 2026-08-18 — F-16: Log-endpoints læser hele logfiler synkront i event-loopen (LAV)

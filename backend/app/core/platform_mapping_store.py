@@ -27,6 +27,7 @@ from pathlib import Path
 from typing import Any
 
 from app.core.platform_types import KNOWN_PLATFORM_TYPES  # noqa: F401 — re-exported
+from app.core.atomic_json import atomic_write_json
 
 STORE_FILE = Path(__file__).resolve().parents[2] / "platform_mapping.json"
 
@@ -87,10 +88,7 @@ def save_mapping(rows: list[dict[str, str]]) -> list[dict[str, str]]:
             break
         clean.append({"raw": raw, "local": local, "coa": coa})
     STORE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    STORE_FILE.write_text(
-        json.dumps({"mappings": clean}, indent=2, ensure_ascii=False),
-        encoding="utf-8",
-    )
+    atomic_write_json(STORE_FILE, {"mappings": clean})
     return clean
 
 

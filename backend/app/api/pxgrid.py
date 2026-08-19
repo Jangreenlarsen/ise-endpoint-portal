@@ -13,13 +13,11 @@ import asyncio
 import json
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 
-from app.api.deps import get_current_user, require_admin, require_any
-from app.core import auth as auth_core
+from app.api.deps import require_admin, require_any
 from app.core import config
-from app.core.user_store import find_by_id, load_users
 from app.pxgrid.session_cache import get_cache
 from app.pxgrid.session_worker import get_worker
 from app.schemas.settings import (
@@ -73,19 +71,26 @@ async def list_sessions() -> PxGridSessionsResponse:
     )
 
 
-@router.get("/sessions/stream")
-async def sessions_stream(
-    request: Request,
-    token: str = Query("", description="Bearer-token fallback — httpOnly cookie foretrukket"),
-):
+@router.get("/sessions/stream", dependencies=[Depends(require_any)])
+async def sessions_stream(request: Request):
     """SSE-stream af session-cache deltas.
 
     **VIGTIGT:** denne route SKAL stå før ``/sessions/{mac}`` så FastAPI
     ikke matcher ``/sessions/stream`` som ``mac="stream"`` og returnerer 404.
 
-    EventSource API kan ikke sætte custom headers — autentificering via:
-    1. httpOnly ``hv_token``-cookie (same-origin, sendes automatisk med withCredentials)
-    2. ``?token=`` query-param fallback (file://-udviklingsmiljø)
+    **Autorisation:** ``require_any`` — samme niveau som ``/sessions`` og
+    ``/sessions/{mac}``, der serverer de samme data. Rollekravet lå tidligere i
+    en håndrullet kopi af ``get_current_user`` her i funktionskroppen, og den
+    kopi validerede token men **aldrig rollen** — så ``registrant`` og
+    ``registrant_templet``, der ikke må browse endpoints, kunne læse hele
+    live-strømmen af RADIUS-sessioner (BUGS.md F-04). Duplikér ikke auth-logik;
+    brug dependencies.
+
+    EventSource kan ikke sætte custom headers, men sender same-origin cookies
+    med ``withCredentials`` — den httpOnly ``hv_token``-cookie er derfor nok, og
+    ``get_current_user`` læser den. Den tidligere ``?token=``-query-fallback er
+    fjernet: frontenden brugte den ikke, og query-strenge havner i proxy-logs og
+    browserhistorik.
 
     Event-types:
       - ``snapshot``: initial fuld liste ved connect
@@ -94,24 +99,6 @@ async def sessions_stream(
       - ``clear``: cache wiped (worker-reset)
       - ``ping``: keepalive (hver 15s)
     """
-    effective_token = request.cookies.get("hv_token") or token
-    payload = auth_core.verify_token(effective_token) if effective_token else None
-    if not payload or not isinstance(payload.get("sub"), str):
-        raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED, "Manglende eller ugyldigt token"
-        )
-    # TACACS+-brugere har ingen lokal record — al info er i token (samme logik som deps.get_current_user).
-    if payload.get("auth_type") == "tacacs":
-        role = payload.get("role", "")
-        if not role:
-            raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Ugyldigt TACACS+ token")
-    else:
-        record = find_by_id(load_users(), payload["sub"])
-        if not record or record["role"] != payload.get("role"):
-            raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Bruger ikke fundet")
-        if payload.get("gen", 0) != record.get("token_gen", 0):
-            raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Token er tilbagekaldt — log ind igen")
-
     cache = get_cache()
     queue = cache.subscribe()
 

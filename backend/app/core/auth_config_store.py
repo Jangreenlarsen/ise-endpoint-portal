@@ -11,6 +11,7 @@ import json
 import os
 from pathlib import Path
 from typing import Any
+from app.core.atomic_json import atomic_write_json
 
 _FILE = Path(__file__).resolve().parents[2] / "auth_config.json"
 
@@ -39,9 +40,4 @@ def load() -> dict[str, Any]:
 
 def save(data: dict[str, Any]) -> None:
     _FILE.parent.mkdir(parents=True, exist_ok=True)
-    _FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-    if os.name != "nt":
-        try:
-            _FILE.chmod(0o600)
-        except OSError:
-            pass
+    atomic_write_json(_FILE, data, mode=0o600)

@@ -13,6 +13,7 @@ import os
 import subprocess
 from pathlib import Path
 from typing import Any
+from app.core.atomic_json import atomic_write_json
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,7 @@ def load_overrides() -> dict[str, Any]:
 
 def save_overrides(data: dict[str, Any]) -> None:
     CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
-    CONFIG_FILE.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    atomic_write_json(CONFIG_FILE, data, ensure_ascii=True, mode=0o600)
     if os.name == "nt":
         _restrict_windows(CONFIG_FILE)
     else:

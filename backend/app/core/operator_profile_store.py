@@ -6,6 +6,7 @@ import json
 import os
 import uuid
 from pathlib import Path
+from app.core.atomic_json import atomic_write_json
 
 _STORE_FILE = Path(__file__).resolve().parents[2] / "operator_profiles.json"
 
@@ -20,15 +21,7 @@ def _load_raw() -> list[dict]:
 
 
 def _save_raw(profiles: list[dict]) -> None:
-    _STORE_FILE.write_text(
-        json.dumps(profiles, ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
-    if os.name != "nt":
-        try:
-            _STORE_FILE.chmod(0o600)
-        except OSError:
-            pass
+    atomic_write_json(_STORE_FILE, profiles, mode=0o600)
 
 
 def load_profiles() -> list[dict]:

@@ -3,6 +3,43 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [7.3.0761] — 2026-08-19 — fix: atomiske skrivninger af al JSON-tilstand + serialiseret users.json (F-05/F-06)
+
+Samtlige ni JSON-stores skrev med et direkte `Path.write_text()`, der **trunkerer filen før den skriver**. Afbrydes processen i det vindue, står filen tom eller halv — og `load_users()` returnerer stille `[]` ved parse-fejl, så symptomet ikke er en fejlmeddelelse men en portal hvor ingen kan logge ind. Vinduet var reelt: opdateringstjenesten afsluttede selv processen med `os._exit(0)`, og `save_users()` kaldes fra 17 steder, heriblandt hvert logout. Bugfix → kun `build` (0760→0761).
+
+- **`core/atomic_json.py` (ny)**: `atomic_write_json()` og `atomic_write_text()`. Skriver til en temp-fil i **samme mappe** (så `os.replace` bliver en rename inden for ét filsystem og dermed atomisk), `flush()` + `os.fsync()`, derefter `os.replace()`. Læsere ser enten den gamle eller den nye fil — aldrig noget derimellem. `mode` sættes på temp-filen **før** flytningen, så den færdige fil aldrig et øjeblik er for åben.
+- **Alle ni stores konverteret**: `user_store`, `settings_store`, `auth_config_store`, `template_store`, `role_catalog`, `operator_profile_store`, `platform_mapping_store`, `custom_attr_store` og disk-cachen i `endpoint_cache`.
+- **`services/update_service.py`**: `schedule_restart()` forsøger nu en **pæn** nedlukning via SIGTERM, så uvicorn kan køre lifespan-shutdown færdig (den gemmer bl.a. pxGrid-session-cachen). `os._exit(0)` er bevaret som fallback efter 10 s — en genstart der ikke sker, er værre end en hård en. Restart-tasken holdes nu i en modul-reference, så den ikke kan garbage-collectes (samme klasse som F-10).
+
+**F-06 — korrektion af fundet.** Revisionen beskrev et aktivt kapløb om `users.json`. Ved implementeringen viste det sig **ikke at være nåbart**: alle 164 route-handlere er `async def` (intet kører i FastAPI's threadpool), og der er intet `await` mellem `load_users()` og `save_users()` i noget kaldsted, så sekvenserne er atomiske i den enkelttrådede event-loop. Severity nedjusteret HØJ → MIDDEL.
+
+Ændringen er derfor **forebyggende**, ikke en rettelse af en live fejl — men den er værd at lave: garantien afhang af kaldstedernes form frem for af storen, og ét indskudt `await` eller F-09's `run_in_threadpool` gør racet ægte uden at nogen bemærker det.
+
+- **`core/user_store.py`**: `transaction()` — en `threading.RLock` som context manager om hele læs-ret-skriv-sekvensen. 15 kaldsteder wrappet i `user_service.py`, `api/me.py` og `api/auth.py`. `login()` er bevidst kun serialiseret om mutate+save: dens load..save-span omslutter TACACS-netværkskaldet, og en blokerende lås hen over det ville serialisere alle logins bag en langsom TACACS-server; `last_login` er et tidsstempel uden sikkerhedsbetydning.
+- **`tests/test_atomic_state.py` (ny)**: 11 tests. Den originale fil overlever en fejlet serialisering, ingen temp-filer efterlades, temp-filen ligger i målmappen (ellers er `os.replace` ikke atomisk), kortere payload efterlader ikke hale, `mode` sættes før rename, to tråde taber ikke hinandens skrivninger, låsen er reentrant — plus to **strukturelle vagter**: ingen store må genindføre rå `write_text()`, og intet nyt `save_users()`-kaldsted må stå uden `transaction()`. Suite: 319 grønne (309 → 319).
+
+## [7.3.0760] — 2026-08-19 — fix: nmap-flag valideres nu mod en allowlist + rollekrav strammet (F-03)
+
+`_validate_flags()` afviste otte navngivne flag og slap alt andet igennem til `create_subprocess_exec`. Denylister på nmap-flag kan ikke gøres komplette: den manglede bl.a. `-oS` og `--append-output` (vilkårlig filskrivning som portal-brugeren), `--datadir`, `--servicedb` og `--versiondb` (nmap læser data fra en sti angriberen vælger), `--stylesheet` og `-iR`. Ruten krævede desuden `require_register_lookup`, som omfatter **samtlige** roller. Bugfix → kun `build` (0759→0760).
+
+- **`services/nmap_service.py`**: Denylisten erstattet med en **allowlist**. `_FLAGS_NO_VALUE` (scan-typer uden root-krav, host discovery, verbositet, `-T0`–`-T5`) og `_FLAGS_WITH_VALUE` (`-p`, `--top-ports`, rate/timeout-styring). Et ukendt flag afvises per definition. Værdier valideres mod `[A-Za-z0-9][A-Za-z0-9,.:*_-]*`, som udelukker `/` og `\` — et flag kan dermed aldrig pege på en fil. Understøtter `--flag=v`, `--flag v` og sammenhængende `-p80,443`. Loft på 12 tokens.
+- **Ukendt preset fejler nu eksplicit.** Tidligere faldt det **tavst** tilbage til `service`-presettet, så et kald med det fjernede `os`-preset (stadig annonceret i API-skemaet) kørte en helt anden scanning end kalderen bad om. Nu → 422 med listen over gyldige presets.
+- **`api/nmap.py`**: `require_register_lookup` → `require_edit_endpoint` (admin, editor, editor-psk). En scanning er en aktiv netværkshandling der starter en subprocess på serveren; den hører ikke hjemme hos `viewer`, `registrant` eller `registrant_templet`. `os` fjernet fra `preset`-beskrivelsen.
+- **`tests/test_nmap_flags.py` (ny)**: 36 tests. Hvert af de syv flag den gamle denylist slap igennem har sin egen case, de otte oprindelige afvises stadig, allowlist-egenskaben verificeres med et opdigtet flag, sti-værdier afvises, og rollekravet tjekkes på selve ruten. Suite: 309 grønne (273 → 309).
+
+**Bevaret:** frontendens "custom"-knap med fritekst-flag virker uændret for de flag der giver mening at bruge fra portalen.
+
+## [7.3.0759] — 2026-08-19 — fix: SSE-strømmen med live-sessioner mangler rollekontrol (F-04)
+
+`GET /api/pxgrid/sessions/stream` havde ikke `dependencies=[Depends(require_any)]` som sine søsterruter. Auth var håndrullet i funktionskroppen, fordi `EventSource` ikke kan sætte headers, og den kopi validerede token, brugerens eksistens og `token_gen` — men **aldrig rollen**. `registrant` og `registrant_templet`, der efter design kun må oprette endpoints og ikke browse, kunne dermed abonnere på hele live-strømmen af RADIUS-sessioner: MAC, bruger, IP og NAS for hver enhed på nettet. Bugfix → kun `build` (0758→0759).
+
+- **`api/pxgrid.py`**: Hele den håndrullede auth-blok (17 linjer) erstattet med `dependencies=[Depends(require_any)]` — samme krav som `/sessions` og `/sessions/{mac}`, der serverer de samme data. `EventSource` sender same-origin cookies med `withCredentials`, og `get_current_user` læser den httpOnly `hv_token`-cookie, så dependency'en dækker behovet.
+- **`?token=`-query-fallbacken er fjernet.** Den var dokumenteret som `file://`-udviklingsmiljø, men frontenden har aldrig brugt den (`new EventSource(url, {withCredentials: true})`), og query-strenge havner i nginx' access-log og browserhistorik.
+- Døde imports fjernet: `auth_core`, `find_by_id`, `load_users`, `Query`.
+- **`tests/test_authz.py`**: 5 nye tests — `registrant` → 403, `viewer` → 200, uautentificeret → 401, gyldigt token i `?token=` → 401, plus en **strukturel vagt** der sammenligner dependency-navnene på `/sessions/stream` med `/sessions`, så ruten ikke igen kan få sin egen auth-kopi uden rollekrav. Suite: 273 grønne (268 → 273).
+
+**Lærdom:** fejlen opstod ved at duplikere `get_current_user` i hånden i stedet for at bruge en dependency. Den positive test kræver at `pxgrid_enabled` slås fra, ellers er svaret en uendelig event-strøm som TestClient blokerer på.
+
 ## [7.3.0758] — 2026-08-18 — fix: Selvregistrering verificerer nu at MAC-adressen tilhører afsenderen (F-01/F-02/F-07)
 
 Lukker de to kritiske fund fra portalrevisionen 2026-08-18. `POST /api/selfregister` er uautentificeret og tog MAC-adressen direkte fra request-body uden nogensinde at verificere den — docstringen lovede "MAC verificeret via MnT session-lookup", men `/session` var et separat GET-kald der kun oplyste frontenden. Enhver der kunne nå portalen kunne registrere en vilkårlig MAC eller overskrive et eksisterende endpoints gruppe og autorisations-attributter. Sikkerhedsfix → kun `build` (0757→0758).

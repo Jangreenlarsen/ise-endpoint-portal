@@ -4,6 +4,22 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [7.3.0761] — 2026-08-19 — 🛡️ Portalen kan ikke længere miste sine indstillinger ved en afbrudt genstart
+
+- **Brugere og indstillinger skrives nu sikkert til disk.** Blev portalen afbrudt netop mens den gemte — typisk under en opdaterings-genstart — kunne filen med brugerkonti eller indstillinger stå tom bagefter. Var det brugerfilen, kunne ingen logge ind. Portalen skriver nu til en midlertidig fil og bytter den på plads i ét hug, så en afbrydelse altid efterlader enten den gamle eller den nye udgave — aldrig en halv. Det gælder brugere, indstillinger, skabeloner, roller, operatørprofiler, attribut-opsætning og enheds-cachen.
+- **Opdateringer lukker nu portalen pænt ned.** Ved en automatisk genstart efter opdatering afbrød portalen sig selv hårdt og nåede ikke at gemme sin sessionsoversigt. Den får nu lov at lukke ordentligt ned først, med hård afbrydelse som nødløsning hvis den ikke er nede efter 10 sekunder.
+
+## [7.3.0760] — 2026-08-19 — 🔒 Sikkerhedsrettelse: nmap-scanning
+
+- **Scanning er nu forbeholdt redigerings-roller.** Alle roller — også *viewer*, *registrant* og *registrant_templet* — kunne starte en nmap-scanning på serveren. Det kan nu kun admin, editor og editor-psk.
+- **Egne scan-tilvalg kontrolleres strengere.** Feltet til egne nmap-tilvalg accepterede næsten alt, herunder tilvalg der kunne skrive filer på serveren eller få nmap til at hente data fra en vilkårlig mappe. Kun kendte, ufarlige tilvalg accepteres nu; resten afvises med en forklaring. De almindelige tilvalg — portvalg, hastighed, scan-type — virker som før.
+- **Ukendt scan-type giver nu en fejl.** Angav man en scan-type portalen ikke kender, kørte den tidligere stilfærdigt en anden scanning i stedet. Nu får man besked om hvilke typer der findes.
+
+## [7.3.0759] — 2026-08-19 — 🔒 Sikkerhedsrettelse: live-sessionsvisning
+
+- **Registrerings-konti kunne se live-sessioner.** Brugere med rollen *registrant* eller *registrant_templet* — der kun må oprette enheder og ikke se listen over endpoints — kunne alligevel følge den løbende strøm af netværkssessioner og dermed se MAC-adresse, brugernavn, IP og switch/AP for hver enhed på nettet. Strømmen kræver nu samme rolle som resten af sessionsvisningen.
+- **Adgangstoken kan ikke længere sendes i adressen.** Det var muligt at logge på sessionsstrømmen med et token i selve URL'en, hvilket efterlod det i proxy-logs og browserhistorik. Portalen bruger nu udelukkende den sikre cookie. Ingen ændring i det daglige brug.
+
 ## [7.3.0758] — 2026-08-18 — 🔒 Sikkerhedsrettelse: selvregistrering
 
 **Denne opdatering slår gæste-selvregistrering FRA som standard.** Bruger I funktionen, skal den slås til igen under Indstillinger → Backend efter opdateringen. Har I nogensinde gemt backend-indstillinger, er jeres valg allerede gemt, og der sker ingenting.
