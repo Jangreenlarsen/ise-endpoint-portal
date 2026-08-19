@@ -105,8 +105,14 @@ class Settings(BaseSettings):
     coa_psn_name: str = Field(
         default="",
         description=(
-            "PSN hostname that issues the CoA. If empty, the host portion of "
-            "ise_base_url is used as fallback."
+            "Hostnavn på den PSN der skal UDSTEDE CoA'en — sti-parameteren "
+            "{psnName} i /admin/API/mnt/CoA/. Selve CoA-pakken originerer fra "
+            "PSN'ens RADIUS-persona mod NAD'en (UDP 1700/3799); ISE modtager "
+            "ikke en CoA. HTTP-kaldet går altid til MnT-noden (ise_base_url). "
+            "Er feltet tomt, udledes værdien af ise_base_url's hostnavn — i en "
+            "distribueret opsætning er det PAN'en, som typisk ikke kører "
+            "PSN-personaen, og så sendes der ingen CoA. Sæt den til den PSN der "
+            "holder klientens session."
         ),
     )
     coa_reauth_type: int = Field(

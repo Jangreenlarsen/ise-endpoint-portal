@@ -55,11 +55,11 @@ baggrundstasks) → resten som almindelig oprydning.
 - **Regressions-vagt:** `test_upsert_rejected_when_guest_group_not_configured`, `test_new_endpoint_still_created_without_guest_group`.
 - **Berørte filer:** `backend/app/api/selfregister.py:372-374`
 
-## [FIXED 7.3.0762] 2026-08-19 — G-3: CoA sendes til PAN i stedet for PSN når coa_psn_name er tom (MIDDEL)
+## [FIXED 7.3.0762] 2026-08-19 — G-3: CoA-udsteder (psnName) defaulter til PAN'en når coa_psn_name er tom (MIDDEL)
 
 - **Symptom:** Efter en gennemført gæsteregistrering re-autentificeres klienten ikke automatisk. Gæsten får beskeden "Afbryd forbindelsen og opret den igen for at få adgang" — flowet degraderer synligt, men den automatiske del virker ikke.
-- **Root cause:** `_derive_psn()` falder tilbage til hostnavnet i `ise_base_url` når `coa_psn_name` er tom (default). I en distribueret ISE-opsætning er det PAN'en, ikke den PSN der holder gæstens session, så CoA'en rammer forkert. Konfigurationsfælde snarere end kodefejl — men den er tavs indtil man ser gæstens skærm.
-- **Foreslået løsning:** Log en tydelig advarsel når CoA sendes til en afledt PSN, så fejlkonfigurationen kan ses i loggen frem for kun på gæstens skærm. Sæt `coa_psn_name` i produktionsopsætningen.
+- **Root cause (præciseret 2026-08-19):** CoA-pakken originerer fra PSN'ens RADIUS-persona mod NAD'en (switch/WLC) på UDP 1700/3799 — **ISE modtager ikke en CoA**. Portalen kalder MnT-API'et `GET /admin/API/mnt/CoA/{action}/{psnName}/{mac}/{type}`, hvor HTTP-målet altid er MnT-noden (`ise_base_url`) — det er korrekt — mens `{psnName}` er en **sti-parameter** der navngiver hvilken node ISE skal lade udstede CoA'en. `_derive_psn()` udleder den fra `ise_base_url`s hostnavn når `coa_psn_name` er tom, så ISE bliver bedt om at lade **PAN'en** udstede. Kører den ikke PSN-personaen, sendes der ingen pakke — og NAD'en ville uanset hvad afvise en CoA fra en kilde den ikke har som RADIUS-server med matchende shared secret. [ISE_API_REFERENCE.md](ISE_API_REFERENCE.md) beskriver `psnName` som "typisk samme host som MnT", hvilket kun holder i en standalone-node hvor alle personaer kører samme sted. Konfigurationsfælde snarere end kodefejl — men tavs indtil man ser gæstens skærm.
+- **Foreslået løsning:** Log en tydelig advarsel når `psnName` udledes, så fejlkonfigurationen kan ses i loggen frem for kun på gæstens skærm. Sæt `coa_psn_name` til den PSN der holder klientens session.
 - **Løsning (v7.3.0762) — delvis:** Fallbacken logger nu en tydelig advarsel om at CoA sendes til en afledt PSN, og at det sandsynligvis er PAN'en. Symptomet var ellers kun synligt på gæstens skærm. **Selve rettelsen er konfiguration:** sæt `coa_psn_name` i Indstillinger.
 - **Berørte filer:** `backend/app/ise/coa.py:36-41`, `backend/app/core/config.py:105`
 
