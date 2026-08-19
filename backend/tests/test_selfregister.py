@@ -246,3 +246,99 @@ def test_binding_store_is_bounded():
     for i in range(selfregister_bindings.MAX_BINDINGS + 50):
         selfregister_bindings.bind(f"10.0.{i // 256}.{i % 256}", MY_MAC)
     assert len(selfregister_bindings._bindings) <= selfregister_bindings.MAX_BINDINGS
+
+
+# ── G-1: gen-registrering må ikke rydde eksisterende attributter ─────────────
+#
+# ISE ERS merger customAttributes på PUT: en udeladt nøgle bevarer sin værdi,
+# mens en TOM STRENG rydder den. CustomAttrs har "" som default på flere felter,
+# så en naiv konstruktion tømte Type/Owner/Lokation/PlatformType/HypervisionRoles
+# på et eksisterende endpoint — og uden konfigureret AuthzVlan/ACL fjernede den
+# gæstens autorisation i stedet for at give den.
+
+_WIPEABLE = ("Type", "Owner", "Lokation", "PlatformType", "HypervisionRoles")
+
+
+def _ca_sent_to_ise(svc) -> dict:
+    """Custom-attributter fra det EndpointUpdate der blev sendt til servicen."""
+    update = svc.update_endpoint.await_args.args[1]
+    return update.custom_attributes.model_dump(exclude_none=True)
+
+
+def test_reregistration_does_not_wipe_untouched_attributes(client):
+    with _mnt(MY_MAC):
+        client.get("/api/selfregister/session")
+    with _ise({"id": "guest-id", "groupId": GUEST_GROUP}) as svc:
+        r = client.post(
+            "/api/selfregister",
+            json={"registrant_name": "Alice", "agreed": True},
+        )
+    assert r.status_code == 200
+    ca = _ca_sent_to_ise(svc)
+    for field in _WIPEABLE:
+        assert field not in ca, f"{field} sendes med og ville rydde eksisterende værdi"
+
+
+def test_reregistration_omits_authz_when_not_configured(client, monkeypatch):
+    """Uden konfigureret AuthzVlan/ACL må de ikke sendes som tom streng."""
+    monkeypatch.setattr(config.settings, "selfregister_authz_vlan", "", raising=False)
+    monkeypatch.setattr(config.settings, "selfregister_authz_acl", "", raising=False)
+    with _mnt(MY_MAC):
+        client.get("/api/selfregister/session")
+    with _ise({"id": "guest-id", "groupId": GUEST_GROUP}) as svc:
+        client.post("/api/selfregister", json={"registrant_name": "Alice", "agreed": True})
+    ca = _ca_sent_to_ise(svc)
+    assert "AuthzVlan" not in ca and "AuthzACL" not in ca
+
+
+def test_reregistration_sets_authz_when_configured(client, monkeypatch):
+    monkeypatch.setattr(config.settings, "selfregister_authz_vlan", "guest-vlan", raising=False)
+    monkeypatch.setattr(config.settings, "selfregister_authz_acl", "guest-acl", raising=False)
+    with _mnt(MY_MAC):
+        client.get("/api/selfregister/session")
+    with _ise({"id": "guest-id", "groupId": GUEST_GROUP}) as svc:
+        client.post("/api/selfregister", json={"registrant_name": "Alice", "agreed": True})
+    ca = _ca_sent_to_ise(svc)
+    assert ca["AuthzVlan"] == "guest-vlan"
+    assert ca["AuthzACL"] == "guest-acl"
+
+
+def test_attributes_the_flow_owns_are_still_written(client):
+    with _mnt(MY_MAC):
+        client.get("/api/selfregister/session")
+    with _ise({"id": "guest-id", "groupId": GUEST_GROUP}) as svc:
+        client.post("/api/selfregister", json={"registrant_name": "Alice", "agreed": True})
+    ca = _ca_sent_to_ise(svc)
+    assert ca["RegistretBy"] == "Alice"
+    assert ca["GuestRegistration"] == "true"
+    assert ca["HypervisionActive"] == "Aktiv"
+
+
+# ── G-2: spærren skal også holde uden konfigureret gæstegruppe ───────────────
+
+def test_upsert_rejected_when_guest_group_not_configured(client, monkeypatch):
+    """Uden gæstegruppe kan portalen ikke vide om endpointet er en gæst."""
+    monkeypatch.setattr(config.settings, "selfregister_group_id", "", raising=False)
+    with _mnt(MY_MAC):
+        client.get("/api/selfregister/session")
+    with _ise({"id": "some-id", "groupId": "whatever-group"}) as svc:
+        r = client.post(
+            "/api/selfregister",
+            json={"registrant_name": "Mallory", "agreed": True},
+        )
+    assert r.status_code == 409
+    svc.update_endpoint.assert_not_awaited()
+
+
+def test_new_endpoint_still_created_without_guest_group(client, monkeypatch):
+    """G-2 må kun ramme UPSERT — en helt ny MAC skal stadig kunne registreres."""
+    monkeypatch.setattr(config.settings, "selfregister_group_id", "", raising=False)
+    with _mnt(MY_MAC):
+        client.get("/api/selfregister/session")
+    with _ise(None) as svc:
+        r = client.post(
+            "/api/selfregister",
+            json={"registrant_name": "Alice", "agreed": True},
+        )
+    assert r.status_code == 200
+    svc.create_endpoint.assert_awaited_once()

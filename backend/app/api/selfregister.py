@@ -335,14 +335,29 @@ async def selfregister(req: SelfRegisterRequest, request: Request) -> SelfRegist
 
     service = get_endpoint_service()
 
-    # Byg custom-attributter
+    # Byg custom-attributter.
+    #
+    # VIGTIGT (BUGS.md G-1): ISE ERS *merger* customAttributes-blokken på PUT, så
+    # en udeladt nøgle bevarer sin gamle værdi mens en TOM STRENG rydder den.
+    # `IseEndpointRepository.update()` bevarer derfor bevidst tomme strenge.
+    # `CustomAttrs` har `""` som default på Type/Owner/Lokation/PlatformType/
+    # HypervisionRoles, og `model_dump(exclude_none=True)` beholder dem — så en
+    # gen-registrering ville tømme alle de felter på et eksisterende endpoint.
+    # Her sættes de eksplicit til None, så de udelades helt af payloaden:
+    # selvregistrering skal kun røre de attributter den selv ejer.
     ca = CustomAttrs(
         RegistretBy=registrant,
         GuestRegistration="true",
         HypervisionActive="Aktiv",
-        AuthzVlan=s.selfregister_authz_vlan or "",
-        AuthzACL=s.selfregister_authz_acl or "",
     )
+    for _untouched in ("Type", "Owner", "Lokation", "PlatformType", "HypervisionRoles"):
+        setattr(ca, _untouched, None)
+
+    # AuthzVlan/AuthzACL sættes kun når de faktisk er konfigureret. Ellers ville
+    # en tom værdi rydde gæstens autorisation i stedet for at give den.
+    ca.AuthzVlan = s.selfregister_authz_vlan or None
+    ca.AuthzACL = s.selfregister_authz_acl or None
+
     if psk_key and s.selfregister_ipsk_enabled:
         ca.PSK_Mode = "true"
         ca.PSK_Key = psk_key
@@ -371,15 +386,30 @@ async def selfregister(req: SelfRegisterRequest, request: Request) -> SelfRegist
         # gæstegruppen og få ændret dets AuthzVlan/AuthzACL (BUGS.md F-01).
         guest_group = (s.selfregister_group_id or "").strip()
         current_group = (existing.get("groupId") or "").strip()
-        if guest_group and current_group != guest_group:
-            logger.warning(
-                "selfregister: afvist gen-registrering af mac=%s — endpoint er i "
-                "gruppe %s, ikke gæstegruppen %s (ip=%s)",
-                mac, current_group or "(ingen)", guest_group, client_ip,
+        # Uden en konfigureret gæstegruppe kan portalen ikke afgøre OM et
+        # eksisterende endpoint er en gæst — og må derfor ikke røre det
+        # (BUGS.md G-2). Tidligere sprang spærren helt over i det tilfælde,
+        # hvilket er default-opsætningen.
+        if not guest_group or current_group != guest_group:
+            reason = (
+                "guest_group_not_configured" if not guest_group else "not_in_guest_group"
             )
+            if not guest_group:
+                logger.warning(
+                    "selfregister: afvist gen-registrering af mac=%s — "
+                    "selfregister_group_id er ikke konfigureret, så portalen kan ikke "
+                    "afgøre om endpointet er en gæst (ip=%s)",
+                    mac, client_ip,
+                )
+            else:
+                logger.warning(
+                    "selfregister: afvist gen-registrering af mac=%s — endpoint er i "
+                    "gruppe %s, ikke gæstegruppen %s (ip=%s)",
+                    mac, current_group or "(ingen)", guest_group, client_ip,
+                )
             await audit_store.record(
                 "selfregister_rejected", "endpoint", existing.get("id", ""),
-                after={"mac": mac, "reason": "not_in_guest_group",
+                after={"mac": mac, "reason": reason,
                        "current_group": current_group, "source_ip": client_ip},
             )
             raise HTTPException(

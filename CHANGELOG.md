@@ -3,6 +3,19 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [7.3.0762] — 2026-08-19 — fix: gæsteflowet — gen-registrering rydder ikke længere attributter (G-1/G-2/G-3)
+
+Fundet i en gennemgang af om gæsteflowet overhovedet virker som tiltænkt. To kodefejl og én tavs konfigurationsfælde. Bugfix → kun `build` (0761→0762).
+
+- **G-1 (HØJ) — `api/selfregister.py`**: Registrerede en gæst sig igen på en MAC der allerede fandtes i ISE, blev `Type`, `Owner`, `Lokation`, `AuthzVlan`, `AuthzACL`, `PlatformType` og `HypervisionRoles` **tømt** på endpointet. Årsag: ISE ERS merger `customAttributes` på PUT, så en udeladt nøgle bevarer sin værdi mens en tom streng *rydder* den — og `IseEndpointRepository.update()` bevarer derfor bevidst tomme strenge. `CustomAttrs` har `""` som default på netop de felter, og `model_dump(exclude_none=True)` beholder dem. Var `selfregister_authz_vlan`/`_acl` ikke sat — default — **fjernede en gen-registrering gæstens autorisation** i stedet for at give den. Selfregister sætter nu de felter den ikke ejer til `None`, så de udelades helt, og skriver kun AuthzVlan/ACL når de faktisk er konfigureret. Opret-stien var upåvirket (`create()` filtrerer tomme værdier fra).
+- **G-2 (MIDDEL) — `api/selfregister.py`**: Gæstegruppe-spærren fra 7.3.0758 lød `if guest_group and current_group != guest_group` og sprang derfor helt over når `selfregister_group_id` var tom — hvilket den er som default. Nu afvises gen-registrering også i det tilfælde: uden en defineret gæstegruppe kan portalen ikke afgøre om endpointet er en gæst og bør ikke røre det. Oprettelse af en **ny** MAC er upåvirket. Audit-årsagen skelner nu `guest_group_not_configured` fra `not_in_guest_group`.
+- **G-3 (MIDDEL) — `ise/coa.py`**: `_derive_psn()` falder tilbage til hostnavnet i `ise_base_url` når `coa_psn_name` er tom. I en distribueret opsætning er det PAN'en, ikke den PSN der holder sessionen, så CoA'en rammer forkert og gæsten re-autentificeres aldrig. Symptomet var kun synligt på gæstens skærm; fallbacken logger nu en tydelig advarsel. Selve rettelsen er konfiguration — sæt `coa_psn_name`.
+- **`tests/test_selfregister.py`**: 6 nye tests. Gen-registrering sender ikke de fem felter den ikke ejer; AuthzVlan/ACL udelades når de ikke er konfigureret og sættes når de er; de attributter flowet ejer skrives stadig; upsert afvises uden gæstegruppe; en ny MAC kan stadig oprettes uden gæstegruppe. Suite: 325 grønne (319 → 325).
+
+**Bevidst afgrænsning:** G-1 er rettet **lokalt i selfregister**, ikke i `CustomAttrs`-skemaet. At ændre feltdefaults fra `""` til `None` ville være den principielt rigtigere merge-semantik, men det ville samtidig ændre adfærden for bulk-/CSV-stien, der sender delvise dicts — altså portalens kerne-redigering. Noteret som muligt oprydningsarbejde.
+
+**G-4 (ikke en kodeændring):** flowet forudsætter at klientens afsender-IP er identisk med framed-IP'en i RADIUS-sessionen — både MnT-opslaget og ActiveList-fallbacken matcher på den. NAT mellem gæste-VLAN og portal gør registrering umulig uanset konfiguration. Registreret i BUGS.md som dokumentationsopgave.
+
 ## [7.3.0761] — 2026-08-19 — fix: atomiske skrivninger af al JSON-tilstand + serialiseret users.json (F-05/F-06)
 
 Samtlige ni JSON-stores skrev med et direkte `Path.write_text()`, der **trunkerer filen før den skriver**. Afbrydes processen i det vindue, står filen tom eller halv — og `load_users()` returnerer stille `[]` ved parse-fejl, så symptomet ikke er en fejlmeddelelse men en portal hvor ingen kan logge ind. Vinduet var reelt: opdateringstjenesten afsluttede selv processen med `os._exit(0)`, og `save_users()` kaldes fra 17 steder, heriblandt hvert logout. Bugfix → kun `build` (0760→0761).

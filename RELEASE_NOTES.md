@@ -4,6 +4,12 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [7.3.0762] — 2026-08-19 — 🐛 Gæsteregistrering: gentagne registreringer ødelægger ikke længere enhedens opsætning
+
+- **Registrerede en gæst sig igen, blev enhedens oplysninger slettet.** Type, ejer, lokation, platform, roller og — vigtigst — tildelt VLAN og adgangsliste blev tømt på enheden. Var VLAN og adgangsliste ikke udfyldt i indstillingerne, fjernede en fornyet registrering dermed gæstens netværksadgang i stedet for at give den. Registreringen rører nu kun de felter den selv sætter.
+- **Enheder uden for gæstegruppen beskyttes nu også, når der ikke er valgt en gæstegruppe.** Er feltet "gæstegruppe" tomt i indstillingerne, kan selvregistrering ikke længere ændre en enhed der allerede findes. Nye enheder kan stadig registreres som før.
+- **Advarsel i loggen når CoA ikke kan sendes korrekt.** Er PSN-navnet ikke udfyldt i indstillingerne, sender portalen CoA til den forkerte ISE-node, og gæsten får ikke automatisk adgang — kun beskeden om selv at gentilslutte. Det står nu i loggen, så fejlen kan ses uden at kigge gæsten over skulderen. **Udfyld `coa_psn_name` i indstillingerne** hvis gæster oplever at skulle gentilslutte manuelt.
+
 ## [7.3.0761] — 2026-08-19 — 🛡️ Portalen kan ikke længere miste sine indstillinger ved en afbrudt genstart
 
 - **Brugere og indstillinger skrives nu sikkert til disk.** Blev portalen afbrudt netop mens den gemte — typisk under en opdaterings-genstart — kunne filen med brugerkonti eller indstillinger stå tom bagefter. Var det brugerfilen, kunne ingen logge ind. Portalen skriver nu til en midlertidig fil og bytter den på plads i ét hug, så en afbrydelse altid efterlader enten den gamle eller den nye udgave — aldrig en halv. Det gælder brugere, indstillinger, skabeloner, roller, operatørprofiler, attribut-opsætning og enheds-cachen.

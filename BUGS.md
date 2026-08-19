@@ -35,6 +35,41 @@ Resterende anbefalet rækkefølge: **F-09** (blokerende login — indfører ægt
 samtidighed, som F-06's lås nu er forberedt på) → **F-10** (tabbare
 baggrundstasks) → resten som almindelig oprydning.
 
+## [FIXED 7.3.0762] 2026-08-19 — G-1: Gæste-gen-registrering rydder eksisterende custom attributes (HØJ)
+
+- **Symptom:** Fundet i analyse af gæsteflowet (ikke felt-rapporteret). Registrerer en gæst sig igen på en MAC der allerede findes i ISE, tømmes `Type`, `Owner`, `Lokation`, `AuthzVlan`, `AuthzACL`, `PlatformType` og `HypervisionRoles` på endpointet. Er `selfregister_authz_vlan`/`selfregister_authz_acl` ikke sat i indstillingerne — og de er tomme som default — **fjerner en gen-registrering gæstens autorisation** i stedet for at give den. Det er det modsatte af hensigten med flowet.
+- **Root cause:** `IseEndpointRepository.update()` bevarer **bevidst** tomme strenge, fordi en udeladt nøgle bevarer den gamle værdi i ISE ERS' merge-semantik — en tom streng er den eneste måde at *rydde* en attribut. `selfregister` bygger sin `CustomAttrs` med modellens defaults (`Type: str = ""` osv.), og `model_dump(exclude_none=True)` beholder dem, fordi `""` ikke er `None`. Payloaden indeholder derfor syv tomme felter der alle læses som "ryd". Opret-stien er upåvirket: `create()` filtrerer tomme værdier fra.
+- **Foreslået løsning:** Lad selfregister kun sende de attributter den ejer. Sæt de øvrige til `None` efter konstruktionen, så `exclude_none=True` udelader dem. Fixes bevidst **lokalt** i selfregister frem for i `CustomAttrs`-skemaet: en ændring af feltdefaults fra `""` til `None` ville ændre merge-semantikken for bulk-/CSV-stien, der sender delvise dicts, og dermed røre portalens kerne-redigering.
+- **Løsning (v7.3.0762):** Selfregister sætter nu de felter den ikke ejer (`Type`, `Owner`, `Lokation`, `PlatformType`, `HypervisionRoles`) til `None` efter konstruktionen, så `exclude_none=True` udelader dem helt af PUT'en. `AuthzVlan`/`AuthzACL` skrives kun når de faktisk er konfigureret — ellers udelades de i stedet for at blive sendt som tom streng.
+- **Bevidst afgrænsning:** rettet **lokalt i selfregister**, ikke i `CustomAttrs`-skemaet. At ændre feltdefaults fra `""` til `None` ville være den principielt rigtigere merge-semantik, men ville samtidig ændre adfærden for bulk-/CSV-stien, der sender delvise dicts — altså portalens kerne-redigering. Noteret som muligt oprydningsarbejde.
+- **Regressions-vagt:** `test_reregistration_does_not_wipe_untouched_attributes`, `test_reregistration_omits_authz_when_not_configured`, `test_reregistration_sets_authz_when_configured`, `test_attributes_the_flow_owns_are_still_written`.
+- **Berørte filer:** `backend/app/api/selfregister.py` (CA-konstruktionen), jf. `backend/app/ise/endpoints.py:147-152` og `backend/app/services/endpoint_service.py:843`
+
+## [FIXED 7.3.0762] 2026-08-19 — G-2: Gæstegruppe-spærren slår ikke til når selfregister_group_id er tom (MIDDEL)
+
+- **Symptom:** Spærren fra F-01, der skal forhindre at et eksisterende endpoint uden for gæstegruppen kan overskrives via selvregistrering, springes helt over når `selfregister_group_id` er tom — hvilket den er som default.
+- **Root cause:** Betingelsen er `if guest_group and current_group != guest_group`. Er `guest_group` tom streng, er hele udtrykket falsk. Selvforskyldt hul i fixet fra 7.3.0758.
+- **Afgrænsning:** Bindingen fra F-01 holder stadig, så en gæst kan **kun** røre sin egen MAC — det fulde hul er ikke genåbnet. Restrisikoen er en enhed hvis MAC allerede findes som corporate-endpoint og som sidder på gæstenettet: dens record kan overskrives, og med G-1 tømmes dens attributter. Forsvar i dybden, ikke primær kontrol.
+- **Foreslået løsning:** Afvis gen-registrering af et eksisterende endpoint når `selfregister_group_id` ikke er konfigureret — uden en defineret gæstegruppe kan portalen ikke afgøre om endpointet er en gæst, og bør derfor ikke røre det.
+- **Løsning (v7.3.0762):** Betingelsen er nu `if not guest_group or current_group != guest_group` — uden konfigureret gæstegruppe afvises gen-registrering, fordi portalen ikke kan afgøre om endpointet er en gæst. Oprettelse af en **ny** MAC er upåvirket. Audit-årsagen skelner `guest_group_not_configured` fra `not_in_guest_group`.
+- **Regressions-vagt:** `test_upsert_rejected_when_guest_group_not_configured`, `test_new_endpoint_still_created_without_guest_group`.
+- **Berørte filer:** `backend/app/api/selfregister.py:372-374`
+
+## [FIXED 7.3.0762] 2026-08-19 — G-3: CoA sendes til PAN i stedet for PSN når coa_psn_name er tom (MIDDEL)
+
+- **Symptom:** Efter en gennemført gæsteregistrering re-autentificeres klienten ikke automatisk. Gæsten får beskeden "Afbryd forbindelsen og opret den igen for at få adgang" — flowet degraderer synligt, men den automatiske del virker ikke.
+- **Root cause:** `_derive_psn()` falder tilbage til hostnavnet i `ise_base_url` når `coa_psn_name` er tom (default). I en distribueret ISE-opsætning er det PAN'en, ikke den PSN der holder gæstens session, så CoA'en rammer forkert. Konfigurationsfælde snarere end kodefejl — men den er tavs indtil man ser gæstens skærm.
+- **Foreslået løsning:** Log en tydelig advarsel når CoA sendes til en afledt PSN, så fejlkonfigurationen kan ses i loggen frem for kun på gæstens skærm. Sæt `coa_psn_name` i produktionsopsætningen.
+- **Løsning (v7.3.0762) — delvis:** Fallbacken logger nu en tydelig advarsel om at CoA sendes til en afledt PSN, og at det sandsynligvis er PAN'en. Symptomet var ellers kun synligt på gæstens skærm. **Selve rettelsen er konfiguration:** sæt `coa_psn_name` i Indstillinger.
+- **Berørte filer:** `backend/app/ise/coa.py:36-41`, `backend/app/core/config.py:105`
+
+## [OPEN] 2026-08-19 — G-4: Gæsteflowet kræver at klientens IP ikke NAT'es undervejs (DOKUMENTATION)
+
+- **Symptom:** Findes der NAT mellem gæste-VLAN'et og portalen, finder MnT-opslaget aldrig en session, og gæsteregistrering er umulig — uanset konfiguration.
+- **Root cause:** Både den primære sti (`GET /admin/API/mnt/Session/IPAddress/{ip}`) og ActiveList-fallbacken matcher på klientens **framed IP** som ISE kender den. Portalen kan kun se afsender-IP'en på TCP-forbindelsen; er de to forskellige, er der intet match. Efter 7.3.0758 findes der bevidst ingen `?ip=`-nødudgang — den var netop sårbarheden i F-02.
+- **Foreslået løsning:** Ingen kodeændring mulig. Bør dokumenteres som en netværkskrav-forudsætning i `INSTALL.md`/`README.md`, og bekræftes i den konkrete topologi.
+- **Berørte filer:** `backend/app/ise/mnt_sessions.py:550-601` (analyse — ingen ændring)
+
 ## [FIXED 7.3.0758] 2026-08-18 — F-01: Selvregistrering binder ikke MAC-adressen til den der spørger (KRITISK)
 
 - **Symptom:** Fundet i portalrevision (ikke felt-rapporteret). `POST /api/selfregister` er uautentificeret og læser `mac` direkte fra request-body. Enhver der kan nå portalen kan (a) oprette en vilkårlig MAC i ISE med `HypervisionActive=Aktiv` + de konfigurerede `AuthzVlan`/`AuthzACL` — altså give netværksadgang til en enhed de ikke ejer; (b) ramme upsert-grenen på et **eksisterende** endpoint og overskrive dets `description`, custom-attributter og `group_id`, så en virksomhedsenhed kan flyttes til gæstegruppen og få ændret sin autorisation; (c) sætte en vilkårlig `PSK_Key` når IPSK er slået til.

@@ -33,10 +33,24 @@ def _normalize_mac(mac: str) -> str:
 
 
 def _derive_psn(configured: str, base_url: str) -> str:
-    """Return the configured PSN name, or derive from ise_base_url host."""
+    """Return the configured PSN name, or derive from ise_base_url host.
+
+    Fallbacken er en fælde i distribuerede opsætninger (BUGS.md G-3):
+    `ise_base_url` peger på PAN'en, men en CoA skal sendes til den PSN der
+    faktisk holder klientens session. Rammer den forkert, lykkes registreringen
+    mens klienten aldrig re-autentificeres — for gæsteflowet betyder det at
+    brugeren får "registreret", men ingen adgang før de gentilslutter manuelt.
+    Symptomet er ellers kun synligt på gæstens skærm, så vi logger det.
+    """
     if configured:
         return configured
     host = urlparse(base_url).hostname or ""
+    logger.warning(
+        "CoA: coa_psn_name er ikke sat — bruger host fra ise_base_url (%s) som PSN. "
+        "I en distribueret ISE-opsætning er det PAN'en, ikke PSN'en med sessionen, "
+        "og CoA'en vil sandsynligvis ikke virke. Sæt coa_psn_name i Indstillinger.",
+        host or "(tom)",
+    )
     return host
 
 
