@@ -29,6 +29,7 @@ class BackendSettingsUpdate(BaseModel):
     cache_sync_interval_seconds: float = 300.0
     cache_disk_path: str = "cache/endpoints.json"
     cache_prewarm_concurrency: int = 5
+    cache_scan_source: Literal["ers", "openapi_list"] = "ers"
     cache_prewarm_interval_s: float = 1800.0
     cache_prewarm_skip_fresh_s: float = 900.0
     cache_max_entries: int = 5000
@@ -85,6 +86,7 @@ class BackendSettingsResponse(BaseModel):
     cache_sync_interval_seconds: float = 300.0
     cache_disk_path: str = "cache/endpoints.json"
     cache_prewarm_concurrency: int = 5
+    cache_scan_source: Literal["ers", "openapi_list"] = "ers"
     cache_prewarm_interval_s: float = 1800.0
     cache_prewarm_skip_fresh_s: float = 900.0
     cache_max_entries: int = 5000

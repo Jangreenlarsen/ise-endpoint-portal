@@ -64,8 +64,12 @@ def _list_items(data: Any) -> tuple[list[dict[str, Any]], int | None]:
         return list(sr.get("resources") or []), sr.get("total")
     for key in ("response", "resources"):
         if isinstance(data.get(key), list):
+            items = list(data[key])
             total = data.get("total", data.get("totalCount"))
-            return list(data[key]), int(total) if total is not None else None
+            # Open API på ISE 3.5 svarer total=0 selvom siden har elementer → ukendt.
+            if total is None or (int(total) == 0 and items):
+                return items, None
+            return items, int(total)
     return [], None
 
 
@@ -160,8 +164,21 @@ async def run_probe(extra_pages: int = 3) -> dict[str, Any]:
         result["duration_s"] = round(time.time() - started, 1)
         return result
 
-    # 3) Sammenlign listens data med ERS-detaljekald for et udsnit
-    sample = sorted(o_items, key=lambda i: 0 if _custom_attrs(i) else 1)[:SAMPLE_DETAILS]
+    # 3) Sammenlign listens data med ERS-detaljekald for et udsnit: op til 3 med
+    #    custom attributes og op til 2 uden profil i listen (der kan listen afvige
+    #    fra detaljen), resten fyldes op fra listen.
+    def _pick(pool: list[dict[str, Any]], n: int, chosen: list[dict[str, Any]]) -> None:
+        for it in pool:
+            if len(chosen) >= SAMPLE_DETAILS or n <= 0:
+                return
+            if it not in chosen:
+                chosen.append(it)
+                n -= 1
+
+    sample: list[dict[str, Any]] = []
+    _pick([i for i in o_items if _custom_attrs(i)], 3, sample)
+    _pick([i for i in o_items if not i.get("profileId")], 2, sample)
+    _pick(o_items, SAMPLE_DETAILS, sample)
     compared: list[dict[str, Any]] = []
     detail_ms: list[float] = []
     for item in sample:
@@ -243,6 +260,11 @@ async def run_probe(extra_pages: int = 3) -> dict[str, Any]:
             "Open API-listen returnerer fulde endpoint-data, og de stemmer med "
             "detalje-kaldene. Cachen kan fyldes fra listen uden et kald pr. endpoint."
         )
+        if any(not c["profile_match"] for c in ok_rows):
+            result["message"] += (
+                " Profilen mangler dog i listen for nogle endpoints; i liste-tilstand "
+                "beholder portalen den kendte profil for dem."
+            )
     elif not with_ca:
         result["verdict"] = "warning"
         result["message"] = (

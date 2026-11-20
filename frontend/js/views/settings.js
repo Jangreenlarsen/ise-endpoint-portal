@@ -192,6 +192,16 @@ export async function renderSettings(container) {
           <div class="hint">Pre-warm scanner springer entries over der er yngre end denne tærskel. 0 = aldrig spring over. (default: 900 = 15 min)</div>
         </div>
         <div class="field">
+          <label for="cache_scan_source">Hentemetode for cache</label>
+          <select id="cache_scan_source">
+            <option value="ers">ERS — ét kald pr. endpoint (standard)</option>
+            <option value="openapi_list">Open API-liste — ca. ét kald pr. 100 endpoints</option>
+          </select>
+          <div class="hint">Open API-listen henter alle endpoints med fulde data i sider à 100 og belaster ISE langt mindre.
+            Kør først <em>Test: Endpoint-hentning</em> under Portal Config → Portal Opdatering. Fejler listen eller mangler den
+            custom attributes, falder scanningen automatisk tilbage til ERS, og årsagen vises på dashboardet.</div>
+        </div>
+        <div class="field">
           <label for="cache_prewarm_concurrency" id="cache-concurrency-lbl"></label>
           <input type="number" id="cache_prewarm_concurrency" min="1" max="10" step="1" />
           <div class="hint">Antal samtidige GET-kald mod ISE under scanning. ISE klarer max ~5 (default: 5).</div>

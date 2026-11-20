@@ -683,6 +683,11 @@ class EndpointCache:
         entry = self._details.get(endpoint_id)
         return None if entry is None else self._age(entry)
 
+    def peek_detail(self, endpoint_id: str) -> Any | None:
+        """Cachet værdi uden TTL-tjek, stats eller ISE-kald. None hvis ikke cachet."""
+        entry = self._details.get(endpoint_id)
+        return None if entry is None else entry.value
+
     # ------------------------------------------------------------------ #
     # Disk persistence                                                     #
     # ------------------------------------------------------------------ #

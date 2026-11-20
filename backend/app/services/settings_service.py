@@ -58,6 +58,7 @@ def get_backend_settings() -> BackendSettingsResponse:
         cache_sync_interval_seconds=s.cache_sync_interval_seconds,
         cache_disk_path=s.cache_disk_path,
         cache_prewarm_concurrency=s.cache_prewarm_concurrency,
+        cache_scan_source=getattr(s, "cache_scan_source", "ers"),  # type: ignore[arg-type]
         cache_prewarm_interval_s=s.cache_prewarm_interval_s,
         cache_prewarm_skip_fresh_s=getattr(s, "cache_prewarm_skip_fresh_s", 900.0),
         cache_max_entries=getattr(s, "cache_max_entries", 5000),
@@ -97,7 +98,12 @@ async def update_backend_settings(
 ) -> BackendSettingsResponse:
     before = get_backend_settings().model_dump()
     overrides = load_overrides()
-    overrides.update(
+    # Kun felter klienten faktisk sendte overskrives (P-9). Formularerne sender
+    # hver deres delmængde — fx sender ISE-forbindelsen kun ISE-felterne. Uden
+    # filteret blev alle andre felter skrevet med skemaets defaults, så fx
+    # gæste-selvregistrering blev slået fra ved en gemning af ISE-forbindelsen.
+    sent = new.model_fields_set
+    fields = (
         {
             "ise_base_url": new.ise_base_url,
             "ise_read_base_url": new.ise_read_base_url,
@@ -114,6 +120,7 @@ async def update_backend_settings(
             "cache_sync_interval_seconds": new.cache_sync_interval_seconds,
             "cache_disk_path": new.cache_disk_path,
             "cache_prewarm_concurrency": new.cache_prewarm_concurrency,
+            "cache_scan_source": new.cache_scan_source,
             "cache_prewarm_interval_s": new.cache_prewarm_interval_s,
             "cache_prewarm_skip_fresh_s": new.cache_prewarm_skip_fresh_s,
             "cache_max_entries": new.cache_max_entries,
@@ -147,6 +154,7 @@ async def update_backend_settings(
             "guest_expiry_check_interval_seconds":      new.guest_expiry_check_interval_seconds,
         }
     )
+    overrides.update({k: v for k, v in fields.items() if k in sent})
     if new.ise_password:
         overrides["ise_password"] = new.ise_password
     save_overrides(overrides)

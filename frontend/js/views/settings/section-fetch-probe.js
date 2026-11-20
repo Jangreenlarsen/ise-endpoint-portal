@@ -58,7 +58,7 @@ function render(r) {
   }
 
   html += `<table style="width:100%;border-collapse:collapse;font-size:.9em;margin-bottom:12px;"><tbody>
-    ${row("Open API-liste", o.ok ? `${frac(o.items, o.total)} endpoints på side 1 · ${esc(o.http_version)}` : `<span style="color:#dc2626;">${esc(o.error)}</span>`)}
+    ${row("Open API-liste", o.ok ? `${o.items ?? 0} endpoints på side 1 · total ${o.total ?? "ukendt (ISE oplyser ikke)"} · ${esc(o.http_version)}` : `<span style="color:#dc2626;">${esc(o.error)}</span>`)}
     ${row("Svartid pr. side", `første ${ms(o.first_page_ms)} · gennemsnit ${ms(o.avg_page_ms)} (${(o.page_ms || []).length} sider)`)}
     ${row("Custom attributes i listen", `${frac(o.items_with_custom_attributes, o.items)} elementer (${o.items_with_nonempty_custom_attributes ?? 0} med værdier)`)}
     ${row("Gruppe / profil i listen", `${frac(o.items_with_group, o.items)} / ${frac(o.items_with_profile, o.items)}`)}
