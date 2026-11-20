@@ -126,6 +126,10 @@ Se [pxGrid-opsætning](#pxgrid-opsætning) nedenfor.
 
 Findes under **Portal Config → PSK-politik** og kan ændres af admin og editor-psk.
 
+![PSK-politik-siden med IPSK valgt, minimumslængde 12, krav om stort bogstav og tal, og automatisk CoA-Disconnect slået til](img/settings-psk-politik.png)
+
+*PSK-politikken. IPSK er den anbefalede tilstand sammen med Endpoint_PSK-KEY.*
+
 | Felt | Beskrivelse |
 |---|---|
 | **PSK-mode** | **IPSK (anbefalet):** nøglen gemmes i ISE som `psk=<nøgle>`, præcis det format autorisationsprofilen `Endpoint_PSK-KEY` sender som `cisco-av-pair`. **MPSK:** nøglen gemmes rå. Vælg kun MPSK, hvis en anden profil end `Endpoint_PSK-KEY` læser nøglen — i MPSK-mode virker `Endpoint_PSK-KEY` ikke, og siden viser en advarsel. Brugere ser altid nøglen uden præfiks |
@@ -148,11 +152,23 @@ Uanset politik afvises nøgler over 63 tegn og nøgler med tegn uden for alminde
 
 Findes under **Portal Config → Avanceret → Gæste-registrering**. Siden `/selfregister` er en offentlig side uden login, som WLC'en sender gæster til (CWA-redirect). Gæsten skriver sit navn og accepterer vilkårene. Portalen opretter derefter endpointet i ISE og sender CoA, så gæsten får adgang.
 
+![Gæste-selvregistrering i fem trin: gæst forbinder, sendes til /selfregister, portalen finder MAC via MnT, gæsten udfylder formularen, endpoint oprettes og CoA sendes](img/selvregistrering-flow.svg)
+
+*Flowet fra gæstens første forbindelse til adgang og senere udløb.*
+
 **Sådan virker det.** Portalen finder gæstens MAC-adresse ved at slå gæstens IP-adresse op i ISE's aktive RADIUS-sessioner (MnT). MAC'en læses aldrig fra URL'en eller formularen. Derfor gælder:
 
 - Der må **ikke være NAT** mellem gæstenettet og portalen. Portalen skal se den samme IP-adresse som ISE.
 - Udfyld **PSN-hostnavn** under ISE-forbindelsen (`coa_psn_name`) med den PSN, der håndterer gæsterne. Ellers sendes CoA via den forkerte node, og gæsten må selv afbryde og forbinde igen.
 - Vælg en **Endpoint-gruppe** til gæster. Uden den kan en gæst ikke registrere sig igen på en enhed, der allerede findes, fordi portalen så ikke kan se, om enheden er en gæst. Nye enheder kan stadig registreres.
+
+<table><tr>
+<td width="50%"><img src="img/settings-gaeste-selvregistrering.png" alt="Indstillinger for gæste-selvregistrering: gruppe, tekster, VLAN, IPSK-felt, udløb med CoA og vilkår"></td>
+<td width="50%"><img src="img/selvregistrering.png" alt="Gæstens registreringsside med automatisk fundet MAC-adresse, navnefelt, valgfri IPSK-nøgle og accept af vilkår"></td>
+</tr><tr>
+<td><em>Indstillingerne under Portal Config → Avanceret.</em></td>
+<td><em>Det gæsten ser. MAC-adressen er fundet via MnT og kan ikke ændres.</em></td>
+</tr></table>
 
 | Felt | Beskrivelse |
 |---|---|

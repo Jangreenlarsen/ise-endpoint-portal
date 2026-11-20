@@ -4,7 +4,7 @@
 
 Web-baseret administrationssystem til Cisco ISE 3.4 endpoint-management via REST API og pxGrid 2.0.
 
-**Version 7.3 build 0766** — [Fuld manual](docs/INDEX.md) — [Changelog](CHANGELOG.md) — [Release Notes](RELEASE_NOTES.md)
+**Version 7.4 build 0768** — [Fuld manual](docs/INDEX.md) — [Changelog](CHANGELOG.md) — [Release Notes](RELEASE_NOTES.md)
 
 Copyright (C) 2026 Jan Green Larsen — udgivet under [GNU Affero General Public License v3](LICENSE)
 

@@ -25,9 +25,23 @@ Præferencer-siden er tilgængelig for alle brugere uanset auth-metode.
 
 ---
 
+## Dashboard
+
+Dashboardet er startsiden for admin, editor og viewer. Øverst vises nøgletal: antal endpoints i ISE, private (tilfældige) MAC-adresser, inaktive endpoints, cachens hit rate og status for ISE-forbindelsens circuit breaker. Herunder vises tilgang og fragang af endpoints de seneste 30 dage, systemets sundhed, forbindelsen til hver ISE-node og de seneste hændelser. Siden opdateres automatisk hvert 30. sekund.
+
+![Dashboard med nøgletal, 30-dages trend, systemsundhed, ISE-noder og livscyklus](img/dashboard.png)
+
+*Dashboardet. Et rødt eller gult kort betyder, at noget kræver opmærksomhed; klik på linket i kortet for detaljer.*
+
+---
+
 ## Browse og Edit
 
 Browse er portalens primære arbejdsside. Den viser alle endpoints du har adgang til som en tabel med filtrering, søgning, kolonnevalg og realtids sessions-farvning.
+
+![Browse-tabellen med endpoints, filterlinje og værktøjslinje](img/browse.png)
+
+*Browse. Hvert felt kan rettes direkte i tabellen; ændringer gemmes med "Gem valgte" eller "Gem alle". Et grønt flueben ved MAC-adressen betyder aktiv session.*
 
 ### Tabel-kolonner
 
@@ -66,6 +80,10 @@ Farvning opdateres via pxGrid i realtid (hvis aktiveret) eller ved MnT-poll-inte
 
 Dobbeltklik på en rækkes MAC-adresse (eller brug ▶-pilen) for at åbne edit-modalen. Modalen henter altid de seneste data direkte fra ISE.
 
+![Endpoint-detaljer for en IPSK-enhed med PSK Mode slået til og skjult PSK Key](img/endpoint-detalje-psk.png)
+
+*Edit-modalen for en IPSK-enhed. PSK-felterne vises kun for admin og editor-psk. "Vis" viser nøglen, "Generer" laver en ny efter PSK-politikken.*
+
 Felter du kan redigere:
 
 - Beskrivelse
@@ -94,6 +112,10 @@ CoA sendes via MnT API og kræver MnT Admin-rettigheder på ISE-kontoen. Rollern
 ## Opret endpoint
 
 Navigér til **Opret** i menuen.
+
+![Formularen Registrér endpoint udfyldt med MAC, gruppe, attributter, System adm og PSK](img/opret-endpoint.png)
+
+*Opret endpoint. Vælges en skabelon, udfyldes gruppe og attributter automatisk. Vendor slås op ud fra MAC-adressen.*
 
 Påkrævede felter:
 
@@ -202,10 +224,9 @@ ACL-validatoren kender de mest brugte Cisco IOS ACE-varianter. Ukendte konstrukt
 
 Med Identity PSK (IPSK) får hver enhed sin egen Wi-Fi-nøgle på samme SSID. Portalen gemmer nøglen på endpointet i ISE. Når enheden forbinder, slår ISE nøglen op og sender den til controlleren via autorisationsprofilen `Endpoint_PSK-KEY`. En enkelt enheds nøgle kan derfor skiftes eller tilbagekaldes uden at røre de andre.
 
-```
-Portal: PSK_Key + PSK_Mode på endpoint ──▶ ISE-regel (fx EndPoints:PSK_Mode EQUALS true)
-   ──▶ Endpoint_PSK-KEY (cisco-av-pair psk=<nøgle>) ──▶ WLC accepterer enhedens nøgle
-```
+![IPSK-flow: portalen gemmer PSK_Mode og PSK_Key på endpointet i ISE, autorisationsprofilen Endpoint_PSK-KEY sender nøglen som cisco-av-pair, og WLC bruger den til enhedens WPA2-handshake](img/ipsk-flow.svg)
+
+*Nøglens vej fra portal til enhed. ISE-reglen matcher fx EndPoints:PSK_Mode EQUALS true.*
 
 Opsætningen i ISE (profil og regel) er beskrevet i [Administration → PSK-politik](04-ADMIN.md#psk-politik).
 
@@ -235,7 +256,13 @@ En nøgle skal være **8–63 tegn** og må kun indeholde almindelige ASCII-tegn
 
 ### Skift eller tilbagekald en nøgle
 
-Åbn endpointet i Browse, ret **PSK Key** (eller fjern fluebenet i **PSK Mode**), og gem. Portalen sender derefter automatisk **CoA-Disconnect** til enheden. Enheden afbrydes og skal forbinde igen med den nye nøgle. Disconnect bruges frem for Reauth, fordi en ny nøgle kræver en ny forbindelse. Efter gemning står der, om afbrydelsen lykkedes:
+Åbn endpointet i Browse, ret **PSK Key** (eller fjern fluebenet i **PSK Mode**), og gem. Portalen sender derefter automatisk **CoA-Disconnect** til enheden. Enheden afbrydes og skal forbinde igen med den nye nøgle. Disconnect bruges frem for Reauth, fordi en ny nøgle kræver en ny forbindelse.
+
+![Sekvens ved nøgleskift: portalen gemmer ny nøgle i ISE, sender CoA-Disconnect, enheden forbinder igen og får den nye nøgle i Access-Accept](img/psk-skift.svg)
+
+*Nøgleskift med automatisk CoA-Disconnect.*
+
+Efter gemning står der, om afbrydelsen lykkedes:
 
 | Besked | Betydning |
 |---|---|

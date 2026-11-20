@@ -4,6 +4,12 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [7.4.0768] — 2026-11-20 — 📘 Manualen har fået billeder
+
+- **Skærmbilleder af de vigtigste sider**: dashboard, endpoint-oversigten, redigering af en IPSK-enhed, oprettelse af endpoints, PSK-politikken og gæste-selvregistreringen.
+- **Diagrammer der forklarer sammenhængene**: hvordan portalen hænger sammen med ISE, hvordan en IPSK-nøgle kommer fra portalen ud til enheden, hvad der sker når en nøgle skiftes, hvordan gæste-selvregistrering foregår, og hvilke endpoints en operatør kan se.
+- Brugervejledningen har fået et afsnit om dashboardet.
+
 ## [7.3.0767] — 2026-11-20 — 🛠 To rettelser i indstillingerne
 
 - **Valget mellem IPSK og MPSK kan læses igen.** Forklaringen ved de to valg blev vist i smalle kolonner, der var svære at læse.

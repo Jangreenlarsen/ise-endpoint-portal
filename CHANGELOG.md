@@ -3,6 +3,15 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [7.4.0768] — 2026-11-20 — feat: grafik i manualen + screenshot-generator
+
+Feature → MINOR (7.3→7.4) og `build` (0767→0768).
+
+- **`frontend-tests/docs.config.ts`, `frontend-tests/docs-shots/manual.spec.ts`, `frontend-tests/docs-shots/demo-data.ts` (nye)**: Playwright-konfiguration, der tager manualens skærmbilleder mod SPA'en med mocket API og fiktive demodata. Kører separat fra smoke-suiten (`npx playwright test -c docs.config.ts`) og skriver til `docs/img/`. Versionen i sidebaren læses fra `version.json`.
+- **`docs/img/` (ny)**: 7 skærmbilleder (PNG) og 5 diagrammer (SVG): `arkitektur`, `ipsk-flow`, `psk-skift`, `selvregistrering-flow`, `system-adm-scope`.
+- **`docs/01-OVERBLIK.md`, `docs/03-BRUGERGUIDE.md`, `docs/04-ADMIN.md`**: Billeder med alt-tekst og billedtekst indsat. ASCII-diagrammerne for systemkomponenter og IPSK-flow er erstattet af SVG'er. Nyt afsnit **Dashboard** i brugervejledningen.
+- **`docs/INDEX.md`, `README.md`, `frontend-tests/README.md`**: version 7.4.0768, manual-changelog og vejledning til at regenerere billederne.
+
 ## [7.3.0767] — 2026-11-20 — fix: PSK-modevalget er læseligt igen, og gæsteindstillingerne viser den rigtige URL (P-8)
 
 Bugfix → kun `build` (0766→0767).
