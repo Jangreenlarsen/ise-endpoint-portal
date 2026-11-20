@@ -8,6 +8,10 @@ Web-baseret administrationssystem til Cisco ISE 3.4 endpoint-management via REST
 
 Copyright (C) 2026 Jan Green Larsen — udgivet under [GNU Affero General Public License v3](LICENSE)
 
+<p align="center">
+  <img src="docs/img/dashboard.png" alt="HyperVision ISE Portal: dashboard med nøgletal, 30-dages trend, systemsundhed og status for ISE-noderne" width="900">
+</p>
+
 ---
 
 ## Hvad er HyperVision ISE Portal, og hvorfor REST + pxGrid?
@@ -28,9 +32,32 @@ Uden pxGrid ville sessionsfarver kræve MnT-polling hvert N sekund — unødvend
 
 De to protokoller supplerer hinanden: REST til management, pxGrid til observabilitet i realtid.
 
+<p align="center">
+  <img src="docs/img/arkitektur.svg" alt="Arkitektur: browseren taler kun med HyperVision-backend, som er den eneste komponent der kalder Cisco ISE via ERS, Open API, MnT og pxGrid" width="900">
+</p>
+
 ---
 
 ## Funktioner
+
+<table>
+  <tr>
+    <td width="50%"><a href="docs/img/browse.png"><img src="docs/img/browse.png" alt="Browse: tabel med endpoints, filtre og inline-redigering"></a></td>
+    <td width="50%"><a href="docs/img/endpoint-detalje-psk.png"><img src="docs/img/endpoint-detalje-psk.png" alt="Edit-vinduet for en IPSK-enhed med PSK Mode og skjult nøgle"></a></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>Browse / Edit</b> — alle endpoints, filtre, inline-redigering og live-sessioner</sub></td>
+    <td align="center"><sub><b>Endpoint-detaljer</b> — attributter, IPSK-nøgle, CoA og skabeloner</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><a href="docs/img/opret-endpoint.png"><img src="docs/img/opret-endpoint.png" alt="Formularen Registrér endpoint med skabelon, MAC, gruppe og attributter"></a></td>
+    <td width="50%"><a href="docs/img/selvregistrering.png"><img src="docs/img/selvregistrering.png" alt="Gæstens selvregistreringsside med automatisk fundet MAC-adresse"></a></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>Opret endpoint</b> — skabeloner, vendor-opslag og System adm</sub></td>
+    <td align="center"><sub><b>Gæste-selvregistrering</b> — MAC findes automatisk via ISE MnT</sub></td>
+  </tr>
+</table>
 
 ### Endpoint-administration
 - Opret endpoint — MAC, Identity Group, beskrivelse og alle custom attributes
@@ -52,13 +79,19 @@ De to protokoller supplerer hinanden: REST til management, pxGrid til observabil
 - Roller: `admin`, `editor`, `editor-psk`, `viewer`, `registrant`, `registrant_templet`
 - System adm — tag-baseret scopning: brugere ser og redigerer kun endpoints tagget med deres system adm-rolle
 - **IPSK-management** — personlig Wi-Fi-nøgle pr. enhed via `PSK_Key`/`PSK_Mode` og autorisationsprofilen `Endpoint_PSK-KEY`. Nøglerne valideres mod WPA-grænsen (8–63 ASCII) og en konfigurerbar politik. Når en nøgle skiftes, sendes automatisk CoA-Disconnect, så den nye nøgle virker med det samme. Ved skift mellem IPSK- og MPSK-format kan de eksisterende nøgler migreres. Rollen `editor-psk` ejer nøglerne
+- **Gæste-selvregistrering** — offentlig `/selfregister`-side til CWA-redirect: gæstens MAC findes via ISE MnT, endpoint oprettes i gæstegruppen med VLAN/DACL, valgfri IPSK-nøgle og udløb med CoA
 - **Server-side håndhævelse** — PSK-ret, System adm-scope (også ved skrivning, CoA og massehandlinger) og skabelonkravet for `registrant_templet` håndhæves af backend, ikke kun af brugerfladen
 - **TACACS+-autentisering** — portal-login via ekstern TACACS+-server; brugerprofiler i portalen bestemmer rolle og adgang (admin logges altid lokalt)
 - **Bruger/Operatør-type** — brugere klassificeres som Bruger (lokal login) eller Operatør (kun TACACS+); dropdown i Users-tabellen
 - **Kopiér bruger** — kopiér eksisterende bruger/operatør til ny med auto-postfix `_copy`, inkl. rolle, System adm og skabeloner
 - **Login auth-badge i sidebar** — viser TACACS+ eller LOCAL samt struktureret User / Rolle / Login auth-visning
 
+<p align="center">
+  <img src="docs/img/ipsk-flow.svg" alt="IPSK-flow: portalen gemmer PSK_Mode og PSK_Key i ISE, autorisationsprofilen Endpoint_PSK-KEY sender nøglen til WLC, og enheden forbinder med sin egen nøgle" width="900">
+</p>
+
 ### Cache og selvregulerende ISE-resiliens
+- **Valgfri hentemetode: Open API-liste** — cachen kan fyldes fra `GET /api/v1/endpoint` med ca. ét kald pr. 100 endpoints i stedet for ét pr. endpoint (målt på ISE 3.5: 134 → 2 kald). Automatisk fallback til ERS; afprøves først med den indbyggede *Test: Endpoint-hentning*
 - **To-lags cache** — in-memory (TTL + stale-while-revalidate) og disk-persistens af både endpoint-detaljer **og** gruppe-liste; portalen viser data øjeblikkeligt ved genstart (ældre rækker markeres med ⏱ stale-badge). Browse hård-fejler aldrig på et enkelt ISE-udfald
 - **3-tier drip-refresh** — baggrunds-worker holder cachen varm med prioriteret kø (hot/warm/cold efter historisk ændringsfrekvens pr. endpoint)
 - **Adaptiv drip-hastighed (ISE-congestion control)** — baggrunds-refresh regulerer selv sit tempo efter hvor godt ISE svarer (AIMD, som TCP's overbelastningsstyring): hurtigere ved succes, langsommere ved fejl/timeout, hård opbremsning når circuit breakeren åbner. Justerbart ±spænd under Settings
