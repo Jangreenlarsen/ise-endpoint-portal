@@ -4,6 +4,13 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [7.3.0763] — 2026-11-20 — 🔒 Rettigheder håndhæves nu også når der gemmes
+
+- **Kun admin og editor-psk kan ændre PSK-nøgler.** Andre roller kunne tidligere sætte en PSK-nøgle ved at kalde portalens API direkte, selvom feltet var skjult for dem. Den slags forsøg ignoreres nu, og den eksisterende nøgle bevares.
+- **Brugere kan kun ændre enheder i deres egne System adm-roller.** Det gælder redigering, sletning, CoA, karantæne, dekommissionering og massehandlinger. Tidligere var begrænsningen kun på det man kunne *se*. I massehandlinger springes enheder uden for ens roller over og vises som fejlede.
+- **Man kan ikke længere give en enhed en System adm-rolle man ikke selv har.** Roller der allerede står på enheden, kan stadig beholdes.
+- **Registranter med skabelonkrav kan kun oprette via deres tildelte skabeloner.** Gruppe, VLAN og øvrige felter tages nu altid fra skabelonen på serveren, uanset hvad der sendes med.
+
 ## [7.3.0762] — 2026-08-19 — 🐛 Gæsteregistrering: gentagne registreringer ødelægger ikke længere enhedens opsætning
 
 - **Registrerede en gæst sig igen, blev enhedens oplysninger slettet.** Type, ejer, lokation, platform, roller og — vigtigst — tildelt VLAN og adgangsliste blev tømt på enheden. Var VLAN og adgangsliste ikke udfyldt i indstillingerne, fjernede en fornyet registrering dermed gæstens netværksadgang i stedet for at give den. Registreringen rører nu kun de felter den selv sætter.

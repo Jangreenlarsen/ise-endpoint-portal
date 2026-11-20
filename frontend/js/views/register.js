@@ -448,6 +448,8 @@ export async function renderRegister(container) {
       description: container.querySelector("#r-desc").value.trim(),
     };
     if (Object.keys(ca).length) payload.custom_attributes = ca;
+    // registrant_templet: backend bygger oprettelsen ud fra skabelonen (P-3).
+    if (templateSel && templateSel.value) payload.template_id = templateSel.value;
 
     submitBtn.disabled = true;
     submitBtn.textContent = t("reg.btn_submitting");

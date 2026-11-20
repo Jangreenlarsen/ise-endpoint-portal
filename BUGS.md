@@ -23,25 +23,31 @@ kode. **Rod-observation:** rettigheder håndhæves konsekvent på *læse*-stiern
 System adm-filtrering), men på *skrive*-stierne hviler de på at frontend skjuler felterne. Der findes
 ingen PSK-tests i `backend/tests/`.
 
-## [OPEN] 2026-11-20 — P-1: PSK-skrivning håndhæves kun i frontend (HØJ)
+## [FIXED 7.3.0763] 2026-11-20 — P-1: PSK-skrivning håndhæves kun i frontend (HØJ)
 
 - **Symptom:** `editor`, `registrant` og `registrant_templet` kan sætte `PSK_Key`/`PSK_Mode` på endpoints ved at kalde API'et direkte. UI'et skjuler PSK-sektionen for dem, men backend afviser ikke feltet.
 - **Root cause:** `POST /api/endpoints` (`require_create_endpoint`) og `PUT /api/endpoints/{id}` (`require_edit_endpoint`) sender `custom_attributes` uændret videre til servicen. `create_endpoint`/`update_endpoint` kender ikke brugeren og stripper derfor ikke PSK-attributterne. `_is_psk_editor_for()` bruges kun til maskering ved læsning.
 - **Foreslået løsning:** I API-laget: hvis brugeren ikke er psk-editor, sæt `PSK_Key`/`PSK_Mode` til `None` (udeladt → ISE bevarer eksisterende værdi) eller afvis med 403. Regressions-test for hver rolle.
+- **Løsning (v7.3.0763):** Ny `_strip_psk_unless_editor()` i `api/_endpoint_api_helpers.py` sætter `PSK_Key`/`PSK_Mode` til `None` på create-, update- og bulk-payloads fra roller uden PSK-ret. Felterne udelades dermed, og ISE bevarer den eksisterende værdi. Der strippes i stedet for at afvise, så en editors almindelige gem-flow ikke fejler. Forsøget logges som WARNING.
+- **Regressions-vagt:** `test_create_strips_psk_for_non_psk_roles`, `test_create_keeps_psk_for_psk_roles`, `test_update_strips_psk_for_editor`, `test_bulk_create_strips_psk_for_editor` (`tests/test_write_authz.py`).
 - **Berørte filer:** `backend/app/api/endpoints.py:251-295`, `backend/app/api/deps.py:152-156`, `backend/app/services/endpoint_service.py:659,832`
 
-## [OPEN] 2026-11-20 — P-2: System adm-scope håndhæves ikke på skrive-operationer (MIDDEL)
+## [FIXED 7.3.0763] 2026-11-20 — P-2: System adm-scope håndhæves ikke på skrive-operationer (MIDDEL)
 
 - **Symptom:** En `editor` ser kun endpoints i sine System adm-roller, men kan opdatere, slette, CoA'e, ANC-karantænere og dekommissionere **ethvert** endpoint hvis ID'et kendes — og kan omtagge `HypervisionRoles` så et endpoint flyttes ind/ud af et andet scope.
 - **Root cause:** `_scope_for(user)` sendes kun med til list/get. PUT/DELETE og ruterne i `endpoints_ops.py` slår ikke endpointet op mod brugerens effektive roller. Endpoint-ID'er er UUID'er, så udnyttelse kræver kendskab til ID'et — derfor MIDDEL.
 - **Foreslået løsning:** Fælles dependency `require_endpoint_in_scope(endpoint_id, user)` brugt af alle skrive-/ops-ruter (cache-roles-indekset gør tjekket billigt).
+- **Løsning (v7.3.0763):** Route-dependency `require_endpoint_in_scope` på PUT/DELETE og alle `/{endpoint_id}`-ops-ruter (404 uden for scope). Bulk-ruterne filtrerer ID-listen med `_split_by_scope()` og returnerer afviste som fejlede rækker. `bulk_create` med overwrite tjekker scope på det eksisterende endpoint. `_check_role_tags()` afviser med 403 hvis en non-admin tildeler System adm-roller vedkommende ikke selv har; roller der allerede står på endpointet må bevares.
+- **Regressions-vagt:** `test_update_out_of_scope_is_404`, `test_delete_out_of_scope_is_404`, `test_ops_out_of_scope_is_404[*]`, `test_bulk_decommission_skips_out_of_scope`, `test_bulk_coa_skips_out_of_scope`, `test_cannot_assign_foreign_role_on_create`, `test_cannot_add_foreign_role_on_update`.
 - **Berørte filer:** `backend/app/api/endpoints.py:277-338`, `backend/app/api/endpoints_ops.py`, `backend/app/api/_endpoint_api_helpers.py:36-47`
 
-## [OPEN] 2026-11-20 — P-3: registrant_templet's skabelon-krav er kun en UI-regel (MIDDEL)
+## [FIXED 7.3.0763] 2026-11-20 — P-3: registrant_templet's skabelon-krav er kun en UI-regel (MIDDEL)
 
 - **Symptom:** `registrant_templet` skal være låst til tildelte skabeloner, og `registrant` bør ikke frit vælge autorisation. Via API kan begge oprette endpoints med vilkårlig `group_id`, `AuthzVlan`, `AuthzACL` (og jf. P-1 PSK) — altså selv bestemme hvilken netværksadgang enheden får.
 - **Root cause:** Kommentaren i `deps.py` siger det selv: "ingen gruppe/attrs-valg i **UI**". `create_endpoint` validerer ikke payloaden mod brugerens skabeloner.
 - **Foreslået løsning:** For registrant-roller: lad backend anvende skabelonen server-side ud fra et `template_id` og ignorere/afvise gruppe- og authz-felter fra klienten.
+- **Løsning (v7.3.0763):** Nyt felt `template_id` på `CreateEndpointRequest`. For `registrant_templet` bygger `_build_from_template()` hele oprettelsen server-side ud fra en skabelon brugeren har adgang til (`visible_templates()`, samme regel som listen). Klientens gruppe og attributter ignoreres. Uden skabelon gives 422, og en ikke-tildelt skabelon gives 403. **Præcisering:** almindelig `registrant` har bevidst frit valg af gruppe og attributter i UI'et; det er designet og er ikke ændret, bortset fra PSK (P-1).
+- **Regressions-vagt:** `test_templet_requires_template`, `test_templet_rejects_unassigned_template`, `test_templet_payload_built_from_template`.
 - **Berørte filer:** `backend/app/api/deps.py:153-156`, `backend/app/api/endpoints.py:251-264`, `backend/app/api/templates.py:37-43`
 
 ## [OPEN] 2026-11-20 — P-4: PSK-politikken håndhæver ikke WPA2-grænsen på 8-63 printbare ASCII-tegn (MIDDEL)

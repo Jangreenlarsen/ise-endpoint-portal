@@ -4,9 +4,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
 from app.api._endpoint_api_helpers import (
     _autotag_for,
+    _check_role_tags,
+    _ensure_in_scope,
     _is_psk_editor_for,
     _ise_http_error,
     _scope_for,
+    _strip_psk_unless_editor,
+    require_endpoint_in_scope,
 )
 from app.api.deps import (
     get_current_user,
@@ -23,6 +27,7 @@ from app.schemas.endpoint import (
     BulkCreateRequest,
     BulkResult,
     CreateEndpointRequest,
+    CustomAttrs,
     EndpointDetail,
     EndpointSummary,
     EndpointUpdate,
@@ -163,7 +168,7 @@ async def prioritize_endpoint(
     return {"status": "queued", "id": endpoint_id}
 
 
-@router.get("/{endpoint_id}/profiler-profile")
+@router.get("/{endpoint_id}/profiler-profile", dependencies=[Depends(require_endpoint_in_scope)])
 async def get_profiler_profile_for_endpoint(
     endpoint_id: str,
     _user: User = Depends(require_any),
@@ -198,7 +203,7 @@ async def get_profiler_profile_for_endpoint(
     return {"endpoint_id": endpoint_id, "profile_id": profile_id, "profile": profile}
 
 
-@router.get("/{endpoint_id}/profiling-data")
+@router.get("/{endpoint_id}/profiling-data", dependencies=[Depends(require_endpoint_in_scope)])
 async def get_endpoint_profiling_data(
     endpoint_id: str,
     _user: User = Depends(require_any),
@@ -254,6 +259,11 @@ async def create_endpoint(
     user: User = Depends(require_create_endpoint),
     service: EndpointService = Depends(get_endpoint_service),
 ) -> dict[str, str]:
+    if user.role == "registrant_templet":
+        req = _build_from_template(req, user)
+    else:
+        _strip_psk_unless_editor(req.custom_attributes, user)
+        _check_role_tags(req.custom_attributes, user)
     try:
         new_id = await service.create_endpoint(
             req, auto_tag_username=_autotag_for(user)
@@ -271,8 +281,14 @@ async def bulk_create_endpoints(
     user: User = Depends(require_editor),
     service: EndpointService = Depends(get_endpoint_service),
 ) -> BulkResult:
+    for item in req.items:
+        _strip_psk_unless_editor(item.custom_attributes, user)
+        _check_role_tags(item.custom_attributes, user)
     # Partial failures are reported in the response; no 502 here.
-    return await service.bulk_create(req, auto_tag_username=_autotag_for(user))
+    # effective_roles begrænser overwrite til endpoints i brugerens scope (P-2).
+    return await service.bulk_create(
+        req, auto_tag_username=_autotag_for(user), effective_roles=_scope_for(user)
+    )
 
 
 @router.put("/{endpoint_id}")
@@ -284,6 +300,10 @@ async def update_endpoint(
 ) -> dict[str, str]:
     # Tjek om GuestAccessExpire sættes til true FØR selve opdateringen,
     # så vi kan sende CoA bagefter hvis det er slået til i settings.
+    existing = await _ensure_in_scope(service, endpoint_id, user)
+    _strip_psk_unless_editor(req.custom_attributes, user)
+    _check_role_tags(req.custom_attributes, user, existing.roles if existing else ())
+
     ca = req.custom_attributes
     guest_expire_set = ca is not None and (ca.GuestAccessExpire or "").lower() == "true"
 
@@ -326,7 +346,11 @@ async def update_endpoint(
     return {"status": "updated"}
 
 
-@router.delete("/{endpoint_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_editor)])
+@router.delete(
+    "/{endpoint_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_editor), Depends(require_endpoint_in_scope)],
+)
 async def delete_endpoint(
     endpoint_id: str,
     service: EndpointService = Depends(get_endpoint_service),
@@ -337,3 +361,37 @@ async def delete_endpoint(
         raise _ise_http_error(exc) from exc
 
 
+
+
+def _build_from_template(req: CreateEndpointRequest, user: User) -> CreateEndpointRequest:
+    """Byg registrant_templet's oprettelse server-side ud fra skabelonen (BUGS.md P-3).
+
+    Rollen må kun registrere via en tildelt skabelon. Klientens gruppe,
+    beskrivelse og attributter ignoreres — kun MAC'en og skabelonvalget bruges,
+    så rollen ikke selv kan bestemme enhedens netværksadgang via API'et.
+    """
+    from app.api.templates import visible_templates
+
+    if not req.template_id:
+        raise HTTPException(
+            422,
+            "Din rolle kræver at der vælges en skabelon",
+        )
+    tpl = next((t for t in visible_templates(user) if t.get("id") == req.template_id), None)
+    if tpl is None:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Skabelonen findes ikke eller er ikke tildelt dig",
+        )
+    fields = tpl.get("fields") or {}
+    ca = CustomAttrs(**{k: str(v) for k, v in (fields.get("custom_attributes") or {}).items()
+                        if k in CustomAttrs.model_fields})
+    ca.RegistretBy = user.username
+    return CreateEndpointRequest(
+        mac=req.mac,
+        group_id=fields.get("group_id") or "",
+        description=f"Templet {tpl.get('name', '')}",
+        static_group_assignment=fields.get("static_group_assignment"),
+        custom_attributes=ca,
+        template_id=req.template_id,
+    )

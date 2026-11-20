@@ -3,6 +3,15 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [7.3.0763] — 2026-11-20 — fix: skrive-autorisation håndhæves server-side — PSK, System adm-scope og skabelonkrav (P-1/P-2/P-3)
+
+Fundet i analysen af registrering og IPSK (BUGS.md P-serien). Rettigheder blev håndhævet når data blev læst, men skrive-stierne stolede på at frontend skjulte felterne. Bugfix → kun `build` (0762→0763).
+
+- **P-1 (HØJ) — `api/_endpoint_api_helpers.py`, `api/endpoints.py`**: `editor`, `registrant` og `registrant_templet` kunne sætte `PSK_Key`/`PSK_Mode` ved at kalde API'et direkte. Ny `_strip_psk_unless_editor()` fjerner felterne fra create-, update- og bulk-payloads for roller uden PSK-ret. De sættes til `None`, så ISE bevarer den eksisterende værdi. Der strippes i stedet for at afvise, fordi en almindelig editors gem-flow ellers ville fejle på et felt brugeren ikke kan se. Hændelsen logges som WARNING.
+- **P-2 (MIDDEL) — `api/_endpoint_api_helpers.py`, `api/endpoints.py`, `api/endpoints_ops.py`, `services/endpoint_service.py`**: System adm-scope blev kun håndhævet ved læsning. Ny route-dependency `require_endpoint_in_scope` er sat på PUT/DELETE og på alle `/{endpoint_id}`-ops-ruter: CoA, historik, ANC, (un)decommission, active-status, profiler-profile og profiling-data. Svaret er 404 uden for scope, så det ikke afsløres at endpointet findes. Bulk-ruterne (`bulk-coa`, `bulk-(un)decommission`, `bulk-apply-template`) filtrerer ID-listen med `_split_by_scope()` og returnerer de afviste som fejlede rækker. Overwrite i `bulk_create` tjekker scope på det eksisterende endpoint. `_check_role_tags()` afviser med 403 hvis en non-admin tildeler System adm-roller vedkommende ikke selv har; roller der allerede står på endpointet må bevares. Tjekkene er cache-backed og koster normalt ingen ISE-kald.
+- **P-3 (MIDDEL) — `api/endpoints.py`, `api/templates.py`, `schemas/endpoint.py`, `frontend/js/views/register.js`**: Kravet om skabelon for `registrant_templet` fandtes kun i UI'et. `CreateEndpointRequest` har nyt felt `template_id`. For `registrant_templet` bygger `_build_from_template()` nu hele oprettelsen server-side ud fra skabelonen (gruppe, attributter, statisk tildeling, beskrivelse "Templet <navn>", `RegistretBy`). Klientens felter ignoreres. Mangler skabelonen gives 422, og en skabelon der ikke er tildelt brugeren gives 403. Filtreringslogikken er trukket ud af `list_templates` som `visible_templates(user)`, så liste og håndhævelse bruger samme regel. `register.js` sender `template_id`. Almindelig `registrant` har bevidst frit valg af gruppe og attributter i UI'et og er uændret, bortset fra PSK (P-1).
+- **`tests/test_write_authz.py`** (ny): 21 tests for PSK-stripping pr. rolle, scope på update/delete/ops/bulk, rolle-tildeling og registrant_templet. Suite: 346 grønne (325 → 346).
+
 ## [7.3.0762] — 2026-08-19 — fix: gæsteflowet — gen-registrering rydder ikke længere attributter (G-1/G-2/G-3)
 
 Fundet i en gennemgang af om gæsteflowet overhovedet virker som tiltænkt. To kodefejl og én tavs konfigurationsfælde. Bugfix → kun `build` (0761→0762).

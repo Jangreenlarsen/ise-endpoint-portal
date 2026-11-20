@@ -84,6 +84,10 @@ class CreateEndpointRequest(BaseModel):
     description: str = ""
     static_group_assignment: bool | None = None
     custom_attributes: CustomAttrs | None = None
+    # Skabelon brugt i registreringsformularen. Obligatorisk for
+    # registrant_templet, hvor backend bygger payloaden ud fra skabelonen
+    # (BUGS.md P-3). Ignoreres for øvrige roller.
+    template_id: str | None = None
 
 
 class BulkCreateRequest(BaseModel):

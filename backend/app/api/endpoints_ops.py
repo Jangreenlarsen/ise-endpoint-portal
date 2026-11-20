@@ -13,8 +13,14 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 
-from app.api._endpoint_api_helpers import _ise_http_error
+from app.api._endpoint_api_helpers import (
+    OUT_OF_SCOPE_MSG,
+    _ise_http_error,
+    _split_by_scope,
+    require_endpoint_in_scope,
+)
 from app.api.deps import get_endpoint_service, require_editor
+from app.schemas.user import User
 from app.core.exceptions import IseApiError
 from app.schemas.endpoint import (
     AncActionResponse,
@@ -38,7 +44,7 @@ class SetActiveStatusRequest(BaseModel):
 # CoA (Change of Authorization)                                        #
 # ------------------------------------------------------------------ #
 
-@router.post("/{endpoint_id}/coa-reauth", response_model=CoaReauthResponse, dependencies=[Depends(require_editor)])
+@router.post("/{endpoint_id}/coa-reauth", response_model=CoaReauthResponse, dependencies=[Depends(require_editor), Depends(require_endpoint_in_scope)])
 async def coa_reauth(
     endpoint_id: str,
     service: EndpointService = Depends(get_endpoint_service),
@@ -51,7 +57,7 @@ async def coa_reauth(
     return CoaReauthResponse(ok=ok, mac=mac, message=msg)
 
 
-@router.post("/{endpoint_id}/coa-disconnect", response_model=CoaReauthResponse, dependencies=[Depends(require_editor)])
+@router.post("/{endpoint_id}/coa-disconnect", response_model=CoaReauthResponse, dependencies=[Depends(require_editor), Depends(require_endpoint_in_scope)])
 async def coa_disconnect(
     endpoint_id: str,
     service: EndpointService = Depends(get_endpoint_service),
@@ -77,13 +83,15 @@ class BulkCoaRequest(BaseModel):
     action: Literal["reauth", "disconnect"] = "reauth"
 
 
-@router.post("/bulk-coa", dependencies=[Depends(require_editor)])
+@router.post("/bulk-coa")
 async def bulk_coa(
     body: BulkCoaRequest,
+    user: User = Depends(require_editor),
     service: EndpointService = Depends(get_endpoint_service),
 ) -> dict:
     """Trigger CoA reauth eller disconnect for en liste af endpoints parallelt."""
     sem = asyncio.Semaphore(3)
+    allowed, denied = await _split_by_scope(service, body.endpoint_ids[:200], user)
 
     async def do_one(ep_id: str) -> dict:
         async with sem:
@@ -96,7 +104,8 @@ async def bulk_coa(
             except Exception as exc:  # noqa: BLE001
                 return {"id": ep_id, "ok": False, "mac": None, "message": str(exc)}
 
-    results = list(await asyncio.gather(*(do_one(ep_id) for ep_id in body.endpoint_ids[:200])))
+    results = list(await asyncio.gather(*(do_one(ep_id) for ep_id in allowed)))
+    results += [{"id": i, "ok": False, "mac": None, "message": OUT_OF_SCOPE_MSG} for i in denied]
     return {"results": results, "ok_count": sum(1 for r in results if r["ok"])}
 
 
@@ -104,7 +113,7 @@ async def bulk_coa(
 # Endpoint historik (audit trail)                                     #
 # ------------------------------------------------------------------ #
 
-@router.get("/{endpoint_id}/history", dependencies=[Depends(require_editor)])
+@router.get("/{endpoint_id}/history", dependencies=[Depends(require_editor), Depends(require_endpoint_in_scope)])
 async def get_endpoint_history(
     endpoint_id: str,
     limit: int = Query(50, ge=1, le=200),
@@ -156,7 +165,7 @@ async def list_anc_policies(
     return AncPoliciesResponse(policies=policies)
 
 
-@router.get("/{endpoint_id}/anc-status", response_model=AncStatusResponse, dependencies=[Depends(require_editor)])
+@router.get("/{endpoint_id}/anc-status", response_model=AncStatusResponse, dependencies=[Depends(require_editor), Depends(require_endpoint_in_scope)])
 async def anc_status(
     endpoint_id: str,
     service: EndpointService = Depends(get_endpoint_service),
@@ -169,7 +178,7 @@ async def anc_status(
     return AncStatusResponse(mac=mac, policy=policy, quarantined=policy is not None)
 
 
-@router.post("/{endpoint_id}/anc-quarantine", response_model=AncActionResponse, dependencies=[Depends(require_editor)])
+@router.post("/{endpoint_id}/anc-quarantine", response_model=AncActionResponse, dependencies=[Depends(require_editor), Depends(require_endpoint_in_scope)])
 async def anc_quarantine(
     endpoint_id: str,
     req: AncQuarantineRequest,
@@ -183,7 +192,7 @@ async def anc_quarantine(
     return AncActionResponse(ok=ok, mac=mac, message=msg)
 
 
-@router.post("/{endpoint_id}/anc-clear", response_model=AncActionResponse, dependencies=[Depends(require_editor)])
+@router.post("/{endpoint_id}/anc-clear", response_model=AncActionResponse, dependencies=[Depends(require_editor), Depends(require_endpoint_in_scope)])
 async def anc_clear(
     endpoint_id: str,
     service: EndpointService = Depends(get_endpoint_service),
@@ -200,7 +209,7 @@ async def anc_clear(
 # Decommission                                                        #
 # ------------------------------------------------------------------ #
 
-@router.post("/{endpoint_id}/decommission", dependencies=[Depends(require_editor)])
+@router.post("/{endpoint_id}/decommission", dependencies=[Depends(require_editor), Depends(require_endpoint_in_scope)])
 async def decommission_endpoint(
     endpoint_id: str,
     service: EndpointService = Depends(get_endpoint_service),
@@ -213,16 +222,19 @@ async def decommission_endpoint(
     return {"status": "decommissioned", "id": endpoint_id}
 
 
-@router.post("/bulk-decommission", dependencies=[Depends(require_editor)])
+@router.post("/bulk-decommission")
 async def bulk_decommission(
     body: BulkDecommissionRequest,
+    user: User = Depends(require_editor),
     service: EndpointService = Depends(get_endpoint_service),
 ) -> dict:
     """Decommission en liste af endpoints parallelt."""
-    return await service.bulk_decommission(body)
+    allowed, denied = await _split_by_scope(service, body.endpoint_ids, user)
+    result = await service.bulk_decommission(BulkDecommissionRequest(endpoint_ids=allowed))
+    return _merge_denied(result, denied)
 
 
-@router.post("/{endpoint_id}/undecommission", dependencies=[Depends(require_editor)])
+@router.post("/{endpoint_id}/undecommission", dependencies=[Depends(require_editor), Depends(require_endpoint_in_scope)])
 async def undecommission_endpoint(
     endpoint_id: str,
     service: EndpointService = Depends(get_endpoint_service),
@@ -235,16 +247,19 @@ async def undecommission_endpoint(
     return {"status": "active", "id": endpoint_id}
 
 
-@router.post("/bulk-undecommission", dependencies=[Depends(require_editor)])
+@router.post("/bulk-undecommission")
 async def bulk_undecommission(
     body: BulkDecommissionRequest,
+    user: User = Depends(require_editor),
     service: EndpointService = Depends(get_endpoint_service),
 ) -> dict:
     """Genaktiver en liste af dekommissionerede endpoints parallelt."""
-    return await service.bulk_undecommission(body)
+    allowed, denied = await _split_by_scope(service, body.endpoint_ids, user)
+    result = await service.bulk_undecommission(BulkDecommissionRequest(endpoint_ids=allowed))
+    return _merge_denied(result, denied)
 
 
-@router.post("/{endpoint_id}/active-status", dependencies=[Depends(require_editor)])
+@router.post("/{endpoint_id}/active-status", dependencies=[Depends(require_editor), Depends(require_endpoint_in_scope)])
 async def set_active_status(
     endpoint_id: str,
     body: SetActiveStatusRequest,
@@ -264,16 +279,30 @@ async def set_active_status(
 # Bulk template-apply                                                 #
 # ------------------------------------------------------------------ #
 
-@router.post("/bulk-apply-template", dependencies=[Depends(require_editor)])
+@router.post("/bulk-apply-template")
 async def bulk_apply_template(
     body: BulkApplyTemplateRequest,
+    user: User = Depends(require_editor),
     service: EndpointService = Depends(get_endpoint_service),
 ) -> dict:
     """Anvend en skabelon på en liste af endpoints parallelt."""
+    allowed, denied = await _split_by_scope(service, body.endpoint_ids, user)
     try:
-        return await service.bulk_apply_template(body)
+        result = await service.bulk_apply_template(
+            BulkApplyTemplateRequest(endpoint_ids=allowed, template_id=body.template_id)
+        )
+        return _merge_denied(result, denied)
     except ValueError as exc:
         from fastapi import HTTPException
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except IseApiError as exc:
         raise _ise_http_error(exc) from exc
+
+
+def _merge_denied(result: dict, denied: list[str]) -> dict:
+    """Tilføj endpoints afvist af scope-tjekket som fejlede rækker (BUGS.md P-2)."""
+    if denied:
+        result.setdefault("results", []).extend(
+            {"id": i, "ok": False, "error": OUT_OF_SCOPE_MSG} for i in denied
+        )
+    return result

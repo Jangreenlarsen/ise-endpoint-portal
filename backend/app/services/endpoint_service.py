@@ -915,6 +915,7 @@ class EndpointService:
         self,
         req: BulkCreateRequest,
         auto_tag_username: str | None = None,
+        effective_roles: list[str] | None = None,
     ) -> BulkResult:
         logger.info(
             "bulk creating %d endpoints (overwrite=%s)",
@@ -950,7 +951,9 @@ class EndpointService:
                         if req.overwrite:
                             try:
                                 await self._overwrite_existing(
-                                    item, auto_tag_username=auto_tag_username
+                                    item,
+                                    auto_tag_username=auto_tag_username,
+                                    effective_roles=effective_roles,
                                 )
                                 overwritten.append(item.mac)
                             except IseApiError as update_exc:
@@ -998,6 +1001,7 @@ class EndpointService:
         self,
         item: CreateEndpointRequest,
         auto_tag_username: str | None = None,
+        effective_roles: list[str] | None = None,
     ) -> None:
         """Locate an existing endpoint by MAC and overwrite its fields with
         the values from the import item. Raises ValueError if not found."""
@@ -1011,6 +1015,10 @@ class EndpointService:
             raise ValueError(
                 f"eksisterende endpoint for {item.mac} har intet id"
             )
+        # Non-admin må kun overskrive endpoints i eget System adm-scope
+        # (BUGS.md P-2). get_endpoint rejser IseApiError(404) uden for scope.
+        if effective_roles is not None:
+            await self.get_endpoint(endpoint_id, effective_roles=effective_roles)
         # Bevar eksplicit staticGroupAssignment hvis angivet (fx fra CSV),
         # ellers afled af om gruppen er sat — så vi ikke utilsigtet skifter
         # Statisk↔Dynamisk ved re-import.
