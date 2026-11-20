@@ -25,6 +25,8 @@ export async function initPskPolicySection(container) {
   if (pskReqNumberLbl) pskReqNumberLbl.textContent = t("settings.psk_req_number");
   const pskReqSpecialLbl = container.querySelector("#psk-req-special-lbl");
   if (pskReqSpecialLbl) pskReqSpecialLbl.textContent = t("settings.psk_req_special");
+  const pskDisconnectLbl = container.querySelector("#psk-disconnect-lbl");
+  if (pskDisconnectLbl) pskDisconnectLbl.textContent = t("settings.psk_disconnect");
   const pskBtnSave = container.querySelector("#psk-btn-save");
   if (pskBtnSave) pskBtnSave.textContent = t("settings.psk_btn_save");
   const pskTestGen = container.querySelector("#psk-test-gen");
@@ -41,6 +43,7 @@ export async function initPskPolicySection(container) {
     container.querySelector("#psk-req-upper").checked = !!p.require_uppercase;
     container.querySelector("#psk-req-number").checked = !!p.require_numbers;
     container.querySelector("#psk-req-special").checked = !!p.require_special;
+    container.querySelector("#psk-disconnect").checked = p.disconnect_on_change !== false;
   }
 
   try {
@@ -61,6 +64,7 @@ export async function initPskPolicySection(container) {
       require_uppercase: container.querySelector("#psk-req-upper").checked,
       require_numbers: container.querySelector("#psk-req-number").checked,
       require_special: container.querySelector("#psk-req-special").checked,
+      disconnect_on_change: container.querySelector("#psk-disconnect").checked,
     };
     try {
       const saved = await api.updatePskPolicy(payload);

@@ -153,5 +153,7 @@ require_psk_editor = require_roles("admin", "editor-psk")
 # registrant/registrant_templet må KUN oprette endpoints — ingen browse/edit/delete/audit/admin.
 # registrant_templet er yderligere begrænset: skal bruge skabelon, ingen gruppe/attrs-valg i UI.
 require_edit_endpoint = require_roles("admin", "editor", "editor-psk")
+# CoA: editor-psk skal kunne få et nøgleskift til at træde i kraft (BUGS.md P-6).
+require_coa = require_roles("admin", "editor", "editor-psk")
 require_create_endpoint = require_roles("admin", "editor", "editor-psk", "registrant", "registrant_templet")
 require_register_lookup = require_roles("admin", "editor", "editor-psk", "viewer", "registrant", "registrant_templet")

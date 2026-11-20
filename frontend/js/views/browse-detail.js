@@ -1240,11 +1240,21 @@ export function initDetail(container, state, api, cb) {
     }
 
     try {
-      await api.updateEndpoint(state.detailCurrentId, {
+      const saveRes = await api.updateEndpoint(state.detailCurrentId, {
         description: container.querySelector("#d-description").value,
         group_id, static_group_assignment,
         custom_attributes: customAttrs,
       });
+      // P-6: backend sender selv CoA-Disconnect når PSK-nøglen ændres.
+      let pskSummary = "";
+      if (saveRes && saveRes.psk_changed) {
+        const pc = saveRes.psk_coa;
+        pskSummary = !pc
+          ? ` ${t("detail.psk_changed_no_coa")}`
+          : pc.ok
+            ? ` ${t("detail.psk_changed_coa_ok")}`
+            : ` ${t("detail.psk_changed_coa_fail").replace("{msg}", pc.message || "")}`;
+      }
       const savedId = state.detailCurrentId;
       cb.unmarkSaved?.(savedId);
       const platformType = container.querySelector("#d-platformtype").value;
@@ -1257,7 +1267,7 @@ export function initDetail(container, state, api, cb) {
       }
       closeDetail();
       await cb.refreshRows([savedId]);
-      msg.innerHTML = `<div class="alert success">Endpoint gemt.${coaSummary}</div>`;
+      msg.innerHTML = `<div class="alert success">Endpoint gemt.${esc(pskSummary)}${coaSummary}</div>`;
     } catch (err) {
       detailMsg.innerHTML = `<div class="alert error">${esc(err.message)}</div>`;
     } finally {

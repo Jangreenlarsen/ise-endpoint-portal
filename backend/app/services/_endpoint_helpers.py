@@ -69,6 +69,27 @@ def _validate_psk(ca: dict[str, Any]) -> None:
             raise ValueError(f"PSK Key overholder ikke politik: {'; '.join(errors)}")
 
 
+def _psk_changed(ca: dict[str, Any], before: dict[str, Any] | None) -> bool:
+    """Ændrer denne skrive-payload PSK-nøglen eller PSK_Mode? (BUGS.md P-6)
+
+    ``ca`` er payloaden efter ``_psk_encode_ca`` (kan have ``psk=``-prefix);
+    ``before`` er det umaskerede EndpointDetail-snapshot. Uden snapshot kan
+    en ændring ikke afgøres, og der svares False — hellere ingen disconnect
+    end en uventet.
+    """
+    if before is None:
+        return False
+    if PSK_KEY_ATTR in ca:
+        new_key = _psk_decode(str(ca.get(PSK_KEY_ATTR) or ""))
+        if new_key != (before.get("psk_key") or ""):
+            return True
+    if PSK_MODE_ATTR in ca:
+        new_mode = str(ca.get(PSK_MODE_ATTR) or "").lower() == "true"
+        if new_mode != bool(before.get("psk_mode")):
+            return True
+    return False
+
+
 def _mask_psk(detail: EndpointDetail) -> EndpointDetail:
     if detail.psk_key and detail.psk_key != PSK_MASKED:
         return detail.model_copy(update={"psk_key": PSK_MASKED})

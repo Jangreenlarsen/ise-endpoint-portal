@@ -453,6 +453,13 @@ class Settings(BaseSettings):
     psk_require_uppercase: bool = Field(default=False, description="Kræv mindst ét stort bogstav.")
     psk_require_numbers: bool = Field(default=False, description="Kræv mindst ét tal.")
     psk_require_special: bool = Field(default=False, description="Kræv mindst ét specialtegn.")
+    psk_disconnect_on_change: bool = Field(
+        default=True,
+        description=(
+            "Send CoA-Disconnect når PSK-nøglen ændres på et endpoint, så en ny "
+            "4-way handshake tvinger den nye nøgle i brug (BUGS.md P-6)."
+        ),
+    )
 
     backend_cors_origins: list[str] = Field(
         default_factory=lambda: ["http://localhost:5173", "http://localhost:8000"]

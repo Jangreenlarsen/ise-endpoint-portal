@@ -3,6 +3,16 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [7.3.0765] — 2026-11-20 — fix: et PSK-nøgleskift træder nu i kraft med det samme (P-6)
+
+Bugfix → kun `build` (0764→0765).
+
+- **P-6 (MIDDEL) — `api/deps.py`, `api/endpoints_ops.py`**: Ny `require_coa` (`admin`, `editor`, `editor-psk`) på `coa-reauth`, `coa-disconnect` og `bulk-coa`. Rollen der ejer PSK-administrationen kunne før ikke sende CoA og dermed ikke tilbagekalde en lækket nøgle.
+- **`services/endpoint_service.py`, `services/_endpoint_helpers.py`**: `update_endpoint()` sammenligner den nye `PSK_Key`/`PSK_Mode` med snapshot'et før opdateringen (ny `_psk_changed()`, der ignorerer `psk=`-prefixet). Ved ændring sendes **CoA-Disconnect**, ikke Reauth: en ny nøgle kræver en ny 4-way handshake, og Reauth genforhandler ikke nøglen på en eksisterende association. Metoden returnerer nu `{"psk_changed", "psk_coa"}`, og `PUT /endpoints/{id}` sender det videre (returtypen er ændret fra `dict[str, str]` til `dict`). En fejlet CoA vælter ikke opdateringen.
+- **`core/config.py`, `schemas/settings.py`, `services/settings_service.py`**: Ny indstilling `psk_disconnect_on_change` (default `True`) i PSK-politikken (`PskPolicy.disconnect_on_change`).
+- **Frontend — `views/browse-detail.js`, `views/settings.js`, `views/settings/section-psk.js`, `i18n.js`**: Detalje-vinduet viser om nøgleskiftet blev skubbet ud (afbrudt / afbrydelse fejlede / automatisk afbrydelse slået fra). Ny checkbox i PSK-politikken. Labelen for minimumlængde siger nu "8–63 tegn" (rest fra P-4).
+- **Tests**: 7 nye i `tests/test_psk.py` og 4 nye i `tests/test_write_authz.py`. Suite: 372 grønne (361 → 372).
+
 ## [7.3.0764] — 2026-11-20 — fix: PSK-nøgler valideres mod WPA-grænsen, og gæstesiden giver en forklaring i stedet for 500 (P-4/P-5)
 
 Bugfix → kun `build` (0763→0764).

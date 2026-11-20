@@ -4,6 +4,12 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [7.3.0765] — 2026-11-20 — 🔑 En ny PSK-nøgle virker med det samme
+
+- **Enheden afbrydes, når dens PSK-nøgle ændres.** Tidligere blev en ændret nøgle først brugt, når enheden selv forbandt igen. Indtil da virkede den gamle nøgle stadig, så en lækket nøgle reelt ikke kunne tilbagekaldes. Nu afbryder portalen enheden automatisk, og den skal forbinde igen med den nye nøgle. Det kan slås fra i PSK-politikken.
+- **Brugere med rollen editor-psk kan nu sende CoA** (gen-autentificering og afbrydelse) — også som massehandling.
+- Efter en gemning står der, om nøgleskiftet blev skubbet ud til enheden.
+
 ## [7.3.0764] — 2026-11-20 — 🔑 PSK-nøgler der ikke kan bruges, afvises nu
 
 - **Nøgler skal være 8-63 almindelige tegn.** Wi-Fi kan ikke bruge en nøgle på mere end 63 tegn eller med æ, ø, å. Portalen gemte dem alligevel, og enheden kunne så aldrig komme på. Den slags nøgler afvises nu med en forklaring. Minimumlængden i PSK-politikken kan højst sættes til 63.

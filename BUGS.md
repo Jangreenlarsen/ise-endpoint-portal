@@ -68,11 +68,13 @@ ingen PSK-tests i `backend/tests/`.
 - **Regressions-vagt:** `test_invalid_psk_returns_422_and_keeps_binding`, `test_service_valueerror_returns_422`, `test_config_exposes_psk_hint_when_ipsk_enabled`.
 - **Berørte filer:** `backend/app/api/selfregister.py:418-441`
 
-## [OPEN] 2026-11-20 — P-6: editor-psk kan skifte en PSK men ikke få den til at træde i kraft (MIDDEL)
+## [FIXED 7.3.0765] 2026-11-20 — P-6: editor-psk kan skifte en PSK men ikke få den til at træde i kraft (MIDDEL)
 
 - **Symptom:** Rollen der ejer PSK-administrationen kan ikke sende CoA. Et nøgleskift virker først når klienten selv re-associerer, og en lækket nøgle kan ikke tilbagekaldes øjeblikkeligt af den rolle der skifter den.
 - **Root cause:** CoA-ruterne bruger `require_editor` (`admin`, `editor`), som ikke omfatter `editor-psk`. Desuden sendes der ingen CoA automatisk ved PSK-ændring. Et nyt PSK kræver typisk ny 4-way handshake, altså **Disconnect** og ikke Reauth.
 - **Foreslået løsning:** Giv `editor-psk` CoA-ret, og send automatisk CoA-Disconnect når `PSK_Key` ændres på et endpoint med aktiv session.
+- **Løsning (v7.3.0765):** Ny `require_coa` (admin, editor, editor-psk) på CoA-ruterne. `update_endpoint()` sammenligner PSK før og efter (`_psk_changed()`) og sender CoA-**Disconnect** ved ændring, styret af ny indstilling `psk_disconnect_on_change` (default til). Resultatet returneres fra `PUT /endpoints/{id}` og vises i detalje-vinduet.
+- **Regressions-vagt:** `test_key_change_sends_disconnect`, `test_unchanged_key_sends_nothing`, `test_disconnect_can_be_disabled`, `test_psk_changed_*`, `test_psk_editor_can_send_coa[*]`, `test_psk_editor_can_bulk_coa`, `test_update_returns_psk_coa_result`.
 - **Berørte filer:** `backend/app/api/endpoints_ops.py:41-95`, `backend/app/api/deps.py:148`
 
 ## [OPEN] 2026-11-20 — P-7: MPSK-mode giver et ugyldigt cisco-av-pair, og moduskift migrerer ikke eksisterende nøgler (LAV/DESIGN)

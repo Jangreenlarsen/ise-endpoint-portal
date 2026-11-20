@@ -84,7 +84,7 @@ def _detail(ep_id: str) -> EndpointDetail:
 class FakeService:
     def __init__(self) -> None:
         self.create_endpoint = AsyncMock(return_value="new-id")
-        self.update_endpoint = AsyncMock()
+        self.update_endpoint = AsyncMock(return_value={"psk_changed": False, "psk_coa": None})
         self.delete_endpoint = AsyncMock()
         self.coa_reauth = AsyncMock(return_value=(True, "AA:BB:CC:DD:EE:01", "ok"))
         self.coa_disconnect = AsyncMock(return_value=(True, "AA:BB:CC:DD:EE:01", "ok"))
@@ -271,3 +271,25 @@ def test_templet_payload_built_from_template(client, svc):
     assert ca.AuthzVlan == "20"
     assert ca.PSK_Key is None
     assert ca.RegistretBy == "w_tpl"
+
+
+# ── P-6: editor-psk må sende CoA ──────────────────────────────────────────────
+
+@pytest.mark.parametrize("path", ["coa-reauth", "coa-disconnect"])
+def test_psk_editor_can_send_coa(client, svc, path):
+    r = client.post(f"/api/endpoints/{IN_SCOPE}/{path}", headers=_h("editor-psk"))
+    assert r.status_code == 200
+
+
+def test_psk_editor_can_bulk_coa(client, svc):
+    r = client.post("/api/endpoints/bulk-coa", headers=_h("editor-psk"),
+                    json={"endpoint_ids": [IN_SCOPE], "action": "disconnect"})
+    assert r.status_code == 200 and r.json()["ok_count"] == 1
+
+
+def test_update_returns_psk_coa_result(client, svc):
+    svc.update_endpoint = AsyncMock(return_value={"psk_changed": True, "psk_coa": {"ok": True, "mac": "m", "message": "ok"}})
+    r = client.put(f"/api/endpoints/{IN_SCOPE}", headers=_h("editor-psk"),
+                   json={"custom_attributes": PSK_BODY})
+    assert r.status_code == 200
+    assert r.json()["psk_coa"]["ok"] is True

@@ -593,6 +593,7 @@ def get_psk_policy() -> PskPolicy:
         require_uppercase=bool(getattr(s, "psk_require_uppercase", False)),
         require_numbers=bool(getattr(s, "psk_require_numbers", False)),
         require_special=bool(getattr(s, "psk_require_special", False)),
+        disconnect_on_change=bool(getattr(s, "psk_disconnect_on_change", True)),
     )
 
 
@@ -608,6 +609,7 @@ async def update_psk_policy(new: PskPolicy) -> PskPolicy:
             "psk_require_uppercase": new.require_uppercase,
             "psk_require_numbers": new.require_numbers,
             "psk_require_special": new.require_special,
+            "psk_disconnect_on_change": new.disconnect_on_change,
         }
     )
     save_overrides(overrides)

@@ -719,6 +719,9 @@ export async function renderSettings(container) {
         <div class="field checkbox-field">
           <label><input type="checkbox" id="psk-req-special" /> <span id="psk-req-special-lbl"></span></label>
         </div>
+        <div class="field checkbox-field">
+          <label><input type="checkbox" id="psk-disconnect" checked /> <span id="psk-disconnect-lbl"></span></label>
+        </div>
         <div class="actions">
           <button type="submit" id="psk-btn-save"></button>
           <button type="button" id="psk-test-gen" class="secondary" id="psk-btn-test"></button>

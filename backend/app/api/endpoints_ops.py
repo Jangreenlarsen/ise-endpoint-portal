@@ -19,7 +19,7 @@ from app.api._endpoint_api_helpers import (
     _split_by_scope,
     require_endpoint_in_scope,
 )
-from app.api.deps import get_endpoint_service, require_editor
+from app.api.deps import get_endpoint_service, require_coa, require_editor
 from app.schemas.user import User
 from app.core.exceptions import IseApiError
 from app.schemas.endpoint import (
@@ -44,7 +44,7 @@ class SetActiveStatusRequest(BaseModel):
 # CoA (Change of Authorization)                                        #
 # ------------------------------------------------------------------ #
 
-@router.post("/{endpoint_id}/coa-reauth", response_model=CoaReauthResponse, dependencies=[Depends(require_editor), Depends(require_endpoint_in_scope)])
+@router.post("/{endpoint_id}/coa-reauth", response_model=CoaReauthResponse, dependencies=[Depends(require_coa), Depends(require_endpoint_in_scope)])
 async def coa_reauth(
     endpoint_id: str,
     service: EndpointService = Depends(get_endpoint_service),
@@ -57,7 +57,7 @@ async def coa_reauth(
     return CoaReauthResponse(ok=ok, mac=mac, message=msg)
 
 
-@router.post("/{endpoint_id}/coa-disconnect", response_model=CoaReauthResponse, dependencies=[Depends(require_editor), Depends(require_endpoint_in_scope)])
+@router.post("/{endpoint_id}/coa-disconnect", response_model=CoaReauthResponse, dependencies=[Depends(require_coa), Depends(require_endpoint_in_scope)])
 async def coa_disconnect(
     endpoint_id: str,
     service: EndpointService = Depends(get_endpoint_service),
@@ -86,7 +86,7 @@ class BulkCoaRequest(BaseModel):
 @router.post("/bulk-coa")
 async def bulk_coa(
     body: BulkCoaRequest,
-    user: User = Depends(require_editor),
+    user: User = Depends(require_coa),
     service: EndpointService = Depends(get_endpoint_service),
 ) -> dict:
     """Trigger CoA reauth eller disconnect for en liste af endpoints parallelt."""

@@ -313,6 +313,9 @@ const TRANSLATIONS = {
     "detail.tpl_save_err":     "Kunne ikke gemme skabelon: {msg}",
     "detail.tpl_applied":      "Skabelon anvendt.",
     "detail.tpl_psk_prompt":   "PSK-nøgle (gemmes ikke i skabelon):",
+    "detail.psk_changed_coa_ok":   "PSK-nøglen er ændret — enheden er afbrudt og skal forbinde igen med den nye nøgle.",
+    "detail.psk_changed_coa_fail": "PSK-nøglen er ændret, men afbrydelse fejlede ({msg}). Den gamle nøgle virker indtil enheden selv forbinder igen.",
+    "detail.psk_changed_no_coa":   "PSK-nøglen er ændret. Automatisk afbrydelse er slået fra — den nye nøgle bruges næste gang enheden forbinder.",
 
     // Browse — detail modal — RADIUS policy & wizard
     "detail.policy_show":         "▶ Vis",
@@ -1372,7 +1375,8 @@ const TRANSLATIONS = {
     "settings.psk_card":              "PSK Pass Key Politik",
     "settings.psk_mode_type":         "PSK Mode-type",
     "settings.psk_show_key":          "Vis PSK Key i klartekst i browse-tabellen (ellers vises ••••••)",
-    "settings.psk_min_length":        "Minimum længde (8–128 tegn)",
+    "settings.psk_min_length":        "Minimum længde (8–63 tegn — WPA-grænse)",
+    "settings.psk_disconnect":        "Afbryd enheden (CoA-Disconnect) når dens PSK-nøgle ændres, så den nye nøgle virker med det samme",
     "settings.psk_req_upper":         "Kræver stort bogstav (A-Z)",
     "settings.psk_req_number":        "Kræver tal (0-9)",
     "settings.psk_req_special":       "Kræver specialtegn (!@#$…)",
@@ -1932,6 +1936,9 @@ const TRANSLATIONS = {
     "detail.tpl_save_err":     "Could not save template: {msg}",
     "detail.tpl_applied":      "Template applied.",
     "detail.tpl_psk_prompt":   "PSK Key (not stored in template):",
+    "detail.psk_changed_coa_ok":   "PSK key changed — the device has been disconnected and must reconnect with the new key.",
+    "detail.psk_changed_coa_fail": "PSK key changed, but disconnect failed ({msg}). The old key keeps working until the device reconnects.",
+    "detail.psk_changed_no_coa":   "PSK key changed. Automatic disconnect is off — the new key is used the next time the device connects.",
 
     // Browse — detail modal — RADIUS policy & wizard
     "detail.policy_show":         "▶ Show",
@@ -2991,7 +2998,8 @@ const TRANSLATIONS = {
     "settings.psk_card":              "PSK Pass Key Policy",
     "settings.psk_mode_type":         "PSK Mode type",
     "settings.psk_show_key":          "Show PSK Key in plain text in browse table (otherwise shown as ••••••)",
-    "settings.psk_min_length":        "Minimum length (8–128 chars)",
+    "settings.psk_min_length":        "Minimum length (8–63 chars — WPA limit)",
+    "settings.psk_disconnect":        "Disconnect the device (CoA-Disconnect) when its PSK key changes, so the new key takes effect immediately",
     "settings.psk_req_upper":         "Require uppercase letter (A-Z)",
     "settings.psk_req_number":        "Require digit (0-9)",
     "settings.psk_req_special":       "Require special character (!@#$…)",

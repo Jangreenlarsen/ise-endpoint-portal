@@ -297,7 +297,7 @@ async def update_endpoint(
     req: EndpointUpdate,
     user: User = Depends(require_edit_endpoint),
     service: EndpointService = Depends(get_endpoint_service),
-) -> dict[str, str]:
+) -> dict:
     # Tjek om GuestAccessExpire sættes til true FØR selve opdateringen,
     # så vi kan sende CoA bagefter hvis det er slået til i settings.
     existing = await _ensure_in_scope(service, endpoint_id, user)
@@ -308,9 +308,9 @@ async def update_endpoint(
     guest_expire_set = ca is not None and (ca.GuestAccessExpire or "").lower() == "true"
 
     try:
-        await service.update_endpoint(
+        result = await service.update_endpoint(
             endpoint_id, req, auto_tag_username=_autotag_for(user)
-        )
+        ) or {}
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except IseApiError as exc:
@@ -343,7 +343,8 @@ async def update_endpoint(
                 "update_endpoint: CoA fejlede for %s: %s", endpoint_id, exc
             )
 
-    return {"status": "updated"}
+    # psk_changed/psk_coa: frontend viser om nøgleskiftet blev skubbet ud (P-6).
+    return {"status": "updated", **result}
 
 
 @router.delete(

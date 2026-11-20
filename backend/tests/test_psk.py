@@ -69,3 +69,73 @@ def test_key_with_mode_false_is_not_validated():
 def test_hint_mentions_limits():
     hint = psk_policy_hint(PskPolicy(min_length=10, require_numbers=True))
     assert "10-63" in hint and "tal" in hint
+
+
+# ── P-6: nøgleskift træder i kraft (CoA-Disconnect) ───────────────────────────
+
+from unittest.mock import AsyncMock, MagicMock, patch  # noqa: E402
+
+from app.core import config  # noqa: E402
+from app.schemas.endpoint import CustomAttrs, EndpointDetail, EndpointUpdate  # noqa: E402
+from app.services._endpoint_helpers import _psk_changed  # noqa: E402
+from app.services.endpoint_service import EndpointService  # noqa: E402
+
+
+def test_psk_changed_detects_new_key():
+    before = {"psk_key": "GammelNøgle1", "psk_mode": True}
+    assert _psk_changed({"PSK_Key": "psk=NyNoegle123"}, before)
+
+
+def test_psk_changed_ignores_same_key_with_prefix():
+    before = {"psk_key": "SammeNoegle1", "psk_mode": True}
+    assert not _psk_changed({"PSK_Key": "psk=SammeNoegle1", "PSK_Mode": "true"}, before)
+
+
+def test_psk_changed_detects_mode_toggle():
+    assert _psk_changed({"PSK_Mode": "false"}, {"psk_key": "x", "psk_mode": True})
+
+
+def test_psk_changed_false_without_snapshot():
+    assert not _psk_changed({"PSK_Key": "NyNoegle123"}, None)
+
+
+async def _run_update(ca: CustomAttrs, before_key: str, setting: bool):
+    with patch("app.core.config.settings.ise_api_type", "ers"):
+        svc = EndpointService(MagicMock())
+    svc._ensure_ca_definitions = AsyncMock()
+    svc.endpoints.update = AsyncMock()
+    svc.get_endpoint = AsyncMock(return_value=EndpointDetail(
+        id="ep", name="AA:BB:CC:DD:EE:01", mac="AA:BB:CC:DD:EE:01",
+        psk_mode=True, psk_key=before_key, active_status="Aktiv"))
+    svc.coa_disconnect = AsyncMock(return_value=(True, "AA:BB:CC:DD:EE:01", "ok"))
+    cache = MagicMock()
+    with (
+        patch("app.services.endpoint_service.audit_store") as audit,
+        patch("app.services.endpoint_service.get_cache", return_value=cache),
+        patch("asyncio.create_task"),
+        patch.object(config.settings, "psk_disconnect_on_change", setting),
+    ):
+        audit.record = AsyncMock()
+        res = await svc.update_endpoint("ep", EndpointUpdate(custom_attributes=ca))
+    return svc, res
+
+
+@pytest.mark.asyncio
+async def test_key_change_sends_disconnect():
+    svc, res = await _run_update(CustomAttrs(PSK_Mode="true", PSK_Key="NyNoegle123"), "Gammel123", True)
+    svc.coa_disconnect.assert_awaited_once_with("ep")
+    assert res["psk_changed"] and res["psk_coa"]["ok"]
+
+
+@pytest.mark.asyncio
+async def test_unchanged_key_sends_nothing():
+    svc, res = await _run_update(CustomAttrs(PSK_Mode="true", PSK_Key="Gammel123"), "Gammel123", True)
+    svc.coa_disconnect.assert_not_awaited()
+    assert not res["psk_changed"]
+
+
+@pytest.mark.asyncio
+async def test_disconnect_can_be_disabled():
+    svc, res = await _run_update(CustomAttrs(PSK_Mode="true", PSK_Key="NyNoegle123"), "Gammel123", False)
+    svc.coa_disconnect.assert_not_awaited()
+    assert res["psk_changed"] and res["psk_coa"] is None

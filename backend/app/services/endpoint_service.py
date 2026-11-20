@@ -58,6 +58,7 @@ from app.services._endpoint_helpers import (
     _full_text_filter,
     _mask_psk,
     _parse_roles_csv,
+    _psk_changed,
     _psk_decode,
     _psk_encode,
     _psk_encode_ca,
@@ -834,7 +835,14 @@ class EndpointService:
         endpoint_id: str,
         update: EndpointUpdate,
         auto_tag_username: str | None = None,
-    ) -> None:
+    ) -> dict[str, Any]:
+        """Opdater et endpoint. Returnerer ``{"psk_changed": bool, "psk_coa": {...} | None}``.
+
+        Ændres PSK-nøglen (eller PSK_Mode) og er ``psk_disconnect_on_change``
+        slået til, sendes CoA-Disconnect, så klienten må lave en ny 4-way
+        handshake med den nye nøgle. Reauth er ikke nok: den genforhandler ikke
+        nøglen på en eksisterende association (BUGS.md P-6).
+        """
         logger.info(
             "updating endpoint id=%s fields=%s",
             endpoint_id,
@@ -876,6 +884,7 @@ class EndpointService:
             if not reg_ts:
                 reg_ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
             ca[REGISTERED_AT_ATTR] = reg_ts
+        psk_changed = _psk_changed(ca, before)
         await self.endpoints.update(
             endpoint_id,
             description=update.description,
@@ -886,6 +895,19 @@ class EndpointService:
         # Invalidate cache so the next read reflects the new ISE state.
         get_cache().mark_changed(endpoint_id)
         get_cache().invalidate_detail(endpoint_id)
+
+        psk_coa: dict[str, Any] | None = None
+        if psk_changed and getattr(config.settings, "psk_disconnect_on_change", True):
+            try:
+                ok, mac, msg = await self.coa_disconnect(endpoint_id)
+                psk_coa = {"ok": ok, "mac": mac, "message": msg}
+                logger.info(
+                    "psk: nøgle ændret på %s → CoA-Disconnect %s: %s",
+                    endpoint_id, "ok" if ok else "fejl", msg,
+                )
+            except Exception as exc:  # noqa: BLE001 — opdateringen er gennemført
+                psk_coa = {"ok": False, "mac": "", "message": str(exc)}
+                logger.warning("psk: CoA-Disconnect efter nøgleskift fejlede for %s: %s", endpoint_id, exc)
 
         # Opdatér guest expiry tracking baseret på de nye CA-værdier.
         _sync_guest_expiry(endpoint_id, (before or {}).get("mac", ""), ca)
@@ -910,6 +932,7 @@ class EndpointService:
                 logger.warning("audit-after-update fejlede for %s: %s", _ep_id, exc)
 
         asyncio.create_task(_audit_after(), name=f"audit-after-update-{endpoint_id[:8]}")
+        return {"psk_changed": psk_changed, "psk_coa": psk_coa}
 
     async def bulk_create(
         self,
