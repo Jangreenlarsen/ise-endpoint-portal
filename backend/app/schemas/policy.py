@@ -106,6 +106,8 @@ class PolicyMatchResult(BaseModel):
     no_rules: bool = False
     partial_match: bool = False   # True when match relies on skipped (RADIUS) conditions
     radius_attrs_needed: list[str] = []              # RADIUS attributes used in rules but not yet provided
+    # Tidsforbrug: total_ms, endpoint_ms, rules_ms, cache (warm/stale/cold), ise_policy_calls
+    timing: dict[str, float | int | str] | None = None
 
 
 # ── Match simulation request ─────────────────────────────────────────────────

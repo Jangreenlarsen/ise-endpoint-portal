@@ -27,6 +27,16 @@ ingen PSK-tests i `backend/tests/`.
 **7.3.0766**. Regressions-vagter: `tests/test_write_authz.py` (24) og `tests/test_psk.py` (23) plus 3 i
 `tests/test_selfregister.py`. Suite 325 → 376 grønne.
 
+## [FIXED 7.6.0773] 2026-11-20 — P-11: Policy-simulering tager stadig lang tid — cachen er næsten altid kold (MIDDEL)
+
+- **Fundet:** brugerrapport ("en simulering på endpoint har altid taget meget lang tid"). Opfølgning på `[FIXED 6.28.0735]`/`0736`.
+- **Symptom:** "Simulér" i edit-vinduet, især i Auto-mode, tager mange sekunder, selvom 6.28 fjernede gruppe-stormen og indførte en policy-cache.
+- **Root cause:** Policy-cachen havde TTL 300 s og ingen stale-servering. Operatører simulerer typisk sjældnere end hvert 5. minut, så cachen var næsten altid kold. Kold Auto-simulering = `GET policy-set` + **for hvert policy set i serie** `GET policy-set/{id}` (kun for navnet, som allerede står i listen) + `GET .../authorization`, plus endpoint-GET'et bagefter — 2 + 2 × antal sets ISE-kald efter hinanden mod ISE's langsomme policy-API.
+- **Løsning:** (1) Policy-navn tages fra den cachede liste — ét kald mindre pr. set. (2) Regler for alle sets hentes parallelt (højst 4 ad gangen), og endpointet hentes samtidig med reglerne. (3) Stale-while-revalidate: regler 5–60 min gamle serveres straks og opdateres i baggrunden; ældre hentes friskt; samtidige forespørgsler deler ét kald; invalidering under en hentning kasserer svaret. (4) Når policy-fanen åbnes (`GET /policy/policy-sets`), varmes reglerne op i baggrunden. (5) Resultatet har nu `timing` (total, endpoint, regler, cache-status, antal policy-kald), som vises under resultatet — så en langsom simulering kan diagnosticeres.
+- **Effekt (målt med mocket ISE, 200 ms/kald, 3 sets):** kold Auto 8 kald i serie (~1,6 s) → ~2 kald efter hinanden (~0,4 s); varm/stale: 0 policy-kald.
+- **Regressions-vagt:** `tests/test_policy_sim_speed.py` (8 tests).
+- **Berørte filer:** `backend/app/services/policy_service.py`, `backend/app/schemas/policy.py`, `frontend/js/views/browse-detail.js`
+
 ## [FIXED 7.6.0772] 2026-11-20 — P-10: Hentemetoden Open API-liste falder altid tilbage til ERS med "ISE API 400" (HØJ)
 
 - **Fundet:** i produktion umiddelbart efter 7.6.0771 (dashboard: *Open API-liste kunne ikke bruges — kører ERS: ISE API 400:*).

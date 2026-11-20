@@ -94,6 +94,20 @@ Klik **Gem** for at sende ændringen til ISE via `PUT /api/endpoints/{id}`.
 
 **Prøv igen-knap**: hvis ISE er midlertidigt utilgængeligt vises en venlig fejlbesked med en **Prøv igen**-knap. Portalen viser evt. cachelagrede data med et ⏱-badge som indikerer at data muligvis er forældet.
 
+### Policy-simulering
+
+Fanen med ISE-politik i edit-vinduet viser, hvilken autorisationsregel endpointet vil ramme. Vælg et policy set, eller **Auto** for at teste alle policy sets i rank-rækkefølge, og klik **Simulér**. Endpointets attributter hentes altid live fra ISE. RADIUS-værdier, som reglerne bruger (fx `Called-Station-ID`), kan tilføjes som rækker og gemmes som skabeloner.
+
+Under resultatet står, hvor lang tid simuleringen tog, og hvor policy-reglerne kom fra:
+
+| Tekst | Betydning |
+|---|---|
+| *fra cache* | Reglerne var hentet inden for 5 minutter. Kun endpointet blev hentet fra ISE |
+| *fra cache (opdateres i baggrunden)* | Reglerne er 5–60 minutter gamle og bruges med det samme, mens de hentes på ny |
+| *hentet fra ISE* | Reglerne var ikke i cachen. Alle policy sets hentes parallelt |
+
+Reglerne begynder at blive hentet, så snart fanen åbnes, så den første simulering normalt også går hurtigt. Ændringer, der laves i portalen, slår igennem med det samme. Ændringer, der laves direkte i ISE, ses i den simulering der kommer efter baggrundsopdateringen — og altid efter højst en time.
+
 ### Bulk-edit
 
 Marker flere rækker (Shift+klik for interval) og klik **Bulk-edit** i toolbar. Du kan redigere ét eller flere felter på alle markerede endpoints på én gang.

@@ -3,8 +3,10 @@
 """RADIUS Policy Service — wraps ISE policy API + condition match simulation."""
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 from app.core.custom_attr_store import PSK_MODE_ATTR
@@ -23,26 +25,64 @@ from app.schemas.policy import (
 
 logger = logging.getLogger(__name__)
 
-# ── Policy-cache (SWR) ────────────────────────────────────────────────────────
-# Policy sets + authz-regler ændres sjældent men hentes ellers friskt ved hver
-# simulering (og i Auto-mode pr. policy set). En kort TTL-cache gør gentagne
-# simuleringer næsten øjeblikkelige. Invalideres ved regel-mutationer.
+# ── Policy-cache (stale-while-revalidate) ─────────────────────────────────────
+# Policy sets + authz-regler ændres sjældent, men ISE's policy-API er langsomt.
+# Før blev cachen kun brugt i 5 min; simulerede man sjældnere, var den altid kold
+# og en Auto-simulering kostede 1 + 2 × antal policy sets ISE-kald i serie.
+#   alder ≤ TTL           → svar fra cache
+#   TTL < alder ≤ MAX     → svar fra cache straks + opdatér i baggrunden
+#   alder > MAX / mangler → hent fra ISE (samtidige forespørgsler deler ét kald)
+# Invalideres ved regel-mutationer i portalen. Ændringer lavet direkte i ISE ses
+# senest efter TTL + ét kald (baggrundsopdatering) og altid efter MAX.
 _POLICY_CACHE_TTL = 300.0
-_sets_cache: tuple[float, Any] | None = None          # (ts, rå policy sets)
-_ps_cache: dict[str, tuple[float, Any]] = {}          # policy_set_id -> (ts, ps)
-_rules_cache: dict[str, tuple[float, Any]] = {}       # policy_set_id -> (ts, rules)
+_POLICY_CACHE_MAX_STALE = 3600.0
+_PREFETCH_CONCURRENCY = 4
+_cache: dict[str, tuple[float, Any]] = {}            # "sets" | "ps:<id>" | "rules:<id>" -> (ts, data)
+_inflight: dict[str, asyncio.Future] = {}
+_background: set[asyncio.Task] = set()               # holder referencer til baggrundsopgaver
+_generation = 0                                      # bumpes ved invalidate → forældede svar kasseres
 
 
 def invalidate_policy_cache(policy_set_id: str | None = None) -> None:
     """Ryd policy-cachen (kaldes ved regel-create/update/delete)."""
-    global _sets_cache
-    _sets_cache = None
+    global _generation
+    _generation += 1
+    _cache.pop("sets", None)
     if policy_set_id is None:
-        _ps_cache.clear()
-        _rules_cache.clear()
+        _cache.clear()
+        _inflight.clear()
     else:
-        _ps_cache.pop(policy_set_id, None)
-        _rules_cache.pop(policy_set_id, None)
+        for key in (f"ps:{policy_set_id}", f"rules:{policy_set_id}"):
+            _cache.pop(key, None)
+            _inflight.pop(key, None)
+
+
+def _start_fetch(key: str, fetch: Callable[[], Awaitable[Any]]) -> asyncio.Future:
+    """Start (eller genbrug) ét ISE-kald for `key`; resultatet lægges i cachen."""
+    fut = _inflight.get(key)
+    if fut is not None and not fut.done():
+        return fut
+    gen = _generation
+
+    async def _run() -> Any:
+        try:
+            value = await fetch()
+            if gen == _generation:
+                _cache[key] = (time.time(), value)
+            return value
+        finally:
+            if _inflight.get(key) is task:
+                _inflight.pop(key, None)
+
+    task = asyncio.ensure_future(_run())
+    _inflight[key] = task
+    return task
+
+
+def _log_background_error(task: asyncio.Task) -> None:
+    _background.discard(task)
+    if not task.cancelled() and task.exception() is not None:
+        logger.warning("policy-cache: baggrundsopdatering fejlede: %s", task.exception())
 
 
 # ISE Open API operator aliases (ISE uses lowercase)
@@ -362,37 +402,106 @@ def _split_into_subrules(
 class PolicyService:
     def __init__(self, client) -> None:
         self._client = client
+        self._reset_stats()
 
     # ── Cachede ISE-læsninger (SWR, se _POLICY_CACHE_TTL) ──────────────────
+    def _reset_stats(self) -> None:
+        self._stats: dict[str, float] = {
+            "hit": 0, "stale": 0, "miss": 0, "endpoint_ms": 0.0, "rules_ms": 0.0,
+        }
+
+    async def _swr(self, key: str, fetch: Callable[[], Awaitable[Any]]) -> Any:
+        hit = _cache.get(key)
+        if hit is not None:
+            age = time.time() - hit[0]
+            if age <= _POLICY_CACHE_TTL:
+                self._stats["hit"] += 1
+                return hit[1]
+            if age <= _POLICY_CACHE_MAX_STALE:
+                self._stats["stale"] += 1
+                if key not in _inflight:
+                    task = _start_fetch(key, fetch)
+                    _background.add(task)
+                    task.add_done_callback(_log_background_error)
+                return hit[1]
+        self._stats["miss"] += 1
+        return await _start_fetch(key, fetch)
+
     async def _cached_policy_sets(self) -> Any:
-        global _sets_cache
-        now = time.time()
-        if _sets_cache and now - _sets_cache[0] <= _POLICY_CACHE_TTL:
-            return _sets_cache[1]
-        sets = await policy_api.list_policy_sets(self._client)
-        _sets_cache = (now, sets)
-        return sets
+        return await self._swr("sets", lambda: policy_api.list_policy_sets(self._client))
 
     async def _cached_policy_set(self, policy_set_id: str) -> Any:
-        now = time.time()
-        hit = _ps_cache.get(policy_set_id)
-        if hit and now - hit[0] <= _POLICY_CACHE_TTL:
-            return hit[1]
-        ps = await policy_api.get_policy_set(self._client, policy_set_id)
-        _ps_cache[policy_set_id] = (now, ps)
-        return ps
+        return await self._swr(
+            f"ps:{policy_set_id}", lambda: policy_api.get_policy_set(self._client, policy_set_id)
+        )
 
     async def _cached_rules(self, policy_set_id: str) -> Any:
-        now = time.time()
-        hit = _rules_cache.get(policy_set_id)
-        if hit and now - hit[0] <= _POLICY_CACHE_TTL:
-            return hit[1]
-        rules = await policy_api.list_authorization_rules(self._client, policy_set_id)
-        _rules_cache[policy_set_id] = (now, rules)
-        return rules
+        return await self._swr(
+            f"rules:{policy_set_id}",
+            lambda: policy_api.list_authorization_rules(self._client, policy_set_id),
+        )
+
+    async def _policy_set_name(self, policy_set_id: str) -> str:
+        """Navn fra den cachede policy set-liste; ellers ét opslag af policy settet."""
+        sets_hit = _cache.get("sets")
+        if sets_hit is not None:
+            for s in sets_hit[1] or []:
+                if isinstance(s, dict) and s.get("id") == policy_set_id:
+                    return s.get("name") or policy_set_id
+        ps = await self._cached_policy_set(policy_set_id)
+        return ps.get("name", policy_set_id) if isinstance(ps, dict) else policy_set_id
+
+    async def prefetch_rules(self, policy_set_ids: list[str]) -> None:
+        """Hent regler for flere policy sets parallelt (højst _PREFETCH_CONCURRENCY)."""
+        sem = asyncio.Semaphore(_PREFETCH_CONCURRENCY)
+
+        async def _one(ps_id: str) -> None:
+            async with sem:
+                try:
+                    await self._cached_rules(ps_id)
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("policy-cache: regler for %s kunne ikke hentes: %s", ps_id, exc)
+
+        await asyncio.gather(*(_one(i) for i in policy_set_ids))
+
+    def warm_rules_in_background(self, policy_set_ids: list[str]) -> None:
+        """Varm regel-cachen op uden at vente — så en simulering finder den varm."""
+        cold = [
+            i for i in policy_set_ids
+            if (hit := _cache.get(f"rules:{i}")) is None
+            or time.time() - hit[0] > _POLICY_CACHE_TTL
+        ]
+        if not cold:
+            return
+        task = asyncio.ensure_future(self.prefetch_rules(cold))
+        _background.add(task)
+        task.add_done_callback(_log_background_error)
+
+    async def _timed_fetch_ep(self, endpoint_id: str) -> dict:
+        t = time.perf_counter()
+        try:
+            return await self._fetch_ep_from_ise(endpoint_id)
+        finally:
+            self._stats["endpoint_ms"] += (time.perf_counter() - t) * 1000
+
+    def _with_timing(self, result: PolicyMatchResult, t0: float) -> PolicyMatchResult:
+        s = self._stats
+        cache = "cold" if s["miss"] else ("stale" if s["stale"] else "warm")
+        return result.model_copy(update={"timing": {
+            "total_ms": round((time.perf_counter() - t0) * 1000, 1),
+            "endpoint_ms": round(s["endpoint_ms"], 1),
+            "rules_ms": round(s["rules_ms"], 1),
+            "cache": cache,
+            "ise_policy_calls": int(s["miss"]),
+        }})
 
     async def list_policy_sets(self) -> list[PolicySetSummary]:
         sets = await self._cached_policy_sets()
+        # Policy-fanen i edit-vinduet åbner med dette kald — varm reglerne op nu,
+        # så "Simulér" finder dem i cachen.
+        self.warm_rules_in_background(
+            [s["id"] for s in sets if isinstance(s, dict) and s.get("id")]
+        )
         return sorted(
             [_ps_summary(ps) for ps in sets], key=lambda s: s.rank
         )
@@ -505,40 +614,54 @@ class PolicyService:
         simulering går fra N × (endpoint-GET + regel-fetch) til ét endpoint-GET +
         cachede regler.
         """
+        t0 = time.perf_counter()
+        self._reset_stats()
         radius_attrs: dict[str, str] = ep.get("radius_attrs") or {}
         endpoint_id = ep.get("endpoint_id", "")
-        if endpoint_id:
-            try:
-                ep = await self._fetch_ep_from_ise(endpoint_id)
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("simulate-auto: kunne ikke hente ep %s fra ISE: %s", endpoint_id, exc)
-        # ep har nu INGEN endpoint_id → match_endpoint re-fetcher ikke pr. set.
-        ep = {**ep, "radius_attrs": radius_attrs}
-
+        # Endpoint (live fra ISE) og policy-regler hentes samtidig.
+        ep_task = (
+            asyncio.ensure_future(self._timed_fetch_ep(endpoint_id)) if endpoint_id else None
+        )
+        t_rules = time.perf_counter()
         sets = await self._cached_policy_sets()
         ordered = sorted(
             [s for s in sets if isinstance(s, dict) and s.get("id")],
             key=lambda s: s.get("rank", 0),
         )
+        # Alle sets' regler hentes parallelt i stedet for ét set ad gangen.
+        await self.prefetch_rules([s["id"] for s in ordered])
+        self._stats["rules_ms"] += (time.perf_counter() - t_rules) * 1000
+        if ep_task is not None:
+            try:
+                ep = await ep_task
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("simulate-auto: kunne ikke hente ep %s fra ISE: %s", endpoint_id, exc)
+        # ep har nu INGEN endpoint_id → der re-fetches ikke pr. set.
+        ep = {**ep, "radius_attrs": radius_attrs}
+
         needed: set[str] = set()
         last: PolicyMatchResult | None = None
         for s in ordered:
-            result = await self.match_endpoint(s["id"], ep)
+            result = await self._match_in_set(s["id"], ep, ps_name=s.get("name") or s["id"])
             last = result
             needed |= set(result.radius_attrs_needed or [])
             if not result.no_rules and result.matched_rule_id:
-                return result.model_copy(update={"radius_attrs_needed": sorted(needed)})
+                return self._with_timing(
+                    result.model_copy(update={"radius_attrs_needed": sorted(needed)}), t0
+                )
         # Intet match i noget policy set.
         base = last or PolicyMatchResult(policy_set_id="", policy_set_name="")
-        return base.model_copy(update={
+        return self._with_timing(base.model_copy(update={
             "matched_rule_id": None,
             "matched_rule_name": None,
             "no_rules": False,
             "radius_attrs_needed": sorted(needed),
-        })
+        }), t0)
 
     async def match_endpoint(self, policy_set_id: str, ep: dict) -> PolicyMatchResult:
         """Simulate which authorization rule first matches the given endpoint dict."""
+        t0 = time.perf_counter()
+        self._reset_stats()
         # Preserve user-supplied RADIUS values before potentially overwriting ep
         radius_attrs: dict[str, str] = ep.get("radius_attrs") or {}
 
@@ -547,18 +670,26 @@ class PolicyService:
         endpoint_id = ep.get("endpoint_id", "")
         if endpoint_id:
             try:
-                ep = await self._fetch_ep_from_ise(endpoint_id)
+                ep = await self._timed_fetch_ep(endpoint_id)
                 logger.debug("simulate match: fetched live ep attrs for %s → %s", endpoint_id, ep)
             except Exception as exc:
                 logger.warning("simulate match: could not fetch ep %s from ISE: %s", endpoint_id, exc)
 
         # Inject RADIUS values (user-provided) so _get_ep_value can evaluate them
         ep = {**ep, "radius_attrs": radius_attrs}
+        result = await self._match_in_set(policy_set_id, ep)
+        return self._with_timing(result, t0)
 
-        ps = await self._cached_policy_set(policy_set_id)
+    async def _match_in_set(
+        self, policy_set_id: str, ep: dict, ps_name: str | None = None
+    ) -> PolicyMatchResult:
+        """Evaluér ét policy set mod et færdigt ep-dict (henter ikke endpointet)."""
+        radius_attrs: dict[str, str] = ep.get("radius_attrs") or {}
+        t_rules = time.perf_counter()
+        if ps_name is None:
+            ps_name = await self._policy_set_name(policy_set_id)
         rules = await self._cached_rules(policy_set_id)
-
-        ps_name = ps.get("name", policy_set_id) if isinstance(ps, dict) else policy_set_id
+        self._stats["rules_ms"] += (time.perf_counter() - t_rules) * 1000
 
         if not rules:
             return PolicyMatchResult(

@@ -724,13 +724,13 @@ export function initDetail(container, state, api, cb) {
             const r = await api.simulatePolicyAuto(ep);
             mergeNeededRadiusAttrs(r.radius_attrs_needed || []);
             if (!r.no_rules && r.matched_rule_id) {
-              resultEl.innerHTML = renderMatchResult(r);
+              resultEl.innerHTML = renderMatchResult(r) + renderTiming(r.timing);
             } else {
-              resultEl.innerHTML = `<div class="alert warning">${t("detail.policy_no_match")}</div>`;
+              resultEl.innerHTML = `<div class="alert warning">${t("detail.policy_no_match")}</div>` + renderTiming(r.timing);
             }
           } else {
             const result = await api.matchPolicyEndpoint(setId, ep);
-            resultEl.innerHTML = renderMatchResult(result);
+            resultEl.innerHTML = renderMatchResult(result) + renderTiming(result.timing);
             mergeNeededRadiusAttrs(result.radius_attrs_needed || []);
           }
         } catch (err) {
@@ -837,6 +837,16 @@ export function initDetail(container, state, api, cb) {
       description:    container.querySelector("#d-description")?.value || "",
       group_name:     (state.groups || []).find((g) => g.id === (container.querySelector("#d-group")?.value || ""))?.name || "",
     };
+  }
+
+  // Tidsforbrug for simuleringen (fra backend) — viser hvor tiden gik og om
+  // policy-reglerne kom fra cachen.
+  function renderTiming(tm) {
+    if (!tm) return "";
+    const s = (ms) => `${(Number(ms || 0) / 1000).toFixed(1).replace(".", ",")} s`;
+    const cache = { warm: "fra cache", stale: "fra cache (opdateres i baggrunden)", cold: "hentet fra ISE" }[tm.cache] || tm.cache;
+    const calls = tm.ise_policy_calls ? ` · ${tm.ise_policy_calls} policy-kald til ISE` : "";
+    return `<div class="hint" style="margin-top:.4rem;">⏱ ${s(tm.total_ms)} — endpoint ${s(tm.endpoint_ms)}, regler ${s(tm.rules_ms)} ${esc(cache)}${calls}</div>`;
   }
 
   function renderMatchResult(r) {
