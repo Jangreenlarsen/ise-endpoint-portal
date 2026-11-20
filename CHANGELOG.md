@@ -3,6 +3,16 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [7.5.0769] — 2026-11-20 — feat: Test: Endpoint-hentning (Open API-liste vs. ERS N+1)
+
+Feature → MINOR (7.4→7.5) og `build` (0768→0769).
+
+- **`backend/app/services/endpoint_fetch_probe.py` (ny)**: `run_probe(extra_pages)` måler mod ISE om Open API-listen `GET /api/v1/endpoint` indeholder fulde endpoint-data (custom attributes, gruppe, profil), sammenligner med ERS-detaljekald for 5 stikprøver, måler svartider pr. side og HTTP-version, og estimerer fuld scanningstid for Open API-liste vs. nuværende ERS N+1 med `cache_prewarm_concurrency`. Kun GET, højst ca. 20 kald i serie. Fejl fra ISE returneres som data (verdict `error`), ikke som exception.
+- **`backend/app/api/diagnostics.py`**: `POST /api/diagnostics/endpoint-fetch-probe?pages=0-10`, kun admin.
+- **Frontend — `views/settings/section-fetch-probe.js` (ny), `views/settings.js`, `api.js`**: Kortet "Test: Endpoint-hentning" under Portal Config → Portal Opdatering med konklusion, estimat, nøgletal, stikprøve-tabel og rå JSON.
+- **Docs — `docs/04-ADMIN.md`, `ISE_API_REFERENCE.md`, `docs/img/test-endpoint-hentning.png`**: Nyt afsnit om testen; ISE-referencen noterer at Open API-listens indhold er uafklaret, samt fund fra analysen af ISE 3.5 P3/P4.
+- **Tests**: 7 nye i `tests/test_endpoint_fetch_probe.py` (kun GET + begrænset antal kald, fulde/manglende/afvigende data, Open API slået fra, kun admin, `pages`-grænse). Suite: 383 grønne (376 → 383). Playwright: 13/13.
+
 ## [7.4.0768] — 2026-11-20 — feat: grafik i manualen + screenshot-generator
 
 Feature → MINOR (7.3→7.4) og `build` (0767→0768).

@@ -109,3 +109,38 @@ test("settings gaeste-selvregistrering", async ({ page }) => {
   await page.locator("#guest-reg-card").scrollIntoViewIfNeeded();
   await page.locator("#guest-reg-card").screenshot({ path: path.join(OUT, "settings-gaeste-selvregistrering.png") });
 });
+
+const PROBE_RESULT = {
+  timestamp: Date.now() / 1000, page_size: 100, concurrency: 5, verdict: "ok", duration_s: 6.4,
+  message: "Open API-listen returnerer fulde endpoint-data, og de stemmer med detalje-kaldene. Cachen kan fyldes fra listen uden et kald pr. endpoint.",
+  openapi: {
+    ok: true, error: null, first_page_ms: 612.4, http_version: "HTTP/2", items: 100, total: 4812,
+    fields: { customAttributes: 100, groupId: 100, id: 100, mac: 100, name: 100, profileId: 100, staticGroupAssignment: 100 },
+    items_with_custom_attributes: 100, items_with_nonempty_custom_attributes: 87, items_with_group: 100, items_with_profile: 100,
+    page_ms: [612.4, 488.1, 471.9, 502.6], avg_page_ms: 518.8,
+  },
+  ers: { ok: true, error: null, list_page_ms: 344.2, http_version: "HTTP/1.1", items: 100, total: 4812,
+    fields: { description: 100, id: 100, link: 100, name: 100 }, detail_ms: [128.3, 141.0, 119.8, 133.5, 125.1], avg_detail_ms: 129.5 },
+  comparison: { sampled: 5, custom_attributes_match: 5, group_match: 5, profile_match: 5, rows: [
+    { id: "a1", mac: "00:1B:63:4A:10:01", list_has_custom_attributes: true, custom_attributes_match: true, differing_attributes: [], group_match: true, profile_match: true },
+    { id: "a2", mac: "3C:22:FB:91:7E:02", list_has_custom_attributes: true, custom_attributes_match: true, differing_attributes: [], group_match: true, profile_match: true },
+    { id: "a3", mac: "00:0D:4B:22:31:03", list_has_custom_attributes: true, custom_attributes_match: true, differing_attributes: [], group_match: true, profile_match: true },
+    { id: "a4", mac: "B8:27:EB:5C:44:05", list_has_custom_attributes: true, custom_attributes_match: true, differing_attributes: [], group_match: true, profile_match: true },
+    { id: "a5", mac: "A4:83:E7:0F:12:06", list_has_custom_attributes: true, custom_attributes_match: true, differing_attributes: [], group_match: true, profile_match: true },
+  ] },
+  estimate: { total_endpoints: 4812, openapi_list_calls: 49, openapi_list_seconds: 5.1, ers_n_plus_1_calls: 4861, ers_n_plus_1_seconds: 141.4, speedup: 27.7 },
+};
+
+test("test endpoint-hentning", async ({ page }) => {
+  await installApiMock(page, { ...COMMON, "diagnostics/endpoint-fetch-probe": PROBE_RESULT });
+  await page.setViewportSize({ width: 1440, height: 1800 });
+  await page.goto("/#/settings");
+  await page.waitForTimeout(1000);
+  await page.locator('.settings-tab[data-tab="portal-config"]').click();
+  await page.locator('.settings-subtab[data-subtab="pc-update"]').click();
+  await page.locator("#fetch-probe-btn").click();
+  await page.locator("#fetch-probe-result").getByText("Open API-listen kan bruges").waitFor();
+  const card = page.locator(".card", { has: page.locator("#fetch-probe-btn") });
+  await card.scrollIntoViewIfNeeded();
+  await card.screenshot({ path: path.join(OUT, "test-endpoint-hentning.png") });
+});

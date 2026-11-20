@@ -382,6 +382,32 @@ Settings → System Opdatering → **Systemdiagnostik** — klik "Kør diagnosti
 
 Resultater vises som ✅ / ⚠️ / ❌ med detaljer. Tjekket kræver admin-rolle.
 
+### Test: Endpoint-hentning
+
+Samme sted findes kortet **Test: Endpoint-hentning**. Det afgør, om portalens cache kan fyldes hurtigere fra jeres ISE.
+
+I dag henter portalen først en liste over endpoint-id'er (ERS, 100 pr. side) og derefter **hvert endpoint for sig**. Med 5.000 endpoints er det ca. 5.000 kald pr. fuld scanning. Open API-listen `GET /api/v1/endpoint` kan på nogle ISE-versioner returnere hele endpointet i listen. Så er ét kald pr. 100 endpoints nok.
+
+Testen sender kun læsekald (højst ca. 20) og:
+
+1. Henter første side af Open API-listen og tæller, hvor mange elementer der har custom attributes, gruppe og profil.
+2. Henter første side af ERS-listen til sammenligning.
+3. Henter 5 af endpointsene enkeltvis via ERS og sammenligner custom attributes, gruppe og profil med listens data.
+4. Henter op til 10 ekstra Open API-sider (vælges ved knappen) for at måle svartiden pr. side.
+5. Estimerer tiden for en fuld scanning med begge metoder ud fra de målte svartider og `cache_prewarm_concurrency`.
+
+![Resultatet af Test: Endpoint-hentning med konklusion, estimeret scanningstid for begge metoder, svartider og sammenligning af liste og detaljekald](img/test-endpoint-hentning.png)
+
+*Eksempel på et resultat (demodata, ikke en måling). "HTTP/2" viser, at API-gatewayen bruger HTTP/2, som ISE understøtter fra 3.5 Patch 3.*
+
+| Konklusion | Betydning |
+|---|---|
+| ✅ Open API-listen kan bruges | Listen har fulde data, og de stemmer med detaljekaldene. Cachen kan i en senere version fyldes fra listen |
+| ⚠️ Kan ikke erstatte detaljekaldene | Listen mangler custom attributes, eller de afviger. Portalen skal fortsat hente hvert endpoint for sig |
+| ❌ Kunne ikke gennemføres | Open API svarede ikke. Tjek at Open API er slået til i ISE (Administration → System → Settings → API Settings) |
+
+Testen ændrer ikke, hvordan portalen henter data. Fold "rå resultat" ud for at kopiere hele målingen, fx til en fejlrapport.
+
 ---
 
 ## Funktionsgennemgang
