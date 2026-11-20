@@ -3,6 +3,15 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [7.6.0772] — 2026-11-20 — fix: Open API-liste-scanning fejlede med ISE 400 på sider efter den sidste (P-10)
+
+Bugfix → kun `build` (0771→0772).
+
+- **P-10 (HØJ) — `services/endpoint_service.py`**: `list_full_endpoints_openapi()` henter side 1 alene og resten i bølger; ISE Open API's 400/404 på en side efter den sidste tolkes som slut på listen, kun når den er konsistent (alle tidligere sider OK, ingen data i senere sider). Fejl på side 1, andre statuskoder og inkonsistente sider giver `ListSourceUnusable` med sidenummer.
+- **`services/cache_prewarm.py`**: Værn — returnerer listen under 50 % af de kendte endpoints (ved ≥ 20), bruges ERS i stedet, så en afkortet liste ikke invaliderer gyldige endpoints.
+- **`ISE_API_REFERENCE.md`**: Gotcha — Open API svarer 400 på en side efter den sidste.
+- **Tests**: 7 nye i `tests/test_cache_list_scan.py`. Suite: 404 grønne (397 → 404).
+
 ## [7.6.0771] — 2026-11-20 — feat: cache-scanning fra Open API-listen (valgfri hentemetode)
 
 Feature → MINOR (7.5→7.6) og `build` (0770→0771).

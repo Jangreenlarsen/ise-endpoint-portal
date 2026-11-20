@@ -4,6 +4,11 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [7.6.0772] — 2026-11-20 — 🛠 Open API-listen virker nu i praksis
+
+- **Den nye hentemetode faldt altid tilbage til den gamle** med beskeden "ISE API 400". ISE svarer med en fejl, når portalen spørger efter en side efter den sidste, og det tolkede portalen som et problem. Det er rettet, så dashboardet nu skal vise *Kilde: Open API-liste*.
+- Ekstra sikkerhed: leverer listen pludselig langt færre endpoints end portalen kender, bruges den gamle metode, så ingen endpoints fejlagtigt forsvinder fra oversigten.
+
 ## [7.6.0771] — 2026-11-20 — ⚡ Hurtigere og lettere hentning af endpoints fra ISE
 
 - **Ny hentemetode: Open API-liste.** Portalen kan nu hente alle endpoints fra ISE i sider på 100 i stedet for ét ad gangen. På jeres ISE gik en fuld opdatering fra 134 kald (11 sekunder) til 2 kald (under et sekund). Slås til under Indstillinger → Portal Performance → Hentemetode for cache.

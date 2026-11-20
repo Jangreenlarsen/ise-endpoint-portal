@@ -45,6 +45,10 @@ logger = logging.getLogger(__name__)
 
 # Mindste interval mellem liste-scanninger i Open API-liste-tilstand (sekunder).
 LIST_REFRESH_MIN_S = 60.0
+# Returnerer Open API-listen under RATIO × kendte endpoints (når cachen kender
+# mindst MIN), bruges ERS i stedet — så en afkortet liste ikke sletter cachen.
+LIST_SHRINK_GUARD_MIN = 20
+LIST_SHRINK_GUARD_RATIO = 0.5
 
 
 @dataclass
@@ -544,6 +548,17 @@ class PrewarmWorker:
                         "prewarm: Open API-listen kunne ikke bruges (%s) — falder tilbage til ERS N+1",
                         exc,
                     )
+                # Værn mod at en afkortet liste invaliderer gyldige endpoints som
+                # "slettede": falder antallet drastisk, stoles der ikke på listen.
+                if raw_items is not None:
+                    known = get_cache().detail_count()
+                    if known >= LIST_SHRINK_GUARD_MIN and len(raw_items) < known * LIST_SHRINK_GUARD_RATIO:
+                        self.status.scan_fallback_reason = (
+                            f"Open API-listen returnerede kun {len(raw_items)} endpoints, "
+                            f"cachen kender {known} — bruger ERS for en sikkerheds skyld"
+                        )
+                        logger.warning("prewarm: %s", self.status.scan_fallback_reason)
+                        raw_items = None
             self.status.scan_source = "openapi_list" if raw_items is not None else "ers"
 
             if raw_items is not None:

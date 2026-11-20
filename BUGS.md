@@ -27,6 +27,15 @@ ingen PSK-tests i `backend/tests/`.
 **7.3.0766**. Regressions-vagter: `tests/test_write_authz.py` (24) og `tests/test_psk.py` (23) plus 3 i
 `tests/test_selfregister.py`. Suite 325 → 376 grønne.
 
+## [FIXED 7.6.0772] 2026-11-20 — P-10: Hentemetoden Open API-liste falder altid tilbage til ERS med "ISE API 400" (HØJ)
+
+- **Fundet:** i produktion umiddelbart efter 7.6.0771 (dashboard: *Open API-liste kunne ikke bruges — kører ERS: ISE API 400:*).
+- **Symptom:** Med `cache_scan_source=openapi_list` kører hver scanning alligevel ERS N+1, selvom *Test: Endpoint-hentning* viste ✅.
+- **Root cause:** `list_full_endpoints_openapi()` hentede siderne i bølger à `cache_prewarm_concurrency` (5), altså side 1–5 på én gang. Med 132 endpoints findes kun side 1–2, og ISE Open API svarer **400** på en side efter den sidste — ERS svarer en tom liste. 400'en boblede op og udløste fallback. Testen fangede det ikke, fordi den kun henter sider der findes (beregnet ud fra ERS' total).
+- **Løsning:** Side 1 hentes alene; er den fuld, hentes resten i bølger. 400/404 på side > 1 tolkes som slut på listen — men kun når alle tidligere sider lykkedes og ingen senere side i bølgen har data (ellers `ListSourceUnusable("inkonsistent")`). Fejl på side 1 og andre statuskoder giver stadig fallback, nu med sidenummer i årsagen. Nyt værn i scanningen: returnerer listen under 50 % af de endpoints cachen kender (ved ≥ 20), bruges ERS, så en afkortet liste aldrig kan få gyldige endpoints til at se slettede ud.
+- **Regressions-vagt:** `tests/test_cache_list_scan.py` — 7 nye tests (bl.a. 132 endpoints med 400 på side 3-6, fuld sidste side, fejl på side 1, 500 midt i listen, 400 med data bagefter, afkortet liste).
+- **Berørte filer:** `backend/app/services/endpoint_service.py`, `backend/app/services/cache_prewarm.py`
+
 ## [FIXED 7.5.0770] 2026-11-20 — P-9: Gemning af ISE-forbindelsen nulstiller alle andre backend-indstillinger — bl.a. slås gæste-selvregistrering fra (HØJ)
 
 - **Fundet:** under design af ny cache-indstilling (hentemetode).

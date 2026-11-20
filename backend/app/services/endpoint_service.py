@@ -266,32 +266,52 @@ class EndpointService:
     async def list_full_endpoints_openapi(self, concurrency: int = 5) -> list[dict[str, Any]]:
         """Hent alle endpoints med fulde data fra Open API-listen (GET /api/v1/endpoint).
 
-        Sider hentes i bølger à `concurrency` og stopper ved første korte side.
-        Listens `total` bruges ikke — den er målt til 0 på ISE 3.5 selvom siden
-        indeholder 100 elementer. Raiser ListSourceUnusable hvis et element mangler
-        `id` eller `customAttributes`; så kan listen ikke erstatte detalje-kaldene.
+        Side 1 hentes alene; er den fuld, hentes resten i bølger à `concurrency`.
+        Der stoppes ved første korte side. Listens `total` bruges ikke — den er
+        målt til 0 på ISE 3.5 selvom siden indeholder 100 elementer.
+
+        ISE Open API svarer 400 (P-10) — ikke en tom side — når der bedes om en
+        side efter den sidste. En 400/404 på side > 1 tolkes derfor som slut på
+        listen, men KUN hvis alle tidligere sider lykkedes og ingen senere side i
+        bølgen leverer data; ellers kunne en fejl midt i listen få endpoints til at
+        se slettede ud. Raiser ListSourceUnusable ved fejl på side 1, inkonsistente
+        sider, manglende `id`/`customAttributes` eller dubletter.
         """
         repo = OpenApiEndpointRepository(self.client)
         size = OPENAPI_LIST_PAGE_SIZE
         conc = max(1, int(concurrency))
-        items: list[dict[str, Any]] = []
-        page = 1
-        while page <= OPENAPI_LIST_MAX_PAGES:
+
+        async def _page(p: int) -> list[dict[str, Any]] | None:
+            """Elementerne på side p, eller None hvis ISE siger at siden ikke findes."""
+            try:
+                resources, _total = await repo.list_page(page=p, size=size)
+                return resources
+            except IseApiError as exc:
+                if p > 1 and exc.status_code in (400, 404):
+                    return None
+                raise ListSourceUnusable(f"Open API-listen side {p}: {exc}") from exc
+
+        items: list[dict[str, Any]] = list(await _page(1) or [])
+        page = 2
+        done = len(items) < size
+        while not done and page <= OPENAPI_LIST_MAX_PAGES:
             pages = list(range(page, min(page + conc, OPENAPI_LIST_MAX_PAGES + 1)))
-            results = await asyncio.gather(
-                *(repo.list_page(page=p, size=size) for p in pages)
-            )
-            short = False
-            for resources, _total in results:
-                if short:
-                    break  # sider efter en kort side er tomme eller ustabile
-                items.extend(resources)
-                if len(resources) < size:
-                    short = True
-            if short:
-                break
+            results = await asyncio.gather(*(_page(p) for p in pages))
+            for idx, (p, resources) in enumerate(zip(pages, results)):
+                end = resources is None or len(resources) < size
+                if resources:
+                    items.extend(resources)
+                if end:
+                    # Sider efter slutningen må ikke indeholde data.
+                    if any(r for r in results[idx + 1:]):
+                        raise ListSourceUnusable(
+                            f"Open API-listen er inkonsistent: side {p} er tom/fejlede, "
+                            "men en senere side har data"
+                        )
+                    done = True
+                    break
             page += conc
-        else:
+        if not done:
             raise ListSourceUnusable(
                 f"Open API-listen stoppede ikke efter {OPENAPI_LIST_MAX_PAGES} sider"
             )
