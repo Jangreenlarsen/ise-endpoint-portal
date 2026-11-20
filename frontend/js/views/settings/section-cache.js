@@ -211,6 +211,7 @@ export async function initCacheSection(container) {
       container.querySelector("#cache_prewarm_interval_s").value = s.cache_prewarm_interval_s ?? 1800;
       container.querySelector("#cache_prewarm_skip_fresh_s").value = s.cache_prewarm_skip_fresh_s ?? 900;
       container.querySelector("#cache_prewarm_concurrency").value = s.cache_prewarm_concurrency ?? 5;
+      container.querySelector("#cache_scan_source").value = s.cache_scan_source || "ers";
       container.querySelector("#adaptive_pacing_enabled").checked = s.adaptive_pacing_enabled !== false;
       container.querySelector("#adaptive_pacing_range_pct").value = s.adaptive_pacing_range_pct ?? 50;
       container.querySelector("#adaptive_ttl_enabled").checked = s.adaptive_ttl_enabled !== false;
@@ -265,6 +266,7 @@ export async function initCacheSection(container) {
       cache_prewarm_interval_s:  parseFloat(container.querySelector("#cache_prewarm_interval_s").value),
       cache_prewarm_skip_fresh_s: parseFloat(container.querySelector("#cache_prewarm_skip_fresh_s").value),
       cache_prewarm_concurrency: parseInt(container.querySelector("#cache_prewarm_concurrency").value, 10),
+      cache_scan_source:         container.querySelector("#cache_scan_source").value,
       adaptive_pacing_enabled:   container.querySelector("#adaptive_pacing_enabled").checked,
       adaptive_pacing_range_pct: parseFloat(container.querySelector("#adaptive_pacing_range_pct").value),
       adaptive_ttl_enabled:      container.querySelector("#adaptive_ttl_enabled").checked,

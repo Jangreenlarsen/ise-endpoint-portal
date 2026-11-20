@@ -73,3 +73,11 @@ def test_uskrevne_felter_tilfoejes_ikke_til_config():
     # Ikke-sendte felter falder tilbage til config.Settings-defaults og skrives ikke.
     assert "selfregister_enabled" not in saved
     assert "cache_prewarm_concurrency" not in saved
+
+
+def test_hentemetode_gemmes_og_bevares():
+    saved = _run_update({"ise_base_url": "https://ise", "ise_username": "api"},
+                        {**ISE_FORM, "cache_scan_source": "openapi_list"})
+    assert saved["cache_scan_source"] == "openapi_list"
+    saved = _run_update(saved, ISE_FORM)  # ISE-formularen sender ikke feltet
+    assert saved["cache_scan_source"] == "openapi_list"

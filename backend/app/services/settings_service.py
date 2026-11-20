@@ -58,6 +58,7 @@ def get_backend_settings() -> BackendSettingsResponse:
         cache_sync_interval_seconds=s.cache_sync_interval_seconds,
         cache_disk_path=s.cache_disk_path,
         cache_prewarm_concurrency=s.cache_prewarm_concurrency,
+        cache_scan_source=getattr(s, "cache_scan_source", "ers"),  # type: ignore[arg-type]
         cache_prewarm_interval_s=s.cache_prewarm_interval_s,
         cache_prewarm_skip_fresh_s=getattr(s, "cache_prewarm_skip_fresh_s", 900.0),
         cache_max_entries=getattr(s, "cache_max_entries", 5000),
@@ -119,6 +120,7 @@ async def update_backend_settings(
             "cache_sync_interval_seconds": new.cache_sync_interval_seconds,
             "cache_disk_path": new.cache_disk_path,
             "cache_prewarm_concurrency": new.cache_prewarm_concurrency,
+            "cache_scan_source": new.cache_scan_source,
             "cache_prewarm_interval_s": new.cache_prewarm_interval_s,
             "cache_prewarm_skip_fresh_s": new.cache_prewarm_skip_fresh_s,
             "cache_max_entries": new.cache_max_entries,

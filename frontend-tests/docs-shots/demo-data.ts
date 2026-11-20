@@ -55,7 +55,7 @@ export const DASHBOARD = {
   circuit_breaker: { state: 0, state_label: "ISE svarer normalt" },
   endpoints: { total: 4812 },
   cache: { hit_rate_pct: 97.4, hits: 18233, misses: 486, stale_serves: 12, disk_loaded_at_startup: true },
-  prewarm: { scan_number: 212, total_endpoints: 4812, last_scan_ago_s: 140, scanning: false },
+  prewarm: { scan_number: 212, total_endpoints: 4812, last_full_scan_age_s: 140, scanning: false, scan_source: "openapi_list", last_scan_duration_s: 6.2 },
   sessions: { active: 1630 },
   recent_events: [
     { ts: iso(0.01), actor_username: "editor-psk1", action: "endpoint.update", resource_type: "endpoint", resource_id: "A4:83:E7:0F:12:06" },

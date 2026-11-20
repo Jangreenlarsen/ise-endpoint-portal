@@ -38,6 +38,9 @@ async def get_dashboard() -> dict:
             "scanning": pw.scanning,
             "disk_loaded_at_startup": pw.disk_loaded,
             "hot_queue_size": pw.hot_queue_size,
+            "scan_source": pw.scan_source,
+            "scan_fallback_reason": pw.scan_fallback_reason,
+            "last_scan_duration_s": pw.last_scan_duration_s,
         }
     except Exception:  # noqa: BLE001
         pass

@@ -3,6 +3,20 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [7.6.0771] — 2026-11-20 — feat: cache-scanning fra Open API-listen (valgfri hentemetode)
+
+Feature → MINOR (7.5→7.6) og `build` (0770→0771).
+
+- **`core/config.py`, `schemas/settings.py`, `services/settings_service.py`**: Ny indstilling `cache_scan_source` (`ers` default / `openapi_list`).
+- **`services/endpoint_service.py`**: `_fetch_endpoint_detail()` opdelt i hent + ny `_detail_from_raw()`, så et listeelement kan bygges uden detaljekald; gruppe læses også fra `identityGroupId`. Ny `list_full_endpoints_openapi(concurrency)`: henter `GET /api/v1/endpoint` i bølger à `concurrency` sider à 100 og stopper ved første korte side (listens `total` er 0 på ISE 3.5). Raiser `ListSourceUnusable` ved manglende `id`/`customAttributes`, dubletter eller > 2000 sider.
+- **`services/cache_prewarm.py`**: `_full_scan()` bruger listen når `cache_scan_source=openapi_list` — ingen detaljekald; slettede endpoints invalideres som før; mangler `profileId` i listen, bevares den kendte profil. Ved fejl falder scanningen tilbage til ERS N+1 og gemmer årsagen. I liste-tilstand erstatter drip-loopen kald pr. endpoint med en ny liste-scanning når cachen er ældre end TTL (min. 60 s). Nye status-felter: `scan_source`, `scan_fallback_reason`, `last_scan_duration_s`, `list_profile_kept`.
+- **`core/endpoint_cache.py`**: `peek_detail()` — læs cachet værdi uden TTL/stats/ISE-kald.
+- **`api/dashboard.py`, `frontend/js/views/dashboard.js`**: Prewarm-kortet viser kilde, scan-tid og evt. fallback-årsag.
+- **`services/endpoint_fetch_probe.py`, `views/settings/section-fetch-probe.js`**: Stikprøverne omfatter nu endpoints uden profil i listen; total 0 vises som "ukendt".
+- **Frontend — `views/settings.js`, `views/settings/section-cache.js`**: Valget "Hentemetode for cache" under Portal Performance.
+- **Docs — `docs/04-ADMIN.md`, `ISE_API_REFERENCE.md`**: Nyt afsnit Hentemetode med ibrugtagning, fallback og profil-adfærd; ISE-referencen opdateret med målingen fra ISE 3.5.
+- **Tests**: 10 nye i `tests/test_cache_list_scan.py`, 1 ny i `tests/test_settings_partial_update.py`. Suite: 397 grønne (386 → 397). Playwright: 13/13.
+
 ## [7.5.0770] — 2026-11-20 — fix: gemning af ISE-forbindelsen nulstiller ikke længere andre indstillinger (P-9)
 
 Bugfix → kun `build` (0769→0770).

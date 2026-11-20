@@ -115,6 +115,7 @@ Klik "Test forbindelse" for at verificere indstillingerne inden gem.
 | **TTL (sek.)** | 60 | Sekunder inden en cache-entry betragtes stale og baggrunds-refresh trigges |
 | **Pre-warm interval (sek.)** | 1800 | Sekunder mellem komplette baggrunds-scans af alle ISE-endpoints |
 | **Pre-warm concurrency** | 5 | Samtidige ISE-kald under pre-warm; sæt lavere ved belastet ISE |
+| **Hentemetode for cache** | ERS | *ERS*: ét kald pr. endpoint. *Open API-liste*: ca. ét kald pr. 100 endpoints. Se [Hentemetode](#hentemetode) |
 
 Se [Cache-indstillinger](#cache-indstillinger) nedenfor for detaljeret forklaring.
 
@@ -267,6 +268,34 @@ Anbefaling: Hold TTL på 60 s (default) i normale driftsmiljøer. Sæt den høje
 
 Når en entry er stale men en bruger anmoder om data, returnerer portalen de stale data øjeblikkeligt og starter en baggrunds-refresh. SWR-semantikken er altid aktiv og kan ikke deaktiveres selvstændigt.
 
+### Hentemetode
+
+Portalen kan fylde cachen på to måder:
+
+| Metode | ISE-kald pr. fuld scanning | Hvornår |
+|---|---|---|
+| **ERS** (standard) | 1 pr. 100 endpoints til listen + 1 pr. endpoint | Virker på alle ISE-versioner |
+| **Open API-liste** | ca. 1 pr. 100 endpoints | Når *Test: Endpoint-hentning* viser ✅ |
+
+Målt på ISE 3.5 med 132 endpoints: 134 kald og 11,1 s med ERS, mod 2 kald og 0,2 s med Open API-listen.
+
+**Sådan slår du den til:**
+
+1. Kør **Portal Config → Portal Opdatering → Test: Endpoint-hentning**. Fortsæt kun, hvis resultatet er ✅.
+2. Vælg **Open API-liste** under **Portal Performance → Hentemetode for cache**, og gem.
+3. Klik **Genindlæs** i Browse, eller vent på næste scanning. På dashboardet under *Prewarm* skal **Kilde** nu stå som *Open API-liste*, og **Scan-tid** falde markant.
+4. Sammenlign et par endpoints i Browse med ISE, især custom attributes og gruppe.
+
+**Sådan opfører den sig:**
+
+- Siderne hentes i bølger på *Pre-warm concurrency* ad gangen, indtil en side har færre end 100 endpoints. Listens totaltal bruges ikke, fordi ISE 3.5 svarer 0.
+- I stedet for drip-opdateringen af ét endpoint ad gangen kører portalen en ny liste-scanning, når cachen er ældre end TTL. Det sker højst hvert 60. sekund.
+- **Automatisk fallback:** fejler listen, mangler et endpoint custom attributes, eller er siderne ikke stabile, bruger scanningen ERS-metoden. Dashboardet viser årsagen med orange tekst.
+- **Profil:** Open API-listen udelader profilen for nogle endpoints. Portalen beholder da den profil, den allerede kender. Åbn endpointet i edit-vinduet for at hente profilen friskt fra ISE.
+- Edit-vinduet og enkelt-opdateringer henter stadig endpointet direkte fra ISE, så data dér altid er friske.
+
+Skift tilbage til **ERS** når som helst, hvis noget ser forkert ud.
+
 ### Pre-warm interval
 
 Pre-warm-workeren scanner alle ISE-endpoints i baggrunden og holder cachen komplet og aktuel. Intervallet sættes typisk til 1800 s (30 min). Et kortere interval (f.eks. 300 s) kan bruges i dynamiske miljøer med hyppige ISE-ændringer men øger belastningen på ISE.
@@ -406,7 +435,7 @@ Testen sender kun læsekald (højst ca. 20) og:
 | ⚠️ Kan ikke erstatte detaljekaldene | Listen mangler custom attributes, eller de afviger. Portalen skal fortsat hente hvert endpoint for sig |
 | ❌ Kunne ikke gennemføres | Open API svarede ikke. Tjek at Open API er slået til i ISE (Administration → System → Settings → API Settings) |
 
-Testen ændrer ikke, hvordan portalen henter data. Fold "rå resultat" ud for at kopiere hele målingen, fx til en fejlrapport.
+Testen ændrer ikke, hvordan portalen henter data; det gør indstillingen [Hentemetode](#hentemetode). Fold "rå resultat" ud for at kopiere hele målingen, fx til en fejlrapport.
 
 ---
 

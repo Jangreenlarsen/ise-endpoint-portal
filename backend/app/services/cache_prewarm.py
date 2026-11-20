@@ -43,6 +43,9 @@ from app.ise.client import get_ise_client
 
 logger = logging.getLogger(__name__)
 
+# Mindste interval mellem liste-scanninger i Open API-liste-tilstand (sekunder).
+LIST_REFRESH_MIN_S = 60.0
+
 
 @dataclass
 class PrewarmStatus:
@@ -69,6 +72,12 @@ class PrewarmStatus:
     adaptive_speed_factor: float = 1.0
     # Aktivitetsstyret fuld-scan-interval (sekunder): base når aktiv, rampet op ved idle.
     scan_interval_effective_s: float = 0.0
+    # Hentemetode (cache_scan_source): kilde for seneste scan, og hvorfor Open
+    # API-listen evt. ikke kunne bruges (så falder scanningen tilbage til ERS).
+    scan_source: str = ""
+    scan_fallback_reason: str = ""
+    last_scan_duration_s: float | None = None
+    list_profile_kept: int = 0
 
 
 class AdaptivePacer:
@@ -381,6 +390,27 @@ class PrewarmWorker:
                     pass
                 continue
 
+            # Open API-liste-tilstand: én liste-scanning henter alle endpoints for
+            # ~1 kald pr. 100, så drip'ens kald pr. endpoint erstattes af en ny
+            # scanning når cachen er ældre end TTL (min. LIST_REFRESH_MIN_S).
+            # Kun når seneste scanning faktisk brugte listen — ved fallback til
+            # ERS kører den normale drip.
+            if (
+                getattr(config.settings, "cache_scan_source", "ers") == "openapi_list"
+                and self.status.scan_source == "openapi_list"
+            ):
+                refresh_s = max(LIST_REFRESH_MIN_S, cache.effective_ttl())
+                last = self.status.last_full_scan_at or 0.0
+                if not self.status.scanning and time.time() - last >= refresh_s:
+                    logger.info("drip: liste-tilstand — cache ældre end %.0fs, starter liste-scanning", refresh_s)
+                    self.trigger_rescan()
+                try:
+                    await asyncio.wait_for(self._stop.wait(), timeout=min(refresh_s / 4, 30.0))
+                    break
+                except asyncio.TimeoutError:
+                    pass
+                continue
+
             # Aktivitetsstyret TTL: base når portalen bruges, ramper op ved
             # inaktivitet → færre entries anses stale → drip laver færre ISE-kald.
             ttl = cache.effective_ttl()
@@ -498,8 +528,29 @@ class PrewarmWorker:
             except Exception as exc:  # noqa: BLE001
                 logger.warning("prewarm: group pre-warm fejlede (fortsætter): %s", exc)
 
-            # Hent alle endpoint IDs fra ISE (kun ID, billige liste-kald)
-            all_ids = await self._fetch_all_ids(service)
+            # Hentemetode: Open API-liste (fulde objekter, ~1 kald pr. 100) eller
+            # ERS N+1 (id-liste + detaljekald). Fejler listen, eller mangler den
+            # custom attributes, bruges ERS for denne scanning.
+            raw_items: list[dict] | None = None
+            self.status.scan_fallback_reason = ""
+            if getattr(config.settings, "cache_scan_source", "ers") == "openapi_list":
+                try:
+                    raw_items = await service.list_full_endpoints_openapi(
+                        concurrency=int(getattr(config.settings, "cache_prewarm_concurrency", 5))
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    self.status.scan_fallback_reason = str(exc)[:300]
+                    logger.warning(
+                        "prewarm: Open API-listen kunne ikke bruges (%s) — falder tilbage til ERS N+1",
+                        exc,
+                    )
+            self.status.scan_source = "openapi_list" if raw_items is not None else "ers"
+
+            if raw_items is not None:
+                all_ids = [str(r["id"]) for r in raw_items]
+            else:
+                # Hent alle endpoint IDs fra ISE (kun ID, billige liste-kald)
+                all_ids = await self._fetch_all_ids(service)
             self.status.total_endpoints = len(all_ids)
 
             cache = get_cache()
@@ -572,6 +623,34 @@ class PrewarmWorker:
                 self.status.deleted,
             )
 
+            if raw_items is not None:
+                # Listen har allerede fulde, friske data — ingen detaljekald.
+                to_fetch = []
+                self.status.skipped = 0
+                self.status.list_profile_kept = 0
+                for raw in raw_items:
+                    if self._stop.is_set():
+                        break
+                    ep_id = str(raw["id"])
+                    try:
+                        detail = await service._detail_from_raw(raw, ep_id)
+                    except Exception as exc:  # noqa: BLE001
+                        logger.debug("prewarm: liste-element kunne ikke bygges id=%s: %s", ep_id, exc)
+                        continue
+                    # Open API-listen udelader profileId for nogle endpoints (målt:
+                    # 51 af 100 på ISE 3.5). Behold den kendte profil i stedet for
+                    # at nulstille den; detaljekaldet (edit-vinduet) henter den friskt.
+                    if not detail.profile_id:
+                        prev = cache.peek_detail(ep_id)
+                        if prev is not None and getattr(prev, "profile_id", ""):
+                            detail.profile_id = prev.profile_id
+                            detail.profiler_name = prev.profiler_name
+                            detail.vendor = prev.vendor or detail.vendor
+                            self.status.list_profile_kept += 1
+                    detail.cache_stale = False
+                    cache.put_detail(ep_id, detail, from_disk=False)
+                    self.status.scanned += 1
+
             concurrency = int(getattr(config.settings, "cache_prewarm_concurrency", 5))
             sem = asyncio.Semaphore(concurrency)
 
@@ -590,11 +669,13 @@ class PrewarmWorker:
             await asyncio.gather(*(fetch_one(i) for i in to_fetch))
 
             elapsed = time.time() - scan_start
+            self.status.last_scan_duration_s = round(elapsed, 1)
             self.status.last_full_scan_at = time.time()
             self.status.first_scan_done = True
             logger.info(
-                "prewarm: scan #%d færdig — %d fetched, %d skipped, %d slettet på %.1fs",
+                "prewarm: scan #%d færdig [%s] — %d fetched, %d skipped, %d slettet på %.1fs",
                 self.status.scan_number,
+                self.status.scan_source,
                 self.status.scanned,
                 self.status.skipped,
                 self.status.deleted,

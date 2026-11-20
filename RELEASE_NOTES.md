@@ -4,6 +4,12 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [7.6.0771] — 2026-11-20 — ⚡ Hurtigere og lettere hentning af endpoints fra ISE
+
+- **Ny hentemetode: Open API-liste.** Portalen kan nu hente alle endpoints fra ISE i sider på 100 i stedet for ét ad gangen. På jeres ISE gik en fuld opdatering fra 134 kald (11 sekunder) til 2 kald (under et sekund). Slås til under Indstillinger → Portal Performance → Hentemetode for cache.
+- **Sikker at prøve.** Kan ISE ikke levere de fulde data, skifter portalen automatisk tilbage til den gamle metode og viser hvorfor på dashboardet. Man kan altid vælge den gamle metode igen.
+- Dashboardet viser nu, hvilken metode der blev brugt, og hvor lang tid opdateringen tog.
+
 ## [7.5.0770] — 2026-11-20 — 🛠 Indstillinger nulstilles ikke længere
 
 - **Gemning af ISE-forbindelsen bevarer de øvrige indstillinger.** Tidligere blev gæste-selvregistrering slået fra, og cache- og dekommissioneringsindstillinger sat tilbage til standard, hver gang ISE-forbindelsen blev gemt. Har I gemt ISE-forbindelsen for nylig, så tjek at gæste-selvregistrering og cache-indstillingerne står som ønsket.

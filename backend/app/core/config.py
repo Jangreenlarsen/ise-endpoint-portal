@@ -178,6 +178,17 @@ class Settings(BaseSettings):
             "0 = ubegrænset."
         ),
     )
+    cache_scan_source: str = Field(
+        default="ers",
+        description=(
+            "Hvordan cachen fyldes fra ISE. 'ers' = ERS-liste (kun id) + ét "
+            "detalje-kald pr. endpoint (N+1). 'openapi_list' = Open API-listen "
+            "GET /api/v1/endpoint med fulde objekter, ca. ét kald pr. 100 "
+            "endpoints. Falder automatisk tilbage til 'ers' hvis listen fejler "
+            "eller mangler custom attributes. Afprøv først med Test: "
+            "Endpoint-hentning."
+        ),
+    )
     cache_prewarm_concurrency: int = Field(
         default=5,
         description=(

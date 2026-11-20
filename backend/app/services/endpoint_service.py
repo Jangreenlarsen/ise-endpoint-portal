@@ -35,6 +35,13 @@ from app.ise.openapi_endpoints import (
     OpenApiEndpointGroupRepository,
     OpenApiEndpointRepository,
 )
+
+OPENAPI_LIST_PAGE_SIZE = 100
+OPENAPI_LIST_MAX_PAGES = 2000  # 200.000 endpoints — værn mod en liste der aldrig slutter
+
+
+class ListSourceUnusable(RuntimeError):
+    """Open API-listen kan ikke bruges som datakilde for cachen."""
 from app.schemas.endpoint import (
     BulkApplyTemplateRequest,
     BulkCreateRequest,
@@ -254,9 +261,62 @@ class EndpointService:
 
     async def _fetch_endpoint_detail(self, endpoint_id: str) -> EndpointDetail:
         raw = await self.endpoints.get(endpoint_id)
+        return await self._detail_from_raw(raw, endpoint_id)
+
+    async def list_full_endpoints_openapi(self, concurrency: int = 5) -> list[dict[str, Any]]:
+        """Hent alle endpoints med fulde data fra Open API-listen (GET /api/v1/endpoint).
+
+        Sider hentes i bølger à `concurrency` og stopper ved første korte side.
+        Listens `total` bruges ikke — den er målt til 0 på ISE 3.5 selvom siden
+        indeholder 100 elementer. Raiser ListSourceUnusable hvis et element mangler
+        `id` eller `customAttributes`; så kan listen ikke erstatte detalje-kaldene.
+        """
+        repo = OpenApiEndpointRepository(self.client)
+        size = OPENAPI_LIST_PAGE_SIZE
+        conc = max(1, int(concurrency))
+        items: list[dict[str, Any]] = []
+        page = 1
+        while page <= OPENAPI_LIST_MAX_PAGES:
+            pages = list(range(page, min(page + conc, OPENAPI_LIST_MAX_PAGES + 1)))
+            results = await asyncio.gather(
+                *(repo.list_page(page=p, size=size) for p in pages)
+            )
+            short = False
+            for resources, _total in results:
+                if short:
+                    break  # sider efter en kort side er tomme eller ustabile
+                items.extend(resources)
+                if len(resources) < size:
+                    short = True
+            if short:
+                break
+            page += conc
+        else:
+            raise ListSourceUnusable(
+                f"Open API-listen stoppede ikke efter {OPENAPI_LIST_MAX_PAGES} sider"
+            )
+        seen: set[str] = set()
+        for it in items:
+            ep_id = str(it.get("id") or "")
+            if not ep_id:
+                raise ListSourceUnusable("et element i Open API-listen mangler id")
+            if "customAttributes" not in it:
+                raise ListSourceUnusable(
+                    f"Open API-listen mangler customAttributes for {it.get('mac') or ep_id}"
+                )
+            seen.add(ep_id)
+        if len(seen) != len(items):
+            raise ListSourceUnusable(
+                "Open API-listen returnerede dubletter (siderne er ikke stabile)"
+            )
+        return items
+
+    async def _detail_from_raw(self, raw: dict[str, Any], endpoint_id: str) -> EndpointDetail:
+        """Byg EndpointDetail fra et rå ERS- eller Open API-objekt."""
         ca = _extract_custom_attrs(raw)
         _discover_ca_values(ca)
-        group_id = raw.get("groupId", "")
+        # ERS: groupId. Open API bruger på nogle versioner identityGroupId.
+        group_id = raw.get("groupId", "") or raw.get("identityGroupId", "") or ""
         profile_id = (
             raw.get("profileId", "")
             or raw.get("endpointProfileId", "")

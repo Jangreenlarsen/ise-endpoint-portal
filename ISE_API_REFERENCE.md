@@ -510,7 +510,9 @@ Formatet `"1:13"` = RADIUS tunnel-tag 1 + værdi 13 (VLAN). `"1:6"` = tag 1 + 80
 
 ## Open API — `/api/v1/endpoint`
 
-> **Uafklaret (2026-11-20):** Det er ikke verificeret, om listekaldet `GET /api/v1/endpoint` returnerer fulde endpoint-objekter inklusive `customAttributes`. Gør det, kan cache-scanningen gå fra N+1 (ERS-liste + ét detaljekald pr. endpoint) til ca. ét kald pr. 100 endpoints. Ciscos Performance and Scalability Guide angiver 100.000 endpoints på 40 s med listekaldet (side 100). Mål det på den konkrete ISE med **Portal Config → Portal Opdatering → Test: Endpoint-hentning** (`POST /api/diagnostics/endpoint-fetch-probe`) og opdater dette afsnit med resultatet pr. ISE-version.
+> **Verificeret på ISE 3.5 (2026-11-20, 132 endpoints):** listekaldet returnerer fulde objekter med `customAttributes` (100/100), og de er identiske med ERS-detaljen for stikprøverne. `total` i listesvaret er **0** selvom siden har elementer — paginér til en kort side. `profileId` mangler for ca. halvdelen af listeelementerne. Bruges af `cache_scan_source=openapi_list` (7.6.0771).
+>
+> **Oprindelig note:** Det var ikke verificeret, om listekaldet `GET /api/v1/endpoint` returnerer fulde endpoint-objekter inklusive `customAttributes`. Gør det, kan cache-scanningen gå fra N+1 (ERS-liste + ét detaljekald pr. endpoint) til ca. ét kald pr. 100 endpoints. Ciscos Performance and Scalability Guide angiver 100.000 endpoints på 40 s med listekaldet (side 100). Mål det på den konkrete ISE med **Portal Config → Portal Opdatering → Test: Endpoint-hentning** (`POST /api/diagnostics/endpoint-fetch-probe`) og opdater dette afsnit med resultatet pr. ISE-version.
 >
 > ISE 3.5 P3 tilføjede HTTP/2 på API-gatewayen. 3.5 P4 har ingen dokumenteret ændring i API-gennemløb. Cisco angiver højst 20 samtidige API-kald (ERS + Open API tilsammen, halveret på 32 GB small). CSCwt16764 (50 % lavere API-TPS før fix) og CSCwv75339 (langsomme filtre ved store kald) er nævnt i guiden uden fixed-in-version.
 

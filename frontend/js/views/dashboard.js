@@ -518,6 +518,9 @@ function compose(dash, trends, lifecycle, isAdmin, diagQuick, sysinfo, iseConn) 
         color:#9ca3af;margin-bottom:.35rem;">${t("dash.prewarm_title")}</div>
       ${statRow("Scan #", prewarm.scan_number)}
       ${statRow("Endpoints", prewarm.total_endpoints ?? "—")}
+      ${prewarm.scan_source ? statRow("Kilde", prewarm.scan_source === "openapi_list" ? "Open API-liste" : "ERS") : ""}
+      ${prewarm.last_scan_duration_s != null ? statRow("Scan-tid", `${prewarm.last_scan_duration_s} s`) : ""}
+      ${prewarm.scan_fallback_reason ? `<div style="font-size:.75rem;color:#d97706;padding:4px 0;" title="${esc(prewarm.scan_fallback_reason)}">Open API-liste kunne ikke bruges — kører ERS: ${esc(prewarm.scan_fallback_reason)}</div>` : ""}
       ${statRow(t("dash.prewarm_last_scan"), fmtAge(prewarm.last_full_scan_age_s) + t("dash.prewarm_ago"))}
       <div style="font-size:.77rem;color:#9ca3af;margin-top:.3rem;">${prewarm.scanning ? t("dash.prewarm_scanning") : "Idle"}</div>
     </div>` : "";
