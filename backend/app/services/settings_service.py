@@ -97,7 +97,12 @@ async def update_backend_settings(
 ) -> BackendSettingsResponse:
     before = get_backend_settings().model_dump()
     overrides = load_overrides()
-    overrides.update(
+    # Kun felter klienten faktisk sendte overskrives (P-9). Formularerne sender
+    # hver deres delmængde — fx sender ISE-forbindelsen kun ISE-felterne. Uden
+    # filteret blev alle andre felter skrevet med skemaets defaults, så fx
+    # gæste-selvregistrering blev slået fra ved en gemning af ISE-forbindelsen.
+    sent = new.model_fields_set
+    fields = (
         {
             "ise_base_url": new.ise_base_url,
             "ise_read_base_url": new.ise_read_base_url,
@@ -147,6 +152,7 @@ async def update_backend_settings(
             "guest_expiry_check_interval_seconds":      new.guest_expiry_check_interval_seconds,
         }
     )
+    overrides.update({k: v for k, v in fields.items() if k in sent})
     if new.ise_password:
         overrides["ise_password"] = new.ise_password
     save_overrides(overrides)

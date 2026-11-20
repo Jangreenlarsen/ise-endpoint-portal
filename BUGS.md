@@ -27,6 +27,15 @@ ingen PSK-tests i `backend/tests/`.
 **7.3.0766**. Regressions-vagter: `tests/test_write_authz.py` (24) og `tests/test_psk.py` (23) plus 3 i
 `tests/test_selfregister.py`. Suite 325 → 376 grønne.
 
+## [FIXED 7.5.0770] 2026-11-20 — P-9: Gemning af ISE-forbindelsen nulstiller alle andre backend-indstillinger — bl.a. slås gæste-selvregistrering fra (HØJ)
+
+- **Fundet:** under design af ny cache-indstilling (hentemetode).
+- **Symptom:** Gemmer en admin formularen **ISE Forbindelses Config**, bliver alle andre backend-indstillinger sat tilbage til standard: gæste-selvregistrering slås fra og mister gruppe, tekster, VLAN/DACL og udløb; cache-, pre-warm- og adaptive indstillinger nulstilles; dekommissionerings-VLAN/ACL, `github_branch` og pxGrid-debug nulstilles. Ingen advarsel.
+- **Root cause:** `PUT /settings/backend` tager `BackendSettingsUpdate`, hvor alle felter undtagen URL og brugernavn har defaults. `settings_service.update_backend_settings()` skrev **alle** felter til `config.json`. ISE-formularen (`section-backend.js`) sender kun ISE-felterne, så resten blev skrevet med skemaets defaults. De andre formularer sender `...current` og var derfor ikke ramt.
+- **Løsning:** Kun felter i `new.model_fields_set` (dem klienten faktisk sendte) overskrives. Ikke-sendte felter bevarer den gemte værdi, eller falder tilbage til `config.Settings`-default hvis de aldrig er gemt.
+- **Regressions-vagt:** `tests/test_settings_partial_update.py` (3 tests).
+- **Berørte filer:** `backend/app/services/settings_service.py`
+
 ## [FIXED 7.3.0767] 2026-11-20 — P-8: PSK-modevalget brydes op i kolonner, og gæsteindstillingerne viser en forældet URL (LAV)
 
 - **Fundet:** under generering af skærmbilleder til manualen.

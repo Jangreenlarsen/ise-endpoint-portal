@@ -4,6 +4,10 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [7.5.0770] — 2026-11-20 — 🛠 Indstillinger nulstilles ikke længere
+
+- **Gemning af ISE-forbindelsen bevarer de øvrige indstillinger.** Tidligere blev gæste-selvregistrering slået fra, og cache- og dekommissioneringsindstillinger sat tilbage til standard, hver gang ISE-forbindelsen blev gemt. Har I gemt ISE-forbindelsen for nylig, så tjek at gæste-selvregistrering og cache-indstillingerne står som ønsket.
+
 ## [7.5.0769] — 2026-11-20 — 🔬 Test af hurtigere endpoint-hentning fra ISE
 
 - **Ny test under Indstillinger → Portal Config → Portal Opdatering.** Den undersøger, om portalen kan hente endpoints fra ISE med langt færre kald end i dag, og viser hvor meget hurtigere en fuld opdatering af cachen kunne blive på jeres ISE.

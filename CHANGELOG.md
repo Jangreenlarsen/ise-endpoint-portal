@@ -3,6 +3,13 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [7.5.0770] — 2026-11-20 — fix: gemning af ISE-forbindelsen nulstiller ikke længere andre indstillinger (P-9)
+
+Bugfix → kun `build` (0769→0770).
+
+- **P-9 (HØJ) — `backend/app/services/settings_service.py`**: `update_backend_settings()` overskriver kun de felter klienten sendte (`model_fields_set`). Før blev alle felter skrevet med skemaets defaults, når ISE-formularen kun sendte ISE-felterne — gæste-selvregistrering blev slået fra, og cache-, dekommissionerings- og opdateringsindstillinger blev nulstillet.
+- **Tests**: 3 nye i `tests/test_settings_partial_update.py`. Suite: 386 grønne (383 → 386).
+
 ## [7.5.0769] — 2026-11-20 — feat: Test: Endpoint-hentning (Open API-liste vs. ERS N+1)
 
 Feature → MINOR (7.4→7.5) og `build` (0768→0769).
