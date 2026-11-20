@@ -4,7 +4,7 @@
 
 Web-baseret administrationssystem til Cisco ISE 3.4 endpoint-management via REST API og pxGrid 2.0.
 
-**Version 6.26 build 0730** — [Fuld manual](docs/INDEX.md) — [Changelog](CHANGELOG.md) — [Release Notes](RELEASE_NOTES.md)
+**Version 7.3 build 0766** — [Fuld manual](docs/INDEX.md) — [Changelog](CHANGELOG.md) — [Release Notes](RELEASE_NOTES.md)
 
 Copyright (C) 2026 Jan Green Larsen — udgivet under [GNU Affero General Public License v3](LICENSE)
 
@@ -51,7 +51,8 @@ De to protokoller supplerer hinanden: REST til management, pxGrid til observabil
 ### Adgangskontrol
 - Roller: `admin`, `editor`, `editor-psk`, `viewer`, `registrant`, `registrant_templet`
 - System adm — tag-baseret scopning: brugere ser og redigerer kun endpoints tagget med deres system adm-rolle
-- PSK-management — MPSK/IPSK mode, PSK_Key og PSK_Mode custom attributes, editor-psk rolle
+- **IPSK-management** — personlig Wi-Fi-nøgle pr. enhed via `PSK_Key`/`PSK_Mode` og autorisationsprofilen `Endpoint_PSK-KEY`. Nøglerne valideres mod WPA-grænsen (8–63 ASCII) og en konfigurerbar politik. Når en nøgle skiftes, sendes automatisk CoA-Disconnect, så den nye nøgle virker med det samme. Ved skift mellem IPSK- og MPSK-format kan de eksisterende nøgler migreres. Rollen `editor-psk` ejer nøglerne
+- **Server-side håndhævelse** — PSK-ret, System adm-scope (også ved skrivning, CoA og massehandlinger) og skabelonkravet for `registrant_templet` håndhæves af backend, ikke kun af brugerfladen
 - **TACACS+-autentisering** — portal-login via ekstern TACACS+-server; brugerprofiler i portalen bestemmer rolle og adgang (admin logges altid lokalt)
 - **Bruger/Operatør-type** — brugere klassificeres som Bruger (lokal login) eller Operatør (kun TACACS+); dropdown i Users-tabellen
 - **Kopiér bruger** — kopiér eksisterende bruger/operatør til ny med auto-postfix `_copy`, inkl. rolle, System adm og skabeloner

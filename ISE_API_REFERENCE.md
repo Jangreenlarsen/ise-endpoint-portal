@@ -482,6 +482,8 @@ Formatet `"1:13"` = RADIUS tunnel-tag 1 + værdi 13 (VLAN). `"1:6"` = tag 1 + 80
 
 ### cisco-av-pair (PSK)
 
+> **Gotcha — værdiformat:** Når `rightHandSideAttribueValue` refererer til `EndPoints:PSK_Key`, sender ISE attributtens værdi **uændret** som `cisco-av-pair`. En profil kan ikke tilføje et præfiks. Attributten skal derfor selv indeholde `psk=<nøgle>`, ellers modtager WLC'en et ugyldigt av-pair. Portalen gør det i IPSK-mode (`_psk_encode`). I MPSK-mode gemmes nøglen rå, og profilen virker ikke. Nøglen skal være en WPA-passphrase: 8–63 printbare ASCII-tegn. Et nøgleskift kræver **CoA Disconnect** (ny 4-way handshake). Reauth genforhandler ikke nøglen på en eksisterende association.
+
 ```json
 "advancedAttributes": [
   {

@@ -1,4 +1,4 @@
-<!-- Version: 4.0.5 | Opdateret: 2026-05-10 -->
+<!-- Version: 7.3.0766 | Opdateret: 2026-11-20 -->
 
 # 04 — Administratorvejledning
 
@@ -23,11 +23,18 @@ Portalen opretter automatisk et System adm-tag i kataloget med navn = brugerens 
 | Rolle | Beskrivelse |
 |---|---|
 | **admin** | Fuld adgang til alle funktioner inkl. brugerstyring, settings, logs og system-opdatering |
-| **editor** | Opret, rediger og slet endpoints, attributter og DACL'er; send CoA |
-| **editor-psk** | Som editor, plus kan se og redigere umaskerede PSK-nøgler |
+| **editor** | Opret, rediger og slet endpoints, attributter og DACL'er; send CoA. Kan ikke se eller ændre PSK-nøgler |
+| **editor-psk** | Redigerer endpoints og sender CoA som editor (men kan ikke slette, dekommissionere eller karantænere), plus ser og redigerer PSK-nøgler i klartekst og vedligeholder PSK-politikken |
 | **viewer** | Læseadgang til Browse; ingen skrivning |
-| **registrant** | Kan kun oprette endpoints via det mobiloptimerede register-view (alle formularfelter) |
-| **registrant_templet** | Begrænset registrering — vælger en skabelon og udfylder kun MAC og beskrivelse |
+| **registrant** | Kan kun oprette endpoints via det mobiloptimerede register-view (alle formularfelter undtagen PSK) |
+| **registrant_templet** | Begrænset registrering — vælger en tildelt skabelon og udfylder kun MAC. Alle øvrige felter tages fra skabelonen på serveren |
+
+**Rettigheder håndhæves på serveren (fra 7.3.0763).** Felter, der er skjult i brugerfladen, kan heller ikke sættes via portalens API:
+
+- PSK-felter fra roller uden PSK-ret ignoreres, og den eksisterende nøgle bevares.
+- Brugere uden admin-rolle kan kun ændre, slette, sende CoA til, karantænere og dekommissionere endpoints, der matcher deres System adm-tags. Andre endpoints besvares med "ikke fundet".
+- Brugere uden admin-rolle kan kun give et endpoint de System adm-tags, de selv har.
+- `registrant_templet` kan kun oprette via en tildelt skabelon.
 
 ### Kopiér bruger
 
@@ -117,15 +124,46 @@ Se [pxGrid-opsætning](#pxgrid-opsætning) nedenfor.
 
 ### PSK-politik
 
+Findes under **Portal Config → PSK-politik** og kan ændres af admin og editor-psk.
+
 | Felt | Beskrivelse |
 |---|---|
-| **PSK-mode** | `MPSK` eller `IPSK` — afgør om `psk=`-præfix tilføjes/fjernes automatisk |
-| **Minimum nøglelængde** | PSK-nøgler kortere end denne afvises |
-| **Kræv store bogstaver** | Nøglen skal indeholde mindst ét stort bogstav |
-| **Kræv tal** | Nøglen skal indeholde mindst ét ciffer |
-| **Kræv specialtegn** | Nøglen skal indeholde mindst ét specialtegn |
+| **PSK-mode** | **IPSK (anbefalet):** nøglen gemmes i ISE som `psk=<nøgle>`, præcis det format autorisationsprofilen `Endpoint_PSK-KEY` sender som `cisco-av-pair`. **MPSK:** nøglen gemmes rå. Vælg kun MPSK, hvis en anden profil end `Endpoint_PSK-KEY` læser nøglen — i MPSK-mode virker `Endpoint_PSK-KEY` ikke, og siden viser en advarsel. Brugere ser altid nøglen uden præfiks |
+| **Vis PSK Key i klartekst** | Viser nøglen i Browse-tabellen for brugere med PSK-ret i stedet for `••••` |
+| **Minimum længde** | 8–63 tegn. 63 er WPA-grænsen |
+| **Kræv stort bogstav / tal / specialtegn** | Ekstra krav til nye nøgler |
+| **Afbryd enheden når dens PSK-nøgle ændres** | Til som standard. Sender CoA-Disconnect, så en ny eller tilbagekaldt nøgle træder i kraft med det samme. Slås det fra, virker den gamle nøgle, til enheden selv forbinder igen |
 
-Ændringer i PSK-politikken valideres mod nye nøgler fra det øjeblik indstillingen gemmes. Eksisterende nøgler i ISE valideres ikke retroaktivt.
+Uanset politik afvises nøgler over 63 tegn og nøgler med tegn uden for almindelig ASCII (fx æ, ø, å). Wi-Fi kan ikke bruge dem. Politikken gælder nye og ændrede nøgler, fra den gemmes. Eksisterende nøgler i ISE valideres ikke bagud.
+
+**Skift af PSK-mode.** De eksisterende nøgler ligger stadig i det gamle format, efter du har gemt et nyt mode. Portalen viser derfor, hvor mange nøgler der berøres, og tilbyder at omskrive dem til det nye format. Det kræver admin, fordi operationen rører alle endpoints på tværs af System adm-tags. Afviser du, kan du gøre det senere ved at gemme politikken igen. Omskrivningen bruger endpoint-cachen som liste over endpoints, så vent til pre-warm har kørt efter en genstart. Den sender kun `PSK_Key` til ISE og kan sagtens køres flere gange.
+
+**Opsætning i ISE (IPSK):**
+
+1. Under **Portal Config → Authz Profiler** klikker du **Opret manglende i ISE**. Det opretter blandt andet `Endpoint_PSK-KEY` (`cisco-av-pair = psk-mode=ascii` + `cisco-av-pair = EndPoints:PSK_Key`).
+2. Opret en autoriseringsregel i policy-settet for PSK-SSID'en, fx med betingelsen `EndPoints:PSK_Mode EQUALS true` og profilen `Endpoint_PSK-KEY` (eventuelt kombineret med `Endpoint_VLAN`/`Endpoint_DACL`). Regler kan oprettes direkte under **ISE Politikker** i portalen.
+3. På WLC'en skal SSID'en køre WPA2/WPA3-PSK med **MAC-filtrering (MAB) mod ISE** og **AAA Override** slået til, så controlleren bruger nøglen fra ISE.
+
+### Gæste-selvregistrering
+
+Findes under **Portal Config → Avanceret → Gæste-registrering**. Siden `/selfregister` er en offentlig side uden login, som WLC'en sender gæster til (CWA-redirect). Gæsten skriver sit navn og accepterer vilkårene. Portalen opretter derefter endpointet i ISE og sender CoA, så gæsten får adgang.
+
+**Sådan virker det.** Portalen finder gæstens MAC-adresse ved at slå gæstens IP-adresse op i ISE's aktive RADIUS-sessioner (MnT). MAC'en læses aldrig fra URL'en eller formularen. Derfor gælder:
+
+- Der må **ikke være NAT** mellem gæstenettet og portalen. Portalen skal se den samme IP-adresse som ISE.
+- Udfyld **PSN-hostnavn** under ISE-forbindelsen (`coa_psn_name`) med den PSN, der håndterer gæsterne. Ellers sendes CoA via den forkerte node, og gæsten må selv afbryde og forbinde igen.
+- Vælg en **Endpoint-gruppe** til gæster. Uden den kan en gæst ikke registrere sig igen på en enhed, der allerede findes, fordi portalen så ikke kan se, om enheden er en gæst. Nye enheder kan stadig registreres.
+
+| Felt | Beskrivelse |
+|---|---|
+| **Aktivér selvregistrering** | Slået fra som standard. Slå kun til, når siden faktisk bruges |
+| **Endpoint-gruppe** | Gruppen gæster placeres i |
+| **AuthzVlan / AuthzACL** | VLAN og DACL der sættes på gæstens endpoint. Tomme felter røres ikke |
+| **Tillad gæster at indtaste IPSK-nøgle** | Viser et valgfrit nøglefelt. Kravene fra PSK-politikken vises under feltet, og en ugyldig nøgle afvises med en forklaring, så gæsten kan rette den |
+| **Redirect URL / Accepttekst** | Hvor gæsten sendes hen bagefter, og teksten ved afkrydsningsfeltet |
+| **Udløb af gæsteadgang** | Sætter `GuestExperyDate`/`GuestAccessExpire`. En baggrundsproces markerer udløbne gæster og kan sende CoA |
+
+> **Bemærk om IPSK på gæstesiden:** CWA-siden kører på en åben SSID. En nøgle, gæsten indtaster her, bruges først, når enheden forbinder til den PSK-beskyttede SSID.
 
 ### System adm-roller
 

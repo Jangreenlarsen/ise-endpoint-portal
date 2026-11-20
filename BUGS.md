@@ -23,6 +23,10 @@ kode. **Rod-observation:** rettigheder håndhæves konsekvent på *læse*-stiern
 System adm-filtrering), men på *skrive*-stierne hviler de på at frontend skjuler felterne. Der findes
 ingen PSK-tests i `backend/tests/`.
 
+**Status:** Alle syv lukket — P-1/P-2/P-3 i **7.3.0763**, P-4/P-5 i **7.3.0764**, P-6 i **7.3.0765**, P-7 i
+**7.3.0766**. Regressions-vagter: `tests/test_write_authz.py` (24) og `tests/test_psk.py` (23) plus 3 i
+`tests/test_selfregister.py`. Suite 325 → 376 grønne.
+
 ## [FIXED 7.3.0763] 2026-11-20 — P-1: PSK-skrivning håndhæves kun i frontend (HØJ)
 
 - **Symptom:** `editor`, `registrant` og `registrant_templet` kan sætte `PSK_Key`/`PSK_Mode` på endpoints ved at kalde API'et direkte. UI'et skjuler PSK-sektionen for dem, men backend afviser ikke feltet.

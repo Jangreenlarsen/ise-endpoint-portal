@@ -1,4 +1,4 @@
-<!-- Version: 4.0.5 | Opdateret: 2026-05-10 -->
+<!-- Version: 7.3.0766 | Opdateret: 2026-11-20 -->
 
 # 01 — Systemoverblik
 
@@ -147,10 +147,12 @@ Portalen har seks bruger-roller:
 |---|---|
 | **admin** | Fuld adgang inkl. brugerstyring, settings, logs, system-opdatering |
 | **editor** | Opret, rediger og slet endpoints, attributter, DACL'er, CoA |
-| **editor-psk** | Som editor, plus kan se og redigere PSK-nøgler (umaskerede) |
+| **editor-psk** | Redigerer endpoints og sender CoA; ser og redigerer PSK-nøgler (umaskerede) og PSK-politikken |
 | **viewer** | Kun læsning — kan se Browse men ikke redigere |
-| **registrant** | Kan oprette endpoints via det mobiloptimerede register-view (alle formularfelter) |
-| **registrant_templet** | Begrænset registrering — vælger skabelon og udfylder kun MAC og beskrivelse |
+| **registrant** | Kan oprette endpoints via det mobiloptimerede register-view (alle formularfelter undtagen PSK) |
+| **registrant_templet** | Begrænset registrering — vælger en tildelt skabelon og udfylder kun MAC; resten tages fra skabelonen på serveren |
+
+Rettighederne håndhæves af backend, ikke kun ved at skjule felter i brugerfladen. Se [Administration → Roller](04-ADMIN.md#roller).
 
 ### Bruger- og operatørtype
 
@@ -166,6 +168,8 @@ Typen sættes via en dropdown i Users-tabellen (Settings → Brugere & Bruger gr
 ### System adm (endpoint-scoping)
 
 Ud over de seks portal-roller har portalen et tag-baseret endpoint-scoping-system kaldet "System adm". Admin definerer et katalog af tags (f.eks. `PLC-HalA`, `alle-Printer`). Tags tildeles endpoints via `HypervisionRoles`-custom-attributten i ISE. Brugere tildeles et eller flere tags; de ser kun endpoints der matcher mindst ét af deres tags. Admin ser altid alle endpoints uanset tags.
+
+Scopingen gælder både læsning og skrivning: en bruger kan kun ændre, slette, sende CoA til og dekommissionere endpoints, der matcher mindst ét af brugerens tags, og kan kun give endpoints tags, brugeren selv har.
 
 Hver bruger har desuden automatisk sit eget username som implicit tag, så endpoints tagget med brugerens username altid er synlige for den pågældende bruger. Ved oprettelse af en ny bruger oprettes automatisk et System adm-tag med navn = brugerens username. Dette auto-oprettede tag vises fremhævet i lyserød i tagudvælgelsen under brugeren.
 

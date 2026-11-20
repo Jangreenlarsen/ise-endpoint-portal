@@ -1,4 +1,4 @@
-<!-- Version: 4.0.5 | Opdateret: 2026-05-10 -->
+<!-- Version: 7.3.0766 | Opdateret: 2026-11-20 -->
 
 # 03 — Brugervejledning
 
@@ -87,7 +87,7 @@ Fra toolbar-knapperne eller edit-modal:
 - **CoA Reauth**: tvinger ISE til at evaluere klientens policy på ny uden at kaste sessionen. Brug når du har ændret VLAN eller ACL og ønsker øjeblikkelig effekt.
 - **CoA Disconnect**: deautentificerer klienten (session fjernes fra WLC/switch). Klienten kører DHCP DORA på ny og får en ny IP. Brug ved VLAN-skift der kræver ny IP.
 
-CoA sendes via MnT API og kræver MnT Admin-rettigheder på ISE-kontoen.
+CoA sendes via MnT API og kræver MnT Admin-rettigheder på ISE-kontoen. Rollerne **admin**, **editor** og **editor-psk** kan sende CoA — også som massehandling. Du kan kun sende CoA til endpoints i dine egne System adm-tags.
 
 ---
 
@@ -200,23 +200,50 @@ ACL-validatoren kender de mest brugte Cisco IOS ACE-varianter. Ukendte konstrukt
 
 ## PSK-workflow
 
-PSK (Pre-Shared Key) bruges i ISE MPSK og IPSK konfigurationer til trådløs adgang.
+Med Identity PSK (IPSK) får hver enhed sin egen Wi-Fi-nøgle på samme SSID. Portalen gemmer nøglen på endpointet i ISE. Når enheden forbinder, slår ISE nøglen op og sender den til controlleren via autorisationsprofilen `Endpoint_PSK-KEY`. En enkelt enheds nøgle kan derfor skiftes eller tilbagekaldes uden at røre de andre.
+
+```
+Portal: PSK_Key + PSK_Mode på endpoint ──▶ ISE-regel (fx EndPoints:PSK_Mode EQUALS true)
+   ──▶ Endpoint_PSK-KEY (cisco-av-pair psk=<nøgle>) ──▶ WLC accepterer enhedens nøgle
+```
+
+Opsætningen i ISE (profil og regel) er beskrevet i [Administration → PSK-politik](04-ADMIN.md#psk-politik).
 
 ### PSK-felter
 
-- **PSK_Key**: selve PSK-nøglen (adgangskode for SSID). Maskeres i Browse-tabellen for brugere der ikke har editor-psk-rollen.
-- **PSK_Mode**: mode-attribut der angiver om endpoint bruger MPSK, IPSK eller ingen PSK.
+- **PSK_Mode**: til/fra (`true`/`false`). Angiver om endpointet skal have en personlig nøgle. Feltet bruges typisk som betingelse i ISE-reglen.
+- **PSK_Key**: selve nøglen. Den vises som `••••` for brugere uden PSK-ret. Uanset om portalen kører i IPSK- eller MPSK-mode, ser du altid nøglen uden `psk=`-præfiks. Portalen tilføjer eller fjerner præfikset selv.
 
-### editor-psk rollen
+### Krav til nøglen
 
-Kun brugere med rollen **editor-psk** (og admin) kan se umaskerede PSK-nøgler og redigere PSK_Key-feltet. Brugere med editor-rollen ser `••••••` i PSK-kolonnen og kan ikke redigere PSK_Key.
+En nøgle skal være **8–63 tegn** og må kun indeholde almindelige ASCII-tegn: bogstaver a–z og A–Z, tal, mellemrum og tegn som `!@#$%&*-_=+`. **Æ, ø og å kan ikke bruges**, fordi Wi-Fi ikke understøtter dem. Admin kan stramme kravene yderligere i PSK-politikken, fx med en højere minimumlængde eller krav om tal. Brug knappen **Generer** for at få en tilfældig nøgle, der opfylder politikken.
+
+### Hvem kan hvad
+
+| Rolle | PSK |
+|---|---|
+| **admin**, **editor-psk** | Kan se nøgler i klartekst, oprette og ændre dem og sende CoA |
+| **editor**, **viewer** | Ser `••••`. Kan ikke ændre PSK-felterne; de ignoreres, hvis de alligevel sendes til portalens API |
+| **registrant**, **registrant_templet** | Kan ikke sætte PSK. For registrant_templet kommer PSK_Mode fra skabelonen |
 
 ### Opret endpoint med PSK
 
-1. Navigér til Opret.
+1. Gå til **Endpoint Registrer**.
 2. Udfyld MAC, Identity Group og øvrige felter.
-3. Udfyld **PSK_Key** og sæt **PSK_Mode** til `MPSK` eller `IPSK`.
-4. Klik Opret.
+3. Sæt flueben i **MPSK/IPSK aktiveret** under PSK Mode, og udfyld **PSK Key**, eller klik **Generer**.
+4. Klik **Registrér**.
+
+### Skift eller tilbagekald en nøgle
+
+Åbn endpointet i Browse, ret **PSK Key** (eller fjern fluebenet i **PSK Mode**), og gem. Portalen sender derefter automatisk **CoA-Disconnect** til enheden. Enheden afbrydes og skal forbinde igen med den nye nøgle. Disconnect bruges frem for Reauth, fordi en ny nøgle kræver en ny forbindelse. Efter gemning står der, om afbrydelsen lykkedes:
+
+| Besked | Betydning |
+|---|---|
+| *enheden er afbrudt og skal forbinde igen* | Den gamle nøgle virker ikke længere |
+| *afbrydelse fejlede (...)* | Typisk fordi enheden ikke er online. Den gamle nøgle virker, til enheden selv forbinder igen |
+| *automatisk afbrydelse er slået fra* | Admin har slået funktionen fra i PSK-politikken |
+
+> **Bemærk:** En enhed, der ikke selv har fået den nye nøgle, kommer ikke på igen. Opdatér enheden først, eller gør det med det samme bagefter.
 
 ---
 
@@ -226,7 +253,7 @@ Rollerne `registrant` og `registrant_templet` har adgang til et mobiloptimeret r
 
 **registrant** ser det fulde opret-formular med alle felter.
 
-**registrant_templet** ser et forenklet formular — kun valg af skabelon, MAC-adresse og beskrivelse. Admin tildeler hvilke skabeloner den pågældende bruger har adgang til.
+**registrant_templet** ser en forenklet formular med kun valg af skabelon og MAC-adresse. Admin tildeler hvilke skabeloner den pågældende bruger har adgang til. Gruppe, VLAN, ACL og øvrige felter tages altid fra skabelonen på serveren, og beskrivelsen bliver "Templet <skabelonnavn>". Rollen kan derfor ikke selv bestemme en enheds netværksadgang — heller ikke via portalens API.
 
 Viewet viser:
 
@@ -249,5 +276,9 @@ Portalen erstatter tekniske HTTP-fejl med brugervenlige beskeder.
 | Ugyldig MAC-format | Inline validering ved udfyldning — Opret-knap deaktiveres |
 | Manglende påkrævet felt | Inline validering |
 | Ikke tilstrækkeligt adgang | 403-fejl med dansk besked |
+| Endpoint uden for dine System adm-tags | "Endpoint ikke fundet" — du kan hverken se eller ændre det. I massehandlinger springes det over og vises som fejlet |
+| System adm-tag du ikke selv har | "Du kan ikke tildele System adm-roller du ikke selv har: …" — tags der allerede står på endpointet, må gerne bevares |
+| PSK-nøgle opfylder ikke kravene | Forklaring på hvad der mangler, fx "PSK-nøgle må højst være 63 tegn (WPA-grænse)" |
+| registrant_templet uden skabelon | "Din rolle kræver at der vælges en skabelon" |
 
 **Stale-badge (⏱)**: vises i Browse på rækker hvis endpoint-data hviler på disk-cache (ikke valideret mod ISE endnu). Badget forsvinder når pre-warm workeren har genbekræftet dataene.
