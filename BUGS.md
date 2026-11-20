@@ -15,6 +15,65 @@ Kendte post-mortems:
 
 ---
 
+# Bugs fra registrerings-/IPSK-analyse 2026-11-20
+
+Fundet i en analyse af hvor godt portalens features understøtter kerneformålet: endpoint-registrering
+og IPSK-management (v7.3.0762, branch `dev`). Alle fund er verificeret ved læsning af den citerede
+kode. **Rod-observation:** rettigheder håndhæves konsekvent på *læse*-stierne (PSK-maskering,
+System adm-filtrering), men på *skrive*-stierne hviler de på at frontend skjuler felterne. Der findes
+ingen PSK-tests i `backend/tests/`.
+
+## [OPEN] 2026-11-20 — P-1: PSK-skrivning håndhæves kun i frontend (HØJ)
+
+- **Symptom:** `editor`, `registrant` og `registrant_templet` kan sætte `PSK_Key`/`PSK_Mode` på endpoints ved at kalde API'et direkte. UI'et skjuler PSK-sektionen for dem, men backend afviser ikke feltet.
+- **Root cause:** `POST /api/endpoints` (`require_create_endpoint`) og `PUT /api/endpoints/{id}` (`require_edit_endpoint`) sender `custom_attributes` uændret videre til servicen. `create_endpoint`/`update_endpoint` kender ikke brugeren og stripper derfor ikke PSK-attributterne. `_is_psk_editor_for()` bruges kun til maskering ved læsning.
+- **Foreslået løsning:** I API-laget: hvis brugeren ikke er psk-editor, sæt `PSK_Key`/`PSK_Mode` til `None` (udeladt → ISE bevarer eksisterende værdi) eller afvis med 403. Regressions-test for hver rolle.
+- **Berørte filer:** `backend/app/api/endpoints.py:251-295`, `backend/app/api/deps.py:152-156`, `backend/app/services/endpoint_service.py:659,832`
+
+## [OPEN] 2026-11-20 — P-2: System adm-scope håndhæves ikke på skrive-operationer (MIDDEL)
+
+- **Symptom:** En `editor` ser kun endpoints i sine System adm-roller, men kan opdatere, slette, CoA'e, ANC-karantænere og dekommissionere **ethvert** endpoint hvis ID'et kendes — og kan omtagge `HypervisionRoles` så et endpoint flyttes ind/ud af et andet scope.
+- **Root cause:** `_scope_for(user)` sendes kun med til list/get. PUT/DELETE og ruterne i `endpoints_ops.py` slår ikke endpointet op mod brugerens effektive roller. Endpoint-ID'er er UUID'er, så udnyttelse kræver kendskab til ID'et — derfor MIDDEL.
+- **Foreslået løsning:** Fælles dependency `require_endpoint_in_scope(endpoint_id, user)` brugt af alle skrive-/ops-ruter (cache-roles-indekset gør tjekket billigt).
+- **Berørte filer:** `backend/app/api/endpoints.py:277-338`, `backend/app/api/endpoints_ops.py`, `backend/app/api/_endpoint_api_helpers.py:36-47`
+
+## [OPEN] 2026-11-20 — P-3: registrant_templet's skabelon-krav er kun en UI-regel (MIDDEL)
+
+- **Symptom:** `registrant_templet` skal være låst til tildelte skabeloner, og `registrant` bør ikke frit vælge autorisation. Via API kan begge oprette endpoints med vilkårlig `group_id`, `AuthzVlan`, `AuthzACL` (og jf. P-1 PSK) — altså selv bestemme hvilken netværksadgang enheden får.
+- **Root cause:** Kommentaren i `deps.py` siger det selv: "ingen gruppe/attrs-valg i **UI**". `create_endpoint` validerer ikke payloaden mod brugerens skabeloner.
+- **Foreslået løsning:** For registrant-roller: lad backend anvende skabelonen server-side ud fra et `template_id` og ignorere/afvise gruppe- og authz-felter fra klienten.
+- **Berørte filer:** `backend/app/api/deps.py:153-156`, `backend/app/api/endpoints.py:251-264`, `backend/app/api/templates.py:37-43`
+
+## [OPEN] 2026-11-20 — P-4: PSK-politikken håndhæver ikke WPA2-grænsen på 8-63 printbare ASCII-tegn (MIDDEL)
+
+- **Symptom:** En nøgle på 64-128 tegn eller med ikke-ASCII-tegn (fx æøå) accepteres og skrives til ISE, men klienten kan aldrig forbinde. `min_length` kan sættes op til 128, så en politik kan gøre alle gyldige nøgler ugyldige.
+- **Root cause:** `validate_psk_key()` tjekker kun minimum og tegnklasser. `PskPolicy.min_length` har `le=128`, og selfregisters `psk_key` har `max_length=128`.
+- **Foreslået løsning:** Hård grænse 8-63 tegn, kun ASCII 0x20-0x7E, uafhængigt af politikken. `min_length` begrænses til `le=63`.
+- **Berørte filer:** `backend/app/services/settings_service.py:625-637`, `backend/app/schemas/settings.py:340`, `backend/app/api/selfregister.py:130`
+
+## [OPEN] 2026-11-20 — P-5: Selvregistrering med en PSK der fejler politikken giver 500 til gæsten (MIDDEL)
+
+- **Symptom:** Er IPSK slået til på gæstesiden og indtaster gæsten en for kort/svag nøgle, får gæsten en generisk serverfejl i stedet for en forklaring.
+- **Root cause:** `create_endpoint`/`update_endpoint` kalder `_validate_psk()`, der kaster `ValueError`. Selfregister fanger kun `IseApiError`, så `ValueError` bobler op som en ubehandlet 500.
+- **Foreslået løsning:** Fang `ValueError` og returnér 422 med politikkens fejltekst. Vis politikkravene allerede i formularen.
+- **Berørte filer:** `backend/app/api/selfregister.py:418-441`
+
+## [OPEN] 2026-11-20 — P-6: editor-psk kan skifte en PSK men ikke få den til at træde i kraft (MIDDEL)
+
+- **Symptom:** Rollen der ejer PSK-administrationen kan ikke sende CoA. Et nøgleskift virker først når klienten selv re-associerer, og en lækket nøgle kan ikke tilbagekaldes øjeblikkeligt af den rolle der skifter den.
+- **Root cause:** CoA-ruterne bruger `require_editor` (`admin`, `editor`), som ikke omfatter `editor-psk`. Desuden sendes der ingen CoA automatisk ved PSK-ændring. Et nyt PSK kræver typisk ny 4-way handshake, altså **Disconnect** og ikke Reauth.
+- **Foreslået løsning:** Giv `editor-psk` CoA-ret, og send automatisk CoA-Disconnect når `PSK_Key` ændres på et endpoint med aktiv session.
+- **Berørte filer:** `backend/app/api/endpoints_ops.py:41-95`, `backend/app/api/deps.py:148`
+
+## [OPEN] 2026-11-20 — P-7: MPSK-mode giver et ugyldigt cisco-av-pair, og moduskift migrerer ikke eksisterende nøgler (LAV/DESIGN)
+
+- **Symptom:** Den auto-oprettede autorisationsprofil `Endpoint_PSK-KEY` sender `cisco-av-pair = EndPoints:PSK_Key`. Den virker kun når attributten indeholder `psk=<nøgle>`, hvilket kun er tilfældet i IPSK-mode. I MPSK-mode (default!) gemmes nøglen rå, og profilen sender et ugyldigt av-pair. Skiftes der mode, ligger de eksisterende nøgler stadig i det gamle format, fordi `_psk_decode()` skjuler forskellen i UI'et.
+- **Root cause:** `psk_type` styrer kun prefix ved skrivning (`_psk_encode`). Der er ingen migrering i `update_psk_policy()`, og der er ingen profil-variant der matcher MPSK-formatet.
+- **Foreslået løsning:** Afklar hvad "MPSK" skal betyde mod ISE (Catalyst 9800 MPSK er WLAN-lokalt og bruger ikke ISE pr. endpoint). Enten fjernes moduset og nøglen gemmes altid i det format profilen kræver, eller også tilføjes en leverandørspecifik profil (fx Meraki/Aruba Tunnel-Password) pr. mode. Ved moduskift: tilbyd en bulk-migrering.
+- **Berørte filer:** `backend/app/services/_endpoint_helpers.py:21-49`, `backend/app/services/authz_profile_service.py:80-110`, `backend/app/services/settings_service.py:598-622`, `backend/app/schemas/settings.py:338`
+
+---
+
 # Bugs fra portalrevision 2026-08-18
 
 Tofaset gennemgang af hele portalen på v7.3.0757 (branch `dev`, commit `92c1e08`).
