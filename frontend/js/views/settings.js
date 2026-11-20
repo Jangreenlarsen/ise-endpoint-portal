@@ -699,16 +699,17 @@ export async function renderSettings(container) {
         <div class="field">
           <label id="psk-mode-type-lbl"></label>
           <div class="radio-group">
-            <label class="radio-label"><input type="radio" name="psk-type" id="psk-type-mpsk" value="MPSK" checked /> <b>MPSK</b> — Multi-PSK (Cisco WLC). PSK-nøglen gemmes uændret i ISE — ingen automatisk ændring af nøgleværdien.</label>
-            <label class="radio-label"><input type="radio" name="psk-type" id="psk-type-ipsk" value="IPSK" /> <b>IPSK</b> — Identity PSK (Cisco ISE RADIUS). PSK-nøglen ændres automatisk: portalen tilføjer <code>psk=</code>-prefix på nøglen inden gemning i ISE, så ISE kan genkende den som IPSK.</label>
+            <label class="radio-label"><input type="radio" name="psk-type" id="psk-type-ipsk" value="IPSK" /> <span><b>IPSK</b> — Identity PSK via ISE RADIUS (Cisco WLC/Catalyst 9800). Nøglen gemmes i ISE som <code>psk=&lt;nøgle&gt;</code>, så autorisationsprofilen <code>Endpoint_PSK-KEY</code> kan sende den direkte som <code>cisco-av-pair</code>. <b>Anbefalet.</b></span></label>
+            <label class="radio-label"><input type="radio" name="psk-type" id="psk-type-mpsk" value="MPSK" checked /> <span><b>MPSK</b> — Nøglen gemmes rå (uden <code>psk=</code>). Kun til opsætninger hvor noget andet end <code>Endpoint_PSK-KEY</code> læser nøglen, fx en leverandør der bruger en anden RADIUS-attribut.</span></label>
           </div>
+          <div id="psk-mpsk-warning" class="alert warning" hidden></div>
         </div>
         <div class="field checkbox-field">
           <label><input type="checkbox" id="psk-show-key" /> <span id="psk-show-key-lbl"></span></label>
         </div>
         <div class="field">
           <label for="psk-min-length" id="psk-min-length-lbl"></label>
-          <input type="number" id="psk-min-length" min="8" max="128" step="1" value="8" />
+          <input type="number" id="psk-min-length" min="8" max="63" step="1" value="8" />
         </div>
         <div class="field checkbox-field">
           <label><input type="checkbox" id="psk-req-upper" /> <span id="psk-req-upper-lbl"></span></label>
@@ -718,6 +719,9 @@ export async function renderSettings(container) {
         </div>
         <div class="field checkbox-field">
           <label><input type="checkbox" id="psk-req-special" /> <span id="psk-req-special-lbl"></span></label>
+        </div>
+        <div class="field checkbox-field">
+          <label><input type="checkbox" id="psk-disconnect" checked /> <span id="psk-disconnect-lbl"></span></label>
         </div>
         <div class="actions">
           <button type="submit" id="psk-btn-save"></button>

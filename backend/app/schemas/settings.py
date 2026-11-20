@@ -337,10 +337,14 @@ class PskPolicy(BaseModel):
 
     psk_type: str = Field(default="MPSK", description="PSK mode: 'MPSK' eller 'IPSK'. IPSK tilføjer automatisk 'psk='-prefix i ISE.")
     show_key_in_table: bool = Field(default=False, description="Vis PSK Key i klartekst i browse-tabellen. False = vis ****** (standard).")
-    min_length: int = Field(default=8, ge=8, le=128, description="Minimum nøgle-længde (min. 8).")
+    min_length: int = Field(default=8, ge=8, le=63, description="Minimum nøgle-længde (8-63, WPA-grænse).")
     require_uppercase: bool = Field(default=False, description="Kræv mindst ét stort bogstav.")
     require_numbers: bool = Field(default=False, description="Kræv mindst ét tal.")
     require_special: bool = Field(default=False, description="Kræv mindst ét specialtegn (!@#$%^&* m.fl.).")
+    disconnect_on_change: bool = Field(
+        default=True,
+        description="Send CoA-Disconnect når en PSK-nøgle ændres, så den nye nøgle træder i kraft med det samme.",
+    )
 
 
 class GeneratedPskKey(BaseModel):

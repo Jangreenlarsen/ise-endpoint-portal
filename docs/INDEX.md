@@ -1,8 +1,8 @@
-<!-- Version: 6.26.0730 | Opdateret: 2026-07-04 -->
+<!-- Version: 7.4.0768 | Opdateret: 2026-11-20 -->
 
 # HyperVision ISE Portal — Dokumentationsindeks
 
-Dette er hoveddokumentet for HyperVision ISE Portal version **6.26 build 0730**. Alle sektioner i manualen er selvstændige filer; dette dokument fungerer som navigationspunkt og overblik over dokumentationsstrukturen.
+Dette er hoveddokumentet for HyperVision ISE Portal version **7.4 build 0768**. Alle sektioner i manualen er selvstændige filer; dette dokument fungerer som navigationspunkt og overblik over dokumentationsstrukturen.
 
 > **Aktuelt funktions-niveau:** [README.md](../README.md) og [FEATURES.md](../FEATURES.md) er den autoritative, altid-opdaterede oversigt over portalens funktioner; [CHANGELOG.md](../CHANGELOG.md) og [RELEASE_NOTES.md](../RELEASE_NOTES.md) dækker hver enkelt version. De uddybende manual-afsnit nedenfor (01–05) opdateres periodisk og kan beskrive et lidt ældre funktions-niveau end README/CHANGELOG.
 
@@ -53,13 +53,17 @@ docs/
 - [Import fra CSV](03-BRUGERGUIDE.md#import-fra-csv)
 - [Attributter](03-BRUGERGUIDE.md#attributter)
 - [ACL-editor](03-BRUGERGUIDE.md#acl-editor)
-- [PSK-workflow](03-BRUGERGUIDE.md#psk-workflow)
+- [PSK-workflow](03-BRUGERGUIDE.md#psk-workflow) — IPSK-flowet, nøglekrav, skift og tilbagekaldelse af nøgler
+- [Register-view](03-BRUGERGUIDE.md#register-view-registrant--registrant_templet)
 - [Fejlbeskeder](03-BRUGERGUIDE.md#fejlbeskeder)
 
 ### [04 — Administration](04-ADMIN.md)
 
 - [Brugerstyring](04-ADMIN.md#brugerstyring)
+- [Roller og server-side håndhævelse](04-ADMIN.md#roller)
 - [Settings-sektioner](04-ADMIN.md#settings-sektioner)
+- [PSK-politik og IPSK-opsætning i ISE](04-ADMIN.md#psk-politik)
+- [Gæste-selvregistrering](04-ADMIN.md#gæste-selvregistrering)
 - [Portal Auth Config (TACACS+)](04-ADMIN.md#portal-auth-config-tacacs)
 - [Cache-indstillinger](04-ADMIN.md#cache-indstillinger)
 - [pxGrid-opsætning](04-ADMIN.md#pxgrid-opsætning)
@@ -83,6 +87,8 @@ Nyeste øverst. Kun ændringer i selve dokumentationen registreres her — for k
 
 | Version | Dato | Ændring |
 |---|---|---|
+| 7.4.0768 | 2026-11-20 | Grafik: skærmbilleder af dashboard, Browse, edit-modal, Opret endpoint, PSK-politik og gæste-selvregistrering; diagrammer over systemkomponenter, IPSK-flow, nøgleskift, gæste-selvregistrering og System adm-scope. Nyt afsnit Dashboard i brugervejledningen. Billederne ligger i `docs/img/` og genereres med `frontend-tests/docs.config.ts` |
+| 7.3.0766 | 2026-11-20 | IPSK og registrering: nyt PSK-workflow (IPSK-flow, nøglekrav 8–63 ASCII, skift og tilbagekaldelse med automatisk CoA-Disconnect), PSK-politik med korrekt forklaring af IPSK/MPSK, migrering ved moduskift og ISE/WLC-opsætning, nyt afsnit om gæste-selvregistrering (krav: ingen NAT, PSN-hostnavn, gæstegruppe), roller opdateret med server-side håndhævelse af PSK, System adm-scope og skabelonkrav. Rettet: PSK_Mode var beskrevet som MPSK/IPSK-værdi (det er til/fra) |
 | 4.0.5 build 0232 | 2026-05-10 | Bruger/Operatør-type, kopiér bruger, Login auth-badge i sidebar, Præferencer for TACACS-brugere, eget System adm-tag fremhævet i lyserød |
 | 4.0.1 build 0220 | 2026-05-09 | Opdateret til v4: TACACS+-autentisering, registrant-roller, Portal Auth Config, ny afhængighed tacacs-plus |
 | 3.15.5 build 0168 | 2026-05-07 | Komplet dokumentations-suite oprettet: INDEX + 01–05. Erstatter den tidligere INSTALL.md |

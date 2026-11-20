@@ -15,6 +15,91 @@ Kendte post-mortems:
 
 ---
 
+# Bugs fra registrerings-/IPSK-analyse 2026-11-20
+
+Fundet i en analyse af hvor godt portalens features understøtter kerneformålet: endpoint-registrering
+og IPSK-management (v7.3.0762, branch `dev`). Alle fund er verificeret ved læsning af den citerede
+kode. **Rod-observation:** rettigheder håndhæves konsekvent på *læse*-stierne (PSK-maskering,
+System adm-filtrering), men på *skrive*-stierne hviler de på at frontend skjuler felterne. Der findes
+ingen PSK-tests i `backend/tests/`.
+
+**Status:** Alle syv lukket — P-1/P-2/P-3 i **7.3.0763**, P-4/P-5 i **7.3.0764**, P-6 i **7.3.0765**, P-7 i
+**7.3.0766**. Regressions-vagter: `tests/test_write_authz.py` (24) og `tests/test_psk.py` (23) plus 3 i
+`tests/test_selfregister.py`. Suite 325 → 376 grønne.
+
+## [FIXED 7.3.0767] 2026-11-20 — P-8: PSK-modevalget brydes op i kolonner, og gæsteindstillingerne viser en forældet URL (LAV)
+
+- **Fundet:** under generering af skærmbilleder til manualen.
+- **Symptom 1:** Teksten ved IPSK/MPSK-radioknapperne (Portal Config → PSK-politik) blev vist som smalle, ulæselige kolonner. `.radio-label` er `display:flex`, så hvert `<code>`-element i teksten blev sit eget flex-item.
+- **Symptom 2:** Gæste-registreringskortet viste `URL: /selfregister?mac=...` både i hjælpeteksten og i "Registreringsside URL". Siden 7.3.0758 (F-01) læses MAC-adressen ikke fra URL'en men findes via MnT-sessionen, så teksten fik admins til at konfigurere en forkert redirect.
+- **Løsning:** Radio-teksten pakkes i `<span>` (ét flex-item) i `views/settings.js`. URL-visningen i `views/settings/section-update.js` viser nu `/selfregister`, og `settings.guest_reg_hint` (da+en) forklarer at MAC'en findes via MnT.
+- **Regressions-vagt:** skærmbillederne `docs/img/settings-psk-politik.png` og `docs/img/settings-gaeste-selvregistrering.png` regenereres med `frontend-tests/docs.config.ts`.
+
+## [FIXED 7.3.0763] 2026-11-20 — P-1: PSK-skrivning håndhæves kun i frontend (HØJ)
+
+- **Symptom:** `editor`, `registrant` og `registrant_templet` kan sætte `PSK_Key`/`PSK_Mode` på endpoints ved at kalde API'et direkte. UI'et skjuler PSK-sektionen for dem, men backend afviser ikke feltet.
+- **Root cause:** `POST /api/endpoints` (`require_create_endpoint`) og `PUT /api/endpoints/{id}` (`require_edit_endpoint`) sender `custom_attributes` uændret videre til servicen. `create_endpoint`/`update_endpoint` kender ikke brugeren og stripper derfor ikke PSK-attributterne. `_is_psk_editor_for()` bruges kun til maskering ved læsning.
+- **Foreslået løsning:** I API-laget: hvis brugeren ikke er psk-editor, sæt `PSK_Key`/`PSK_Mode` til `None` (udeladt → ISE bevarer eksisterende værdi) eller afvis med 403. Regressions-test for hver rolle.
+- **Løsning (v7.3.0763):** Ny `_strip_psk_unless_editor()` i `api/_endpoint_api_helpers.py` sætter `PSK_Key`/`PSK_Mode` til `None` på create-, update- og bulk-payloads fra roller uden PSK-ret. Felterne udelades dermed, og ISE bevarer den eksisterende værdi. Der strippes i stedet for at afvise, så en editors almindelige gem-flow ikke fejler. Forsøget logges som WARNING.
+- **Regressions-vagt:** `test_create_strips_psk_for_non_psk_roles`, `test_create_keeps_psk_for_psk_roles`, `test_update_strips_psk_for_editor`, `test_bulk_create_strips_psk_for_editor` (`tests/test_write_authz.py`).
+- **Berørte filer:** `backend/app/api/endpoints.py:251-295`, `backend/app/api/deps.py:152-156`, `backend/app/services/endpoint_service.py:659,832`
+
+## [FIXED 7.3.0763] 2026-11-20 — P-2: System adm-scope håndhæves ikke på skrive-operationer (MIDDEL)
+
+- **Symptom:** En `editor` ser kun endpoints i sine System adm-roller, men kan opdatere, slette, CoA'e, ANC-karantænere og dekommissionere **ethvert** endpoint hvis ID'et kendes — og kan omtagge `HypervisionRoles` så et endpoint flyttes ind/ud af et andet scope.
+- **Root cause:** `_scope_for(user)` sendes kun med til list/get. PUT/DELETE og ruterne i `endpoints_ops.py` slår ikke endpointet op mod brugerens effektive roller. Endpoint-ID'er er UUID'er, så udnyttelse kræver kendskab til ID'et — derfor MIDDEL.
+- **Foreslået løsning:** Fælles dependency `require_endpoint_in_scope(endpoint_id, user)` brugt af alle skrive-/ops-ruter (cache-roles-indekset gør tjekket billigt).
+- **Løsning (v7.3.0763):** Route-dependency `require_endpoint_in_scope` på PUT/DELETE og alle `/{endpoint_id}`-ops-ruter (404 uden for scope). Bulk-ruterne filtrerer ID-listen med `_split_by_scope()` og returnerer afviste som fejlede rækker. `bulk_create` med overwrite tjekker scope på det eksisterende endpoint. `_check_role_tags()` afviser med 403 hvis en non-admin tildeler System adm-roller vedkommende ikke selv har; roller der allerede står på endpointet må bevares.
+- **Regressions-vagt:** `test_update_out_of_scope_is_404`, `test_delete_out_of_scope_is_404`, `test_ops_out_of_scope_is_404[*]`, `test_bulk_decommission_skips_out_of_scope`, `test_bulk_coa_skips_out_of_scope`, `test_cannot_assign_foreign_role_on_create`, `test_cannot_add_foreign_role_on_update`.
+- **Berørte filer:** `backend/app/api/endpoints.py:277-338`, `backend/app/api/endpoints_ops.py`, `backend/app/api/_endpoint_api_helpers.py:36-47`
+
+## [FIXED 7.3.0763] 2026-11-20 — P-3: registrant_templet's skabelon-krav er kun en UI-regel (MIDDEL)
+
+- **Symptom:** `registrant_templet` skal være låst til tildelte skabeloner, og `registrant` bør ikke frit vælge autorisation. Via API kan begge oprette endpoints med vilkårlig `group_id`, `AuthzVlan`, `AuthzACL` (og jf. P-1 PSK) — altså selv bestemme hvilken netværksadgang enheden får.
+- **Root cause:** Kommentaren i `deps.py` siger det selv: "ingen gruppe/attrs-valg i **UI**". `create_endpoint` validerer ikke payloaden mod brugerens skabeloner.
+- **Foreslået løsning:** For registrant-roller: lad backend anvende skabelonen server-side ud fra et `template_id` og ignorere/afvise gruppe- og authz-felter fra klienten.
+- **Løsning (v7.3.0763):** Nyt felt `template_id` på `CreateEndpointRequest`. For `registrant_templet` bygger `_build_from_template()` hele oprettelsen server-side ud fra en skabelon brugeren har adgang til (`visible_templates()`, samme regel som listen). Klientens gruppe og attributter ignoreres. Uden skabelon gives 422, og en ikke-tildelt skabelon gives 403. **Præcisering:** almindelig `registrant` har bevidst frit valg af gruppe og attributter i UI'et; det er designet og er ikke ændret, bortset fra PSK (P-1).
+- **Regressions-vagt:** `test_templet_requires_template`, `test_templet_rejects_unassigned_template`, `test_templet_payload_built_from_template`.
+- **Berørte filer:** `backend/app/api/deps.py:153-156`, `backend/app/api/endpoints.py:251-264`, `backend/app/api/templates.py:37-43`
+
+## [FIXED 7.3.0764] 2026-11-20 — P-4: PSK-politikken håndhæver ikke WPA2-grænsen på 8-63 printbare ASCII-tegn (MIDDEL)
+
+- **Symptom:** En nøgle på 64-128 tegn eller med ikke-ASCII-tegn (fx æøå) accepteres og skrives til ISE, men klienten kan aldrig forbinde. `min_length` kan sættes op til 128, så en politik kan gøre alle gyldige nøgler ugyldige.
+- **Root cause:** `validate_psk_key()` tjekker kun minimum og tegnklasser. `PskPolicy.min_length` har `le=128`, og selfregisters `psk_key` har `max_length=128`.
+- **Foreslået løsning:** Hård grænse 8-63 tegn, kun ASCII 0x20-0x7E, uafhængigt af politikken. `min_length` begrænses til `le=63`.
+- **Løsning (v7.3.0764):** Ny `psk_hard_errors()` afviser over 63 tegn og tegn uden for ASCII 0x20-0x7E, uanset politik. `PskPolicy.min_length` begrænset til `le=63`, og `get_psk_policy()` klamper ældre værdier til 8-63. `_validate_psk()` validerer nu enhver skrevet nøgle, medmindre `PSK_Mode` eksplicit er `"false"`. Det lukker et ekstra hul fundet under rettelsen: en nøgle sendt uden `PSK_Mode` i samme payload slap tidligere uden om al validering. Nøglefelterne i UI har `maxlength="63"`.
+- **Regressions-vagt:** `tests/test_psk.py`: `test_rejects_64_chars`, `test_rejects_non_ascii_and_control_chars[*]`, `test_policy_min_length_capped_at_63`, `test_generated_keys_are_valid_wpa`, `test_key_without_mode_is_still_validated`.
+- **Berørte filer:** `backend/app/services/settings_service.py:625-637`, `backend/app/schemas/settings.py:340`, `backend/app/api/selfregister.py:130`
+
+## [FIXED 7.3.0764] 2026-11-20 — P-5: Selvregistrering med en PSK der fejler politikken giver 500 til gæsten (MIDDEL)
+
+- **Symptom:** Er IPSK slået til på gæstesiden og indtaster gæsten en for kort/svag nøgle, får gæsten en generisk serverfejl i stedet for en forklaring.
+- **Root cause:** `create_endpoint`/`update_endpoint` kalder `_validate_psk()`, der kaster `ValueError`. Selfregister fanger kun `IseApiError`, så `ValueError` bobler op som en ubehandlet 500.
+- **Foreslået løsning:** Fang `ValueError` og returnér 422 med politikkens fejltekst. Vis politikkravene allerede i formularen.
+- **Løsning (v7.3.0764):** Nøglen valideres før ISE-kaldet og afvises med 422 og politikkens fejltekst. Session-bindingen bevares, så gæsten kan prøve igen. `ValueError` fra servicen fanges også som 422. `/selfregister/config` returnerer `psk_hint`, som vises under nøglefeltet.
+- **Regressions-vagt:** `test_invalid_psk_returns_422_and_keeps_binding`, `test_service_valueerror_returns_422`, `test_config_exposes_psk_hint_when_ipsk_enabled`.
+- **Berørte filer:** `backend/app/api/selfregister.py:418-441`
+
+## [FIXED 7.3.0765] 2026-11-20 — P-6: editor-psk kan skifte en PSK men ikke få den til at træde i kraft (MIDDEL)
+
+- **Symptom:** Rollen der ejer PSK-administrationen kan ikke sende CoA. Et nøgleskift virker først når klienten selv re-associerer, og en lækket nøgle kan ikke tilbagekaldes øjeblikkeligt af den rolle der skifter den.
+- **Root cause:** CoA-ruterne bruger `require_editor` (`admin`, `editor`), som ikke omfatter `editor-psk`. Desuden sendes der ingen CoA automatisk ved PSK-ændring. Et nyt PSK kræver typisk ny 4-way handshake, altså **Disconnect** og ikke Reauth.
+- **Foreslået løsning:** Giv `editor-psk` CoA-ret, og send automatisk CoA-Disconnect når `PSK_Key` ændres på et endpoint med aktiv session.
+- **Løsning (v7.3.0765):** Ny `require_coa` (admin, editor, editor-psk) på CoA-ruterne. `update_endpoint()` sammenligner PSK før og efter (`_psk_changed()`) og sender CoA-**Disconnect** ved ændring, styret af ny indstilling `psk_disconnect_on_change` (default til). Resultatet returneres fra `PUT /endpoints/{id}` og vises i detalje-vinduet.
+- **Regressions-vagt:** `test_key_change_sends_disconnect`, `test_unchanged_key_sends_nothing`, `test_disconnect_can_be_disabled`, `test_psk_changed_*`, `test_psk_editor_can_send_coa[*]`, `test_psk_editor_can_bulk_coa`, `test_update_returns_psk_coa_result`.
+- **Berørte filer:** `backend/app/api/endpoints_ops.py:41-95`, `backend/app/api/deps.py:148`
+
+## [FIXED 7.3.0766] 2026-11-20 — P-7: MPSK-mode giver et ugyldigt cisco-av-pair, og moduskift migrerer ikke eksisterende nøgler (LAV/DESIGN)
+
+- **Symptom:** Den auto-oprettede autorisationsprofil `Endpoint_PSK-KEY` sender `cisco-av-pair = EndPoints:PSK_Key`. Den virker kun når attributten indeholder `psk=<nøgle>`, hvilket kun er tilfældet i IPSK-mode. I MPSK-mode (default!) gemmes nøglen rå, og profilen sender et ugyldigt av-pair. Skiftes der mode, ligger de eksisterende nøgler stadig i det gamle format, fordi `_psk_decode()` skjuler forskellen i UI'et.
+- **Root cause:** `psk_type` styrer kun prefix ved skrivning (`_psk_encode`). Der er ingen migrering i `update_psk_policy()`, og der er ingen profil-variant der matcher MPSK-formatet.
+- **Foreslået løsning:** Afklar hvad "MPSK" skal betyde mod ISE (Catalyst 9800 MPSK er WLAN-lokalt og bruger ikke ISE pr. endpoint). Enten fjernes moduset og nøglen gemmes altid i det format profilen kræver, eller også tilføjes en leverandørspecifik profil (fx Meraki/Aruba Tunnel-Password) pr. mode. Ved moduskift: tilbyd en bulk-migrering.
+- **Løsning (v7.3.0766):** Ny `migrate_psk_format()` og admin-ruten `POST /settings/psk-policy/migrate?dry_run=` omskriver alle kendte nøgler til den aktive modes format (idempotent; kun `PSK_Key` sendes). PSK-indstillingerne tilbyder migreringen efter et moduskift, forklarer begge modes korrekt (IPSK anbefalet) og advarer når MPSK er valgt. Beskrivelsen af `Endpoint_PSK-KEY` nævner kravet om IPSK. **Bevidst ikke ændret:** default-mode er stadig MPSK. Et skift ville tavst ændre format for installationer der aldrig har gemt politikken.
+- **Regressions-vagt:** `test_migrate_writes_current_mode_format[IPSK|MPSK]`, `test_migrate_dry_run_writes_nothing`, `test_migrate_route_is_admin_only`.
+- **Berørte filer:** `backend/app/services/_endpoint_helpers.py:21-49`, `backend/app/services/authz_profile_service.py:80-110`, `backend/app/services/settings_service.py:598-622`, `backend/app/schemas/settings.py:338`
+
+---
+
 # Bugs fra portalrevision 2026-08-18
 
 Tofaset gennemgang af hele portalen på v7.3.0757 (branch `dev`, commit `92c1e08`).
@@ -34,6 +119,41 @@ begge autorisationshuller og hele `users.json`-komplekset er dermed lukket.
 Resterende anbefalet rækkefølge: **F-09** (blokerende login — indfører ægte
 samtidighed, som F-06's lås nu er forberedt på) → **F-10** (tabbare
 baggrundstasks) → resten som almindelig oprydning.
+
+## [FIXED 7.3.0762] 2026-08-19 — G-1: Gæste-gen-registrering rydder eksisterende custom attributes (HØJ)
+
+- **Symptom:** Fundet i analyse af gæsteflowet (ikke felt-rapporteret). Registrerer en gæst sig igen på en MAC der allerede findes i ISE, tømmes `Type`, `Owner`, `Lokation`, `AuthzVlan`, `AuthzACL`, `PlatformType` og `HypervisionRoles` på endpointet. Er `selfregister_authz_vlan`/`selfregister_authz_acl` ikke sat i indstillingerne — og de er tomme som default — **fjerner en gen-registrering gæstens autorisation** i stedet for at give den. Det er det modsatte af hensigten med flowet.
+- **Root cause:** `IseEndpointRepository.update()` bevarer **bevidst** tomme strenge, fordi en udeladt nøgle bevarer den gamle værdi i ISE ERS' merge-semantik — en tom streng er den eneste måde at *rydde* en attribut. `selfregister` bygger sin `CustomAttrs` med modellens defaults (`Type: str = ""` osv.), og `model_dump(exclude_none=True)` beholder dem, fordi `""` ikke er `None`. Payloaden indeholder derfor syv tomme felter der alle læses som "ryd". Opret-stien er upåvirket: `create()` filtrerer tomme værdier fra.
+- **Foreslået løsning:** Lad selfregister kun sende de attributter den ejer. Sæt de øvrige til `None` efter konstruktionen, så `exclude_none=True` udelader dem. Fixes bevidst **lokalt** i selfregister frem for i `CustomAttrs`-skemaet: en ændring af feltdefaults fra `""` til `None` ville ændre merge-semantikken for bulk-/CSV-stien, der sender delvise dicts, og dermed røre portalens kerne-redigering.
+- **Løsning (v7.3.0762):** Selfregister sætter nu de felter den ikke ejer (`Type`, `Owner`, `Lokation`, `PlatformType`, `HypervisionRoles`) til `None` efter konstruktionen, så `exclude_none=True` udelader dem helt af PUT'en. `AuthzVlan`/`AuthzACL` skrives kun når de faktisk er konfigureret — ellers udelades de i stedet for at blive sendt som tom streng.
+- **Bevidst afgrænsning:** rettet **lokalt i selfregister**, ikke i `CustomAttrs`-skemaet. At ændre feltdefaults fra `""` til `None` ville være den principielt rigtigere merge-semantik, men ville samtidig ændre adfærden for bulk-/CSV-stien, der sender delvise dicts — altså portalens kerne-redigering. Noteret som muligt oprydningsarbejde.
+- **Regressions-vagt:** `test_reregistration_does_not_wipe_untouched_attributes`, `test_reregistration_omits_authz_when_not_configured`, `test_reregistration_sets_authz_when_configured`, `test_attributes_the_flow_owns_are_still_written`.
+- **Berørte filer:** `backend/app/api/selfregister.py` (CA-konstruktionen), jf. `backend/app/ise/endpoints.py:147-152` og `backend/app/services/endpoint_service.py:843`
+
+## [FIXED 7.3.0762] 2026-08-19 — G-2: Gæstegruppe-spærren slår ikke til når selfregister_group_id er tom (MIDDEL)
+
+- **Symptom:** Spærren fra F-01, der skal forhindre at et eksisterende endpoint uden for gæstegruppen kan overskrives via selvregistrering, springes helt over når `selfregister_group_id` er tom — hvilket den er som default.
+- **Root cause:** Betingelsen er `if guest_group and current_group != guest_group`. Er `guest_group` tom streng, er hele udtrykket falsk. Selvforskyldt hul i fixet fra 7.3.0758.
+- **Afgrænsning:** Bindingen fra F-01 holder stadig, så en gæst kan **kun** røre sin egen MAC — det fulde hul er ikke genåbnet. Restrisikoen er en enhed hvis MAC allerede findes som corporate-endpoint og som sidder på gæstenettet: dens record kan overskrives, og med G-1 tømmes dens attributter. Forsvar i dybden, ikke primær kontrol.
+- **Foreslået løsning:** Afvis gen-registrering af et eksisterende endpoint når `selfregister_group_id` ikke er konfigureret — uden en defineret gæstegruppe kan portalen ikke afgøre om endpointet er en gæst, og bør derfor ikke røre det.
+- **Løsning (v7.3.0762):** Betingelsen er nu `if not guest_group or current_group != guest_group` — uden konfigureret gæstegruppe afvises gen-registrering, fordi portalen ikke kan afgøre om endpointet er en gæst. Oprettelse af en **ny** MAC er upåvirket. Audit-årsagen skelner `guest_group_not_configured` fra `not_in_guest_group`.
+- **Regressions-vagt:** `test_upsert_rejected_when_guest_group_not_configured`, `test_new_endpoint_still_created_without_guest_group`.
+- **Berørte filer:** `backend/app/api/selfregister.py:372-374`
+
+## [FIXED 7.3.0762] 2026-08-19 — G-3: CoA-udsteder (psnName) defaulter til PAN'en når coa_psn_name er tom (MIDDEL)
+
+- **Symptom:** Efter en gennemført gæsteregistrering re-autentificeres klienten ikke automatisk. Gæsten får beskeden "Afbryd forbindelsen og opret den igen for at få adgang" — flowet degraderer synligt, men den automatiske del virker ikke.
+- **Root cause (præciseret 2026-08-19):** CoA-pakken originerer fra PSN'ens RADIUS-persona mod NAD'en (switch/WLC) på UDP 1700/3799 — **ISE modtager ikke en CoA**. Portalen kalder MnT-API'et `GET /admin/API/mnt/CoA/{action}/{psnName}/{mac}/{type}`, hvor HTTP-målet altid er MnT-noden (`ise_base_url`) — det er korrekt — mens `{psnName}` er en **sti-parameter** der navngiver hvilken node ISE skal lade udstede CoA'en. `_derive_psn()` udleder den fra `ise_base_url`s hostnavn når `coa_psn_name` er tom, så ISE bliver bedt om at lade **PAN'en** udstede. Kører den ikke PSN-personaen, sendes der ingen pakke — og NAD'en ville uanset hvad afvise en CoA fra en kilde den ikke har som RADIUS-server med matchende shared secret. [ISE_API_REFERENCE.md](ISE_API_REFERENCE.md) beskriver `psnName` som "typisk samme host som MnT", hvilket kun holder i en standalone-node hvor alle personaer kører samme sted. Konfigurationsfælde snarere end kodefejl — men tavs indtil man ser gæstens skærm.
+- **Foreslået løsning:** Log en tydelig advarsel når `psnName` udledes, så fejlkonfigurationen kan ses i loggen frem for kun på gæstens skærm. Sæt `coa_psn_name` til den PSN der holder klientens session.
+- **Løsning (v7.3.0762) — delvis:** Fallbacken logger nu en tydelig advarsel om at CoA sendes til en afledt PSN, og at det sandsynligvis er PAN'en. Symptomet var ellers kun synligt på gæstens skærm. **Selve rettelsen er konfiguration:** sæt `coa_psn_name` i Indstillinger.
+- **Berørte filer:** `backend/app/ise/coa.py:36-41`, `backend/app/core/config.py:105`
+
+## [OPEN] 2026-08-19 — G-4: Gæsteflowet kræver at klientens IP ikke NAT'es undervejs (DOKUMENTATION)
+
+- **Symptom:** Findes der NAT mellem gæste-VLAN'et og portalen, finder MnT-opslaget aldrig en session, og gæsteregistrering er umulig — uanset konfiguration.
+- **Root cause:** Både den primære sti (`GET /admin/API/mnt/Session/IPAddress/{ip}`) og ActiveList-fallbacken matcher på klientens **framed IP** som ISE kender den. Portalen kan kun se afsender-IP'en på TCP-forbindelsen; er de to forskellige, er der intet match. Efter 7.3.0758 findes der bevidst ingen `?ip=`-nødudgang — den var netop sårbarheden i F-02.
+- **Foreslået løsning:** Ingen kodeændring mulig. Bør dokumenteres som en netværkskrav-forudsætning i `INSTALL.md`/`README.md`, og bekræftes i den konkrete topologi.
+- **Berørte filer:** `backend/app/ise/mnt_sessions.py:550-601` (analyse — ingen ændring)
 
 ## [FIXED 7.3.0758] 2026-08-18 — F-01: Selvregistrering binder ikke MAC-adressen til den der spørger (KRITISK)
 

@@ -58,12 +58,36 @@ def _validate_psk(ca: dict[str, Any]) -> None:
             "send den faktiske nøgle eller lad feltet være tomt"
         )
     mode = str(ca.get(PSK_MODE_ATTR, "") or "").lower()
-    if mode == "true" and key:
+    # Valider når der skrives en nøgle, medmindre PSK eksplicit er slået fra.
+    # Tidligere krævedes mode == "true", så en nøgle sendt uden PSK_Mode i
+    # samme payload slap uden om både politik og WPA-grænser (BUGS.md P-4).
+    if key and mode != "false":
         from app.services.settings_service import get_psk_policy, validate_psk_key
         policy = get_psk_policy()
         errors = validate_psk_key(key, policy)
         if errors:
             raise ValueError(f"PSK Key overholder ikke politik: {'; '.join(errors)}")
+
+
+def _psk_changed(ca: dict[str, Any], before: dict[str, Any] | None) -> bool:
+    """Ændrer denne skrive-payload PSK-nøglen eller PSK_Mode? (BUGS.md P-6)
+
+    ``ca`` er payloaden efter ``_psk_encode_ca`` (kan have ``psk=``-prefix);
+    ``before`` er det umaskerede EndpointDetail-snapshot. Uden snapshot kan
+    en ændring ikke afgøres, og der svares False — hellere ingen disconnect
+    end en uventet.
+    """
+    if before is None:
+        return False
+    if PSK_KEY_ATTR in ca:
+        new_key = _psk_decode(str(ca.get(PSK_KEY_ATTR) or ""))
+        if new_key != (before.get("psk_key") or ""):
+            return True
+    if PSK_MODE_ATTR in ca:
+        new_mode = str(ca.get(PSK_MODE_ATTR) or "").lower() == "true"
+        if new_mode != bool(before.get("psk_mode")):
+            return True
+    return False
 
 
 def _mask_psk(detail: EndpointDetail) -> EndpointDetail:

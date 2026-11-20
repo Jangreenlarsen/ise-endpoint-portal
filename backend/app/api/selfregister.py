@@ -46,6 +46,7 @@ from app.core.exceptions import IseApiError
 from app.ise import mnt_sessions
 from app.ise.coa import reauth as coa_reauth
 from app.schemas.endpoint import CreateEndpointRequest, CustomAttrs, EndpointUpdate
+from app.services.settings_service import psk_policy_hint, validate_psk_key
 
 logger = logging.getLogger(__name__)
 
@@ -100,6 +101,7 @@ class SelfRegisterConfig(BaseModel):
     terms: str
     redirect_url: str
     ipsk_enabled: bool = False
+    psk_hint: str = ""
     expiry_enabled: bool = False
     expiry_mode: str = "period"
     expiry_days: int = 30
@@ -209,6 +211,7 @@ async def get_selfregister_config() -> SelfRegisterConfig:
         terms=s.selfregister_terms,
         redirect_url=s.selfregister_redirect_url,
         ipsk_enabled=s.selfregister_ipsk_enabled,
+        psk_hint=psk_policy_hint() if s.selfregister_ipsk_enabled else "",
         expiry_enabled=s.selfregister_expiry_enabled,
         expiry_mode=s.selfregister_expiry_mode,
         expiry_days=s.selfregister_expiry_days,
@@ -333,16 +336,39 @@ async def selfregister(req: SelfRegisterRequest, request: Request) -> SelfRegist
     registrant = req.registrant_name.strip()
     psk_key = (req.psk_key or "").strip()
 
+    # Valider nøglen før der røres ved ISE, så gæsten får en forklaring i
+    # stedet for en 500 (BUGS.md P-5). Bindingen bevares, så gæsten kan rette
+    # nøglen og prøve igen uden nyt MnT-opslag.
+    if psk_key and s.selfregister_ipsk_enabled:
+        psk_errors = validate_psk_key(psk_key)
+        if psk_errors:
+            raise HTTPException(422, "Nøglen kan ikke bruges: " + "; ".join(psk_errors))
+
     service = get_endpoint_service()
 
-    # Byg custom-attributter
+    # Byg custom-attributter.
+    #
+    # VIGTIGT (BUGS.md G-1): ISE ERS *merger* customAttributes-blokken på PUT, så
+    # en udeladt nøgle bevarer sin gamle værdi mens en TOM STRENG rydder den.
+    # `IseEndpointRepository.update()` bevarer derfor bevidst tomme strenge.
+    # `CustomAttrs` har `""` som default på Type/Owner/Lokation/PlatformType/
+    # HypervisionRoles, og `model_dump(exclude_none=True)` beholder dem — så en
+    # gen-registrering ville tømme alle de felter på et eksisterende endpoint.
+    # Her sættes de eksplicit til None, så de udelades helt af payloaden:
+    # selvregistrering skal kun røre de attributter den selv ejer.
     ca = CustomAttrs(
         RegistretBy=registrant,
         GuestRegistration="true",
         HypervisionActive="Aktiv",
-        AuthzVlan=s.selfregister_authz_vlan or "",
-        AuthzACL=s.selfregister_authz_acl or "",
     )
+    for _untouched in ("Type", "Owner", "Lokation", "PlatformType", "HypervisionRoles"):
+        setattr(ca, _untouched, None)
+
+    # AuthzVlan/AuthzACL sættes kun når de faktisk er konfigureret. Ellers ville
+    # en tom værdi rydde gæstens autorisation i stedet for at give den.
+    ca.AuthzVlan = s.selfregister_authz_vlan or None
+    ca.AuthzACL = s.selfregister_authz_acl or None
+
     if psk_key and s.selfregister_ipsk_enabled:
         ca.PSK_Mode = "true"
         ca.PSK_Key = psk_key
@@ -371,15 +397,30 @@ async def selfregister(req: SelfRegisterRequest, request: Request) -> SelfRegist
         # gæstegruppen og få ændret dets AuthzVlan/AuthzACL (BUGS.md F-01).
         guest_group = (s.selfregister_group_id or "").strip()
         current_group = (existing.get("groupId") or "").strip()
-        if guest_group and current_group != guest_group:
-            logger.warning(
-                "selfregister: afvist gen-registrering af mac=%s — endpoint er i "
-                "gruppe %s, ikke gæstegruppen %s (ip=%s)",
-                mac, current_group or "(ingen)", guest_group, client_ip,
+        # Uden en konfigureret gæstegruppe kan portalen ikke afgøre OM et
+        # eksisterende endpoint er en gæst — og må derfor ikke røre det
+        # (BUGS.md G-2). Tidligere sprang spærren helt over i det tilfælde,
+        # hvilket er default-opsætningen.
+        if not guest_group or current_group != guest_group:
+            reason = (
+                "guest_group_not_configured" if not guest_group else "not_in_guest_group"
             )
+            if not guest_group:
+                logger.warning(
+                    "selfregister: afvist gen-registrering af mac=%s — "
+                    "selfregister_group_id er ikke konfigureret, så portalen kan ikke "
+                    "afgøre om endpointet er en gæst (ip=%s)",
+                    mac, client_ip,
+                )
+            else:
+                logger.warning(
+                    "selfregister: afvist gen-registrering af mac=%s — endpoint er i "
+                    "gruppe %s, ikke gæstegruppen %s (ip=%s)",
+                    mac, current_group or "(ingen)", guest_group, client_ip,
+                )
             await audit_store.record(
                 "selfregister_rejected", "endpoint", existing.get("id", ""),
-                after={"mac": mac, "reason": "not_in_guest_group",
+                after={"mac": mac, "reason": reason,
                        "current_group": current_group, "source_ip": client_ip},
             )
             raise HTTPException(
@@ -399,6 +440,8 @@ async def selfregister(req: SelfRegisterRequest, request: Request) -> SelfRegist
             )
             await service.update_endpoint(endpoint_id, update)
             logger.info("selfregister: opdaterede eksisterende endpoint mac=%s id=%s", mac, endpoint_id)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
         except IseApiError as exc:
             logger.warning("selfregister: update fejl mac=%s: %s", mac, exc)
             raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"ISE fejl ved opdatering: {exc}") from exc
@@ -413,6 +456,8 @@ async def selfregister(req: SelfRegisterRequest, request: Request) -> SelfRegist
         try:
             endpoint_id = await service.create_endpoint(create_req)
             logger.info("selfregister: oprettede endpoint mac=%s id=%s", mac, endpoint_id)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
         except IseApiError as exc:
             logger.warning("selfregister: create fejl mac=%s: %s", mac, exc)
             raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"ISE fejl ved oprettelse: {exc}") from exc

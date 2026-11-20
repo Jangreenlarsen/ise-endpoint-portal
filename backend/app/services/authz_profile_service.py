@@ -137,7 +137,8 @@ STANDARD_PROFILE_DETAILS: dict[str, str] = {
     "Endpoint_DACL":
         "Access-Type: ACCESS_ACCEPT · DACL = EndPoints:AuthzACL",
     "Endpoint_PSK-KEY":
-        "Access-Type: ACCESS_ACCEPT · cisco-av-pair = psk-mode=ascii · cisco-av-pair = EndPoints:PSK_Key",
+        "Access-Type: ACCESS_ACCEPT · cisco-av-pair = psk-mode=ascii · cisco-av-pair = EndPoints:PSK_Key"
+        " · Kræver PSK-mode IPSK (nøglen skal gemmes som psk=<nøgle>)",
     "Endpoint_AirSpaceACL":
         "Access-Type: ACCESS_ACCEPT · Airespace-ACL-Name = EndPoints:AuthzACL",
 }

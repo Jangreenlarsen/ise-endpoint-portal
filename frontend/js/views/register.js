@@ -98,7 +98,7 @@ export async function renderRegister(container) {
             </label>
             <label class="register-label">${t("reg.psk_key_label")}</label>
             <div class="psk-key-wrap register-psk-key-wrap">
-              <input type="password" id="r-psk-key" class="register-input" autocomplete="off" placeholder="${t("reg.optional")}" />
+              <input type="password" id="r-psk-key" class="register-input" autocomplete="off" maxlength="63" placeholder="${t("reg.optional")}" />
               <button type="button" id="r-psk-show" class="register-tiny-btn">${t("reg.btn_show")}</button>
               <button type="button" id="r-psk-gen" class="register-tiny-btn">${t("reg.btn_generate")}</button>
             </div>
@@ -448,6 +448,8 @@ export async function renderRegister(container) {
       description: container.querySelector("#r-desc").value.trim(),
     };
     if (Object.keys(ca).length) payload.custom_attributes = ca;
+    // registrant_templet: backend bygger oprettelsen ud fra skabelonen (P-3).
+    if (templateSel && templateSel.value) payload.template_id = templateSel.value;
 
     submitBtn.disabled = true;
     submitBtn.textContent = t("reg.btn_submitting");

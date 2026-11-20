@@ -25,13 +25,52 @@ export async function initPskPolicySection(container) {
   if (pskReqNumberLbl) pskReqNumberLbl.textContent = t("settings.psk_req_number");
   const pskReqSpecialLbl = container.querySelector("#psk-req-special-lbl");
   if (pskReqSpecialLbl) pskReqSpecialLbl.textContent = t("settings.psk_req_special");
+  const pskDisconnectLbl = container.querySelector("#psk-disconnect-lbl");
+  if (pskDisconnectLbl) pskDisconnectLbl.textContent = t("settings.psk_disconnect");
   const pskBtnSave = container.querySelector("#psk-btn-save");
   if (pskBtnSave) pskBtnSave.textContent = t("settings.psk_btn_save");
   const pskTestGen = container.querySelector("#psk-test-gen");
   if (pskTestGen) pskTestGen.textContent = t("settings.psk_btn_test");
 
+  // P-7: advarsel når MPSK er valgt — Endpoint_PSK-KEY kræver psk=-formatet.
+  const mpskWarning = container.querySelector("#psk-mpsk-warning");
+  function updateMpskWarning() {
+    if (!mpskWarning) return;
+    const sel = container.querySelector("input[name='psk-type']:checked");
+    const isMpsk = !sel || sel.value === "MPSK";
+    mpskWarning.textContent = t("settings.psk_mpsk_warning");
+    mpskWarning.hidden = !isMpsk;
+  }
+  container.querySelectorAll("input[name='psk-type']").forEach((rb) =>
+    rb.addEventListener("change", updateMpskWarning));
+
+  let savedType = "MPSK";
+
+  // Moduskift: tilbyd at omskrive eksisterende nøgler til det nye format.
+  async function offerMigration(newType) {
+    try {
+      const preview = await api.migratePskFormat(true);
+      if (!preview.candidates) return "";
+      if (!confirm(t("settings.psk_migrate_confirm")
+        .replace("{mode}", newType).replace("{n}", preview.candidates))) {
+        return t("settings.psk_migrate_skipped");
+      }
+      const res = await api.migratePskFormat(false);
+      let out = t("settings.psk_migrate_done").replace("{ok}", res.migrated).replace("{mode}", res.mode);
+      if (res.failed && res.failed.length) {
+        out += " " + t("settings.psk_migrate_failed")
+          .replace("{n}", res.failed.length)
+          .replace("{macs}", res.failed.map((f) => f.mac || f.id).join(", "));
+      }
+      return out;
+    } catch (err) {
+      return /^403/.test(err.message || "") ? t("settings.psk_migrate_admin") : err.message;
+    }
+  }
+
   function applyPolicy(p) {
     const pskType = (p.psk_type || "MPSK").toUpperCase();
+    savedType = pskType;
     const mpskRb = container.querySelector("#psk-type-mpsk");
     const ipskRb = container.querySelector("#psk-type-ipsk");
     if (mpskRb) mpskRb.checked = pskType !== "IPSK";
@@ -41,6 +80,8 @@ export async function initPskPolicySection(container) {
     container.querySelector("#psk-req-upper").checked = !!p.require_uppercase;
     container.querySelector("#psk-req-number").checked = !!p.require_numbers;
     container.querySelector("#psk-req-special").checked = !!p.require_special;
+    container.querySelector("#psk-disconnect").checked = p.disconnect_on_change !== false;
+    updateMpskWarning();
   }
 
   try {
@@ -61,11 +102,17 @@ export async function initPskPolicySection(container) {
       require_uppercase: container.querySelector("#psk-req-upper").checked,
       require_numbers: container.querySelector("#psk-req-number").checked,
       require_special: container.querySelector("#psk-req-special").checked,
+      disconnect_on_change: container.querySelector("#psk-disconnect").checked,
     };
     try {
+      const previousType = savedType;
       const saved = await api.updatePskPolicy(payload);
       applyPolicy(saved);
-      msg.innerHTML = `<div class="alert success">${t("settings.psk_saved")}</div>`;
+      let extra = "";
+      if ((saved.psk_type || "MPSK").toUpperCase() !== previousType) {
+        extra = await offerMigration((saved.psk_type || "MPSK").toUpperCase());
+      }
+      msg.innerHTML = `<div class="alert success">${t("settings.psk_saved")}${extra ? " " + esc(extra) : ""}</div>`;
     } catch (err) {
       msg.innerHTML = `<div class="alert error">${t("settings.psk_gen_err").replace("{msg}", esc(err.message))}</div>`;
     }

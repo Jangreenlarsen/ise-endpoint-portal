@@ -33,10 +33,35 @@ def _normalize_mac(mac: str) -> str:
 
 
 def _derive_psn(configured: str, base_url: str) -> str:
-    """Return the configured PSN name, or derive from ise_base_url host."""
+    """Return the configured PSN name, or derive from ise_base_url host.
+
+    Værdien er IKKE HTTP-målet — den er `{psnName}`-sti-parameteren i
+    `/admin/API/mnt/CoA/{action}/{psnName}/{mac}/{type}`, altså hvilken node
+    ISE skal lade **udstede** CoA'en. Selve CoA-pakken originerer fra PSN'ens
+    RADIUS-persona mod NAD'en (switch/WLC) på UDP 1700/3799; ISE modtager ikke
+    en CoA. HTTP-kaldet går altid til MnT-noden (`ise_base_url`), hvilket er
+    korrekt.
+
+    Fallbacken er en fælde i distribuerede opsætninger (BUGS.md G-3):
+    `ise_base_url` peger på PAN'en, så uden `coa_psn_name` beder vi ISE om at
+    lade PAN'en udstede CoA'en. Kører den ikke PSN-personaen, sendes der ingen
+    pakke — og NAD'en ville uanset hvad afvise en CoA fra en kilde den ikke har
+    som RADIUS-server med matchende shared secret. Resultatet er at
+    registreringen lykkes mens klienten aldrig re-autentificeres; for
+    gæsteflowet betyder det "registreret" uden adgang før manuel gentilslutning.
+    Symptomet er ellers kun synligt på gæstens skærm, så vi logger det.
+    """
     if configured:
         return configured
     host = urlparse(base_url).hostname or ""
+    logger.warning(
+        "CoA: coa_psn_name er ikke sat — bruger host fra ise_base_url (%s) som "
+        "psnName, dvs. den node ISE skal lade UDSTEDE CoA'en. I en distribueret "
+        "opsætning er det PAN'en, som typisk ikke kører PSN-personaen, og der vil "
+        "derfor ikke blive sendt nogen CoA til NAD'en. Sæt coa_psn_name til den PSN "
+        "der holder klientens session.",
+        host or "(tom)",
+    )
     return host
 
 

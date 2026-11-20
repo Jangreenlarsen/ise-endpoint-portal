@@ -27,6 +27,17 @@ Playwright starter selv en statisk fil-server (`python -m http.server 8080` mod
 - `tests/smoke-settings.spec.ts` — Settings → ISE-forbindelse indeholder `#base_url` + det nye `#read_base_url`-felt (Fase B).
 - `tests/smoke-policy.spec.ts` — policy-viewet navigerer og renderer uden crash.
 
+## Manualens skærmbilleder
+
+`docs.config.ts` + `docs-shots/` genererer skærmbillederne i `docs/img/` mod samme mockede SPA,
+med fiktive demodata fra `docs-shots/demo-data.ts`. Kør efter UI-ændringer der berører billederne:
+
+```bash
+npx playwright test -c docs.config.ts
+```
+
+Den er ikke en del af `npm test`. Diagrammerne (`docs/img/*.svg`) er håndtegnede og redigeres direkte.
+
 ## Udvid
 
 Tilføj dybere assertions ved at mocke de relevante endpoints i `installApiMock(page, {...})`

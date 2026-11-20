@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 360" width="960" height="360" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <title>Gæste-selvregistrering (CWA) — flow</title>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+    </marker>
+  </defs>
+  <rect width="960" height="360" fill="#ffffff"/>
+  <text x="480" y="32" text-anchor="middle" font-size="18" font-weight="700" fill="#0f172a">Gæste-selvregistrering</text>
+
+  <g font-size="12.5" fill="#334155">
+    <!-- Step boxes -->
+    <rect x="20" y="60" width="170" height="130" rx="12" fill="#f8fafc" stroke="#475569"/>
+    <circle cx="42" cy="82" r="13" fill="#475569"/><text x="42" y="87" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">1</text>
+    <text x="62" y="87" font-size="14" font-weight="700" fill="#0f172a">Gæst forbinder</text>
+    <text x="36" y="114">Ukendt MAC på</text>
+    <text x="36" y="132">gæste-SSID'et.</text>
+    <text x="36" y="158">ISE svarer med</text>
+    <text x="36" y="176">redirect (CWA).</text>
+
+    <rect x="210" y="60" width="170" height="130" rx="12" fill="#eff6ff" stroke="#2563eb"/>
+    <circle cx="232" cy="82" r="13" fill="#2563eb"/><text x="232" y="87" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">2</text>
+    <text x="252" y="87" font-size="14" font-weight="700" fill="#1e3a8a">/selfregister</text>
+    <text x="226" y="114">Browseren sendes til</text>
+    <text x="226" y="132">portalens offentlige</text>
+    <text x="226" y="150">registreringsside.</text>
+
+    <rect x="400" y="60" width="170" height="130" rx="12" fill="#f0fdf4" stroke="#16a34a"/>
+    <circle cx="422" cy="82" r="13" fill="#16a34a"/><text x="422" y="87" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">3</text>
+    <text x="442" y="87" font-size="14" font-weight="700" fill="#14532d">Find MAC</text>
+    <text x="416" y="114">Portalen slår gæstens</text>
+    <text x="416" y="132">IP-adresse op i ISE MnT</text>
+    <text x="416" y="150">og finder MAC'en.</text>
+    <text x="416" y="176" fill="#15803d">Gæsten taster den ikke.</text>
+
+    <rect x="590" y="60" width="170" height="130" rx="12" fill="#eff6ff" stroke="#2563eb"/>
+    <circle cx="612" cy="82" r="13" fill="#2563eb"/><text x="612" y="87" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">4</text>
+    <text x="632" y="87" font-size="14" font-weight="700" fill="#1e3a8a">Formular</text>
+    <text x="606" y="114">Navn, accept af vilkår</text>
+    <text x="606" y="132">og evt. IPSK-nøgle.</text>
+    <text x="606" y="158">Nøglen valideres mod</text>
+    <text x="606" y="176">PSK-politikken.</text>
+
+    <rect x="780" y="60" width="160" height="130" rx="12" fill="#f0fdf4" stroke="#16a34a"/>
+    <circle cx="802" cy="82" r="13" fill="#16a34a"/><text x="802" y="87" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">5</text>
+    <text x="822" y="87" font-size="14" font-weight="700" fill="#14532d">Adgang</text>
+    <text x="796" y="114">Endpoint oprettes i</text>
+    <text x="796" y="132">gæstegruppen med</text>
+    <text x="796" y="150">VLAN/DACL + udløb.</text>
+    <text x="796" y="176">CoA → ny politik.</text>
+  </g>
+  <g stroke="#475569" stroke-width="2">
+    <line x1="191" y1="125" x2="206" y2="125" marker-end="url(#a)"/>
+    <line x1="381" y1="125" x2="396" y2="125" marker-end="url(#a)"/>
+    <line x1="571" y1="125" x2="586" y2="125" marker-end="url(#a)"/>
+    <line x1="761" y1="125" x2="776" y2="125" marker-end="url(#a)"/>
+  </g>
+
+  <!-- Udløb -->
+  <rect x="590" y="220" width="350" height="70" rx="12" fill="#fef2f2" stroke="#dc2626"/>
+  <text x="608" y="246" font-size="14" font-weight="700" fill="#991b1b">Ved udløb</text>
+  <text x="608" y="268" font-size="12.5" fill="#334155">GuestAccessExpire=true + valgfri CoA, så gæsten</text>
+  <text x="608" y="284" font-size="12.5" fill="#334155">sendes tilbage til registreringssiden.</text>
+  <line x1="860" y1="192" x2="860" y2="216" stroke="#dc2626" stroke-width="2" marker-end="url(#a)"/>
+
+  <!-- Krav -->
+  <rect x="20" y="220" width="550" height="120" rx="12" fill="#fefce8" stroke="#ca8a04"/>
+  <text x="38" y="246" font-size="14" font-weight="700" fill="#854d0e">Forudsætninger</text>
+  <g font-size="12.5" fill="#334155">
+    <text x="38" y="270">• Ingen NAT mellem gæst og portal (IP-opslaget skal ramme gæstens rigtige IP).</text>
+    <text x="38" y="290">• MnT/PSN-hostnavn udfyldt under ISE-forbindelse — test med "Test MnT".</text>
+    <text x="38" y="310">• Gæstegruppe valgt og ISE-politik der redirecter ukendte gæster til /selfregister.</text>
+    <text x="38" y="330">• Portalen skal kunne nås fra gæstenettet (ACL i redirect-profilen).</text>
+  </g>
+</svg>

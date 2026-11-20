@@ -799,7 +799,7 @@ export async function initGuestRegSection(container) {
   if (expiryModeSel) expiryModeSel.addEventListener("change", _updateExpiryVisibility);
 
   // Vis URL
-  if (urlDisplay) urlDisplay.textContent = window.location.origin + "/selfregister?mac=...";
+  if (urlDisplay) urlDisplay.textContent = window.location.origin + "/selfregister";
 
   function _populateSelect(sel, values, savedValue) {
     if (!sel) return;

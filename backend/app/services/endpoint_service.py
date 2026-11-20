@@ -58,6 +58,7 @@ from app.services._endpoint_helpers import (
     _full_text_filter,
     _mask_psk,
     _parse_roles_csv,
+    _psk_changed,
     _psk_decode,
     _psk_encode,
     _psk_encode_ca,
@@ -834,7 +835,14 @@ class EndpointService:
         endpoint_id: str,
         update: EndpointUpdate,
         auto_tag_username: str | None = None,
-    ) -> None:
+    ) -> dict[str, Any]:
+        """Opdater et endpoint. Returnerer ``{"psk_changed": bool, "psk_coa": {...} | None}``.
+
+        Ændres PSK-nøglen (eller PSK_Mode) og er ``psk_disconnect_on_change``
+        slået til, sendes CoA-Disconnect, så klienten må lave en ny 4-way
+        handshake med den nye nøgle. Reauth er ikke nok: den genforhandler ikke
+        nøglen på en eksisterende association (BUGS.md P-6).
+        """
         logger.info(
             "updating endpoint id=%s fields=%s",
             endpoint_id,
@@ -876,6 +884,7 @@ class EndpointService:
             if not reg_ts:
                 reg_ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
             ca[REGISTERED_AT_ATTR] = reg_ts
+        psk_changed = _psk_changed(ca, before)
         await self.endpoints.update(
             endpoint_id,
             description=update.description,
@@ -886,6 +895,19 @@ class EndpointService:
         # Invalidate cache so the next read reflects the new ISE state.
         get_cache().mark_changed(endpoint_id)
         get_cache().invalidate_detail(endpoint_id)
+
+        psk_coa: dict[str, Any] | None = None
+        if psk_changed and getattr(config.settings, "psk_disconnect_on_change", True):
+            try:
+                ok, mac, msg = await self.coa_disconnect(endpoint_id)
+                psk_coa = {"ok": ok, "mac": mac, "message": msg}
+                logger.info(
+                    "psk: nøgle ændret på %s → CoA-Disconnect %s: %s",
+                    endpoint_id, "ok" if ok else "fejl", msg,
+                )
+            except Exception as exc:  # noqa: BLE001 — opdateringen er gennemført
+                psk_coa = {"ok": False, "mac": "", "message": str(exc)}
+                logger.warning("psk: CoA-Disconnect efter nøgleskift fejlede for %s: %s", endpoint_id, exc)
 
         # Opdatér guest expiry tracking baseret på de nye CA-værdier.
         _sync_guest_expiry(endpoint_id, (before or {}).get("mac", ""), ca)
@@ -910,11 +932,67 @@ class EndpointService:
                 logger.warning("audit-after-update fejlede for %s: %s", _ep_id, exc)
 
         asyncio.create_task(_audit_after(), name=f"audit-after-update-{endpoint_id[:8]}")
+        return {"psk_changed": psk_changed, "psk_coa": psk_coa}
+
+    async def migrate_psk_format(self, dry_run: bool = False) -> dict[str, Any]:
+        """Omskriv alle kendte PSK-nøgler til det format den aktive ``psk_type`` kræver.
+
+        IPSK gemmer ``psk=<nøgle>`` (det format autorisationsprofilen
+        ``Endpoint_PSK-KEY`` sender som cisco-av-pair); MPSK gemmer nøglen rå.
+        Skiftes mode, ligger de eksisterende nøgler stadig i det gamle format,
+        fordi ``_psk_decode`` skjuler forskellen i UI'et (BUGS.md P-7).
+
+        Kandidaterne tages fra endpoint-cachen (som pre-warm holder komplet).
+        Nøglen kan ikke ses i rå form i cachen, så alle nøgler skrives om —
+        operationen er idempotent. Kun ``PSK_Key`` sendes; ISE merger resten.
+        """
+        mode = str(getattr(config.settings, "psk_type", "MPSK")).upper()
+        cache = get_cache()
+        snapshot = cache.snapshot_all_details()
+        targets = [(ep_id, d) for ep_id, d, _stale in snapshot if getattr(d, "psk_key", "")]
+        result: dict[str, Any] = {
+            "mode": mode,
+            "cached_endpoints": len(snapshot),
+            "candidates": len(targets),
+            "migrated": 0,
+            "failed": [],
+            "dry_run": dry_run,
+        }
+        if dry_run or not targets:
+            return result
+
+        await self._ensure_ca_definitions()
+        sem = asyncio.Semaphore(int(getattr(config.settings, "bulk_create_concurrency", 3)))
+
+        async def _one(ep_id: str, detail: Any) -> dict[str, str] | None:
+            async with sem:
+                try:
+                    await self.endpoints.update(
+                        ep_id, custom_attributes={PSK_KEY_ATTR: _psk_encode(detail.psk_key)}
+                    )
+                    cache.invalidate_detail(ep_id)
+                    return None
+                except IseApiError as exc:
+                    return {"id": ep_id, "mac": getattr(detail, "mac", ""), "error": str(exc)}
+
+        outcomes = await asyncio.gather(*(_one(i, d) for i, d in targets))
+        failed = [o for o in outcomes if o]
+        result["failed"] = failed
+        result["migrated"] = len(targets) - len(failed)
+        logger.info(
+            "psk: format migreret til %s — %d ok, %d fejlede", mode, result["migrated"], len(failed)
+        )
+        await audit_store.record(
+            "psk_format_migrated", "psk_policy", None,
+            after={"mode": mode, "migrated": result["migrated"], "failed": len(failed)},
+        )
+        return result
 
     async def bulk_create(
         self,
         req: BulkCreateRequest,
         auto_tag_username: str | None = None,
+        effective_roles: list[str] | None = None,
     ) -> BulkResult:
         logger.info(
             "bulk creating %d endpoints (overwrite=%s)",
@@ -950,7 +1028,9 @@ class EndpointService:
                         if req.overwrite:
                             try:
                                 await self._overwrite_existing(
-                                    item, auto_tag_username=auto_tag_username
+                                    item,
+                                    auto_tag_username=auto_tag_username,
+                                    effective_roles=effective_roles,
                                 )
                                 overwritten.append(item.mac)
                             except IseApiError as update_exc:
@@ -998,6 +1078,7 @@ class EndpointService:
         self,
         item: CreateEndpointRequest,
         auto_tag_username: str | None = None,
+        effective_roles: list[str] | None = None,
     ) -> None:
         """Locate an existing endpoint by MAC and overwrite its fields with
         the values from the import item. Raises ValueError if not found."""
@@ -1011,6 +1092,10 @@ class EndpointService:
             raise ValueError(
                 f"eksisterende endpoint for {item.mac} har intet id"
             )
+        # Non-admin må kun overskrive endpoints i eget System adm-scope
+        # (BUGS.md P-2). get_endpoint rejser IseApiError(404) uden for scope.
+        if effective_roles is not None:
+            await self.get_endpoint(endpoint_id, effective_roles=effective_roles)
         # Bevar eksplicit staticGroupAssignment hvis angivet (fx fra CSV),
         # ellers afled af om gruppen er sat — så vi ikke utilsigtet skifter
         # Statisk↔Dynamisk ved re-import.

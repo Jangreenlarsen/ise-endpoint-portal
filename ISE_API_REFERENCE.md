@@ -482,6 +482,8 @@ Formatet `"1:13"` = RADIUS tunnel-tag 1 + værdi 13 (VLAN). `"1:6"` = tag 1 + 80
 
 ### cisco-av-pair (PSK)
 
+> **Gotcha — værdiformat:** Når `rightHandSideAttribueValue` refererer til `EndPoints:PSK_Key`, sender ISE attributtens værdi **uændret** som `cisco-av-pair`. En profil kan ikke tilføje et præfiks. Attributten skal derfor selv indeholde `psk=<nøgle>`, ellers modtager WLC'en et ugyldigt av-pair. Portalen gør det i IPSK-mode (`_psk_encode`). I MPSK-mode gemmes nøglen rå, og profilen virker ikke. Nøglen skal være en WPA-passphrase: 8–63 printbare ASCII-tegn. Et nøgleskift kræver **CoA Disconnect** (ny 4-way handshake). Reauth genforhandler ikke nøglen på en eksisterende association.
+
 ```json
 "advancedAttributes": [
   {
@@ -639,7 +641,15 @@ GET /admin/API/mnt/CoA/Reauth/{psnName}/{macAddress}/{reauthType}
 GET /admin/API/mnt/CoA/Disconnect/{psnName}/{macAddress}/{disconnectType}
 ```
 
-- `psnName` — hostnavn på den PSN der skal udstede CoA (typisk samme host som MnT)
+- `psnName` — hostnavn på den PSN der skal **udstede** CoA'en. Bemærk: CoA-pakken
+  originerer fra PSN'ens RADIUS-persona mod NAD'en (switch/WLC) på UDP 1700/3799 —
+  **ISE modtager ikke en CoA**. HTTP-kaldet går til MnT-noden; `psnName` navngiver
+  kun udstederen.
+  > ⚠️ I en **standalone** node er MnT og PSN samme host, og "brug MnT-hosten" virker.
+  > I en **distribueret** opsætning gør det ikke: PAN'en kører typisk ikke
+  > PSN-personaen, så en CoA navngivet med PAN-hostnavnet sendes aldrig. NAD'en vil
+  > desuden kun acceptere en CoA fra en kilde den har som RADIUS-server med matchende
+  > shared secret. Sæt `coa_psn_name` til den PSN der faktisk holder sessionen.
 - `macAddress` — kolon-separeret upper-case (`AA:BB:CC:DD:EE:FF`)
 - `reauthType` — `0` = DEFAULT, `1` = RERUN, `2` = LAST
   - **RERUN** (1) er standard ved attribut-ændringer: ISE genvurderer hele

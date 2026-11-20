@@ -1,4 +1,4 @@
-<!-- Version: 4.0.5 | Opdateret: 2026-05-10 -->
+<!-- Version: 7.3.0766 | Opdateret: 2026-11-20 -->
 
 # 01 — Systemoverblik
 
@@ -18,21 +18,9 @@ Portalen løser tre konkrete problemer med ISE's native GUI:
 
 ## Systemkomponenter
 
-```
-+-------------------+        HTTP/JSON         +---------------------+
-|   Browser         | ─────────────────────── > |   FastAPI backend   |
-|   (HTML/JS)       | < ─────────────────────── |   (Python 3.11+)    |
-+-------------------+    SSE (pxGrid events)    +----------+----------+
-                                                           |
-                          +────────────────────────────────+──────────────────+
-                          |                                |                  |
-                          v  HTTPS port 443                v  WSS port 8910   v  TCP port 49
-               +──────────────────────+        +──────────────────────+   +──────────────+
-               |   Cisco ISE 3.4      |        |   ISE pxGrid 2.0     |   |  TACACS+     |
-               |   ERS / Open API /   |        |   pubsub-node        |   |  server      |
-               |   MnT API            |        |   (WebSocket/STOMP)  |   |  (valgfri)   |
-               +──────────────────────+        +──────────────────────+   +──────────────+
-```
+![Systemkomponenter: browser, HyperVision-backend med lag og cache, Cisco ISE med ERS, Open API, MnT og pxGrid, samt valgfri TACACS+](img/arkitektur.svg)
+
+*Browseren taler kun med backend. Backend er den eneste komponent der kalder ISE (HTTPS 443, pxGrid WSS 8910) og TACACS+ (TCP 49).*
 
 Frontend taler udelukkende med backend. Backend er den eneste komponent der kommunikerer med ISE og TACACS+. Ingen ISE-credentials eller TACACS+-secrets eksponeres til browseren.
 
@@ -147,10 +135,12 @@ Portalen har seks bruger-roller:
 |---|---|
 | **admin** | Fuld adgang inkl. brugerstyring, settings, logs, system-opdatering |
 | **editor** | Opret, rediger og slet endpoints, attributter, DACL'er, CoA |
-| **editor-psk** | Som editor, plus kan se og redigere PSK-nøgler (umaskerede) |
+| **editor-psk** | Redigerer endpoints og sender CoA; ser og redigerer PSK-nøgler (umaskerede) og PSK-politikken |
 | **viewer** | Kun læsning — kan se Browse men ikke redigere |
-| **registrant** | Kan oprette endpoints via det mobiloptimerede register-view (alle formularfelter) |
-| **registrant_templet** | Begrænset registrering — vælger skabelon og udfylder kun MAC og beskrivelse |
+| **registrant** | Kan oprette endpoints via det mobiloptimerede register-view (alle formularfelter undtagen PSK) |
+| **registrant_templet** | Begrænset registrering — vælger en tildelt skabelon og udfylder kun MAC; resten tages fra skabelonen på serveren |
+
+Rettighederne håndhæves af backend, ikke kun ved at skjule felter i brugerfladen. Se [Administration → Roller](04-ADMIN.md#roller).
 
 ### Bruger- og operatørtype
 
@@ -166,6 +156,12 @@ Typen sættes via en dropdown i Users-tabellen (Settings → Brugere & Bruger gr
 ### System adm (endpoint-scoping)
 
 Ud over de seks portal-roller har portalen et tag-baseret endpoint-scoping-system kaldet "System adm". Admin definerer et katalog af tags (f.eks. `PLC-HalA`, `alle-Printer`). Tags tildeles endpoints via `HypervisionRoles`-custom-attributten i ISE. Brugere tildeles et eller flere tags; de ser kun endpoints der matcher mindst ét af deres tags. Admin ser altid alle endpoints uanset tags.
+
+Scopingen gælder både læsning og skrivning: en bruger kan kun ændre, slette, sende CoA til og dekommissionere endpoints, der matcher mindst ét af brugerens tags, og kan kun give endpoints tags, brugeren selv har.
+
+![Eksempel på System adm-scope: en operatør med tagget Facility kan se og ændre endpoints tagget Facility, men får "Endpoint ikke fundet" for et endpoint tagget IT](img/system-adm-scope.svg)
+
+*Endpoints uden for brugerens tags svarer som om de ikke findes (404), også ved direkte API-kald.*
 
 Hver bruger har desuden automatisk sit eget username som implicit tag, så endpoints tagget med brugerens username altid er synlige for den pågældende bruger. Ved oprettelse af en ny bruger oprettes automatisk et System adm-tag med navn = brugerens username. Dette auto-oprettede tag vises fremhævet i lyserød i tagudvælgelsen under brugeren.
 

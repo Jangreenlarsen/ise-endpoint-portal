@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 400" width="980" height="400" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <title>IPSK — nøglens vej fra portal til enhed</title>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+    </marker>
+  </defs>
+  <rect width="980" height="400" fill="#ffffff"/>
+  <text x="490" y="32" text-anchor="middle" font-size="18" font-weight="700" fill="#0f172a">IPSK: hver enhed har sin egen Wi-Fi-nøgle</text>
+
+  <!-- 1 Portal -->
+  <rect x="20" y="70" width="210" height="150" rx="12" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+  <circle cx="44" cy="94" r="14" fill="#2563eb"/><text x="44" y="99" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">1</text>
+  <text x="66" y="99" font-size="15" font-weight="700" fill="#1e3a8a">Portal</text>
+  <text x="38" y="128" font-size="12" fill="#334155">Operatør gemmer nøglen</text>
+  <text x="38" y="146" font-size="12" fill="#334155">på endpointet.</text>
+  <text x="38" y="172" font-size="12" fill="#334155">Valideres: 8–63 ASCII</text>
+  <text x="38" y="190" font-size="12" fill="#334155">+ portalens PSK-politik</text>
+
+  <!-- 2 ISE endpoint -->
+  <rect x="270" y="70" width="210" height="150" rx="12" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/>
+  <circle cx="294" cy="94" r="14" fill="#16a34a"/><text x="294" y="99" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">2</text>
+  <text x="316" y="99" font-size="15" font-weight="700" fill="#14532d">ISE endpoint</text>
+  <text x="288" y="128" font-size="12" fill="#334155">Custom attributes:</text>
+  <rect x="288" y="138" width="176" height="24" rx="4" fill="#fff" stroke="#bbf7d0"/>
+  <text x="296" y="155" font-size="12" font-family="Consolas, Menlo, monospace" fill="#14532d">PSK_Mode = true</text>
+  <rect x="288" y="168" width="176" height="24" rx="4" fill="#fff" stroke="#bbf7d0"/>
+  <text x="296" y="185" font-size="12" font-family="Consolas, Menlo, monospace" fill="#14532d">PSK_Key = psk=&lt;nøgle&gt;</text>
+
+  <!-- 3 Authz profil -->
+  <rect x="520" y="70" width="210" height="150" rx="12" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5"/>
+  <circle cx="544" cy="94" r="14" fill="#16a34a"/><text x="544" y="99" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">3</text>
+  <text x="566" y="99" font-size="15" font-weight="700" fill="#14532d">Authz-profil</text>
+  <text x="538" y="124" font-size="12" font-family="Consolas, Menlo, monospace" fill="#14532d">Endpoint_PSK-KEY</text>
+  <text x="538" y="148" font-size="12" fill="#334155">sender i Access-Accept:</text>
+  <text x="538" y="170" font-size="11" font-family="Consolas, Menlo, monospace" fill="#0f172a">cisco-av-pair=psk-mode=ascii</text>
+  <text x="538" y="188" font-size="11" font-family="Consolas, Menlo, monospace" fill="#0f172a">cisco-av-pair=</text>
+  <text x="538" y="204" font-size="11" font-family="Consolas, Menlo, monospace" fill="#0f172a">  EndPoints:PSK_Key</text>
+
+  <!-- 4 WLC -->
+  <rect x="770" y="70" width="190" height="150" rx="12" fill="#fff7ed" stroke="#ea580c" stroke-width="1.5"/>
+  <circle cx="794" cy="94" r="14" fill="#ea580c"/><text x="794" y="99" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">4</text>
+  <text x="816" y="99" font-size="15" font-weight="700" fill="#7c2d12">WLC / C9800</text>
+  <text x="788" y="128" font-size="12" fill="#334155">MAC-filtrering (MAB)</text>
+  <text x="788" y="146" font-size="12" fill="#334155">+ AAA override.</text>
+  <text x="788" y="172" font-size="12" fill="#334155">Bruger nøglen fra ISE</text>
+  <text x="788" y="190" font-size="12" fill="#334155">til WPA2-handshake.</text>
+
+  <line x1="232" y1="145" x2="266" y2="145" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="482" y1="145" x2="516" y2="145" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+  <line x1="732" y1="145" x2="766" y2="145" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+  <text x="249" y="137" text-anchor="middle" font-size="10" fill="#64748b">ERS</text>
+  <text x="749" y="137" text-anchor="middle" font-size="10" fill="#64748b">RADIUS</text>
+
+  <!-- 5 Enhed -->
+  <rect x="770" y="250" width="190" height="80" rx="12" fill="#f8fafc" stroke="#475569" stroke-width="1.5"/>
+  <circle cx="794" cy="274" r="14" fill="#475569"/><text x="794" y="279" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">5</text>
+  <text x="816" y="279" font-size="15" font-weight="700" fill="#0f172a">Enhed</text>
+  <text x="788" y="304" font-size="12" fill="#334155">forbinder med sin egen</text>
+  <text x="788" y="320" font-size="12" fill="#334155">nøgle på samme SSID</text>
+  <line x1="865" y1="222" x2="865" y2="246" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+
+  <!-- Note om modes -->
+  <rect x="20" y="250" width="710" height="130" rx="12" fill="#fefce8" stroke="#ca8a04"/>
+  <text x="40" y="278" font-size="14" font-weight="700" fill="#854d0e">Hvorfor "psk=" foran nøglen?</text>
+  <text x="40" y="302" font-size="12.5" fill="#334155">Profilen sender attributtens værdi direkte som cisco-av-pair. WLC'en forventer formatet psk=&lt;nøgle&gt;,</text>
+  <text x="40" y="321" font-size="12.5" fill="#334155">så portalen skal stå i <tspan font-weight="700">IPSK-tilstand</tspan> (Indstillinger → Portal Config → PSK-politik). I MPSK-tilstand gemmes</text>
+  <text x="40" y="340" font-size="12.5" fill="#334155">nøglen uden præfiks, og så virker den ikke med Endpoint_PSK-KEY. Skifter du tilstand, tilbyder portalen</text>
+  <text x="40" y="359" font-size="12.5" fill="#334155">at omskrive de eksisterende nøgler. Operatøren ser og indtaster altid kun selve nøglen.</text>
+</svg>

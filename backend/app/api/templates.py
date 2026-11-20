@@ -28,26 +28,34 @@ router = APIRouter(prefix="/templates", tags=["templates"])
 logger = logging.getLogger(__name__)
 
 
+def visible_templates(user: User) -> list[dict]:
+    """Skabeloner brugeren må se og anvende.
+
+    Admin og editor ser alle skabeloner. registrant_templet: hvis brugeren har
+    eksplicitte assigned_templates bruges den liste; ellers falder vi tilbage
+    til visible_to-filtrering. Alle andre roller: kun skabeloner hvor
+    visible_to er tom (alle) eller indeholder deres rolle.
+
+    Bruges også af ``POST /endpoints`` til at håndhæve skabelonkravet for
+    registrant_templet server-side (BUGS.md P-3).
+    """
+    records = template_store.load_templates()
+    if user.role in ("admin", "editor"):
+        return records
+    if user.role == "registrant_templet" and user.assigned_templates:
+        assigned = set(user.assigned_templates)
+        return [r for r in records if r.get("id") in assigned]
+    return [
+        r for r in records
+        if not r.get("visible_to") or user.role in r.get("visible_to", [])
+    ]
+
+
 @router.get("", response_model=TemplateListResponse)
 async def list_templates(
     user: User = Depends(require_register_lookup),
 ) -> TemplateListResponse:
-    records = template_store.load_templates()
-    # Admin og editor ser alle skabeloner.
-    # registrant_templet: hvis brugeren har eksplicitte assigned_templates bruges
-    # den liste; ellers falder vi tilbage til visible_to-filtrering.
-    # Alle andre roller: kun skabeloner hvor visible_to er tom (alle) eller
-    # indeholder deres rolle.
-    if user.role in ("admin", "editor"):
-        pass
-    elif user.role == "registrant_templet" and user.assigned_templates:
-        assigned = set(user.assigned_templates)
-        records = [r for r in records if r.get("id") in assigned]
-    else:
-        records = [
-            r for r in records
-            if not r.get("visible_to") or user.role in r.get("visible_to", [])
-        ]
+    records = visible_templates(user)
     return TemplateListResponse(
         templates=[Template(**_coerce(r)) for r in records]
     )

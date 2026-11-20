@@ -3,6 +3,74 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [7.4.0768] — 2026-11-20 — feat: grafik i manualen + screenshot-generator
+
+Feature → MINOR (7.3→7.4) og `build` (0767→0768).
+
+- **`frontend-tests/docs.config.ts`, `frontend-tests/docs-shots/manual.spec.ts`, `frontend-tests/docs-shots/demo-data.ts` (nye)**: Playwright-konfiguration, der tager manualens skærmbilleder mod SPA'en med mocket API og fiktive demodata. Kører separat fra smoke-suiten (`npx playwright test -c docs.config.ts`) og skriver til `docs/img/`. Versionen i sidebaren læses fra `version.json`.
+- **`docs/img/` (ny)**: 7 skærmbilleder (PNG) og 5 diagrammer (SVG): `arkitektur`, `ipsk-flow`, `psk-skift`, `selvregistrering-flow`, `system-adm-scope`.
+- **`docs/01-OVERBLIK.md`, `docs/03-BRUGERGUIDE.md`, `docs/04-ADMIN.md`**: Billeder med alt-tekst og billedtekst indsat. ASCII-diagrammerne for systemkomponenter og IPSK-flow er erstattet af SVG'er. Nyt afsnit **Dashboard** i brugervejledningen.
+- **`docs/INDEX.md`, `README.md`, `frontend-tests/README.md`**: version 7.4.0768, manual-changelog og vejledning til at regenerere billederne.
+
+## [7.3.0767] — 2026-11-20 — fix: PSK-modevalget er læseligt igen, og gæsteindstillingerne viser den rigtige URL (P-8)
+
+Bugfix → kun `build` (0766→0767).
+
+- **P-8 — `frontend/js/views/settings.js`**: Teksten ved IPSK/MPSK-radioknapperne pakkes i `<span>`. `.radio-label` er flex, så hvert `<code>` blev tidligere sin egen smalle kolonne.
+- **P-8 — `frontend/js/views/settings/section-update.js`, `frontend/js/i18n.js`**: "Registreringsside URL" viser `/selfregister` i stedet for `/selfregister?mac=...`, og `settings.guest_reg_hint` (da+en) forklarer, at MAC-adressen findes via MnT-sessionen og ikke læses fra URL'en (forældet siden 7.3.0758).
+- **Tests**: Playwright smoke 13/13.
+
+## [7.3.0766] — 2026-11-20 — fix: PSK-mode forklares korrekt, MPSK advarer, og nøgler migreres ved moduskift (P-7)
+
+Bugfix → kun `build` (0765→0766).
+
+- **P-7 (LAV/DESIGN) — `services/endpoint_service.py`, `api/settings.py`**: Ny `migrate_psk_format(dry_run)` omskriver alle kendte PSK-nøgler til det format den aktive `psk_type` kræver: `psk=<nøgle>` for IPSK og rå nøgle for MPSK. Kandidaterne tages fra endpoint-cachen, som pre-warm holder komplet. Den rå nøgle kan ikke ses i cachen, så alle nøgler skrives om; operationen er idempotent og sender kun `PSK_Key`. Ny rute `POST /api/settings/psk-policy/migrate?dry_run=` er **kun for admin**, fordi den rører endpoints på tværs af System adm-scope. Den auditeres som `psk_format_migrated`.
+- **Frontend — `views/settings.js`, `views/settings/section-psk.js`, `api.js`, `i18n.js`**: Forklaringerne ved mode-valget var misvisende. MPSK blev beskrevet som "Multi-PSK (Cisco WLC)", men Catalyst 9800-MPSK er WLAN-lokalt og bruger ikke ISE pr. endpoint. IPSK står nu først og er markeret som anbefalet. Begge forklaringer siger præcis, hvilket format nøglen gemmes i, og hvorfor. Er MPSK valgt, vises en advarsel om, at `Endpoint_PSK-KEY` ikke virker. Skiftes mode, tilbyder siden efter gemning at omskrive de eksisterende nøgler (dry-run → bekræft → kør). Mangler brugeren admin-ret, vises det.
+- **`services/authz_profile_service.py`**: Beskrivelsen af `Endpoint_PSK-KEY` nævner nu kravet om IPSK-mode.
+- **`frontend/css/styles.css`**: `.alert.warning`/`.alert.warn` (lys og mørk) — klassen blev allerede brugt i tre views uden at have nogen stil.
+- **Bevidst afgrænsning:** default-mode er stadig `MPSK`. Et skift af default ville tavst ændre format for installationer, der aldrig har gemt politikken, og efterlade deres eksisterende nøgler i det gamle format. Advarslen og migreringen gør i stedet skiftet til et bevidst valg.
+- **Tests**: 4 nye i `tests/test_psk.py` (format pr. mode, dry-run, kun admin). Suite: 376 grønne (372 → 376). Playwright: 13/13.
+
+## [7.3.0765] — 2026-11-20 — fix: et PSK-nøgleskift træder nu i kraft med det samme (P-6)
+
+Bugfix → kun `build` (0764→0765).
+
+- **P-6 (MIDDEL) — `api/deps.py`, `api/endpoints_ops.py`**: Ny `require_coa` (`admin`, `editor`, `editor-psk`) på `coa-reauth`, `coa-disconnect` og `bulk-coa`. Rollen der ejer PSK-administrationen kunne før ikke sende CoA og dermed ikke tilbagekalde en lækket nøgle.
+- **`services/endpoint_service.py`, `services/_endpoint_helpers.py`**: `update_endpoint()` sammenligner den nye `PSK_Key`/`PSK_Mode` med snapshot'et før opdateringen (ny `_psk_changed()`, der ignorerer `psk=`-prefixet). Ved ændring sendes **CoA-Disconnect**, ikke Reauth: en ny nøgle kræver en ny 4-way handshake, og Reauth genforhandler ikke nøglen på en eksisterende association. Metoden returnerer nu `{"psk_changed", "psk_coa"}`, og `PUT /endpoints/{id}` sender det videre (returtypen er ændret fra `dict[str, str]` til `dict`). En fejlet CoA vælter ikke opdateringen.
+- **`core/config.py`, `schemas/settings.py`, `services/settings_service.py`**: Ny indstilling `psk_disconnect_on_change` (default `True`) i PSK-politikken (`PskPolicy.disconnect_on_change`).
+- **Frontend — `views/browse-detail.js`, `views/settings.js`, `views/settings/section-psk.js`, `i18n.js`**: Detalje-vinduet viser om nøgleskiftet blev skubbet ud (afbrudt / afbrydelse fejlede / automatisk afbrydelse slået fra). Ny checkbox i PSK-politikken. Labelen for minimumlængde siger nu "8–63 tegn" (rest fra P-4).
+- **Tests**: 7 nye i `tests/test_psk.py` og 4 nye i `tests/test_write_authz.py`. Suite: 372 grønne (361 → 372).
+
+## [7.3.0764] — 2026-11-20 — fix: PSK-nøgler valideres mod WPA-grænsen, og gæstesiden giver en forklaring i stedet for 500 (P-4/P-5)
+
+Bugfix → kun `build` (0763→0764).
+
+- **P-4 (MIDDEL) — `services/settings_service.py`, `services/_endpoint_helpers.py`, `schemas/settings.py`**: Ny `psk_hard_errors()` afviser nøgler over 63 tegn og nøgler med tegn uden for printbar ASCII (0x20-0x7E), uanset politik. Den kaldes først i `validate_psk_key()`. `PskPolicy.min_length` er begrænset til `le=63`, og `get_psk_policy()` klamper en ældre gemt værdi til 8-63, så en eksisterende konfiguration ikke vælter skemaet. `_validate_psk()` validerer nu når der skrives en nøgle, medmindre `PSK_Mode` eksplicit er `"false"`. Tidligere krævedes `PSK_Mode == "true"` i samme payload, så en nøgle sendt alene slap uden om al validering. Settings-feltet for minimumlængde har `max="63"`, og nøglefelterne i registrering og selvregistrering har `maxlength="63"`.
+- **P-5 (MIDDEL) — `api/selfregister.py`, `frontend/js/selfregister.js`**: Nøglen valideres nu, før der røres ved ISE, og en ugyldig nøgle giver 422 med politikkens fejltekst i stedet for en ubehandlet `ValueError` (500). Session-bindingen bevares, så gæsten kan rette nøglen og prøve igen. `ValueError` fra servicen fanges også som 422. `GET /selfregister/config` returnerer nyt felt `psk_hint` (fx "8-63 tegn, mindst ét tal. Ikke æ, ø, å."), som vises under nøglefeltet.
+- **Tests**: ny `tests/test_psk.py` (12) og 3 nye i `tests/test_selfregister.py`. Suite: 361 grønne (346 → 361).
+
+## [7.3.0763] — 2026-11-20 — fix: skrive-autorisation håndhæves server-side — PSK, System adm-scope og skabelonkrav (P-1/P-2/P-3)
+
+Fundet i analysen af registrering og IPSK (BUGS.md P-serien). Rettigheder blev håndhævet når data blev læst, men skrive-stierne stolede på at frontend skjulte felterne. Bugfix → kun `build` (0762→0763).
+
+- **P-1 (HØJ) — `api/_endpoint_api_helpers.py`, `api/endpoints.py`**: `editor`, `registrant` og `registrant_templet` kunne sætte `PSK_Key`/`PSK_Mode` ved at kalde API'et direkte. Ny `_strip_psk_unless_editor()` fjerner felterne fra create-, update- og bulk-payloads for roller uden PSK-ret. De sættes til `None`, så ISE bevarer den eksisterende værdi. Der strippes i stedet for at afvise, fordi en almindelig editors gem-flow ellers ville fejle på et felt brugeren ikke kan se. Hændelsen logges som WARNING.
+- **P-2 (MIDDEL) — `api/_endpoint_api_helpers.py`, `api/endpoints.py`, `api/endpoints_ops.py`, `services/endpoint_service.py`**: System adm-scope blev kun håndhævet ved læsning. Ny route-dependency `require_endpoint_in_scope` er sat på PUT/DELETE og på alle `/{endpoint_id}`-ops-ruter: CoA, historik, ANC, (un)decommission, active-status, profiler-profile og profiling-data. Svaret er 404 uden for scope, så det ikke afsløres at endpointet findes. Bulk-ruterne (`bulk-coa`, `bulk-(un)decommission`, `bulk-apply-template`) filtrerer ID-listen med `_split_by_scope()` og returnerer de afviste som fejlede rækker. Overwrite i `bulk_create` tjekker scope på det eksisterende endpoint. `_check_role_tags()` afviser med 403 hvis en non-admin tildeler System adm-roller vedkommende ikke selv har; roller der allerede står på endpointet må bevares. Tjekkene er cache-backed og koster normalt ingen ISE-kald.
+- **P-3 (MIDDEL) — `api/endpoints.py`, `api/templates.py`, `schemas/endpoint.py`, `frontend/js/views/register.js`**: Kravet om skabelon for `registrant_templet` fandtes kun i UI'et. `CreateEndpointRequest` har nyt felt `template_id`. For `registrant_templet` bygger `_build_from_template()` nu hele oprettelsen server-side ud fra skabelonen (gruppe, attributter, statisk tildeling, beskrivelse "Templet <navn>", `RegistretBy`). Klientens felter ignoreres. Mangler skabelonen gives 422, og en skabelon der ikke er tildelt brugeren gives 403. Filtreringslogikken er trukket ud af `list_templates` som `visible_templates(user)`, så liste og håndhævelse bruger samme regel. `register.js` sender `template_id`. Almindelig `registrant` har bevidst frit valg af gruppe og attributter i UI'et og er uændret, bortset fra PSK (P-1).
+- **`tests/test_write_authz.py`** (ny): 21 tests for PSK-stripping pr. rolle, scope på update/delete/ops/bulk, rolle-tildeling og registrant_templet. Suite: 346 grønne (325 → 346).
+
+## [7.3.0762] — 2026-08-19 — fix: gæsteflowet — gen-registrering rydder ikke længere attributter (G-1/G-2/G-3)
+
+Fundet i en gennemgang af om gæsteflowet overhovedet virker som tiltænkt. To kodefejl og én tavs konfigurationsfælde. Bugfix → kun `build` (0761→0762).
+
+- **G-1 (HØJ) — `api/selfregister.py`**: Registrerede en gæst sig igen på en MAC der allerede fandtes i ISE, blev `Type`, `Owner`, `Lokation`, `AuthzVlan`, `AuthzACL`, `PlatformType` og `HypervisionRoles` **tømt** på endpointet. Årsag: ISE ERS merger `customAttributes` på PUT, så en udeladt nøgle bevarer sin værdi mens en tom streng *rydder* den — og `IseEndpointRepository.update()` bevarer derfor bevidst tomme strenge. `CustomAttrs` har `""` som default på netop de felter, og `model_dump(exclude_none=True)` beholder dem. Var `selfregister_authz_vlan`/`_acl` ikke sat — default — **fjernede en gen-registrering gæstens autorisation** i stedet for at give den. Selfregister sætter nu de felter den ikke ejer til `None`, så de udelades helt, og skriver kun AuthzVlan/ACL når de faktisk er konfigureret. Opret-stien var upåvirket (`create()` filtrerer tomme værdier fra).
+- **G-2 (MIDDEL) — `api/selfregister.py`**: Gæstegruppe-spærren fra 7.3.0758 lød `if guest_group and current_group != guest_group` og sprang derfor helt over når `selfregister_group_id` var tom — hvilket den er som default. Nu afvises gen-registrering også i det tilfælde: uden en defineret gæstegruppe kan portalen ikke afgøre om endpointet er en gæst og bør ikke røre det. Oprettelse af en **ny** MAC er upåvirket. Audit-årsagen skelner nu `guest_group_not_configured` fra `not_in_guest_group`.
+- **G-3 (MIDDEL) — `ise/coa.py`**: `{psnName}` i MnT-stien navngiver hvilken node ISE skal lade **udstede** CoA'en — selve pakken originerer fra PSN'ens RADIUS-persona mod NAD'en; ISE modtager ikke en CoA. HTTP-målet er korrekt altid MnT-noden. Men `_derive_psn()` udleder `psnName` fra `ise_base_url`s hostnavn når `coa_psn_name` er tom, så ISE bedes lade PAN'en udstede. Kører den ikke PSN-personaen, sendes der ingen pakke, og gæsten re-autentificeres aldrig. Symptomet var kun synligt på gæstens skærm; fallbacken logger nu en tydelig advarsel. Selve rettelsen er konfiguration — sæt `coa_psn_name` til den PSN der holder sessionen.
+- **`tests/test_selfregister.py`**: 6 nye tests. Gen-registrering sender ikke de fem felter den ikke ejer; AuthzVlan/ACL udelades når de ikke er konfigureret og sættes når de er; de attributter flowet ejer skrives stadig; upsert afvises uden gæstegruppe; en ny MAC kan stadig oprettes uden gæstegruppe. Suite: 325 grønne (319 → 325).
+
+**Bevidst afgrænsning:** G-1 er rettet **lokalt i selfregister**, ikke i `CustomAttrs`-skemaet. At ændre feltdefaults fra `""` til `None` ville være den principielt rigtigere merge-semantik, men det ville samtidig ændre adfærden for bulk-/CSV-stien, der sender delvise dicts — altså portalens kerne-redigering. Noteret som muligt oprydningsarbejde.
+
+**G-4 (ikke en kodeændring):** flowet forudsætter at klientens afsender-IP er identisk med framed-IP'en i RADIUS-sessionen — både MnT-opslaget og ActiveList-fallbacken matcher på den. NAT mellem gæste-VLAN og portal gør registrering umulig uanset konfiguration. Registreret i BUGS.md som dokumentationsopgave.
+
 ## [7.3.0761] — 2026-08-19 — fix: atomiske skrivninger af al JSON-tilstand + serialiseret users.json (F-05/F-06)
 
 Samtlige ni JSON-stores skrev med et direkte `Path.write_text()`, der **trunkerer filen før den skriver**. Afbrydes processen i det vindue, står filen tom eller halv — og `load_users()` returnerer stille `[]` ved parse-fejl, så symptomet ikke er en fejlmeddelelse men en portal hvor ingen kan logge ind. Vinduet var reelt: opdateringstjenesten afsluttede selv processen med `os._exit(0)`, og `save_users()` kaldes fra 17 steder, heriblandt hvert logout. Bugfix → kun `build` (0760→0761).

@@ -4,6 +4,46 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [7.4.0768] — 2026-11-20 — 📘 Manualen har fået billeder
+
+- **Skærmbilleder af de vigtigste sider**: dashboard, endpoint-oversigten, redigering af en IPSK-enhed, oprettelse af endpoints, PSK-politikken og gæste-selvregistreringen.
+- **Diagrammer der forklarer sammenhængene**: hvordan portalen hænger sammen med ISE, hvordan en IPSK-nøgle kommer fra portalen ud til enheden, hvad der sker når en nøgle skiftes, hvordan gæste-selvregistrering foregår, og hvilke endpoints en operatør kan se.
+- Brugervejledningen har fået et afsnit om dashboardet.
+
+## [7.3.0767] — 2026-11-20 — 🛠 To rettelser i indstillingerne
+
+- **Valget mellem IPSK og MPSK kan læses igen.** Forklaringen ved de to valg blev vist i smalle kolonner, der var svære at læse.
+- **Gæste-registrering viser den rigtige adresse.** Indstillingerne viste adressen `/selfregister?mac=...`, men MAC-adressen hentes automatisk fra gæstens netværkssession. Adressen der skal bruges i redirect, er blot `/selfregister`.
+
+## [7.3.0766] — 2026-11-20 — 🔑 Tydeligere valg mellem IPSK og MPSK
+
+- **Forklaringen ved PSK-mode er rettet.** IPSK er det rigtige valg, når ISE skal levere nøglen via portalens autorisationsprofil `Endpoint_PSK-KEY`, og det er nu markeret som anbefalet. Vælges MPSK, viser siden en advarsel om, at profilen så ikke virker.
+- **Eksisterende nøgler følger med ved et skift.** Skiftes der mellem IPSK og MPSK, tilbyder portalen at omskrive de eksisterende nøgler til det nye format, så de stadig virker. Det kræver en admin.
+
+## [7.3.0765] — 2026-11-20 — 🔑 En ny PSK-nøgle virker med det samme
+
+- **Enheden afbrydes, når dens PSK-nøgle ændres.** Tidligere blev en ændret nøgle først brugt, når enheden selv forbandt igen. Indtil da virkede den gamle nøgle stadig, så en lækket nøgle reelt ikke kunne tilbagekaldes. Nu afbryder portalen enheden automatisk, og den skal forbinde igen med den nye nøgle. Det kan slås fra i PSK-politikken.
+- **Brugere med rollen editor-psk kan nu sende CoA** (gen-autentificering og afbrydelse) — også som massehandling.
+- Efter en gemning står der, om nøgleskiftet blev skubbet ud til enheden.
+
+## [7.3.0764] — 2026-11-20 — 🔑 PSK-nøgler der ikke kan bruges, afvises nu
+
+- **Nøgler skal være 8-63 almindelige tegn.** Wi-Fi kan ikke bruge en nøgle på mere end 63 tegn eller med æ, ø, å. Portalen gemte dem alligevel, og enheden kunne så aldrig komme på. Den slags nøgler afvises nu med en forklaring. Minimumlængden i PSK-politikken kan højst sættes til 63.
+- **Gæster får en forklaring, hvis nøglen ikke kan bruges.** Indtastede en gæst en nøgle, der ikke levede op til kravene, fik gæsten en serverfejl. Nu står det, hvad der er galt, og gæsten kan rette nøglen og prøve igen. Kravene vises også under nøglefeltet.
+
+## [7.3.0763] — 2026-11-20 — 🔒 Rettigheder håndhæves nu også når der gemmes
+
+- **Kun admin og editor-psk kan ændre PSK-nøgler.** Andre roller kunne tidligere sætte en PSK-nøgle ved at kalde portalens API direkte, selvom feltet var skjult for dem. Den slags forsøg ignoreres nu, og den eksisterende nøgle bevares.
+- **Brugere kan kun ændre enheder i deres egne System adm-roller.** Det gælder redigering, sletning, CoA, karantæne, dekommissionering og massehandlinger. Tidligere var begrænsningen kun på det man kunne *se*. I massehandlinger springes enheder uden for ens roller over og vises som fejlede.
+- **Man kan ikke længere give en enhed en System adm-rolle man ikke selv har.** Roller der allerede står på enheden, kan stadig beholdes.
+- **Registranter med skabelonkrav kan kun oprette via deres tildelte skabeloner.** Gruppe, VLAN og øvrige felter tages nu altid fra skabelonen på serveren, uanset hvad der sendes med.
+
+## [7.3.0762] — 2026-08-19 — 🐛 Gæsteregistrering: gentagne registreringer ødelægger ikke længere enhedens opsætning
+
+- **Registrerede en gæst sig igen, blev enhedens oplysninger slettet.** Type, ejer, lokation, platform, roller og — vigtigst — tildelt VLAN og adgangsliste blev tømt på enheden. Var VLAN og adgangsliste ikke udfyldt i indstillingerne, fjernede en fornyet registrering dermed gæstens netværksadgang i stedet for at give den. Registreringen rører nu kun de felter den selv sætter.
+- **Enheder uden for gæstegruppen beskyttes nu også, når der ikke er valgt en gæstegruppe.** Er feltet "gæstegruppe" tomt i indstillingerne, kan selvregistrering ikke længere ændre en enhed der allerede findes. Nye enheder kan stadig registreres som før.
+- **Advarsel i loggen når CoA ikke kan sendes korrekt.** Er PSN-navnet ikke udfyldt i indstillingerne, sender portalen CoA til den forkerte ISE-node, og gæsten får ikke automatisk adgang — kun beskeden om selv at gentilslutte. Det står nu i loggen, så fejlen kan ses uden at kigge gæsten over skulderen. **Udfyld `coa_psn_name` i indstillingerne** hvis gæster oplever at skulle gentilslutte manuelt.
+
 ## [7.3.0761] — 2026-08-19 — 🛡️ Portalen kan ikke længere miste sine indstillinger ved en afbrudt genstart
 
 - **Brugere og indstillinger skrives nu sikkert til disk.** Blev portalen afbrudt netop mens den gemte — typisk under en opdaterings-genstart — kunne filen med brugerkonti eller indstillinger stå tom bagefter. Var det brugerfilen, kunne ingen logge ind. Portalen skriver nu til en midlertidig fil og bytter den på plads i ét hug, så en afbrydelse altid efterlader enten den gamle eller den nye udgave — aldrig en halv. Det gælder brugere, indstillinger, skabeloner, roller, operatørprofiler, attribut-opsætning og enheds-cachen.
