@@ -4,6 +4,11 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [7.3.0766] — 2026-11-20 — 🔑 Tydeligere valg mellem IPSK og MPSK
+
+- **Forklaringen ved PSK-mode er rettet.** IPSK er det rigtige valg, når ISE skal levere nøglen via portalens autorisationsprofil `Endpoint_PSK-KEY`, og det er nu markeret som anbefalet. Vælges MPSK, viser siden en advarsel om, at profilen så ikke virker.
+- **Eksisterende nøgler følger med ved et skift.** Skiftes der mellem IPSK og MPSK, tilbyder portalen at omskrive de eksisterende nøgler til det nye format, så de stadig virker. Det kræver en admin.
+
 ## [7.3.0765] — 2026-11-20 — 🔑 En ny PSK-nøgle virker med det samme
 
 - **Enheden afbrydes, når dens PSK-nøgle ændres.** Tidligere blev en ændret nøgle først brugt, når enheden selv forbandt igen. Indtil da virkede den gamle nøgle stadig, så en lækket nøgle reelt ikke kunne tilbagekaldes. Nu afbryder portalen enheden automatisk, og den skal forbinde igen med den nye nøgle. Det kan slås fra i PSK-politikken.

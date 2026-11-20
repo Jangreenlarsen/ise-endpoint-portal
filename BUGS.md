@@ -77,11 +77,13 @@ ingen PSK-tests i `backend/tests/`.
 - **Regressions-vagt:** `test_key_change_sends_disconnect`, `test_unchanged_key_sends_nothing`, `test_disconnect_can_be_disabled`, `test_psk_changed_*`, `test_psk_editor_can_send_coa[*]`, `test_psk_editor_can_bulk_coa`, `test_update_returns_psk_coa_result`.
 - **Berørte filer:** `backend/app/api/endpoints_ops.py:41-95`, `backend/app/api/deps.py:148`
 
-## [OPEN] 2026-11-20 — P-7: MPSK-mode giver et ugyldigt cisco-av-pair, og moduskift migrerer ikke eksisterende nøgler (LAV/DESIGN)
+## [FIXED 7.3.0766] 2026-11-20 — P-7: MPSK-mode giver et ugyldigt cisco-av-pair, og moduskift migrerer ikke eksisterende nøgler (LAV/DESIGN)
 
 - **Symptom:** Den auto-oprettede autorisationsprofil `Endpoint_PSK-KEY` sender `cisco-av-pair = EndPoints:PSK_Key`. Den virker kun når attributten indeholder `psk=<nøgle>`, hvilket kun er tilfældet i IPSK-mode. I MPSK-mode (default!) gemmes nøglen rå, og profilen sender et ugyldigt av-pair. Skiftes der mode, ligger de eksisterende nøgler stadig i det gamle format, fordi `_psk_decode()` skjuler forskellen i UI'et.
 - **Root cause:** `psk_type` styrer kun prefix ved skrivning (`_psk_encode`). Der er ingen migrering i `update_psk_policy()`, og der er ingen profil-variant der matcher MPSK-formatet.
 - **Foreslået løsning:** Afklar hvad "MPSK" skal betyde mod ISE (Catalyst 9800 MPSK er WLAN-lokalt og bruger ikke ISE pr. endpoint). Enten fjernes moduset og nøglen gemmes altid i det format profilen kræver, eller også tilføjes en leverandørspecifik profil (fx Meraki/Aruba Tunnel-Password) pr. mode. Ved moduskift: tilbyd en bulk-migrering.
+- **Løsning (v7.3.0766):** Ny `migrate_psk_format()` og admin-ruten `POST /settings/psk-policy/migrate?dry_run=` omskriver alle kendte nøgler til den aktive modes format (idempotent; kun `PSK_Key` sendes). PSK-indstillingerne tilbyder migreringen efter et moduskift, forklarer begge modes korrekt (IPSK anbefalet) og advarer når MPSK er valgt. Beskrivelsen af `Endpoint_PSK-KEY` nævner kravet om IPSK. **Bevidst ikke ændret:** default-mode er stadig MPSK. Et skift ville tavst ændre format for installationer der aldrig har gemt politikken.
+- **Regressions-vagt:** `test_migrate_writes_current_mode_format[IPSK|MPSK]`, `test_migrate_dry_run_writes_nothing`, `test_migrate_route_is_admin_only`.
 - **Berørte filer:** `backend/app/services/_endpoint_helpers.py:21-49`, `backend/app/services/authz_profile_service.py:80-110`, `backend/app/services/settings_service.py:598-622`, `backend/app/schemas/settings.py:338`
 
 ---

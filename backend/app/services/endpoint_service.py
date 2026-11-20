@@ -934,6 +934,60 @@ class EndpointService:
         asyncio.create_task(_audit_after(), name=f"audit-after-update-{endpoint_id[:8]}")
         return {"psk_changed": psk_changed, "psk_coa": psk_coa}
 
+    async def migrate_psk_format(self, dry_run: bool = False) -> dict[str, Any]:
+        """Omskriv alle kendte PSK-nøgler til det format den aktive ``psk_type`` kræver.
+
+        IPSK gemmer ``psk=<nøgle>`` (det format autorisationsprofilen
+        ``Endpoint_PSK-KEY`` sender som cisco-av-pair); MPSK gemmer nøglen rå.
+        Skiftes mode, ligger de eksisterende nøgler stadig i det gamle format,
+        fordi ``_psk_decode`` skjuler forskellen i UI'et (BUGS.md P-7).
+
+        Kandidaterne tages fra endpoint-cachen (som pre-warm holder komplet).
+        Nøglen kan ikke ses i rå form i cachen, så alle nøgler skrives om —
+        operationen er idempotent. Kun ``PSK_Key`` sendes; ISE merger resten.
+        """
+        mode = str(getattr(config.settings, "psk_type", "MPSK")).upper()
+        cache = get_cache()
+        snapshot = cache.snapshot_all_details()
+        targets = [(ep_id, d) for ep_id, d, _stale in snapshot if getattr(d, "psk_key", "")]
+        result: dict[str, Any] = {
+            "mode": mode,
+            "cached_endpoints": len(snapshot),
+            "candidates": len(targets),
+            "migrated": 0,
+            "failed": [],
+            "dry_run": dry_run,
+        }
+        if dry_run or not targets:
+            return result
+
+        await self._ensure_ca_definitions()
+        sem = asyncio.Semaphore(int(getattr(config.settings, "bulk_create_concurrency", 3)))
+
+        async def _one(ep_id: str, detail: Any) -> dict[str, str] | None:
+            async with sem:
+                try:
+                    await self.endpoints.update(
+                        ep_id, custom_attributes={PSK_KEY_ATTR: _psk_encode(detail.psk_key)}
+                    )
+                    cache.invalidate_detail(ep_id)
+                    return None
+                except IseApiError as exc:
+                    return {"id": ep_id, "mac": getattr(detail, "mac", ""), "error": str(exc)}
+
+        outcomes = await asyncio.gather(*(_one(i, d) for i, d in targets))
+        failed = [o for o in outcomes if o]
+        result["failed"] = failed
+        result["migrated"] = len(targets) - len(failed)
+        logger.info(
+            "psk: format migreret til %s — %d ok, %d fejlede", mode, result["migrated"], len(failed)
+        )
+        await audit_store.record(
+            "psk_format_migrated", "psk_policy", None,
+            after={"mode": mode, "migrated": result["migrated"], "failed": len(failed)},
+        )
+        return result
+
     async def bulk_create(
         self,
         req: BulkCreateRequest,

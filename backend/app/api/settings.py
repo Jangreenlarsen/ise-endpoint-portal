@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, s
 from typing import Optional
 from fastapi.responses import FileResponse
 
-from app.api.deps import require_admin, require_psk_editor
+from app.api.deps import get_endpoint_service, require_admin, require_psk_editor
 from app.pxgrid import cert_manager
 from app.schemas.settings import (
     BackendSettingsResponse,
@@ -32,6 +32,16 @@ from app.services import settings_service
 router = APIRouter(
     prefix="/settings", tags=["settings"], dependencies=[Depends(require_admin)]
 )
+
+
+@router.post("/psk-policy/migrate")
+async def migrate_psk_format(dry_run: bool = False) -> dict:
+    """Omskriv eksisterende PSK-nøgler til den aktive PSK-modes format (BUGS.md P-7).
+
+    Kun admin: operationen rører alle endpoints med en nøgle, på tværs af
+    System adm-scope. ``dry_run=true`` returnerer kun antal kandidater.
+    """
+    return await get_endpoint_service().migrate_psk_format(dry_run=dry_run)
 
 
 @router.get("/backend", response_model=BackendSettingsResponse)

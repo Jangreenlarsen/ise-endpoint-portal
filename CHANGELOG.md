@@ -3,6 +3,17 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [7.3.0766] — 2026-11-20 — fix: PSK-mode forklares korrekt, MPSK advarer, og nøgler migreres ved moduskift (P-7)
+
+Bugfix → kun `build` (0765→0766).
+
+- **P-7 (LAV/DESIGN) — `services/endpoint_service.py`, `api/settings.py`**: Ny `migrate_psk_format(dry_run)` omskriver alle kendte PSK-nøgler til det format den aktive `psk_type` kræver: `psk=<nøgle>` for IPSK og rå nøgle for MPSK. Kandidaterne tages fra endpoint-cachen, som pre-warm holder komplet. Den rå nøgle kan ikke ses i cachen, så alle nøgler skrives om; operationen er idempotent og sender kun `PSK_Key`. Ny rute `POST /api/settings/psk-policy/migrate?dry_run=` er **kun for admin**, fordi den rører endpoints på tværs af System adm-scope. Den auditeres som `psk_format_migrated`.
+- **Frontend — `views/settings.js`, `views/settings/section-psk.js`, `api.js`, `i18n.js`**: Forklaringerne ved mode-valget var misvisende. MPSK blev beskrevet som "Multi-PSK (Cisco WLC)", men Catalyst 9800-MPSK er WLAN-lokalt og bruger ikke ISE pr. endpoint. IPSK står nu først og er markeret som anbefalet. Begge forklaringer siger præcis, hvilket format nøglen gemmes i, og hvorfor. Er MPSK valgt, vises en advarsel om, at `Endpoint_PSK-KEY` ikke virker. Skiftes mode, tilbyder siden efter gemning at omskrive de eksisterende nøgler (dry-run → bekræft → kør). Mangler brugeren admin-ret, vises det.
+- **`services/authz_profile_service.py`**: Beskrivelsen af `Endpoint_PSK-KEY` nævner nu kravet om IPSK-mode.
+- **`frontend/css/styles.css`**: `.alert.warning`/`.alert.warn` (lys og mørk) — klassen blev allerede brugt i tre views uden at have nogen stil.
+- **Bevidst afgrænsning:** default-mode er stadig `MPSK`. Et skift af default ville tavst ændre format for installationer, der aldrig har gemt politikken, og efterlade deres eksisterende nøgler i det gamle format. Advarslen og migreringen gør i stedet skiftet til et bevidst valg.
+- **Tests**: 4 nye i `tests/test_psk.py` (format pr. mode, dry-run, kun admin). Suite: 376 grønne (372 → 376). Playwright: 13/13.
+
 ## [7.3.0765] — 2026-11-20 — fix: et PSK-nøgleskift træder nu i kraft med det samme (P-6)
 
 Bugfix → kun `build` (0764→0765).

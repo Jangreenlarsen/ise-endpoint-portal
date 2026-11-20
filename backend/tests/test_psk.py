@@ -139,3 +139,59 @@ async def test_disconnect_can_be_disabled():
     svc, res = await _run_update(CustomAttrs(PSK_Mode="true", PSK_Key="NyNoegle123"), "Gammel123", False)
     svc.coa_disconnect.assert_not_awaited()
     assert res["psk_changed"] and res["psk_coa"] is None
+
+
+# ── P-7: migrering af nøgleformat ved moduskift ──────────────────────────────
+
+def _svc_with_cache(details):
+    with patch("app.core.config.settings.ise_api_type", "ers"):
+        svc = EndpointService(MagicMock())
+    svc._ensure_ca_definitions = AsyncMock()
+    svc.endpoints.update = AsyncMock()
+    cache = MagicMock()
+    cache.snapshot_all_details.return_value = [(d.id, d, False) for d in details]
+    return svc, cache
+
+
+def _ep(ep_id, key):
+    return EndpointDetail(id=ep_id, name=ep_id, mac=ep_id, psk_key=key)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mode,expected", [("IPSK", "psk=Noegle1234"), ("MPSK", "Noegle1234")])
+async def test_migrate_writes_current_mode_format(mode, expected):
+    svc, cache = _svc_with_cache([_ep("a", "Noegle1234"), _ep("b", "")])
+    with (
+        patch("app.services.endpoint_service.get_cache", return_value=cache),
+        patch("app.services.endpoint_service.audit_store") as audit,
+        patch.object(config.settings, "psk_type", mode),
+    ):
+        audit.record = AsyncMock()
+        res = await svc.migrate_psk_format()
+    assert res["candidates"] == 1 and res["migrated"] == 1
+    svc.endpoints.update.assert_awaited_once_with("a", custom_attributes={"PSK_Key": expected})
+
+
+@pytest.mark.asyncio
+async def test_migrate_dry_run_writes_nothing():
+    svc, cache = _svc_with_cache([_ep("a", "Noegle1234")])
+    with patch("app.services.endpoint_service.get_cache", return_value=cache):
+        res = await svc.migrate_psk_format(dry_run=True)
+    assert res["candidates"] == 1 and res["dry_run"]
+    svc.endpoints.update.assert_not_awaited()
+
+
+def test_migrate_route_is_admin_only():
+    from fastapi.testclient import TestClient
+
+    from app.core import auth as auth_core
+    from app.main import app
+
+    users = [{"id": "m-psk", "username": "m_psk", "password_hash": "x", "role": "editor-psk",
+              "user_type": "user", "created_at": "2026-01-01T00:00:00Z", "last_login": None,
+              "assigned_endpoint_roles": [], "assigned_templates": []}]
+    tok = auth_core.create_token("m-psk", "m_psk", "editor-psk")
+    with TestClient(app) as c, patch("app.api.deps.load_users", return_value=users):
+        r = c.post("/api/settings/psk-policy/migrate?dry_run=true",
+                   headers={"Authorization": f"Bearer {tok}"})
+    assert r.status_code == 403

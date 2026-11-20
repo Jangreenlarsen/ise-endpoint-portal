@@ -336,6 +336,8 @@ export const api = {
   getPskPolicy: () => request("/settings/psk-policy"),
   updatePskPolicy: (payload) =>
     request("/settings/psk-policy", { method: "PUT", body: JSON.stringify(payload) }),
+  migratePskFormat: (dryRun = false) =>
+    request(`/settings/psk-policy/migrate?dry_run=${dryRun ? "true" : "false"}`, { method: "POST" }),
   generatePskKey: (policy = null) => request("/settings/psk-policy/generate", {
     method: "POST",
     body: policy ? JSON.stringify(policy) : undefined,
