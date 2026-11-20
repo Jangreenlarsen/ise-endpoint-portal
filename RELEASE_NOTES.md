@@ -4,6 +4,11 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [7.6.0773] — 2026-11-20 — ⚡ Hurtigere policy-simulering
+
+- **Simulering af et endpoint går markant hurtigere**, især "Auto — test alle policy sets". Portalen henter nu policy-reglerne for alle policy sets på én gang i stedet for ét ad gangen, begynder at hente dem allerede når fanen åbnes, og genbruger dem i op til en time mens de opdateres i baggrunden.
+- Under resultatet står nu, hvor lang tid simuleringen tog, og om reglerne kom fra cachen eller blev hentet fra ISE.
+
 ## [7.6.0772] — 2026-11-20 — 🛠 Open API-listen virker nu i praksis
 
 - **Den nye hentemetode faldt altid tilbage til den gamle** med beskeden "ISE API 400". ISE svarer med en fejl, når portalen spørger efter en side efter den sidste, og det tolkede portalen som et problem. Det er rettet, så dashboardet nu skal vise *Kilde: Open API-liste*.

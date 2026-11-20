@@ -3,6 +3,16 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [7.6.0773] — 2026-11-20 — fix: policy-simulering henter regler parallelt og fra en stale-while-revalidate-cache (P-11)
+
+Bugfix → kun `build` (0772→0773).
+
+- **P-11 — `backend/app/services/policy_service.py`**: Policy-cachen er nu stale-while-revalidate (frisk ≤ 5 min, serveres stale + baggrundsopdatering ≤ 60 min, ellers hentning; delte in-flight-kald; generation-tæller ved invalidering). `match_all()` henter alle sets' regler parallelt (`prefetch_rules`, max 4) samtidig med endpointet; policy-navn fra den cachede liste i stedet for `GET policy-set/{id}`. `list_policy_sets()` varmer reglerne op i baggrunden. `match_endpoint()`/`match_all()` returnerer `timing`.
+- **`backend/app/schemas/policy.py`**: `PolicyMatchResult.timing`.
+- **`frontend/js/views/browse-detail.js`**: Tidsforbrug og cache-status vises under simuleringsresultatet.
+- **`docs/03-BRUGERGUIDE.md`**: Nyt afsnit Policy-simulering.
+- **Tests**: 8 nye i `tests/test_policy_sim_speed.py`. Suite: 412 grønne (404 → 412). Playwright: 13/13.
+
 ## [7.6.0772] — 2026-11-20 — fix: Open API-liste-scanning fejlede med ISE 400 på sider efter den sidste (P-10)
 
 Bugfix → kun `build` (0771→0772).
