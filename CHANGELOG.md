@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [7.3.0767] — 2026-11-20 — fix: PSK-modevalget er læseligt igen, og gæsteindstillingerne viser den rigtige URL (P-8)
+
+Bugfix → kun `build` (0766→0767).
+
+- **P-8 — `frontend/js/views/settings.js`**: Teksten ved IPSK/MPSK-radioknapperne pakkes i `<span>`. `.radio-label` er flex, så hvert `<code>` blev tidligere sin egen smalle kolonne.
+- **P-8 — `frontend/js/views/settings/section-update.js`, `frontend/js/i18n.js`**: "Registreringsside URL" viser `/selfregister` i stedet for `/selfregister?mac=...`, og `settings.guest_reg_hint` (da+en) forklarer, at MAC-adressen findes via MnT-sessionen og ikke læses fra URL'en (forældet siden 7.3.0758).
+- **Tests**: Playwright smoke 13/13.
+
 ## [7.3.0766] — 2026-11-20 — fix: PSK-mode forklares korrekt, MPSK advarer, og nøgler migreres ved moduskift (P-7)
 
 Bugfix → kun `build` (0765→0766).

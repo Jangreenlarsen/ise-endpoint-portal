@@ -27,6 +27,14 @@ ingen PSK-tests i `backend/tests/`.
 **7.3.0766**. Regressions-vagter: `tests/test_write_authz.py` (24) og `tests/test_psk.py` (23) plus 3 i
 `tests/test_selfregister.py`. Suite 325 → 376 grønne.
 
+## [FIXED 7.3.0767] 2026-11-20 — P-8: PSK-modevalget brydes op i kolonner, og gæsteindstillingerne viser en forældet URL (LAV)
+
+- **Fundet:** under generering af skærmbilleder til manualen.
+- **Symptom 1:** Teksten ved IPSK/MPSK-radioknapperne (Portal Config → PSK-politik) blev vist som smalle, ulæselige kolonner. `.radio-label` er `display:flex`, så hvert `<code>`-element i teksten blev sit eget flex-item.
+- **Symptom 2:** Gæste-registreringskortet viste `URL: /selfregister?mac=...` både i hjælpeteksten og i "Registreringsside URL". Siden 7.3.0758 (F-01) læses MAC-adressen ikke fra URL'en men findes via MnT-sessionen, så teksten fik admins til at konfigurere en forkert redirect.
+- **Løsning:** Radio-teksten pakkes i `<span>` (ét flex-item) i `views/settings.js`. URL-visningen i `views/settings/section-update.js` viser nu `/selfregister`, og `settings.guest_reg_hint` (da+en) forklarer at MAC'en findes via MnT.
+- **Regressions-vagt:** skærmbillederne `docs/img/settings-psk-politik.png` og `docs/img/settings-gaeste-selvregistrering.png` regenereres med `frontend-tests/docs.config.ts`.
+
 ## [FIXED 7.3.0763] 2026-11-20 — P-1: PSK-skrivning håndhæves kun i frontend (HØJ)
 
 - **Symptom:** `editor`, `registrant` og `registrant_templet` kan sætte `PSK_Key`/`PSK_Mode` på endpoints ved at kalde API'et direkte. UI'et skjuler PSK-sektionen for dem, men backend afviser ikke feltet.

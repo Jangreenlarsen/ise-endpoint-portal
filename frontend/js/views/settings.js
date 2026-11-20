@@ -699,8 +699,8 @@ export async function renderSettings(container) {
         <div class="field">
           <label id="psk-mode-type-lbl"></label>
           <div class="radio-group">
-            <label class="radio-label"><input type="radio" name="psk-type" id="psk-type-ipsk" value="IPSK" /> <b>IPSK</b> — Identity PSK via ISE RADIUS (Cisco WLC/Catalyst 9800). Nøglen gemmes i ISE som <code>psk=&lt;nøgle&gt;</code>, så autorisationsprofilen <code>Endpoint_PSK-KEY</code> kan sende den direkte som <code>cisco-av-pair</code>. <b>Anbefalet.</b></label>
-            <label class="radio-label"><input type="radio" name="psk-type" id="psk-type-mpsk" value="MPSK" checked /> <b>MPSK</b> — Nøglen gemmes rå (uden <code>psk=</code>). Kun til opsætninger hvor noget andet end <code>Endpoint_PSK-KEY</code> læser nøglen, fx en leverandør der bruger en anden RADIUS-attribut.</label>
+            <label class="radio-label"><input type="radio" name="psk-type" id="psk-type-ipsk" value="IPSK" /> <span><b>IPSK</b> — Identity PSK via ISE RADIUS (Cisco WLC/Catalyst 9800). Nøglen gemmes i ISE som <code>psk=&lt;nøgle&gt;</code>, så autorisationsprofilen <code>Endpoint_PSK-KEY</code> kan sende den direkte som <code>cisco-av-pair</code>. <b>Anbefalet.</b></span></label>
+            <label class="radio-label"><input type="radio" name="psk-type" id="psk-type-mpsk" value="MPSK" checked /> <span><b>MPSK</b> — Nøglen gemmes rå (uden <code>psk=</code>). Kun til opsætninger hvor noget andet end <code>Endpoint_PSK-KEY</code> læser nøglen, fx en leverandør der bruger en anden RADIUS-attribut.</span></label>
           </div>
           <div id="psk-mpsk-warning" class="alert warning" hidden></div>
         </div>

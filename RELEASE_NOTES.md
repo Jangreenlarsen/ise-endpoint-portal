@@ -4,6 +4,11 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [7.3.0767] — 2026-11-20 — 🛠 To rettelser i indstillingerne
+
+- **Valget mellem IPSK og MPSK kan læses igen.** Forklaringen ved de to valg blev vist i smalle kolonner, der var svære at læse.
+- **Gæste-registrering viser den rigtige adresse.** Indstillingerne viste adressen `/selfregister?mac=...`, men MAC-adressen hentes automatisk fra gæstens netværkssession. Adressen der skal bruges i redirect, er blot `/selfregister`.
+
 ## [7.3.0766] — 2026-11-20 — 🔑 Tydeligere valg mellem IPSK og MPSK
 
 - **Forklaringen ved PSK-mode er rettet.** IPSK er det rigtige valg, når ISE skal levere nøglen via portalens autorisationsprofil `Endpoint_PSK-KEY`, og det er nu markeret som anbefalet. Vælges MPSK, viser siden en advarsel om, at profilen så ikke virker.
