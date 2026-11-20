@@ -3,6 +3,14 @@
 Alle kodeændringer registreres her. Nyeste øverst.
 Versionering: `version.json` er single source of truth. Se [CLAUDE.md](CLAUDE.md) regel 1.
 
+## [7.3.0764] — 2026-11-20 — fix: PSK-nøgler valideres mod WPA-grænsen, og gæstesiden giver en forklaring i stedet for 500 (P-4/P-5)
+
+Bugfix → kun `build` (0763→0764).
+
+- **P-4 (MIDDEL) — `services/settings_service.py`, `services/_endpoint_helpers.py`, `schemas/settings.py`**: Ny `psk_hard_errors()` afviser nøgler over 63 tegn og nøgler med tegn uden for printbar ASCII (0x20-0x7E), uanset politik. Den kaldes først i `validate_psk_key()`. `PskPolicy.min_length` er begrænset til `le=63`, og `get_psk_policy()` klamper en ældre gemt værdi til 8-63, så en eksisterende konfiguration ikke vælter skemaet. `_validate_psk()` validerer nu når der skrives en nøgle, medmindre `PSK_Mode` eksplicit er `"false"`. Tidligere krævedes `PSK_Mode == "true"` i samme payload, så en nøgle sendt alene slap uden om al validering. Settings-feltet for minimumlængde har `max="63"`, og nøglefelterne i registrering og selvregistrering har `maxlength="63"`.
+- **P-5 (MIDDEL) — `api/selfregister.py`, `frontend/js/selfregister.js`**: Nøglen valideres nu, før der røres ved ISE, og en ugyldig nøgle giver 422 med politikkens fejltekst i stedet for en ubehandlet `ValueError` (500). Session-bindingen bevares, så gæsten kan rette nøglen og prøve igen. `ValueError` fra servicen fanges også som 422. `GET /selfregister/config` returnerer nyt felt `psk_hint` (fx "8-63 tegn, mindst ét tal. Ikke æ, ø, å."), som vises under nøglefeltet.
+- **Tests**: ny `tests/test_psk.py` (12) og 3 nye i `tests/test_selfregister.py`. Suite: 361 grønne (346 → 361).
+
 ## [7.3.0763] — 2026-11-20 — fix: skrive-autorisation håndhæves server-side — PSK, System adm-scope og skabelonkrav (P-1/P-2/P-3)
 
 Fundet i analysen af registrering og IPSK (BUGS.md P-serien). Rettigheder blev håndhævet når data blev læst, men skrive-stierne stolede på at frontend skjulte felterne. Bugfix → kun `build` (0762→0763).

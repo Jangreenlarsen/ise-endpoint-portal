@@ -708,7 +708,7 @@ export async function renderSettings(container) {
         </div>
         <div class="field">
           <label for="psk-min-length" id="psk-min-length-lbl"></label>
-          <input type="number" id="psk-min-length" min="8" max="128" step="1" value="8" />
+          <input type="number" id="psk-min-length" min="8" max="63" step="1" value="8" />
         </div>
         <div class="field checkbox-field">
           <label><input type="checkbox" id="psk-req-upper" /> <span id="psk-req-upper-lbl"></span></label>

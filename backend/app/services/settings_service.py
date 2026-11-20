@@ -588,7 +588,8 @@ def get_psk_policy() -> PskPolicy:
     return PskPolicy(
         psk_type=str(getattr(s, "psk_type", "MPSK")).upper() or "MPSK",
         show_key_in_table=bool(getattr(s, "psk_show_key_in_table", False)),
-        min_length=int(getattr(s, "psk_min_length", 8)),
+        # Klampet til WPA-grænsen: en ældre konfiguration kan have >63 (P-4).
+        min_length=min(max(int(getattr(s, "psk_min_length", 8)), 8), 63),
         require_uppercase=bool(getattr(s, "psk_require_uppercase", False)),
         require_numbers=bool(getattr(s, "psk_require_numbers", False)),
         require_special=bool(getattr(s, "psk_require_special", False)),
@@ -622,10 +623,40 @@ async def update_psk_policy(new: PskPolicy) -> PskPolicy:
     return get_psk_policy()
 
 
+# WPA2/WPA3-Personal passphrase: 8-63 printbare ASCII-tegn (IEEE 802.11i).
+# Gælder uanset politik — en nøgle uden for grænsen kan aldrig bruges af en
+# klient, selv om ISE gladeligt gemmer den (BUGS.md P-4).
+PSK_WPA_MIN = 8
+PSK_WPA_MAX = 63
+
+
+def psk_hard_errors(key: str) -> list[str]:
+    """Fejl der gør nøglen ubrugelig som WPA-passphrase, uafhængigt af politik."""
+    errors: list[str] = []
+    if len(key) > PSK_WPA_MAX:
+        errors.append(f"PSK-nøgle må højst være {PSK_WPA_MAX} tegn (WPA-grænse)")
+    if any(not (0x20 <= ord(c) <= 0x7E) for c in key):
+        errors.append("PSK-nøgle må kun indeholde almindelige ASCII-tegn (ikke æ, ø, å o.l.)")
+    return errors
+
+
+def psk_policy_hint(policy: PskPolicy | None = None) -> str:
+    """Kort menneskelæsbar beskrivelse af nøglekravene — til formularer."""
+    p = policy or get_psk_policy()
+    parts = [f"{p.min_length}-{PSK_WPA_MAX} tegn"]
+    if p.require_uppercase:
+        parts.append("mindst ét stort bogstav")
+    if p.require_numbers:
+        parts.append("mindst ét tal")
+    if p.require_special:
+        parts.append("mindst ét specialtegn")
+    return ", ".join(parts) + ". Ikke æ, ø, å."
+
+
 def validate_psk_key(key: str, policy: PskPolicy | None = None) -> list[str]:
     """Returnér liste af valideringsfejl (tom = godkendt)."""
     p = policy or get_psk_policy()
-    errors: list[str] = []
+    errors: list[str] = psk_hard_errors(key)
     if len(key) < p.min_length:
         errors.append(f"PSK-nøgle skal være mindst {p.min_length} tegn")
     if p.require_uppercase and not any(c.isupper() for c in key):

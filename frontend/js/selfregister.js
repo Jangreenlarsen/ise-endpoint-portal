@@ -81,7 +81,7 @@ function renderSessionNotFound(clientIp, onRetry, totalMs) {
   document.getElementById("retry-btn").addEventListener("click", onRetry);
 }
 
-function renderForm(mac, terms, ipskEnabled, introText, successText) {
+function renderForm(mac, terms, ipskEnabled, introText, successText, pskHint) {
   setContent(`
     <h1>Netværks-registrering</h1>
     <p style="color:#64748b;font-size:0.9rem;margin-bottom:1.25rem;">
@@ -103,9 +103,9 @@ function renderForm(mac, terms, ipskEnabled, introText, successText) {
       <div class="field">
         <label for="psk-input">IPSK-nøgle</label>
         <input type="text" id="psk-input" placeholder="Din personlige netværksnøgle"
-               maxlength="128" autocomplete="off" style="font-family:monospace;" />
+               maxlength="63" autocomplete="off" style="font-family:monospace;" />
         <div style="font-size:0.8rem;color:#64748b;margin-top:3px;">
-          Udfyldes kun hvis du har fået en nøgle udleveret.
+          Udfyldes kun hvis du har fået en nøgle udleveret.${pskHint ? ` Krav: ${esc(pskHint)}` : ""}
         </div>
       </div>` : ""}
       <label class="agree-row" for="agree-cb">
@@ -217,7 +217,7 @@ async function init() {
         renderSessionNotFound(session.client_ip || "?", startLookup, session._totalMs || 0);
         return;
       }
-      renderForm(session.mac, cfg.terms || "Jeg accepterer betingelserne.", cfg.ipsk_enabled || false, cfg.intro_text || "", cfg.success_text || "");
+      renderForm(session.mac, cfg.terms || "Jeg accepterer betingelserne.", cfg.ipsk_enabled || false, cfg.intro_text || "", cfg.success_text || "", cfg.psk_hint || "");
     };
 
     await startLookup();

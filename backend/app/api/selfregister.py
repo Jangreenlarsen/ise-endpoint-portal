@@ -46,6 +46,7 @@ from app.core.exceptions import IseApiError
 from app.ise import mnt_sessions
 from app.ise.coa import reauth as coa_reauth
 from app.schemas.endpoint import CreateEndpointRequest, CustomAttrs, EndpointUpdate
+from app.services.settings_service import psk_policy_hint, validate_psk_key
 
 logger = logging.getLogger(__name__)
 
@@ -100,6 +101,7 @@ class SelfRegisterConfig(BaseModel):
     terms: str
     redirect_url: str
     ipsk_enabled: bool = False
+    psk_hint: str = ""
     expiry_enabled: bool = False
     expiry_mode: str = "period"
     expiry_days: int = 30
@@ -209,6 +211,7 @@ async def get_selfregister_config() -> SelfRegisterConfig:
         terms=s.selfregister_terms,
         redirect_url=s.selfregister_redirect_url,
         ipsk_enabled=s.selfregister_ipsk_enabled,
+        psk_hint=psk_policy_hint() if s.selfregister_ipsk_enabled else "",
         expiry_enabled=s.selfregister_expiry_enabled,
         expiry_mode=s.selfregister_expiry_mode,
         expiry_days=s.selfregister_expiry_days,
@@ -333,6 +336,14 @@ async def selfregister(req: SelfRegisterRequest, request: Request) -> SelfRegist
     registrant = req.registrant_name.strip()
     psk_key = (req.psk_key or "").strip()
 
+    # Valider nøglen før der røres ved ISE, så gæsten får en forklaring i
+    # stedet for en 500 (BUGS.md P-5). Bindingen bevares, så gæsten kan rette
+    # nøglen og prøve igen uden nyt MnT-opslag.
+    if psk_key and s.selfregister_ipsk_enabled:
+        psk_errors = validate_psk_key(psk_key)
+        if psk_errors:
+            raise HTTPException(422, "Nøglen kan ikke bruges: " + "; ".join(psk_errors))
+
     service = get_endpoint_service()
 
     # Byg custom-attributter.
@@ -429,6 +440,8 @@ async def selfregister(req: SelfRegisterRequest, request: Request) -> SelfRegist
             )
             await service.update_endpoint(endpoint_id, update)
             logger.info("selfregister: opdaterede eksisterende endpoint mac=%s id=%s", mac, endpoint_id)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
         except IseApiError as exc:
             logger.warning("selfregister: update fejl mac=%s: %s", mac, exc)
             raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"ISE fejl ved opdatering: {exc}") from exc
@@ -443,6 +456,8 @@ async def selfregister(req: SelfRegisterRequest, request: Request) -> SelfRegist
         try:
             endpoint_id = await service.create_endpoint(create_req)
             logger.info("selfregister: oprettede endpoint mac=%s id=%s", mac, endpoint_id)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
         except IseApiError as exc:
             logger.warning("selfregister: create fejl mac=%s: %s", mac, exc)
             raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"ISE fejl ved oprettelse: {exc}") from exc

@@ -4,6 +4,11 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [7.3.0764] — 2026-11-20 — 🔑 PSK-nøgler der ikke kan bruges, afvises nu
+
+- **Nøgler skal være 8-63 almindelige tegn.** Wi-Fi kan ikke bruge en nøgle på mere end 63 tegn eller med æ, ø, å. Portalen gemte dem alligevel, og enheden kunne så aldrig komme på. Den slags nøgler afvises nu med en forklaring. Minimumlængden i PSK-politikken kan højst sættes til 63.
+- **Gæster får en forklaring, hvis nøglen ikke kan bruges.** Indtastede en gæst en nøgle, der ikke levede op til kravene, fik gæsten en serverfejl. Nu står det, hvad der er galt, og gæsten kan rette nøglen og prøve igen. Kravene vises også under nøglefeltet.
+
 ## [7.3.0763] — 2026-11-20 — 🔒 Rettigheder håndhæves nu også når der gemmes
 
 - **Kun admin og editor-psk kan ændre PSK-nøgler.** Andre roller kunne tidligere sætte en PSK-nøgle ved at kalde portalens API direkte, selvom feltet var skjult for dem. Den slags forsøg ignoreres nu, og den eksisterende nøgle bevares.

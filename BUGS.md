@@ -50,18 +50,22 @@ ingen PSK-tests i `backend/tests/`.
 - **Regressions-vagt:** `test_templet_requires_template`, `test_templet_rejects_unassigned_template`, `test_templet_payload_built_from_template`.
 - **Berørte filer:** `backend/app/api/deps.py:153-156`, `backend/app/api/endpoints.py:251-264`, `backend/app/api/templates.py:37-43`
 
-## [OPEN] 2026-11-20 — P-4: PSK-politikken håndhæver ikke WPA2-grænsen på 8-63 printbare ASCII-tegn (MIDDEL)
+## [FIXED 7.3.0764] 2026-11-20 — P-4: PSK-politikken håndhæver ikke WPA2-grænsen på 8-63 printbare ASCII-tegn (MIDDEL)
 
 - **Symptom:** En nøgle på 64-128 tegn eller med ikke-ASCII-tegn (fx æøå) accepteres og skrives til ISE, men klienten kan aldrig forbinde. `min_length` kan sættes op til 128, så en politik kan gøre alle gyldige nøgler ugyldige.
 - **Root cause:** `validate_psk_key()` tjekker kun minimum og tegnklasser. `PskPolicy.min_length` har `le=128`, og selfregisters `psk_key` har `max_length=128`.
 - **Foreslået løsning:** Hård grænse 8-63 tegn, kun ASCII 0x20-0x7E, uafhængigt af politikken. `min_length` begrænses til `le=63`.
+- **Løsning (v7.3.0764):** Ny `psk_hard_errors()` afviser over 63 tegn og tegn uden for ASCII 0x20-0x7E, uanset politik. `PskPolicy.min_length` begrænset til `le=63`, og `get_psk_policy()` klamper ældre værdier til 8-63. `_validate_psk()` validerer nu enhver skrevet nøgle, medmindre `PSK_Mode` eksplicit er `"false"`. Det lukker et ekstra hul fundet under rettelsen: en nøgle sendt uden `PSK_Mode` i samme payload slap tidligere uden om al validering. Nøglefelterne i UI har `maxlength="63"`.
+- **Regressions-vagt:** `tests/test_psk.py`: `test_rejects_64_chars`, `test_rejects_non_ascii_and_control_chars[*]`, `test_policy_min_length_capped_at_63`, `test_generated_keys_are_valid_wpa`, `test_key_without_mode_is_still_validated`.
 - **Berørte filer:** `backend/app/services/settings_service.py:625-637`, `backend/app/schemas/settings.py:340`, `backend/app/api/selfregister.py:130`
 
-## [OPEN] 2026-11-20 — P-5: Selvregistrering med en PSK der fejler politikken giver 500 til gæsten (MIDDEL)
+## [FIXED 7.3.0764] 2026-11-20 — P-5: Selvregistrering med en PSK der fejler politikken giver 500 til gæsten (MIDDEL)
 
 - **Symptom:** Er IPSK slået til på gæstesiden og indtaster gæsten en for kort/svag nøgle, får gæsten en generisk serverfejl i stedet for en forklaring.
 - **Root cause:** `create_endpoint`/`update_endpoint` kalder `_validate_psk()`, der kaster `ValueError`. Selfregister fanger kun `IseApiError`, så `ValueError` bobler op som en ubehandlet 500.
 - **Foreslået løsning:** Fang `ValueError` og returnér 422 med politikkens fejltekst. Vis politikkravene allerede i formularen.
+- **Løsning (v7.3.0764):** Nøglen valideres før ISE-kaldet og afvises med 422 og politikkens fejltekst. Session-bindingen bevares, så gæsten kan prøve igen. `ValueError` fra servicen fanges også som 422. `/selfregister/config` returnerer `psk_hint`, som vises under nøglefeltet.
+- **Regressions-vagt:** `test_invalid_psk_returns_422_and_keeps_binding`, `test_service_valueerror_returns_422`, `test_config_exposes_psk_hint_when_ipsk_enabled`.
 - **Berørte filer:** `backend/app/api/selfregister.py:418-441`
 
 ## [OPEN] 2026-11-20 — P-6: editor-psk kan skifte en PSK men ikke få den til at træde i kraft (MIDDEL)

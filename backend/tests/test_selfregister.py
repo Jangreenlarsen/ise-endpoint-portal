@@ -342,3 +342,38 @@ def test_new_endpoint_still_created_without_guest_group(client, monkeypatch):
         )
     assert r.status_code == 200
     svc.create_endpoint.assert_awaited_once()
+
+
+# ── P-5: ugyldig IPSK-nøgle giver 422, ikke 500 ───────────────────────────────
+
+def _bind(client):
+    with _mnt(MY_MAC):
+        assert client.get("/api/selfregister/session").json()["found"]
+
+
+def test_invalid_psk_returns_422_and_keeps_binding(client, monkeypatch):
+    monkeypatch.setattr(config.settings, "selfregister_ipsk_enabled", True, raising=False)
+    _bind(client)
+    with _ise() as svc:
+        r = client.post("/api/selfregister",
+                        json={"registrant_name": "Test Gæst", "agreed": True, "psk_key": "kort"})
+    assert r.status_code == 422
+    assert "Nøglen" in r.json()["detail"]
+    svc.create_endpoint.assert_not_awaited()
+    # Bindingen er ikke brugt — gæsten kan rette nøglen og prøve igen.
+    assert selfregister_bindings.lookup(CLIENT_IP) == MY_MAC
+
+
+def test_service_valueerror_returns_422(client, monkeypatch):
+    _bind(client)
+    with _ise() as svc:
+        svc.create_endpoint = AsyncMock(side_effect=ValueError("PSK Key overholder ikke politik"))
+        r = client.post("/api/selfregister",
+                        json={"registrant_name": "Test Gæst", "agreed": True})
+    assert r.status_code == 422
+
+
+def test_config_exposes_psk_hint_when_ipsk_enabled(client, monkeypatch):
+    monkeypatch.setattr(config.settings, "selfregister_ipsk_enabled", True, raising=False)
+    r = client.get("/api/selfregister/config")
+    assert "63" in r.json()["psk_hint"]
