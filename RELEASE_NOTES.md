@@ -4,6 +4,11 @@ Release notes viser hvad der er nyt i hver version. Opdateres ved hver main-rele
 
 ---
 
+## [7.5.0769] — 2026-11-20 — 🔬 Test af hurtigere endpoint-hentning fra ISE
+
+- **Ny test under Indstillinger → Portal Config → Portal Opdatering.** Den undersøger, om portalen kan hente endpoints fra ISE med langt færre kald end i dag, og viser hvor meget hurtigere en fuld opdatering af cachen kunne blive på jeres ISE.
+- Testen læser kun fra ISE og ændrer ikke, hvordan portalen henter data.
+
 ## [7.4.0768] — 2026-11-20 — 📘 Manualen har fået billeder
 
 - **Skærmbilleder af de vigtigste sider**: dashboard, endpoint-oversigten, redigering af en IPSK-enhed, oprettelse af endpoints, PSK-politikken og gæste-selvregistreringen.

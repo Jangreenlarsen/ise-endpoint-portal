@@ -18,6 +18,7 @@ import { initSystemUpdateSection, initAdvancedSection, initGithubUpdateSection, 
 import { initAuthzProfilesSection } from "./settings/section-authz-profiles.js";
 import { initBackupSection } from "./settings/section-backup.js";
 import { initDiagnosticsSection } from "./settings/section-diagnostics.js";
+import { initFetchProbeSection } from "./settings/section-fetch-probe.js";
 import { initFeatureCheckSection } from "./settings/section-feature-check.js";
 
 export async function renderSettings(container) {
@@ -883,6 +884,25 @@ export async function renderSettings(container) {
     </div>
 
     <div class="card" data-tab="portal-config" data-subtab="pc-update">
+      <h3>Test: Endpoint-hentning</h3>
+      <p class="hint">
+        Undersøger om cachen kan fyldes fra Open API-listen (<code>/api/v1/endpoint</code>, ca. ét kald pr. 100 endpoints)
+        i stedet for den nuværende metode med ét ERS-kald pr. endpoint. Testen sammenligner listens data med
+        detalje-kald for 5 endpoints, måler svartider og HTTP-version og estimerer tiden for en fuld scanning.
+        Kun læsekald — højst ca. 20 kald mod ISE.
+      </p>
+      <div id="fetch-probe-result"></div>
+      <div class="actions">
+        <label style="margin-right:.5rem;">Ekstra sider til måling
+          <select id="fetch-probe-pages" style="width:auto;margin-left:.25rem;">
+            <option value="0">0</option><option value="3" selected>3</option><option value="5">5</option><option value="10">10</option>
+          </select>
+        </label>
+        <button type="button" id="fetch-probe-btn" class="secondary">Kør test</button>
+      </div>
+    </div>
+
+    <div class="card" data-tab="portal-config" data-subtab="pc-update">
       <h3>Funktionsgennemgang</h3>
       <p class="hint">
         To-faset gennemgang af alle portal-funktioner.<br>
@@ -1169,6 +1189,7 @@ export async function renderSettings(container) {
     await initBackendSection(container);
     await initCacheSection(container);
     initDiagnosticsSection(container);
+    initFetchProbeSection(container);
     initFeatureCheckSection(container);
     await initPxGridSection(container);
     await initPurgeProtectSection(container);
